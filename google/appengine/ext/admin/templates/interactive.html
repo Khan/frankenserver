@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}{{ application_name }} Development Console - Interactive Console{% endblock %}
+
+{% block breadcrumbs %}
+  <span class="item"><a href="">Interactive Console</a></span>
+{% endblock %}
+
+{% block head %}
+  <style type="text/css">
+
+  #console {
+    border-collapse: collapse;
+  }
+
+  #console td {
+    width: 50%;
+    padding: 0;
+    border: 0;
+    vertical-align: top;
+    padding-right: 25px;
+  }
+
+  #output {
+    height: 350px;
+    width: 100%;
+    border: 0px;
+  }
+
+  #code, #output {
+    font-family: "bogus font here", monospace;
+    font-size: 10pt;
+  }
+
+  #code {
+    width: 100%;
+    border: 1px solid silver;
+    background-color: #f5f5f5;
+    padding: 0.5em;
+  }
+
+  </style>
+{% endblock %}
+
+{% block body %}
+<h3>Interactive Console</h3>
+<table id="console">
+  <tr>
+    <td>
+      <form action="{{ interactive_execute_path }}" target="output" method="post">
+        <div><textarea id="code" name="code" rows="20" cols="80"># Say hello to the current user
+user = users.GetCurrentUser()
+if user:
+  nickname = user.nickname()
+else:
+  nickname = "guest"
+print "Hello, " + nickname
+
+</textarea></div>
+        <div style="margin-top: 1em"><input type="submit" value="Run Program"/></div>
+      </form>
+    </td>
+    <td>
+      <iframe name="output" id="output"></iframe>
+    </td>
+  </tr>
+</table>
+<script type="text/javascript">
+document.getElementById('code').focus();
+</script>
+{% endblock %}

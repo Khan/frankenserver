@@ -1,0 +1,87 @@
+Copyright 2008 Google Inc.
+All rights reserved.
+
+App Engine SDK - Development tools for Google App Engine
+
+CONTENTS
+========
+
+   * Installing on Mac OSX
+   * Installing on Windows
+   * Installing on Linux and other platforms
+   * Running the SDK
+   * Using the SDK
+
+
+INSTALLING ON Mac OSX
+=====================
+1) Download and install Python 2.5 from http://www.python.org/download/
+2) Download the SDK installer from http://code.google.com/appengine/downloads
+3) Install the SDK by double-clicking on the GoogleAppEngine.dmg file and 
+running the installer.
+
+
+INSTALLING ON WINDOWS
+=====================
+1) Download and install Python 2.5 from http://www.python.org/download/
+2) Download the SDK installer from http://code.google.com/appengine/downloads
+2) Install the SDK by double-clicking on the GoogleAppEngine.msi file and 
+running the installer.
+
+
+INSTALLING ON LINUX AND OTHER PLATFORMS
+===============================
+1) Download and install Python 2.5 from http://www.python.org/download/
+2) Download the SDK zip file from http://code.google.com/appengine/downloads
+3) Unpack the zip file.
+
+
+RUNNING THE SDK
+=========================
+You can run the SDK with the following command:
+
+dev_appserver.py [options] <application root>
+
+Application root must be the path to the application to run in this server.
+Must contain a valid app.yaml or app.yml file.
+
+Options:
+  --help, -h                 View this helpful message.
+  --debug, -d                Use debug logging. (Default false)
+  --clear_datastore, -c      Clear the Datastore on startup. (Default false)
+  --address=ADDRESS, -a ADDRESS
+                             Address to which this server should bind. (Default
+                             localhost).
+  --port=PORT, -p PORT       Port for the server to run on. (Default 8080)
+  --datastore_path=PATH      Path to use for storing Datastore file stub data.
+                             (Default /tmp/dev_appserver.datastore)
+  --history_path=PATH        Path to use for storing Datastore history.
+                             (Default /tmp/dev_appserver.datastore.history)
+  --require_indexes          Disallows queries that require composite indexes
+                             not defined in index.yaml.
+  --smtp_host=HOSTNAME       SMTP host to send test mail to.  Leaving this
+                             unset will disable SMTP mail sending.
+                             (Default '')
+  --smtp_port=PORT           SMTP port to send test mail to.
+                             (Default 25)
+  --smtp_user=USER           SMTP user to connect as.  Stub will only attempt
+                             to login if this field is non-empty.
+                             (Default '').
+  --smtp_password=PASSWORD   Password for SMTP server.
+                             (Default '')
+  --enable_sendmail          Enable sendmail when SMTP not configured.
+                             (Default false)
+  --auth_domain              Authorization domain that this app runs in.
+                             (Default gmail.com)
+  --debug_imports            Enables debug logging for module imports, showing
+                             search paths used for finding modules and any
+                             errors encountered during the import process.
+
+
+
+USING THE SDK
+=======================
+For instructions on getting started with Google App Engine, please see the 
+Google App Engine Getting Started Guide
+
+http://code.google.com/appengine/docs/gettingstarted
