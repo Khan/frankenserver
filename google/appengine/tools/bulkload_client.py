@@ -81,6 +81,11 @@ def ContentGenerator(csv_file,
       csv_content: String containing the CSV content containing the next
         entity_count entities.
   """
+  try:
+    csv.field_size_limit(800000)
+  except AttributeError:
+    pass
+
   reader = create_csv_reader(csv_file, skipinitialspace=True)
   exhausted = False
 

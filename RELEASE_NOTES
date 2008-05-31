@@ -1,0 +1,48 @@
+Copyright 2008 Google Inc.
+All rights reserved.
+
+App Engine SDK - Release Notes
+
+Version 1.0.2
+=============
+
+  - Fixed UTC timezone issue on Windows.
+      http://code.google.com/p/googleappengine/issues/detail?id=131
+  - Fixed webapp template cache bug.
+      http://code.google.com/p/googleappengine/issues/detail?id=273
+  - URLFetch service redirect behavior now matches deployed behavior.
+      http://code.google.com/p/googleappengine/issues/detail?id=84
+  - Better handling of bad HOMEDRIVE parameters on Windows.
+      http://code.google.com/p/googleappengine/issues/detail?id=27
+  - Fixed HTTP response header termination.
+      http://code.google.com/p/googleappengine/issues/detail?id=209
+  - Fixed behavior with source files that have Windows line-endings or
+    missing line-endings.
+      http://code.google.com/p/googleappengine/issues/detail?id=237
+      http://code.google.com/p/googleappengine/issues/detail?id=258
+  - Fixed C-Extension module loading issues.
+      http://code.google.com/p/googleappengine/issues/detail?id=95
+      http://code.google.com/p/googleappengine/issues/detail?id=83
+  - Fixed Windows DLL extension loading issues.
+      http://code.google.com/p/googleappengine/issues/detail?id=222
+  - Added missing os.uname function.
+      http://code.google.com/p/googleappengine/issues/detail?id=186
+  - Windows installer can now over-install.
+      http://code.google.com/p/googleappengine/issues/detail?id=241
+  - Windows installer now allows installation even if it can't find Python.
+      http://code.google.com/p/googleappengine/issues/detail?id=5
+  - Fixed skip_files exception.
+      http://code.google.com/p/googleappengine/issues/detail?id=80
+  - Better error handling for cookie-file related problems.
+  - User platform, SDK version, and Python version are now supplied to
+    server-side on deployment; also supplied on dev_appserver start-up
+    if the "nag" is enabled.
+
+
+Version 1.0.1
+=============
+
+  - Fixed app.yaml static_dir attribute on Windows.
+  - Fixed uploading large files on OSX.
+  - Fixed recursion issue in webapp template rendering cache.
+  - Fixed MacPorts installation.

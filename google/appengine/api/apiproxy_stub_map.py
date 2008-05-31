@@ -42,8 +42,7 @@ def MakeSyncCall(service, call, request, response):
     apiproxy_errors.Error or a subclass.
   """
   stub = apiproxy.GetStub(service)
-  assert stub, ("No api proxy found for service %s!"
-                " Was a default api proxy provided?" % service)
+  assert stub, 'No api proxy found for service "%s"' % service
   stub.MakeSyncCall(service, call, request, response)
 
 

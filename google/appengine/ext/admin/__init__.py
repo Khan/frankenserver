@@ -42,6 +42,7 @@ from google.appengine.api import datastore
 from google.appengine.api import datastore_types
 from google.appengine.api import datastore_errors
 from google.appengine.api import users
+from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 
@@ -92,7 +93,7 @@ class BaseRequestHandler(webapp.RequestHandler):
   def generate(self, template_name, template_values={}):
     base_path = self.base_path()
     values = {
-      'user': users.GetCurrentUser(),
+      'user': users.get_current_user(),
       'request': self.request,
       'home_path': base_path + DefaultPageHandler.PATH,
       'datastore_path': base_path + DatastoreQueryHandler.PATH,

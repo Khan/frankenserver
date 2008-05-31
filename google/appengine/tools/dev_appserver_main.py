@@ -47,6 +47,8 @@ Options:
                              (Default '%(smtp_password)s')
   --enable_sendmail          Enable sendmail when SMTP not configured.
                              (Default false)
+  --show_mail_body           Log the body of emails in mail stub.
+                             (Default false)
   --auth_domain              Authorization domain that this app runs in.
                              (Default gmail.com)
   --debug_imports            Enables debug logging for module imports, showing
@@ -83,6 +85,7 @@ ARG_CLEAR_DATASTORE = 'clear_datastore'
 ARG_DATASTORE_PATH = 'datastore_path'
 ARG_DEBUG_IMPORTS = 'debug_imports'
 ARG_ENABLE_SENDMAIL = 'enable_sendmail'
+ARG_SHOW_MAIL_BODY = 'show_mail_body'
 ARG_HISTORY_PATH = 'history_path'
 ARG_LOGIN_URL = 'login_url'
 ARG_LOG_LEVEL = 'log_level'
@@ -114,6 +117,7 @@ DEFAULT_ARGS = {
   ARG_SMTP_USER: '',
   ARG_SMTP_PASSWORD: '',
   ARG_ENABLE_SENDMAIL: False,
+  ARG_SHOW_MAIL_BODY: False,
   ARG_AUTH_DOMAIN: 'gmail.com',
   ARG_ADDRESS: 'localhost',
   ARG_ADMIN_CONSOLE_SERVER: DEFAULT_ADMIN_CONSOLE_SERVER,
@@ -163,6 +167,7 @@ def ParseArguments(argv):
         'debug',
         'debug_imports',
         'enable_sendmail',
+        'show_mail_body',
         'help',
         'history_path=',
         'port=',
@@ -228,6 +233,9 @@ def ParseArguments(argv):
 
     if option == '--enable_sendmail':
       option_dict[ARG_ENABLE_SENDMAIL] = True
+
+    if option == '--show_mail_body':
+      option_dict[ARG_SHOW_MAIL_BODY] = True
 
     if option == '--auth_domain':
       dev_appserver.DEFAULT_ENV['AUTH_DOMAIN'] = value

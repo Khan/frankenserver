@@ -85,9 +85,9 @@ except ImportError:
   from django import forms
 
 try:
-  _
-except NameError:
   from django.utils.translation import ugettext_lazy as _
+except ImportError:
+  pass
 
 from google.appengine.api import users
 from google.appengine.ext import db

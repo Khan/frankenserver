@@ -351,6 +351,12 @@ class BulkLoad(webapp.RequestHandler):
 
     buffer = StringIO.StringIO(data)
     reader = csv.reader(buffer, skipinitialspace=True)
+
+    try:
+      csv.field_size_limit(800000)
+    except AttributeError:
+      pass
+
     entities = []
 
     line_num = 1
@@ -358,7 +364,9 @@ class BulkLoad(webapp.RequestHandler):
       if columns:
         try:
           output.append('\nLoading from line %d...' % line_num)
-          entities.extend(loader.CreateEntity(columns))
+          new_entities = loader.CreateEntity(columns)
+          if new_entities:
+            entities.extend(new_entities)
           output.append('done.')
         except:
           exc_info = sys.exc_info()

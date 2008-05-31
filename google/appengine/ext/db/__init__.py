@@ -35,7 +35,7 @@ You can create a new Story in the datastore with this usage pattern:
 
     story = Story(title='My title')
     story.body = 'My body'
-    story.save()
+    story.put()
 
 You query for Story entities using built in query interfaces that map directly
 to the syntax and semantics of the datastore:
@@ -102,6 +102,8 @@ BadFilterError = datastore_errors.BadFilterError
 BadQueryError = datastore_errors.BadQueryError
 BadKeyError = datastore_errors.BadKeyError
 InternalError = datastore_errors.InternalError
+NeedIndexError = datastore_errors.NeedIndexError
+Timeout = datastore_errors.Timeout
 
 ValidationError = BadValueError
 
@@ -402,8 +404,8 @@ class Property(object):
           if choice == value:
             match = True
         if not match:
-          raise BadValueError('Property %s must be one of %s' %
-                              (self.name, str([str(c) for c in self.choices])))
+          raise BadValueError('Property %s is %r; must be one of %r' %
+                              (self.name, value, self.choices))
     if self.validator is not None:
       self.validator(value)
     return value
@@ -1117,10 +1119,10 @@ class Expando(Model):
     Raises:
       ValueError on attempt to assign empty list.
     """
-    if value == []:
-      raise ValueError('Cannot store empty list to dynamic property %s' % key)
     check_reserved_word(key)
     if key[:1] != '_' and key not in self.properties():
+      if value == []:
+        raise ValueError('Cannot store empty list to dynamic property %s' % key)
       if type(value) not in _ALLOWED_EXPANDO_PROPERTY_TYPES:
         raise TypeError("Expando cannot accept values of type '%s'." %
                         type(value).__name__)
@@ -1282,7 +1284,7 @@ class _BaseQuery(object):
     Beware: fetch() ignores the LIMIT clause on GQL queries.
 
     Args:
-      limit: Number of results to return.
+      limit: Maximum number of results to return.
       offset: Optional number of results to skip first; default zero.
 
     Returns:
@@ -1296,9 +1298,7 @@ class _BaseQuery(object):
       raise ValueError('Arguments to fetch() must be >= 0')
     if limit == 0:
       return []
-    raw = self._get_query().Get(offset+limit)
-    if offset:
-      del raw[:offset]
+    raw = self._get_query().Get(limit, offset)
     return map(self._model_class.from_entity, raw)
 
   def __getitem__(self, arg):
@@ -1443,7 +1443,7 @@ class Query(_BaseQuery):
 
     if isinstance(value, Model):
       value = value.key()
-    self.__query_set[property_operator] = value
+    datastore._AddOrAppend(self.__query_set, property_operator, value)
     return self
 
   def order(self, property):

@@ -50,3 +50,11 @@ class ResponseTooLargeError(Error):
   """Raised when the response was too large and was truncated."""
   def __init__(self, response):
     self.response = response
+
+
+class InvalidMethodError(Error):
+  """Raised when an invalid value for 'method' is provided"""
+
+
+class InvalidMethodError(Error):
+  """Raised when an invalid value for 'method' is provided"""

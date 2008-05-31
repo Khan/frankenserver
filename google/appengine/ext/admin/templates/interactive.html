@@ -49,7 +49,7 @@
     <td>
       <form action="{{ interactive_execute_path }}" target="output" method="post">
         <div><textarea id="code" name="code" rows="20" cols="80"># Say hello to the current user
-user = users.GetCurrentUser()
+user = users.get_current_user()
 if user:
   nickname = user.nickname()
 else:

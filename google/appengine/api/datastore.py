@@ -39,10 +39,11 @@ import traceback
 from xml.sax import saxutils
 
 from google.appengine.api import api_base_pb
-from google.appengine.datastore import datastore_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
+from google.appengine.datastore import datastore_index
+from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.datastore import entity_pb
 
@@ -149,7 +150,10 @@ def Put(entities):
 
   req = datastore_pb.PutRequest()
   req.entity_list().extend([e._ToPb() for e in entities])
-  _MaybeSetupTransaction(req, entities[0])
+  tx = _MaybeSetupTransaction(req, entities[0])
+  if tx:
+    tx.RecordModifiedKeys([e.key() for e in entities
+                           if e.key().has_id_or_name()])
 
   resp = datastore_pb.PutResponse()
   try:
@@ -167,6 +171,9 @@ def Put(entities):
 
   for entity, key in zip(entities, keys):
     entity._Entity__key._Key__reference.CopyFrom(key)
+
+  if tx:
+    tx.RecordModifiedKeys([e.key() for e in entities], error_on_repeat=False)
 
   if multiple:
     return [Key._FromPb(k) for k in keys]
@@ -246,7 +253,10 @@ def Delete(keys):
 
   req = datastore_pb.DeleteRequest()
   req.key_list().extend([key._Key__reference for key in keys])
-  _MaybeSetupTransaction(req, keys[0])
+
+  tx = _MaybeSetupTransaction(req, keys[0])
+  if tx:
+    tx.RecordModifiedKeys(keys)
 
   resp = api_base_pb.VoidProto()
   try:
@@ -574,7 +584,7 @@ class Query(dict):
   to filter values. Use dictionary accessors to set property filters, like so:
 
   > query = Query('Person')
-  > query['name in'] = ['Ryan', 'Ken', 'Bret']
+  > query['name ='] = 'Ryan'
   > query['age >='] = 21
 
   This query returns all Person entities where the name property is 'Ryan',
@@ -583,11 +593,18 @@ class Query(dict):
   Another way to build this query is:
 
   > query = Query('Person')
-  > query.update({'name in': ['Ryan', 'Ken', 'Bret'], 'age >=': 21})
+  > query.update({'name =': 'Ryan', 'age >=': 21})
 
   The supported operators are =, >, <, >=, and <=. Only one inequality
   filter may be used per query. Any number of equals filters may be used in
   a single Query.
+
+  A filter value may be a list or tuple of values. This is interpreted as
+  multiple filters with the same filter string and different values, all ANDed
+  together. For example, this query returns everyone with the tags "google"
+  and "app engine":
+
+  > Query('Person', {'tag =': ('google', 'app engine')})
 
   Result entities can be returned in different orders. Use the Order()
   method to specify properties that results will be sorted by, and in which
@@ -832,11 +849,11 @@ class Query(dict):
     """
     return self._Run()
 
-  def _Run(self, limit=None):
-    """Runs this query, with an optional result limit.
+  def _Run(self, limit=None, offset=None):
+    """Runs this query, with an optional result limit and an optional offset.
 
-    Identical to Run, with the extra optional limit parameter. limit must be
-    an integer >= 0.
+    Identical to Run, with the extra optional limit and offset parameters.
+    limit and offset must both be integers >= 0.
 
     This is not intended to be used by application developers. Use Get()
     instead!
@@ -845,48 +862,70 @@ class Query(dict):
       raise datastore_errors.BadRequestError(
         "Can't query inside a transaction.")
 
-    pb = self._ToPb(limit)
+    pb = self._ToPb(limit, offset)
     result = datastore_pb.QueryResult()
+
     try:
       apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery', pb, result)
     except apiproxy_errors.ApplicationError, err:
-      raise _ToDatastoreError(err)
+      try:
+        _ToDatastoreError(err)
+      except datastore_errors.NeedIndexError, exc:
+        yaml = datastore_index.IndexYamlForQuery(
+          *datastore_index.CompositeIndexForQuery(pb)[:-1])
+        raise datastore_errors.NeedIndexError(
+          str(exc) + '\nThis query needs this index:\n' + yaml)
+
     return Iterator._FromPb(result.cursor())
 
-  def Get(self, count):
-    """Fetches and returns a certain number of results from the query.
+  def Get(self, limit, offset=0):
+    """Fetches and returns a maximum number of results from the query.
 
     This method fetches and returns a list of resulting entities that matched
     the query. If the query specified a sort order, entities are returned in
     that order. Otherwise, the order is undefined.
 
-    The argument specifies the number of entities to return. If it's greater
-    than the number of remaining entities, all of the remaining entities are
-    returned. In that case, the length of the returned list will be smaller
-    than count.
+    The limit argument specifies the maximum number of entities to return. If
+    it's greater than the number of remaining entities, all of the remaining
+    entities are returned. In that case, the length of the returned list will
+    be smaller than limit.
+
+    The offset argument specifies the number of entities that matched the
+    query criteria to skip before starting to return results.  The limit is
+    applied after the offset, so if you provide a limit of 10 and an offset of 5
+    and your query matches 20 records, the records whose index is 0 through 4
+    will be skipped and the records whose index is 5 through 14 will be
+    returned.
 
     The results are always returned as a list. If there are no results left,
     an empty list is returned.
 
     If you know in advance how many results you want, this method is more
     efficient than Run(), since it fetches all of the results at once. (The
-    datastore backend sets the count as the limit on the underlying
+    datastore backend sets the the limit on the underlying
     scan, which makes the scan significantly faster.)
 
     Args:
-      # the number of entities to return
+      # the maximum number of entities to return
+      int or long
+      # the number of entities to skip
       int or long
 
     Returns:
       # a list of entities
       [Entity, ...]
     """
-    if not isinstance(count, (int, long)) or count <= 0:
+    if not isinstance(limit, (int, long)) or limit <= 0:
       raise datastore_errors.BadArgumentError(
-        'Argument to Get must be an int greater than 0; received %s (a %s)' %
-        (count, typename(count)))
+        'Argument to Get named \'limit\' must be an int greater than 0; '
+        'received %s (a %s)' % (limit, typename(limit)))
 
-    return self._Run(count)._Next(count)
+    if not isinstance(offset, (int, long)) or offset < 0:
+      raise datastore_errors.BadArgumentError(
+          'Argument to Get named \'offset\' must be an int greater than or '
+          'equal to 0; received %s (a %s)' % (offset, typename(offset)))
+
+    return self._Run(limit, offset)._Next(limit)
 
   def Count(self, limit=None):
     """Returns the number of entities that this query matches. The returned
@@ -927,8 +966,11 @@ class Query(dict):
     If the filter string is empty or not a string, raises BadFilterError. If
     the value is not a supported type, raises BadValueError.
     """
+    if isinstance(value, tuple):
+      value = list(value)
+
     datastore_types.ToPropertyPb(' ', value)
-    match = self.__CheckFilter(filter, value)
+    match = self._CheckFilter(filter, value)
     property = match.group(1)
     operator = match.group(3)
 
@@ -955,7 +997,7 @@ class Query(dict):
     BadValueError.
     """
     datastore_types.ToPropertyPb(' ', value)
-    self.__CheckFilter(filter, value)
+    self._CheckFilter(filter, value)
     self.__cached_count = None
     return dict.setdefault(self, filter, value)
 
@@ -991,7 +1033,7 @@ class Query(dict):
     """
     raise NotImplementedError('Query does not support the copy() method.')
 
-  def __CheckFilter(self, filter, values):
+  def _CheckFilter(self, filter, values):
     """Type check a filter string and list of values.
 
     Raises BadFilterError if the filter string is empty, not a string, or
@@ -1017,12 +1059,9 @@ class Query(dict):
     property = match.group(1)
     operator = match.group(3)
 
-    if isinstance(values, list) and len(values) != 1:
-      raise datastore_errors.BadValueError(
-          '%r requires a single value; received %r:' %
-          (operator, values))
-
-    if not isinstance(values, list):
+    if isinstance(values, tuple):
+      values = list(values)
+    elif not isinstance(values, list):
       values = [values]
     if isinstance(values[0], datastore_types.Blob):
       raise datastore_errors.BadValueError(
@@ -1032,11 +1071,7 @@ class Query(dict):
         'Filtering on Text properties is not supported.')
 
     if operator in self.INEQUALITY_OPERATORS:
-      if isinstance(values[0], Key):
-        raise datastore_errors.BadFilterError(
-          'Inequality operators (%s) are not yet supported on Key properties.' %
-          ', '.join(self.INEQUALITY_OPERATORS))
-      elif self.__inequality_prop and property != self.__inequality_prop:
+      if self.__inequality_prop and property != self.__inequality_prop:
         raise datastore_errors.BadFilterError(
           'Only one property per query may have inequality filters (%s).' %
           ', '.join(self.INEQUALITY_OPERATORS))
@@ -1048,7 +1083,7 @@ class Query(dict):
 
     return match
 
-  def _ToPb(self, limit=None):
+  def _ToPb(self, limit=None, offset=None):
     """Converts this Query to its protocol buffer representation. Not
     intended to be used by application developers. Enforced by hiding the
     datastore_pb classes.
@@ -1056,6 +1091,9 @@ class Query(dict):
     Args:
       # an upper bound on the number of results returned by the query.
       limit: int
+      # number of results that match the query to skip.  limit is applied
+      # after the offset is fulfilled
+      offset: int
 
     Returns:
       # the PB representation of this Query
@@ -1068,6 +1106,8 @@ class Query(dict):
       pb.set_app(self.__app.encode('utf-8'))
     if limit is not None:
       pb.set_limit(limit)
+    if offset is not None:
+      pb.set_offset(offset)
     if self.__ancestor:
       pb.mutable_ancestor().CopyFrom(self.__ancestor)
 
@@ -1082,21 +1122,23 @@ class Query(dict):
     for i, filter_str in ordered_filters:
       if filter_str not in self:
         continue
-      values = self[filter_str]
 
-      match = self.__CheckFilter(filter_str, values)
-      filter = pb.add_filter()
+      values = self[filter_str]
+      match = self._CheckFilter(filter_str, values)
+      name = match.group(1)
+
+      props = datastore_types.ToPropertyPb(name, values)
+      if not isinstance(props, list):
+        props = [props]
 
       op = match.group(3)
       if op is None:
         op = '='
-      filter.set_op(self.OPERATORS[op])
 
-      name = match.group(1)
-      props = datastore_types.ToPropertyPb(name, values)
-      if not isinstance(props, list):
-        props = [props]
-      filter.property_list().extend(props)
+      for prop in props:
+        filter = pb.add_filter()
+        filter.set_op(self.OPERATORS[op])
+        filter.add_property().CopyFrom(prop)
 
     for property, direction in self.__orderings:
       order = pb.add_order()
@@ -1231,9 +1273,39 @@ class _Transaction(object):
   datastore_pb.Transaction that holds the transaction handle.
 
   If we know the entity group for this transaction, it's stored in entity_group.
+
+  modified_keys is a set containing the Keys of all entities modified (ie put
+  or deleted) in this transaction. If an entity is modified more than once, a
+  BadRequestError is raised.
   """
-  handle = None
-  entity_group = None
+  def __init__(self):
+    """Initializes modified_keys to the empty set."""
+    self.handle = None
+    self.entity_group = None
+    self.modified_keys = None
+    self.modified_keys = set()
+
+  def RecordModifiedKeys(self, keys_or_entities, error_on_repeat=True):
+    """Updates the modified keys seen so far.
+
+    If error_on_repeat is True and any of the given keys or entities have
+    already been modified, raises BadRequestError.
+
+    Args:
+      keys: list of Key or Entity
+    """
+    keys, _ = NormalizeAndTypeCheckKeys(keys_or_entities)
+    keys = set(keys)
+
+    if error_on_repeat:
+      already_modified = self.modified_keys.intersection(keys)
+      if already_modified:
+        raise datastore_errors.BadRequestError(
+          "Can't update entity more than once in a transaction: %r" %
+          already_modified.pop())
+
+    self.modified_keys.update(keys)
+
 
 
 def RunInTransaction(function, *args, **kwargs):
@@ -1315,6 +1387,8 @@ def RunInTransaction(function, *args, **kwargs):
     _txes[tx_key] = tx
 
     for i in range(0, TRANSACTION_RETRIES + 1):
+      tx.modified_keys.clear()
+
       try:
         result = function(*args, **kwargs)
       except:
@@ -1362,7 +1436,7 @@ def RunInTransaction(function, *args, **kwargs):
 
 
 def _MaybeSetupTransaction(request, key_or_entity):
-  """Begins a transaction, and populates it in the request, if necessary.
+  """Begins a transaction, if necessary, and populates it in the request.
 
   If we're currently inside a transaction, this records the entity group (if
   possible), creates the transaction PB, and sends the BeginTransaction. It
@@ -1374,6 +1448,9 @@ def _MaybeSetupTransaction(request, key_or_entity):
   Args:
     request: GetRequest, PutRequest, or DeleteRequest
     key_or_entity: Key or Entity
+
+  Returns:
+    _Transaction if we're inside a transaction, otherwise None
   """
   assert isinstance(request, (datastore_pb.GetRequest, datastore_pb.PutRequest,
                               datastore_pb.DeleteRequest))
@@ -1399,6 +1476,8 @@ def _MaybeSetupTransaction(request, key_or_entity):
       else:
         if tx.entity_group != this_group:
           raise _DifferentEntityGroupError(tx.entity_group, this_group)
+
+      return tx
 
   finally:
     del tx_key
@@ -1475,6 +1554,29 @@ def _GetCompleteKeyOrError(arg):
     raise datastore_errors.BadKeyError('Key %r is not complete.' % key)
 
   return key
+
+
+def _AddOrAppend(dictionary, key, value):
+  """Adds the value to the existing values in the dictionary, if any.
+
+  If dictionary[key] doesn't exist, sets dictionary[key] to value.
+
+  If dictionary[key] is not a list, sets dictionary[key] to [old_value, value].
+
+  If dictionary[key] is a list, appends value to that list.
+
+  Args:
+    dictionary: a dict
+    key, value: anything
+  """
+  if key in dictionary:
+    existing_value = dictionary[key]
+    if isinstance(existing_value, list):
+      existing_value.append(value)
+    else:
+      dictionary[key] = [existing_value, value]
+  else:
+    dictionary[key] = value
 
 
 def _ToDatastoreError(err):

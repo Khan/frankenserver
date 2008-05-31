@@ -25,16 +25,132 @@ Methods defined in this module:
 
 
 
+import UserDict
+
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api.urlfetch_errors import *
 from google.appengine.runtime import apiproxy_errors
+
 
 GET = 1
 POST = 2
 HEAD = 3
 PUT = 4
 DELETE = 5
+
+
+_URL_STRING_MAP = {
+    'GET': GET,
+    'POST': POST,
+    'HEAD': HEAD,
+    'PUT': PUT,
+    'DELETE': DELETE,
+}
+
+
+_VALID_METHODS = frozenset(_URL_STRING_MAP.values())
+
+
+class _CaselessDict(UserDict.IterableUserDict):
+  """Case insensitive dictionary.
+
+  This class was lifted from os.py and slightly modified.
+  """
+
+  def __init__(self):
+    UserDict.IterableUserDict.__init__(self)
+    self.caseless_keys = {}
+
+  def __setitem__(self, key, item):
+    """Set dictionary item.
+
+    Args:
+      key: Key of new item.  Key is case insensitive, so "d['Key'] = value "
+        will replace previous values set by "d['key'] = old_value".
+      item: Item to store.
+    """
+    caseless_key = key.lower()
+    if caseless_key in self.caseless_keys:
+      del self.data[self.caseless_keys[caseless_key]]
+    self.caseless_keys[caseless_key] = key
+    self.data[key] = item
+
+  def __getitem__(self, key):
+    """Get dictionary item.
+
+    Args:
+      key: Key of item to get.  Key is case insensitive, so "d['Key']" is the
+        same as "d['key']".
+
+    Returns:
+      Item associated with key.
+    """
+    return self.data[self.caseless_keys[key.lower()]]
+
+  def __delitem__(self, key):
+    """Remove item from dictionary.
+
+    Args:
+      key: Key of item to remove.  Key is case insensitive, so "del d['Key']" is
+        the same as "del d['key']"
+    """
+    caseless_key = key.lower()
+    del self.data[self.caseless_keys[caseless_key]]
+    del self.caseless_keys[caseless_key]
+
+  def has_key(self, key):
+    """Determine if dictionary has item with specific key.
+
+    Args:
+      key: Key to check for presence.  Key is case insensitive, so
+        "d.has_key('Key')" evaluates to the same value as "d.has_key('key')".
+
+    Returns:
+      True if dictionary contains key, else False.
+    """
+    return key.lower() in self.caseless_keys
+
+  def __contains__(self, key):
+    """Same as 'has_key', but used for 'in' operator.'"""
+    return self.has_key(key)
+
+  def get(self, key, failobj=None):
+    """Get dictionary item, defaulting to another value if it does not exist.
+
+    Args:
+      key: Key of item to get.  Key is case insensitive, so "d['Key']" is the
+        same as "d['key']".
+      failobj: Value to return if key not in dictionary.
+    """
+    try:
+      cased_key = self.caseless_keys[key.lower()]
+    except KeyError:
+      return failobj
+    return self.data[cased_key]
+
+  def update(self, dict=None, **kwargs):
+    """Update dictionary using values from another dictionary and keywords.
+
+    Args:
+      dict: Dictionary to update from.
+      kwargs: Keyword arguments to update from.
+    """
+    if dict:
+      try:
+        keys = dict.keys()
+      except AttributeError:
+        for k, v in dict:
+          self[k] = v
+      else:
+        for k in keys:
+          self[k] = dict[k]
+    if kwargs:
+      self.update(kwargs)
+
+  def copy(self):
+    """Make a shallow, case sensitive copy of self."""
+    return dict(self)
 
 
 def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
@@ -65,6 +181,11 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
   response = urlfetch_service_pb.URLFetchResponse()
   request.set_url(url)
 
+  if isinstance(method, basestring):
+    method = method.upper()
+  method = _URL_STRING_MAP.get(method, method)
+  if method not in _VALID_METHODS:
+    raise InvalidMethodError('Invalid method %s.' % str(method))
   if method == GET:
     request.set_method(urlfetch_service_pb.URLFetchRequest.GET)
   elif method == POST:
@@ -117,6 +238,6 @@ class _URLFetchResult(object):
     self.content = response_proto.content()
     self.status_code = response_proto.statuscode()
     self.content_was_truncated = response_proto.contentwastruncated()
-    self.headers = {}
+    self.headers = _CaselessDict()
     for header_proto in response_proto.header_list():
       self.headers[header_proto.key()] = header_proto.value()

@@ -423,46 +423,46 @@ class Key(object):
     args.append('_app=%r' % self.__reference.app().decode('utf-8'))
     return u'datastore_types.Key.from_path(%s)' % ', '.join(args)
 
-  def __eq__(self, that):
-    """Returns True if the argument is the same Key as this, False otherwise.
+  def __cmp__(self, other):
+    """Returns negative, zero, or positive when comparing two keys.
 
     Args:
-      that: Key
+      other: Key to compare to.
 
     Returns:
-      bool
+      Negative if self is less than "other"
+      Zero if "other" is equal to self
+      Positive if self is greater than "other"
     """
-    if not isinstance(that, Key):
-      return False
+    if not isinstance(other, Key):
+      return -2
+
+    self_args = []
+    other_args = []
 
     if (self.app() in (_LOCAL_APP_ID, None) or
-        that.app() in (_LOCAL_APP_ID, None)):
-      orig_self_app = self.__reference.app()
-      self.__reference.clear_app()
-      orig_that_app = that.__reference.app()
-      that.__reference.clear_app()
+        other.app() in (_LOCAL_APP_ID, None)):
+      pass
+    else:
+      self_args.append(self.__reference.app().decode('utf-8'))
+      other_args.append(other.__reference.app().decode('utf-8'))
 
-    ret = self.__reference.Equals(that.__reference)
+    for elem in self.__reference.path().element_list():
+      self_args.append(repr(elem.type()))
+      if elem.has_name():
+        self_args.append(repr(elem.name().decode('utf-8')))
+      else:
+        self_args.append(elem.id())
 
-    if not self.__reference.has_app():
-      assert not that.__reference.has_app()
-      if orig_self_app:
-        self.__reference.set_app(orig_self_app)
-      if orig_that_app:
-        that.__reference.set_app(orig_that_app)
+    for elem in other.__reference.path().element_list():
+      other_args.append(repr(elem.type()))
+      if elem.has_name():
+        other_args.append(repr(elem.name().decode('utf-8')))
+      else:
+        other_args.append(elem.id())
 
-    return ret
-
-  def __ne__(self, that):
-    """Returns False if the argument is the same Key as this, True otherwise.
-
-    Args:
-      that: Key
-
-    Returns:
-      bool
-    """
-    return not self.__eq__(that)
+    result = cmp(self_args, other_args)
+    return result
 
   def __hash__(self):
     """Returns a 32-bit integer hash of this key.
@@ -499,7 +499,6 @@ class Category(unicode):
     return u'<category term="%s" label=%s />' % (Category.TERM,
                                                  saxutils.quoteattr(self))
 
-  __len__ = unicode.__len__
 
 class Link(unicode):
   """A fully qualified URL. Usually http: scheme, but may also be file:, ftp:,
@@ -526,7 +525,6 @@ class Link(unicode):
   def ToXml(self):
     return u'<link href=%s />' % saxutils.quoteattr(self)
 
-  __len__ = unicode.__len__
 
 class Email(unicode):
   """An RFC2822 email address. Makes no attempt at validation; apart from
@@ -545,7 +543,6 @@ class Email(unicode):
   def ToXml(self):
     return u'<gd:email address=%s />' % saxutils.quoteattr(self)
 
-  __len__ = unicode.__len__
 
 class GeoPt(object):
   """A geographical point, specified by floating-point latitude and longitude
@@ -691,7 +688,9 @@ class IM(object):
   def __repr__(self):
     """Returns an eval()able string representation of this IM.
 
-    The returned string is of the form datastore_types.IM('address', 'protocol').
+    The returned string is of the form:
+
+      datastore_types.IM('address', 'protocol')
 
     Returns:
       string
@@ -732,7 +731,6 @@ class PhoneNumber(unicode):
   def ToXml(self):
     return u'<gd:phoneNumber>%s</gd:phoneNumber>' % saxutils.escape(self)
 
-  __len__ = unicode.__len__
 
 class PostalAddress(unicode):
   """A human-readable mailing address. Again, mailing address formats vary
@@ -751,7 +749,6 @@ class PostalAddress(unicode):
   def ToXml(self):
     return u'<gd:postalAddress>%s</gd:postalAddress>' % saxutils.escape(self)
 
-  __len__ = unicode.__len__
 
 class Rating(long):
   """A user-provided integer rating for a piece of content. Normalized to a
@@ -885,6 +882,11 @@ _PROPERTY_MEANINGS = {
   Rating:            entity_pb.Property.GD_RATING,
   }
 
+_RAW_PROPERTY_TYPES = (
+  Blob,
+  Text,
+)
+
 def ToPropertyPb(name, values):
   """Creates a type-specific onestore property PB from a property name and a
   value or list of values. Determines the type of property based on the type
@@ -921,6 +923,11 @@ def ToPropertyPb(name, values):
   else:
     multiple = False
     values = [values]
+
+  if not values:
+    raise datastore_errors.BadValueError(
+        'May not use the empty list as a property value; property %s is %s.' %
+        (name, repr(values)))
 
   def long_if_int(val):
     if isinstance(val, int) and not isinstance(val, bool):

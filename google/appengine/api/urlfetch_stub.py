@@ -146,8 +146,13 @@ class URLFetchServiceStub(object):
         last_protocol = protocol
         last_host = host
 
+        if query != '':
+          full_path = path + '?' + query
+        else:
+          full_path = path
+
         try:
-          connection.request(method, path, payload, adjusted_headers)
+          connection.request(method, full_path, payload, adjusted_headers)
           http_response = connection.getresponse()
           http_response_data = http_response.read()
         finally:

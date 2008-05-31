@@ -327,4 +327,37 @@ def CompositeIndexForQuery(query):
       (not props or (len(props) == 1 and props[0][1] == ASCENDING))):
     return None
 
+  unique_names = set(name for name, dir in props)
+  if len(props) > 1 and len(unique_names) == 1:
+    return None
+
   return (kind, ancestor, tuple(props), len(eq_filters))
+
+
+def IndexYamlForQuery(kind, ancestor, props):
+  """Return the composite index definition YAML needed for a query.
+
+  The arguments are the same as the tuples returned by CompositeIndexForQuery,
+  without the last neq element.
+
+  Args:
+    kind: the kind or None
+    ancestor: True if this is an ancestor query, False otherwise
+    prop1, prop2, ...: tuples of the form (name, direction) where:
+        name: a property name;
+        direction: datastore_pb.Query_Order.ASCENDING or ...DESCENDING;
+
+  Returns:
+    A string with the YAML for the composite index needed by the query.
+  """
+  yaml = []
+  yaml.append('- kind: %s' % kind)
+  if ancestor:
+    yaml.append('  ancestor: yes')
+  if props:
+    yaml.append('  properties:')
+    for name, direction in props:
+      yaml.append('  - name: %s' % name)
+      if direction == DESCENDING:
+        yaml.append('    direction: desc')
+  return '\n'.join(yaml)

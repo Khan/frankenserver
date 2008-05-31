@@ -219,7 +219,7 @@ class SearchableQuery(datastore.Query):
     self._search_query = search_query
     return self
 
-  def _ToPb(self, limit=None):
+  def _ToPb(self, limit=None, offset=None):
     """Adds filters for the search query, then delegates to the superclass.
 
     Raises BadFilterError if a filter on the index property already exists.
@@ -227,6 +227,9 @@ class SearchableQuery(datastore.Query):
     Args:
       # an upper bound on the number of results returned by the query.
       limit: int
+      # number of results that match the query to skip.  limit is applied
+      # after the offset is fulfilled.
+      offset: int
 
     Returns:
       datastore_pb.Query
@@ -235,7 +238,7 @@ class SearchableQuery(datastore.Query):
       raise datastore_errors.BadFilterError(
         '%s is a reserved name.' % SearchableEntity._FULL_TEXT_INDEX_PROPERTY)
 
-    pb = super(SearchableQuery, self)._ToPb(limit=limit)
+    pb = super(SearchableQuery, self)._ToPb(limit=limit, offset=offset)
 
     if hasattr(self, '_search_query'):
       keywords = SearchableEntity._FullTextIndex(self._search_query)

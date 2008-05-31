@@ -22,6 +22,8 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+from google.appengine.api.api_base_pb import Integer64Proto;
+from google.appengine.api.api_base_pb import StringProto;
 from google.appengine.api.api_base_pb import VoidProto;
 from google.appengine.datastore.entity_pb import CompositeIndex
 from google.appengine.datastore.entity_pb import EntityProto

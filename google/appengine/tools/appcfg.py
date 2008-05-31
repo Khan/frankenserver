@@ -1245,7 +1245,7 @@ class AppCfgApp(object):
     options: The command line options parsed by 'parser'.
     argv: The original command line as a list.
     args: The positional command line args left over after parsing the options.
-    email_input_fn: Function used for getting user email.
+    raw_input_fn: Function used for getting raw user input, like email.
     password_input_fn: Function used for getting user password.
 
   Attributes for testing:
@@ -1256,7 +1256,7 @@ class AppCfgApp(object):
 
   def __init__(self, argv, parser_class=optparse.OptionParser,
                rpc_server_class=HttpRpcServer,
-               email_input_fn=raw_input,
+               raw_input_fn=raw_input,
                password_input_fn=getpass.getpass):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
@@ -1267,13 +1267,13 @@ class AppCfgApp(object):
       argv: The list of arguments passed to this program.
       parser_class: Options parser to use for this application.
       rpc_server_class: RPC server class to use for this application.
-      email_input_fn: Function used for getting user email.
+      raw_input_fn: Function used for getting user email.
       password_input_fn: Function used for getting user password.
     """
     self.parser_class = parser_class
     self.argv = argv
     self.rpc_server_class = rpc_server_class
-    self.email_input_fn = email_input_fn
+    self.raw_input_fn = raw_input_fn
     self.password_input_fn = password_input_fn
 
     self.parser = self._GetOptionParser()
@@ -1371,6 +1371,9 @@ class AppCfgApp(object):
     parser.add_option("--no_cookies", action="store_false",
                       dest="save_cookies", default=True,
                       help="Do not save authentication cookies to local disk.")
+    parser.add_option("--passin", action="store_true",
+                      dest="passin", default=False,
+                      help="Read the login password from stdin.")
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -1411,8 +1414,14 @@ class AppCfgApp(object):
       """Prompts the user for a username and password."""
       email = self.options.email
       if email is None:
-        email = self.email_input_fn("Email: ")
-      password = self.password_input_fn("Password for %s: " % email)
+        email = self.raw_input_fn("Email: ")
+
+      password_prompt = "Password for %s: " % email
+      if self.options.passin:
+        password = self.raw_input_fn(password_prompt)
+      else:
+        password = self.password_input_fn(password_prompt)
+
       return (email, password)
 
     if self.options.host and self.options.host == "localhost":

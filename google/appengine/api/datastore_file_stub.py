@@ -379,7 +379,7 @@ class DatastoreFileStub(object):
         indexes = self.__indexes.get(app)
         if not indexes:
           raise apiproxy_errors.ApplicationError(
-              datastore_pb.Error.BAD_REQUEST,
+              datastore_pb.Error.NEED_INDEX,
               "This query requires a composite index, but none are defined. "
               "You must create an index.yaml file in your application root.")
         eq_filters_set = set(props[:num_eq_filters])
@@ -398,7 +398,7 @@ class DatastoreFileStub(object):
               break
         else:
           raise apiproxy_errors.ApplicationError(
-              datastore_pb.Error.BAD_REQUEST,
+              datastore_pb.Error.NEED_INDEX,
               "This query requires a composite index that is not defined. "
               "You must update the index.yaml file in your application root.")
 
@@ -441,6 +441,9 @@ class DatastoreFileStub(object):
         for entity_prop in entity_property_list:
           fixed_entity_val = datastore_types.FromPropertyPb(entity_prop)
 
+          if isinstance(fixed_entity_val, datastore_types._RAW_PROPERTY_TYPES):
+            continue
+
           for filter_prop in filt.property_list():
             filter_val = datastore_types.FromPropertyPb(filter_prop)
 
@@ -449,46 +452,78 @@ class DatastoreFileStub(object):
             logging.log(logging.DEBUG - 1,
                         'Evaling filter expression "%s"', comp)
 
-            if eval(comp):
-              return True
+            try:
+              ret = eval(comp)
+              if ret and ret != NotImplementedError:
+                return True
+            except TypeError:
+              pass
 
         return False
 
       results = filter(passes, results)
 
+    def has_prop_indexed(entity, prop):
+      """Returns True if prop is in the entity and is not a raw property."""
+      values = entity.get(prop, [])
+      if not isinstance(values, (tuple, list)):
+        values = [values]
+
+      for value in values:
+        if not isinstance(value, datastore_types._RAW_PROPERTY_TYPES):
+          return True
+      return False
+
     for order in query.order_list():
       prop = order.property().decode('utf-8')
-      results = [entity for entity in results if prop in entity]
+      results = [entity for entity in results if has_prop_indexed(entity, prop)]
 
     def order_compare(a, b):
       """ Return a negative, zero or positive number depending on whether
       entity a is considered smaller than, equal to, or larger than b,
       according to the query's orderings. """
+      cmped = 0
       for o in query.order_list():
         prop = o.property().decode('utf-8')
 
-        a_values = a[prop]
-        if not isinstance(a_values, types.ListType):
-          a_values = [a_values]
+        if o.direction() is datastore_pb.Query_Order.ASCENDING:
+          selector = min
+        else:
+          selector = max
 
-        b_values = b[prop]
-        if not isinstance(b_values, types.ListType):
-          b_values = [b_values]
+        a_val = a[prop]
+        if isinstance(a_val, list):
+          a_val = selector(a_val)
 
-        cmped = cmp(min(a_values), min(b_values))
+        b_val = b[prop]
+        if isinstance(b_val, list):
+          b_val = selector(b_val)
+
+        try:
+          cmped = cmp(a_val, b_val)
+        except TypeError:
+          cmped = NotImplementedError
+
+        if cmped == NotImplementedError:
+          cmped = cmp(type(a_val), type(b_val))
 
         if o.direction() is datastore_pb.Query_Order.DESCENDING:
           cmped = -cmped
 
         if cmped != 0:
           return cmped
-
-      return 0
+      if cmped == 0:
+        return cmp(a.key(), b.key())
 
     results.sort(order_compare)
 
+    offset = 0
+    limit = len(results)
+    if query.has_offset():
+      offset = query.offset()
     if query.has_limit():
-      results = results[:query.limit()]
+      limit = query.limit()
+    results = results[offset:limit + offset]
 
     clone = datastore_pb.Query()
     clone.CopyFrom(query)

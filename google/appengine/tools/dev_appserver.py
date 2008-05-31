@@ -78,6 +78,7 @@ from google.appengine.api import urlfetch_stub
 from google.appengine.api import mail_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api import yaml_errors
+from google.appengine.api.memcache import memcache_stub
 
 from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
@@ -2112,6 +2113,8 @@ class ModuleManager(object):
     """
     self._modification_times.clear()
     for name, module in self._modules.items():
+      if not isinstance(module, types.ModuleType):
+        continue
       module_file = self.GetModuleFile(module)
       if not module_file:
         continue
@@ -2250,6 +2253,7 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
                                                  root_path,
                                                  login_url)
         config, explicit_matcher = LoadAppConfig(root_path, self.module_dict)
+        env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
         dispatcher = MatcherDispatcher(login_url,
                                        [implicit_matcher, explicit_matcher])
 
@@ -2462,6 +2466,7 @@ def SetupStubs(app_id, **config):
     smtp_user: SMTP user.
     smtp_password: SMTP password.
     enable_sendmail: Whether to use sendmail as an alternative to SMTP.
+    show_mail_body: Whether to log the body of emails.
     remove: Used for dependency injection.
   """
   login_url = config['login_url']
@@ -2474,6 +2479,7 @@ def SetupStubs(app_id, **config):
   smtp_user = config.get('smtp_user', '')
   smtp_password = config.get('smtp_password', '')
   enable_sendmail = config.get('enable_sendmail', False)
+  show_mail_body = config.get('show_mail_body', False)
   remove = config.get('remove', os.remove)
 
   if clear_datastore:
@@ -2511,7 +2517,24 @@ def SetupStubs(app_id, **config):
                               smtp_port,
                               smtp_user,
                               smtp_password,
-                              enable_sendmail))
+                              enable_sendmail=enable_sendmail,
+                              show_mail_body=show_mail_body))
+
+  apiproxy_stub_map.apiproxy.RegisterStub(
+    'memcache',
+    memcache_stub.MemcacheServiceStub())
+
+  try:
+    from google.appengine.api.images import images_stub
+    apiproxy_stub_map.apiproxy.RegisterStub(
+      'images',
+      images_stub.ImagesServiceStub())
+  except ImportError, e:
+    logging.warning('Could not initialize images API; you are likely missing '
+                    'the Python "PIL" module. ImportError: %s', e)
+    from google.appengine.api.images import images_not_implemented_stub
+    apiproxy_stub_map.apiproxy.RegisterStub('images',
+      images_not_implemented_stub.ImagesNotImplementedServiceStub())
 
 
 def CreateImplicitMatcher(module_dict,

@@ -81,12 +81,14 @@ class MailServiceStub(ServiceStub):
                port=25,
                user='',
                password='',
-               enable_sendmail=False):
+               enable_sendmail=False,
+               show_mail_body=False):
     self._smtp_host = host
     self._smtp_port = port
     self._smtp_user = user
     self._smtp_password = password
     self._enable_sendmail = enable_sendmail
+    self._show_mail_body = show_mail_body
 
   def _GenerateLog(self, method, message, log):
     """Generate a list of log messages representing sent mail.
@@ -114,11 +116,15 @@ class MailServiceStub(ServiceStub):
       log('  Body:')
       log('    Content-type: text/plain')
       log('    Data length: %d' % len(message.textbody()))
+      if self._show_mail_body:
+        log('-----\n' + message.textbody() + '\n-----')
 
     if message.has_htmlbody():
       log('  Body:')
       log('    Content-type: text/html')
       log('    Data length: %d' % len(message.htmlbody()))
+      if self._show_mail_body:
+        log('-----\n' + message.htmlbody() + '\n-----')
 
     for attachment in message.attachment_list():
       log('  Attachment:')
@@ -212,7 +218,7 @@ class MailServiceStub(ServiceStub):
     elif self._enable_sendmail:
       self._SendSendmail(mime_message, popen, sendmail_command)
     else:
-      logging.info('You currently are not sending out real email.'
+      logging.info('You are not currently sending out real email.  '
                    'If you have sendmail installed you can use it '
                    'by using the server with --enable_sendmail')
 

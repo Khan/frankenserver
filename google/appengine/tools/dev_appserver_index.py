@@ -83,15 +83,7 @@ def GenerateIndexFromHistory(query_history,
     else:
       message = '# Used %d times in query history.' % count
     res.append(message)
-    res.append('- kind: %s' % kind)
-    if ancestor:
-      res.append('  ancestor: yes')
-    if props:
-      res.append('  properties:')
-      for name, direction in props:
-        res.append('  - name: %s' % name)
-        if direction == datastore_index.DESCENDING:
-          res.append('    direction: desc')
+    res.append(datastore_index.IndexYamlForQuery(kind, ancestor, props))
 
   res.append('')
   return '\n'.join(res)
@@ -177,7 +169,7 @@ class IndexYamlUpdater(object):
           fh.close()
 
     self.index_yaml_is_manual = (index_yaml_data is not None and
-                                   AUTO_MARKER not in index_yaml_data)
+                                 AUTO_MARKER not in index_yaml_data)
     if self.index_yaml_is_manual:
       logging.info('Detected manual index.yaml, will not update')
       return

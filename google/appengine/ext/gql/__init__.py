@@ -26,6 +26,7 @@ data stored.
 
 
 
+import heapq
 import logging
 import re
 
@@ -101,6 +102,26 @@ class GQL(object):
 
   We will properly serialize and quote all values.
 
+  It should also be noted that there are some caveats to the queries that can
+  be expressed in the syntax. The parser will attempt to make these clear as
+  much as possible, but some of the caveats include:
+    - There is no OR operation. In most cases, you should prefer to use IN to
+      express the idea of wanting data matching one of a set of properties.
+    - You cannot express inequality operators on multiple different properties
+    - You can only have one != operator per query (related to the previous
+      rule).
+    - The IN and != operators must be used carefully because they can
+      dramatically raise the amount of work done by the datastore. As such,
+      there is a limit on the number of elements you can use in IN statements.
+      This limit is set fairly low. Currently, a max of 30 queries is allowed,
+      which means 30 elements in a single IN clause. != translates into 2x the
+      number of queries, and IN multiplies by the number of elements in the
+      clause (so having two IN clauses, one with 5 elements, the other with 6
+      will cause 30 queries to occur).
+    - Literals can currently only take the form of simple types (strings,
+      integers, floats).
+
+
   SELECT * will return an iterable set of entries, but other operations (schema
   queries, updates, inserts or field selections) will return alternative
   result types.
@@ -108,7 +129,7 @@ class GQL(object):
 
   TOKENIZE_REGEX = re.compile(r"""
     (?:'[^'\n\r]*')+|
-    <=|>=|=|<|>|
+    <=|>=|!=|=|<|>|
     :\w+|
     ,|
     \*|
@@ -117,6 +138,8 @@ class GQL(object):
     \(|\)|
     \S+
     """, re.VERBOSE | re.IGNORECASE)
+
+  MAX_ALLOWABLE_QUERIES = 30
 
   __ANCESTOR = -1
 
@@ -165,48 +188,48 @@ class GQL(object):
 
     Raises:
       datastore_errors.BadArgumentError: when arguments are left unbound
-        (missing from the inputs arguments).
+        (missing from the inputs arguments) or when arguments do not match the
+        expected type.
 
     Returns:
-      The bound datastore.Query object.
+      The bound datastore.Query object. This may take the form of a MultiQuery
+      object if the GQL query will require multiple backend queries to statisfy.
     """
     num_args = len(args)
     input_args = frozenset(xrange(num_args))
     used_args = set()
 
-    query = datastore.Query(self._entity, _app=self.__app)
+    queries = []
+    enumerated_queries = self.EnumerateQueries(used_args, args, keyword_args)
+    if enumerated_queries:
+      query_count = len(enumerated_queries)
+    else:
+      query_count = 1
+
+    for i in xrange(query_count):
+      queries.append(datastore.Query(self._entity, _app=self.__app))
 
     logging.log(LOG_LEVEL, 'Copying %i pre-bound filters',
                 len(self.__bound_filters))
-    for (condition, value) in self.__bound_filters.iteritems():
-      logging.log(LOG_LEVEL, 'Pre-bound filter: %s %s', condition, value)
-      query[condition] = value
+    for ((identifier, condition), value) in self.__bound_filters.iteritems():
+      logging.log(LOG_LEVEL, 'Pre-bound filter: %s %s %s',
+                  identifier, condition, value)
+      if not self.__IsMultiQuery(condition):
+        for query in queries:
+          self.__AddFilterToQuery(identifier, condition, value, query)
 
-    logging.log(LOG_LEVEL, 'Binding with %i args %s', len(args), args)
+    logging.log(LOG_LEVEL,
+                'Binding with %i positional args %s and %i keywords %s'
+                , len(args), args, len(keyword_args), keyword_args)
     for (param, filters) in self.__filters.iteritems():
       for (identifier, condition) in filters:
+        value = self.__GetParam(param, args, keyword_args)
         if isinstance(param, int):
-          if param <= num_args:
-            self.__AddFilter(identifier, condition, args[param-1], query)
-            used_args.add(param - 1)
-            logging.log(LOG_LEVEL, 'binding: %i %s', param, args[param-1])
-          else:
-            raise datastore_errors.BadArgumentError(
-                'Missing argument for bind, requires argument #%i, '
-                'but only has %i args.' % (param, num_args))
-        elif isinstance(param, str):
-          if param in keyword_args:
-            self.__AddFilter(identifier, condition, keyword_args[param], query)
-            logging.log(LOG_LEVEL, 'binding: %s %s', param, keyword_args)
-          else:
-            raise datastore_errors.BadArgumentError(
-                'Missing named arguments for bind, requires argument %s' %
-                param)
-        else:
-          assert False, 'Unknown parameter %s' % param
-
-    if self.__orderings:
-      query.Order(*tuple(self.__orderings))
+          used_args.add(param - 1)
+        if not self.__IsMultiQuery(condition):
+          for query in queries:
+            self.__AddFilterToQuery(identifier, condition, value, query)
+          logging.log(LOG_LEVEL, 'binding: %s %s', param, value)
 
     unused_args = input_args - used_args
     if unused_args:
@@ -214,9 +237,159 @@ class GQL(object):
       raise datastore_errors.BadArgumentError('Unused positional arguments %s' %
                                               unused_values)
 
-    return query
+    if enumerated_queries:
+      logging.debug('Multiple Queries Bound: %s' % enumerated_queries)
 
-  def __AddFilter(self, identifier, condition, value, query):
+      for (query, enumerated_query) in zip(queries, enumerated_queries):
+        query.update(enumerated_query)
+
+    if self.__orderings:
+      for query in queries:
+        query.Order(*tuple(self.__orderings))
+
+    if query_count > 1:
+      return MultiQuery(queries, self.__orderings)
+    else:
+      return queries[0]
+
+  def EnumerateQueries(self, used_args, args, keyword_args):
+    """Create a list of all multi-query filter combinations required.
+
+    To satisfy multi-query requests ("IN" and "!=" filters), multiple queries
+    may be required. This code will enumerate the power-set of all multi-query
+    filters.
+
+    Args:
+      used_args: used positional parameters (output only variable used in
+        reporting for unused positional args)
+      args: positional arguments referenced by the proto-query in self. This
+        assumes the input is a tuple (and can also be called with a varargs
+        param).
+      keyword_args: dict of keyword arguments referenced by the proto-query in
+        self.
+
+    Returns:
+      A list of maps [(identifier, condition) -> value] of all queries needed
+      to satisfy the GQL query with the given input arguments.
+    """
+    enumerated_queries = []
+
+    for ((identifier, condition), value) in self.__bound_filters.iteritems():
+      self.__AddMultiQuery(identifier, condition, value, enumerated_queries)
+
+    for (param, filters) in self.__filters.iteritems():
+      for (identifier, condition) in filters:
+        value = self.__GetParam(param, args, keyword_args)
+        if isinstance(param, int):
+          used_args.add(param - 1)
+        self.__AddMultiQuery(identifier, condition, value, enumerated_queries)
+
+    return enumerated_queries
+
+  def __IsMultiQuery(self, condition):
+    """Return whether or not this condition could require multiple queries."""
+    return condition.lower() in ('in', '!=')
+
+  def __GetParam(self, reference, args, keyword_args):
+    """Get the specified parameter from the input arguments.
+
+    Args:
+      reference: id for a filter reference in the filter list (string or
+          number)
+      args: positional args passed in by the user (tuple of arguments, indexed
+          numerically by "reference")
+      keyword_args: dict of keyword based arguments (strings in "reference")
+
+    Returns:
+      The specified param from the input list.
+
+    Raises:
+      BadArgumentError if the referenced argument doesn't exist.
+    """
+    num_args = len(args)
+    if isinstance(reference, int):
+      if reference <= num_args:
+        return args[reference - 1]
+      else:
+        raise datastore_errors.BadArgumentError(
+            'Missing argument for bind, requires argument #%i, '
+            'but only has %i args.' % (reference, num_args))
+    elif isinstance(reference, str):
+      if reference in keyword_args:
+        return keyword_args[reference]
+      else:
+        raise datastore_errors.BadArgumentError(
+            'Missing named arguments for bind, requires argument %s' %
+            reference)
+    else:
+      assert False, 'Unknown reference %s' % reference
+
+  def __AddMultiQuery(self, identifier, condition, value, enumerated_queries):
+    """Helper function to add a muti-query to previously enumerated queries.
+
+    Args:
+      identifier: property being filtered by this condition
+      condition: filter condition (e.g. !=,in)
+      value: value being bound
+      enumerated_queries: in/out list of already bound queries -> expanded list
+        with the full enumeration required to satisfy the condition query
+    Raises:
+      BadArgumentError if the filter is invalid (namely non-list with IN)
+    """
+
+    def CloneQueries(queries, n):
+      """Do a full copy of the queries and append to the end of the queries.
+
+      Does an in-place replication of the input list and sorts the result to
+      put copies next to one-another.
+
+      Args:
+        queries: list of all filters to clone
+        n: number of copies to make
+
+      Returns:
+        Number of iterations needed to fill the structure
+      """
+      if not enumerated_queries:
+        for i in xrange(n):
+          queries.append({})
+        return 1
+      else:
+        old_size = len(queries)
+        tmp_queries = []
+        for i in xrange(n - 1):
+          [tmp_queries.append(filter_map.copy()) for filter_map in queries]
+        queries.extend(tmp_queries)
+        queries.sort()
+        return old_size
+
+    if condition == '!=':
+      if len(enumerated_queries) * 2 > self.MAX_ALLOWABLE_QUERIES:
+        raise datastore_errors.BadArgumentError(
+          'Cannot satisfy query -- too many IN/!= values.')
+
+      num_iterations = CloneQueries(enumerated_queries, 2)
+      for i in xrange(num_iterations):
+        enumerated_queries[2 * i]['%s <' % identifier] = value
+        enumerated_queries[2 * i + 1]['%s >' % identifier] = value
+    elif condition.lower() == 'in':
+      if not isinstance(value, list):
+        raise datastore_errors.BadArgumentError('List expected for "IN" filter')
+
+      in_list_size = len(value)
+      if len(enumerated_queries) * in_list_size > self.MAX_ALLOWABLE_QUERIES:
+        raise datastore_errors.BadArgumentError(
+          'Cannot satisfy query -- too many IN/!= values.')
+
+      num_iterations = CloneQueries(enumerated_queries, in_list_size)
+      for clone_num in xrange(num_iterations):
+        for value_num in xrange(len(value)):
+          list_val = value[value_num]
+          query_num = in_list_size * clone_num + value_num
+          filt = '%s =' % identifier
+          enumerated_queries[query_num][filt] = list_val
+
+  def __AddFilterToQuery(self, identifier, condition, value, query):
     """Add a filter condition to a query based on the inputs.
 
     Args:
@@ -229,7 +402,8 @@ class GQL(object):
       filter_condition = '%s %s' % (identifier, condition)
       logging.log(LOG_LEVEL, 'Setting filter on "%s" with value "%s"',
                   filter_condition, value.__class__)
-      query[filter_condition] = value
+      datastore._AddOrAppend(query, filter_condition, value)
+
     else:
       logging.log(LOG_LEVEL, 'Setting ancestor query for ancestor %s', value)
       query.Ancestor(value)
@@ -248,13 +422,14 @@ class GQL(object):
       A list of results if a query count limit was passed.
       A result iterator if no limit was given.
     """
-    bound_query = self.Bind(args, keyword_args)
+    bind_results = self.Bind(args, keyword_args)
+
     offset = 0
     if self.__offset != -1:
       offset = self.__offset
 
     if self.__limit == -1:
-      it = bound_query.Run()
+      it = bind_results.Run()
       try:
         for i in xrange(offset):
           it.next()
@@ -263,9 +438,8 @@ class GQL(object):
 
       return it
     else:
-
-      res = bound_query.Get(self.__limit + offset)
-      return res[offset:]
+      res = bind_results.Get(self.__limit, offset)
+      return res
 
   def filters(self):
     """Return the compiled list of filters."""
@@ -289,7 +463,7 @@ class GQL(object):
   __ordinal_regex = re.compile(r':(\d+)$')
   __named_regex = re.compile(r':(\w+)$')
   __identifier_regex = re.compile(r'(\w+)$')
-  __conditions_regex = re.compile(r'(<=|>=|=|<|>|is)$', re.IGNORECASE)
+  __conditions_regex = re.compile(r'(<=|>=|!=|=|<|>|is|in)$', re.IGNORECASE)
   __number_regex = re.compile(r'(\d+)$')
 
   def __Error(self, error_message):
@@ -436,6 +610,8 @@ class GQL(object):
     if reference:
       self.__AddReferenceFilter(identifier, condition, reference)
     else:
+      if condition.lower() == 'in':
+        self.__Error('Invalid WHERE condition: IN unsupported with literals')
       if not self.__AddLiteralFilter(identifier, condition, self.__Literal()):
         self.__Error('Invalid WHERE condition')
 
@@ -489,7 +665,8 @@ class GQL(object):
       True if the literal was valid, false otherwise.
     """
     if literal is not None:
-      self.__bound_filters['%s %s' % (identifier, condition)] = literal
+      datastore._AddOrAppend(self.__bound_filters,
+                             (identifier, condition), literal)
       return True
     else:
       return False
@@ -586,14 +763,14 @@ class GQL(object):
           if self.__offset < 0:
             self.__Error('Bad offset in LIMIT Value')
           else:
-            logging.log(LOG_LEVEL, 'Set offset to %i' % self.__offset)
+            logging.log(LOG_LEVEL, 'Set offset to %i', self.__offset)
             maybe_limit = self.__AcceptRegex(self.__number_regex)
 
         self.__limit = int(maybe_limit)
         if self.__limit < 1:
           self.__Error('Bad Limit in LIMIT Value')
         else:
-          logging.log(LOG_LEVEL, 'Set limit to %i' % self.__limit)
+          logging.log(LOG_LEVEL, 'Set limit to %i', self.__limit)
       else:
         self.__Error('Non-number limit in LIMIT clause')
 
@@ -612,7 +789,7 @@ class GQL(object):
         if self.__offset < 0:
           self.__Error('Bad offset in OFFSET clause')
         else:
-          logging.log(LOG_LEVEL, 'Set offset to %i' % self.__offset)
+          logging.log(LOG_LEVEL, 'Set offset to %i', self.__offset)
       else:
         self.__Error('Non-number offset in OFFSET clause')
 
@@ -640,3 +817,193 @@ class GQL(object):
         self.__Error('Unknown HINT')
         return False
     return self.__AcceptTerminal()
+
+
+class MultiQuery(datastore.Query):
+  """Class representing a GQL query requiring multiple datastore queries.
+
+  This class is actually a subclass of datastore.Query as it is intended to act
+  like a normal Query object (supporting the same interface).
+  """
+
+  def __init__(self, bound_queries, orderings):
+    self.__bound_queries = bound_queries
+    self.__orderings = orderings
+
+  def Get(self, limit, offset=0):
+    """Get results of the query with a limit on the number of results.
+
+    Args:
+      limit: maximum number of values to return.
+      offset: offset requested -- if nonzero, this will override the offset in
+              the original query
+
+    Returns:
+      An array of entities with at most "limit" entries (less if the query
+      completes before reading limit values).
+    """
+    count = 1
+    result = []
+
+    iterator = self.Run()
+
+    try:
+      for i in xrange(offset):
+        val = iterator.next()
+    except StopIteration:
+      pass
+
+    try:
+      while count <= limit:
+        val = iterator.next()
+        result.append(val)
+        count += 1
+    except StopIteration:
+      pass
+    return result
+
+  class SortOrderEntity(object):
+    def __init__(self, entity_iterator, orderings):
+      self.__entity_iterator = entity_iterator
+      self.__entity = None
+      self.__min_max_value_cache = {}
+      try:
+        self.__entity = entity_iterator.next()
+      except StopIteration:
+        pass
+      else:
+        self.__orderings = orderings
+
+    def __str__(self):
+      return str(self.__entity)
+
+    def GetEntity(self):
+      return self.__entity
+
+    def GetNext(self):
+      return MultiQuery.SortOrderEntity(self.__entity_iterator,
+                                        self.__orderings)
+
+    def CmpProperties(self, that):
+      """Compare two entities and return their relative order.
+
+      Compares self to that based on the current sort orderings and the
+      key orders between them. Returns negative, 0, or positive depending on
+      whether self is less, equal to, or greater than that. This
+      comparison returns as if all values were to be placed in ascending order
+      (highest value last).  Only uses the sort orderings to compare (ignores
+       keys).
+
+      Args:
+        self: SortOrderEntity
+        that: SortOrderEntity
+
+      Returns:
+        Negative if self < that
+        Zero if self == that
+        Positive if self > that
+      """
+      if not self.__entity:
+        return cmp(self.__entity, that.__entity)
+
+      for (identifier, order) in self.__orderings:
+        value1 = self.__GetValueForId(self, identifier, order)
+        value2 = self.__GetValueForId(that, identifier, order)
+
+        result = cmp(value1, value2)
+        if order == datastore.Query.DESCENDING:
+          result = -result
+        if result:
+          return result
+      return 0
+
+    def __GetValueForId(self, sort_order_entity, identifier, sort_order):
+      value = sort_order_entity.__entity[identifier]
+      entity_key = sort_order_entity.__entity.key()
+      if self.__min_max_value_cache.has_key((entity_key, identifier)):
+        value = self.__min_max_value_cache[(entity_key, identifier)]
+      elif isinstance(value, list):
+        if sort_order == datastore.Query.DESCENDING:
+          value = min(value)
+        else:
+          value = max(value)
+        self.__min_max_value_cache[(entity_key, identifier)] = value
+
+      return value
+
+    def __cmp__(self, that):
+      """Compare self to that w.r.t. values defined in the sort order.
+
+      Compare an entity with another, using sort-order first, then the key
+      order to break ties. This can be used in a heap to have faster min-value
+      lookup.
+
+      Args:
+        that: other entity to compare to
+      Returns:
+        negative: if self is less than that in sort order
+        zero: if self is equal to that in sort order
+        positive: if self is greater than that in sort order
+      """
+      property_compare = self.CmpProperties(that)
+      if property_compare:
+        return property_compare
+      else:
+        return cmp(self.__entity.key(), that.__entity.key())
+
+  def Run(self):
+    """Return an iterable output with all results in order."""
+    results = []
+    count = 1
+    for bound_query in self.__bound_queries:
+      logging.log(LOG_LEVEL, 'Running query #%i' % count)
+      results.append(bound_query.Run())
+      count += 1
+
+    def IterateResults(results):
+      """Iterator function to return all results in sorted order.
+
+      Iterate over the array of results, yielding the next element, in
+      sorted order. This function is destructive (results will be empty
+      when the operation is complete).
+
+      Args:
+        results: list of result iterators to merge and iterate through
+
+      Yields:
+        The next result in sorted order.
+      """
+      result_heap = []
+      for result in results:
+        heap_value = MultiQuery.SortOrderEntity(result, self.__orderings)
+        if heap_value.GetEntity():
+          heapq.heappush(result_heap, heap_value)
+
+      used_keys = set()
+
+      while result_heap:
+        top_result = heapq.heappop(result_heap)
+
+        results_to_push = []
+        if top_result.GetEntity().key() not in used_keys:
+          yield top_result.GetEntity()
+        else:
+          pass
+
+        used_keys.add(top_result.GetEntity().key())
+
+        results_to_push = []
+        while result_heap:
+          next = heapq.heappop(result_heap)
+          if cmp(top_result, next):
+            results_to_push.append(next)
+            break
+          else:
+            results_to_push.append(next.GetNext())
+        results_to_push.append(top_result.GetNext())
+
+        for popped_result in results_to_push:
+          if popped_result.GetEntity():
+            heapq.heappush(result_heap, popped_result)
+
+    return IterateResults(results)
