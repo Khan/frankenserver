@@ -3,8 +3,71 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
-Version 1.0.2
-=============
+Version 1.1.1 - July 21, 2008
+=============================
+
+  - Fixed DELETE for URLFetch on dev_appserver.
+      http://code.google.com/p/googleappengine/issues/detail?id=566
+  - Fixed PATH_INFO to be un-escaped version of the path.
+      http://code.google.com/p/googleappengine/issues/detail?id=267
+      http://code.google.com/p/googleappengine/issues/detail?id=457
+  - Fixed order function testing for property on Expando class.
+  - Support all mail attachment mime-types under Windows.
+  - Added support for date and time objects to GQL.
+      http://code.google.com/p/googleappengine/issues/detail?id=318
+  - Fixed memcache KeyError problem.
+      http://code.google.com/p/googleappengine/issues/detail?id=417
+  - Default URLFetch POST content-type is x-www-form-urlencoded.
+  - Fixed problems where global variables would be set to None
+    when a request raised an exception or returned an error
+    response.
+  - Added support for GIFs and JPEG using PIL.
+  - Added support for type conversion of literals to GQL.
+  - Added support for pickling Expando instances.
+      http://code.google.com/p/googleappengine/issues/detail?id=545
+  - Added APPLICATION_ID environment variable to runtime.
+  - Added support for key_name to djangoforms.
+  - Added ability to put multiple transaction groups in one request
+    outside of transactions.
+  - Added support for downloading request logs using appcfg.
+      http://code.google.com/p/googleappengine/issues/detail?id=76
+  - Fixed DateProperty not supporting values before 1970 and beyond
+    Jan. 19, 2038.
+      http://code.google.com/p/googleappengine/issues/detail?id=352
+  - Set cap of 5000 indexed properties per entity.
+  - GoogleAppEngineLauncher now has context menus in the main project
+    window.
+  - UI improvements to GoogleAppEngineLauncher preferences window.
+  - Fixed GoogleAppEngineLauncher broken symlink for bulk_uploadclient.
+
+Version 1.1.0 - May 28, 2008
+============================
+
+  - Added an API for image manipulation.
+      http://code.google.com/p/googleappengine/issues/detail?id=38
+  - Added memcache API.
+  - Fixed URLFetch for URLs with query strings.
+      http://code.google.com/p/googleappengine/issues/detail?id=341
+      http://code.google.com/p/googleappengine/issues/detail?id=346
+      http://code.google.com/p/googleappengine/issues/detail?id=369
+  - Added support for multiple values for the same filter string.
+  - Fixed URLFetch's referrer to now set itself to the application's
+    host-name.
+  - Added --show_mail_body flag to dev_appserver.py.
+  - Added support for IN and != to GQL.
+  - Fixed URLFetch to accept strings as well as constant integers.
+      http://code.google.com/p/googleappengine/issues/detail?id=234
+  - Added CURRENT_VERSION_ID environment variable.
+  - Fixed uploading issues affecting @googlemail.com developers.
+      http://code.google.com/p/googleappengine/issues/detail?id=119
+  - Fixed Datastore API to allow the assignment of [] to non-dynamic
+    DB attributes.
+      http://code.google.com/p/googleappengine/issues/detail?id=276
+      http://code.google.com/p/googleappengine/issues/detail?id=254
+  - Fixed NeedIndexError to include the index that the query needed.
+
+Version 1.0.2 - May 15, 2008
+============================
 
   - Fixed UTC timezone issue on Windows.
       http://code.google.com/p/googleappengine/issues/detail?id=131
@@ -39,8 +102,8 @@ Version 1.0.2
     if the "nag" is enabled.
 
 
-Version 1.0.1
-=============
+Version 1.0.1 - April 14, 2008
+==============================
 
   - Fixed app.yaml static_dir attribute on Windows.
   - Fixed uploading large files on OSX.

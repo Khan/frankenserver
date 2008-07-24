@@ -1089,6 +1089,8 @@ class Expando(Model):
         None.
   """
 
+  _dynamic_properties = None
+
   def __init__(self, parent=None, key_name=None, _app=None, **kwds):
     """Creates a new instance of this expando model.
 
@@ -1122,10 +1124,13 @@ class Expando(Model):
     check_reserved_word(key)
     if key[:1] != '_' and key not in self.properties():
       if value == []:
-        raise ValueError('Cannot store empty list to dynamic property %s' % key)
+        raise ValueError('Cannot store empty list to dynamic property %s' %
+                         key)
       if type(value) not in _ALLOWED_EXPANDO_PROPERTY_TYPES:
         raise TypeError("Expando cannot accept values of type '%s'." %
                         type(value).__name__)
+      if self._dynamic_properties is None:
+        self._dynamic_properties = {}
       self._dynamic_properties[key] = value
     else:
       Model.__setattr__(self, key, value)
@@ -1143,7 +1148,7 @@ class Expando(Model):
       AttributeError when there is no attribute for key on object or
         contained entity.
     """
-    if key in self._dynamic_properties:
+    if self._dynamic_properties and key in self._dynamic_properties:
       return self._dynamic_properties[key]
     else:
       return getattr(super(Expando, self), key)
@@ -1157,7 +1162,7 @@ class Expando(Model):
     Args:
       key: Dynamic property to be deleted.
     """
-    if key in self._dynamic_properties:
+    if self._dynamic_properties and key in self._dynamic_properties:
       del self._dynamic_properties[key]
     else:
       object.__delattr__(self, key)
@@ -1168,6 +1173,8 @@ class Expando(Model):
     Returns:
       Set of names which correspond only to the dynamic properties.
     """
+    if self._dynamic_properties is None:
+      return []
     return self._dynamic_properties.keys()
 
   def _to_entity(self, entity):
@@ -1180,6 +1187,9 @@ class Expando(Model):
       entity: Entity which will receive dynamic properties.
     """
     super(Expando, self)._to_entity(entity)
+
+    if self._dynamic_properties is None:
+      self._dynamic_properties = {}
 
     for key, value in self._dynamic_properties.iteritems():
       entity[key] = value
@@ -1379,6 +1389,36 @@ class _QueryIterator(object):
     return self.__model_class.from_entity(self.__iterator.next())
 
 
+def _normalize_query_parameter(value):
+  """Make any necessary type conversions to a query parameter.
+
+  The following conversions are made:
+    - Model instances are converted to Key instances.  This is necessary so
+      that querying reference properties will work.
+    - datetime.date objects are converted to datetime.datetime objects (see
+      _date_to_datetime for details on this conversion).  This is necessary so
+      that querying date properties with date objects will work.
+    - datetime.time objects are converted to datetime.datetime objects (see
+      _time_to_datetime for details on this conversion).  This is necessary so
+      that querying time properties with time objects will work.
+
+  Args:
+    value: The query parameter value.
+
+  Returns:
+    The input value, or a converted value if value matches one of the
+    conversions specified above.
+  """
+  if isinstance(value, Model):
+    value = value.key()
+  if (isinstance(value, datetime.date) and
+      not isinstance(value, datetime.datetime)):
+    value = _date_to_datetime(value)
+  elif isinstance(value, datetime.time):
+    value = _time_to_datetime(value)
+  return value
+
+
 class Query(_BaseQuery):
   """A Query instance queries over instances of Models.
 
@@ -1441,8 +1481,7 @@ class Query(_BaseQuery):
     if isinstance(value, (list, tuple)):
       raise BadValueError('Filtering on lists is not supported')
 
-    if isinstance(value, Model):
-      value = value.key()
+    value = _normalize_query_parameter(value)
     datastore._AddOrAppend(self.__query_set, property_operator, value)
     return self
 
@@ -1467,7 +1506,7 @@ class Query(_BaseQuery):
     else:
       order = datastore.Query.ASCENDING
 
-    if not isinstance(self._model_class, Expando):
+    if not issubclass(self._model_class, Expando):
       if property not in self._model_class.properties():
         raise PropertyError('Invalid property name \'%s\'' % property)
 
@@ -1534,24 +1573,16 @@ class GqlQuery(_BaseQuery):
     using the same query with different sets of arguments, you should
     hold on to the GqlQuery() object and call bind() on it each time.
 
-    Any argument values that are Model instances are replaced by their
-    key; this is necessary so that querying reference properties will
-    work.
-
     Args:
       *args: Positional arguments used to bind numeric references in the query.
       **kwds: Dictionary-based arguments for named references.
     """
     self._args = []
     for arg in args:
-      if isinstance(arg, Model):
-        arg = arg.key()
-      self._args.append(arg)
+      self._args.append(_normalize_query_parameter(arg))
     self._kwds = {}
     for name, arg in kwds.iteritems():
-      if isinstance(arg, Model):
-        arg = arg.key()
-      self._kwds[name] = arg
+      self._kwds[name] = _normalize_query_parameter(arg)
 
   def run(self):
     """Override _BaseQuery.run() so the LIMIT clause is handled properly."""
@@ -1806,6 +1837,34 @@ class DateTimeProperty(Property):
     return datetime.datetime.now()
 
 
+def _date_to_datetime(value):
+  """Convert a date to a datetime for datastore storage.
+
+  Args:
+    value: A datetime.date object.
+
+  Returns:
+    A datetime object with time set to 0:00.
+  """
+  assert isinstance(value, datetime.date)
+  return datetime.datetime(value.year, value.month, value.day)
+
+
+def _time_to_datetime(value):
+  """Convert a time to a datetime for datastore storage.
+
+  Args:
+    value: A datetime.time object.
+
+  Returns:
+    A datetime object with date set to 1970-01-01.
+  """
+  assert isinstance(value, datetime.time)
+  return datetime.datetime(1970, 1, 1,
+                           value.hour, value.minute, value.second,
+                           value.microsecond)
+
+
 class DateProperty(DateTimeProperty):
   """A date property, which stores a date without a time."""
 
@@ -1847,7 +1906,7 @@ class DateProperty(DateTimeProperty):
     value = super(DateProperty, self).get_value_for_datastore(model_instance)
     if value is not None:
       assert isinstance(value, datetime.date)
-      value = datetime.datetime(value.year, value.month, value.day)
+      value = _date_to_datetime(value)
     return value
 
   def make_value_from_datastore(self, value):
@@ -1890,9 +1949,7 @@ class TimeProperty(DateTimeProperty):
     value = super(TimeProperty, self).get_value_for_datastore(model_instance)
     if value is not None:
       assert isinstance(value, datetime.time), repr(value)
-      value = datetime.datetime(1970, 1, 1,
-                                value.hour, value.minute, value.second,
-                                value.microsecond)
+      value = _time_to_datetime(value)
     return value
 
   def make_value_from_datastore(self, value):

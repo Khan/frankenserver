@@ -103,6 +103,8 @@ class ImagesServiceStub(object):
     if (output_encoding.mime_type() == images_service_pb.OutputSettings.JPEG):
       image_encoding = "JPEG"
 
+      image = image.convert("RGB")
+
     image.save(image_string, image_encoding)
 
     return image_string.getvalue()

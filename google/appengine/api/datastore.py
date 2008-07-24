@@ -51,6 +51,8 @@ _LOCAL_APP_ID = datastore_types._LOCAL_APP_ID
 
 TRANSACTION_RETRIES = 10
 
+_MAX_INDEXED_PROPERTIES = 5000
+
 Key = datastore_types.Key
 typename = datastore_types.typename
 
@@ -496,6 +498,10 @@ class Entity(dict):
         pb.raw_property_list().extend(properties)
       else:
         pb.property_list().extend(properties)
+
+    if pb.property_size() > _MAX_INDEXED_PROPERTIES:
+      raise datastore_errors.BadRequestError(
+          'Too many indexed properties for entity %r.' % self.key())
 
     return pb
 

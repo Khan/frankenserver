@@ -1045,9 +1045,14 @@ def FromReferenceProperty(value):
 
   return key
 
+
+_EPOCH = datetime.datetime.utcfromtimestamp(0)
+
 _PROPERTY_CONVERSIONS = {
   entity_pb.Property.GD_WHEN:
-    lambda val: datetime.datetime.fromtimestamp(float(val) / 1000000.0),
+
+
+    lambda val: _EPOCH + datetime.timedelta(microseconds=val),
   entity_pb.Property.ATOM_CATEGORY:     Category,
   entity_pb.Property.ATOM_LINK:         Link,
   entity_pb.Property.GD_EMAIL:          Email,

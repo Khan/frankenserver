@@ -2446,11 +2446,13 @@ class CompositeIndex(ProtocolBuffer.ProtocolMessage):
   WRITE_ONLY   =    1
   READ_WRITE   =    2
   DELETED      =    3
+  ERROR        =    4
 
   _State_NAMES = {
     1: "WRITE_ONLY",
     2: "READ_WRITE",
     3: "DELETED",
+    4: "ERROR",
   }
 
   def State_Name(cls, x): return cls._State_NAMES.get(x, "")

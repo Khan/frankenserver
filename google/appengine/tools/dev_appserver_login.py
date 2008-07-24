@@ -258,6 +258,7 @@ def LoginCGI(login_url,
     outfile.write('\r\n')
   else:
     outfile.write('Status: 200\r\n')
+    outfile.write('Content-Type: text/html\r\n')
     outfile.write('\r\n')
     outfile.write(RenderLoginTemplate(login_url,
                                       continue_url,

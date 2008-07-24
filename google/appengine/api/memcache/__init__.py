@@ -66,8 +66,14 @@ STAT_ITEMS = 'items'
 STAT_BYTES = 'bytes'
 STAT_OLDEST_ITEM_AGES = 'oldest_item_age'
 
-FLAG_VALUE_UNICODE = 1
-FLAG_VALUE_PICKLED = 2
+FLAG_TYPE_MASK = 7
+FLAG_COMPRESSED = 1 << 3
+
+TYPE_STR = 0
+TYPE_UNICODE = 1
+TYPE_PICKLED = 2
+TYPE_INT = 3
+TYPE_LONG = 4
 
 
 def _key_string(key, key_prefix='', server_to_user_dict=None):
@@ -149,10 +155,17 @@ def _validate_encode_value(value, do_pickle):
     pass
   elif isinstance(value, unicode):
     stored_value = value.encode('utf-8')
-    flags |= FLAG_VALUE_UNICODE
+    flags |= TYPE_UNICODE
+  elif isinstance(value, int):
+    stored_value = str(value)
+    flags |= TYPE_INT
+  elif isinstance(value, long):
+    stored_value = str(value)
+    flags |= TYPE_LONG
   else:
     stored_value = do_pickle(value)
-    flags |= FLAG_VALUE_PICKLED
+    flags |= TYPE_PICKLED
+
 
   if len(stored_value) > MAX_VALUE_SIZE:
     raise ValueError('Values may not be more than %d bytes in length; '
@@ -173,7 +186,7 @@ def _decode_value(stored_value, flags, do_unpickle):
 
   Returns:
     The original object that was stored, be it a normal string, a unicode
-    string, or a Python object that was pickled.
+    string, int, long, or a Python object that was pickled.
 
   Raises:
     pickle.UnpicklingError: If the value could not be unpickled.
@@ -181,14 +194,23 @@ def _decode_value(stored_value, flags, do_unpickle):
   assert isinstance(stored_value, str)
   assert isinstance(flags, (int, long))
 
+  type_number = flags & FLAG_TYPE_MASK
   value = stored_value
-  if flags & FLAG_VALUE_UNICODE:
-    value = stored_value.decode('utf-8')
-  elif flags & FLAG_VALUE_PICKLED:
-    value = do_unpickle(stored_value)
 
-  return value
 
+  if type_number == TYPE_STR:
+    return value
+  elif type_number == TYPE_UNICODE:
+    return value.decode('utf-8')
+  elif type_number == TYPE_PICKLED:
+    return do_unpickle(value)
+  elif type_number == TYPE_INT:
+    return int(value)
+  elif type_number == TYPE_LONG:
+    return long(value)
+  else:
+    assert False, "Unknown stored type"
+  assert False, "Shouldn't get here."
 
 class Client(object):
   """Memcache client object, through which one invokes all memcache operations.
@@ -204,7 +226,9 @@ class Client(object):
   if provided a bogus key value and a ValueError if the key is too large.
 
   Any method that takes a 'value' argument will accept as that value any
-  string (unicode or not) or pickle-able Python object.
+  string (unicode or not), int, long, or pickle-able Python object, including
+  all native types.  You'll get back from the cache the same type that you
+  originally put in.
   """
 
   def __init__(self, servers=None, debug=0,
@@ -240,6 +264,7 @@ class Client(object):
 
     def DoPickle(value):
       self._pickle_data.truncate(0)
+      self._pickler_instance.clear_memo()
       self._pickler_instance.dump(value)
       return self._pickle_data.getvalue()
     self._do_pickle = DoPickle
@@ -248,6 +273,7 @@ class Client(object):
       self._pickle_data.truncate(0)
       self._pickle_data.write(value)
       self._pickle_data.seek(0)
+      self._unpickler_instance.memo.clear()
       return self._unpickler_instance.load()
     self._do_unpickle = DoUnpickle
 
@@ -335,7 +361,7 @@ class Client(object):
     response = MemcacheFlushResponse()
     try:
       self._make_sync_call('memcache', 'FlushAll', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return False
     return True
 
@@ -359,7 +385,7 @@ class Client(object):
     response = MemcacheGetResponse()
     try:
       self._make_sync_call('memcache', 'Get', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return None
 
     if not response.item_size():
@@ -395,7 +421,7 @@ class Client(object):
       request.add_key(_key_string(key, key_prefix, user_key))
     try:
       self._make_sync_call('memcache', 'Get', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return {}
 
     return_value = {}
@@ -418,11 +444,12 @@ class Client(object):
         the nearest whole second.
 
     Returns:
-      0 (DELETE_NETWORK_FAILURE) on network failure, 1
-      (DELETE_ITEM_MISSING) if the server tried to delete the item but
-      didn't have it, and 2 (DELETE_SUCCESSFUL) if the item was
-      actually deleted.  This can be used as a boolean value, where a
-      network failure is the only bad condition.
+      DELETE_NETWORK_FAILURE (0) on network failure,
+      DELETE_ITEM_MISSING (1) if the server tried to delete the item but
+      didn't have it, or
+      DELETE_SUCCESSFUL (2) if the item was actually deleted.
+      This can be used as a boolean value, where a network failure is the
+      only bad condition.
     """
     if not isinstance(seconds, (int, long, float)):
       raise TypeError('Delete timeout must be a number.')
@@ -437,7 +464,7 @@ class Client(object):
     delete_item.set_delete_time(int(math.ceil(seconds)))
     try:
       self._make_sync_call('memcache', 'Delete', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return DELETE_NETWORK_FAILURE
     assert response.delete_status_size() == 1, 'Unexpected status size.'
 
@@ -479,7 +506,7 @@ class Client(object):
       delete_item.set_delete_time(int(math.ceil(seconds)))
     try:
       self._make_sync_call('memcache', 'Delete', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return False
     return True
 
@@ -492,7 +519,7 @@ class Client(object):
 
     Args:
       key: Key to set.  See docs on Client for details.
-      value: Value to set.
+      value: Value to set.  Any type.  If complex, will be pickled.
       time: Optional expiration time, either relative number of seconds
         from current time (up to 1 month), or an absolute Unix epoch time.
         By default, items never expire, though items may be evicted due to
@@ -510,7 +537,7 @@ class Client(object):
 
     Args:
       key: Key to set.  See docs on Client for details.
-      value: Value to set.
+      value: Value to set.  Any type.  If complex, will be pickled.
       time: Optional expiration time, either relative number of seconds
         from current time (up to 1 month), or an absolute Unix epoch time.
         By default, items never expire, though items may be evicted due to
@@ -528,7 +555,7 @@ class Client(object):
 
     Args:
       key: Key to set.  See docs on Client for details.
-      value: Value to set.
+      value: Value to set.  Any type.  If complex, will be pickled.
       time: Optional expiration time, either relative number of seconds
         from current time (up to 1 month), or an absolute Unix epoch time.
         By default, items never expire, though items may be evicted due to
@@ -574,7 +601,7 @@ class Client(object):
     response = MemcacheSetResponse()
     try:
       self._make_sync_call('memcache', 'Set', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return False
     if response.set_status_size() != 1:
       return False
@@ -622,7 +649,7 @@ class Client(object):
     response = MemcacheSetResponse()
     try:
       self._make_sync_call('memcache', 'Set', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return False
 
     assert response.set_status_size() == len(server_keys)
@@ -717,7 +744,7 @@ class Client(object):
 
     try:
       self._make_sync_call('memcache', 'Increment', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.ApplicationError:
       return None
 
     if response.has_new_value():

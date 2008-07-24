@@ -44,10 +44,14 @@ orders, e.g.:
   for result in query:
     ...
 
-The full text index is stored in a property named __searchable_text_index. If
-you want to use search() in a query with an ancestor, filters, or sort orders,
-you'll need to create an index in index.yaml with the __searchable_text_index
-property. For example:
+The full text index is stored in a property named __searchable_text_index.
+
+
+In general, if you just want to provide full text search, you *don't* need to
+add any extra indexes to your index.yaml. However, if you want to use search()
+in a query *in addition to* an ancestor, filter, or sort order, you'll need to
+create an index in index.yaml with the __searchable_text_index property. For
+example:
 
   - kind: Article
     properties:
@@ -287,6 +291,13 @@ class SearchableModel(db.Model):
     SearchableEntity."""
     return db.Model._populate_internal_entity(self,
                                               _entity_class=SearchableEntity)
+
+  @classmethod
+  def from_entity(cls, entity):
+    """Wraps db.Model.from_entity() and injects SearchableEntity."""
+    if not isinstance(entity, SearchableEntity):
+      entity = SearchableEntity(entity)
+    return super(SearchableModel, cls).from_entity(entity)
 
   @classmethod
   def all(cls):

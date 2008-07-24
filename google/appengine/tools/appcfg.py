@@ -40,6 +40,7 @@ import re
 import sha
 import socket
 import sys
+import tempfile
 import time
 import urllib
 import urllib2
@@ -63,11 +64,13 @@ UPDATE_CHECK_TIMEOUT = 3
 
 NAG_FILE = ".appcfg_nag"
 
+MAX_LOG_LEVEL = 4
+
 verbosity = 1
 
 
 def StatusUpdate(msg):
-  """Print a status message to stdout.
+  """Print a status message to stderr.
 
   If 'verbosity' is greater than 0, print the message.
 
@@ -75,7 +78,7 @@ def StatusUpdate(msg):
     msg: The string to print.
   """
   if verbosity > 0:
-    print msg
+    print >>sys.stderr, msg
 
 
 class ClientLoginError(urllib2.HTTPError):
@@ -889,6 +892,209 @@ class VacuumIndexesOperation(IndexOperation):
         logging.warning(warning_message)
 
 
+class LogsRequester(object):
+  """Provide facilities to export request logs."""
+
+  def __init__(self, server, config, output_file,
+               num_days, append, severity, now):
+    """Constructor.
+
+    Args:
+      server: The RPC server to use.  Should be an instance of HttpRpcServer
+        or TestRpcServer.
+      config: appinfo.AppInfoExternal configuration object.
+      output_file: Output file name.
+      num_days: Number of days worth of logs to export; 0 for all available.
+      append: True if appending to an existing file.
+      severity: App log severity to request (0-4); None for no app logs.
+      now: POSIX timestamp used for calculating valid dates for num_days.
+    """
+    self.server = server
+    self.config = config
+    self.output_file = output_file
+    self.append = append
+    self.num_days = num_days
+    self.severity = severity
+    self.version_id = self.config.version + ".1"
+    self.sentinel = None
+    self.write_mode = "w"
+    if self.append:
+      self.sentinel = FindSentinel(self.output_file)
+      self.write_mode = "a"
+    self.valid_dates = None
+    if self.num_days:
+      patterns = []
+      for i in xrange(self.num_days):
+        then = time.gmtime(now - 24*3600 * i)
+        patterns.append(re.escape(time.strftime("%d/%m/%Y", then)))
+      self.valid_dates = re.compile(r"[^[]+\[(" + "|".join(patterns) + r"):")
+
+  def DownloadLogs(self):
+    """Download the requested logs.
+
+    This will write the logs to the file designated by
+    self.output_file, or to stdout if the filename is '-'.
+    Multiple roundtrips to the server may be made.
+    """
+    StatusUpdate("Downloading request logs for %s %s." %
+                 (self.config.application, self.version_id))
+    tf = tempfile.TemporaryFile()
+    offset = None
+    try:
+      while True:
+        try:
+          offset = self.RequestLogLines(tf, offset)
+          if not offset:
+            break
+        except KeyboardInterrupt:
+          StatusUpdate("Keyboard interrupt; saving data downloaded so far.")
+          break
+      StatusUpdate("Copying request logs to %r." % self.output_file)
+      if self.output_file == "-":
+        of = sys.stdout
+      else:
+        try:
+          of = open(self.output_file, self.write_mode)
+        except IOError, err:
+          StatusUpdate("Can't write %r: %s." % (self.output_file, err))
+          sys.exit(1)
+      try:
+        line_count = CopyReversedLines(tf, of)
+      finally:
+        of.flush()
+        if of is not sys.stdout:
+          of.close()
+    finally:
+      tf.close()
+    StatusUpdate("Copied %d records." % line_count)
+
+  def RequestLogLines(self, tf, offset):
+    """Make a single roundtrip to the server.
+
+    Args:
+      tf: Writable binary stream to which the log lines returned by
+        the server are written, stripped of headers, and excluding
+        lines skipped due to self.sentinel or self.valid_dates filtering.
+      offset: Offset string for a continued request; None for the first.
+
+    Returns:
+      The offset string to be used for the next request, if another
+      request should be issued; or None, if not.
+    """
+    logging.info("Request with offset %r.", offset)
+    kwds = {'app_id': self.config.application,
+            'version': self.version_id,
+            'limit': 100,
+            }
+    if offset:
+      kwds['offset'] = offset
+    if self.severity is not None:
+      kwds['severity'] = str(self.severity)
+    response = self.server.Send("/api/request_logs", payload=None, **kwds)
+    response = response.replace("\r", "\0")
+    lines = response.splitlines()
+    logging.info("Received %d bytes, %d records.", len(response), len(lines))
+    offset = None
+    if lines and lines[0].startswith('#'):
+      match = re.match(r'^#\s*next_offset=(\S+)\s*$', lines[0])
+      del lines[0]
+      if match:
+        offset = match.group(1)
+    if lines and lines[-1].startswith('#'):
+      del lines[-1]
+    valid_dates = self.valid_dates
+    sentinel = self.sentinel
+    len_sentinel = None
+    if sentinel:
+      len_sentinel = len(sentinel)
+    for line in lines:
+      if ((sentinel and
+           line.startswith(sentinel) and
+           line[len_sentinel : len_sentinel+1] in ("", "\0")) or
+          (valid_dates and not valid_dates.match(line))):
+        return None
+      tf.write(line + '\n')
+    if not lines:
+      return None
+    return offset
+
+
+def CopyReversedLines(input, output, blocksize=2**16):
+  r"""Copy lines from input stream to output stream in reverse order.
+
+  As a special feature, null bytes in the input are turned into
+  newlines followed by tabs in the output, but these "sub-lines"
+  separated by null bytes are not reversed.  E.g. If the input is
+  "A\0B\nC\0D\n", the output is "C\n\tD\nA\n\tB\n".
+
+  Args:
+    input: A seekable stream open for reading in binary mode.
+    output: A stream open for writing; doesn't have to be seekable or binary.
+    blocksize: Optional block size for buffering, for unit testing.
+
+  Returns:
+    The number of lines copied.
+  """
+  line_count = 0
+  input.seek(0, 2)
+  last_block = input.tell() // blocksize
+  spillover = ""
+  for iblock in xrange(last_block + 1, -1, -1):
+    input.seek(iblock * blocksize)
+    data = input.read(blocksize)
+    lines = data.splitlines(True)
+    lines[-1:] = "".join(lines[-1:] + [spillover]).splitlines(True)
+    if lines and not lines[-1].endswith("\n"):
+      lines[-1] += "\n"
+    lines.reverse()
+    if lines and iblock > 0:
+      spillover = lines.pop()
+    if lines:
+      line_count += len(lines)
+      data = "".join(lines).replace("\0", "\n\t")
+      output.write(data)
+  return line_count
+
+
+def FindSentinel(filename, blocksize=2**16):
+  """Return the sentinel line from the output file.
+
+  Args:
+    filename: The filename of the output file.  (We'll read this file.)
+    blocksize: Optional block size for buffering, for unit testing.
+
+  Returns:
+    The contents of the last line in the file that doesn't start with
+    a tab, with its trailing newline stripped; or None if the file
+    couldn't be opened or no such line could be found by inspecting
+    the last 'blocksize' bytes of the file.
+  """
+  if filename == "-":
+    StatusUpdate("Can't combine --append with output to stdout.")
+    sys.exit(2)
+  try:
+    fp = open(filename, "rb")
+  except IOError, err:
+    StatusUpdate("Append mode disabled: can't read %r: %s." % (filename, err))
+    return None
+  try:
+    fp.seek(0, 2)
+    fp.seek(max(0, fp.tell() - blocksize))
+    lines = fp.readlines()
+    del lines[:1]
+    sentinel = None
+    for line in lines:
+      if not line.startswith("\t"):
+        sentinel = line
+    if not sentinel:
+      StatusUpdate("Append mode disabled: can't find sentinel in %r." %
+                   filename)
+      return None
+    return sentinel.rstrip("\n")
+  finally:
+    fp.close()
+
+
 class AppVersionUpload(object):
   """Provides facilities to upload a new appversion to the hosting service.
 
@@ -1560,7 +1766,7 @@ class AppCfgApp(object):
     vacuum.DoVacuum(index_defs)
 
   def _VacuumIndexesOptions(self, parser):
-    """Adds index-delete-specific options to 'parser'.
+    """Adds vacuum_indexes-specific options to 'parser'.
 
     Args:
       parser: An instance of OptionsParser.
@@ -1595,6 +1801,50 @@ class AppCfgApp(object):
     appversion.in_transaction = True
     appversion.Rollback()
 
+  def RequestLogs(self):
+    """Write request logs to a file."""
+    if len(self.args) != 2:
+      self.parser.error(
+          "Expected a <directory> argument and an <output_file> argument.")
+    if (self.options.severity is not None and
+        not 0 <= self.options.severity <= MAX_LOG_LEVEL):
+      self.parser.error(
+          "Severity range is 0 (DEBUG) through %s (CRITICAL)." % MAX_LOG_LEVEL)
+
+    if self.options.num_days is None:
+      self.options.num_days = int(not self.options.append)
+    basepath = self.args[0]
+    appyaml = self._ParseAppYaml(basepath)
+    rpc_server = self._GetRpcServer()
+    logs_requester = LogsRequester(rpc_server, appyaml, self.args[1],
+                                   self.options.num_days,
+                                   self.options.append,
+                                   self.options.severity,
+                                   time.time())
+    logs_requester.DownloadLogs()
+
+  def _RequestLogsOptions(self, parser):
+    """Ads request_logs-specific options to 'parser'.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    parser.add_option("-n", "--num_days", type="int", dest="num_days",
+                      action="store", default=None,
+                      help="Number of days worth of log data to get. "
+                           "The cut-off point is midnight UTC. "
+                           "Use 0 to get all available logs. "
+                           "Default is 1, unless --append is also given; "
+                           "then the default is 0.")
+    parser.add_option("-a", "--append", dest="append",
+                       action="store_true", default=False,
+                      help="Append to existing file.")
+    parser.add_option("--severity", type="int", dest="severity",
+                      action="store", default=None,
+                      help="Severity of app-level log messages to get. "
+                           "The range is 0 (DEBUG) through 4 (CRITICAL). "
+                           "If omitted, only request logs are returned.")
+
   class Action(object):
     """Contains information about a command line action.
 
@@ -1619,10 +1869,12 @@ class AppCfgApp(object):
       self.options = options
 
   actions = {
+
       "help": Action(
         function=Help,
         usage="%prog help <action>",
         short_desc="Print help for a specific action."),
+
       "update": Action(
         function=Update,
         usage="%prog [options] update <directory>",
@@ -1634,6 +1886,7 @@ the app, and appcfg.py will create/update the app version referenced
 in the app.yaml file at the top level of that directory.  appcfg.py
 will follow symlinks and recursively upload all files to the server.
 Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
+
       "update_indexes": Action(
         function=UpdateIndexes,
         usage="%prog [options] update_indexes <directory>",
@@ -1641,6 +1894,7 @@ Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
         long_desc="""
 The 'update_indexes' command will add additional indexes which are not currently
 in production as well as restart any indexes that were not completed."""),
+
       "vacuum_indexes": Action(
         function=VacuumIndexes,
         usage="%prog [options] vacuum_indexes <directory>",
@@ -1652,6 +1906,7 @@ in use.  It does this by comparing the local index configuration with
 indexes that are actually defined on the server.  If any indexes on the
 server do not exist in the index configuration file, the user is given the
 option to delete them."""),
+
       "rollback": Action(
         function=Rollback,
         usage="%prog [options] rollback <directory>",
@@ -1660,6 +1915,17 @@ option to delete them."""),
 The 'update' command requires a server-side transaction.  Use 'rollback'
 if you get an error message about another transaction being in progress
 and you are sure that there is no such transaction."""),
+
+      "request_logs": Action(
+        function=RequestLogs,
+        usage="%prog [options] request_logs <directory> <output_file>",
+        options=_RequestLogsOptions,
+        short_desc="Write request logs in Apache common log format.",
+        long_desc="""
+The 'request_logs' command exports the request logs from your application
+to a file.  It will write Apache common log format records ordered
+chronologically.  If output file is '-' stdout will be written."""),
+
   }
 
 

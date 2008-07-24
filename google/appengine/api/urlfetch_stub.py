@@ -80,7 +80,7 @@ class URLFetchServiceStub(object):
     elif request.method() == urlfetch_service_pb.URLFetchRequest.PUT:
       method = 'PUT'
       payload = request.payload()
-    elif request.method() == urlfetch_service_pb.URLFetchRequest.HEAD:
+    elif request.method() == urlfetch_service_pb.URLFetchRequest.DELETE:
       method = 'DELETE'
     else:
       logging.error('Invalid method: %s', request.method())
@@ -126,8 +126,11 @@ class URLFetchServiceStub(object):
         'Host': host,
         'Accept': '*/*',
       }
+      if method == 'POST' and payload:
+        adjusted_headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
       for header in headers:
-        adjusted_headers[header.key()] = header.value()
+        adjusted_headers[header.key().title()] = header.value()
 
       logging.debug('Making HTTP request: host = %s, '
                     'url = %s, payload = %s, headers = %s',

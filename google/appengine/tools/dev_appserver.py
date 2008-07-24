@@ -61,9 +61,11 @@ import sre_compile
 import sre_constants
 import sre_parse
 
+import mimetypes
 import socket
 import sys
 import urlparse
+import urllib
 import traceback
 import types
 
@@ -101,6 +103,14 @@ DEFAULT_ENV = {
   'AUTH_DOMAIN': 'gmail.com',
   'TZ': 'UTC',
 }
+
+for ext, mime_type in (('.asc', 'text/plain'),
+                       ('.diff', 'text/plain'),
+                       ('.csv', 'text/comma-separated-values'),
+                       ('.rss', 'application/rss+xml'),
+                       ('.text', 'text/plain'),
+                       ('.wbmp', 'image/vnd.wap.wbmp')):
+  mimetypes.add_type(mime_type, ext)
 
 
 class Error(Exception):
@@ -477,7 +487,7 @@ def SetupEnvironment(cgi_path,
 
   env['SCRIPT_NAME'] = ''
   env['QUERY_STRING'] = query_string
-  env['PATH_INFO'] = script_name
+  env['PATH_INFO'] = urllib.unquote(script_name)
   env['PATH_TRANSLATED'] = cgi_path
   env['CONTENT_TYPE'] = headers.getheader('content-type',
                                           'application/x-www-form-urlencoded')
@@ -1680,23 +1690,16 @@ def ExecuteCGI(root_path,
 
     _ClearTemplateCache(sys.modules)
 
-    if reset_modules:
-      ClearAllButEncodingsModules(sys.modules)
-      sys.modules.update(old_module_dict)
-    else:
-      module_dict.update(sys.modules)
-      ClearAllButEncodingsModules(sys.modules)
-      sys.modules.update(old_module_dict)
+    module_dict.update(sys.modules)
+    ClearAllButEncodingsModules(sys.modules)
+    sys.modules.update(old_module_dict)
 
     __builtin__.__dict__.update(old_builtin)
     sys.argv = old_argv
     sys.stdin = old_stdin
     sys.stdout = old_stdout
 
-    for i in xrange(len(sys.path)):
-      sys.path.pop()
-    for import_path in before_path:
-      sys.path.append(import_path)
+    sys.path[:] = before_path
 
     os.environ.clear()
     os.environ.update(old_env)
@@ -2254,6 +2257,7 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
                                                  login_url)
         config, explicit_matcher = LoadAppConfig(root_path, self.module_dict)
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
+        env_dict['APPLICATION_ID'] = config.application
         dispatcher = MatcherDispatcher(login_url,
                                        [implicit_matcher, explicit_matcher])
 

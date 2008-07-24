@@ -210,13 +210,13 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
   except apiproxy_errors.ApplicationError, e:
     if (e.application_error ==
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL):
-      raise InvalidURLError()
+      raise InvalidURLError(str(e))
     if (e.application_error ==
         urlfetch_service_pb.URLFetchServiceError.UNSPECIFIED_ERROR):
-      raise DownloadError()
+      raise DownloadError(str(e))
     if (e.application_error ==
         urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR):
-      raise DownloadError()
+      raise DownloadError(str(e))
     if (e.application_error ==
         urlfetch_service_pb.URLFetchServiceError.RESPONSE_TOO_LARGE):
       raise ResponseTooLargeError(None)

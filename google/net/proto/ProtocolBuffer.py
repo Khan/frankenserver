@@ -139,6 +139,9 @@ class ProtocolMessage:
   def ParseASCII(self, ascii_string):
     raise AbstractMethod
 
+  def ParseASCIIIgnoreUnknown(self, ascii_string):
+    raise AbstractMethod
+
 
   def Output(self, e):
     dbg = []
