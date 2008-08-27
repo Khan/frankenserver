@@ -426,6 +426,9 @@ class Key(object):
   def __cmp__(self, other):
     """Returns negative, zero, or positive when comparing two keys.
 
+    TODO(ryanb): for API v2, we should change this to make incomplete keys, ie
+    keys without an id or name, not equal to any other keys.
+
     Args:
       other: Key to compare to.
 

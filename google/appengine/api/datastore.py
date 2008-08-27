@@ -49,7 +49,7 @@ from google.appengine.datastore import entity_pb
 
 _LOCAL_APP_ID = datastore_types._LOCAL_APP_ID
 
-TRANSACTION_RETRIES = 10
+TRANSACTION_RETRIES = 3
 
 _MAX_INDEXED_PROPERTIES = 5000
 
@@ -141,21 +141,19 @@ def Put(entities):
   """
   entities, multiple = NormalizeAndTypeCheck(entities, Entity)
 
-  entity_group = entities[0].entity_group()
+
   for entity in entities:
     if not entity.kind() or not entity.app():
       raise datastore_errors.BadRequestError(
           'App and kind must not be empty, in entity: %s' % entity)
-    elif entity.entity_group() != entity_group:
-      raise datastore_errors.BadRequestError(
-          'All entities must be in the same entity group.')
 
   req = datastore_pb.PutRequest()
   req.entity_list().extend([e._ToPb() for e in entities])
-  tx = _MaybeSetupTransaction(req, entities[0])
+
+  keys = [e.key() for e in entities]
+  tx = _MaybeSetupTransaction(req, keys)
   if tx:
-    tx.RecordModifiedKeys([e.key() for e in entities
-                           if e.key().has_id_or_name()])
+    tx.RecordModifiedKeys([k for k in keys if k.has_id_or_name()])
 
   resp = datastore_pb.PutResponse()
   try:
@@ -208,7 +206,7 @@ def Get(keys):
 
   req = datastore_pb.GetRequest()
   req.key_list().extend([key._Key__reference for key in keys])
-  _MaybeSetupTransaction(req, keys[0])
+  _MaybeSetupTransaction(req, keys)
 
   resp = datastore_pb.GetResponse()
   try:
@@ -247,16 +245,11 @@ def Delete(keys):
   """
   keys, _ = NormalizeAndTypeCheckKeys(keys)
 
-  entity_group = keys[0].entity_group()
-  for key in keys:
-    if key.entity_group() != entity_group:
-      raise datastore_errors.BadRequestError(
-          'All keys must be in the same entity group.')
 
   req = datastore_pb.DeleteRequest()
   req.key_list().extend([key._Key__reference for key in keys])
 
-  tx = _MaybeSetupTransaction(req, keys[0])
+  tx = _MaybeSetupTransaction(req, keys)
   if tx:
     tx.RecordModifiedKeys(keys)
 
@@ -1278,7 +1271,8 @@ class _Transaction(object):
   If we've sent a BeginTransaction call, then handle will be a
   datastore_pb.Transaction that holds the transaction handle.
 
-  If we know the entity group for this transaction, it's stored in entity_group.
+  If we know the entity group for this transaction, it's stored in the
+  entity_group attribute, which is set by RecordModifiedKeys().
 
   modified_keys is a set containing the Keys of all entities modified (ie put
   or deleted) in this transaction. If an entity is modified more than once, a
@@ -1291,16 +1285,22 @@ class _Transaction(object):
     self.modified_keys = None
     self.modified_keys = set()
 
-  def RecordModifiedKeys(self, keys_or_entities, error_on_repeat=True):
+  def RecordModifiedKeys(self, keys, error_on_repeat=True):
     """Updates the modified keys seen so far.
 
-    If error_on_repeat is True and any of the given keys or entities have
-    already been modified, raises BadRequestError.
+    Also sets entity_group if it hasn't yet been set.
+
+    If error_on_repeat is True and any of the given keys have already been
+    modified, raises BadRequestError.
 
     Args:
-      keys: list of Key or Entity
+      keys: sequence of Keys
     """
-    keys, _ = NormalizeAndTypeCheckKeys(keys_or_entities)
+    keys, _ = NormalizeAndTypeCheckKeys(keys)
+
+    if keys and not self.entity_group:
+      self.entity_group = keys[0].entity_group()
+
     keys = set(keys)
 
     if error_on_repeat:
@@ -1429,6 +1429,8 @@ def RunInTransaction(function, *args, **kwargs):
             tx.handle = None
             tx.entity_group = None
             continue
+          else:
+            raise _ToDatastoreError(err)
 
       return result
 
@@ -1441,32 +1443,50 @@ def RunInTransaction(function, *args, **kwargs):
     del tx_key
 
 
-def _MaybeSetupTransaction(request, key_or_entity):
+def _MaybeSetupTransaction(request, keys):
   """Begins a transaction, if necessary, and populates it in the request.
 
-  If we're currently inside a transaction, this records the entity group (if
-  possible), creates the transaction PB, and sends the BeginTransaction. It
-  then populates the transaction handle in the request.
+  If we're currently inside a transaction, this records the entity group,
+  checks that the keys are all in that entity group, creates the transaction
+  PB, and sends the BeginTransaction. It then populates the transaction handle
+  in the request.
 
   Raises BadRequestError if the entity has a different entity group than the
   current transaction.
 
   Args:
     request: GetRequest, PutRequest, or DeleteRequest
-    key_or_entity: Key or Entity
+    keys: sequence of Keys
 
   Returns:
     _Transaction if we're inside a transaction, otherwise None
   """
   assert isinstance(request, (datastore_pb.GetRequest, datastore_pb.PutRequest,
                               datastore_pb.DeleteRequest))
-  assert isinstance(key_or_entity, (Key, Entity))
   tx_key = None
 
   try:
     tx_key = _CurrentTransactionKey()
     if tx_key:
       tx = _txes[tx_key]
+
+      groups = [k.entity_group() for k in keys]
+      if tx.entity_group:
+        expected_group = tx.entity_group
+      else:
+        expected_group = groups[0]
+      for group in groups:
+        if (group != expected_group or
+
+
+
+
+
+
+
+            (not group.has_id_or_name() and group is not expected_group)):
+          raise _DifferentEntityGroupError(expected_group, group)
+
       if not tx.handle:
         tx.handle = datastore_pb.Transaction()
         req = api_base_pb.VoidProto()
@@ -1474,14 +1494,6 @@ def _MaybeSetupTransaction(request, key_or_entity):
                                        tx.handle)
 
       request.mutable_transaction().CopyFrom(tx.handle)
-
-      this_group = key_or_entity.entity_group()
-      if not tx.entity_group:
-        if this_group.has_id_or_name():
-          tx.entity_group = this_group
-      else:
-        if tx.entity_group != this_group:
-          raise _DifferentEntityGroupError(tx.entity_group, this_group)
 
       return tx
 

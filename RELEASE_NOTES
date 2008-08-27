@@ -3,6 +3,14 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.1.2 - August 20, 2008
+===============================
+
+  - Batch puts across Datastore entity groups.
+  - Transaction retries reduced from 10 to 3.
+  - Fixed certain transaction failures being silent.
+  - Added support for indexes with a single repeated property.
+
 Version 1.1.1 - July 21, 2008
 =============================
 
