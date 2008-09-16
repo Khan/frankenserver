@@ -23,13 +23,14 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
 class PropertyValue_ReferenceValuePathElement(ProtocolBuffer.ProtocolMessage):
+  has_type_ = 0
+  type_ = ""
+  has_id_ = 0
+  id_ = 0
+  has_name_ = 0
+  name_ = ""
+
   def __init__(self, contents=None):
-    self.type_ = ""
-    self.id_ = 0
-    self.name_ = ""
-    self.has_type_ = 0
-    self.has_id_ = 0
-    self.has_name_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def type(self): return self.type_
@@ -146,11 +147,12 @@ class PropertyValue_ReferenceValuePathElement(ProtocolBuffer.ProtocolMessage):
     return res
 
 class PropertyValue_PointValue(ProtocolBuffer.ProtocolMessage):
+  has_x_ = 0
+  x_ = 0.0
+  has_y_ = 0
+  y_ = 0.0
+
   def __init__(self, contents=None):
-    self.x_ = 0.0
-    self.y_ = 0.0
-    self.has_x_ = 0
-    self.has_y_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def x(self): return self.x_
@@ -244,15 +246,16 @@ class PropertyValue_PointValue(ProtocolBuffer.ProtocolMessage):
     return res
 
 class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
+  has_email_ = 0
+  email_ = ""
+  has_auth_domain_ = 0
+  auth_domain_ = ""
+  has_nickname_ = 0
+  nickname_ = ""
+  has_gaiaid_ = 0
+  gaiaid_ = 0
+
   def __init__(self, contents=None):
-    self.email_ = ""
-    self.auth_domain_ = ""
-    self.nickname_ = ""
-    self.gaiaid_ = 0
-    self.has_email_ = 0
-    self.has_auth_domain_ = 0
-    self.has_nickname_ = 0
-    self.has_gaiaid_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def email(self): return self.email_
@@ -399,10 +402,11 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     return res
 
 class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
+  has_app_ = 0
+  app_ = ""
+
   def __init__(self, contents=None):
-    self.app_ = ""
     self.pathelement_ = []
-    self.has_app_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def app(self): return self.app_
@@ -460,8 +464,8 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: app not set.')
-    for i in xrange(len(self.pathelement_)):
-      if (not self.pathelement_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.pathelement_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -511,21 +515,22 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
     return res
 
 class PropertyValue(ProtocolBuffer.ProtocolMessage):
+  has_int64value_ = 0
+  int64value_ = 0
+  has_booleanvalue_ = 0
+  booleanvalue_ = 0
+  has_stringvalue_ = 0
+  stringvalue_ = ""
+  has_doublevalue_ = 0
+  doublevalue_ = 0.0
+  has_pointvalue_ = 0
+  pointvalue_ = None
+  has_uservalue_ = 0
+  uservalue_ = None
+  has_referencevalue_ = 0
+  referencevalue_ = None
+
   def __init__(self, contents=None):
-    self.int64value_ = 0
-    self.booleanvalue_ = 0
-    self.stringvalue_ = ""
-    self.doublevalue_ = 0.0
-    self.pointvalue_ = None
-    self.uservalue_ = None
-    self.referencevalue_ = None
-    self.has_int64value_ = 0
-    self.has_booleanvalue_ = 0
-    self.has_stringvalue_ = 0
-    self.has_doublevalue_ = 0
-    self.has_pointvalue_ = 0
-    self.has_uservalue_ = 0
-    self.has_referencevalue_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -886,17 +891,18 @@ class Property(ProtocolBuffer.ProtocolMessage):
   def Meaning_Name(cls, x): return cls._Meaning_NAMES.get(x, "")
   Meaning_Name = classmethod(Meaning_Name)
 
+  has_meaning_ = 0
+  meaning_ = 0
+  has_meaning_uri_ = 0
+  meaning_uri_ = ""
+  has_name_ = 0
+  name_ = ""
+  has_value_ = 0
+  has_multiple_ = 0
+  multiple_ = 0
+
   def __init__(self, contents=None):
-    self.meaning_ = 0
-    self.meaning_uri_ = ""
-    self.name_ = ""
     self.value_ = PropertyValue()
-    self.multiple_ = 0
-    self.has_meaning_ = 0
-    self.has_meaning_uri_ = 0
-    self.has_name_ = 0
-    self.has_value_ = 0
-    self.has_multiple_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def meaning(self): return self.meaning_
@@ -1098,13 +1104,14 @@ class Property(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Path_Element(ProtocolBuffer.ProtocolMessage):
+  has_type_ = 0
+  type_ = ""
+  has_id_ = 0
+  id_ = 0
+  has_name_ = 0
+  name_ = ""
+
   def __init__(self, contents=None):
-    self.type_ = ""
-    self.id_ = 0
-    self.name_ = ""
-    self.has_type_ = 0
-    self.has_id_ = 0
-    self.has_name_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def type(self): return self.type_
@@ -1221,6 +1228,7 @@ class Path_Element(ProtocolBuffer.ProtocolMessage):
     return res
 
 class Path(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.element_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -1261,8 +1269,8 @@ class Path(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.element_)):
-      if (not self.element_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.element_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1330,11 +1338,12 @@ class Path(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Reference(ProtocolBuffer.ProtocolMessage):
+  has_app_ = 0
+  app_ = ""
+  has_path_ = 0
+
   def __init__(self, contents=None):
-    self.app_ = ""
     self.path_ = Path()
-    self.has_app_ = 0
-    self.has_path_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def app(self): return self.app_
@@ -1488,15 +1497,16 @@ class Reference(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class User(ProtocolBuffer.ProtocolMessage):
+  has_email_ = 0
+  email_ = ""
+  has_auth_domain_ = 0
+  auth_domain_ = ""
+  has_nickname_ = 0
+  nickname_ = ""
+  has_gaiaid_ = 0
+  gaiaid_ = 0
+
   def __init__(self, contents=None):
-    self.email_ = ""
-    self.auth_domain_ = ""
-    self.nickname_ = ""
-    self.gaiaid_ = 0
-    self.has_email_ = 0
-    self.has_auth_domain_ = 0
-    self.has_nickname_ = 0
-    self.has_gaiaid_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def email(self): return self.email_
@@ -1683,19 +1693,20 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
   def Kind_Name(cls, x): return cls._Kind_NAMES.get(x, "")
   Kind_Name = classmethod(Kind_Name)
 
+  has_key_ = 0
+  has_entity_group_ = 0
+  has_owner_ = 0
+  owner_ = None
+  has_kind_ = 0
+  kind_ = 0
+  has_kind_uri_ = 0
+  kind_uri_ = ""
+
   def __init__(self, contents=None):
     self.key_ = Reference()
     self.entity_group_ = Path()
-    self.owner_ = None
-    self.kind_ = 0
-    self.kind_uri_ = ""
     self.property_ = []
     self.raw_property_ = []
-    self.has_key_ = 0
-    self.has_entity_group_ = 0
-    self.has_owner_ = 0
-    self.has_kind_ = 0
-    self.has_kind_uri_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1838,10 +1849,10 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: entity_group not set.')
     elif not self.entity_group_.IsInitialized(debug_strs): initialized = 0
     if (self.has_owner_ and not self.owner_.IsInitialized(debug_strs)): initialized = 0
-    for i in xrange(len(self.property_)):
-      if (not self.property_[i].IsInitialized(debug_strs)): initialized=0
-    for i in xrange(len(self.raw_property_)):
-      if (not self.raw_property_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.property_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.raw_property_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -2039,10 +2050,11 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class CompositeProperty(ProtocolBuffer.ProtocolMessage):
+  has_index_id_ = 0
+  index_id_ = 0
+
   def __init__(self, contents=None):
-    self.index_id_ = 0
     self.value_ = []
-    self.has_index_id_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def index_id(self): return self.index_id_
@@ -2175,11 +2187,12 @@ class Index_Property(ProtocolBuffer.ProtocolMessage):
   def Direction_Name(cls, x): return cls._Direction_NAMES.get(x, "")
   Direction_Name = classmethod(Direction_Name)
 
+  has_name_ = 0
+  name_ = ""
+  has_direction_ = 0
+  direction_ = 1
+
   def __init__(self, contents=None):
-    self.name_ = ""
-    self.direction_ = 1
-    self.has_name_ = 0
-    self.has_direction_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def name(self): return self.name_
@@ -2272,12 +2285,13 @@ class Index_Property(ProtocolBuffer.ProtocolMessage):
     return res
 
 class Index(ProtocolBuffer.ProtocolMessage):
+  has_entity_type_ = 0
+  entity_type_ = ""
+  has_ancestor_ = 0
+  ancestor_ = 0
+
   def __init__(self, contents=None):
-    self.entity_type_ = ""
-    self.ancestor_ = 0
     self.property_ = []
-    self.has_entity_type_ = 0
-    self.has_ancestor_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def entity_type(self): return self.entity_type_
@@ -2354,8 +2368,8 @@ class Index(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: ancestor not set.')
-    for i in xrange(len(self.property_)):
-      if (not self.property_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.property_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -2458,15 +2472,16 @@ class CompositeIndex(ProtocolBuffer.ProtocolMessage):
   def State_Name(cls, x): return cls._State_NAMES.get(x, "")
   State_Name = classmethod(State_Name)
 
+  has_app_id_ = 0
+  app_id_ = ""
+  has_id_ = 0
+  id_ = 0
+  has_definition_ = 0
+  has_state_ = 0
+  state_ = 0
+
   def __init__(self, contents=None):
-    self.app_id_ = ""
-    self.id_ = 0
     self.definition_ = Index()
-    self.state_ = 0
-    self.has_app_id_ = 0
-    self.has_id_ = 0
-    self.has_definition_ = 0
-    self.has_state_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def app_id(self): return self.app_id_

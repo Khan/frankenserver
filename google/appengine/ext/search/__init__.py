@@ -186,7 +186,7 @@ class SearchableEntity(datastore.Entity):
       text = cls._PUNCTUATION_REGEX.sub(' ', text)
       words = text.lower().split()
 
-      words = set(words)
+      words = set(unicode(w) for w in words)
 
       words -= cls._FULL_TEXT_STOP_WORDS
       for word in list(words):
@@ -251,7 +251,7 @@ class SearchableQuery(datastore.Query):
         filter.set_op(datastore_pb.Query_Filter.EQUAL)
         prop = filter.add_property()
         prop.set_name(SearchableEntity._FULL_TEXT_INDEX_PROPERTY)
-        prop.mutable_value().set_stringvalue(keyword)
+        prop.mutable_value().set_stringvalue(unicode(keyword).encode('utf-8'))
 
     return pb
 

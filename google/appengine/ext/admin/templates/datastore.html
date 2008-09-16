@@ -8,18 +8,6 @@
   <script type="text/javascript">
   //<![CDATA[
 
-  function disableCreateButton() {
-    var input = document.getElementById("kind_input");
-    var button = document.getElementById("create_button");
-    if (input && button) {
-      if (input.value.length == 0) {
-        button.disabled = true;
-      } else {
-        button.disabled = false;
-      }
-    }
-  }
-
   {% if entities %}
   function checkAllEntities() {
     var allCheckBox = document.getElementById("allkeys");
@@ -71,11 +59,18 @@
   </div>
   {% endif %}
   
+  {% if kinds %}
   <form action="{{ request.path }}" method="get">
     <div id="datastore_search">
       <span class="field">
         <span class="name">Entity Kind:</span>
-        <span class="value"><input id="kind_input" name="kind" type="text" size="8" value="{{ kind|escape }}" onkeyup="disableCreateButton()" onkeydown="disableCreateButton()"/></span>
+        <span class="value">
+          <select name="kind" id="kind_input">
+            {% for a_kind in kinds %}
+            <option value="{{ a_kind|escape }}"{% ifequal a_kind kind %} selected="selected"{% endifequal %}>{{ a_kind|escape }}</option>
+            {% endfor %}
+          </select>
+        </span>
       </span>
       <span class="buttons">
         <input type="submit" value="List Entities"/>
@@ -83,6 +78,11 @@
       </span>
     </div>
   </form>
+  {% else %}
+  <div id="datastore_empty">
+    The datastore is empty.  You need to add data programatically before you can use this tool to view and edit it.
+  </div>
+  {% endif %}
 
   {% if entities %}
     <form action="{{ datastore_batch_edit_path }}" method="post">
@@ -146,7 +146,6 @@
   <script type="text/javascript">
   //<![CDATA[
 
-  disableCreateButton();
   updateDeleteButtonAndCheckbox();
   document.getElementById("kind_input").focus();
 

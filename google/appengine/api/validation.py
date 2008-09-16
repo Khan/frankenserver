@@ -57,7 +57,7 @@ class ValidationError(Error):
 
   def __init__(self, message, cause=None):
     """Initialize exception."""
-    if hasattr(cause, 'args'):
+    if hasattr(cause, 'args') and cause.args:
       Error.__init__(self, message, *cause.args)
     else:
       Error.__init__(self, message)

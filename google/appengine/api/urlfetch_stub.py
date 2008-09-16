@@ -24,6 +24,7 @@ import logging
 import socket
 import urlparse
 
+from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_errors
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.runtime import apiproxy_errors
@@ -31,7 +32,7 @@ from google.appengine.runtime import apiproxy_errors
 
 MAX_RESPONSE_SIZE = 2 ** 24
 
-MAX_REDIRECTS = 5
+MAX_REDIRECTS = urlfetch.MAX_REDIRECTS
 
 REDIRECT_STATUSES = frozenset([
   httplib.MOVED_PERMANENTLY,
@@ -93,9 +94,11 @@ class URLFetchServiceStub(object):
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL)
 
     self._RetrieveURL(request.url(), payload, method,
-                      request.header_list(), response)
+                      request.header_list(), response,
+                      follow_redirects=request.followredirects())
 
-  def _RetrieveURL(self, url, payload, method, headers, response):
+  def _RetrieveURL(self, url, payload, method, headers, response,
+                   follow_redirects=True):
     """Retrieves a URL.
 
     Args:
@@ -104,6 +107,8 @@ class URLFetchServiceStub(object):
       method: HTTP method to use (e.g., 'GET')
       headers: List of additional header objects to use for the request.
       response: Response object
+      follow_redirects: optional setting (defaulting to True) for whether or not
+        we should transparently follow redirects (up to MAX_REDIRECTS)
 
     Raises:
       Raises an apiproxy_errors.ApplicationError exception with FETCH_ERROR
@@ -164,7 +169,7 @@ class URLFetchServiceStub(object):
         raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, str(e))
 
-      if http_response.status in REDIRECT_STATUSES:
+      if http_response.status in REDIRECT_STATUSES and follow_redirects:
         url = http_response.getheader('Location', None)
         if url is None:
           error_msg = 'Redirecting response was missing "Location" header'

@@ -37,18 +37,15 @@ if __name__ == '__main__':
 See the Loader class for more information. Then, add a handler for it in your
 app.yaml, e.g.:
 
-  urlmap:
-  - regex: /load
-    handler:
-      type: 1
-      path: bulkload.py
-      requires_login: true
-      admin_only: true
+  handlers:
+  - url: /load
+    script: bulkload.py
+    login: admin
 
-Finally, deploy your app and run bulkload_client.py. For example, to load the
+Finally, deploy your app and run bulkloader.py. For example, to load the
 file people.csv into a dev_appserver running on your local machine:
 
-./bulkload_client.py --filename people.csv --kind Person --cookie ... \
+./bulkloader.py --filename people.csv --kind Person --cookie ... \
                      --url http://localhost:8080/load
 
 The kind parameter is used to look up the Loader instance that will be used.
@@ -110,6 +107,7 @@ import os
 import sys
 import traceback
 import types
+import struct
 
 
 import google
@@ -139,15 +137,18 @@ def Validate(value, type):
 
 
 class Loader(object):
-  """ A base class for creating datastore entities from CSV input data.
+  """A base class for creating datastore entities from input data.
 
   To add a handler for bulk loading a new entity kind into your datastore,
   write a subclass of this class that calls Loader.__init__ from your
   class's __init__.
 
-  If you need to run extra code to convert entities from CSV, create new
-  properties, or otherwise modify the entities before they're inserted,
-  override HandleEntity.
+  If you need to run extra code to convert entities from the input
+  data, create new properties, or otherwise modify the entities before
+  they're inserted, override HandleEntity.
+
+  See the CreateEntity method for the creation of entities from the
+  (parsed) input data.
   """
 
   __loaders = {}
@@ -200,12 +201,12 @@ class Loader(object):
     """
     return self.__kind
 
-
-  def CreateEntity(self, values):
+  def CreateEntity(self, values, key_name=None):
     """ Creates an entity from a list of property values.
 
     Args:
-      values: list of str
+      values: list/tuple of str
+      key_name: if provided, the name for the (single) resulting Entity
 
     Returns:
       list of datastore.Entity
@@ -215,22 +216,23 @@ class Loader(object):
       the constructor, and passed through HandleEntity. They're ready to be
       inserted.
 
-    Raises an AssertionError if the number of values doesn't match the number
-    of properties in the properties map.
+    Raises:
+      AssertionError if the number of values doesn't match the number
+        of properties in the properties map.
     """
-    Validate(values, list)
+    Validate(values, (list, tuple))
     assert len(values) == len(self.__properties), (
       'Expected %d CSV columns, found %d.' %
       (len(self.__properties), len(values)))
 
-    entity = datastore.Entity(self.__kind)
+    entity = datastore.Entity(self.__kind, name=key_name)
     for (name, converter), val in zip(self.__properties, values):
       entity[name] = converter(val)
 
     entities = self.HandleEntity(entity)
 
     if entities is not None:
-      if not isinstance(entities, list):
+      if not isinstance(entities, (list, tuple)):
         entities = [entities]
 
       for entity in entities:
@@ -269,7 +271,18 @@ class Loader(object):
 
 
 class BulkLoad(webapp.RequestHandler):
-  """ A handler for bulk load requests.
+  """A handler for bulk load requests.
+
+  This class contains handlers for the bulkloading process. One for
+  GET to provide cookie information for the upload script, and one
+  handler for a POST request to upload the entities.
+
+  In the POST request, the body contains the data representing the
+  entities' property values. The original format was a sequences of
+  lines of comma-separated values (and is handled by the Load
+  method). The current (version 1) format is a binary format described
+  in the Tools and Libraries section of the documentation, and is
+  handled by the LoadV1 method).
   """
 
   def get(self):
@@ -283,8 +296,13 @@ class BulkLoad(webapp.RequestHandler):
     """ Handle a POST. Reads CSV data, converts to entities, and stores them.
     """
     self.response.headers['Content-Type'] = 'text/plain'
-    response, output = self.Load(self.request.get(constants.KIND_PARAM),
-                                 self.request.get(constants.CSV_PARAM))
+    version = self.request.headers.get('GAE-Uploader-Version', '0')
+    if version == '1':
+      kind = self.request.headers.get('GAE-Uploader-Kind')
+      response, output = self.LoadV1(kind, self.request.body)
+    else:
+      response, output = self.Load(self.request.get(constants.KIND_PARAM),
+                                   self.request.get(constants.CSV_PARAM))
     self.response.set_status(response)
     self.response.out.write(output)
 
@@ -369,8 +387,7 @@ class BulkLoad(webapp.RequestHandler):
             entities.extend(new_entities)
           output.append('done.')
         except:
-          exc_info = sys.exc_info()
-          stacktrace = traceback.format_exception(*exc_info)
+          stacktrace = traceback.format_exc()
           output.append('error:\n%s' % stacktrace)
           return (httplib.BAD_REQUEST, ''.join(output))
 
@@ -380,6 +397,69 @@ class BulkLoad(webapp.RequestHandler):
       datastore.Put(entity)
 
     return (httplib.OK, ''.join(output))
+
+  def LoadV1(self, kind, data):
+    """Parses version-1 format data, converts to entities, and stores them.
+
+    On error, fails fast. Returns a "bad request" HTTP response code and
+    includes the traceback in the output.
+
+    Args:
+      kind: a string containing the entity kind that this loader handles
+      data: a string containing the (v1 format) data to load
+
+    Returns:
+      tuple (response code, output) where:
+        response code: integer HTTP response code to return
+        output: string containing the HTTP response body
+    """
+    Validate(kind, basestring)
+    Validate(data, basestring)
+    output = []
+
+    try:
+      loader = Loader.RegisteredLoaders()[kind]
+    except KeyError:
+      output.append('Error: no Loader defined for kind %s.' % kind)
+      return httplib.BAD_REQUEST, ''.join(output)
+
+    entities = []
+
+    column_count, = struct.unpack_from('!i', data)
+
+    offset = 4
+
+    lengths_format = '!%di' % (column_count,)
+
+    while offset < len(data):
+      id_num = struct.unpack_from('!i', data, offset=offset)
+      offset += 4
+
+      key_name = 'i%010d' % id_num
+
+      value_lengths = struct.unpack_from(lengths_format, data, offset=offset)
+      offset += 4 * column_count
+
+      columns = struct.unpack_from(''.join('%ds' % length
+                                           for length in value_lengths), data,
+                                   offset=offset)
+      offset += sum(value_lengths)
+
+      try:
+        output.append('Loading key_name=%s... ' % key_name)
+        new_entities = loader.CreateEntity(columns, key_name=key_name)
+        if new_entities:
+          entities.extend(new_entities)
+        output.append('done.\n')
+      except:
+        stacktrace = traceback.format_exc()
+        output.append('error:\n%s' % stacktrace)
+        return httplib.BAD_REQUEST, ''.join(output)
+
+    for entity in entities:
+      datastore.Put(entity)
+
+    return httplib.OK, ''.join(output)
 
 
 def main(*loaders):

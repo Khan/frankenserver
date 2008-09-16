@@ -25,13 +25,17 @@ Methods defined in this module:
 
 
 
+import os
 import UserDict
+import urllib2
+import urlparse
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api.urlfetch_errors import *
 from google.appengine.runtime import apiproxy_errors
 
+MAX_REDIRECTS = 5
 
 GET = 1
 POST = 2
@@ -153,7 +157,33 @@ class _CaselessDict(UserDict.IterableUserDict):
     return dict(self)
 
 
-def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
+def _is_fetching_self(url, method):
+  """Checks if the fetch is for the same URL from which it originated.
+
+  Args:
+    url: str, The URL being fetched.
+    method: value from _VALID_METHODS.
+
+  Returns:
+    boolean indicating whether or not it seems that the app is trying to fetch
+      itself.
+  """
+  if (method != GET or
+      "HTTP_HOST" not in os.environ or
+      "PATH_INFO" not in os.environ):
+    return False
+
+  scheme, host_port, path, query, fragment = urlparse.urlsplit(url)
+
+  if (host_port == os.environ['HTTP_HOST'] and
+      urllib2.unquote(path) == urllib2.unquote(os.environ['PATH_INFO'])):
+    return True
+
+  return False
+
+
+def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
+          follow_redirects=True):
   """Fetches the given HTTP URL, blocking until the result is returned.
 
   Other optional parameters are:
@@ -161,8 +191,15 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
      payload: POST or PUT payload (implies method is not GET, HEAD, or DELETE)
      headers: dictionary of HTTP headers to send with the request
      allow_truncated: if true, truncate large responses and return them without
-     error. otherwise, ResponseTooLargeError will be thrown when a response is
-     truncated.
+       error. otherwise, ResponseTooLargeError will be thrown when a response is
+       truncated.
+     follow_redirects: if true (the default), redirects are
+       transparently followed and the response (if less than 5
+       redirects) contains the final destination's payload and the
+       response status is 200.  You lose, however, the redirect chain
+       information.  If false, you see the HTTP response yourself,
+       including the 'Location' header, and redirects are not
+       followed.
 
   We use a HTTP/1.1 compliant proxy to fetch the result.
 
@@ -177,15 +214,20 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
   of the returned structure, so HTTP errors like 404 do not result in an
   exception.
   """
-  request = urlfetch_service_pb.URLFetchRequest()
-  response = urlfetch_service_pb.URLFetchResponse()
-  request.set_url(url)
-
   if isinstance(method, basestring):
     method = method.upper()
   method = _URL_STRING_MAP.get(method, method)
   if method not in _VALID_METHODS:
     raise InvalidMethodError('Invalid method %s.' % str(method))
+
+  if _is_fetching_self(url, method):
+    raise InvalidURLError("App cannot fetch the same URL as the one used for "
+                          "the request.")
+
+  request = urlfetch_service_pb.URLFetchRequest()
+  response = urlfetch_service_pb.URLFetchResponse()
+  request.set_url(url)
+
   if method == GET:
     request.set_method(urlfetch_service_pb.URLFetchRequest.GET)
   elif method == POST:
@@ -204,6 +246,8 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False):
     header_proto = request.add_header()
     header_proto.set_key(key)
     header_proto.set_value(value)
+
+  request.set_followredirects(follow_redirects)
 
   try:
     apiproxy_stub_map.MakeSyncCall('urlfetch', 'Fetch', request, response)

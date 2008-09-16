@@ -291,6 +291,19 @@ def mail_message_to_mime_message(protocol_message):
 MailMessageToMIMEMessage = mail_message_to_mime_message
 
 
+def _to_str(value):
+  """Helper function to make sure unicode values converted to utf-8
+
+  Args:
+    value: str or unicode to convert to utf-8.
+
+  Returns:
+    UTF-8 encoded str of value, otherwise value unchanged.
+  """
+  if isinstance(value, unicode):
+    return value.encode('utf-8')
+  return value
+
 class _EmailMessageBase(object):
   """Base class for email API service objects.
 
@@ -392,23 +405,32 @@ class _EmailMessageBase(object):
     return self.is_initialized()
 
   def ToProto(self):
+    """Convert mail message to protocol message.
+
+    Unicode strings are converted to UTF-8 for all fields.
+
+    This method is overriden by EmailMessage to support the sender fields.
+
+    Returns:
+      MailMessage protocol version of mail message.
+    """
     self.check_initialized()
     message = mail_service_pb.MailMessage()
-    message.set_sender(self.sender)
+    message.set_sender(_to_str(self.sender))
 
     if hasattr(self, 'reply_to'):
-      message.set_replyto(self.reply_to)
-    message.set_subject(self.subject)
+      message.set_replyto(_to_str(self.reply_to))
+    message.set_subject(_to_str(self.subject))
     if hasattr(self, 'body'):
-      message.set_textbody(self.body)
+      message.set_textbody(_to_str(self.body))
     if hasattr(self, 'html'):
-      message.set_htmlbody(self.html)
+      message.set_htmlbody(_to_str(self.html))
 
     if hasattr(self, 'attachments'):
       for file_name, data in _attachment_sequence(self.attachments):
         attachment = message.add_attachment()
-        attachment.set_filename(file_name)
-        attachment.set_data(data)
+        attachment.set_filename(_to_str(file_name))
+        attachment.set_data(_to_str(data))
     return message
 
   def to_mime_message(self):
@@ -555,6 +577,9 @@ class EmailMessage(_EmailMessageBase):
 
   def ToProto(self):
     """Does addition conversion of recipient fields to protocol buffer.
+
+    Returns:
+      MailMessage protocol version of mail message including sender fields.
     """
     message = super(EmailMessage, self).ToProto()
 
@@ -563,7 +588,7 @@ class EmailMessage(_EmailMessageBase):
                              ('bcc', message.add_bcc)):
       if hasattr(self, attribute):
         for address in _email_sequence(getattr(self, attribute)):
-          adder(address)
+          adder(_to_str(address))
     return message
 
   def __setattr__(self, attr, value):

@@ -36,6 +36,7 @@ class UserServiceError(ProtocolBuffer.ProtocolMessage):
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
   ErrorCode_Name = classmethod(ErrorCode_Name)
 
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)

@@ -1567,7 +1567,7 @@ class AppCfgApp(object):
                       dest="verbose", help="Print all logs.")
     parser.add_option("-s", "--server", action="store", dest="server",
                       default="appengine.google.com",
-                      metavar="SERVER", help="The server to upload to.")
+                      metavar="SERVER", help="The server to connect to.")
     parser.add_option("-e", "--email", action="store", dest="email",
                       metavar="EMAIL", default=None,
                       help="The username to use. Will prompt if omitted.")

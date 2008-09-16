@@ -9,7 +9,7 @@
     {% block head %}{% endblock %}
   </head>
   <body {% block bodyattributes %}{% endblock %}>
-    <div class="g-doc-1024">
+    <div class="g-doc">
     
     <div id="hd" class="g-section">
 
@@ -19,7 +19,7 @@
       </div>
       
       <div id="ae-appbar-lrg" class="g-section">
-        <h1>Development Console</h1>
+        <h1>{{ application_name }} Development Console</h1>
       </div>
       
     </div>
@@ -36,6 +36,7 @@
             <ul id="menu">
               <li><a href="{{ datastore_path }}">Datastore Viewer</a></li>
               <li><a href="{{ interactive_path }}">Interactive Console</a></li>
+              <li><a href="{{ memcache_path }}">Memcache Viewer</a></li>
             </ul>
         
           </div>

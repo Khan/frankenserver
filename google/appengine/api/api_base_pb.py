@@ -23,9 +23,10 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
 class StringProto(ProtocolBuffer.ProtocolMessage):
+  has_value_ = 0
+  value_ = ""
+
   def __init__(self, contents=None):
-    self.value_ = ""
-    self.has_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def value(self): return self.value_
@@ -108,9 +109,10 @@ class StringProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Integer32Proto(ProtocolBuffer.ProtocolMessage):
+  has_value_ = 0
+  value_ = 0
+
   def __init__(self, contents=None):
-    self.value_ = 0
-    self.has_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def value(self): return self.value_
@@ -193,9 +195,10 @@ class Integer32Proto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Integer64Proto(ProtocolBuffer.ProtocolMessage):
+  has_value_ = 0
+  value_ = 0
+
   def __init__(self, contents=None):
-    self.value_ = 0
-    self.has_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def value(self): return self.value_
@@ -278,9 +281,10 @@ class Integer64Proto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class BoolProto(ProtocolBuffer.ProtocolMessage):
+  has_value_ = 0
+  value_ = 0
+
   def __init__(self, contents=None):
-    self.value_ = 0
-    self.has_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def value(self): return self.value_
@@ -362,9 +366,10 @@ class BoolProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class DoubleProto(ProtocolBuffer.ProtocolMessage):
+  has_value_ = 0
+  value_ = 0.0
+
   def __init__(self, contents=None):
-    self.value_ = 0.0
-    self.has_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def value(self): return self.value_
@@ -446,6 +451,7 @@ class DoubleProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class VoidProto(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)

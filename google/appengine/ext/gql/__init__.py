@@ -248,7 +248,9 @@ class GQL(object):
                                               unused_values)
 
     if enumerated_queries:
-      logging.debug('Multiple Queries Bound: %s' % enumerated_queries)
+      logging.log(LOG_LEVEL,
+                  'Multiple Queries Bound: %s',
+                  enumerated_queries)
 
       for (query, enumerated_query) in zip(queries, enumerated_queries):
         query.update(enumerated_query)
@@ -1073,6 +1075,12 @@ class MultiQuery(datastore.Query):
     self.__bound_queries = bound_queries
     self.__orderings = orderings
 
+  def __str__(self):
+    res = 'MultiQuery: '
+    for query in self.__bound_queries:
+      res = '%s %s' % (res, str(query))
+    return res
+
   def Get(self, limit, offset=0):
     """Get results of the query with a limit on the number of results.
 
@@ -1082,7 +1090,7 @@ class MultiQuery(datastore.Query):
               the original query
 
     Returns:
-      An array of entities with at most "limit" entries (less if the query
+      A list of entities with at most "limit" entries (less if the query
       completes before reading limit values).
     """
     count = 1
@@ -1250,3 +1258,24 @@ class MultiQuery(datastore.Query):
             heapq.heappush(result_heap, popped_result)
 
     return IterateResults(results)
+
+  def Count(self, limit=None):
+    """Return the number of matched entities for this query.
+
+    Will return the de-duplicated count of results.  Will call the more
+    efficient Get() function if a limit is given.
+
+    Args:
+      limit: maximum number of entries to count (for any result > limit, return
+      limit).
+    Returns:
+      count of the number of entries returned.
+    """
+    if limit is None:
+      count = 0
+      for value in self.Run():
+        count += 1
+      return count
+    else:
+      return len(self.Get(limit))
+

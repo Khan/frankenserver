@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Convenience wrapper for starting dev_appserver."""
+"""Convenience wrapper for starting an appengine tool."""
 
 
 import os
@@ -33,9 +33,8 @@ if version_tuple == (2, 4):
   sys.stderr.write('Warning: Python 2.4 is not supported; this program may '
                    'break. Please use version 2.5 or greater.\n')
 
-DEV_APPSERVER_PATH = 'google/appengine/tools/dev_appserver_main.py'
-
 DIR_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+SCRIPT_DIR = os.path.join(DIR_PATH, 'google', 'appengine', 'tools')
 
 EXTRA_PATHS = [
   DIR_PATH,
@@ -44,7 +43,13 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
 ]
 
+SCRIPT_EXCEPTIONS = {
+  "dev_appserver.py" : "dev_appserver_main.py"
+}
+
 if __name__ == '__main__':
   sys.path = EXTRA_PATHS + sys.path
-  script_path = os.path.join(DIR_PATH, DEV_APPSERVER_PATH)
+  script_name = os.path.basename(__file__)
+  script_name = SCRIPT_EXCEPTIONS.get(script_name, script_name)
+  script_path = os.path.join(SCRIPT_DIR, script_name)
   execfile(script_path, globals())

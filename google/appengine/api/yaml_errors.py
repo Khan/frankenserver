@@ -68,7 +68,7 @@ class EventListenerError(Error):
 
   def __init__(self, cause):
     """Initialize event-listener error."""
-    if hasattr(cause, 'args'):
+    if hasattr(cause, 'args') and cause.args:
       Error.__init__(self, *cause.args)
     else:
       Error.__init__(self, str(cause))

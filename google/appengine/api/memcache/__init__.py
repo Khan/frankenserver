@@ -74,6 +74,7 @@ TYPE_UNICODE = 1
 TYPE_PICKLED = 2
 TYPE_INT = 3
 TYPE_LONG = 4
+TYPE_BOOL = 5
 
 
 def _key_string(key, key_prefix='', server_to_user_dict=None):
@@ -156,6 +157,9 @@ def _validate_encode_value(value, do_pickle):
   elif isinstance(value, unicode):
     stored_value = value.encode('utf-8')
     flags |= TYPE_UNICODE
+  elif isinstance(value, bool):
+    stored_value = str(int(value))
+    flags |= TYPE_BOOL
   elif isinstance(value, int):
     stored_value = str(value)
     flags |= TYPE_INT
@@ -204,6 +208,8 @@ def _decode_value(stored_value, flags, do_unpickle):
     return value.decode('utf-8')
   elif type_number == TYPE_PICKLED:
     return do_unpickle(value)
+  elif type_number == TYPE_BOOL:
+    return bool(int(value))
   elif type_number == TYPE_INT:
     return int(value)
   elif type_number == TYPE_LONG:

@@ -31,9 +31,10 @@ from google.appengine.datastore.entity_pb import Index
 from google.appengine.datastore.entity_pb import Property
 from google.appengine.datastore.entity_pb import Reference
 class Transaction(ProtocolBuffer.ProtocolMessage):
+  has_handle_ = 0
+  handle_ = 0
+
   def __init__(self, contents=None):
-    self.handle_ = 0
-    self.has_handle_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def handle(self): return self.handle_
@@ -137,10 +138,11 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
   def Operator_Name(cls, x): return cls._Operator_NAMES.get(x, "")
   Operator_Name = classmethod(Operator_Name)
 
+  has_op_ = 0
+  op_ = 0
+
   def __init__(self, contents=None):
-    self.op_ = 0
     self.property_ = []
-    self.has_op_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def op(self): return self.op_
@@ -198,8 +200,8 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: op not set.')
-    for i in xrange(len(self.property_)):
-      if (not self.property_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.property_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -264,11 +266,12 @@ class Query_Order(ProtocolBuffer.ProtocolMessage):
   def Direction_Name(cls, x): return cls._Direction_NAMES.get(x, "")
   Direction_Name = classmethod(Direction_Name)
 
+  has_property_ = 0
+  property_ = ""
+  has_direction_ = 0
+  direction_ = 1
+
   def __init__(self, contents=None):
-    self.property_ = ""
-    self.direction_ = 1
-    self.has_property_ = 0
-    self.has_direction_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def property(self): return self.property_
@@ -375,26 +378,27 @@ class Query(ProtocolBuffer.ProtocolMessage):
   def Plan_Name(cls, x): return cls._Plan_NAMES.get(x, "")
   Plan_Name = classmethod(Plan_Name)
 
+  has_app_ = 0
+  app_ = ""
+  has_kind_ = 0
+  kind_ = ""
+  has_ancestor_ = 0
+  ancestor_ = None
+  has_search_query_ = 0
+  search_query_ = ""
+  has_hint_ = 0
+  hint_ = 0
+  has_offset_ = 0
+  offset_ = 0
+  has_limit_ = 0
+  limit_ = 0
+  has_require_perfect_plan_ = 0
+  require_perfect_plan_ = 0
+
   def __init__(self, contents=None):
-    self.app_ = ""
-    self.kind_ = ""
-    self.ancestor_ = None
     self.filter_ = []
-    self.search_query_ = ""
     self.order_ = []
-    self.hint_ = 0
-    self.offset_ = 0
-    self.limit_ = 0
     self.composite_index_ = []
-    self.require_perfect_plan_ = 0
-    self.has_app_ = 0
-    self.has_kind_ = 0
-    self.has_ancestor_ = 0
-    self.has_search_query_ = 0
-    self.has_hint_ = 0
-    self.has_offset_ = 0
-    self.has_limit_ = 0
-    self.has_require_perfect_plan_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -604,12 +608,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if debug_strs is not None:
         debug_strs.append('Required field: app not set.')
     if (self.has_ancestor_ and not self.ancestor_.IsInitialized(debug_strs)): initialized = 0
-    for i in xrange(len(self.filter_)):
-      if (not self.filter_[i].IsInitialized(debug_strs)): initialized=0
-    for i in xrange(len(self.order_)):
-      if (not self.order_[i].IsInitialized(debug_strs)): initialized=0
-    for i in xrange(len(self.composite_index_)):
-      if (not self.composite_index_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.filter_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.order_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.composite_index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -853,14 +857,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class QueryExplanation(ProtocolBuffer.ProtocolMessage):
+  has_native_ancestor_ = 0
+  native_ancestor_ = 0
+  has_native_offset_ = 0
+  native_offset_ = 0
+  has_native_limit_ = 0
+  native_limit_ = 0
+
   def __init__(self, contents=None):
-    self.native_ancestor_ = 0
     self.native_index_ = []
-    self.native_offset_ = 0
-    self.native_limit_ = 0
-    self.has_native_ancestor_ = 0
-    self.has_native_offset_ = 0
-    self.has_native_limit_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def native_ancestor(self): return self.native_ancestor_
@@ -944,8 +949,8 @@ class QueryExplanation(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.native_index_)):
-      if (not self.native_index_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.native_index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1043,9 +1048,10 @@ class QueryExplanation(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Cursor(ProtocolBuffer.ProtocolMessage):
+  has_cursor_ = 0
+  cursor_ = 0
+
   def __init__(self, contents=None):
-    self.cursor_ = 0
-    self.has_cursor_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def cursor(self): return self.cursor_
@@ -1145,6 +1151,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
   ErrorCode_Name = classmethod(ErrorCode_Name)
 
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -1200,10 +1207,11 @@ class Error(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class GetRequest(ProtocolBuffer.ProtocolMessage):
+  has_transaction_ = 0
+  transaction_ = None
+
   def __init__(self, contents=None):
     self.key_ = []
-    self.transaction_ = None
-    self.has_transaction_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1263,8 +1271,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.key_)):
-      if (not self.key_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.key_:
+      if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
@@ -1344,9 +1352,10 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
+  has_entity_ = 0
+  entity_ = None
+
   def __init__(self, contents=None):
-    self.entity_ = None
-    self.has_entity_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1426,6 +1435,7 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
     return res
 
 class GetResponse(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.entity_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -1466,8 +1476,8 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.entity_)):
-      if (not self.entity_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.entity_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1527,11 +1537,12 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class PutRequest(ProtocolBuffer.ProtocolMessage):
+  has_transaction_ = 0
+  transaction_ = None
+
   def __init__(self, contents=None):
     self.entity_ = []
-    self.transaction_ = None
     self.composite_index_ = []
-    self.has_transaction_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1611,11 +1622,11 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.entity_)):
-      if (not self.entity_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.entity_:
+      if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
-    for i in xrange(len(self.composite_index_)):
-      if (not self.composite_index_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.composite_index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1719,6 +1730,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class PutResponse(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.key_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -1759,8 +1771,8 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.key_)):
-      if (not self.key_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.key_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1819,10 +1831,11 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class DeleteRequest(ProtocolBuffer.ProtocolMessage):
+  has_transaction_ = 0
+  transaction_ = None
+
   def __init__(self, contents=None):
     self.key_ = []
-    self.transaction_ = None
-    self.has_transaction_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1882,8 +1895,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.key_)):
-      if (not self.key_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.key_:
+      if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
@@ -1975,11 +1988,12 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class NextRequest(ProtocolBuffer.ProtocolMessage):
+  has_cursor_ = 0
+  has_count_ = 0
+  count_ = 1
+
   def __init__(self, contents=None):
     self.cursor_ = Cursor()
-    self.count_ = 1
-    self.has_cursor_ = 0
-    self.has_count_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def cursor(self): return self.cursor_
@@ -2094,12 +2108,13 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class QueryResult(ProtocolBuffer.ProtocolMessage):
+  has_cursor_ = 0
+  cursor_ = None
+  has_more_results_ = 0
+  more_results_ = 0
+
   def __init__(self, contents=None):
-    self.cursor_ = None
     self.result_ = []
-    self.more_results_ = 0
-    self.has_cursor_ = 0
-    self.has_more_results_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -2175,8 +2190,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_cursor_ and not self.cursor_.IsInitialized(debug_strs)): initialized = 0
-    for i in xrange(len(self.result_)):
-      if (not self.result_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.result_:
+      if not p.IsInitialized(debug_strs): initialized=0
     if (not self.has_more_results_):
       initialized = 0
       if debug_strs is not None:
@@ -2270,6 +2285,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Schema(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.kind_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -2310,8 +2326,8 @@ class Schema(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.kind_)):
-      if (not self.kind_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.kind_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -2370,6 +2386,7 @@ class Schema(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class CompositeIndices(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.index_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -2410,8 +2427,8 @@ class CompositeIndices(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.index_)):
-      if (not self.index_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):

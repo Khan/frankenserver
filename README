@@ -71,11 +71,15 @@ Options:
                              (Default '')
   --enable_sendmail          Enable sendmail when SMTP not configured.
                              (Default false)
+  --show_mail_body           Log the body of emails in mail stub.
+                             (Default false)
   --auth_domain              Authorization domain that this app runs in.
                              (Default gmail.com)
   --debug_imports            Enables debug logging for module imports, showing
                              search paths used for finding modules and any
                              errors encountered during the import process.
+  --disable_static_caching   Never allow the browser to cache static files.
+                             (Default enable if expiration set in app.yaml)
 
 
 

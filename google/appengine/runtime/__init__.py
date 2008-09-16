@@ -14,3 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+"""Define the DeadlineExceededError exception."""
+
+
+
+try:
+  BaseException
+except NameError:
+  BaseException = Exception
+
+
+class DeadlineExceededError(BaseException):
+  """Exception raised when the request reaches its overall time limit.
+
+  Not to be confused with runtime.apiproxy_errors.DeadlineExceededError.
+  That one is raised when individual API calls take too long.
+  """

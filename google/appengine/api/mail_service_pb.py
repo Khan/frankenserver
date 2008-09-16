@@ -42,6 +42,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
   ErrorCode_Name = classmethod(ErrorCode_Name)
 
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -97,11 +98,12 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MailAttachment(ProtocolBuffer.ProtocolMessage):
+  has_filename_ = 0
+  filename_ = ""
+  has_data_ = 0
+  data_ = ""
+
   def __init__(self, contents=None):
-    self.filename_ = ""
-    self.data_ = ""
-    self.has_filename_ = 0
-    self.has_data_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def filename(self): return self.filename_
@@ -215,21 +217,22 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MailMessage(ProtocolBuffer.ProtocolMessage):
+  has_sender_ = 0
+  sender_ = ""
+  has_replyto_ = 0
+  replyto_ = ""
+  has_subject_ = 0
+  subject_ = ""
+  has_textbody_ = 0
+  textbody_ = ""
+  has_htmlbody_ = 0
+  htmlbody_ = ""
+
   def __init__(self, contents=None):
-    self.sender_ = ""
-    self.replyto_ = ""
     self.to_ = []
     self.cc_ = []
     self.bcc_ = []
-    self.subject_ = ""
-    self.textbody_ = ""
-    self.htmlbody_ = ""
     self.attachment_ = []
-    self.has_sender_ = 0
-    self.has_replyto_ = 0
-    self.has_subject_ = 0
-    self.has_textbody_ = 0
-    self.has_htmlbody_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def sender(self): return self.sender_
@@ -408,8 +411,8 @@ class MailMessage(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: subject not set.')
-    for i in xrange(len(self.attachment_)):
-      if (not self.attachment_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.attachment_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):

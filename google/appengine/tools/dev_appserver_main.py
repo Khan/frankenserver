@@ -54,18 +54,17 @@ Options:
   --debug_imports            Enables debug logging for module imports, showing
                              search paths used for finding modules and any
                              errors encountered during the import process.
+  --disable_static_caching   Never allow the browser to cache static files.
+                             (Default enable if expiration set in app.yaml)
 """
 
 
 
-import os
-os.environ['TZ'] = 'UTC'
-import time
-if hasattr(time, 'tzset'):
-  time.tzset()
+from google.appengine.tools import os_compat
 
 import getopt
 import logging
+import os
 import sys
 import traceback
 import tempfile
@@ -95,6 +94,7 @@ ARG_SMTP_HOST = 'smtp_host'
 ARG_SMTP_PASSWORD = 'smtp_password'
 ARG_SMTP_PORT = 'smtp_port'
 ARG_SMTP_USER = 'smtp_user'
+ARG_STATIC_CACHING = 'static_caching'
 ARG_TEMPLATE_DIR = 'template_dir'
 
 
@@ -122,6 +122,7 @@ DEFAULT_ARGS = {
   ARG_ADDRESS: 'localhost',
   ARG_ADMIN_CONSOLE_SERVER: DEFAULT_ADMIN_CONSOLE_SERVER,
   ARG_ADMIN_CONSOLE_HOST: None,
+  ARG_STATIC_CACHING: True,
 }
 
 
@@ -167,6 +168,7 @@ def ParseArguments(argv):
         'debug',
         'debug_imports',
         'enable_sendmail',
+        'disable_static_caching',
         'show_mail_body',
         'help',
         'history_path=',
@@ -252,6 +254,9 @@ def ParseArguments(argv):
     if option == '--admin_console_host':
       option_dict[ARG_ADMIN_CONSOLE_HOST] = value
 
+    if option == '--disable_static_caching':
+      option_dict[ARG_STATIC_CACHING] = False
+
   return args, option_dict
 
 
@@ -290,6 +295,7 @@ def main(argv):
   template_dir = option_dict[ARG_TEMPLATE_DIR]
   serve_address = option_dict[ARG_ADDRESS]
   require_indexes = option_dict[ARG_REQUIRE_INDEXES]
+  static_caching = option_dict[ARG_STATIC_CACHING]
 
   logging.basicConfig(
     level=log_level,
@@ -327,7 +333,8 @@ def main(argv):
                                            port,
                                            template_dir,
                                            serve_address=serve_address,
-                                           require_indexes=require_indexes)
+                                           require_indexes=require_indexes,
+                                           static_caching=static_caching)
 
   logging.info('Running application %s on port %d: http://%s:%d',
                config.application, port, serve_address, port)

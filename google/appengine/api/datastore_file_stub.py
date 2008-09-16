@@ -43,7 +43,6 @@ import struct
 import sys
 import tempfile
 import threading
-import types
 import warnings
 
 from google.appengine.api import api_base_pb
@@ -89,7 +88,7 @@ class DatastoreFileStub(object):
           exist in index.yaml for queries that need them.
     """
 
-    assert isinstance(app_id, types.StringTypes) and app_id != ''
+    assert isinstance(app_id, basestring) and app_id != ''
     self.__app_id = app_id
     self.__datastore_file = datastore_file
     self.__history_file = history_file
@@ -265,16 +264,6 @@ class DatastoreFileStub(object):
 
     assert response.IsInitialized(explanation), explanation
 
-  def ResolveAppId(self, app):
-    """ If the given app name is the placeholder for the local app, returns
-    our app_id. Otherwise returns the app name unchanged.
-    """
-    assert app != ''
-    if app == datastore._LOCAL_APP_ID:
-      return self.__app_id
-    else:
-      return app
-
   def QueryHistory(self):
     """Returns a dict that maps Query PBs to times they've been run.
     """
@@ -291,9 +280,7 @@ class DatastoreFileStub(object):
       assert clone.has_key()
       assert clone.key().path().element_size() > 0
 
-      app = self.ResolveAppId(clone.key().app())
-      clone.mutable_key().set_app(app)
-
+      app = clone.key().app()
       last_path = clone.key().path().element_list()[-1]
       if last_path.id() == 0 and not last_path.has_name():
         self.__id_lock.acquire()
@@ -328,8 +315,7 @@ class DatastoreFileStub(object):
 
   def _Dynamic_Get(self, get_request, get_response):
     for key in get_request.key_list():
-        app = self.ResolveAppId(key.app())
-        key.set_app(app)
+        app = key.app()
         last_path = key.path().element_list()[-1]
 
         group = get_response.add_entity()
@@ -347,8 +333,7 @@ class DatastoreFileStub(object):
     try:
       for key in delete_request.key_list():
         try:
-          app = self.ResolveAppId(key.app())
-          key.set_app(app)
+          app = key.app()
           kind = key.path().element_list()[-1].type()
           del self.__entities[app, kind][key]
           if not self.__entities[app, kind]:
@@ -369,7 +354,7 @@ class DatastoreFileStub(object):
     else:
       self.__tx_lock.release()
 
-    app = self.ResolveAppId(query.app())
+    app = query.app()
 
     if self.__require_indexes:
       required_index = datastore_index.CompositeIndexForQuery(query)
@@ -432,7 +417,7 @@ class DatastoreFileStub(object):
       def passes(entity):
         """ Returns True if the entity passes the filter, False otherwise. """
         entity_vals = entity.get(prop, [])
-        if type(entity_vals) is not types.ListType:
+        if not isinstance(entity_vals, list):
           entity_vals = [entity_vals]
 
         entity_property_list = [datastore_types.ToPropertyPb(prop, value)
@@ -441,7 +426,7 @@ class DatastoreFileStub(object):
         for entity_prop in entity_property_list:
           fixed_entity_val = datastore_types.FromPropertyPb(entity_prop)
 
-          if isinstance(fixed_entity_val, datastore_types._RAW_PROPERTY_TYPES):
+          if type(fixed_entity_val) in datastore_types._RAW_PROPERTY_TYPES:
             continue
 
           for filter_prop in filt.property_list():
@@ -470,7 +455,7 @@ class DatastoreFileStub(object):
         values = [values]
 
       for value in values:
-        if not isinstance(value, datastore_types._RAW_PROPERTY_TYPES):
+        if type(value) not in datastore_types._RAW_PROPERTY_TYPES:
           return True
       return False
 
@@ -610,7 +595,7 @@ class DatastoreFileStub(object):
   def _Dynamic_GetSchema(self, app_str, schema):
     minint = -sys.maxint - 1
 
-    app_str = self.ResolveAppId(app_str.value())
+    app_str = app_str.value()
 
     kinds = []
 
@@ -674,7 +659,7 @@ class DatastoreFileStub(object):
 
     clone = entity_pb.CompositeIndex()
     clone.CopyFrom(index)
-    app = self.ResolveAppId(index.app_id())
+    app = index.app_id()
     clone.set_app_id(app)
 
     self.__indexes_lock.acquire()
@@ -687,7 +672,7 @@ class DatastoreFileStub(object):
 
   def _Dynamic_GetIndices(self, app_str, composite_indices):
     composite_indices.index_list().extend(
-      self.__indexes.get(self.ResolveAppId(app_str.value()), []))
+      self.__indexes.get(app_str.value(), []))
 
   def _Dynamic_UpdateIndex(self, index, void):
     stored_index = self.__FindIndex(index)
@@ -713,7 +698,7 @@ class DatastoreFileStub(object):
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                              "Index doesn't exist.")
 
-    app = self.ResolveAppId(index.app_id())
+    app = index.app_id()
     self.__indexes_lock.acquire()
     try:
       self.__indexes[app].remove(stored_index)
@@ -729,8 +714,7 @@ class DatastoreFileStub(object):
     Returns:
       entity_pb.CompositeIndex, if it exists; otherwise None
     """
-    app = self.ResolveAppId(index.app_id())
-
+    app = index.app_id()
     if app in self.__indexes:
       for stored_index in self.__indexes[app]:
         if index.definition() == stored_index.definition():

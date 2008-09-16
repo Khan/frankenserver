@@ -36,6 +36,7 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
   ErrorCode_Name = classmethod(ErrorCode_Name)
 
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -91,6 +92,7 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.key_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -182,13 +184,14 @@ class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
+  has_key_ = 0
+  key_ = ""
+  has_value_ = 0
+  value_ = ""
+  has_flags_ = 0
+  flags_ = 0
+
   def __init__(self, contents=None):
-    self.key_ = ""
-    self.value_ = ""
-    self.flags_ = 0
-    self.has_key_ = 0
-    self.has_value_ = 0
-    self.has_flags_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def key(self): return self.key_
@@ -308,6 +311,7 @@ class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
     return res
 
 class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.item_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -348,8 +352,8 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.item_)):
-      if (not self.item_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.item_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -417,17 +421,18 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
+  has_key_ = 0
+  key_ = ""
+  has_value_ = 0
+  value_ = ""
+  has_flags_ = 0
+  flags_ = 0
+  has_set_policy_ = 0
+  set_policy_ = 1
+  has_expiration_time_ = 0
+  expiration_time_ = 0
+
   def __init__(self, contents=None):
-    self.key_ = ""
-    self.value_ = ""
-    self.flags_ = 0
-    self.set_policy_ = 1
-    self.expiration_time_ = 0
-    self.has_key_ = 0
-    self.has_value_ = 0
-    self.has_flags_ = 0
-    self.has_set_policy_ = 0
-    self.has_expiration_time_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def key(self): return self.key_
@@ -609,6 +614,7 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
   def SetPolicy_Name(cls, x): return cls._SetPolicy_NAMES.get(x, "")
   SetPolicy_Name = classmethod(SetPolicy_Name)
 
+
   def __init__(self, contents=None):
     self.item_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -649,8 +655,8 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.item_)):
-      if (not self.item_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.item_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -739,6 +745,7 @@ class MemcacheSetResponse(ProtocolBuffer.ProtocolMessage):
 
   def SetStatusCode_Name(cls, x): return cls._SetStatusCode_NAMES.get(x, "")
   SetStatusCode_Name = classmethod(SetStatusCode_Name)
+
 
   def __init__(self, contents=None):
     self.set_status_ = []
@@ -831,11 +838,12 @@ class MemcacheSetResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheDeleteRequest_Item(ProtocolBuffer.ProtocolMessage):
+  has_key_ = 0
+  key_ = ""
+  has_delete_time_ = 0
+  delete_time_ = 0
+
   def __init__(self, contents=None):
-    self.key_ = ""
-    self.delete_time_ = 0
-    self.has_key_ = 0
-    self.has_delete_time_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def key(self): return self.key_
@@ -928,6 +936,7 @@ class MemcacheDeleteRequest_Item(ProtocolBuffer.ProtocolMessage):
     return res
 
 class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     self.item_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -968,8 +977,8 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    for i in xrange(len(self.item_)):
-      if (not self.item_[i].IsInitialized(debug_strs)): initialized=0
+    for p in self.item_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1044,6 +1053,7 @@ class MemcacheDeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   def DeleteStatusCode_Name(cls, x): return cls._DeleteStatusCode_NAMES.get(x, "")
   DeleteStatusCode_Name = classmethod(DeleteStatusCode_Name)
+
 
   def __init__(self, contents=None):
     self.delete_status_ = []
@@ -1148,13 +1158,14 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   def Direction_Name(cls, x): return cls._Direction_NAMES.get(x, "")
   Direction_Name = classmethod(Direction_Name)
 
+  has_key_ = 0
+  key_ = ""
+  has_delta_ = 0
+  delta_ = 1
+  has_direction_ = 0
+  direction_ = 1
+
   def __init__(self, contents=None):
-    self.key_ = ""
-    self.delta_ = 1
-    self.direction_ = 1
-    self.has_key_ = 0
-    self.has_delta_ = 0
-    self.has_direction_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def key(self): return self.key_
@@ -1293,9 +1304,10 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheIncrementResponse(ProtocolBuffer.ProtocolMessage):
+  has_new_value_ = 0
+  new_value_ = 0
+
   def __init__(self, contents=None):
-    self.new_value_ = 0
-    self.has_new_value_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def new_value(self): return self.new_value_
@@ -1375,6 +1387,7 @@ class MemcacheIncrementResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheFlushRequest(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -1430,6 +1443,7 @@ class MemcacheFlushRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheFlushResponse(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -1485,6 +1499,7 @@ class MemcacheFlushResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheStatsRequest(ProtocolBuffer.ProtocolMessage):
+
   def __init__(self, contents=None):
     pass
     if contents is not None: self.MergeFromString(contents)
@@ -1540,19 +1555,20 @@ class MemcacheStatsRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
+  has_hits_ = 0
+  hits_ = 0
+  has_misses_ = 0
+  misses_ = 0
+  has_byte_hits_ = 0
+  byte_hits_ = 0
+  has_items_ = 0
+  items_ = 0
+  has_bytes_ = 0
+  bytes_ = 0
+  has_oldest_item_age_ = 0
+  oldest_item_age_ = 0
+
   def __init__(self, contents=None):
-    self.hits_ = 0
-    self.misses_ = 0
-    self.byte_hits_ = 0
-    self.items_ = 0
-    self.bytes_ = 0
-    self.oldest_item_age_ = 0
-    self.has_hits_ = 0
-    self.has_misses_ = 0
-    self.has_byte_hits_ = 0
-    self.has_items_ = 0
-    self.has_bytes_ = 0
-    self.has_oldest_item_age_ = 0
     if contents is not None: self.MergeFromString(contents)
 
   def hits(self): return self.hits_
@@ -1789,9 +1805,10 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheStatsResponse(ProtocolBuffer.ProtocolMessage):
+  has_stats_ = 0
+  stats_ = None
+
   def __init__(self, contents=None):
-    self.stats_ = None
-    self.has_stats_ = 0
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 

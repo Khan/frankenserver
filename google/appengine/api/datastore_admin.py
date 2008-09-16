@@ -30,8 +30,6 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.datastore import entity_pb
 
-_LOCAL_APP_ID = datastore_types._LOCAL_APP_ID
-
 
 _DIRECTION_MAP = {
     'asc':        entity_pb.Index_Property.ASCENDING,
@@ -41,7 +39,7 @@ _DIRECTION_MAP = {
     }
 
 
-def GetSchema(_app=_LOCAL_APP_ID):
+def GetSchema(_app=None):
   """Infers an app's schema from the entities in the datastore.
 
   Note that the PropertyValue PBs in the returned EntityProtos are empty
@@ -54,21 +52,21 @@ def GetSchema(_app=_LOCAL_APP_ID):
     list of entity_pb.EntityProto, with kind and property names and types
   """
   req = api_base_pb.StringProto()
-  req.set_value(_app)
+  req.set_value(datastore_types.ResolveAppId(_app))
   resp = datastore_pb.Schema()
 
   _Call('GetSchema', req, resp)
   return resp.kind_list()
 
 
-def GetIndices(_app=_LOCAL_APP_ID):
+def GetIndices(_app=None):
   """Fetches all composite indices in the datastore for this app.
 
   Returns:
     list of entity_pb.CompositeIndex
   """
   req = api_base_pb.StringProto()
-  req.set_value(_app)
+  req.set_value(datastore_types.ResolveAppId(_app))
   resp = datastore_pb.CompositeIndices()
   try:
     apiproxy_stub_map.MakeSyncCall('datastore_v3', 'GetIndices', req, resp)
@@ -119,8 +117,8 @@ def _Call(call, req, resp):
       local app.
     resp: the response PB
   """
-  if hasattr(req, 'app_id') and not req.app_id():
-    req.set_app_id(_LOCAL_APP_ID)
+  if hasattr(req, 'app_id'):
+    req.set_app_id(datastore_types.ResolveAppId(req.app_id(), 'req.app_id()'))
 
   try:
     apiproxy_stub_map.MakeSyncCall('datastore_v3', call, req, resp)

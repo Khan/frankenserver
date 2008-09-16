@@ -31,11 +31,7 @@ Example:
 """
 
 
-import os
-os.environ['TZ'] = 'UTC'
-import time
-if hasattr(time, 'tzset'):
-  time.tzset()
+from google.appengine.tools import os_compat
 
 import __builtin__
 import BaseHTTPServer
@@ -44,6 +40,7 @@ import cStringIO
 import cgi
 import cgitb
 import dummy_thread
+import email.Utils
 import errno
 import httplib
 import imp
@@ -52,6 +49,7 @@ import itertools
 import logging
 import mimetools
 import mimetypes
+import os
 import pickle
 import pprint
 import random
@@ -64,10 +62,11 @@ import sre_parse
 import mimetypes
 import socket
 import sys
-import urlparse
-import urllib
+import time
 import traceback
 import types
+import urlparse
+import urllib
 
 import google
 from google.pyglib import gexcept
@@ -1142,6 +1141,9 @@ class HardenedModulesHook(object):
           of packages, this will be None, which implies to look at __init__.py.
         pathname: String containing the full path of the module on disk.
         description: Tuple returned by imp.find_module().
+      However, in the case of an import using a path hook (e.g. a zipfile),
+      source_file will be a PEP-302-style loader object, pathname will be None,
+      and description will be a tuple filled with None values.
 
     Raises:
       ImportError exception if the requested module was found, but importing
@@ -1150,9 +1152,17 @@ class HardenedModulesHook(object):
       CouldNotFindModuleError exception if the request module could not even
       be found for import.
     """
-    try:
-      source_file, pathname, description = self._imp.find_module(submodule, search_path)
-    except ImportError:
+    if search_path is None:
+      search_path = [None] + sys.path
+    for path_entry in search_path:
+      result = self.FindPathHook(submodule, submodule_fullname, path_entry)
+      if result is not None:
+        source_file, pathname, description = result
+        if description == (None, None, None):
+          return result
+        else:
+          break
+    else:
       self.log('Could not find module "%s"', submodule_fullname)
       raise CouldNotFindModuleError()
 
@@ -1173,6 +1183,57 @@ class HardenedModulesHook(object):
 
     return source_file, pathname, description
 
+  def FindPathHook(self, submodule, submodule_fullname, path_entry):
+    """Helper for FindModuleRestricted to find a module in a sys.path entry.
+
+    Args:
+      submodule:
+      submodule_fullname:
+      path_entry: A single sys.path entry, or None representing the builtins.
+
+    Returns:
+      Either None (if nothing was found), or a triple (source_file, path_name,
+      description).  See the doc string for FindModuleRestricted() for the
+      meaning of the latter.
+    """
+    if path_entry is None:
+      if submodule_fullname in sys.builtin_module_names:
+        try:
+          result = self._imp.find_module(submodule)
+        except ImportError:
+          pass
+        else:
+          source_file, pathname, description = result
+          suffix, mode, file_type = description
+          if file_type == self._imp.C_BUILTIN:
+            return result
+      return None
+
+
+    if path_entry in sys.path_importer_cache:
+      importer = sys.path_importer_cache[path_entry]
+    else:
+      importer = None
+      for hook in sys.path_hooks:
+        try:
+          importer = hook(path_entry)
+          break
+        except ImportError:
+          pass
+      sys.path_importer_cache[path_entry] = importer
+
+    if importer is None:
+      try:
+        return self._imp.find_module(submodule, [path_entry])
+      except ImportError:
+        pass
+    else:
+      loader = importer.find_module(submodule)
+      if loader is not None:
+        return (loader, None, (None, None, None))
+
+    return None
+
   @Trace
   def LoadModuleRestricted(self,
                            submodule_fullname,
@@ -1186,9 +1247,11 @@ class HardenedModulesHook(object):
     Args:
       submodule_fullname: The fully qualified name of the module to find (e.g.,
         'foo.bar').
-      source_file: File-like object that contains the module's source code.
+      source_file: File-like object that contains the module's source code,
+        or a PEP-302-style loader object.
       pathname: String containing the full path of the module on disk.
-      description: Tuple returned by imp.find_module().
+      description: Tuple returned by imp.find_module(), or (None, None, None)
+        in case source_file is a PEP-302-style loader object.
 
     Returns:
       The new module.
@@ -1197,6 +1260,9 @@ class HardenedModulesHook(object):
       ImportError exception of the specified module could not be loaded for
       whatever reason.
     """
+    if description == (None, None, None):
+      return source_file.load_module(submodule_fullname)
+
     try:
       try:
         return self._imp.load_module(submodule_fullname,
@@ -1317,7 +1383,8 @@ class HardenedModulesHook(object):
 
     Returns:
       Tuple (pathname, search_path, submodule) where:
-        pathname: String containing the full path of the module on disk.
+        pathname: String containing the full path of the module on disk,
+          or None if the module wasn't loaded from disk (e.g. from a zipfile).
         search_path: List of paths that belong to the found package's search
           path or None if found module is not a package.
         submodule: The relative name of the submodule that's being imported.
@@ -1359,6 +1426,8 @@ class HardenedModulesHook(object):
   def get_source(self, fullname):
     """See PEP 302 extensions."""
     full_path, search_path, submodule = self.GetModuleInfo(fullname)
+    if full_path is None:
+      return None
     source_file = open(full_path)
     try:
       return source_file.read()
@@ -1369,6 +1438,8 @@ class HardenedModulesHook(object):
   def get_code(self, fullname):
     """See PEP 302 extensions."""
     full_path, search_path, submodule = self.GetModuleInfo(fullname)
+    if full_path is None:
+      return None
     source_file = open(full_path)
     try:
       source_code = source_file.read()
@@ -1513,7 +1584,7 @@ def LoadTargetModule(handler_path,
       if exc_value:
         import_error_message += ': ' + str(exc_value)
 
-      logging.error('Encountered error loading module "%s": %s',
+      logging.exception('Encountered error loading module "%s": %s',
                     module_fullname, import_error_message)
       missing_inits = FindMissingInitFiles(cgi_path, module_fullname)
       if missing_inits:
@@ -1662,7 +1733,12 @@ def ExecuteCGI(root_path,
     os.environ.clear()
     os.environ.update(env)
     before_path = sys.path[:]
-    os.chdir(os.path.dirname(cgi_path))
+    cgi_dir = os.path.normpath(os.path.dirname(cgi_path))
+    root_path = os.path.normpath(os.path.abspath(root_path))
+    if cgi_dir.startswith(root_path + os.sep):
+      os.chdir(cgi_dir)
+    else:
+      os.chdir(root_path)
 
     hook = HardenedModulesHook(sys.modules)
     sys.meta_path = [hook]
@@ -1848,8 +1924,12 @@ class PathAdjuster(object):
     return path
 
 
-class StaticFileMimeTypeMatcher(object):
-  """Computes mime type based on URLMap and file extension.
+class StaticFileConfigMatcher(object):
+  """Keeps track of file/directory specific application configuration.
+
+  Specifically:
+  - Computes mime type based on URLMap and file extension.
+  - Decides on cache expiration time based on URLMap and default expiration.
 
   To determine the mime type, we first see if there is any mime-type property
   on each URLMap entry. If non is specified, we use the mimetypes module to
@@ -1859,7 +1939,8 @@ class StaticFileMimeTypeMatcher(object):
 
   def __init__(self,
                url_map_list,
-               path_adjuster):
+               path_adjuster,
+               default_expiration):
     """Initializer.
 
     Args:
@@ -1867,13 +1948,19 @@ class StaticFileMimeTypeMatcher(object):
         If empty or None, then we always use the mime type chosen by the
         mimetypes module.
       path_adjuster: PathAdjuster object used to adjust application file paths.
+      default_expiration: String describing default expiration time for browser
+        based caching of static files.  If set to None this disallows any
+        browser caching of static content.
     """
+    if default_expiration is not None:
+      self._default_expiration = appinfo.ParseExpiration(default_expiration)
+    else:
+      self._default_expiration = None
+
     self._patterns = []
 
     if url_map_list:
       for entry in url_map_list:
-        if entry.mime_type is None:
-          continue
         handler_type = entry.GetHandlerType()
         if handler_type not in (appinfo.STATIC_FILES, appinfo.STATIC_DIR):
           continue
@@ -1892,7 +1979,14 @@ class StaticFileMimeTypeMatcher(object):
         except re.error, e:
           raise InvalidAppConfigError('regex does not compile: %s' % e)
 
-        self._patterns.append((path_re, entry.mime_type))
+        if self._default_expiration is None:
+          expiration = 0
+        elif entry.expiration is None:
+          expiration = self._default_expiration
+        else:
+          expiration = appinfo.ParseExpiration(entry.expiration)
+
+        self._patterns.append((path_re, entry.mime_type, expiration))
 
   def GetMimeType(self, path):
     """Returns the mime type that we should use when serving the specified file.
@@ -1904,13 +1998,31 @@ class StaticFileMimeTypeMatcher(object):
       String containing the mime type to use. Will be 'application/octet-stream'
       if we have no idea what it should be.
     """
-    for (path_re, mime_type) in self._patterns:
-      the_match = path_re.match(path)
-      if the_match:
-        return mime_type
+    for (path_re, mime_type, expiration) in self._patterns:
+      if mime_type is not None:
+        the_match = path_re.match(path)
+        if the_match:
+          return mime_type
 
     filename, extension = os.path.splitext(path)
     return mimetypes.types_map.get(extension, 'application/octet-stream')
+
+  def GetExpiration(self, path):
+    """Returns the cache expiration duration to be users for the given file.
+
+    Args:
+      path: String containing the file's path on disk.
+
+    Returns:
+      Integer number of seconds to be used for browser cache expiration time.
+    """
+    for (path_re, mime_type, expiration) in self._patterns:
+      the_match = path_re.match(path)
+      if the_match:
+        return expiration
+
+    return self._default_expiration or 0
+
 
 
 def ReadDataFile(data_path, openfile=file):
@@ -1950,18 +2062,18 @@ class FileDispatcher(URLDispatcher):
 
   def __init__(self,
                path_adjuster,
-               static_file_mime_type_matcher,
+               static_file_config_matcher,
                read_data_file=ReadDataFile):
     """Initializer.
 
     Args:
       path_adjuster: Instance of PathAdjuster to use for finding absolute
         paths of data files on disk.
-      static_file_mime_type_matcher: StaticFileMimeTypeMatcher object.
+      static_file_config_matcher: StaticFileConfigMatcher object.
       read_data_file: Used for dependency injection.
     """
     self._path_adjuster = path_adjuster
-    self._static_file_mime_type_matcher = static_file_mime_type_matcher
+    self._static_file_config_matcher = static_file_config_matcher
     self._read_data_file = read_data_file
 
   def Dispatch(self,
@@ -1974,10 +2086,16 @@ class FileDispatcher(URLDispatcher):
     """Reads the file and returns the response status and data."""
     full_path = self._path_adjuster.AdjustPath(path)
     status, data = self._read_data_file(full_path)
-    content_type = self._static_file_mime_type_matcher.GetMimeType(full_path)
+    content_type = self._static_file_config_matcher.GetMimeType(full_path)
+    expiration = self._static_file_config_matcher.GetExpiration(full_path)
 
     outfile.write('Status: %d\r\n' % status)
     outfile.write('Content-type: %s\r\n' % content_type)
+    if expiration:
+      outfile.write('Expires: %s\r\n'
+                    % email.Utils.formatdate(time.time() + expiration,
+                                             usegmt=True))
+      outfile.write('Cache-Control: public, max-age=%i\r\n' % expiration)
     outfile.write('\r\n')
     outfile.write(data)
 
@@ -2065,7 +2183,7 @@ class ModuleManager(object):
     """
     self._modules = modules
     self._default_modules = self._modules.copy()
-
+    self._save_path_hooks = sys.path_hooks[:]
     self._modification_times = {}
 
   @staticmethod
@@ -2132,6 +2250,7 @@ class ModuleManager(object):
     """Clear modules so that when request is run they are reloaded."""
     self._modules.clear()
     self._modules.update(self._default_modules)
+    sys.path_hooks[:] = self._save_path_hooks
 
 
 def _ClearTemplateCache(module_dict=sys.modules):
@@ -2145,7 +2264,8 @@ def _ClearTemplateCache(module_dict=sys.modules):
     template_module.template_cache.clear()
 
 
-def CreateRequestHandler(root_path, login_url, require_indexes=False):
+def CreateRequestHandler(root_path, login_url, require_indexes=False,
+                         static_caching=True):
   """Creates a new BaseHTTPRequestHandler sub-class for use with the Python
   BaseHTTPServer module's HTTP server.
 
@@ -2158,6 +2278,7 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
     root_path: Path to the root of the application running on the server.
     login_url: Relative URL which should be used for handling user logins.
     require_indexes: True if index.yaml is read-only gospel; default False.
+    static_caching: True if browser caching of static files should be allowed.
 
   Returns:
     Sub-class of BaseHTTPRequestHandler.
@@ -2168,6 +2289,8 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
     index_yaml_updater = None
   else:
     index_yaml_updater = dev_appserver_index.IndexYamlUpdater(root_path)
+
+  application_config_cache = AppConfigCache()
 
   class DevAppServerRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     """Dispatches URLs using patterns from a URLMatcher, which is created by
@@ -2188,6 +2311,8 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
 
     module_dict = application_module_dict
     module_manager = ModuleManager(application_module_dict)
+
+    config_cache = application_config_cache
 
     def __init__(self, *args, **kwargs):
       """Initializer.
@@ -2255,7 +2380,9 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False):
         implicit_matcher = CreateImplicitMatcher(self.module_dict,
                                                  root_path,
                                                  login_url)
-        config, explicit_matcher = LoadAppConfig(root_path, self.module_dict)
+        config, explicit_matcher = LoadAppConfig(root_path, self.module_dict,
+                                                 cache=self.config_cache,
+                                                 static_caching=static_caching)
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
         env_dict['APPLICATION_ID'] = config.application
         dispatcher = MatcherDispatcher(login_url,
@@ -2353,10 +2480,12 @@ def ReadAppConfig(appinfo_path, parse_app_config=appinfo.LoadSingleAppInfo):
 def CreateURLMatcherFromMaps(root_path,
                              url_map_list,
                              module_dict,
+                             default_expiration,
                              create_url_matcher=URLMatcher,
                              create_cgi_dispatcher=CGIDispatcher,
                              create_file_dispatcher=FileDispatcher,
-                             create_path_adjuster=PathAdjuster):
+                             create_path_adjuster=PathAdjuster,
+                             normpath=os.path.normpath):
   """Creates a URLMatcher instance from URLMap.
 
   Creates all of the correct URLDispatcher instances to handle the various
@@ -2370,6 +2499,9 @@ def CreateURLMatcherFromMaps(root_path,
     module_dict: Dictionary in which application-loaded modules should be
       preserved between requests. This dictionary must be separate from the
       sys.modules dictionary.
+    default_expiration: String describing default expiration time for browser
+      based caching of static files.  If set to None this disallows any
+      browser caching of static content.
     create_url_matcher, create_cgi_dispatcher, create_file_dispatcher,
     create_path_adjuster: Used for dependency injection.
 
@@ -2380,7 +2512,7 @@ def CreateURLMatcherFromMaps(root_path,
   path_adjuster = create_path_adjuster(root_path)
   cgi_dispatcher = create_cgi_dispatcher(module_dict, root_path, path_adjuster)
   file_dispatcher = create_file_dispatcher(path_adjuster,
-      StaticFileMimeTypeMatcher(url_map_list, path_adjuster))
+      StaticFileConfigMatcher(url_map_list, path_adjuster, default_expiration))
 
   for url_map in url_map_list:
     admin_only = url_map.login == appinfo.LOGIN_ADMIN
@@ -2406,7 +2538,8 @@ def CreateURLMatcherFromMaps(root_path,
         backref = r'\\1'
       else:
         backref = r'\1'
-      path = os.path.normpath(path) + os.path.sep + backref
+      path = (normpath(path).replace('\\', '\\\\') +
+              os.path.sep + backref)
 
     url_matcher.AddURL(regex,
                        dispatcher,
@@ -2416,8 +2549,26 @@ def CreateURLMatcherFromMaps(root_path,
   return url_matcher
 
 
+class AppConfigCache(object):
+  """Cache used by LoadAppConfig.
+
+  If given to LoadAppConfig instances of this class are used to cache contents
+  of the app config (app.yaml or app.yml) and the Matcher created from it.
+
+  Code outside LoadAppConfig should treat instances of this class as opaque
+  objects and not access its members.
+  """
+
+  path = None
+  mtime = None
+  config = None
+  matcher = None
+
+
 def LoadAppConfig(root_path,
                   module_dict,
+                  cache=None,
+                  static_caching=True,
                   read_app_config=ReadAppConfig,
                   create_matcher=CreateURLMatcherFromMaps):
   """Creates a Matcher instance for an application configuration file.
@@ -2430,22 +2581,45 @@ def LoadAppConfig(root_path,
     module_dict: Dictionary in which application-loaded modules should be
       preserved between requests. This dictionary must be separate from the
       sys.modules dictionary.
-    read_url_map, create_matcher: Used for dependency injection.
+    cache: Instance of AppConfigCache or None.
+    static_caching: True if browser caching of static files should be allowed.
+    read_app_config, create_matcher: Used for dependency injection.
 
   Returns:
      tuple: (AppInfoExternal, URLMatcher)
   """
-
   for appinfo_path in [os.path.join(root_path, 'app.yaml'),
                        os.path.join(root_path, 'app.yml')]:
 
     if os.path.isfile(appinfo_path):
+      if cache is not None:
+        mtime = os.path.getmtime(appinfo_path)
+        if cache.path == appinfo_path and cache.mtime == mtime:
+          return (cache.config, cache.matcher)
+
+        cache.config = cache.matcher = cache.path = None
+        cache.mtime = mtime
+
       try:
         config = read_app_config(appinfo_path, appinfo.LoadSingleAppInfo)
 
+        if static_caching:
+          if config.default_expiration:
+            default_expiration = config.default_expiration
+          else:
+            default_expiration = '0'
+        else:
+          default_expiration = None
+
         matcher = create_matcher(root_path,
                                  config.handlers,
-                                 module_dict)
+                                 module_dict,
+                                 default_expiration)
+
+        if cache is not None:
+          cache.path = appinfo_path
+          cache.config = config
+          cache.matcher = matcher
 
         return (config, matcher)
       except gexcept.AbstractMethod:
@@ -2485,6 +2659,8 @@ def SetupStubs(app_id, **config):
   enable_sendmail = config.get('enable_sendmail', False)
   show_mail_body = config.get('show_mail_body', False)
   remove = config.get('remove', os.remove)
+
+  os.environ['APPLICATION_ID'] = app_id
 
   if clear_datastore:
     for path in (datastore_path, history_path):
@@ -2616,6 +2792,7 @@ def CreateServer(root_path,
                  template_dir,
                  serve_address='',
                  require_indexes=False,
+                 static_caching=True,
                  python_path_list=sys.path):
   """Creates an new HTTPServer for an application.
 
@@ -2628,6 +2805,7 @@ def CreateServer(root_path,
       are stored.
     serve_address: Address on which the server should serve.
     require_indexes: True if index.yaml is read-only gospel; default False.
+    static_caching: True if browser caching of static files should be allowed.
     python_path_list: Used for dependency injection.
 
   Returns:
@@ -2641,7 +2819,7 @@ def CreateServer(root_path,
                             template_dir])
 
   handler_class = CreateRequestHandler(absolute_root_path, login_url,
-                                       require_indexes)
+                                       require_indexes, static_caching)
 
   if absolute_root_path not in python_path_list:
     python_path_list.insert(0, absolute_root_path)

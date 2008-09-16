@@ -47,8 +47,6 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.datastore import entity_pb
 
-_LOCAL_APP_ID = datastore_types._LOCAL_APP_ID
-
 TRANSACTION_RETRIES = 3
 
 _MAX_INDEXED_PROPERTIES = 5000
@@ -141,6 +139,8 @@ def Put(entities):
   """
   entities, multiple = NormalizeAndTypeCheck(entities, Entity)
 
+  if multiple and not entities:
+    return []
 
   for entity in entities:
     if not entity.kind() or not entity.app():
@@ -204,6 +204,8 @@ def Get(keys):
   """
   keys, multiple = NormalizeAndTypeCheckKeys(keys)
 
+  if multiple and not keys:
+    return []
   req = datastore_pb.GetRequest()
   req.key_list().extend([key._Key__reference for key in keys])
   _MaybeSetupTransaction(req, keys)
@@ -243,8 +245,10 @@ def Delete(keys):
   Raises:
     TransactionFailedError, if the Put could not be committed.
   """
-  keys, _ = NormalizeAndTypeCheckKeys(keys)
+  keys, multiple = NormalizeAndTypeCheckKeys(keys)
 
+  if multiple and not keys:
+    return
 
   req = datastore_pb.DeleteRequest()
   req.key_list().extend([key._Key__reference for key in keys])
@@ -281,21 +285,18 @@ class Entity(dict):
       name: string
     """
     ref = entity_pb.Reference()
-    if _app is not None:
-      datastore_types.ValidateString(_app, '_app',
-                                     datastore_errors.BadArgumentError)
-      ref.set_app(_app)
-    else:
-      ref.set_app(_LOCAL_APP_ID)
+    _app = datastore_types.ResolveAppId(_app)
+    ref.set_app(_app)
 
     datastore_types.ValidateString(kind, 'kind',
                                    datastore_errors.BadArgumentError)
 
     if parent is not None:
-      if _app is not None and _app != parent.app():
+      parent = _GetCompleteKeyOrError(parent)
+      if _app != parent.app():
         raise datastore_errors.BadArgumentError(
             "_app %s doesn't match parent's app %s" % (_app, parent.app()))
-      ref.CopyFrom(_GetCompleteKeyOrError(parent)._Key__reference)
+      ref.CopyFrom(parent._Key__reference)
 
     last_path = ref.mutable_path().add_element()
     last_path.set_type(kind.encode('utf-8'))
@@ -345,7 +346,7 @@ class Entity(dict):
     BadPropertyError. If the value is not a supported type, raises
     BadValueError.
     """
-    datastore_types.ToPropertyPb(name, value)
+    datastore_types.ValidateProperty(name, value)
     dict.__setitem__(self, name, value)
 
   def setdefault(self, name, value):
@@ -355,7 +356,7 @@ class Entity(dict):
     BadPropertyError. If the value is not a supported type, raises
     BadValueError.
     """
-    datastore_types.ToPropertyPb(name, value)
+    datastore_types.ValidateProperty(name, value)
     return dict.setdefault(self, name, value)
 
   def update(self, other):
@@ -524,35 +525,48 @@ class Entity(dict):
     else:
       assert last_path.has_name()
       assert last_path.name()
-    e = Entity(unicode(last_path.type().decode('utf-8')))
 
+    e = Entity(unicode(last_path.type().decode('utf-8')))
     ref = e.__key._Key__reference
     ref.CopyFrom(pb.key())
 
-    for prop_list in [pb.property_list(), pb.raw_property_list()]:
-      for prop in prop_list:
-        value = datastore_types.FromPropertyPb(prop)
+    temporary_values = {}
 
+    for prop_list in (pb.property_list(), pb.raw_property_list()):
+      for prop in prop_list:
         if not prop.has_multiple():
           raise datastore_errors.Error(
-            "Property %s is corrupt in the datastore; it's missing the "
-            'multiply valued field.' % name)
+            'Property %s is corrupt in the datastore; it\'s missing the '
+            'multiple valued field.' % prop.name())
 
-        if prop.multiple():
+        try:
+          value = datastore_types.FromPropertyPb(prop)
+        except (AssertionError, AttributeError, TypeError, ValueError), e:
+          raise datastore_errors.Error(
+            'Property %s is corrupt in the datastore. %s: %s' %
+            (e.__class__, prop.name(), e))
+
+        multiple = prop.multiple()
+        if multiple:
           value = [value]
-        name = unicode(prop.name().decode('utf-8'))
 
-        if not e.has_key(name):
-          e[name] = value
+        name = prop.name()
+        cur_value = temporary_values.get(name)
+        if cur_value is None:
+          temporary_values[name] = value
+        elif not multiple:
+          raise datastore_errors.Error(
+            'Property %s is corrupt in the datastore; it has multiple '
+            'values, but is not marked as multiply valued.' % name)
         else:
-          if not prop.multiple():
-            raise datastore_errors.Error(
-              'Property %s is corrupt in the datastore; it has multiple '
-              'values, but is not marked as multiply valued.' % name)
+          cur_value.extend(value)
 
-          cur_value = e[name]
-          assert isinstance(cur_value, list)
-          cur_value += value
+    for name, value in temporary_values.iteritems():
+      decoded_name = unicode(name.decode('utf-8'))
+
+      datastore_types.ValidateReadProperty(decoded_name, value)
+
+      dict.__setitem__(e, decoded_name, value)
 
     return e
 
@@ -654,7 +668,7 @@ class Query(dict):
     re.IGNORECASE | re.UNICODE)
 
   __kind = None
-  __app = _LOCAL_APP_ID
+  __app = None
   __orderings = None
   __cached_count = None
   __hint = None
@@ -686,10 +700,7 @@ class Query(dict):
     self.__filter_order = {}
     self.update(filters)
 
-    if _app is not None:
-      datastore_types.ValidateString(_app, '_app',
-                                     datastore_errors.BadArgumentError)
-      self.__app = _app
+    self.__app = datastore_types.ResolveAppId(_app)
 
   def Order(self, *orderings):
     """Specify how the query results should be sorted.
@@ -931,9 +942,6 @@ class Query(dict):
     count is cached; successive Count() calls will not re-scan the datastore
     unless the query is changed.
 
-    Raises BadQueryError if the Query has more than one filter. Multiple
-    filters aren't supported yet.
-
     Args:
       limit, a number. If there are more results than this, stop short and
       just return this number. Providing this argument makes the count
@@ -968,7 +976,7 @@ class Query(dict):
     if isinstance(value, tuple):
       value = list(value)
 
-    datastore_types.ToPropertyPb(' ', value)
+    datastore_types.ValidateProperty(' ', value)
     match = self._CheckFilter(filter, value)
     property = match.group(1)
     operator = match.group(3)
@@ -995,7 +1003,7 @@ class Query(dict):
     BadPropertyError. If the value is not a supported type, raises
     BadValueError.
     """
-    datastore_types.ToPropertyPb(' ', value)
+    datastore_types.ValidateProperty(' ', value)
     self._CheckFilter(filter, value)
     self.__cached_count = None
     return dict.setdefault(self, filter, value)

@@ -2129,6 +2129,8 @@ class ListProperty(Property):
 
     Note that the only permissible value for 'required' is True.
     """
+    if item_type is str:
+      item_type = basestring
     if not isinstance(item_type, type):
       raise TypeError('Item type should be a type object')
     if item_type not in _ALLOWED_PROPERTY_TYPES:

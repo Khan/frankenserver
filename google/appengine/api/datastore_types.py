@@ -50,13 +50,11 @@ from google.appengine.api import users
 from google.net.proto import ProtocolBuffer
 from google.appengine.datastore import entity_pb
 
-_LOCAL_APP_ID = u':self'
-
 _MAX_STRING_LENGTH = 500
 
 _MAX_LINK_PROPERTY_LENGTH = 2083
 
-RESERVED_PROPERTY_NAME = re.compile('^__.*__$');
+RESERVED_PROPERTY_NAME = re.compile('^__.*__$')
 
 class UtcTzinfo(datetime.tzinfo):
   def utcoffset(self, dt): return datetime.timedelta(0)
@@ -76,7 +74,8 @@ def typename(obj):
     return type(obj).__name__
 
 
-def ValidateString(value, name='Value',
+def ValidateString(value,
+                   name='unused',
                    exception=datastore_errors.BadValueError,
                    max_len=_MAX_STRING_LENGTH):
   """Raises an exception if value is not a valid string or a subclass thereof.
@@ -94,10 +93,32 @@ def ValidateString(value, name='Value',
   if not isinstance(value, basestring) or isinstance(value, Blob):
     raise exception('%s should be a string; received %s (a %s):' %
                     (name, value, typename(value)))
-  elif value == '':
+  if not value:
     raise exception('%s must not be empty.' % name)
-  elif len(value.encode('utf-8')) > max_len:
+
+  if len(value.encode('utf-8')) > max_len:
     raise exception('%s must be under %d bytes.' % (name, max_len))
+
+
+def ResolveAppId(app, name='_app'):
+  """Validate app id, providing a default.
+
+  If the argument is None, $APPLICATION_ID is substituted.
+
+  Args:
+    app: The app id argument value to be validated.
+    name: The argument name, for error messages.
+
+  Returns:
+    The value of app, or the substituted default.  Always a non-empty string.
+
+  Raises:
+    BadArgumentError if the value is empty or not a string.
+  """
+  if app is None:
+    app = os.environ.get('APPLICATION_ID', '')
+  ValidateString(app, '_app', datastore_errors.BadArgumentError)
+  return app
 
 
 class Key(object):
@@ -178,7 +199,7 @@ class Key(object):
       BadKeyError if the parent key is incomplete.
     """
     parent = kwds.pop('parent', None)
-    _app = kwds.pop('_app', None)
+    _app = ResolveAppId(kwds.pop('_app', None))
 
     if kwds:
       raise datastore_errors.BadArgumentError(
@@ -189,12 +210,6 @@ class Key(object):
           'A non-zero even number of positional arguments is required '
           '(kind, id or name, kind, id or name, ...); received %s' % repr(args))
 
-    if _app is not None:
-      if not isinstance(_app, basestring):
-        raise datastore_errors.BadArgumentError(
-          'Expected a string _app; received %r (a %s).' %
-          (_app, typename(_app)))
-
     if parent is not None:
       if not isinstance(parent, Key):
         raise datastore_errors.BadArgumentError(
@@ -203,7 +218,7 @@ class Key(object):
       if not parent.has_id_or_name():
         raise datastore_errors.BadKeyError(
             'The parent Key is incomplete.')
-      if _app is not None and _app != parent.app():
+      if _app != parent.app():
         raise datastore_errors.BadArgumentError(
             'The _app argument (%r) should match parent.app() (%s)' %
             (_app, parent.app()))
@@ -212,10 +227,8 @@ class Key(object):
     ref = key.__reference
     if parent is not None:
       ref.CopyFrom(parent.__reference)
-    elif _app is not None:
-      ref.set_app(_app)
     else:
-      ref.set_app(_LOCAL_APP_ID)
+      ref.set_app(_app)
 
     path = ref.mutable_path()
     for i in xrange(0, len(args), 2):
@@ -443,12 +456,8 @@ class Key(object):
     self_args = []
     other_args = []
 
-    if (self.app() in (_LOCAL_APP_ID, None) or
-        other.app() in (_LOCAL_APP_ID, None)):
-      pass
-    else:
-      self_args.append(self.__reference.app().decode('utf-8'))
-      other_args.append(other.__reference.app().decode('utf-8'))
+    self_args.append(self.__reference.app().decode('utf-8'))
+    other_args.append(other.__reference.app().decode('utf-8'))
 
     for elem in self.__reference.path().element_list():
       self_args.append(repr(elem.type()))
@@ -632,6 +641,7 @@ class GeoPt(object):
     return u'<georss:point>%s %s</georss:point>' % (unicode(self.lat),
                                                     unicode(self.lon))
 
+
 class IM(object):
   """An instant messaging handle. Includes both an address and its protocol.
   The protocol value is either a standard IM scheme or a URL identifying the
@@ -712,6 +722,7 @@ class IM(object):
 
   def __len__(self):
     return len(unicode(self))
+
 
 class PhoneNumber(unicode):
   """A human-readable phone number or address.
@@ -845,29 +856,6 @@ class Blob(str):
                     type(arg).__name__)
 
 
-_PROPERTY_TYPES = [
-  str,
-  unicode,
-  bool,
-  int,
-  long,
-  type(None),
-  float,
-  Key,
-  datetime.datetime,
-  Blob,
-  Text,
-  users.User,
-  Category,
-  Link,
-  Email,
-  GeoPt,
-  IM,
-  PhoneNumber,
-  PostalAddress,
-  Rating,
-  ]
-
 _PROPERTY_MEANINGS = {
 
 
@@ -883,45 +871,171 @@ _PROPERTY_MEANINGS = {
   PhoneNumber:       entity_pb.Property.GD_PHONENUMBER,
   PostalAddress:     entity_pb.Property.GD_POSTALADDRESS,
   Rating:            entity_pb.Property.GD_RATING,
-  }
+}
 
-_RAW_PROPERTY_TYPES = (
+_PROPERTY_TYPES = frozenset([
+  Blob,
+  bool,
+  Category,
+  datetime.datetime,
+  Email,
+  float,
+  GeoPt,
+  IM,
+  int,
+  Key,
+  Link,
+  long,
+  PhoneNumber,
+  PostalAddress,
+  Rating,
+  str,
+  Text,
+  type(None),
+  unicode,
+  users.User,
+])
+
+_RAW_PROPERTY_TYPES = frozenset([
   Blob,
   Text,
-)
+])
 
-def ToPropertyPb(name, values):
-  """Creates a type-specific onestore property PB from a property name and a
-  value or list of values. Determines the type of property based on the type
-  of the value(s).
+_STRING_TYPES = frozenset([
+  str,
+  unicode,
+])
 
-  If name is invalid, Serialize throws a BadPropertyError. If values is
-  an unsupported type, or an empty list, or a list with elements of different
-  types, Serialize throws a BadValueError.
+def ValidatePropertyInteger(name, value):
+  """Raises an exception if the supplied integer is invalid.
 
   Args:
-    # the property name
-    name: string
-    # either a supported type or a list of them. if a list, all
-    # of the list's elements should be of the same type
-    values: string, int, long, float, datetime, Key, or list
+    name: Name of the property this is for.
+    value: Integer value.
 
-  Returns:
-    # a list of or single StringProperty, Int64Property, BoolProperty,
-    # DoubleProperty, PointProperty, UserProperty, or ReferenceProperty.
-    [entity_pb.*Property, ...]
+  Raises:
+    OverflowError if the value does not fit within a signed int64.
+  """
+  if not (-0x8000000000000000 <= value <= 0x7fffffffffffffff):
+    raise OverflowError('%d is out of bounds for int64' % value)
+
+
+def ValidateStringLength(name, value, max_len):
+  """Raises an exception if the supplied string is too long.
+
+  Args:
+    name: Name of the property this is for.
+    value: String value.
+    max_len: Maximum length the string may be.
+
+  Raises:
+    OverflowError if the value is larger than the maximum length.
+  """
+  if len(value) > max_len:
+    raise datastore_errors.BadValueError(
+      'Property %s is %d bytes long; it must be %d or less. '
+      'Consider Text instead, which can store strings of any length.' %
+      (name, len(value), max_len))
+
+
+def ValidatePropertyString(name, value):
+  """Validates the length of an indexed string property.
+
+  Args:
+    name: Name of the property this is for.
+    value: String value.
+  """
+  ValidateStringLength(name, value, max_len=_MAX_STRING_LENGTH)
+
+
+def ValidatePropertyLink(name, value):
+  """Validates the length of an indexed Link property.
+
+  Args:
+    name: Name of the property this is for.
+    value: String value.
+  """
+  ValidateStringLength(name, value, max_len=_MAX_LINK_PROPERTY_LENGTH)
+
+
+def ValidatePropertyNothing(name, value):
+  """No-op validation function.
+
+  Args:
+    name: Name of the property this is for.
+    value: Not used.
+  """
+  pass
+
+
+def ValidatePropertyKey(name, value):
+  """Raises an exception if the supplied datastore.Key instance is invalid.
+
+  Args:
+    name: Name of the property this is for.
+    value: A datastore.Key instance.
+
+  Raises:
+    datastore_errors.BadValueError if the value is invalid.
+  """
+  if not value.has_id_or_name():
+    raise datastore_errors.BadValueError(
+        'Incomplete key found for reference property %s.' % name)
+
+
+_VALIDATE_PROPERTY_VALUES = {
+  Blob: ValidatePropertyNothing,
+  bool: ValidatePropertyNothing,
+  Category: ValidatePropertyString,
+  datetime.datetime: ValidatePropertyNothing,
+  Email: ValidatePropertyString,
+  float: ValidatePropertyNothing,
+  GeoPt: ValidatePropertyNothing,
+  IM: ValidatePropertyString,
+  int: ValidatePropertyInteger,
+  Key: ValidatePropertyKey,
+  Link: ValidatePropertyLink,
+  long: ValidatePropertyInteger,
+  PhoneNumber: ValidatePropertyString,
+  PostalAddress: ValidatePropertyString,
+  Rating: ValidatePropertyInteger,
+  str: ValidatePropertyString,
+  Text: ValidatePropertyNothing,
+  type(None): ValidatePropertyNothing,
+  unicode: ValidatePropertyString,
+  users.User: ValidatePropertyNothing,
+}
+
+assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
+
+
+def ValidateProperty(name, values):
+  """Helper function for validating property values.
+
+  Args:
+    name: Name of the property this is for.
+    value: Value for the property as a Python native type.
+
+  Raises:
+    BadPropertyError if the property name is invalid. BadValueError if the
+    property did not validate correctly, a list property did not have values
+    all of the same type, or the value was an empty list. Other exception types
+    (like OverflowError) if the property value does not meet type-specific
+    criteria.
   """
   ValidateString(name, 'property name', datastore_errors.BadPropertyError)
   if RESERVED_PROPERTY_NAME.match(name):
-    raise datastore_errors.BadPropertyError('%s is a reserved property name.' %
-                                            name)
+    raise datastore_errors.BadPropertyError(
+        '%s is a reserved property name.' % name)
 
-  if isinstance(values, tuple):
+  values_type = type(values)
+
+  if values_type is tuple:
     raise datastore_errors.BadValueError(
         'May not use tuple property value; property %s is %s.' %
         (name, repr(values)))
 
-  if isinstance(values, list):
+  if values_type is list:
     multiple = True
   else:
     multiple = False
@@ -932,91 +1046,202 @@ def ToPropertyPb(name, values):
         'May not use the empty list as a property value; property %s is %s.' %
         (name, repr(values)))
 
-  def long_if_int(val):
-    if isinstance(val, int) and not isinstance(val, bool):
-      return long(val)
-    else:
-      return val
-
-  values = [long_if_int(v) for v in values]
-
   try:
     proptype = values[0].__class__
+    prop_validator = _VALIDATE_PROPERTY_VALUES.get(proptype)
+    if prop_validator is None:
+      raise datastore_errors.BadValueError(
+        'Unsupported type for property %s: %s' % (name, proptype))
+
     for v in values:
       if v is not None:
         if (v.__class__ is not proptype and not
-            (v.__class__ in (str, unicode) and proptype in (str, unicode))):
+            (v.__class__ in _STRING_TYPES and proptype in _STRING_TYPES)):
           raise datastore_errors.BadValueError(
               'Values for property %s have mismatched types: %s (a %s) and '
               '%s (a %s).' % (name, values[0], proptype, v, typename(v)))
-        elif (isinstance(v, Key) and not v.has_id_or_name()):
-          raise datastore_errors.BadValueError(
-              'Incomplete key found for reference property %s.' % name)
+
+        prop_validator(name, v)
   except (KeyError, ValueError, TypeError, IndexError, AttributeError), msg:
     raise datastore_errors.BadValueError(
       'Error type checking values for property %s: %s' % (name, msg))
 
-  if proptype not in _PROPERTY_TYPES:
-    raise datastore_errors.BadValueError(
-      'Unsupported type for property %s: %s' % (name, proptype))
 
+ValidateReadProperty = ValidateProperty
+
+
+def PackBlob(name, value, pbvalue):
+  """Packs a Blob property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A Blob instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.set_stringvalue(value)
+
+
+def PackString(name, value, pbvalue):
+  """Packs a string-typed property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A string, unicode, or string-like value instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.set_stringvalue(unicode(value).encode('utf-8'))
+
+
+def PackDatetime(name, value, pbvalue):
+  """Packs a datetime-typed property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A datetime.datetime instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  if value.tzinfo:
+    value = value.astimezone(UTC)
+  pbvalue.set_int64value(
+    long(calendar.timegm(value.timetuple()) * 1000000L) + value.microsecond)
+
+
+def PackGeoPt(name, value, pbvalue):
+  """Packs a GeoPt property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A GeoPt instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.mutable_pointvalue().set_x(value.lat)
+  pbvalue.mutable_pointvalue().set_y(value.lon)
+
+
+def PackUser(name, value, pbvalue):
+  """Packs a User property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A users.User instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.mutable_uservalue().set_email(value.email().encode('utf-8'))
+  pbvalue.mutable_uservalue().set_auth_domain(
+      value.auth_domain().encode('utf-8'))
+  pbvalue.mutable_uservalue().set_gaiaid(0)
+
+
+def PackKey(name, value, pbvalue):
+  """Packs a reference property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A Key instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  ref = value._Key__reference
+  pbvalue.mutable_referencevalue().set_app(ref.app())
+  for elem in ref.path().element_list():
+    pbvalue.mutable_referencevalue().add_pathelement().CopyFrom(elem)
+
+
+def PackBool(name, value, pbvalue):
+  """Packs a boolean property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A boolean instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.set_booleanvalue(value)
+
+
+def PackInteger(name, value, pbvalue):
+  """Packs an integer property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: An int or long instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.set_int64value(value)
+
+
+def PackFloat(name, value, pbvalue):
+  """Packs a float property into a entity_pb.PropertyValue.
+
+  Args:
+    name: The name of the property as a string.
+    value: A float instance.
+    pbvalue: The entity_pb.PropertyValue to pack this value into.
+  """
+  pbvalue.set_doublevalue(value)
+
+_PACK_PROPERTY_VALUES = {
+  Blob: PackBlob,
+  bool: PackBool,
+  Category: PackString,
+  datetime.datetime: PackDatetime,
+  Email: PackString,
+  float: PackFloat,
+  GeoPt: PackGeoPt,
+  IM: PackString,
+  int: PackInteger,
+  Key: PackKey,
+  Link: PackString,
+  long: PackInteger,
+  PhoneNumber: PackString,
+  PostalAddress: PackString,
+  Rating: PackInteger,
+  str: PackString,
+  Text: PackString,
+  type(None): lambda name, value, pbvalue: None,
+  unicode: PackString,
+  users.User: PackUser,
+}
+
+assert set(_PACK_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
+
+
+def ToPropertyPb(name, values):
+  """Creates type-specific entity_pb.PropertyValues.
+
+  Determines the type and meaning of the PropertyValue based on the Python
+  type of the input value(s).
+
+  NOTE: This function does not validate anything!
+
+  Args:
+    name: string or unicode; the property name
+    values: The values for this property, either a single one or a list of them.
+      All values must be a supported type. Lists of values must all be of the
+      same type.
+
+  Returns:
+    A list of entity_pb.PropertyValue instances.
+  """
+  encoded_name = name.encode('utf-8')
+
+  values_type = type(values)
+  if values_type is list:
+    multiple = True
+    proptype = type(values[0])
+  else:
+    multiple = False
+    proptype = type(values)
+    values = [values]
+
+  pack_prop = _PACK_PROPERTY_VALUES[proptype]
   pbs = []
   for v in values:
     pb = entity_pb.Property()
-    pb.set_name(name.encode('utf-8'))
+    pb.set_name(encoded_name)
     pb.set_multiple(multiple)
-    if _PROPERTY_MEANINGS.has_key(proptype):
-      pb.set_meaning(_PROPERTY_MEANINGS[proptype])
-
-    pbvalue = pb.mutable_value()
-    if v is None:
-      pass
-    elif isinstance(v, Blob):
-      pbvalue.set_stringvalue(v)
-    elif isinstance(v, (basestring, IM)):
-      if not isinstance(v, Text):
-        if isinstance(v, Link):
-          max_len = _MAX_LINK_PROPERTY_LENGTH
-        else:
-          max_len = _MAX_STRING_LENGTH
-        if len(v) > max_len:
-          raise datastore_errors.BadValueError(
-            'Property %s is %d bytes long; it must be %d or less. '
-            'Consider Text instead, which can store strings of any length.' %
-            (name, len(v), max_len))
-      pbvalue.set_stringvalue(unicode(v).encode('utf-8'))
-    elif isinstance(v, datetime.datetime):
-      if v.tzinfo:
-        v = v.astimezone(UTC)
-      pbvalue.set_int64value(
-        long(calendar.timegm(v.timetuple()) * 1000000L) + v.microsecond)
-    elif isinstance(v, GeoPt):
-      pbvalue.mutable_pointvalue().set_x(v.lat)
-      pbvalue.mutable_pointvalue().set_y(v.lon)
-    elif isinstance(v, users.User):
-      pbvalue.mutable_uservalue().set_email(v.email().encode('utf-8'))
-      pbvalue.mutable_uservalue().set_auth_domain(
-        v.auth_domain().encode('utf-8'))
-      pbvalue.mutable_uservalue().set_gaiaid(0)
-    elif isinstance(v, Key):
-      ref = v._Key__reference
-      pbvalue.mutable_referencevalue().set_app(ref.app())
-      for elem in ref.path().element_list():
-        pbvalue.mutable_referencevalue().add_pathelement().CopyFrom(elem)
-    elif isinstance(v, bool):
-      pbvalue.set_booleanvalue(v)
-    elif isinstance(v, long):
-      pbvalue.set_int64value(v)
-      try:
-        pbvalue.Encode()
-      except ProtocolBuffer.ProtocolBufferEncodeError, e:
-        pbvalue.clear_int64value()
-        raise OverflowError(e)
-    elif isinstance(v, float):
-      pbvalue.set_doublevalue(v)
-    else:
-      assert False, "Shouldn't reach here; property type was validated above."
-
+    meaning = _PROPERTY_MEANINGS.get(proptype)
+    if meaning is not None:
+      pb.set_meaning(meaning)
+    pbvalue = pack_prop(name, v, pb.mutable_value())
     pbs.append(pb)
 
   if multiple:
@@ -1026,14 +1251,16 @@ def ToPropertyPb(name, values):
 
 
 def FromReferenceProperty(value):
-  """Converts a reference PropertyValue to a Key. Raises BadValueError is prop
-  is not a PropertyValue.
+  """Converts a reference PropertyValue to a Key.
 
   Args:
     value: entity_pb.PropertyValue
 
   Returns:
     Key
+
+  Raises:
+    BadValueError if the value is not a PropertyValue.
   """
   assert isinstance(value, entity_pb.PropertyValue)
   assert value.has_referencevalue()
@@ -1066,10 +1293,11 @@ _PROPERTY_CONVERSIONS = {
   entity_pb.Property.GD_RATING:         Rating,
   entity_pb.Property.BLOB:              Blob,
   entity_pb.Property.TEXT:              Text,
-  }
+}
+
 
 def FromPropertyPb(pb):
-  """Converts a onestore property PB to a python value.
+  """Converts a property PB to a python value.
 
   Args:
     pb: entity_pb.Property
@@ -1078,30 +1306,27 @@ def FromPropertyPb(pb):
     # return type is determined by the type of the argument
     string, int, bool, double, users.User, or one of the atom or gd types
   """
-  if not isinstance(pb, entity_pb.Property):
-    raise datastore_errors.BadValueError(
-      'Expected PropertyValue; received %s (a %s).' % (pb, typename(pb)))
-
   pbval = pb.value()
+  meaning = pb.meaning()
 
-  if (pbval.has_stringvalue()):
+  if pbval.has_stringvalue():
     value = pbval.stringvalue()
-    if pb.meaning() != entity_pb.Property.BLOB:
+    if meaning != entity_pb.Property.BLOB:
       value = unicode(value.decode('utf-8'))
+  elif pbval.has_int64value():
+    value = long(pbval.int64value())
+  elif pbval.has_booleanvalue():
+    value = bool(pbval.booleanvalue())
+  elif pbval.has_doublevalue():
+    value = pbval.doublevalue()
+  elif pbval.has_referencevalue():
+    value = FromReferenceProperty(pbval)
   elif pbval.has_pointvalue():
     value = (pbval.pointvalue().x(), pbval.pointvalue().y())
   elif pbval.has_uservalue():
     email = unicode(pbval.uservalue().email().decode('utf-8'))
     auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
     value = users.User(email=email, _auth_domain=auth_domain)
-  elif pbval.has_referencevalue():
-    value = FromReferenceProperty(pbval)
-  elif pbval.has_int64value():
-    value = long(pbval.int64value())
-  elif pbval.has_booleanvalue():
-    value = bool(pbval.booleanvalue())
-  elif pbval.has_doublevalue():
-    value = float(pbval.doublevalue())
   else:
     if pb.multiple():
       raise datastore_errors.BadValueError(
@@ -1110,8 +1335,9 @@ def FromPropertyPb(pb):
       value = None
 
   try:
-    if pb.has_meaning() and pb.meaning() in _PROPERTY_CONVERSIONS:
-      value = _PROPERTY_CONVERSIONS[pb.meaning()](value)
+    if pb.has_meaning():
+      conversion = _PROPERTY_CONVERSIONS[meaning]
+      value = conversion(value)
   except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:
     raise datastore_errors.BadValueError(
       'Error converting pb: %s\nException was: %s' % (pb, msg))

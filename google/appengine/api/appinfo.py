@@ -40,6 +40,13 @@ _FILES_REGEX = r'(?!\^).*(?!\$).'
 _DELTA_REGEX = r'([1-9][0-9]*)([DdHhMm]|[sS]?)'
 _EXPIRATION_REGEX = r'\s*(%s)(\s+%s)*\s*' % (_DELTA_REGEX, _DELTA_REGEX)
 
+_EXPIRATION_CONVERSIONS = {
+  'd': 60 * 60 * 24,
+  'h': 60 * 60,
+  'm': 60,
+  's': 1,
+}
+
 APP_ID_MAX_LEN = 100
 MAJOR_VERSION_ID_MAX_LEN = 100
 MAX_URL_MAPS = 100
@@ -338,6 +345,24 @@ def LoadSingleAppInfo(app_info):
   if len(app_infos) > 1:
     raise appinfo_errors.MultipleConfigurationFile()
   return app_infos[0]
+
+
+def ParseExpiration(expiration):
+  """Parses an expiration delta string.
+
+  Args:
+    expiration: String that matches _DELTA_REGEX.
+
+  Returns:
+    Time delta in seconds.
+  """
+  delta = 0
+  for match in re.finditer(_DELTA_REGEX, expiration):
+    amount = int(match.group(1))
+    units = _EXPIRATION_CONVERSIONS.get(match.group(2).lower(), 1)
+    delta += amount * units
+  return delta
+
 
 
 _file_path_positive_re = re.compile(r'^[ 0-9a-zA-Z\._\+/\$-]{1,256}$')

@@ -154,12 +154,9 @@ class Request(webob.Request):
     if self.charset:
       argument_name = argument_name.encode(self.charset)
 
-    try:
-      param_value = self.params.getall(argument_name)
-    except KeyError:
-      return default_value
+    param_value = self.params.getall(argument_name)
 
-    for i in range(len(param_value)):
+    for i in xrange(len(param_value)):
       if isinstance(param_value[i], cgi.FieldStorage):
         param_value[i] = param_value[i].value
 

@@ -28,7 +28,10 @@ import datetime
 import logging
 import math
 import mimetypes
+import os
 import os.path
+import pickle
+import pprint
 import random
 import sys
 import time
@@ -39,8 +42,10 @@ import urlparse
 import wsgiref.handlers
 
 from google.appengine.api import datastore
+from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_types
 from google.appengine.api import datastore_errors
+from google.appengine.api import memcache
 from google.appengine.api import users
 from google.appengine.ext import db
 from google.appengine.ext import webapp
@@ -93,6 +98,7 @@ class BaseRequestHandler(webapp.RequestHandler):
   def generate(self, template_name, template_values={}):
     base_path = self.base_path()
     values = {
+      'application_name': self.request.environ['APPLICATION_ID'],
       'user': users.get_current_user(),
       'request': self.request,
       'home_path': base_path + DefaultPageHandler.PATH,
@@ -101,6 +107,7 @@ class BaseRequestHandler(webapp.RequestHandler):
       'datastore_batch_edit_path': base_path + DatastoreBatchEditHandler.PATH,
       'interactive_path': base_path + InteractivePageHandler.PATH,
       'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
+      'memcache_path': base_path + MemcachePageHandler.PATH,
     }
     values.update(template_values)
     directory = os.path.dirname(__file__)
@@ -166,11 +173,10 @@ class InteractiveExecuteHandler(BaseRequestHandler):
   PATH = InteractivePageHandler.PATH + '/execute'
 
   def post(self):
-    self.response.headers['Content-Type'] = 'text/plain'
-
     save_stdout = sys.stdout
+    results_io = cStringIO.StringIO()
     try:
-      sys.stdout = self.response.out
+      sys.stdout = results_io
 
       code = self.request.get('code')
       code = code.replace("\r\n", "\n")
@@ -179,10 +185,210 @@ class InteractiveExecuteHandler(BaseRequestHandler):
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, globals())
       except Exception, e:
-        lines = traceback.format_exception(*sys.exc_info())
-        self.response.out.write(''.join(lines))
+        traceback.print_exc(file=results_io)
     finally:
       sys.stdout = save_stdout
+
+    results = results_io.getvalue()
+    self.generate('interactive-output.html', {'output': results})
+
+
+class MemcachePageHandler(BaseRequestHandler):
+  """Shows stats about memcache and query form to get values."""
+  PATH = '/memcache'
+
+  TYPES = ((str, str, 'String'),
+           (unicode, unicode, 'Unicode String'),
+           (bool, lambda value: MemcachePageHandler._ToBool(value), 'Boolean'),
+           (int, int, 'Integer'),
+           (long, long, 'Long Integer'),
+           (float, float, 'Float'))
+  DEFAULT_TYPESTR_FOR_NEW = 'String'
+
+  @staticmethod
+  def _ToBool(string_value):
+    """Convert string to boolean value.
+
+    Args:
+      string_value: A string.
+
+    Returns:
+      Boolean.  True if string_value is "true", False if string_value is
+      "false".  This is case-insensitive.
+
+    Raises:
+      ValueError: string_value not "true" or "false".
+    """
+    string_value_low = string_value.lower()
+    if string_value_low not in ('false', 'true'):
+      raise ValueError('invalid literal for boolean: %s' % string_value)
+    return string_value_low == 'true'
+
+  def _GetValueAndType(self, key):
+    """Fetch value from memcache and detect its type.
+
+    Args:
+      key: String
+
+    Returns:
+      (value, type), value is a Python object or None if the key was not set in
+      the cache, type is a string describing the type of the value.
+    """
+    try:
+      value = memcache.get(key)
+    except (pickle.UnpicklingError, AttributeError, EOFError, ImportError,
+            IndexError), e:
+      msg = 'Failed to retrieve value from cache: %s' % e
+      return msg, 'error'
+
+    if value is None:
+      return None, self.DEFAULT_TYPESTR_FOR_NEW
+
+    for typeobj, _, typestr in self.TYPES:
+      if isinstance(value, typeobj):
+        break
+    else:
+      typestr = 'pickled'
+      value = pprint.pformat(value, indent=2)
+
+    return value, typestr
+
+  def _SetValue(self, key, type_, value):
+    """Convert a string value and store the result in memcache.
+
+    Args:
+      key: String
+      type_: String, describing what type the value should have in the cache.
+      value: String, will be converted according to type_.
+
+    Returns:
+      Result of memcache.set(ket, converted_value).  True if value was set.
+
+    Raises:
+      ValueError: Value can't be converted according to type_.
+    """
+    for _, converter, typestr in self.TYPES:
+      if typestr == type_:
+        value = converter(value)
+        break
+    else:
+      raise ValueError('Type %s not supported.' % type_)
+    return memcache.set(key, value)
+
+  def get(self):
+    """Show template and prepare stats and/or key+value to display/edit."""
+    values = {'request': self.request,
+              'message': self.request.get('message')}
+
+    edit = self.request.get('edit')
+    key = self.request.get('key')
+    if edit:
+      key = edit
+      values['show_stats'] = False
+      values['show_value'] = False
+      values['show_valueform'] = True
+      values['types'] = [typestr for _, _, typestr in self.TYPES]
+    elif key:
+      values['show_stats'] = True
+      values['show_value'] = True
+      values['show_valueform'] = False
+    else:
+      values['show_stats'] = True
+      values['show_valueform'] = False
+      values['show_value'] = False
+
+    if key:
+      values['key'] = key
+      values['value'], values['type'] = self._GetValueAndType(key)
+      values['key_exists'] = values['value'] is not None
+
+      if values['type'] in ('pickled', 'error'):
+        values['writable'] = False
+      else:
+        values['writable'] = True
+
+    if values['show_stats']:
+      memcache_stats = memcache.get_stats()
+      values['stats'] = memcache_stats
+      try:
+        hitratio = memcache_stats['hits'] * 100 / (memcache_stats['hits']
+                                                   + memcache_stats['misses'])
+      except ZeroDivisionError:
+        hitratio = 0
+      values['hitratio'] = hitratio
+      delta_t = datetime.timedelta(seconds=memcache_stats['oldest_item_age'])
+      values['oldest_item_age'] = datetime.datetime.now() - delta_t
+
+    self.generate('memcache.html', values)
+
+  def _urlencode(self, query):
+    """Encode a dictionary into a URL query string.
+
+    In contrast to urllib this encodes unicode characters as UTF8.
+
+    Args:
+      query: Dictionary of key/value pairs.
+
+    Returns:
+      String.
+    """
+    return '&'.join('%s=%s' % (urllib.quote_plus(k.encode('utf8')),
+                               urllib.quote_plus(v.encode('utf8')))
+                    for k, v in query.iteritems())
+
+  def post(self):
+    """Handle modifying actions and/or redirect to GET page."""
+    next_param = {}
+
+    if self.request.get('action:flush'):
+      if memcache.flush_all():
+        next_param['message'] = 'Cache flushed, all keys dropped.'
+      else:
+        next_param['message'] = 'Flushing the cache failed.  Please try again.'
+
+    elif self.request.get('action:display'):
+      next_param['key'] = self.request.get('key')
+
+    elif self.request.get('action:edit'):
+      next_param['edit'] = self.request.get('key')
+
+    elif self.request.get('action:delete'):
+      key = self.request.get('key')
+      result = memcache.delete(key)
+      if result == memcache.DELETE_NETWORK_FAILURE:
+        next_param['message'] = ('ERROR: Network failure, key "%s" not deleted.'
+                                 % key)
+      elif result == memcache.DELETE_ITEM_MISSING:
+        next_param['message'] = 'Key "%s" not in cache.' % key
+      elif result == memcache.DELETE_SUCCESSFUL:
+        next_param['message'] = 'Key "%s" deleted.' % key
+      else:
+        next_param['message'] = ('Unknown return value.  Key "%s" might still '
+                                 'exist.' % key)
+
+    elif self.request.get('action:save'):
+      key = self.request.get('key')
+      value = self.request.get('value')
+      type_ = self.request.get('type')
+      next_param['key'] = key
+      try:
+        if self._SetValue(key, type_, value):
+          next_param['message'] = 'Key "%s" saved.' % key
+        else:
+          next_param['message'] = 'ERROR: Failed to save key "%s".' % key
+      except ValueError, e:
+        next_param['message'] = 'ERROR: Unable to encode value: %s' % e
+
+    elif self.request.get('action:cancel'):
+      next_param['key'] = self.request.get('key')
+
+    else:
+      next_param['message'] = 'Unknown action.'
+
+    next = self.request.path_url
+    if next_param:
+      next = '%s?%s' % (next, self._urlencode(next_param))
+    self.redirect(next)
 
 
 class DatastoreRequestHandler(BaseRequestHandler):
@@ -261,6 +467,31 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
 
   PATH = '/datastore'
 
+  SCHEMA_CACHE_TIMEOUT = 60
+
+  def get_kinds(self, cache={}):
+    """Return sorted list of kind names the datastore knows about.
+
+    The list of kinds is cached for a short time.
+    """
+    server_software = os.environ['SERVER_SOFTWARE']
+    in_production = not server_software.startswith('Development')
+
+    if in_production and ('kinds' in cache):
+      if cache['kinds_timestamp'] + self.SCHEMA_CACHE_TIMEOUT > time.time():
+        return cache['kinds']
+      else:
+        del cache['kinds']
+    schema = datastore_admin.GetSchema()
+    kinds = []
+    for entity_proto in schema:
+      kinds.append(entity_proto.key().path().element_list()[-1].type())
+    kinds.sort()
+    if in_production:
+      cache['kinds'] = kinds
+      cache['kinds_timestamp'] = time.time()
+    return kinds
+
   def get(self):
     """Formats the results from execute_query() for datastore.html.
 
@@ -324,6 +555,7 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
 
     values = {
       'request': self.request,
+      'kinds': self.get_kinds(),
       'kind': self.request.get('kind'),
       'order': self.request.get('order'),
       'headers': headers,
@@ -857,6 +1089,7 @@ def main():
     ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
     ('.*' + InteractivePageHandler.PATH, InteractivePageHandler),
     ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
+    ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
     ('.*' + ImageHandler.PATH, ImageHandler),
     ('.*', DefaultPageHandler),
   ], debug=_DEBUG)
