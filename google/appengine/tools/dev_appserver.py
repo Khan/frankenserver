@@ -1525,7 +1525,8 @@ def FindMissingInitFiles(cgi_path, module_fullname, isfile=os.path.isfile):
     depth_count += 1
 
   for index in xrange(depth_count):
-    current_init_file = os.path.join(module_base, '__init__.py')
+    current_init_file = os.path.abspath(
+        os.path.join(module_base, '__init__.py'))
 
     if not isfile(current_init_file):
       missing_init_files.append(current_init_file)
@@ -1919,7 +1920,14 @@ class PathAdjuster(object):
       path = os.path.join(os.path.dirname(os.path.dirname(google.__file__)),
                           path[len(PYTHON_LIB_VAR) + 1:])
     else:
-      path = os.path.join(self._root_path, path)
+      if os.path.sep == '\\':
+        root = self._root_path.replace('\\', '\\\\')
+        if root.endswith('\\'):
+          path = root + path
+        else:
+          path = root + '\\\\' + path
+      else:
+        path = os.path.join(self._root_path, path)
 
     return path
 

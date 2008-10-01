@@ -594,6 +594,10 @@ class DatastoreFileStub(object):
 
   def _Dynamic_GetSchema(self, app_str, schema):
     minint = -sys.maxint - 1
+    try:
+      minfloat = float('-inf')
+    except ValueError:
+      minfloat = -1e300000
 
     app_str = app_str.value()
 
@@ -623,10 +627,10 @@ class DatastoreFileStub(object):
           if value_pb.has_stringvalue():
             value_pb.set_stringvalue('')
           if value_pb.has_doublevalue():
-            value_pb.set_doublevalue(float('-inf'))
+            value_pb.set_doublevalue(minfloat)
           if value_pb.has_pointvalue():
-            value_pb.mutable_pointvalue().set_x(float('-inf'))
-            value_pb.mutable_pointvalue().set_y(float('-inf'))
+            value_pb.mutable_pointvalue().set_x(minfloat)
+            value_pb.mutable_pointvalue().set_y(minfloat)
           if value_pb.has_uservalue():
             value_pb.mutable_uservalue().set_gaiaid(minint)
             value_pb.mutable_uservalue().set_email('')
