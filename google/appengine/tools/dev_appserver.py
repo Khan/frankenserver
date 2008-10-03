@@ -513,10 +513,17 @@ def FakeTemporaryFile(*args, **kwargs):
 
 
 def NotImplementedFake(*args, **kwargs):
-  """Fake for methods/classes that are not implemented in the production
+  """Fake for methods/functions that are not implemented in the production
   environment.
   """
   raise NotImplementedError("This class/method is not available.")
+
+
+class NotImplementedFakeClass(object):
+  """Fake class for classes that are not implemented in the production
+  environment.
+  """
+  __init__ = NotImplementedFake
 
 
 def IsEncodingsModule(module_name):
@@ -674,7 +681,7 @@ class FakeFile(file):
                       if os.path.isfile(filename))
 
   ALLOWED_DIRS = set([
-    os.path.normcase(os.path.abspath(os.path.dirname(os.__file__)))
+    os.path.normcase(os.path.realpath(os.path.dirname(os.__file__)))
   ])
 
   NOT_ALLOWED_DIRS = set([
@@ -899,6 +906,7 @@ class HardenedModulesHook(object):
     '_codecs_jp',
     '_codecs_kr',
     '_codecs_tw',
+    '_collections',
     '_csv',
     '_elementtree',
     '_functools',
@@ -1028,6 +1036,8 @@ class HardenedModulesHook(object):
       'AF_INET': None,
       'SOCK_STREAM': None,
       'SOCK_DGRAM': None,
+      '_GLOBAL_DEFAULT_TIMEOUT': getattr(socket, '_GLOBAL_DEFAULT_TIMEOUT',
+                                         None),
     },
 
     'tempfile': {
@@ -1525,8 +1535,7 @@ def FindMissingInitFiles(cgi_path, module_fullname, isfile=os.path.isfile):
     depth_count += 1
 
   for index in xrange(depth_count):
-    current_init_file = os.path.abspath(
-        os.path.join(module_base, '__init__.py'))
+    current_init_file = os.path.join(module_base, '__init__.py')
 
     if not isfile(current_init_file):
       missing_init_files.append(current_init_file)
@@ -1750,7 +1759,7 @@ def ExecuteCGI(root_path,
     __builtin__.open = FakeFile
     types.FileType = FakeFile
 
-    __builtin__.buffer = NotImplementedFake
+    __builtin__.buffer = NotImplementedFakeClass
 
     logging.debug('Executing CGI with env:\n%s', pprint.pformat(env))
     try:
@@ -1920,14 +1929,7 @@ class PathAdjuster(object):
       path = os.path.join(os.path.dirname(os.path.dirname(google.__file__)),
                           path[len(PYTHON_LIB_VAR) + 1:])
     else:
-      if os.path.sep == '\\':
-        root = self._root_path.replace('\\', '\\\\')
-        if root.endswith('\\'):
-          path = root + path
-        else:
-          path = root + '\\\\' + path
-      else:
-        path = os.path.join(self._root_path, path)
+      path = os.path.join(self._root_path, path)
 
     return path
 
@@ -1974,18 +1976,18 @@ class StaticFileConfigMatcher(object):
           continue
 
         if handler_type == appinfo.STATIC_FILES:
-          regex = entry.upload
+          regex = entry.upload + '$'
         else:
-          static_dir = entry.static_dir
-          if static_dir[-1] == '/':
-            static_dir = static_dir[:-1]
-          regex = '/'.join((entry.static_dir, r'(.*)'))
+          path = entry.static_dir
+          if path[-1] == '/':
+            path = path[:-1]
+          regex = re.escape(path) + r'/(.*)'
 
-        adjusted_regex = r'^%s$' % path_adjuster.AdjustPath(regex)
         try:
-          path_re = re.compile(adjusted_regex)
+          path_re = re.compile(regex)
         except re.error, e:
-          raise InvalidAppConfigError('regex does not compile: %s' % e)
+          raise InvalidAppConfigError('regex %s does not compile: %s' %
+                                      (regex, e))
 
         if self._default_expiration is None:
           expiration = 0
@@ -2000,7 +2002,7 @@ class StaticFileConfigMatcher(object):
     """Returns the mime type that we should use when serving the specified file.
 
     Args:
-      path: String containing the file's path on disk.
+      path: String containing the file's path relative to the app.
 
     Returns:
       String containing the mime type to use. Will be 'application/octet-stream'
@@ -2019,7 +2021,7 @@ class StaticFileConfigMatcher(object):
     """Returns the cache expiration duration to be users for the given file.
 
     Args:
-      path: String containing the file's path on disk.
+      path: String containing the file's path relative to the app.
 
     Returns:
       Integer number of seconds to be used for browser cache expiration time.
@@ -2094,8 +2096,8 @@ class FileDispatcher(URLDispatcher):
     """Reads the file and returns the response status and data."""
     full_path = self._path_adjuster.AdjustPath(path)
     status, data = self._read_data_file(full_path)
-    content_type = self._static_file_config_matcher.GetMimeType(full_path)
-    expiration = self._static_file_config_matcher.GetExpiration(full_path)
+    content_type = self._static_file_config_matcher.GetMimeType(path)
+    expiration = self._static_file_config_matcher.GetExpiration(path)
 
     outfile.write('Status: %d\r\n' % status)
     outfile.write('Content-type: %s\r\n' % content_type)
@@ -2819,7 +2821,7 @@ def CreateServer(root_path,
   Returns:
     Instance of BaseHTTPServer.HTTPServer that's ready to start accepting.
   """
-  absolute_root_path = os.path.abspath(root_path)
+  absolute_root_path = os.path.realpath(root_path)
 
   SetupTemplates(template_dir)
   FakeFile.SetAllowedPaths([absolute_root_path,

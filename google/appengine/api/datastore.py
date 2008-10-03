@@ -1433,7 +1433,7 @@ def RunInTransaction(function, *args, **kwargs):
           if (err.application_error ==
               datastore_pb.Error.CONCURRENT_TRANSACTION):
             logging.warning('Transaction collision for entity group with '
-                            'key %r', tx.entity_group)
+                            'key %r. Retrying...', tx.entity_group)
             tx.handle = None
             tx.entity_group = None
             continue

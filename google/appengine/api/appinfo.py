@@ -62,6 +62,10 @@ LOGIN_OPTIONAL = 'optional'
 LOGIN_REQUIRED = 'required'
 LOGIN_ADMIN = 'admin'
 
+SECURE_HTTP = 'never'
+SECURE_HTTPS = 'always'
+SECURE_HTTP_OR_HTTPS = 'optional'
+
 RUNTIME_PYTHON = 'python'
 
 DEFAULT_SKIP_FILES = (r"^(.*/)?("
@@ -77,6 +81,7 @@ DEFAULT_SKIP_FILES = (r"^(.*/)?("
                       r")$")
 
 LOGIN = 'login'
+SECURE = 'secure'
 URL = 'url'
 STATIC_FILES = 'static_files'
 UPLOAD = 'upload'
@@ -117,6 +122,8 @@ class URLMap(validation.Validated):
   Attributes:
     login: Whether or not login is required to access URL.  Defaults to
       'optional'.
+    secure: Restriction on the protocol which can be used to serve
+            this URL/handler (HTTP, HTTPS or either).
     url: Regular expression used to fully match against the request URLs path.
       See Special Cases for using static_dir.
     static_files: Handler id attribute that maps URL to the appropriate
@@ -171,6 +178,11 @@ class URLMap(validation.Validated):
                               LOGIN_ADMIN,
                               default=LOGIN_OPTIONAL),
 
+    SECURE: validation.Options(SECURE_HTTP,
+                               SECURE_HTTPS,
+                               SECURE_HTTP_OR_HTTPS,
+                               default=SECURE_HTTP),
+
 
 
     HANDLER_STATIC_FILES: validation.Optional(_FILES_REGEX),
@@ -187,7 +199,7 @@ class URLMap(validation.Validated):
     HANDLER_SCRIPT: validation.Optional(_FILES_REGEX),
   }
 
-  COMMON_FIELDS = set([URL, LOGIN])
+  COMMON_FIELDS = set([URL, LOGIN, SECURE])
 
   ALLOWED_FIELDS = {
     HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION),

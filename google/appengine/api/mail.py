@@ -474,7 +474,7 @@ class _EmailMessageBase(object):
       make_sync_call('mail', self._API_CALL, message, response)
     except apiproxy_errors.ApplicationError, e:
       if e.application_error in ERROR_MAP:
-        raise ERROR_MAP[e.application_error]()
+        raise ERROR_MAP[e.application_error](e.error_detail)
       raise e
 
   def Send(self, *args, **kwds):

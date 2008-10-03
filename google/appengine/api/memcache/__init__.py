@@ -341,7 +341,7 @@ class Client(object):
     response = MemcacheStatsResponse()
     try:
       self._make_sync_call('memcache', 'Stats', request, response)
-    except apiproxy_errors.ApplicationError, e:
+    except apiproxy_errors.Error:
       return None
 
     if not response.has_stats():
@@ -367,7 +367,7 @@ class Client(object):
     response = MemcacheFlushResponse()
     try:
       self._make_sync_call('memcache', 'FlushAll', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return False
     return True
 
@@ -391,7 +391,7 @@ class Client(object):
     response = MemcacheGetResponse()
     try:
       self._make_sync_call('memcache', 'Get', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return None
 
     if not response.item_size():
@@ -427,7 +427,7 @@ class Client(object):
       request.add_key(_key_string(key, key_prefix, user_key))
     try:
       self._make_sync_call('memcache', 'Get', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return {}
 
     return_value = {}
@@ -470,7 +470,7 @@ class Client(object):
     delete_item.set_delete_time(int(math.ceil(seconds)))
     try:
       self._make_sync_call('memcache', 'Delete', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return DELETE_NETWORK_FAILURE
     assert response.delete_status_size() == 1, 'Unexpected status size.'
 
@@ -512,7 +512,7 @@ class Client(object):
       delete_item.set_delete_time(int(math.ceil(seconds)))
     try:
       self._make_sync_call('memcache', 'Delete', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return False
     return True
 
@@ -607,18 +607,20 @@ class Client(object):
     response = MemcacheSetResponse()
     try:
       self._make_sync_call('memcache', 'Set', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return False
     if response.set_status_size() != 1:
       return False
     return response.set_status(0) == MemcacheSetResponse.STORED
 
-  def set_multi(self, mapping, time=0, key_prefix='', min_compress_len=0):
-    """Set multiple keys' values at once.
+  def _set_multi_with_policy(self, policy, mapping, time=0, key_prefix=''):
+    """Set multiple keys with a specified policy.
 
-    This reduces the network latency of doing many requests in serial.
+    Helper function for set_multi(), add_multi(), and replace_multi(). This
+    reduces the network latency of doing many requests in serial.
 
     Args:
+      policy:  One of MemcacheSetRequest.SET, ADD, or REPLACE.
       mapping: Dictionary of keys to values.
       time: Optional expiration time, either relative number of seconds
         from current time (up to 1 month), or an absolute Unix epoch time.
@@ -626,11 +628,12 @@ class Client(object):
         memory pressure.  Float values will be rounded up to the nearest
         whole second.
       key_prefix: Prefix for to prepend to all keys.
-      min_compress_len: Unimplemented compatibility option.
 
     Returns:
       A list of keys whose values were NOT set.  On total success,
-      this list should be empty.
+      this list should be empty.  On network/RPC/server errors,
+      a list of all input keys is returned; in this case the keys
+      may or may not have been updated.
     """
     if not isinstance(time, (int, long, float)):
       raise TypeError('Expiration must be a number.')
@@ -649,14 +652,14 @@ class Client(object):
       item.set_key(server_key)
       item.set_value(stored_value)
       item.set_flags(flags)
-      item.set_set_policy(MemcacheSetRequest.SET)
+      item.set_set_policy(policy)
       item.set_expiration_time(int(math.ceil(time)))
 
     response = MemcacheSetResponse()
     try:
       self._make_sync_call('memcache', 'Set', request, response)
-    except apiproxy_errors.ApplicationError:
-      return False
+    except apiproxy_errors.Error:
+      return user_key.values()
 
     assert response.set_status_size() == len(server_keys)
 
@@ -666,6 +669,66 @@ class Client(object):
         unset_list.append(user_key[server_key])
 
     return unset_list
+
+  def set_multi(self, mapping, time=0, key_prefix='', min_compress_len=0):
+    """Set multiple keys' values at once, regardless of previous contents.
+
+    Args:
+      mapping: Dictionary of keys to values.
+      time: Optional expiration time, either relative number of seconds
+        from current time (up to 1 month), or an absolute Unix epoch time.
+        By default, items never expire, though items may be evicted due to
+        memory pressure.  Float values will be rounded up to the nearest
+        whole second.
+      key_prefix: Prefix for to prepend to all keys.
+      min_compress_len: Unimplemented compatibility option.
+
+    Returns:
+      A list of keys whose values were NOT set.  On total success,
+      this list should be empty.
+    """
+    return self._set_multi_with_policy(MemcacheSetRequest.SET, mapping,
+                                       time=time, key_prefix=key_prefix)
+
+  def add_multi(self, mapping, time=0, key_prefix='', min_compress_len=0):
+    """Set multiple keys' values iff items are not already in memcache.
+
+    Args:
+      mapping: Dictionary of keys to values.
+      time: Optional expiration time, either relative number of seconds
+        from current time (up to 1 month), or an absolute Unix epoch time.
+        By default, items never expire, though items may be evicted due to
+        memory pressure.  Float values will be rounded up to the nearest
+        whole second.
+      key_prefix: Prefix for to prepend to all keys.
+      min_compress_len: Unimplemented compatibility option.
+
+    Returns:
+      A list of keys whose values were NOT set because they did not already
+      exist in memcache.  On total success, this list should be empty.
+    """
+    return self._set_multi_with_policy(MemcacheSetRequest.ADD, mapping,
+                                       time=time, key_prefix=key_prefix)
+
+  def replace_multi(self, mapping, time=0, key_prefix='', min_compress_len=0):
+    """Replace multiple keys' values, failing if the items aren't in memcache.
+
+    Args:
+      mapping: Dictionary of keys to values.
+      time: Optional expiration time, either relative number of seconds
+        from current time (up to 1 month), or an absolute Unix epoch time.
+        By default, items never expire, though items may be evicted due to
+        memory pressure.  Float values will be rounded up to the nearest
+        whole second.
+      key_prefix: Prefix for to prepend to all keys.
+      min_compress_len: Unimplemented compatibility option.
+
+    Returns:
+      A list of keys whose values were NOT set because they already existed
+      in memcache.  On total success, this list should be empty.
+    """
+    return self._set_multi_with_policy(MemcacheSetRequest.REPLACE, mapping,
+                                       time=time, key_prefix=key_prefix)
 
   def incr(self, key, delta=1):
     """Atomically increments a key's value.
@@ -685,8 +748,9 @@ class Client(object):
         defaulting to 1.
 
     Returns:
-      New long integer value, or None if key was not in the cache or could not
-      be incremented for any other reason.
+      New long integer value, or None if key was not in the cache, could not
+      be incremented for any other reason, or a network/RPC/server error
+      occurred.
 
     Raises:
       ValueError: If number is negative.
@@ -710,7 +774,7 @@ class Client(object):
 
     Returns:
       New long integer value, or None if key wasn't in cache and couldn't
-      be decremented.
+      be decremented, or a network/RPC/server error occurred.
 
     Raises:
       ValueError: If number is negative.
@@ -728,7 +792,8 @@ class Client(object):
         or decrement by.
 
     Returns:
-      New long integer value, or None on cache miss.
+      New long integer value, or None on cache miss or network/RPC/server
+      error.
 
     Raises:
       ValueError: If delta is negative.
@@ -750,7 +815,7 @@ class Client(object):
 
     try:
       self._make_sync_call('memcache', 'Increment', request, response)
-    except apiproxy_errors.ApplicationError:
+    except apiproxy_errors.Error:
       return None
 
     if response.has_new_value():
@@ -783,7 +848,9 @@ def setup_client(client_obj):
   var_dict['set'] = _CLIENT.set
   var_dict['set_multi'] = _CLIENT.set_multi
   var_dict['add'] = _CLIENT.add
+  var_dict['add_multi'] = _CLIENT.add_multi
   var_dict['replace'] = _CLIENT.replace
+  var_dict['replace_multi'] = _CLIENT.replace_multi
   var_dict['delete'] = _CLIENT.delete
   var_dict['delete_multi'] = _CLIENT.delete_multi
   var_dict['incr'] = _CLIENT.incr

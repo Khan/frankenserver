@@ -1018,10 +1018,9 @@ def ValidateProperty(name, values):
 
   Raises:
     BadPropertyError if the property name is invalid. BadValueError if the
-    property did not validate correctly, a list property did not have values
-    all of the same type, or the value was an empty list. Other exception types
-    (like OverflowError) if the property value does not meet type-specific
-    criteria.
+    property did not validate correctly or the value was an empty list. Other
+    exception types (like OverflowError) if the property value does not meet
+    type-specific criteria.
   """
   ValidateString(name, 'property name', datastore_errors.BadPropertyError)
   if RESERVED_PROPERTY_NAME.match(name):
@@ -1047,21 +1046,13 @@ def ValidateProperty(name, values):
         (name, repr(values)))
 
   try:
-    proptype = values[0].__class__
-    prop_validator = _VALIDATE_PROPERTY_VALUES.get(proptype)
-    if prop_validator is None:
-      raise datastore_errors.BadValueError(
-        'Unsupported type for property %s: %s' % (name, proptype))
-
     for v in values:
-      if v is not None:
-        if (v.__class__ is not proptype and not
-            (v.__class__ in _STRING_TYPES and proptype in _STRING_TYPES)):
-          raise datastore_errors.BadValueError(
-              'Values for property %s have mismatched types: %s (a %s) and '
-              '%s (a %s).' % (name, values[0], proptype, v, typename(v)))
+      prop_validator = _VALIDATE_PROPERTY_VALUES.get(v.__class__)
+      if prop_validator is None:
+        raise datastore_errors.BadValueError(
+          'Unsupported type for property %s: %s' % (name, v.__class__))
+      prop_validator(name, v)
 
-        prop_validator(name, v)
   except (KeyError, ValueError, TypeError, IndexError, AttributeError), msg:
     raise datastore_errors.BadValueError(
       'Error type checking values for property %s: %s' % (name, msg))
@@ -1100,10 +1091,19 @@ def PackDatetime(name, value, pbvalue):
     value: A datetime.datetime instance.
     pbvalue: The entity_pb.PropertyValue to pack this value into.
   """
+  pbvalue.set_int64value(DatetimeToTimestamp(value))
+
+
+def DatetimeToTimestamp(value):
+  """Converts a datetime.datetime to seconds since the epoch, as a float.
+  Args:
+    value: datetime.datetime
+
+  Returns: value as a long
+  """
   if value.tzinfo:
     value = value.astimezone(UTC)
-  pbvalue.set_int64value(
-    long(calendar.timegm(value.timetuple()) * 1000000L) + value.microsecond)
+  return long(calendar.timegm(value.timetuple()) * 1000000L) + value.microsecond
 
 
 def PackGeoPt(name, value, pbvalue):
@@ -1226,21 +1226,21 @@ def ToPropertyPb(name, values):
   values_type = type(values)
   if values_type is list:
     multiple = True
-    proptype = type(values[0])
   else:
     multiple = False
-    proptype = type(values)
     values = [values]
 
-  pack_prop = _PACK_PROPERTY_VALUES[proptype]
   pbs = []
   for v in values:
     pb = entity_pb.Property()
     pb.set_name(encoded_name)
     pb.set_multiple(multiple)
-    meaning = _PROPERTY_MEANINGS.get(proptype)
+
+    meaning = _PROPERTY_MEANINGS.get(v.__class__)
     if meaning is not None:
       pb.set_meaning(meaning)
+
+    pack_prop = _PACK_PROPERTY_VALUES[v.__class__]
     pbvalue = pack_prop(name, v, pb.mutable_value())
     pbs.append(pb)
 
@@ -1328,11 +1328,7 @@ def FromPropertyPb(pb):
     auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
     value = users.User(email=email, _auth_domain=auth_domain)
   else:
-    if pb.multiple():
-      raise datastore_errors.BadValueError(
-          'Record indicated as multiple, but has no values.')
-    else:
-      value = None
+    value = None
 
   try:
     if pb.has_meaning():

@@ -30,6 +30,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
   FETCH_ERROR  =    2
   UNSPECIFIED_ERROR =    3
   RESPONSE_TOO_LARGE =    4
+  DEADLINE_EXCEEDED =    5
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -37,6 +38,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
     2: "FETCH_ERROR",
     3: "UNSPECIFIED_ERROR",
     4: "RESPONSE_TOO_LARGE",
+    5: "DEADLINE_EXCEEDED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

@@ -1938,6 +1938,16 @@ class TimeProperty(DateTimeProperty):
     """
     return datetime.datetime.now().time()
 
+  def empty(self, value):
+    """Is time property empty.
+
+    "0:0" (midnight) is not an empty value.
+
+    Returns:
+      True if value is None, else False.
+    """
+    return value is None
+
   def get_value_for_datastore(self, model_instance):
     """Get value from property to send to datastore.
 
@@ -2201,19 +2211,24 @@ class ListProperty(Property):
     return list(super(ListProperty, self).default_value())
 
 
-def StringListProperty(verbose_name=None, default=None, **kwds):
-  """A shorthand for the most common type of ListProperty.
+class StringListProperty(ListProperty):
+  """A property that stores a list of strings.
 
-  Args:
-    verbose_name: Optional verbose name.
-    default: Optional default value; if omitted, an empty list is used.
-    **kwds: Optional additional keyword arguments, passed to ListProperty().
-
-  Returns:
-    A ListProperty instance whose item type is basestring and whose other
-    arguments are whatever was passed here.
+  A shorthand for the most common type of ListProperty.
   """
-  return ListProperty(basestring, verbose_name, default, **kwds)
+
+  def __init__(self, verbose_name=None, default=None, **kwds):
+    """Construct StringListProperty.
+
+    Args:
+      verbose_name: Optional verbose name.
+      default: Optional default value; if omitted, an empty list is used.
+      **kwds: Optional additional keyword arguments, passed to ListProperty().
+    """
+    super(StringListProperty, self).__init__(basestring,
+                                             verbose_name=verbose_name,
+                                             default=default,
+                                             **kwds)
 
 
 class ReferenceProperty(Property):

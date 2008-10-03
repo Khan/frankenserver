@@ -755,7 +755,7 @@ class DataType(object):
     else:
       string_value = ''
     return '<input class="%s" name="%s" type="text" size="%d" value="%s"/>' % (cgi.escape(self.name()), cgi.escape(name), self.input_field_size(),
-            cgi.escape(string_value))
+            cgi.escape(string_value, True))
 
   def input_field_size(self):
     return 30

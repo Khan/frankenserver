@@ -64,6 +64,25 @@ entity_pb.Reference.__hash__ = lambda self: hash(self.Encode())
 datastore_pb.Query.__hash__ = lambda self: hash(self.Encode())
 
 
+class _StoredEntity(object):
+  """Simple wrapper around an entity stored by the stub.
+
+  Public properties:
+    native: Native protobuf Python object, entity_pb.EntityProto.
+    encoded: Encoded binary representation of above protobuf.
+  """
+
+  def __init__(self, entity):
+    """Create a _StoredEntity object and store an entity.
+
+    Args:
+      entity: entity_pb.EntityProto to store.
+    """
+    self.native = entity
+
+    self.encoded = entity.Encode()
+
+
 class DatastoreFileStub(object):
   """ Persistent stub for the Python datastore API.
 
@@ -71,6 +90,29 @@ class DatastoreFileStub(object):
   protocol buffers. A DatastoreFileStub instance handles a single app's data
   and is backed by files on disk.
   """
+
+  _PROPERTY_TYPE_TAGS = {
+    datastore_types.Blob: entity_pb.PropertyValue.kstringValue,
+    bool: entity_pb.PropertyValue.kbooleanValue,
+    datastore_types.Category: entity_pb.PropertyValue.kstringValue,
+    datetime.datetime: entity_pb.PropertyValue.kint64Value,
+    datastore_types.Email: entity_pb.PropertyValue.kstringValue,
+    float: entity_pb.PropertyValue.kdoubleValue,
+    datastore_types.GeoPt: entity_pb.PropertyValue.kPointValueGroup,
+    datastore_types.IM: entity_pb.PropertyValue.kstringValue,
+    int: entity_pb.PropertyValue.kint64Value,
+    datastore_types.Key: entity_pb.PropertyValue.kReferenceValueGroup,
+    datastore_types.Link: entity_pb.PropertyValue.kstringValue,
+    long: entity_pb.PropertyValue.kint64Value,
+    datastore_types.PhoneNumber: entity_pb.PropertyValue.kstringValue,
+    datastore_types.PostalAddress: entity_pb.PropertyValue.kstringValue,
+    datastore_types.Rating: entity_pb.PropertyValue.kint64Value,
+    str: entity_pb.PropertyValue.kstringValue,
+    datastore_types.Text: entity_pb.PropertyValue.kstringValue,
+    type(None): 0,
+    unicode: entity_pb.PropertyValue.kstringValue,
+    users.User: entity_pb.PropertyValue.kUserValueGroup,
+    }
 
   def __init__(self, app_id, datastore_file, history_file,
                require_indexes=False):
@@ -159,7 +201,7 @@ class DatastoreFileStub(object):
         last_path = entity.key().path().element_list()[-1]
         app_kind = (entity.key().app(), last_path.type())
         kind_dict = self.__entities.setdefault(app_kind, {})
-        kind_dict[entity.key()] = entity
+        kind_dict[entity.key()] = _StoredEntity(entity)
 
         if last_path.has_id() and last_path.id() >= self.__next_id:
           self.__next_id = last_path.id() + 1
@@ -192,7 +234,7 @@ class DatastoreFileStub(object):
       encoded = []
       for kind_dict in self.__entities.values():
         for entity in kind_dict.values():
-          encoded.append(entity.Encode())
+          encoded.append(entity.encoded)
 
       self.__WritePickled(encoded, self.__datastore_file)
 
@@ -303,7 +345,7 @@ class DatastoreFileStub(object):
       for clone in clones:
         last_path = clone.key().path().element_list()[-1]
         kind_dict = self.__entities.setdefault((app, last_path.type()), {})
-        kind_dict[clone.key()] = clone
+        kind_dict[clone.key()] = _StoredEntity(clone)
     finally:
       self.__entities_lock.release()
 
@@ -320,7 +362,7 @@ class DatastoreFileStub(object):
 
         group = get_response.add_entity()
         try:
-          entity = self.__entities[app, last_path.type()][key]
+          entity = self.__entities[app, last_path.type()][key].native
         except KeyError:
           entity = None
 
@@ -390,7 +432,7 @@ class DatastoreFileStub(object):
     try:
       query.set_app(app)
       results = self.__entities[app, query.kind()].values()
-      results = [datastore.Entity._FromPb(pb) for pb in results]
+      results = [datastore.Entity._FromPb(entity.native) for entity in results]
     except KeyError:
       results = []
 
@@ -432,7 +474,15 @@ class DatastoreFileStub(object):
           for filter_prop in filt.property_list():
             filter_val = datastore_types.FromPropertyPb(filter_prop)
 
-            comp = u'%r %s %r' % (fixed_entity_val, op, filter_val)
+            fixed_entity_type = self._PROPERTY_TYPE_TAGS.get(
+              fixed_entity_val.__class__)
+            filter_type = self._PROPERTY_TYPE_TAGS.get(filter_val.__class__)
+            if fixed_entity_type == filter_type:
+              comp = u'%r %s %r' % (fixed_entity_val, op, filter_val)
+            elif op != '==':
+              comp = '%r %s %r' % (fixed_entity_type, op, filter_type)
+            else:
+              continue
 
             logging.log(logging.DEBUG - 1,
                         'Evaling filter expression "%s"', comp)
@@ -463,7 +513,7 @@ class DatastoreFileStub(object):
       prop = order.property().decode('utf-8')
       results = [entity for entity in results if has_prop_indexed(entity, prop)]
 
-    def order_compare(a, b):
+    def order_compare_entities(a, b):
       """ Return a negative, zero or positive number depending on whether
       entity a is considered smaller than, equal to, or larger than b,
       according to the query's orderings. """
@@ -471,36 +521,51 @@ class DatastoreFileStub(object):
       for o in query.order_list():
         prop = o.property().decode('utf-8')
 
-        if o.direction() is datastore_pb.Query_Order.ASCENDING:
-          selector = min
-        else:
-          selector = max
+        reverse = (o.direction() is datastore_pb.Query_Order.DESCENDING)
 
         a_val = a[prop]
         if isinstance(a_val, list):
-          a_val = selector(a_val)
+          a_val = sorted(a_val, order_compare_properties, reverse=reverse)[0]
 
         b_val = b[prop]
         if isinstance(b_val, list):
-          b_val = selector(b_val)
+          b_val = sorted(b_val, order_compare_properties, reverse=reverse)[0]
 
-        try:
-          cmped = cmp(a_val, b_val)
-        except TypeError:
-          cmped = NotImplementedError
-
-        if cmped == NotImplementedError:
-          cmped = cmp(type(a_val), type(b_val))
+        cmped = order_compare_properties(a_val, b_val)
 
         if o.direction() is datastore_pb.Query_Order.DESCENDING:
           cmped = -cmped
 
         if cmped != 0:
           return cmped
+
       if cmped == 0:
         return cmp(a.key(), b.key())
 
-    results.sort(order_compare)
+    def order_compare_properties(x, y):
+      """Return a negative, zero or positive number depending on whether
+      property value x is considered smaller than, equal to, or larger than
+      property value y. If x and y are different types, they're compared based
+      on the type ordering used in the real datastore, which is based on the
+      tag numbers in the PropertyValue PB.
+      """
+      if isinstance(x, datetime.datetime):
+        x = datastore_types.DatetimeToTimestamp(x)
+      if isinstance(y, datetime.datetime):
+        y = datastore_types.DatetimeToTimestamp(y)
+
+      x_type = self._PROPERTY_TYPE_TAGS.get(x.__class__)
+      y_type = self._PROPERTY_TYPE_TAGS.get(y.__class__)
+
+      if x_type == y_type:
+        try:
+          return cmp(x, y)
+        except TypeError:
+          return 0
+      else:
+        return cmp(x_type, y_type)
+
+    results.sort(order_compare_entities)
 
     offset = 0
     limit = len(results)
@@ -614,7 +679,7 @@ class DatastoreFileStub(object):
         props = {}
 
         for entity in self.__entities[(app, kind)].values():
-          for prop in entity.property_list():
+          for prop in entity.native.property_list():
             if prop.name() not in props:
               props[prop.name()] = entity_pb.PropertyValue()
             props[prop.name()].MergeFrom(prop.value())

@@ -3,6 +3,25 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.1.5 - September 29, 2008
+==================================
+
+  - Additional fixes for file paths on Windows and OSX.
+  - Sped up the datastore stub.
+  - Allow different types in list properties in datastore.Entity and Expando.
+  - Add add_multi and replace_multi to memcache API.
+      http://code.google.com/appengine/docs/memcache/clientclass.html#Client_add_multi
+      http://code.google.com/appengine/docs/memcache/clientclass.html#Client_replace_multi
+  - Ignore errors from the API proxy when calling memcache read methods.
+  - Set the webapp Request charset property more accurately from CONTENT_TYPE.
+  - Fixed an issue in the development console with schema caching.
+  - Fixed an issue with StringListProperty not returning a class
+      http://code.google.com/p/googleappengine/issues/detail?id=415
+  - Fixed an issue in the development console where quotes couldn't be used
+      within fields.
+  - Fixed an issue with TimeProperty("0:0") (midnight).
+      http://code.google.com/p/googleappengine/issues/detail?id=279
+
 Version 1.1.4 - September 26, 2008
 ==================================
 

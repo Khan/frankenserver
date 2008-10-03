@@ -70,6 +70,7 @@ import wsgiref.headers
 import wsgiref.util
 
 RE_FIND_GROUPS = re.compile('\(.*?\)')
+_CHARSET_RE = re.compile(r';\s*charset=([^;\s]*)', re.I)
 
 class Error(Exception):
   """Base of all exceptions in the webapp module."""
@@ -107,8 +108,10 @@ class Request(webob.Request):
     Args:
       environ: A WSGI-compliant environment dictionary.
     """
-    charset = webob.NoDefault
-    if environ.get('CONTENT_TYPE', '').find('charset') == -1:
+    match = _CHARSET_RE.search(environ.get('CONTENT_TYPE', ''))
+    if match:
+      charset = match.group(1).lower()
+    else:
       charset = 'utf-8'
 
     webob.Request.__init__(self, environ, charset=charset,

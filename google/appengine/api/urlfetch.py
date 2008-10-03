@@ -175,9 +175,13 @@ def _is_fetching_self(url, method):
 
   scheme, host_port, path, query, fragment = urlparse.urlsplit(url)
 
-  if (host_port == os.environ['HTTP_HOST'] and
-      urllib2.unquote(path) == urllib2.unquote(os.environ['PATH_INFO'])):
-    return True
+  if host_port == os.environ['HTTP_HOST']:
+    current_path = urllib2.unquote(os.environ['PATH_INFO'])
+    desired_path = urllib2.unquote(path)
+
+    if (current_path == desired_path or
+        (current_path in ('', '/') and desired_path in ('', '/'))):
+      return True
 
   return False
 
@@ -264,6 +268,9 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
     if (e.application_error ==
         urlfetch_service_pb.URLFetchServiceError.RESPONSE_TOO_LARGE):
       raise ResponseTooLargeError(None)
+    if (e.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED):
+      raise DownloadError(str(e))
     raise e
   result = _URLFetchResult(response)
 

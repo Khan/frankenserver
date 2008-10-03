@@ -122,9 +122,10 @@ class SearchableEntity(datastore.Entity):
    'where', 'whether', 'which', 'while', 'who', 'whose', 'why', 'widely',
    'will', 'with', 'within', 'without', 'would', 'yet', 'you'])
 
-  _PUNCTUATION_REGEX = re.compile('[' + re.escape(string.punctuation) + ']')
+  _word_delimiter_regex = re.compile('[' + re.escape(string.punctuation) + ']')
 
-  def __init__(self, kind_or_entity, *args, **kwargs):
+  def __init__(self, kind_or_entity, word_delimiter_regex=None, *args,
+               **kwargs):
     """Constructor. May be called as a copy constructor.
 
     If kind_or_entity is a datastore.Entity, copies it into this Entity.
@@ -137,7 +138,9 @@ class SearchableEntity(datastore.Entity):
 
     Args:
       kind_or_entity: string or datastore.Entity
+      word_delimiter_regex: a regex matching characters that delimit words
     """
+    self._word_delimiter_regex = word_delimiter_regex
     if isinstance(kind_or_entity, datastore.Entity):
       self._Entity__key = kind_or_entity._Entity__key
       self.update(kind_or_entity)
@@ -160,7 +163,8 @@ class SearchableEntity(datastore.Entity):
       if (isinstance(values[0], basestring) and
           not isinstance(values[0], datastore_types.Blob)):
         for value in values:
-          index.update(SearchableEntity._FullTextIndex(value))
+          index.update(SearchableEntity._FullTextIndex(
+              value, self._word_delimiter_regex))
 
     index_list = list(index)
     if index_list:
@@ -169,7 +173,7 @@ class SearchableEntity(datastore.Entity):
     return super(SearchableEntity, self)._ToPb()
 
   @classmethod
-  def _FullTextIndex(cls, text):
+  def _FullTextIndex(cls, text, word_delimiter_regex=None):
     """Returns a set of keywords appropriate for full text indexing.
 
     See SearchableQuery.Search() for details.
@@ -181,9 +185,12 @@ class SearchableEntity(datastore.Entity):
       set of strings
     """
 
+    if word_delimiter_regex is None:
+      word_delimiter_regex = cls._word_delimiter_regex
+
     if text:
       datastore_types.ValidateString(text, 'text', max_len=sys.maxint)
-      text = cls._PUNCTUATION_REGEX.sub(' ', text)
+      text = word_delimiter_regex.sub(' ', text)
       words = text.lower().split()
 
       words = set(unicode(w) for w in words)
@@ -206,7 +213,7 @@ class SearchableQuery(datastore.Query):
   SearchableEntity or SearchableModel classes.
   """
 
-  def Search(self, search_query):
+  def Search(self, search_query, word_delimiter_regex=None):
     """Add a search query. This may be combined with filters.
 
     Note that keywords in the search query will be silently dropped if they
@@ -221,6 +228,7 @@ class SearchableQuery(datastore.Query):
     """
     datastore_types.ValidateString(search_query, 'search query')
     self._search_query = search_query
+    self._word_delimiter_regex = word_delimiter_regex
     return self
 
   def _ToPb(self, limit=None, offset=None):
@@ -245,7 +253,8 @@ class SearchableQuery(datastore.Query):
     pb = super(SearchableQuery, self)._ToPb(limit=limit, offset=offset)
 
     if hasattr(self, '_search_query'):
-      keywords = SearchableEntity._FullTextIndex(self._search_query)
+      keywords = SearchableEntity._FullTextIndex(
+          self._search_query, self._word_delimiter_regex)
       for keyword in keywords:
         filter = pb.add_filter()
         filter.set_op(datastore_pb.Query_Filter.EQUAL)
