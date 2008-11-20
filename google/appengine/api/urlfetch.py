@@ -249,7 +249,7 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
   for key, value in headers.iteritems():
     header_proto = request.add_header()
     header_proto.set_key(key)
-    header_proto.set_value(value)
+    header_proto.set_value(str(value))
 
   request.set_followredirects(follow_redirects)
 

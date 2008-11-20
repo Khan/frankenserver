@@ -141,6 +141,14 @@ class BaseRequestHandler(webapp.RequestHandler):
         queries.append(arg + '=' + urllib.quote_plus(self.request.get(arg)))
     return self.request.path + '?' + '&'.join(queries)
 
+  def in_production(self):
+    """Detects if app is running in production.
+
+    Returns a boolean.
+    """
+    server_software = os.environ['SERVER_SOFTWARE']
+    return not server_software.startswith('Development')
+
 
 class DefaultPageHandler(BaseRequestHandler):
   """Redirects to the Datastore application by default."""
@@ -309,6 +317,9 @@ class MemcachePageHandler(BaseRequestHandler):
 
     if values['show_stats']:
       memcache_stats = memcache.get_stats()
+      if not memcache_stats:
+        memcache_stats = {'hits': 0, 'misses': 0, 'byte_hits': 0, 'items': 0,
+                          'bytes': 0, 'oldest_item_age': 0}
       values['stats'] = memcache_stats
       try:
         hitratio = memcache_stats['hits'] * 100 / (memcache_stats['hits']
@@ -467,29 +478,17 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
 
   PATH = '/datastore'
 
-  SCHEMA_CACHE_TIMEOUT = 60
+  def get_kinds(self):
+    """Get sorted list of kind names the datastore knows about.
 
-  def get_kinds(self, cache={}):
-    """Return sorted list of kind names the datastore knows about.
-
-    The list of kinds is cached for a short time.
+    This should only be called in the development environment as GetSchema is
+    expensive and no caching is done.
     """
-    server_software = os.environ['SERVER_SOFTWARE']
-    in_production = not server_software.startswith('Development')
-
-    if in_production and ('kinds' in cache):
-      if cache['kinds_timestamp'] + self.SCHEMA_CACHE_TIMEOUT > time.time():
-        return cache['kinds']
-      else:
-        del cache['kinds']
     schema = datastore_admin.GetSchema()
     kinds = []
     for entity_proto in schema:
       kinds.append(entity_proto.key().path().element_list()[-1].type())
     kinds.sort()
-    if in_production:
-      cache['kinds'] = kinds
-      cache['kinds_timestamp'] = time.time()
     return kinds
 
   def get(self):
@@ -553,9 +552,16 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
       })
     current_page += 1
 
+    in_production = self.in_production()
+    if in_production:
+      kinds = None
+    else:
+      kinds = self.get_kinds()
+
     values = {
       'request': self.request,
-      'kinds': self.get_kinds(),
+      'in_production': in_production,
+      'kinds': kinds,
       'kind': self.request.get('kind'),
       'order': self.request.get('order'),
       'headers': headers,

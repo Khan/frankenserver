@@ -77,7 +77,6 @@ preconfigured to return all matching comments:
 
 
 
-
 import datetime
 import logging
 import time
@@ -119,7 +118,9 @@ Rating = datastore_types.Rating
 Text = datastore_types.Text
 Blob = datastore_types.Blob
 
+
 _kind_map = {}
+
 
 _SELF_REFERENCE = object()
 
@@ -146,11 +147,15 @@ class DuplicatePropertyError(Error):
 
 
 class ConfigurationError(Error):
-  """Raised when a property is improperly configured."""
+  """Raised when a property or model is improperly configured."""
 
 
 class ReservedWordError(Error):
   """Raised when a property is defined for a reserved word."""
+
+
+class DerivedPropertyError(Error):
+  """Raised when attempting to assign a value to a derived property."""
 
 
 _ALLOWED_PROPERTY_TYPES = set([
@@ -226,6 +231,36 @@ def check_reserved_word(attr_name):
         "definition." % locals())
 
 
+def _initialize_properties(model_class, name, bases, dct):
+  """Initialize Property attributes for Model-class.
+
+  Args:
+    model_class: Model class to initialize properties for.
+  """
+  model_class._properties = {}
+  defined = set()
+  for base in bases:
+    if hasattr(base, '_properties'):
+      property_keys = base._properties.keys()
+      duplicate_properties = defined.intersection(property_keys)
+      if duplicate_properties:
+        raise DuplicatePropertyError(
+            'Duplicate properties in base class %s already defined: %s' %
+            (base.__name__, list(duplicate_properties)))
+      defined.update(property_keys)
+      model_class._properties.update(base._properties)
+
+  for attr_name in dct.keys():
+    attr = dct[attr_name]
+    if isinstance(attr, Property):
+      check_reserved_word(attr_name)
+      if attr_name in defined:
+        raise DuplicatePropertyError('Duplicate property: %s' % attr_name)
+      defined.add(attr_name)
+      model_class._properties[attr_name] = attr
+      attr.__property_config__(model_class, attr_name)
+
+
 class PropertiedClass(type):
   """Meta-class for initializing Model classes properties.
 
@@ -239,7 +274,7 @@ class PropertiedClass(type):
   Duplicate properties are not permitted.
   """
 
-  def __init__(cls, name, bases, dct):
+  def __init__(cls, name, bases, dct, map_kind=True):
     """Initializes a class that might have property definitions.
 
     This method is called when a class is created with the PropertiedClass
@@ -272,30 +307,10 @@ class PropertiedClass(type):
     """
     super(PropertiedClass, cls).__init__(name, bases, dct)
 
-    cls._properties = {}
-    defined = set()
-    for base in bases:
-      if hasattr(base, '_properties'):
-        property_keys = base._properties.keys()
-        duplicate_properties = defined.intersection(property_keys)
-        if duplicate_properties:
-          raise DuplicatePropertyError(
-              'Duplicate properties in base class %s already defined: %s' %
-              (base.__name__, list(duplicate_properties)))
-        defined.update(property_keys)
-        cls._properties.update(base._properties)
+    _initialize_properties(cls, name, bases, dct)
 
-    for attr_name in dct.keys():
-      attr = dct[attr_name]
-      if isinstance(attr, Property):
-        check_reserved_word(attr_name)
-        if attr_name in defined:
-          raise DuplicatePropertyError('Duplicate property: %s' % attr_name)
-        defined.add(attr_name)
-        cls._properties[attr_name] = attr
-        attr.__property_config__(cls, attr_name)
-
-    _kind_map[cls.kind()] = cls
+    if map_kind:
+      _kind_map[cls.kind()] = cls
 
 
 class Property(object):
@@ -466,7 +481,10 @@ class Property(object):
     return value
 
   def _attr_name(self):
-    """Attribute name we use for this property in model instances."""
+    """Attribute name we use for this property in model instances.
+
+    DO NOT USE THIS METHOD.
+    """
     return '_' + self.name
 
   data_type = str
@@ -500,7 +518,12 @@ class Model(object):
 
   __metaclass__ = PropertiedClass
 
-  def __init__(self, parent=None, key_name=None, _app=None, **kwds):
+  def __init__(self,
+               parent=None,
+               key_name=None,
+               _app=None,
+               _from_entity=False,
+               **kwds):
     """Creates a new instance of this model.
 
     To create a new entity, you instantiate a model and then call save(),
@@ -524,6 +547,7 @@ class Model(object):
         level instance.
       key_name: Name for new model instance.
       _app: Intentionally undocumented.
+      _from_entity: Intentionally undocumented.
       args: Keyword arguments mapping to properties of model.
     """
     if key_name == '':
@@ -533,15 +557,22 @@ class Model(object):
                         key_name.__class__.__name__)
 
     if parent is not None:
-      if not isinstance(parent, Model):
+      if not isinstance(parent, (Model, Key)):
         raise TypeError('Expected Model type; received %s (is %s)' %
                         (parent, parent.__class__.__name__))
-      if not parent.is_saved():
+      if isinstance(parent, Model) and not parent.has_key():
         raise BadValueError(
-            "%s instance must be saved before it can be used as a "
+            "%s instance must have a complete key before it can be used as a "
             "parent." % parent.kind())
-
-    self._parent = parent
+      if isinstance(parent, Key):
+        self._parent_key = parent
+        self._parent = None
+      else:
+        self._parent_key = parent.key()
+        self._parent = parent
+    else:
+      self._parent_key = None
+      self._parent = None
     self._entity = None
     self._key_name = key_name
     self._app = _app
@@ -552,7 +583,11 @@ class Model(object):
         value = kwds[prop.name]
       else:
         value = prop.default_value()
-      prop.__set__(self, value)
+      try:
+        prop.__set__(self, value)
+      except DerivedPropertyError, e:
+        if prop.name in kwds and not _from_entity:
+          raise
 
   def key(self):
     """Unique key for this entity.
@@ -569,6 +604,9 @@ class Model(object):
     """
     if self.is_saved():
       return self._entity.key()
+    elif self._key_name:
+      parent = self._parent and self._parent.key()
+      return Key.from_path(self.kind(), self._key_name, parent=parent)
     else:
       raise NotSavedError()
 
@@ -634,7 +672,12 @@ class Model(object):
     if self.is_saved():
       entity = self._entity
     else:
-      if self._parent is not None:
+      if self._parent_key is not None:
+        entity = _entity_class(self.kind(),
+                               parent=self._parent_key,
+                               name=self._key_name,
+                               _app=self._app)
+      elif self._parent is not None:
         entity = _entity_class(self.kind(),
                                parent=self._parent._entity,
                                name=self._key_name,
@@ -668,6 +711,18 @@ class Model(object):
     """
     return self._entity is not None
 
+  def has_key(self):
+    """Determine if this model instance has a complete key.
+
+    Ids are not assigned until the data is saved to the Datastore, but
+    instances with a key name always have a full key.
+
+    Returns:
+      True if the object has been persisted to the datastore or has a key_name,
+      otherwise False.
+    """
+    return self.is_saved() or self._key_name
+
   def dynamic_properties(self):
     """Returns a list of all dynamic properties defined for instance."""
     return []
@@ -683,10 +738,10 @@ class Model(object):
       Parent of contained entity or parent provided in constructor, None if
       instance has no parent.
     """
-    if (self._parent is None and
-        self._entity is not None and
-        self._entity.parent() is not None):
-      self._parent = get(self._entity.parent())
+    if self._parent is None:
+      parent_key = self.parent_key()
+      if parent_key is not None:
+        self._parent = get(parent_key)
     return self._parent
 
   def parent_key(self):
@@ -698,7 +753,9 @@ class Model(object):
     Returns:
       Parent key of entity, None if there is no parent.
     """
-    if self._parent is not None:
+    if self._parent_key is not None:
+      return self._parent_key
+    elif self._parent is not None:
       return self._parent.key()
     elif self._entity is not None:
       return self._entity.parent()
@@ -924,7 +981,7 @@ class Model(object):
                       (repr(cls), entity.kind()))
 
     entity_values = cls._load_entity_values(entity)
-    instance = cls(None, **entity_values)
+    instance = cls(None, _from_entity=True, **entity_values)
     instance._entity = entity
     del instance._key_name
     return instance
@@ -1016,14 +1073,23 @@ def delete(models):
   """Delete one or more Model instances.
 
   Args:
-    models: Model instance or list of Model instances.
+    models_or_keys: Model instance or list of Model instances.
 
   Raises:
     TransactionFailedError if the data could not be committed.
   """
-  models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
-  entities = [model.key() for model in models]
-  keys = datastore.Delete(entities)
+  models_or_keys, multiple = datastore.NormalizeAndTypeCheck(
+      models, (Model, Key, basestring))
+  keys = []
+  for model_or_key in models_or_keys:
+    if isinstance(model_or_key, Model):
+      key = model_or_key = model_or_key.key()
+    elif isinstance(model_or_key, basestring):
+      key = model_or_key = Key(model_or_key)
+    else:
+      key = model_or_key
+    keys.append(key)
+  datastore.Delete(keys)
 
 
 class Expando(Model):
@@ -1133,7 +1199,7 @@ class Expando(Model):
         self._dynamic_properties = {}
       self._dynamic_properties[key] = value
     else:
-      Model.__setattr__(self, key, value)
+      super(Expando, self).__setattr__(key, value)
 
   def __getattr__(self, key):
     """If no explicit attribute defined, retrieve value from entity.
@@ -1211,7 +1277,7 @@ class Expando(Model):
     Args:
       entity: Entity which contain values to search dyanmic properties for.
     """
-    entity_values = Model._load_entity_values(entity)
+    entity_values = super(Expando, cls)._load_entity_values(entity)
     for key, value in entity.iteritems():
       if key not in entity_values:
         entity_values[str(key)] = value
@@ -1537,7 +1603,7 @@ class Query(_BaseQuery):
       else:
         raise NotSavedError()
     elif isinstance(ancestor, Model):
-      if ancestor.is_saved():
+      if ancestor.has_key():
         self.__ancestor = ancestor.key()
       else:
         raise NotSavedError()
@@ -2170,20 +2236,33 @@ class ListProperty(Property):
       if not isinstance(value, list):
         raise BadValueError('Property %s must be a list' % self.name)
 
-      if self.item_type in (int, long):
-        item_type = (int, long)
-      else:
-        item_type = self.item_type
+      value = self.validate_list_contents(value)
+    return value
 
-      for item in value:
-        if not isinstance(item, item_type):
-          if item_type == (int, long):
-            raise BadValueError('Items in the %s list must all be integers.' %
-                                self.name)
-          else:
-            raise BadValueError(
-                'Items in the %s list must all be %s instances' %
-                (self.name, self.item_type.__name__))
+  def validate_list_contents(self, value):
+    """Validates that all items in the list are of the correct type.
+
+    Returns:
+      The validated list.
+
+    Raises:
+      BadValueError if the list has items are not instances of the
+      item_type given to the constructor.
+    """
+    if self.item_type in (int, long):
+      item_type = (int, long)
+    else:
+      item_type = self.item_type
+
+    for item in value:
+      if not isinstance(item, item_type):
+        if item_type == (int, long):
+          raise BadValueError('Items in the %s list must all be integers.' %
+                              self.name)
+        else:
+          raise BadValueError(
+              'Items in the %s list must all be %s instances' %
+              (self.name, self.item_type.__name__))
     return value
 
   def empty(self, value):
@@ -2209,6 +2288,15 @@ class ListProperty(Property):
       Copy of the default value.
     """
     return list(super(ListProperty, self).default_value())
+
+  def get_value_for_datastore(self, model_instance):
+    """Get value from property to send to datastore.
+
+    Returns:
+      validated list appropriate to save in the datastore.
+    """
+    return self.validate_list_contents(
+        super(ListProperty, self).get_value_for_datastore(model_instance))
 
 
 class StringListProperty(ListProperty):
@@ -2368,9 +2456,9 @@ class ReferenceProperty(Property):
     if isinstance(value, datastore.Key):
       return value
 
-    if value is not None and not value.is_saved():
+    if value is not None and not value.has_key():
       raise BadValueError(
-          '%s instance must be saved before it can be stored as a '
+          '%s instance must have a complete key before it can be stored as a '
           'reference' % self.reference_class.kind())
 
     value = super(ReferenceProperty, self).validate(value)

@@ -369,14 +369,14 @@ class Query(ProtocolBuffer.ProtocolMessage):
   ANCESTOR_FIRST =    2
   FILTER_FIRST =    3
 
-  _Plan_NAMES = {
+  _Hint_NAMES = {
     1: "ORDER_FIRST",
     2: "ANCESTOR_FIRST",
     3: "FILTER_FIRST",
   }
 
-  def Plan_Name(cls, x): return cls._Plan_NAMES.get(x, "")
-  Plan_Name = classmethod(Plan_Name)
+  def Hint_Name(cls, x): return cls._Hint_NAMES.get(x, "")
+  Hint_Name = classmethod(Hint_Name)
 
   has_app_ = 0
   app_ = ""

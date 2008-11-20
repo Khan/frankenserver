@@ -56,6 +56,9 @@ _MAX_LINK_PROPERTY_LENGTH = 2083
 
 RESERVED_PROPERTY_NAME = re.compile('^__.*__$')
 
+_KEY_SPECIAL_PROPERTY = '__key__'
+_SPECIAL_PROPERTIES = frozenset([_KEY_SPECIAL_PROPERTY])
+
 class UtcTzinfo(datetime.tzinfo):
   def utcoffset(self, dt): return datetime.timedelta(0)
   def dst(self, dt): return datetime.timedelta(0)
@@ -855,6 +858,15 @@ class Blob(str):
     raise TypeError('Blob() argument should be str instance, not %s' %
                     type(arg).__name__)
 
+  def ToXml(self):
+    """Output a blob as XML.
+
+    Returns:
+      Base64 encoded version of itself for safe insertion in to an XML document.
+    """
+    encoded = base64.urlsafe_b64encode(self)
+    return saxutils.escape(encoded)
+
 
 _PROPERTY_MEANINGS = {
 
@@ -1009,7 +1021,7 @@ _VALIDATE_PROPERTY_VALUES = {
 assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
 
 
-def ValidateProperty(name, values):
+def ValidateProperty(name, values, read_only=False):
   """Helper function for validating property values.
 
   Args:
@@ -1023,7 +1035,8 @@ def ValidateProperty(name, values):
     type-specific criteria.
   """
   ValidateString(name, 'property name', datastore_errors.BadPropertyError)
-  if RESERVED_PROPERTY_NAME.match(name):
+
+  if not read_only and RESERVED_PROPERTY_NAME.match(name):
     raise datastore_errors.BadPropertyError(
         '%s is a reserved property name.' % name)
 
@@ -1421,6 +1434,7 @@ def PropertyValueFromString(type_, value_string, _auth_domain=None):
     ValueError if type_ is datetime and value_string has a timezone offset.
   """
   if type_ == datetime.datetime:
+    value_string = value_string.strip()
     if value_string[-6] in ('+', '-'):
       if value_string[-5:] == '00:00':
         value_string = value_string[:-6]

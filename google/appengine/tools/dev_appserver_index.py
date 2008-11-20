@@ -64,9 +64,9 @@ def GenerateIndexFromHistory(query_history,
   indexes = dict((key, 0) for key in all_keys - manual_keys)
 
   for query, count in query_history.iteritems():
-    key = datastore_index.CompositeIndexForQuery(query)
-    if key is not None:
-      key = key[:3]
+    required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
+    if required:
+      key = (kind, ancestor, props)
       if key not in manual_keys:
         if key in indexes:
           indexes[key] += count

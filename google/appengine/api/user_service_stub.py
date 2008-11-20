@@ -21,6 +21,7 @@
 import os
 import urllib
 import urlparse
+from google.appengine.api import apiproxy_stub
 from google.appengine.api import user_service_pb
 
 
@@ -28,22 +29,25 @@ _DEFAULT_LOGIN_URL = 'https://www.google.com/accounts/Login?continue=%s'
 _DEFAULT_LOGOUT_URL = 'https://www.google.com/accounts/Logout?continue=%s'
 
 
-class UserServiceStub(object):
+class UserServiceStub(apiproxy_stub.APIProxyStub):
   """Trivial implementation of the UserService."""
 
   def __init__(self,
                login_url=_DEFAULT_LOGIN_URL,
-               logout_url=_DEFAULT_LOGOUT_URL):
+               logout_url=_DEFAULT_LOGOUT_URL,
+               service_name='user'):
     """Initializer.
 
     Args:
       login_url: String containing the URL to use for logging in.
       logout_url: String containing the URL to use for logging out.
+      service_name: Service name expected for all calls.
 
     Note: Both the login_url and logout_url arguments must contain one format
     parameter, which will be replaced with the continuation URL where the user
     should be redirected after log-in or log-out has been completed.
     """
+    super(UserServiceStub, self).__init__(service_name)
     self.__num_requests = 0
     self._login_url = login_url
     self._logout_url = logout_url
@@ -52,22 +56,6 @@ class UserServiceStub(object):
 
   def num_requests(self):
     return self.__num_requests
-
-  def MakeSyncCall(self, service, call, request, response):
-    """The apiproxy entry point.
-
-    Args:
-      service: must be 'user'
-      call: string representing which function to call
-      request: the URL to redirect to, a base.StringProto
-      response: the URL, a base.StringProto
-
-    Currently, CreateLoginURL and CreateLogoutURL are supported.
-    """
-    assert service == 'user'
-
-    method = getattr(self, "_Dynamic_" + call)
-    method(request, response)
 
   def _Dynamic_CreateLoginURL(self, request, response):
     """Trivial implementation of UserService.CreateLoginURL().

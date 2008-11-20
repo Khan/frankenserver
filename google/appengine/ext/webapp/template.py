@@ -176,12 +176,12 @@ def create_template_register():
       return value.replace(arg, '')
     register.filter(cut)
 
-  Then, register the custom template module with the register_template_module
+  Then, register the custom template module with the register_template_library
   function below in your application module:
 
     myapp.py
     ========
-    webapp.template.register_template_module('templatefilters')
+    webapp.template.register_template_library('templatefilters')
   """
   return django.template.Library()
 

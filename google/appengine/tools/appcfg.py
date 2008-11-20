@@ -196,8 +196,9 @@ class AbstractRpcServer(object):
     """
     continue_location = "http://localhost/"
     args = {"continue": continue_location, "auth": auth_token}
-    req = self._CreateRequest("http://%s/_ah/login?%s" %
-                              (self.host, urllib.urlencode(args)))
+    login_path = os.environ.get("APPCFG_LOGIN_PATH", "/_ah")
+    req = self._CreateRequest("http://%s%s/login?%s" %
+                              (self.host, login_path, urllib.urlencode(args)))
     try:
       response = self.opener.open(req)
     except urllib2.HTTPError, e:
@@ -927,6 +928,7 @@ class LogsRequester(object):
       for i in xrange(self.num_days):
         then = time.gmtime(now - 24*3600 * i)
         patterns.append(re.escape(time.strftime("%d/%m/%Y", then)))
+        patterns.append(re.escape(time.strftime("%d/%b/%Y", then)))
       self.valid_dates = re.compile(r"[^[]+\[(" + "|".join(patterns) + r"):")
 
   def DownloadLogs(self):
@@ -1453,6 +1455,7 @@ class AppCfgApp(object):
     args: The positional command line args left over after parsing the options.
     raw_input_fn: Function used for getting raw user input, like email.
     password_input_fn: Function used for getting user password.
+    error_fh: Unexpected HTTPErrors are printed to this file handle.
 
   Attributes for testing:
     parser_class: The class to use for parsing the command line.  Because
@@ -1463,7 +1466,8 @@ class AppCfgApp(object):
   def __init__(self, argv, parser_class=optparse.OptionParser,
                rpc_server_class=HttpRpcServer,
                raw_input_fn=raw_input,
-               password_input_fn=getpass.getpass):
+               password_input_fn=getpass.getpass,
+               error_fh=sys.stderr):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -1475,12 +1479,14 @@ class AppCfgApp(object):
       rpc_server_class: RPC server class to use for this application.
       raw_input_fn: Function used for getting user email.
       password_input_fn: Function used for getting user password.
+      error_fh: Unexpected HTTPErrors are printed to this file handle.
     """
     self.parser_class = parser_class
     self.argv = argv
     self.rpc_server_class = rpc_server_class
     self.raw_input_fn = raw_input_fn
     self.password_input_fn = password_input_fn
+    self.error_fh = error_fh
 
     self.parser = self._GetOptionParser()
     for action in self.actions.itervalues():
@@ -1509,23 +1515,20 @@ class AppCfgApp(object):
     global verbosity
     verbosity = self.options.verbose
 
-  def Run(self, error_fh=sys.stderr):
+  def Run(self):
     """Executes the requested action.
 
     Catches any HTTPErrors raised by the action and prints them to stderr.
-
-    Args:
-      error_fh: Print any HTTPErrors to this file handle.
     """
     try:
       self.action.function(self)
     except urllib2.HTTPError, e:
       body = e.read()
-      print >>error_fh, ("Error %d: --- begin server output ---\n"
-                         "%s\n--- end server output ---" %
-                         (e.code, body.rstrip("\n")))
+      print >>self.error_fh, ("Error %d: --- begin server output ---\n"
+                              "%s\n--- end server output ---" %
+                              (e.code, body.rstrip("\n")))
     except yaml_errors.EventListenerError, e:
-      print >>error_fh, ("Error parsing yaml file:\n%s" % e)
+      print >>self.error_fh, ("Error parsing yaml file:\n%s" % e)
 
   def _GetActionDescriptions(self):
     """Returns a formatted string containing the short_descs for all actions."""
@@ -1735,7 +1738,15 @@ class AppCfgApp(object):
     index_defs = self._ParseIndexYaml(basepath)
     if index_defs:
       index_upload = IndexDefinitionUpload(rpc_server, appyaml, index_defs)
-      index_upload.DoUpload()
+      try:
+        index_upload.DoUpload()
+      except urllib2.HTTPError, e:
+        StatusUpdate("Error %d: --- begin server output ---\n"
+                     "%s\n--- end server output ---" %
+                     (e.code, e.read().rstrip("\n")))
+        print >> self.error_fh, (
+          "Your app was updated, but there was an error updating your indexes. "
+          "Please retry later with appcfg.py update_indexes.")
 
   def _UpdateOptions(self, parser):
     """Adds update-specific options to 'parser'.

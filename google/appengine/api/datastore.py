@@ -243,7 +243,7 @@ def Delete(keys):
     keys: Key or string or list of Keys or strings
 
   Raises:
-    TransactionFailedError, if the Put could not be committed.
+    TransactionFailedError, if the Delete could not be committed.
   """
   keys, multiple = NormalizeAndTypeCheckKeys(keys)
 
@@ -882,7 +882,7 @@ class Query(dict):
         _ToDatastoreError(err)
       except datastore_errors.NeedIndexError, exc:
         yaml = datastore_index.IndexYamlForQuery(
-          *datastore_index.CompositeIndexForQuery(pb)[:-1])
+          *datastore_index.CompositeIndexForQuery(pb)[1:-1])
         raise datastore_errors.NeedIndexError(
           str(exc) + '\nThis query needs this index:\n' + yaml)
 
@@ -976,7 +976,7 @@ class Query(dict):
     if isinstance(value, tuple):
       value = list(value)
 
-    datastore_types.ValidateProperty(' ', value)
+    datastore_types.ValidateProperty(' ', value, read_only=True)
     match = self._CheckFilter(filter, value)
     property = match.group(1)
     operator = match.group(3)
@@ -1065,6 +1065,8 @@ class Query(dict):
 
     property = match.group(1)
     operator = match.group(3)
+    if operator is None:
+      operator = '='
 
     if isinstance(values, tuple):
       values = list(values)
@@ -1087,6 +1089,13 @@ class Query(dict):
           'Inequality operators (%s) must be on the same property as the '
           'first sort order, if any sort orders are supplied' %
           ', '.join(self.INEQUALITY_OPERATORS))
+    elif property in datastore_types._SPECIAL_PROPERTIES:
+      if property == datastore_types._KEY_SPECIAL_PROPERTY:
+        for value in values:
+          if not isinstance(value, Key):
+            raise datastore_errors.BadFilterError(
+              '%s filter value must be a Key; received %s (a %s)' %
+              (datastore_types._KEY_SPECIAL_PROPERTY, value, typename(value)))
 
     return match
 

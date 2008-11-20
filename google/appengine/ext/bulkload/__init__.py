@@ -382,8 +382,7 @@ class BulkLoad(webapp.RequestHandler):
           output.append('error:\n%s' % stacktrace)
           return (httplib.BAD_REQUEST, ''.join(output))
 
-    for entity in entities:
-      datastore.Put(entity)
+    datastore.Put(entities)
 
     return (httplib.OK, ''.join(output))
 

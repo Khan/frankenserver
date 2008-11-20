@@ -31,38 +31,10 @@ import mimetypes
 import subprocess
 import smtplib
 
-
-class ServiceStub(object):
-  """Service stub base class used to forward requests to methods.
-
-  Use this base class to defined service stub classes.  Instead of overriding
-  MakeSyncCall, the default implementation forwards the call to appropriate
-  sub-class method.
-
-  If the sub class defines a static string 'SERVICE', it will also check
-  to make sure that calls to this service stub are always made to that named
-  service.
-  """
-
-  def MakeSyncCall(self, service, call, request, response):
-    """The main RPC entry point.
-
-    Args:
-      service: Must be name as defined by sub class variable SERVICE.
-      call: A string representing the rpc to make.  Must be part of
-        MailService.
-      request: A protocol buffer of the type corresponding to 'call'.
-      response: A protocol buffer of the type corresponding to 'call'.
-    """
-    assert not hasattr(self, 'SERVICE') or service == self.SERVICE
-    explanation = []
-    assert request.IsInitialized(explanation), explanation
-
-    attr = getattr(self, '_Dynamic_' + call)
-    attr(request, response)
+from google.appengine.api import apiproxy_stub
 
 
-class MailServiceStub(ServiceStub):
+class MailServiceStub(apiproxy_stub.APIProxyStub):
   """Python only mail service stub.
 
   This stub does not actually attempt to send email.  instead it merely logs
@@ -74,7 +46,6 @@ class MailServiceStub(ServiceStub):
     user: User to log in to SMTP server as.
     password: Password for SMTP server user.
   """
-  SERVICE = 'mail'
 
   def __init__(self,
                host=None,
@@ -82,7 +53,20 @@ class MailServiceStub(ServiceStub):
                user='',
                password='',
                enable_sendmail=False,
-               show_mail_body=False):
+               show_mail_body=False,
+               service_name='mail'):
+    """Constructor.
+
+    Args:
+      host: Host of SMTP mail server.
+      post: Port of SMTP mail server.
+      user: Sending user of SMTP mail.
+      password: SMTP password.
+      enable_sendmail: Whether sendmail enabled or not.
+      show_mail_body: Whether to show mail body in log.
+      service_name: Service name expected for all calls.
+    """
+    super(MailServiceStub, self).__init__(service_name)
     self._smtp_host = host
     self._smtp_port = port
     self._smtp_user = user

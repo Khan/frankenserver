@@ -247,8 +247,6 @@ def LoginCGI(login_url,
       output_headers.append(SetUserInfoCookie(set_email, set_admin))
 
     redirect_url = continue_url or login_url
-  elif email and continue_url:
-    redirect_url = continue_url
 
   if redirect_url:
     outfile.write('Status: 302 Redirecting to continue URL\r\n')

@@ -3,6 +3,56 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.1.6 - November 17, 2008
+=================================
+
+  - Datastore now supports filtering and sorting on the __key__ special
+    property, which evaluates to each entity's key.
+  - Fixed a bug where it was possible to append None to ListProperty.
+  - Datastore appengine.ext.db models allow deletion by key without
+    instantiating a model instance.
+  - Datastore models allow access to key name before put() if key_name given.
+  - Datastore fetch max results and max query offset match production limits.
+  - Fixed an issue in production where query fails with NeedIndexError when
+    a model has two ancestor indexes.
+    http://code.google.com/p/googleappengine/issues/detail?id=423
+  - Allow trailing whitespace in PropertyValueFromString for datetime.
+  - Fixed to_xml on models with binary data in a BlobProperty: they now
+    are base64 encoded.
+    Note: This changes XML serialization.
+      http://code.google.com/p/googleappengine/issues/detail?id=430
+  - Fixed an issue with setting expando attributes.
+      http://code.google.com/p/googleappengine/issues/detail?id=431
+  - Fixed an issue where TypeError was raised instead of NeedIndexError for
+    "merge join" queries, i.e. queries with only equals filters and no ancestor
+    or sort orders, that still need an index.
+      http://code.google.com/p/googleappengine/issues/detail?id=749
+  - URLFetch in the SDK now has the same 5 second timeout to match production.
+  - URLFetch response headers are combined
+      http://code.google.com/p/googleappengine/issues/detail?id=412
+  - URLFetch now uses original method when following a redirect.
+      http://code.google.com/p/googleappengine/issues/detail?id=363
+  - URLFetch logs a warning when using a non standard port.
+      http://code.google.com/p/googleappengine/issues/detail?id=436
+  - URLFetch allows integers as values in request headers.
+  - Enforce response size and API request size limits to match production.
+      http://code.google.com/p/googleappengine/issues/detail?id=447
+  - SDK sanitizes response headers to match production
+      http://code.google.com/p/googleappengine/issues/detail?id=198
+  - Login URLs now require login in the SDK to match production.
+      http://code.google.com/p/googleappengine/issues/detail?id=53
+  - Fixed an issue with long URLs in HTTP 302 redirect responses.
+      http://code.google.com/p/googleappengine/issues/detail?id=407
+  - Fixed an issue with regular expressions in static_files in app.yaml
+      http://code.google.com/p/googleappengine/issues/detail?id=711
+  - SDK only allows "C" locale to match production.
+      http://code.google.com/p/googleappengine/issues/detail?id=356
+  - Support the bufsize positional arg in open()/file().
+  - lstat is aliased to stat.
+  - appcfg handles index building errors more gracefully.
+  - Fixed an issue with symlinks in the path to the Python core libraries.
+
+
 Version 1.1.5 - September 29, 2008
 ==================================
 

@@ -40,3 +40,5 @@ else:
   class WindowsError(Exception):
     """A fake Windows Error exception which should never be thrown."""
 
+
+ERROR_PATH_NOT_FOUND = 3

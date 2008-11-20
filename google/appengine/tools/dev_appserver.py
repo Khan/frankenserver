@@ -46,6 +46,7 @@ import httplib
 import imp
 import inspect
 import itertools
+import locale
 import logging
 import mimetools
 import mimetypes
@@ -110,6 +111,10 @@ for ext, mime_type in (('.asc', 'text/plain'),
                        ('.text', 'text/plain'),
                        ('.wbmp', 'image/vnd.wap.wbmp')):
   mimetypes.add_type(mime_type, ext)
+
+MAX_RUNTIME_RESPONSE_SIZE = 1 << 20
+
+MAX_REQUEST_SIZE = 10 * 1024 * 1024
 
 
 class Error(Exception):
@@ -570,6 +575,13 @@ def FakeUname():
   return ('Linux', '', '', '', '')
 
 
+def FakeSetLocale(category, value=None, original_setlocale=locale.setlocale):
+  """Fake version of locale.setlocale that only supports the default."""
+  if value not in (None, '', 'C', 'POSIX'):
+    raise locale.Error, 'locale emulation only supports "C" locale'
+  return original_setlocale(category, 'C')
+
+
 def IsPathInSubdirectories(filename,
                            subdirectories,
                            normcase=os.path.normcase):
@@ -681,7 +693,8 @@ class FakeFile(file):
                       if os.path.isfile(filename))
 
   ALLOWED_DIRS = set([
-    os.path.normcase(os.path.realpath(os.path.dirname(os.__file__)))
+    os.path.normcase(os.path.realpath(os.path.dirname(os.__file__))),
+    os.path.normcase(os.path.abspath(os.path.dirname(os.__file__))),
   ])
 
   NOT_ALLOWED_DIRS = set([
@@ -713,8 +726,10 @@ class FakeFile(file):
     Args:
       root_path: Path to the root of the application.
     """
-    FakeFile._application_paths = set(os.path.abspath(path)
-                                      for path in application_paths)
+    FakeFile._application_paths = (set(os.path.realpath(path)
+                                       for path in application_paths) |
+                                   set(os.path.abspath(path)
+                                       for path in application_paths))
 
   @staticmethod
   def IsFileAccessible(filename, normcase=os.path.normcase):
@@ -756,7 +771,7 @@ class FakeFile(file):
 
     return False
 
-  def __init__(self, filename, mode='r', **kwargs):
+  def __init__(self, filename, mode='r', bufsize=-1, **kwargs):
     """Initializer. See file built-in documentation."""
     if mode not in FakeFile.ALLOWED_MODES:
       raise IOError('invalid mode: %s' % mode)
@@ -764,7 +779,7 @@ class FakeFile(file):
     if not FakeFile.IsFileAccessible(filename):
       raise IOError(errno.EACCES, 'file not accessible')
 
-    super(FakeFile, self).__init__(filename, mode, **kwargs)
+    super(FakeFile, self).__init__(filename, mode, bufsize, **kwargs)
 
 
 class RestrictedPathFunction(object):
@@ -1024,9 +1039,14 @@ class HardenedModulesHook(object):
   ]
 
   _MODULE_OVERRIDES = {
+    'locale': {
+      'setlocale': FakeSetLocale,
+    },
+
     'os': {
       'listdir': RestrictedPathFunction(os.listdir),
-      'lstat': RestrictedPathFunction(os.lstat),
+
+      'lstat': RestrictedPathFunction(os.stat),
       'stat': RestrictedPathFunction(os.stat),
       'uname': FakeUname,
       'urandom': FakeURandom,
@@ -1535,7 +1555,8 @@ def FindMissingInitFiles(cgi_path, module_fullname, isfile=os.path.isfile):
     depth_count += 1
 
   for index in xrange(depth_count):
-    current_init_file = os.path.join(module_base, '__init__.py')
+    current_init_file = os.path.abspath(
+        os.path.join(module_base, '__init__.py'))
 
     if not isfile(current_init_file):
       missing_init_files.append(current_init_file)
@@ -2403,6 +2424,15 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False,
 
         infile = cStringIO.StringIO(self.rfile.read(
             int(self.headers.get('content-length', 0))))
+
+        request_size = len(infile.getvalue())
+        if request_size > MAX_REQUEST_SIZE:
+          msg = ('HTTP request was too large: %d.  The limit is: %d.'
+                 % (request_size, MAX_REQUEST_SIZE))
+          logging.error(msg)
+          self.send_response(httplib.REQUEST_ENTITY_TOO_LARGE, msg)
+          return
+
         outfile = cStringIO.StringIO()
         try:
           dispatcher.Dispatch(self.path,
@@ -2416,7 +2446,20 @@ def CreateRequestHandler(root_path, login_url, require_indexes=False,
 
         outfile.flush()
         outfile.seek(0)
+
         status_code, status_message, header_data, body = RewriteResponse(outfile)
+
+        runtime_response_size = len(outfile.getvalue())
+        if runtime_response_size > MAX_RUNTIME_RESPONSE_SIZE:
+          status_code = 403
+          status_message = 'Forbidden'
+          new_headers = []
+          for header in header_data.split('\n'):
+            if not header.lower().startswith('content-length'):
+              new_headers.append(header)
+          header_data = '\n'.join(new_headers)
+          body = ('HTTP response was too large: %d.  The limit is: %d.'
+                  % (runtime_response_size, MAX_RUNTIME_RESPONSE_SIZE))
 
       except yaml_errors.EventListenerError, e:
         title = 'Fatal error when loading application configuration'

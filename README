@@ -17,7 +17,7 @@ INSTALLING ON Mac OSX
 =====================
 1) Download and install Python 2.5 from http://www.python.org/download/
 2) Download the SDK installer from http://code.google.com/appengine/downloads
-3) Install the SDK by double-clicking on the GoogleAppEngine.dmg file and 
+3) Install the SDK by double-clicking on the GoogleAppEngine.dmg file and
 running the installer.
 
 
@@ -25,7 +25,7 @@ INSTALLING ON WINDOWS
 =====================
 1) Download and install Python 2.5 from http://www.python.org/download/
 2) Download the SDK installer from http://code.google.com/appengine/downloads
-2) Install the SDK by double-clicking on the GoogleAppEngine.msi file and 
+3) Install the SDK by double-clicking on the GoogleAppEngine.msi file and
 running the installer.
 
 
@@ -85,7 +85,7 @@ Options:
 
 USING THE SDK
 =======================
-For instructions on getting started with Google App Engine, please see the 
+For instructions on getting started with Google App Engine, please see the
 Google App Engine Getting Started Guide
 
 http://code.google.com/appengine/docs/gettingstarted

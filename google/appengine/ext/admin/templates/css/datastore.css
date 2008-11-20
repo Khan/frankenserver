@@ -2,6 +2,13 @@
   margin-bottom: 1em;
 }
 
+#hint {
+  background-color: #F6F9FF;
+  border: 1px solid #E5ECF9;
+  margin-bottom: 1em;
+  padding: 0.5em 1em;
+}
+
 #message {
   color: red;
   position: relative;

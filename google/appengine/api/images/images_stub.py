@@ -26,32 +26,23 @@ import PIL
 from PIL import _imaging
 from PIL import Image
 
+from google.appengine.api import apiproxy_stub
 from google.appengine.api import images
 from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
-class ImagesServiceStub(object):
+class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
-  def __init__(self):
-    """Preloads PIL to load all modules in the unhardened environment."""
-    Image.init()
-
-  def MakeSyncCall(self, service, call, request, response):
-    """Main entry point.
+  def __init__(self, service_name='images'):
+    """Preloads PIL to load all modules in the unhardened environment.
 
     Args:
-      service: str, must be 'images'.
-      call: str, name of the RPC to make, must be part of ImagesService.
-      request: pb object, corresponding args to the 'call' argument.
-      response: pb object, return value for the 'call' argument.
+      service_name: Service name expected for all calls.
     """
-    assert service == "images"
-    assert request.IsInitialized()
-
-    attr = getattr(self, "_Dynamic_" + call)
-    attr(request, response)
+    super(ImagesServiceStub, self).__init__(service_name)
+    Image.init()
 
   def _Dynamic_Transform(self, request, response):
     """Trivial implementation of ImagesService::Transform.

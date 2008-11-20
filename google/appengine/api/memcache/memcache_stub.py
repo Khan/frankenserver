@@ -22,6 +22,7 @@
 import logging
 import time
 
+from google.appengine.api import apiproxy_stub
 from google.appengine.api import memcache
 from google.appengine.api.memcache import memcache_service_pb
 
@@ -91,19 +92,21 @@ class CacheEntry(object):
     return self.locked and not self.CheckExpired()
 
 
-class MemcacheServiceStub(object):
+class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
   """Python only memcache service stub.
 
   This stub keeps all data in the local process' memory, not in any
   external servers.
   """
 
-  def __init__(self, gettime=time.time):
+  def __init__(self, gettime=time.time, service_name='memcache'):
     """Initializer.
 
     Args:
       gettime: time.time()-like function used for testing.
+      service_name: Service name expected for all calls.
     """
+    super(MemcacheServiceStub, self).__init__(service_name)
     self._gettime = gettime
     self._ResetStats()
 
@@ -115,22 +118,6 @@ class MemcacheServiceStub(object):
     self._misses = 0
     self._byte_hits = 0
     self._cache_creation_time = self._gettime()
-
-  def MakeSyncCall(self, service, call, request, response):
-    """The main RPC entry point.
-
-    Args:
-      service: Must be name as defined by sub class variable SERVICE.
-      call: A string representing the rpc to make.  Must be part of
-        MemcacheService.
-      request: A protocol buffer of the type corresponding to 'call'.
-      response: A protocol buffer of the type corresponding to 'call'.
-    """
-    assert service == 'memcache'
-    assert request.IsInitialized()
-
-    attr = getattr(self, '_Dynamic_' + call)
-    attr(request, response)
 
   def _GetKey(self, key):
     """Retrieves a CacheEntry from the cache if it hasn't expired.

@@ -8,6 +8,20 @@
   <script type="text/javascript">
   //<![CDATA[
 
+  {% if in_production %}
+  function manageCreateButton() {
+    var input = document.getElementById("kind_input");
+    var button = document.getElementById("create_button");
+    if (input && button) {
+      if (input.value.length == 0) {
+        button.disabled = true;
+      } else {
+        button.disabled = false;
+      }
+    }
+  }
+  {% endif %}
+
   {% if entities %}
   function checkAllEntities() {
     var allCheckBox = document.getElementById("allkeys");
@@ -47,6 +61,13 @@
 {% block body %}
   <h3>Datastore Viewer</h3>
 
+  {% if in_production %}
+  <div id="hint">
+    The <a href="http://appengine.google.com/datastore/explorer?&app_id={{ application_name }}">Admin Console Data Viewer</a>
+    allows you to run GQL queries and much more!
+  </div>
+  {% endif %}
+
   {% if message %}
   <div id="message">
     {{ message }}
@@ -58,18 +79,22 @@
     Results <span class="count">{{ start|add:1 }}</span> - <span class="count">{{ entities|length|add:start }}</span> of <span class="count">{{ total }}</span>
   </div>
   {% endif %}
-  
-  {% if kinds %}
+
+  {% if kinds or in_production %}
   <form action="{{ request.path }}" method="get">
     <div id="datastore_search">
       <span class="field">
         <span class="name">Entity Kind:</span>
         <span class="value">
+          {% if in_production %}
+          <input id="kind_input" name="kind" type="text" size="8" value="{{ kind|escape }}" onkeyup="manageCreateButton()" onkeydown="manageCreateButton()"/>
+          {% else %}
           <select name="kind" id="kind_input">
             {% for a_kind in kinds %}
             <option value="{{ a_kind|escape }}"{% ifequal a_kind kind %} selected="selected"{% endifequal %}>{{ a_kind|escape }}</option>
             {% endfor %}
           </select>
+          {% endif %}
         </span>
       </span>
       <span class="buttons">
@@ -133,7 +158,6 @@
             </div>
           </div>
         </div>
-    
     </form>
   {% else %}
     {% if kind %}
@@ -146,6 +170,9 @@
   <script type="text/javascript">
   //<![CDATA[
 
+  {% if in_production %}
+  manageCreateButton();
+  {% endif %}
   updateDeleteButtonAndCheckbox();
   document.getElementById("kind_input").focus();
 

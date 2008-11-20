@@ -49,6 +49,7 @@ indexes:
 
 
 
+from google.appengine.api import datastore_types
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
@@ -249,8 +250,8 @@ def CompositeIndexForQuery(query):
     query: A datastore_pb.Query instance.
 
   Returns:
-    None if no composite index is needed for this query.  Otherwise,
-    a tuple of the form (kind, ancestor, (prop1, prop2, ...), neq) where:
+    A tuple of the form (required, kind, ancestor, (prop1, prop2, ...), neq):
+      required: boolean, whether the index is required
       kind: the kind or None;
       ancestor: True if this is an ancestor query;
       prop1, prop2, ...: tuples of the form (name, direction) where:
@@ -258,6 +259,8 @@ def CompositeIndexForQuery(query):
         direction: datastore_pb.Query_Order.ASCENDING or ...DESCENDING;
       neq: the number of prop tuples corresponding to equality filters.
   """
+  required = True
+
   kind = query.kind()
   ancestor = query.has_ancestor()
   filters = query.filter_list()
@@ -269,7 +272,7 @@ def CompositeIndexForQuery(query):
     assert nprops == 1, 'Filter has %s properties, expected 1' % nprops
 
   if ancestor and not kind and not filters and not orders:
-    return None
+    required = False
 
   eq_filters = [f for f in filters if f.op() in EQUALITY_OPERATORS]
   ineq_filters = [f for f in filters if f.op() in INEQUALITY_OPERATORS]
@@ -279,7 +282,9 @@ def CompositeIndexForQuery(query):
 
   if (kind and eq_filters and not ineq_filters and not exists_filters and
       not orders):
-    return None
+    names = set(f.property(0).name() for f in eq_filters)
+    if not names.intersection(datastore_types._SPECIAL_PROPERTIES):
+      required = False
 
   ineq_property = None
   if ineq_filters:
@@ -325,13 +330,13 @@ def CompositeIndexForQuery(query):
 
   if (kind and not ancestor and
       (not props or (len(props) == 1 and props[0][1] == ASCENDING))):
-    return None
+    required = False
 
   unique_names = set(name for name, dir in props)
   if len(props) > 1 and len(unique_names) == 1:
-    return None
+    required = False
 
-  return (kind, ancestor, tuple(props), len(eq_filters))
+  return (required, kind, ancestor, tuple(props), len(eq_filters))
 
 
 def IndexYamlForQuery(kind, ancestor, props):

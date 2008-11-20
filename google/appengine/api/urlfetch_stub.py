@@ -22,8 +22,10 @@
 import httplib
 import logging
 import socket
+import urllib
 import urlparse
 
+from google.appengine.api import apiproxy_stub
 from google.appengine.api import urlfetch
 from google.appengine.api import urlfetch_errors
 from google.appengine.api import urlfetch_service_pb
@@ -41,25 +43,40 @@ REDIRECT_STATUSES = frozenset([
   httplib.TEMPORARY_REDIRECT,
 ])
 
+PORTS_ALLOWED_IN_PRODUCTION = (
+    None, '80', '443', '4443', '8080', '8081', '8082', '8083', '8084', '8085',
+    '8086', '8087', '8088', '8089', '8188', '8444', '8990')
 
-class URLFetchServiceStub(object):
+_API_CALL_DEADLINE = 5.0
+
+_UNTRUSTED_REQUEST_HEADERS = frozenset([
+  'content-length',
+  'host',
+  'referer',
+  'user-agent',
+  'vary',
+  'via',
+  'x-forwarded-for',
+])
+
+_UNTRUSTED_RESPONSE_HEADERS = frozenset([
+  'content-encoding',
+  'content-length',
+  'date',
+  'server',
+  'transfer-encoding',
+])
+
+class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of the urlfetch API to be used with apiproxy_stub_map."""
 
-  def MakeSyncCall(self, service, call, request, response):
-    """The main RPC entry point.
+  def __init__(self, service_name='urlfetch'):
+    """Initializer.
 
-    Arg:
-      service: Must be 'urlfetch'.
-      call: A string representing the rpc to make.  Must be part of
-        URLFetchService.
-      request: A protocol buffer of the type corresponding to 'call'.
-      response: A protocol buffer of the type corresponding to 'call'.
+    Args:
+      service_name: Service name expected for all calls.
     """
-    assert service == 'urlfetch'
-    assert request.IsInitialized()
-
-    attr = getattr(self, '_Dynamic_' + call)
-    attr(request, response)
+    super(URLFetchServiceStub, self).__init__(service_name)
 
   def _Dynamic_Fetch(self, request, response):
     """Trivial implementation of URLFetchService::Fetch().
@@ -93,9 +110,19 @@ class URLFetchServiceStub(object):
       raise apiproxy_errors.ApplicationError(
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL)
 
+    sanitized_headers = self._SanitizeHttpHeaders(_UNTRUSTED_REQUEST_HEADERS,
+                                                  request.header_list())
+    request.clear_header()
+    request.header_list().extend(sanitized_headers)
+
     self._RetrieveURL(request.url(), payload, method,
                       request.header_list(), response,
                       follow_redirects=request.followredirects())
+
+    sanitized_headers = self._SanitizeHttpHeaders(_UNTRUSTED_RESPONSE_HEADERS,
+                                                  response.header_list())
+    response.clear_header()
+    response.header_list().extend(sanitized_headers)
 
   def _RetrieveURL(self, url, payload, method, headers, response,
                    follow_redirects=True):
@@ -120,7 +147,15 @@ class URLFetchServiceStub(object):
     last_host = ''
 
     for redirect_number in xrange(MAX_REDIRECTS + 1):
-      (protocol, host, path, parameters, query, fragment) = urlparse.urlparse(url)
+      parsed = urlparse.urlparse(url)
+      protocol, host, path, parameters, query, fragment = parsed
+
+      port = urllib.splitport(urllib.splituser(host)[1])[1]
+
+      if port not in PORTS_ALLOWED_IN_PRODUCTION:
+        logging.warning(
+          'urlfetch received %s ; port %s is not allowed in production!' %
+          (url, port))
 
       if host == '' and protocol == '':
         host = last_host
@@ -159,11 +194,14 @@ class URLFetchServiceStub(object):
         else:
           full_path = path
 
+        orig_timeout = socket.getdefaulttimeout()
         try:
+          socket.setdefaulttimeout(_API_CALL_DEADLINE)
           connection.request(method, full_path, payload, adjusted_headers)
           http_response = connection.getresponse()
           http_response_data = http_response.read()
         finally:
+          socket.setdefaulttimeout(orig_timeout)
           connection.close()
       except (httplib.error, socket.error, IOError), e:
         raise apiproxy_errors.ApplicationError(
@@ -176,8 +214,6 @@ class URLFetchServiceStub(object):
           logging.error(error_msg)
           raise apiproxy_errors.ApplicationError(
               urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, error_msg)
-        else:
-          method = 'GET'
       else:
         response.set_statuscode(http_response.status)
         response.set_content(http_response_data[:MAX_RESPONSE_SIZE])
@@ -195,3 +231,12 @@ class URLFetchServiceStub(object):
       logging.error(error_msg)
       raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, error_msg)
+
+  def _SanitizeHttpHeaders(self, untrusted_headers, headers):
+    """Cleans "unsafe" headers from the HTTP request/response.
+
+    Args:
+      untrusted_headers: set of untrusted headers names
+      headers: list of string pairs, first is header name and the second is header's value
+    """
+    return (h for h in headers if h.key().lower() not in untrusted_headers)
