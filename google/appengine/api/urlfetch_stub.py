@@ -49,6 +49,7 @@ PORTS_ALLOWED_IN_PRODUCTION = (
 
 _API_CALL_DEADLINE = 5.0
 
+
 _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'content-length',
   'host',
@@ -57,14 +58,6 @@ _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'vary',
   'via',
   'x-forwarded-for',
-])
-
-_UNTRUSTED_RESPONSE_HEADERS = frozenset([
-  'content-encoding',
-  'content-length',
-  'date',
-  'server',
-  'transfer-encoding',
 ])
 
 class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
@@ -118,11 +111,6 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     self._RetrieveURL(request.url(), payload, method,
                       request.header_list(), response,
                       follow_redirects=request.followredirects())
-
-    sanitized_headers = self._SanitizeHttpHeaders(_UNTRUSTED_RESPONSE_HEADERS,
-                                                  response.header_list())
-    response.clear_header()
-    response.header_list().extend(sanitized_headers)
 
   def _RetrieveURL(self, url, payload, method, headers, response,
                    follow_redirects=True):

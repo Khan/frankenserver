@@ -3,6 +3,11 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.1.7 - November 20, 2008
+=================================
+  - Fixed an issue with urlfetch response headers.
+      http://code.google.com/p/googleappengine/issues/detail?id=877
+
 Version 1.1.6 - November 17, 2008
 =================================
 
