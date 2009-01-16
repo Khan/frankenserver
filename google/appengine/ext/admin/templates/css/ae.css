@@ -1,0 +1,45 @@
+/* Goog.css Overrides */
+h1 {
+  font-size: 1.5em;
+}
+
+.g-doc {
+  width: auto;
+  margin: 0 10px;
+}
+
+/* Header Selectors */
+#ae-logo {
+  margin-bottom: 0;
+}
+#ae-appbar-lrg {
+  margin: 0 0 1.25em 0;
+  padding:  .2em .6em;
+  background-color: #e5ecf9;
+  border-top: 1px solid #36c;
+}
+#ae-appbar-lrg h1 {
+  margin: 0;
+  padding: 0;
+}
+
+/* Footer Selectors */
+#ft p {
+  text-align: center;
+  margin-top: 2.5em;
+  padding-top: .5em;
+  border-top: 2px solid #c3d9ff;
+}
+
+/* bd selectors */
+#bd h3 {
+  font-weight: bold;
+  font-size: 1.4em;
+}
+#bd p {
+  padding: 0 0 1em 0;
+}
+#ae-content {
+  padding-left: 1em;
+  border-left: 3px solid #e5ecf9;
+}
