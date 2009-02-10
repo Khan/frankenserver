@@ -223,9 +223,11 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
 
     try:
       old_value = long(entry.value)
+      if old_value < 0:
+        raise ValueError
     except ValueError, e:
       logging.error('Increment/decrement failed: Could not interpret '
-                    'value for key = "%s" as an integer.', key)
+                    'value for key = "%s" as an unsigned integer.', key)
       return
 
     delta = request.delta()

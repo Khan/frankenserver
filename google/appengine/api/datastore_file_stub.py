@@ -128,6 +128,18 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     users.User: entity_pb.PropertyValue.kUserValueGroup,
     }
 
+  WRITE_ONLY = entity_pb.CompositeIndex.WRITE_ONLY
+  READ_WRITE = entity_pb.CompositeIndex.READ_WRITE
+  DELETED = entity_pb.CompositeIndex.DELETED
+  ERROR = entity_pb.CompositeIndex.ERROR
+
+  _INDEX_STATE_TRANSITIONS = {
+    WRITE_ONLY: frozenset((READ_WRITE, DELETED, ERROR)),
+    READ_WRITE: frozenset((DELETED,)),
+    ERROR: frozenset((DELETED,)),
+    DELETED: frozenset((ERROR,)),
+  }
+
   def __init__(self,
                app_id,
                datastore_file,
@@ -794,6 +806,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         for name, value_pb in props.items():
           prop_pb = kind_pb.add_property()
           prop_pb.set_name(name)
+          prop_pb.set_multiple(False)
           prop_pb.mutable_value().CopyFrom(value_pb)
 
         kinds.append(kind_pb)
@@ -838,7 +851,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     if not stored_index:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                              "Index doesn't exist.")
-    elif index.state() != stored_index.state() + 1:
+    elif (index.state() != stored_index.state() and
+          index.state() not in self._INDEX_STATE_TRANSITIONS[stored_index.state()]):
       raise apiproxy_errors.ApplicationError(
         datastore_pb.Error.BAD_REQUEST,
         "cannot move index state from %s to %s" %

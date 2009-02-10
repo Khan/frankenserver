@@ -328,8 +328,7 @@ def CompositeIndexForQuery(query):
     else:
       props.append((prop_name, ASCENDING))
 
-  if (kind and not ancestor and
-      (not props or (len(props) == 1 and props[0][1] == ASCENDING))):
+  if kind and not ancestor and len(props) <= 1:
     required = False
 
     if props:

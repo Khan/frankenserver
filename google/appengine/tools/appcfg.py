@@ -71,6 +71,10 @@ verbosity = 1
 
 
 appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = "python"
+_api_versions = os.environ.get('GOOGLE_TEST_API_VERSIONS', '1')
+_options = validation.Options(*_api_versions.split(','))
+appinfo.AppInfoExternal.ATTRIBUTES[appinfo.API_VERSION] = _options
+del _api_versions, _options
 
 
 def StatusUpdate(msg):
@@ -188,6 +192,29 @@ def GetVersionObject(isfile=os.path.isfile, open_fn=open):
     version_fh.close()
 
   return version
+
+def RetryWithBackoff(initial_delay, backoff_factor, max_tries, callable):
+    """Calls a function multiple times, backing off more and more each time.
+
+    Args:
+      initial_delay: Initial delay after first try, in seconds.
+      backoff_factor: Delay will be multiplied by this factor after each try.
+      max_tries: Maximum number of tries.
+      callable: The method to call, will pass no arguments.
+
+    Returns:
+      True if the function succeded in one of its tries.
+
+    Raises:
+      Whatever the function raises--an exception will immediately stop retries.
+    """
+    delay = initial_delay
+    while not callable() and max_tries > 0:
+      StatusUpdate("Will check again in %s seconds." % delay)
+      time.sleep(delay)
+      delay *= backoff_factor
+      max_tries -= 1
+    return max_tries > 0
 
 
 class UpdateCheck(object):
@@ -789,7 +816,7 @@ def PacificTime(now):
   header uses UTC), and the client's local time is irrelevant.
 
   Args:
-    A posix timestamp giving current UTC time.
+    now: A posix timestamp giving current UTC time.
 
   Returns:
     A pseudo-posix timestamp giving current Pacific time.  Passing
@@ -913,6 +940,7 @@ class AppVersionUpload(object):
       hash of the file contents.
     in_transaction: True iff a transaction with the server has started.
       An AppVersionUpload can do only one transaction at a time.
+    deployed: True iff the Deploy method has been called.
   """
 
   def __init__(self, server, config):
@@ -930,6 +958,7 @@ class AppVersionUpload(object):
     self.version = self.config.version
     self.files = {}
     self.in_transaction = False
+    self.deployed = False
 
   def _Hash(self, content):
     """Compute the hash of the content.
@@ -1059,6 +1088,8 @@ class AppVersionUpload(object):
     All the files returned by Begin() must have been uploaded with UploadFile()
     before Commit() can be called.
 
+    This tries the new 'deploy' method; if that fails it uses the old 'commit'.
+
     Raises:
       Exception: Some required files were not uploaded.
     """
@@ -1066,10 +1097,65 @@ class AppVersionUpload(object):
     if self.files:
       raise Exception("Not all required files have been uploaded.")
 
-    StatusUpdate("Closing update.")
-    self.server.Send("/api/appversion/commit", app_id=self.app_id,
+    try:
+      self.Deploy()
+      if not RetryWithBackoff(1, 2, 8, self.IsReady):
+        logging.warning("Version still not ready to serve, aborting.")
+        raise Exception("Version not ready.")
+      self.StartServing()
+    except urllib2.HTTPError, e:
+      if e.code != 404:
+        raise
+      StatusUpdate("Closing update.")
+      self.server.Send("/api/appversion/commit", app_id=self.app_id,
+                       version=self.version)
+      self.in_transaction = False
+
+  def Deploy(self):
+    """Deploys the new app version but does not make it default.
+
+    All the files returned by Begin() must have been uploaded with UploadFile()
+    before Deploy() can be called.
+
+    Raises:
+      Exception: Some required files were not uploaded.
+    """
+    assert self.in_transaction, "Begin() must be called before Deploy()."
+    if self.files:
+      raise Exception("Not all required files have been uploaded.")
+
+    StatusUpdate("Deploying new version.")
+    self.server.Send("/api/appversion/deploy", app_id=self.app_id,
                      version=self.version)
-    self.in_transaction = False
+    self.deployed = True
+
+  def IsReady(self):
+    """Check if the new app version is ready to serve traffic.
+
+    Raises:
+      Exception: Deploy has not yet been called.
+
+    Returns:
+      True if the server returned the app is ready to serve.
+    """
+    assert self.deployed, "Deploy() must be called before IsReady()."
+
+    StatusUpdate("Checking if new version is ready to serve.")
+    result = self.server.Send("/api/appversion/isready", app_id=self.app_id,
+                              version=self.version)
+    return result == "1"
+
+  def StartServing(self):
+    """Start serving with the newly created version.
+
+    Raises:
+      Exception: Deploy has not yet been called.
+    """
+    assert self.deployed, "Deploy() must be called before IsReady()."
+
+    StatusUpdate("Closing update: new version is ready to start serving.")
+    self.server.Send("/api/appversion/startserving",
+                     app_id=self.app_id, version=self.version)
 
   def Rollback(self):
     """Rolls back the transaction if one is in progress."""
@@ -1140,12 +1226,13 @@ class AppVersionUpload(object):
             StatusUpdate("Uploaded %d files." % num_files)
 
       self.Commit()
+
     except KeyboardInterrupt:
       logging.info("User interrupted. Aborting.")
       self.Rollback()
       raise
     except:
-      logging.error("An unexpected error occurred. Aborting.")
+      logging.exception("An unexpected error occurred. Aborting.")
       self.Rollback()
       raise
 
@@ -1271,7 +1358,8 @@ class AppCfgApp(object):
                rpc_server_class=appengine_rpc.HttpRpcServer,
                raw_input_fn=raw_input,
                password_input_fn=getpass.getpass,
-               error_fh=sys.stderr):
+               error_fh=sys.stderr,
+               update_check_class=UpdateCheck):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -1284,6 +1372,7 @@ class AppCfgApp(object):
       raw_input_fn: Function used for getting user email.
       password_input_fn: Function used for getting user password.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
+      update_check_class: UpdateCheck class (can be replaced for testing).
     """
     self.parser_class = parser_class
     self.argv = argv
@@ -1291,6 +1380,7 @@ class AppCfgApp(object):
     self.raw_input_fn = raw_input_fn
     self.password_input_fn = password_input_fn
     self.error_fh = error_fh
+    self.update_check_class = update_check_class
 
     self.parser = self._GetOptionParser()
     for action in self.actions.itervalues():
@@ -1571,7 +1661,7 @@ class AppCfgApp(object):
     appyaml = self._ParseAppYaml(basepath)
     rpc_server = self._GetRpcServer()
 
-    updatecheck = UpdateCheck(rpc_server, appyaml)
+    updatecheck = self.update_check_class(rpc_server, appyaml)
     updatecheck.CheckForUpdates()
 
     appversion = AppVersionUpload(rpc_server, appyaml)
@@ -1603,7 +1693,7 @@ class AppCfgApp(object):
       parser: An instance of OptionsParser.
     """
     parser.add_option("-S", "--max_size", type="int", dest="max_size",
-                      default=1048576, metavar="SIZE",
+                      default=10485760, metavar="SIZE",
                       help="Maximum size of a file to upload.")
 
   def VacuumIndexes(self):

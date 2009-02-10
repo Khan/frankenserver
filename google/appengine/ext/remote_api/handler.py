@@ -209,7 +209,7 @@ class ApiCallHandler(webapp.RequestHandler):
       response.mutable_response().set_contents(response_data.Encode())
       self.response.set_status(200)
     except Exception, e:
-      self.response.set_status(500)
+      self.response.set_status(200)
       response.mutable_exception().set_contents(pickle.dumps(e))
     self.response.out.write(response.Encode())
 

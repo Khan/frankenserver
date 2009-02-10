@@ -38,7 +38,7 @@ def login_required(handler_method):
 
     @login_required
     def get(self):
-      user = users.GetCurrentUser(self)
+      user = users.get_current_user(self)
       self.response.out.write('Hello, ' + user.nickname())
 
   We will redirect to a login page if the user is not logged in. We always
@@ -49,9 +49,9 @@ def login_required(handler_method):
     if self.request.method != 'GET':
       raise webapp.Error('The check_login decorator can only be used for GET '
                          'requests')
-    user = users.GetCurrentUser()
+    user = users.get_current_user()
     if not user:
-      self.redirect(users.CreateLoginURL(self.request.uri))
+      self.redirect(users.create_login_url(self.request.uri))
       return
     else:
       handler_method(self, *args)

@@ -27,10 +27,12 @@ class UserServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
   REDIRECT_URL_TOO_LONG =    1
+  NOT_ALLOWED  =    2
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "REDIRECT_URL_TOO_LONG",
+    2: "NOT_ALLOWED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

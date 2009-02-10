@@ -105,17 +105,12 @@ import StringIO
 import csv
 import httplib
 import os
-import sys
 import traceback
-import types
-import struct
-import zlib
 
 import google
 import wsgiref.handlers
 
 from google.appengine.api import datastore
-from google.appengine.api import datastore_types
 from google.appengine.ext import webapp
 from google.appengine.ext.bulkload import constants
 
@@ -299,13 +294,8 @@ class BulkLoad(webapp.RequestHandler):
     """ Handle a POST. Reads CSV data, converts to entities, and stores them.
     """
     self.response.headers['Content-Type'] = 'text/plain'
-    version = self.request.headers.get('GAE-Uploader-Version', '0')
-    if version == '1':
-      kind = self.request.headers.get('GAE-Uploader-Kind')
-      response, output = self.LoadV1(kind, self.request.body)
-    else:
-      response, output = self.Load(self.request.get(constants.KIND_PARAM),
-                                   self.request.get(constants.CSV_PARAM))
+    response, output = self.Load(self.request.get(constants.KIND_PARAM),
+                                 self.request.get(constants.CSV_PARAM))
     self.response.set_status(response)
     self.response.out.write(output)
 
@@ -422,69 +412,6 @@ class BulkLoad(webapp.RequestHandler):
 
     return self.LoadEntities(self.IterRows(reader), loader)
 
-  def IterRowsV1(self, data):
-    """Yields a tuple of columns for each row in the uploaded data.
-
-    Args:
-      data: a string containing the unzipped v1 format data to load.
-
-    """
-    column_count, = struct.unpack_from('!i', data)
-    offset = 4
-
-    lengths_format = '!%di' % (column_count,)
-
-    while offset < len(data):
-      id_num = struct.unpack_from('!i', data, offset=offset)
-      offset += 4
-
-      value_lengths = struct.unpack_from(lengths_format, data, offset=offset)
-      offset += 4 * column_count
-
-      columns = struct.unpack_from(''.join('%ds' % length
-                                           for length in value_lengths), data,
-                                   offset=offset)
-      offset += sum(value_lengths)
-
-      yield (id_num, columns)
-
-
-  def LoadV1(self, kind, data):
-    """Parses version-1 format data, converts to entities, and stores them.
-
-    On error, fails fast. Returns a "bad request" HTTP response code and
-    includes the traceback in the output.
-
-    Args:
-      kind: a string containing the entity kind that this loader handles
-      data: a string containing the (v1 format) data to load
-
-    Returns:
-      tuple (response code, output) where:
-        response code: integer HTTP response code to return
-        output: string containing the HTTP response body
-    """
-    Validate(kind, basestring)
-    Validate(data, basestring)
-    output = []
-
-    try:
-      loader = Loader.RegisteredLoaders()[kind]
-    except KeyError:
-      output.append('Error: no Loader defined for kind %s.' % kind)
-      return (httplib.BAD_REQUEST, ''.join(output))
-
-    try:
-      data = zlib.decompress(data)
-    except:
-      stacktrace = traceback.format_exc()
-      output.append('Error: Could not decompress data\n%s' % stacktrace)
-      return (httplib.BAD_REQUEST, ''.join(output))
-
-    key_format = 'i%010d'
-    return self.LoadEntities(self.IterRowsV1(data),
-                             loader,
-                             key_format=key_format)
 
 def main(*loaders):
   """Starts bulk upload.

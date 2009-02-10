@@ -942,15 +942,7 @@ _PROPERTY_TYPES = frozenset([
   users.User,
 ])
 
-_RAW_PROPERTY_TYPES = frozenset([
-  Blob,
-  Text,
-])
-
-_STRING_TYPES = frozenset([
-  str,
-  unicode,
-])
+_RAW_PROPERTY_TYPES = (Blob, Text)
 
 def ValidatePropertyInteger(name, value):
   """Raises an exception if the supplied integer is invalid.
@@ -1143,7 +1135,7 @@ def PackDatetime(name, value, pbvalue):
 
 
 def DatetimeToTimestamp(value):
-  """Converts a datetime.datetime to seconds since the epoch, as a float.
+  """Converts a datetime.datetime to microseconds since the epoch, as a float.
   Args:
     value: datetime.datetime
 

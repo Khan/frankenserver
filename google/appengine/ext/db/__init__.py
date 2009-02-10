@@ -77,10 +77,13 @@ preconfigured to return all matching comments:
 
 
 
+import copy
 import datetime
 import logging
+import re
 import time
 import urlparse
+import warnings
 
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
@@ -186,6 +189,11 @@ _ALLOWED_PROPERTY_TYPES = set([
 
 _ALLOWED_EXPANDO_PROPERTY_TYPES = set(_ALLOWED_PROPERTY_TYPES)
 _ALLOWED_EXPANDO_PROPERTY_TYPES.update((list, tuple, type(None)))
+
+_OPERATORS = ['<', '<=', '>', '>=', '=', '==', '!=', 'in']
+_FILTER_REGEX = re.compile(
+    '^\s*([^\s]+)(\s+(%s)\s*)?$' % '|'.join(_OPERATORS),
+    re.IGNORECASE | re.UNICODE)
 
 
 def class_for_kind(kind):
@@ -527,12 +535,12 @@ class Model(object):
                **kwds):
     """Creates a new instance of this model.
 
-    To create a new entity, you instantiate a model and then call save(),
+    To create a new entity, you instantiate a model and then call put(),
     which saves the entity to the datastore:
 
        person = Person()
        person.name = 'Bret'
-       person.save()
+       person.put()
 
     You can initialize properties in the model in the constructor with keyword
     arguments:
@@ -595,7 +603,7 @@ class Model(object):
 
     This property is only available if this entity is already stored in the
     datastore, so it is available if this entity was fetched returned from a
-    query, or after save() is called the first time for new entities.
+    query, or after put() is called the first time for new entities.
 
     Returns:
       Datastore key of persisted entity.
@@ -606,7 +614,11 @@ class Model(object):
     if self.is_saved():
       return self._entity.key()
     elif self._key_name:
-      parent = self._parent and self._parent.key()
+      if self._parent_key:
+        parent_key = self._parent_key
+      elif self._parent:
+          parent_key = self._parent.key()
+      parent = self._parent_key or (self._parent and self._parent.key())
       return Key.from_path(self.kind(), self._key_name, parent=parent)
     else:
       raise NotSavedError()
@@ -1143,7 +1155,7 @@ class Expando(Model):
 
     1 - Because it is not possible for the datastore to know what kind of
         property to store on an undefined expando value, setting a property to
-        None is the same as deleting it form the expando.
+        None is the same as deleting it from the expando.
 
     2 - Persistent variables on Expando must not begin with '_'.  These
         variables considered to be 'protected' in Python, and are used
@@ -1524,16 +1536,71 @@ class Query(_BaseQuery):
       model_class: Model class to build query for.
     """
     super(Query, self).__init__(model_class)
-    self.__query_set = {}
+    self.__query_sets = [{}]
     self.__orderings = []
     self.__ancestor = None
 
-  def _get_query(self, _query_class=datastore.Query):
-    query = _query_class(self._model_class.kind(), self.__query_set)
-    if self.__ancestor is not None:
-      query.Ancestor(self.__ancestor)
-    query.Order(*self.__orderings)
-    return query
+  def _get_query(self,
+                 _query_class=datastore.Query,
+                 _multi_query_class=datastore.MultiQuery):
+    queries = []
+    for query_set in self.__query_sets:
+      query = _query_class(self._model_class.kind(), query_set)
+      if self.__ancestor is not None:
+        query.Ancestor(self.__ancestor)
+      queries.append(query)
+
+    if (_query_class != datastore.Query and
+        _multi_query_class == datastore.MultiQuery):
+      warnings.warn(
+          'Custom _query_class specified without corresponding custom'
+          ' _query_multi_class. Things will break if you use queries with'
+          ' the "IN" or "!=" operators.', RuntimeWarning)
+      if len(queries) > 1:
+        raise datastore_errors.BadArgumentError(
+            'Query requires multiple subqueries to satisfy. If _query_class'
+            ' is overridden, _multi_query_class must also be overridden.')
+    elif (_query_class == datastore.Query and
+          _multi_query_class != datastore.MultiQuery):
+      raise BadArgumentError('_query_class must also be overridden if'
+                             ' _multi_query_class is overridden.')
+
+    if len(queries) == 1:
+      queries[0].Order(*self.__orderings)
+      return queries[0]
+    else:
+      return _multi_query_class(queries, self.__orderings)
+
+  def __filter_disjunction(self, operations, values):
+    """Add a disjunction of several filters and several values to the query.
+
+    This is implemented by duplicating queries and combining the
+    results later.
+
+    Args:
+      operations: a string or list of strings. Each string contains a
+        property name and an operator to filter by. The operators
+        themselves must not require multiple queries to evaluate
+        (currently, this means that 'in' and '!=' are invalid).
+
+      values: a value or list of filter values, normalized by
+        _normalize_query_parameter.
+    """
+    if not isinstance(operations, (list, tuple)):
+      operations = [operations]
+    if not isinstance(values, (list, tuple)):
+      values = [values]
+
+    new_query_sets = []
+    for operation in operations:
+      if operation.lower().endswith('in') or operation.endswith('!='):
+        raise BadQueryError('Cannot use "in" or "!=" in a disjunction.')
+      for query_set in self.__query_sets:
+        for value in values:
+          new_query_set = copy.copy(query_set)
+          datastore._AddOrAppend(new_query_set, operation, value)
+          new_query_sets.append(new_query_set)
+    self.__query_sets = new_query_sets
 
   def filter(self, property_operator, value):
     """Add filter to query.
@@ -1545,11 +1612,29 @@ class Query(_BaseQuery):
     Returns:
       Self to support method chaining.
     """
-    if isinstance(value, (list, tuple)):
-      raise BadValueError('Filtering on lists is not supported')
+    match = _FILTER_REGEX.match(property_operator)
+    prop = match.group(1)
+    if match.group(3) is not None:
+      operator = match.group(3)
+    else:
+      operator = '=='
 
-    value = _normalize_query_parameter(value)
-    datastore._AddOrAppend(self.__query_set, property_operator, value)
+    if operator.lower() == 'in':
+      if not isinstance(value, (list, tuple)):
+        raise BadValueError('Argument to the "in" operator must be a list')
+      values = [_normalize_query_parameter(v) for v in value]
+      self.__filter_disjunction(prop + ' =', values)
+    else:
+      if isinstance(value, (list, tuple)):
+        raise BadValueError('Filtering on lists is not supported')
+      if operator == '!=':
+        self.__filter_disjunction([prop + ' <', prop + ' >'],
+                                  _normalize_query_parameter(value))
+      else:
+        value = _normalize_query_parameter(value)
+        for query_set in self.__query_sets:
+          datastore._AddOrAppend(query_set, property_operator, value)
+
     return self
 
   def order(self, property):
@@ -2359,8 +2444,11 @@ class ListProperty(Property):
     Returns:
       validated list appropriate to save in the datastore.
     """
-    return self.validate_list_contents(
+    value = self.validate_list_contents(
         super(ListProperty, self).get_value_for_datastore(model_instance))
+    if self.validator:
+      self.validator(value)
+    return value
 
 
 class StringListProperty(ListProperty):
@@ -2622,5 +2710,7 @@ class _ReverseReferenceProperty(Property):
 
 
 run_in_transaction = datastore.RunInTransaction
+run_in_transaction_custom_retries = datastore.RunInTransactionCustomRetries
 
 RunInTransaction = run_in_transaction
+RunInTransactionCustomRetries = run_in_transaction_custom_retries

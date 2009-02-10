@@ -39,8 +39,9 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
     self.package_ = x
 
   def clear_package(self):
-    self.has_package_ = 0
-    self.package_ = ""
+    if self.has_package_:
+      self.has_package_ = 0
+      self.package_ = ""
 
   def has_package(self): return self.has_package_
 
@@ -216,8 +217,9 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     self.summary_status_ = x
 
   def clear_summary_status(self):
-    self.has_summary_status_ = 0
-    self.summary_status_ = 0
+    if self.has_summary_status_:
+      self.has_summary_status_ = 0
+      self.summary_status_ = 0
 
   def has_summary_status(self): return self.has_summary_status_
 
@@ -228,8 +230,9 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     self.time_until_scheduled_ = x
 
   def clear_time_until_scheduled(self):
-    self.has_time_until_scheduled_ = 0
-    self.time_until_scheduled_ = 0
+    if self.has_time_until_scheduled_:
+      self.has_time_until_scheduled_ = 0
+      self.time_until_scheduled_ = 0
 
   def has_time_until_scheduled(self): return self.has_time_until_scheduled_
 

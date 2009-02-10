@@ -189,8 +189,9 @@ class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
     self.key_ = x
 
   def clear_key(self):
-    self.has_key_ = 0
-    self.key_ = ""
+    if self.has_key_:
+      self.has_key_ = 0
+      self.key_ = ""
 
   def has_key(self): return self.has_key_
 
@@ -201,8 +202,9 @@ class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = ""
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = ""
 
   def has_value(self): return self.has_value_
 
@@ -213,8 +215,9 @@ class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
     self.flags_ = x
 
   def clear_flags(self):
-    self.has_flags_ = 0
-    self.flags_ = 0
+    if self.has_flags_:
+      self.has_flags_ = 0
+      self.flags_ = 0
 
   def has_flags(self): return self.has_flags_
 
@@ -418,8 +421,9 @@ class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.key_ = x
 
   def clear_key(self):
-    self.has_key_ = 0
-    self.key_ = ""
+    if self.has_key_:
+      self.has_key_ = 0
+      self.key_ = ""
 
   def has_key(self): return self.has_key_
 
@@ -430,8 +434,9 @@ class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = ""
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = ""
 
   def has_value(self): return self.has_value_
 
@@ -442,8 +447,9 @@ class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.flags_ = x
 
   def clear_flags(self):
-    self.has_flags_ = 0
-    self.flags_ = 0
+    if self.has_flags_:
+      self.has_flags_ = 0
+      self.flags_ = 0
 
   def has_flags(self): return self.has_flags_
 
@@ -454,8 +460,9 @@ class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.set_policy_ = x
 
   def clear_set_policy(self):
-    self.has_set_policy_ = 0
-    self.set_policy_ = 1
+    if self.has_set_policy_:
+      self.has_set_policy_ = 0
+      self.set_policy_ = 1
 
   def has_set_policy(self): return self.has_set_policy_
 
@@ -466,8 +473,9 @@ class MemcacheSetRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.expiration_time_ = x
 
   def clear_expiration_time(self):
-    self.has_expiration_time_ = 0
-    self.expiration_time_ = 0
+    if self.has_expiration_time_:
+      self.has_expiration_time_ = 0
+      self.expiration_time_ = 0
 
   def has_expiration_time(self): return self.has_expiration_time_
 
@@ -811,8 +819,9 @@ class MemcacheDeleteRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.key_ = x
 
   def clear_key(self):
-    self.has_key_ = 0
-    self.key_ = ""
+    if self.has_key_:
+      self.has_key_ = 0
+      self.key_ = ""
 
   def has_key(self): return self.has_key_
 
@@ -823,8 +832,9 @@ class MemcacheDeleteRequest_Item(ProtocolBuffer.ProtocolMessage):
     self.delete_time_ = x
 
   def clear_delete_time(self):
-    self.has_delete_time_ = 0
-    self.delete_time_ = 0
+    if self.has_delete_time_:
+      self.has_delete_time_ = 0
+      self.delete_time_ = 0
 
   def has_delete_time(self): return self.has_delete_time_
 
@@ -1115,8 +1125,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     self.key_ = x
 
   def clear_key(self):
-    self.has_key_ = 0
-    self.key_ = ""
+    if self.has_key_:
+      self.has_key_ = 0
+      self.key_ = ""
 
   def has_key(self): return self.has_key_
 
@@ -1127,8 +1138,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     self.delta_ = x
 
   def clear_delta(self):
-    self.has_delta_ = 0
-    self.delta_ = 1
+    if self.has_delta_:
+      self.has_delta_ = 0
+      self.delta_ = 1
 
   def has_delta(self): return self.has_delta_
 
@@ -1139,8 +1151,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     self.direction_ = x
 
   def clear_direction(self):
-    self.has_direction_ = 0
-    self.direction_ = 1
+    if self.has_direction_:
+      self.has_direction_ = 0
+      self.direction_ = 1
 
   def has_direction(self): return self.has_direction_
 
@@ -1251,8 +1264,9 @@ class MemcacheIncrementResponse(ProtocolBuffer.ProtocolMessage):
     self.new_value_ = x
 
   def clear_new_value(self):
-    self.has_new_value_ = 0
-    self.new_value_ = 0
+    if self.has_new_value_:
+      self.has_new_value_ = 0
+      self.new_value_ = 0
 
   def has_new_value(self): return self.has_new_value_
 
@@ -1488,8 +1502,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.hits_ = x
 
   def clear_hits(self):
-    self.has_hits_ = 0
-    self.hits_ = 0
+    if self.has_hits_:
+      self.has_hits_ = 0
+      self.hits_ = 0
 
   def has_hits(self): return self.has_hits_
 
@@ -1500,8 +1515,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.misses_ = x
 
   def clear_misses(self):
-    self.has_misses_ = 0
-    self.misses_ = 0
+    if self.has_misses_:
+      self.has_misses_ = 0
+      self.misses_ = 0
 
   def has_misses(self): return self.has_misses_
 
@@ -1512,8 +1528,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.byte_hits_ = x
 
   def clear_byte_hits(self):
-    self.has_byte_hits_ = 0
-    self.byte_hits_ = 0
+    if self.has_byte_hits_:
+      self.has_byte_hits_ = 0
+      self.byte_hits_ = 0
 
   def has_byte_hits(self): return self.has_byte_hits_
 
@@ -1524,8 +1541,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.items_ = x
 
   def clear_items(self):
-    self.has_items_ = 0
-    self.items_ = 0
+    if self.has_items_:
+      self.has_items_ = 0
+      self.items_ = 0
 
   def has_items(self): return self.has_items_
 
@@ -1536,8 +1554,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.bytes_ = x
 
   def clear_bytes(self):
-    self.has_bytes_ = 0
-    self.bytes_ = 0
+    if self.has_bytes_:
+      self.has_bytes_ = 0
+      self.bytes_ = 0
 
   def has_bytes(self): return self.has_bytes_
 
@@ -1548,8 +1567,9 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     self.oldest_item_age_ = x
 
   def clear_oldest_item_age(self):
-    self.has_oldest_item_age_ = 0
-    self.oldest_item_age_ = 0
+    if self.has_oldest_item_age_:
+      self.has_oldest_item_age_ = 0
+      self.oldest_item_age_ = 0
 
   def has_oldest_item_age(self): return self.has_oldest_item_age_
 
@@ -1728,8 +1748,9 @@ class MemcacheStatsResponse(ProtocolBuffer.ProtocolMessage):
   def mutable_stats(self): self.has_stats_ = 1; return self.stats()
 
   def clear_stats(self):
-    self.has_stats_ = 0;
-    if self.stats_ is not None: self.stats_.Clear()
+    if self.has_stats_:
+      self.has_stats_ = 0;
+      if self.stats_ is not None: self.stats_.Clear()
 
   def has_stats(self): return self.has_stats_
 

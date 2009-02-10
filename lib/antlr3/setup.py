@@ -267,7 +267,7 @@ class functest(Command):
             
 
 setup(name='antlr_python_runtime',
-      version='3.1',
+      version='3.1.1',
       packages=['antlr3'],
 
       author="Benjamin Niemann",

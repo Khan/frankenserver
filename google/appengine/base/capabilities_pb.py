@@ -59,8 +59,9 @@ class CapabilityConfigList(ProtocolBuffer.ProtocolMessage):
   def mutable_default_config(self): self.has_default_config_ = 1; return self.default_config()
 
   def clear_default_config(self):
-    self.has_default_config_ = 0;
-    if self.default_config_ is not None: self.default_config_.Clear()
+    if self.has_default_config_:
+      self.has_default_config_ = 0;
+      if self.default_config_ is not None: self.default_config_.Clear()
 
   def has_default_config(self): return self.has_default_config_
 
@@ -203,8 +204,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.package_ = x
 
   def clear_package(self):
-    self.has_package_ = 0
-    self.package_ = ""
+    if self.has_package_:
+      self.has_package_ = 0
+      self.package_ = ""
 
   def has_package(self): return self.has_package_
 
@@ -215,8 +217,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.capability_ = x
 
   def clear_capability(self):
-    self.has_capability_ = 0
-    self.capability_ = ""
+    if self.has_capability_:
+      self.has_capability_ = 0
+      self.capability_ = ""
 
   def has_capability(self): return self.has_capability_
 
@@ -227,8 +230,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.status_ = x
 
   def clear_status(self):
-    self.has_status_ = 0
-    self.status_ = 4
+    if self.has_status_:
+      self.has_status_ = 0
+      self.status_ = 4
 
   def has_status(self): return self.has_status_
 
@@ -239,8 +243,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.scheduled_time_ = x
 
   def clear_scheduled_time(self):
-    self.has_scheduled_time_ = 0
-    self.scheduled_time_ = ""
+    if self.has_scheduled_time_:
+      self.has_scheduled_time_ = 0
+      self.scheduled_time_ = ""
 
   def has_scheduled_time(self): return self.has_scheduled_time_
 
@@ -251,8 +256,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.internal_message_ = x
 
   def clear_internal_message(self):
-    self.has_internal_message_ = 0
-    self.internal_message_ = ""
+    if self.has_internal_message_:
+      self.has_internal_message_ = 0
+      self.internal_message_ = ""
 
   def has_internal_message(self): return self.has_internal_message_
 
@@ -263,8 +269,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.admin_message_ = x
 
   def clear_admin_message(self):
-    self.has_admin_message_ = 0
-    self.admin_message_ = ""
+    if self.has_admin_message_:
+      self.has_admin_message_ = 0
+      self.admin_message_ = ""
 
   def has_admin_message(self): return self.has_admin_message_
 
@@ -275,8 +282,9 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     self.error_message_ = x
 
   def clear_error_message(self):
-    self.has_error_message_ = 0
-    self.error_message_ = ""
+    if self.has_error_message_:
+      self.has_error_message_ = 0
+      self.error_message_ = ""
 
   def has_error_message(self): return self.has_error_message_
 

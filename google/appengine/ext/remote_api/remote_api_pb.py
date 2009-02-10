@@ -44,8 +44,9 @@ class Request(ProtocolBuffer.ProtocolMessage):
     self.service_name_ = x
 
   def clear_service_name(self):
-    self.has_service_name_ = 0
-    self.service_name_ = ""
+    if self.has_service_name_:
+      self.has_service_name_ = 0
+      self.service_name_ = ""
 
   def has_service_name(self): return self.has_service_name_
 
@@ -56,8 +57,9 @@ class Request(ProtocolBuffer.ProtocolMessage):
     self.method_ = x
 
   def clear_method(self):
-    self.has_method_ = 0
-    self.method_ = ""
+    if self.has_method_:
+      self.has_method_ = 0
+      self.method_ = ""
 
   def has_method(self): return self.has_method_
 
@@ -201,8 +203,9 @@ class Response(ProtocolBuffer.ProtocolMessage):
   def mutable_response(self): self.has_response_ = 1; return self.response()
 
   def clear_response(self):
-    self.has_response_ = 0;
-    if self.response_ is not None: self.response_.Clear()
+    if self.has_response_:
+      self.has_response_ = 0;
+      if self.response_ is not None: self.response_.Clear()
 
   def has_response(self): return self.has_response_
 
@@ -218,8 +221,9 @@ class Response(ProtocolBuffer.ProtocolMessage):
   def mutable_exception(self): self.has_exception_ = 1; return self.exception()
 
   def clear_exception(self):
-    self.has_exception_ = 0;
-    if self.exception_ is not None: self.exception_.Clear()
+    if self.has_exception_:
+      self.has_exception_ = 0;
+      if self.exception_ is not None: self.exception_.Clear()
 
   def has_exception(self): return self.has_exception_
 
@@ -337,8 +341,9 @@ class TransactionRequest_Precondition(ProtocolBuffer.ProtocolMessage):
     self.hash_ = x
 
   def clear_hash(self):
-    self.has_hash_ = 0
-    self.hash_ = ""
+    if self.has_hash_:
+      self.has_hash_ = 0
+      self.hash_ = ""
 
   def has_hash(self): return self.has_hash_
 
@@ -448,8 +453,9 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
   def mutable_puts(self): self.has_puts_ = 1; return self.puts()
 
   def clear_puts(self):
-    self.has_puts_ = 0;
-    if self.puts_ is not None: self.puts_.Clear()
+    if self.has_puts_:
+      self.has_puts_ = 0;
+      if self.puts_ is not None: self.puts_.Clear()
 
   def has_puts(self): return self.has_puts_
 
@@ -465,8 +471,9 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
   def mutable_deletes(self): self.has_deletes_ = 1; return self.deletes()
 
   def clear_deletes(self):
-    self.has_deletes_ = 0;
-    if self.deletes_ is not None: self.deletes_.Clear()
+    if self.has_deletes_:
+      self.has_deletes_ = 0;
+      if self.deletes_ is not None: self.deletes_.Clear()
 
   def has_deletes(self): return self.has_deletes_
 

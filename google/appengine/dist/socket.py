@@ -14,3 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+
+AF_INET = None
+SOCK_STREAM = None
+SOCK_DGRAM = None
+
+_GLOBAL_DEFAULT_TIMEOUT = object()
+
+
+class error(OSError):
+  pass
+
+class herror(error):
+  pass
+
+class gaierror(error):
+  pass
+
+class timeout(error):
+  pass
+
+
+def _fileobject(fp, mode='rb', bufsize=-1, close=False):
+  """Assuming that the argument is a StringIO or file instance."""
+  if not hasattr(fp, 'fileno'):
+    fp.fileno = lambda: None
+  return fp

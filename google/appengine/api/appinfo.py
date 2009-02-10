@@ -56,6 +56,8 @@ VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
 
 RUNTIME_RE_STRING = r'[a-z]{1,30}'
 
+API_VERSION_RE_STRING = r'[\w.]{1,32}'
+
 HANDLER_STATIC_FILES = 'static_files'
 HANDLER_STATIC_DIR = 'static_dir'
 HANDLER_SCRIPT = 'script'
@@ -307,7 +309,7 @@ class AppInfoExternal(validation.Validated):
     RUNTIME: RUNTIME_RE_STRING,
 
 
-    API_VERSION: validation.Options('1', 'beta'),
+    API_VERSION: API_VERSION_RE_STRING,
     HANDLERS: validation.Optional(validation.Repeated(URLMap)),
     DEFAULT_EXPIRATION: validation.Optional(_EXPIRATION_REGEX),
     SKIP_FILES: validation.RegexStr(default=DEFAULT_SKIP_FILES)

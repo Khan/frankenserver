@@ -127,7 +127,7 @@ class RPC(apiproxy_rpc.RPC):
 
     _apphosting_runtime___python__apiproxy.MakeCall(
         self.package, self.call, e.buffer(), self.__result_dict,
-        self.__MakeCallDone, self)
+        self.__MakeCallDone, self, deadline=(self.deadline or -1))
 
   def __MakeCallDone(self):
     self.__state = RPC.FINISHING

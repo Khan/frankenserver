@@ -192,8 +192,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.width_ = x
 
   def clear_width(self):
-    self.has_width_ = 0
-    self.width_ = 0
+    if self.has_width_:
+      self.has_width_ = 0
+      self.width_ = 0
 
   def has_width(self): return self.has_width_
 
@@ -204,8 +205,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.height_ = x
 
   def clear_height(self):
-    self.has_height_ = 0
-    self.height_ = 0
+    if self.has_height_:
+      self.has_height_ = 0
+      self.height_ = 0
 
   def has_height(self): return self.has_height_
 
@@ -216,8 +218,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.rotate_ = x
 
   def clear_rotate(self):
-    self.has_rotate_ = 0
-    self.rotate_ = 0
+    if self.has_rotate_:
+      self.has_rotate_ = 0
+      self.rotate_ = 0
 
   def has_rotate(self): return self.has_rotate_
 
@@ -228,8 +231,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.horizontal_flip_ = x
 
   def clear_horizontal_flip(self):
-    self.has_horizontal_flip_ = 0
-    self.horizontal_flip_ = 0
+    if self.has_horizontal_flip_:
+      self.has_horizontal_flip_ = 0
+      self.horizontal_flip_ = 0
 
   def has_horizontal_flip(self): return self.has_horizontal_flip_
 
@@ -240,8 +244,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.vertical_flip_ = x
 
   def clear_vertical_flip(self):
-    self.has_vertical_flip_ = 0
-    self.vertical_flip_ = 0
+    if self.has_vertical_flip_:
+      self.has_vertical_flip_ = 0
+      self.vertical_flip_ = 0
 
   def has_vertical_flip(self): return self.has_vertical_flip_
 
@@ -252,8 +257,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.crop_left_x_ = x
 
   def clear_crop_left_x(self):
-    self.has_crop_left_x_ = 0
-    self.crop_left_x_ = 0.0
+    if self.has_crop_left_x_:
+      self.has_crop_left_x_ = 0
+      self.crop_left_x_ = 0.0
 
   def has_crop_left_x(self): return self.has_crop_left_x_
 
@@ -264,8 +270,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.crop_top_y_ = x
 
   def clear_crop_top_y(self):
-    self.has_crop_top_y_ = 0
-    self.crop_top_y_ = 0.0
+    if self.has_crop_top_y_:
+      self.has_crop_top_y_ = 0
+      self.crop_top_y_ = 0.0
 
   def has_crop_top_y(self): return self.has_crop_top_y_
 
@@ -276,8 +283,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.crop_right_x_ = x
 
   def clear_crop_right_x(self):
-    self.has_crop_right_x_ = 0
-    self.crop_right_x_ = 1.0
+    if self.has_crop_right_x_:
+      self.has_crop_right_x_ = 0
+      self.crop_right_x_ = 1.0
 
   def has_crop_right_x(self): return self.has_crop_right_x_
 
@@ -288,8 +296,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.crop_bottom_y_ = x
 
   def clear_crop_bottom_y(self):
-    self.has_crop_bottom_y_ = 0
-    self.crop_bottom_y_ = 1.0
+    if self.has_crop_bottom_y_:
+      self.has_crop_bottom_y_ = 0
+      self.crop_bottom_y_ = 1.0
 
   def has_crop_bottom_y(self): return self.has_crop_bottom_y_
 
@@ -300,8 +309,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.autolevels_ = x
 
   def clear_autolevels(self):
-    self.has_autolevels_ = 0
-    self.autolevels_ = 0
+    if self.has_autolevels_:
+      self.has_autolevels_ = 0
+      self.autolevels_ = 0
 
   def has_autolevels(self): return self.has_autolevels_
 
@@ -521,8 +531,9 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     self.content_ = x
 
   def clear_content(self):
-    self.has_content_ = 0
-    self.content_ = ""
+    if self.has_content_:
+      self.has_content_ = 0
+      self.content_ = ""
 
   def has_content(self): return self.has_content_
 
@@ -613,8 +624,9 @@ class OutputSettings(ProtocolBuffer.ProtocolMessage):
     self.mime_type_ = x
 
   def clear_mime_type(self):
-    self.has_mime_type_ = 0
-    self.mime_type_ = 0
+    if self.has_mime_type_:
+      self.has_mime_type_ = 0
+      self.mime_type_ = 0
 
   def has_mime_type(self): return self.has_mime_type_
 

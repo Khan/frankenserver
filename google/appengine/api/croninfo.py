@@ -23,6 +23,15 @@ application. Supports loading the records from yaml.
 
 
 
+import logging
+import sys
+import traceback
+
+try:
+  import pytz
+except ImportError:
+  pytz = None
+
 from google.appengine.cron import groc
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
@@ -30,10 +39,7 @@ from google.appengine.api import yaml_listener
 from google.appengine.api import yaml_object
 
 _URL_REGEX = r'^/.*$'
-
-
 _TIMEZONE_REGEX = r'^.{0,100}$'
-
 _DESCRIPTION_REGEX = r'^.{0,499}$'
 
 
@@ -55,6 +61,31 @@ class GrocValidator(validation.Validator):
     return value
 
 
+class TimezoneValidator(validation.Validator):
+  """Checks that a timezone can be correctly parsed and is known."""
+
+  def Validate(self, value):
+    """Validates a timezone."""
+    if value is None:
+      return
+    if not isinstance(value, basestring):
+      raise TypeError('timezone must be a string, not \'%r\'' % type(value))
+    if pytz is None:
+      return value
+    try:
+      pytz.timezone(value)
+    except pytz.UnknownTimeZoneError:
+      raise validation.ValidationError('timezone \'%s\' is unknown' % value)
+    except IOError:
+      return value
+    except:
+      e, v, t = sys.exc_info()
+      logging.warning("pytz raised an unexpected error: %s.\n" % (v) +
+                      "Traceback:\n" + "\n".join(traceback.format_tb(t)))
+      raise
+    return value
+
+
 CRON = 'cron'
 
 URL = 'url'
@@ -73,7 +104,7 @@ class CronEntry(validation.Validated):
   ATTRIBUTES = {
       URL: _URL_REGEX,
       SCHEDULE: GrocValidator(),
-      TIMEZONE: validation.Optional(_TIMEZONE_REGEX),
+      TIMEZONE: TimezoneValidator(),
       DESCRIPTION: validation.Optional(_DESCRIPTION_REGEX)
   }
 

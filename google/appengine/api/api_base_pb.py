@@ -36,8 +36,9 @@ class StringProto(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = ""
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = ""
 
   def has_value(self): return self.has_value_
 
@@ -116,8 +117,9 @@ class Integer32Proto(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = 0
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = 0
 
   def has_value(self): return self.has_value_
 
@@ -196,8 +198,9 @@ class Integer64Proto(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = 0
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = 0
 
   def has_value(self): return self.has_value_
 
@@ -276,8 +279,9 @@ class BoolProto(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = 0
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = 0
 
   def has_value(self): return self.has_value_
 
@@ -355,8 +359,9 @@ class DoubleProto(ProtocolBuffer.ProtocolMessage):
     self.value_ = x
 
   def clear_value(self):
-    self.has_value_ = 0
-    self.value_ = 0.0
+    if self.has_value_:
+      self.has_value_ = 0
+      self.value_ = 0.0
 
   def has_value(self): return self.has_value_
 

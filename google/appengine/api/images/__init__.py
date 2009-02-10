@@ -42,6 +42,8 @@ PNG = images_service_pb.OutputSettings.PNG
 
 OUTPUT_ENCODING_TYPES = frozenset([JPEG, PNG])
 
+MAX_TRANSFORMS_PER_REQUEST = 10
+
 
 class Error(Exception):
   """Base error class for this module."""
@@ -84,29 +86,19 @@ class Image(object):
 
     self._image_data = image_data
     self._transforms = []
-    self._transform_map = {}
     self._width = None
     self._height = None
 
-  def _check_transform_limits(self, transform):
+  def _check_transform_limits(self):
     """Ensure some simple limits on the number of transforms allowed.
 
-    Args:
-      transform: images_service_pb.ImagesServiceTransform, enum of the
-        trasnform called.
-
     Raises:
-      BadRequestError if the transform has already been requested for the image.
+      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
+      requested for this image
     """
-    if not images_service_pb.ImagesServiceTransform.Type_Name(transform):
-      raise BadRequestError("'%s' is not a valid transform." % transform)
-
-    if transform in self._transform_map:
-      transform_name = images_service_pb.ImagesServiceTransform.Type_Name(
-          transform)
-      raise BadRequestError("A '%s' transform has already been "
-                            "requested on this image." % transform_name)
-    self._transform_map[transform] = True
+    if len(self._transforms) >= MAX_TRANSFORMS_PER_REQUEST:
+      raise BadRequestError("%d transforms have already been requested on this "
+                            "image." % MAX_TRANSFORMS_PER_REQUEST)
 
   def _update_dimensions(self):
     """Updates the width and height fields of the image.
@@ -172,14 +164,14 @@ class Image(object):
       if (offset < size and ord(self._image_data[offset]) & 0xF0 == 0xC0 and
           ord(self._image_data[offset]) != 0xC4):
         offset += 4
-        if offset + 4 < size:
+        if offset + 4 <= size:
           self._height, self._width = struct.unpack(
               ">HH",
               self._image_data[offset:offset + 4])
           break
         else:
           raise BadImageError("Corrupt JPEG format")
-      elif offset + 2 <= size:
+      elif offset + 3 <= size:
         offset += 1
         offset += struct.unpack(">H", self._image_data[offset:offset + 2])[0]
       else:
@@ -199,7 +191,7 @@ class Image(object):
     else:
       endianness = ">"
     ifd_offset = struct.unpack(endianness + "I", self._image_data[4:8])[0]
-    if ifd_offset < size + 14:
+    if ifd_offset + 14 <= size:
       ifd_size = struct.unpack(
           endianness + "H",
           self._image_data[ifd_offset:ifd_offset + 2])[0]
@@ -291,7 +283,8 @@ class Image(object):
     Raises:
       TypeError when width or height is not either 'int' or 'long' types.
       BadRequestError when there is something wrong with the given height or
-        width or if a Resize has already been requested on this image.
+        width or if MAX_TRANSFORMS_PER_REQUEST transforms have already been
+        requested on this image.
     """
     if (not isinstance(width, (int, long)) or
         not isinstance(height, (int, long))):
@@ -305,8 +298,7 @@ class Image(object):
     if width > 4000 or height > 4000:
       raise BadRequestError("Both width and height must be < 4000.")
 
-    self._check_transform_limits(
-        images_service_pb.ImagesServiceTransform.RESIZE)
+    self._check_transform_limits()
 
     transform = images_service_pb.Transform()
     transform.set_width(width)
@@ -323,7 +315,7 @@ class Image(object):
     Raises:
       TypeError when degrees is not either 'int' or 'long' types.
       BadRequestError when there is something wrong with the given degrees or
-      if a Rotate trasnform has already been requested.
+      if MAX_TRANSFORMS_PER_REQUEST transforms have already been requested.
     """
     if not isinstance(degrees, (int, long)):
       raise TypeError("Degrees must be integers.")
@@ -333,8 +325,7 @@ class Image(object):
 
     degrees = degrees % 360
 
-    self._check_transform_limits(
-        images_service_pb.ImagesServiceTransform.ROTATE)
+    self._check_transform_limits()
 
     transform = images_service_pb.Transform()
     transform.set_rotate(degrees)
@@ -345,11 +336,10 @@ class Image(object):
     """Flip the image horizontally.
 
     Raises:
-      BadRequestError if a HorizontalFlip has already been requested on the
-      image.
+      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
+      requested on the image.
     """
-    self._check_transform_limits(
-        images_service_pb.ImagesServiceTransform.HORIZONTAL_FLIP)
+    self._check_transform_limits()
 
     transform = images_service_pb.Transform()
     transform.set_horizontal_flip(True)
@@ -360,11 +350,10 @@ class Image(object):
     """Flip the image vertically.
 
     Raises:
-      BadRequestError if a HorizontalFlip has already been requested on the
-      image.
+      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already been
+      requested on the image.
     """
-    self._check_transform_limits(
-        images_service_pb.ImagesServiceTransform.VERTICAL_FLIP)
+    self._check_transform_limits()
     transform = images_service_pb.Transform()
     transform.set_vertical_flip(True)
 
@@ -405,7 +394,8 @@ class Image(object):
     Raises:
       TypeError if the args are not of type 'float'.
       BadRequestError when there is something wrong with the given bounding box
-        or if there has already been a crop transform requested for this image.
+        or if MAX_TRANSFORMS_PER_REQUEST transforms have already been requested
+        for this image.
     """
     self._validate_crop_arg(left_x, "left_x")
     self._validate_crop_arg(top_y, "top_y")
@@ -417,7 +407,7 @@ class Image(object):
     if top_y >= bottom_y:
       raise BadRequestError("top_y must be less than bottom_y")
 
-    self._check_transform_limits(images_service_pb.ImagesServiceTransform.CROP)
+    self._check_transform_limits()
 
     transform = images_service_pb.Transform()
     transform.set_crop_left_x(left_x)
@@ -433,11 +423,10 @@ class Image(object):
     This is similar to the "I'm Feeling Lucky" button in Picasa.
 
     Raises:
-      BadRequestError if this transform has already been requested for this
-      image.
+      BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already
+      been requested for this image.
     """
-    self._check_transform_limits(
-        images_service_pb.ImagesServiceTransform.IM_FEELING_LUCKY)
+    self._check_transform_limits()
     transform = images_service_pb.Transform()
     transform.set_autolevels(True)
 
@@ -504,7 +493,6 @@ class Image(object):
 
     self._image_data = response.image().content()
     self._transforms = []
-    self._transform_map.clear()
     self._width = None
     self._height = None
     return self._image_data
@@ -540,7 +528,7 @@ def resize(image_data, width=0, height=0, output_encoding=PNG):
   Raises:
     TypeError when width or height not either 'int' or 'long' types.
     BadRequestError when there is something wrong with the given height or
-      width or if a Resize has already been requested on this image.
+      width.
     Error when something went wrong with the call.  See Image.ExecuteTransforms
       for more details.
   """
@@ -559,8 +547,7 @@ def rotate(image_data, degrees, output_encoding=PNG):
 
   Raises:
     TypeError when degrees is not either 'int' or 'long' types.
-    BadRequestError when there is something wrong with the given degrees or
-    if a Rotate trasnform has already been requested.
+    BadRequestError when there is something wrong with the given degrees.
     Error when something went wrong with the call.  See Image.ExecuteTransforms
       for more details.
   """
@@ -619,8 +606,7 @@ def crop(image_data, left_x, top_y, right_x, bottom_y, output_encoding=PNG):
 
   Raises:
     TypeError if the args are not of type 'float'.
-    BadRequestError when there is something wrong with the given bounding box
-      or if there has already been a crop transform requested for this image.
+    BadRequestError when there is something wrong with the given bounding box.
     Error when something went wrong with the call.  See Image.ExecuteTransforms
       for more details.
   """

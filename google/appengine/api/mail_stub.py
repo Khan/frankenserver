@@ -196,6 +196,8 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     if self._smtp_host and self._enable_sendmail:
       log('Both SMTP and sendmail are enabled.  Ignoring sendmail.')
 
+    import email
+
     mime_message = mail.MailMessageToMIMEMessage(request)
     if self._smtp_host:
       self._SendSMTP(mime_message, smtp_lib)

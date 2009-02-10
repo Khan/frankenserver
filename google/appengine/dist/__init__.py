@@ -14,3 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+"""Specify the modules for which a stub exists."""
+
+
+__all__ = ['ftplib', 'httplib', 'py_imp', 'neo_cgi', 'select', 'socket',
+           'subprocess', 'tempfile']

@@ -20,9 +20,9 @@
 Classes defined here:
   User: object representing a user.
   Error: base exception type
-  BadRequestError: UserService exception
   UserNotFoundError: UserService exception
-  BackendError: UserService exception
+  RedirectTooLongError: UserService exception
+  NotAllowedError: UserService exception
 """
 
 
@@ -48,6 +48,10 @@ class UserNotFoundError(Error):
 
 class RedirectTooLongError(Error):
   """Raised by UserService calls if the generated redirect URL was too long.
+  """
+
+class NotAllowedError(Error):
+  """Raised by UserService calls if the requested redirect URL is not allowed.
   """
 
 
@@ -147,6 +151,9 @@ def create_login_url(dest_url):
     if (e.application_error ==
         user_service_pb.UserServiceError.REDIRECT_URL_TOO_LONG):
       raise RedirectTooLongError
+    elif (e.application_error ==
+        user_service_pb.UserServiceError.NOT_ALLOWED):
+      raise NotAllowedError
     else:
       raise e
   return resp.value()

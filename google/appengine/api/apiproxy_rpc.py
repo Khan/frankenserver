@@ -37,7 +37,7 @@ class RPC(object):
   FINISHING = 2
 
   def __init__(self, package=None, call=None, request=None, response=None,
-               callback=None, stub=None):
+               callback=None, deadline=None, stub=None):
     """Constructor for the RPC object.
 
     All arguments are optional, and simply set members on the class.
@@ -49,6 +49,8 @@ class RPC(object):
       request: ProtocolMessage instance, appropriate for the arguments
       response: ProtocolMessage instance, appropriate for the response
       callback: callable, called when call is complete
+      deadline: A double specifying the deadline for this call as the number of
+                seconds from the current time. Ignored if non-positive.
       stub: APIProxyStub instance, used in default _WaitImpl to do real call
     """
     self.__exception = None
@@ -60,10 +62,11 @@ class RPC(object):
     self.request = request
     self.response = response
     self.callback = callback
+    self.deadline = deadline
     self.stub = stub
 
   def MakeCall(self, package=None, call=None, request=None, response=None,
-               callback=None):
+               callback=None, deadline=None):
     """Makes an asynchronous (i.e. non-blocking) API call within the
     specified package for the specified call method.
 
@@ -81,6 +84,7 @@ class RPC(object):
     self.call = call or self.call
     self.request = request or self.request
     self.response = response or self.response
+    self.deadline = deadline or self.deadline
 
     assert self.__state is RPC.IDLE, ('RPC for %s.%s has already been started' %
                                       (self.package, self.call))
