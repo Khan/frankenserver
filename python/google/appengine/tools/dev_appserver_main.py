@@ -54,6 +54,8 @@ Options:
   --debug_imports            Enables debug logging for module imports, showing
                              search paths used for finding modules and any
                              errors encountered during the import process.
+  --allow_skipped_files      Allow access to files matched by app.yaml's
+                             skipped_files (default False)
   --disable_static_caching   Never allow the browser to cache static files.
                              (Default enable if expiration set in app.yaml)
 """
@@ -101,6 +103,7 @@ ARG_LOGIN_URL = 'login_url'
 ARG_LOG_LEVEL = 'log_level'
 ARG_PORT = 'port'
 ARG_REQUIRE_INDEXES = 'require_indexes'
+ARG_ALLOW_SKIPPED_FILES = 'allow_skipped_files'
 ARG_SMTP_HOST = 'smtp_host'
 ARG_SMTP_PASSWORD = 'smtp_password'
 ARG_SMTP_PORT = 'smtp_port'
@@ -137,6 +140,7 @@ DEFAULT_ARGS = {
   ARG_ADDRESS: 'localhost',
   ARG_ADMIN_CONSOLE_SERVER: DEFAULT_ADMIN_CONSOLE_SERVER,
   ARG_ADMIN_CONSOLE_HOST: None,
+  ARG_ALLOW_SKIPPED_FILES: False,
   ARG_STATIC_CACHING: True,
 }
 
@@ -245,6 +249,7 @@ def ParseArguments(argv):
       [ 'address=',
         'admin_console_server=',
         'admin_console_host=',
+        'allow_skipped_files',
         'auth_domain=',
         'clear_datastore',
         'datastore_path=',
@@ -337,6 +342,9 @@ def ParseArguments(argv):
     if option == '--admin_console_host':
       option_dict[ARG_ADMIN_CONSOLE_HOST] = value
 
+    if option == '--allow_skipped_files':
+      option_dict[ARG_ALLOW_SKIPPED_FILES] = True
+
     if option == '--disable_static_caching':
       option_dict[ARG_STATIC_CACHING] = False
 
@@ -399,6 +407,7 @@ def main(argv):
   template_dir = option_dict[ARG_TEMPLATE_DIR]
   serve_address = option_dict[ARG_ADDRESS]
   require_indexes = option_dict[ARG_REQUIRE_INDEXES]
+  allow_skipped_files = option_dict[ARG_ALLOW_SKIPPED_FILES]
   static_caching = option_dict[ARG_STATIC_CACHING]
 
   logging.basicConfig(
@@ -432,14 +441,16 @@ def main(argv):
           exc_type, exc_value, exc_traceback)))
     return 1
 
-  http_server = dev_appserver.CreateServer(root_path,
-                                           login_url,
-                                           port,
-                                           template_dir,
-                                           sdk_dir=SDK_PATH,
-                                           serve_address=serve_address,
-                                           require_indexes=require_indexes,
-                                           static_caching=static_caching)
+  http_server = dev_appserver.CreateServer(
+      root_path,
+      login_url,
+      port,
+      template_dir,
+      sdk_dir=SDK_PATH,
+      serve_address=serve_address,
+      require_indexes=require_indexes,
+      allow_skipped_files=allow_skipped_files,
+      static_caching=static_caching)
 
   logging.info('Running application %s on port %d: http://%s:%d',
                config.application, port, serve_address, port)

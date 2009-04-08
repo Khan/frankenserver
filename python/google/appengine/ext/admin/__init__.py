@@ -41,6 +41,14 @@ import urllib
 import urlparse
 import wsgiref.handlers
 
+try:
+  from google.appengine.cron import groctimespecification
+  from google.appengine.api import croninfo
+except ImportError:
+  HAVE_CRON = False
+else:
+  HAVE_CRON = True
+
 from google.appengine.api import datastore
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_types
@@ -109,6 +117,9 @@ class BaseRequestHandler(webapp.RequestHandler):
       'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
       'memcache_path': base_path + MemcachePageHandler.PATH,
     }
+    if HAVE_CRON:
+      values['cron_path'] = base_path + CronPageHandler.PATH
+
     values.update(template_values)
     directory = os.path.dirname(__file__)
     path = os.path.join(directory, os.path.join('templates', template_name))
@@ -199,6 +210,39 @@ class InteractiveExecuteHandler(BaseRequestHandler):
 
     results = results_io.getvalue()
     self.generate('interactive-output.html', {'output': results})
+
+
+class CronPageHandler(BaseRequestHandler):
+  """Shows information about configured cron jobs in this application."""
+  PATH = '/cron'
+
+  def get(self, now=None):
+    """Shows template displaying the configured cron jobs."""
+    if not now:
+      now = datetime.datetime.now()
+    values = {'request': self.request}
+    cron_info = _ParseCronYaml()
+    values['cronjobs'] = []
+    values['now'] = str(now)
+    if cron_info:
+      for entry in cron_info.cron:
+        job = {}
+        values['cronjobs'].append(job)
+        if entry.description:
+          job['description'] = entry.description
+        else:
+          job['description'] = '(no description)'
+        if entry.timezone:
+          job['timezone'] = entry.timezone
+        job['url'] = entry.url
+        job['schedule'] = entry.schedule
+        schedule = groctimespecification.GrocTimeSpecification(entry.schedule)
+        matches = schedule.GetMatches(now, 3)
+        job['times'] = []
+        for match in matches:
+          job['times'].append({'runtime': match.strftime("%Y-%m-%d %H:%M:%SZ"),
+                               'difference': str(match - now)})
+    self.generate('cron.html', values)
 
 
 class MemcachePageHandler(BaseRequestHandler):
@@ -1089,8 +1133,24 @@ for data_type in _DATA_TYPES.values():
   _NAMED_DATA_TYPES[data_type.name()] = data_type
 
 
+def _ParseCronYaml():
+  """Load the cron.yaml file and parse it."""
+  cronyaml_files = 'cron.yaml', 'cron.yml'
+  for cronyaml in cronyaml_files:
+    try:
+      fh = open(cronyaml, "r")
+    except IOError:
+      continue
+    try:
+      cron_info = croninfo.LoadSingleCron(fh)
+      return cron_info
+    finally:
+      fh.close()
+  return None
+
+
 def main():
-  application = webapp.WSGIApplication([
+  handlers = [
     ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
     ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
     ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
@@ -1099,7 +1159,10 @@ def main():
     ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
     ('.*' + ImageHandler.PATH, ImageHandler),
     ('.*', DefaultPageHandler),
-  ], debug=_DEBUG)
+  ]
+  if HAVE_CRON:
+    handlers.insert(0, ('.*' + CronPageHandler.PATH, CronPageHandler))
+  application = webapp.WSGIApplication(handlers, debug=_DEBUG)
   wsgiref.handlers.CGIHandler().run(application)
 
 

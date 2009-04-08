@@ -37,6 +37,9 @@
               <li><a href="{{ datastore_path }}">Datastore Viewer</a></li>
               <li><a href="{{ interactive_path }}">Interactive Console</a></li>
               <li><a href="{{ memcache_path }}">Memcache Viewer</a></li>
+              {% if cron_path %}
+              <li><a href="{{ cron_path }}">Cron Jobs</a></li>
+              {% endif %}
             </ul>
         
           </div>

@@ -3,6 +3,16 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.2.0 - March 24, 2009
+==============================
+  - Cron support. Appcfg.py will upload the schedule to App Engine.
+      The dev_appserver console at /_ah/admin describes your schedule but does
+      not automatically run scheduled jobs. Learn more at
+      http://code.google.com/appengine/docs/python/config/cron.html
+  - New allow_skipped_files flag in dev_appserver to allow it to read files
+    which are not available in App Engine.
+        http://code.google.com/p/googleappengine/issues/detail?id=550
+
 Version 1.1.9 - February 2, 2009
 ================================
 

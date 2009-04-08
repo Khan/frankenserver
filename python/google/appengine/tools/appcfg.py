@@ -1828,8 +1828,8 @@ class AppCfgApp(object):
         if not description:
           description = "<no description>"
         print >>output, "\n%s:\nURL: %s\nSchedule: %s" % (description,
-                                                          entry.schedule,
-                                                          entry.url)
+                                                          entry.url,
+                                                          entry.schedule)
         schedule = groctimespecification.GrocTimeSpecification(entry.schedule)
         matches = schedule.GetMatches(now, self.options.num_runs)
         for match in matches:
@@ -1897,14 +1897,13 @@ in the app.yaml file at the top level of that directory.  appcfg.py
 will follow symlinks and recursively upload all files to the server.
 Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
 
-
-
-
-
-
-
-
-
+      "update_cron": Action(
+          function="UpdateCron",
+          usage="%prog [options] update_cron <directory>",
+          short_desc="Update application cron definitions.",
+          long_desc="""
+The 'update_cron' command will update any new, removed or changed cron
+definitions from the cron.yaml file."""),
 
       "update_indexes": Action(
           function="UpdateIndexes",
@@ -1945,15 +1944,14 @@ The 'request_logs' command exports the request logs from your application
 to a file.  It will write Apache common log format records ordered
 chronologically.  If output file is '-' stdout will be written."""),
 
-
-
-
-
-
-
-
-
-
+      "cron_info": Action(
+          function="CronInfo",
+          usage="%prog [options] cron_info <directory>",
+          options=_CronInfoOptions,
+          short_desc="Display information about cron jobs.",
+          long_desc="""
+The 'cron_info' command will display the next 'number' runs (default 5) for
+each cron job defined in the cron.yaml file."""),
 
 
 

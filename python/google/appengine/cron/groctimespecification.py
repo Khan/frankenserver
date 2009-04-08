@@ -67,10 +67,13 @@ def GrocTimeSpecification(schedule):
   parser.timespec()
 
   if parser.interval_mins:
-    return IntervalTimeSpecification(parser.interval_mins, parser.period_string)
+    return IntervalTimeSpecification(parser.interval_mins,
+                                     parser.period_string)
   else:
     return SpecificTimeSpecification(parser.ordinal_set, parser.weekday_set,
-                                     parser.month_set, None, parser.time_string)
+                                     parser.month_set,
+                                     None,
+                                     parser.time_string)
 
 
 class TimeSpecification(object):
@@ -111,12 +114,11 @@ class IntervalTimeSpecification(TimeSpecification):
 
   An Interval type spec runs at the given fixed interval. It has two
   attributes:
-  period   - the type of interval, either "hours" or "minutes"
+  period - the type of interval, either "hours" or "minutes"
   interval - the number of units of type period.
-  timezone - the timezone for this specification. Not used in this class.
   """
 
-  def __init__(self, interval, period, timezone=None):
+  def __init__(self, interval, period):
     super(IntervalTimeSpecification, self).__init__(self)
     self.interval = interval
     self.period = period
@@ -186,7 +188,9 @@ class SpecificTimeSpecification(TimeSpecification):
       self.monthdays = set(monthdays)
     hourstr, minutestr = timestr.split(':')
     self.time = datetime.time(int(hourstr), int(minutestr))
-    if timezone and pytz is not None:
+    if timezone:
+      if pytz is None:
+        raise ValueError("need pytz in order to specify a timezone")
       self.timezone = pytz.timezone(timezone)
 
   def _MatchingDays(self, year, month):

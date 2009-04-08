@@ -74,6 +74,7 @@ from google.pyglib import gexcept
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import appinfo
+from google.appengine.api import croninfo
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_file_stub
 from google.appengine.api import mail_stub
@@ -777,6 +778,8 @@ class FakeFile(file):
   _skip_files = None
   _static_file_config_matcher = None
 
+  _allow_skipped_files = True
+
   _availability_cache = {}
 
   @staticmethod
@@ -800,6 +803,16 @@ class FakeFile(file):
 
     FakeFile._root_path = os.path.join(root_path, '')
 
+    FakeFile._availability_cache = {}
+
+  @staticmethod
+  def SetAllowSkippedFiles(allow_skipped_files):
+    """Configures access to files matching FakeFile._skip_files
+
+    Args:
+      allow_skipped_files: Boolean whether to allow access to skipped files
+    """
+    FakeFile._allow_skipped_files = allow_skipped_files
     FakeFile._availability_cache = {}
 
   @staticmethod
@@ -877,7 +890,8 @@ class FakeFile(file):
                               normcase=normcase):
       relative_filename = logical_filename[len(FakeFile._root_path):]
 
-      if FakeFile._skip_files.match(relative_filename):
+      if (not FakeFile._allow_skipped_files and
+          FakeFile._skip_files.match(relative_filename)):
         logging.warning('Blocking access to skipped file "%s"',
                         logical_filename)
         return False
@@ -2789,13 +2803,13 @@ def ReadAppConfig(appinfo_path, parse_app_config=appinfo.LoadSingleAppInfo):
   """
   try:
     appinfo_file = file(appinfo_path, 'r')
-    try:
-      return parse_app_config(appinfo_file)
-    finally:
-      appinfo_file.close()
   except IOError, e:
     raise InvalidAppConfigError(
       'Application configuration could not be read from "%s"' % appinfo_path)
+  try:
+    return parse_app_config(appinfo_file)
+  finally:
+    appinfo_file.close()
 
 
 def CreateURLMatcherFromMaps(root_path,
@@ -2954,6 +2968,31 @@ def LoadAppConfig(root_path,
         pass
 
   raise AppConfigNotFoundError
+
+
+def ReadCronConfig(croninfo_path, parse_cron_config=croninfo.LoadSingleCron):
+  """Reads cron.yaml file and returns a list of CronEntry instances.
+
+  Args:
+    croninfo_path: String containing the path to the cron.yaml file.
+    parse_cron_config: Used for dependency injection.
+
+  Returns:
+    A CronInfoExternal object.
+
+  Raises:
+    If the config file is unreadable, empty or invalid, this function will
+    raise an InvalidAppConfigError or a MalformedCronConfiguration exception.
+    """
+  try:
+    croninfo_file = file(croninfo_path, 'r')
+  except IOError, e:
+    raise InvalidAppConfigError(
+        'Cron configuration could not be read from "%s"' % croninfo_path)
+  try:
+    return parse_cron_config(croninfo_file)
+  finally:
+    croninfo_file.close()
 
 
 def SetupStubs(app_id, **config):
@@ -3124,6 +3163,7 @@ def CreateServer(root_path,
                  template_dir,
                  serve_address='',
                  require_indexes=False,
+                 allow_skipped_files=False,
                  static_caching=True,
                  python_path_list=sys.path,
                  sdk_dir=os.path.dirname(os.path.dirname(google.__file__))):
@@ -3156,6 +3196,7 @@ def CreateServer(root_path,
   FakeFile.SetAllowedPaths(absolute_root_path,
                            [sdk_dir,
                             template_dir])
+  FakeFile.SetAllowSkippedFiles(allow_skipped_files)
 
   handler_class = CreateRequestHandler(absolute_root_path,
                                        login_url,
