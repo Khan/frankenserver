@@ -28,7 +28,6 @@ for their applications.  Also provides a few utility methods.
 from email import MIMEBase
 from email import MIMEMultipart
 from email import MIMEText
-import mimetypes
 import types
 
 from google.appengine.api import api_base_pb
@@ -51,20 +50,32 @@ ERROR_MAP = {
 }
 
 
-EXTENSION_WHITELIST = set([
-  'bmp',
-  'css',
-  'csv',
-  'gif',
-  'html', 'htm',
-  'jpeg', 'jpg', 'jpe',
-  'pdf',
-  'png',
-  'rss',
-  'text', 'txt', 'asc', 'diff', 'pot',
-  'tiff', 'tif',
-  'wbmp',
-])
+EXTENSION_MIME_MAP = {
+  'asc': 'text/plain',
+  'bmp': 'image/x-ms-bmp',
+  'css': 'text/css',
+  'csv': 'text/csv',
+  'diff': 'text/plain',
+  'gif': 'image/gif',
+  'htm': 'text/html',
+  'html': 'text/html',
+  'ics': 'text/calendar',
+  'jpe': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'jpg': 'image/jpeg',
+  'pdf': 'application/pdf',
+  'png': 'image/png',
+  'pot': 'text/plain',
+  'rss': 'text/rss+xml',
+  'text': 'text/plain',
+  'tif': 'image/tiff',
+  'tiff': 'image/tiff',
+  'txt': 'text/plain',
+  'vcf': 'text/directory',
+  'wbmp': 'image/vnd.wap.wbmp',
+}
+
+EXTENSION_WHITELIST = frozenset(EXTENSION_MIME_MAP.iterkeys())
 
 
 def invalid_email_reason(email_address, field):
@@ -234,6 +245,35 @@ def send_mail_to_admins(sender,
 SendMailToAdmins = send_mail_to_admins
 
 
+def _GetMimeType(file_name):
+  """Determine mime-type from file name.
+
+  Parses file name and determines mime-type based on extension map.
+
+  This method is not part of the public API and should not be used by
+  applications.
+
+  Args:
+    file_name: File to determine extension for.
+
+  Returns:
+    Mime-type associated with file extension.
+
+  Raises:
+    InvalidAttachmentTypeError when the file name of an attachment.
+  """
+  extension_index = file_name.rfind('.')
+  if extension_index == -1:
+    raise InvalidAttachmentTypeError(
+        "File '%s' does not have an extension" % file_name)
+  extension = file_name[extension_index + 1:]
+  mime_type = EXTENSION_MIME_MAP.get(extension, None)
+  if mime_type is None:
+    raise InvalidAttachmentTypeError(
+        "Extension '%s' is not supported." % extension)
+  return mime_type
+
+
 def mail_message_to_mime_message(protocol_message):
   """Generate a MIMEMultitype message from protocol buffer.
 
@@ -249,6 +289,9 @@ def mail_message_to_mime_message(protocol_message):
 
   Returns:
     MIMEMultitype representing the provided MailMessage.
+
+  Raises:
+    InvalidAttachmentTypeError when the file name of an attachment
   """
   parts = []
   if protocol_message.has_textbody():
@@ -264,14 +307,13 @@ def mail_message_to_mime_message(protocol_message):
 
   result = MIMEMultipart.MIMEMultipart(_subparts=payload)
   for attachment in protocol_message.attachment_list():
-    mime_type, encoding = mimetypes.guess_type(attachment.filename())
-    assert mime_type is not None
+    file_name = attachment.filename()
+    mime_type = _GetMimeType(file_name)
     maintype, subtype = mime_type.split('/')
     mime_attachment = MIMEBase.MIMEBase(maintype, subtype)
     mime_attachment.add_header('Content-Disposition',
                                'attachment',
                                filename=attachment.filename())
-    mime_attachment.set_charset(encoding)
     mime_attachment.set_payload(attachment.data())
     result.attach(mime_attachment)
 
@@ -283,7 +325,7 @@ def mail_message_to_mime_message(protocol_message):
     result['Bcc'] = ', '.join(protocol_message.bcc_list())
 
   result['From'] = protocol_message.sender()
-  result['ReplyTo'] = protocol_message.replyto()
+  result['Reply-To'] = protocol_message.replyto()
   result['Subject'] = protocol_message.subject()
 
   return result
@@ -376,15 +418,8 @@ class _EmailMessageBase(object):
     if not hasattr(self, 'body') and not hasattr(self, 'html'):
       raise MissingBodyError()
     if hasattr(self, 'attachments'):
-      for filename, data in _attachment_sequence(self.attachments):
-        split_filename = filename.split('.')
-        if len(split_filename) < 2:
-          raise InvalidAttachmentTypeError()
-        if split_filename[-1] not in EXTENSION_WHITELIST:
-          raise InvalidAttachmentTypeError()
-        mime_type, encoding = mimetypes.guess_type(filename)
-        if mime_type is None:
-          raise InvalidAttachmentTypeError()
+      for file_name, data in _attachment_sequence(self.attachments):
+        _GetMimeType(file_name)
 
   def CheckInitialized(self):
     self.check_initialized()

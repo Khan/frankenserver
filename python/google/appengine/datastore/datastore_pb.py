@@ -1183,6 +1183,12 @@ class Error(ProtocolBuffer.ProtocolMessage):
 class Cost(ProtocolBuffer.ProtocolMessage):
   has_index_writes_ = 0
   index_writes_ = 0
+  has_index_write_bytes_ = 0
+  index_write_bytes_ = 0
+  has_entity_writes_ = 0
+  entity_writes_ = 0
+  has_entity_write_bytes_ = 0
+  entity_write_bytes_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1200,15 +1206,63 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 
   def has_index_writes(self): return self.has_index_writes_
 
+  def index_write_bytes(self): return self.index_write_bytes_
+
+  def set_index_write_bytes(self, x):
+    self.has_index_write_bytes_ = 1
+    self.index_write_bytes_ = x
+
+  def clear_index_write_bytes(self):
+    if self.has_index_write_bytes_:
+      self.has_index_write_bytes_ = 0
+      self.index_write_bytes_ = 0
+
+  def has_index_write_bytes(self): return self.has_index_write_bytes_
+
+  def entity_writes(self): return self.entity_writes_
+
+  def set_entity_writes(self, x):
+    self.has_entity_writes_ = 1
+    self.entity_writes_ = x
+
+  def clear_entity_writes(self):
+    if self.has_entity_writes_:
+      self.has_entity_writes_ = 0
+      self.entity_writes_ = 0
+
+  def has_entity_writes(self): return self.has_entity_writes_
+
+  def entity_write_bytes(self): return self.entity_write_bytes_
+
+  def set_entity_write_bytes(self, x):
+    self.has_entity_write_bytes_ = 1
+    self.entity_write_bytes_ = x
+
+  def clear_entity_write_bytes(self):
+    if self.has_entity_write_bytes_:
+      self.has_entity_write_bytes_ = 0
+      self.entity_write_bytes_ = 0
+
+  def has_entity_write_bytes(self): return self.has_entity_write_bytes_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_index_writes()): self.set_index_writes(x.index_writes())
+    if (x.has_index_write_bytes()): self.set_index_write_bytes(x.index_write_bytes())
+    if (x.has_entity_writes()): self.set_entity_writes(x.entity_writes())
+    if (x.has_entity_write_bytes()): self.set_entity_write_bytes(x.entity_write_bytes())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_index_writes_ != x.has_index_writes_: return 0
     if self.has_index_writes_ and self.index_writes_ != x.index_writes_: return 0
+    if self.has_index_write_bytes_ != x.has_index_write_bytes_: return 0
+    if self.has_index_write_bytes_ and self.index_write_bytes_ != x.index_write_bytes_: return 0
+    if self.has_entity_writes_ != x.has_entity_writes_: return 0
+    if self.has_entity_writes_ and self.entity_writes_ != x.entity_writes_: return 0
+    if self.has_entity_write_bytes_ != x.has_entity_write_bytes_: return 0
+    if self.has_entity_write_bytes_ and self.entity_write_bytes_ != x.entity_write_bytes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1218,21 +1272,45 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_index_writes_): n += 1 + self.lengthVarInt64(self.index_writes_)
+    if (self.has_index_write_bytes_): n += 1 + self.lengthVarInt64(self.index_write_bytes_)
+    if (self.has_entity_writes_): n += 1 + self.lengthVarInt64(self.entity_writes_)
+    if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
     return n + 0
 
   def Clear(self):
     self.clear_index_writes()
+    self.clear_index_write_bytes()
+    self.clear_entity_writes()
+    self.clear_entity_write_bytes()
 
   def OutputUnchecked(self, out):
     if (self.has_index_writes_):
       out.putVarInt32(8)
       out.putVarInt32(self.index_writes_)
+    if (self.has_index_write_bytes_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.index_write_bytes_)
+    if (self.has_entity_writes_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.entity_writes_)
+    if (self.has_entity_write_bytes_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.entity_write_bytes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 8:
         self.set_index_writes(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.set_index_write_bytes(d.getVarInt32())
+        continue
+      if tt == 24:
+        self.set_entity_writes(d.getVarInt32())
+        continue
+      if tt == 32:
+        self.set_entity_write_bytes(d.getVarInt32())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -1241,17 +1319,32 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_index_writes_: res+=prefix+("index_writes: %s\n" % self.DebugFormatInt32(self.index_writes_))
+    if self.has_index_write_bytes_: res+=prefix+("index_write_bytes: %s\n" % self.DebugFormatInt32(self.index_write_bytes_))
+    if self.has_entity_writes_: res+=prefix+("entity_writes: %s\n" % self.DebugFormatInt32(self.entity_writes_))
+    if self.has_entity_write_bytes_: res+=prefix+("entity_write_bytes: %s\n" % self.DebugFormatInt32(self.entity_write_bytes_))
     return res
 
   kindex_writes = 1
+  kindex_write_bytes = 2
+  kentity_writes = 3
+  kentity_write_bytes = 4
 
   _TEXT = (
    "ErrorCode",
    "index_writes",
+   "index_write_bytes",
+   "entity_writes",
+   "entity_write_bytes",
   )
 
   _TYPES = (
    ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
    ProtocolBuffer.Encoder.NUMERIC,
 
   )

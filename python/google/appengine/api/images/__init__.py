@@ -42,7 +42,23 @@ PNG = images_service_pb.OutputSettings.PNG
 
 OUTPUT_ENCODING_TYPES = frozenset([JPEG, PNG])
 
+TOP_LEFT = images_service_pb.CompositeImageOptions.TOP_LEFT
+TOP_CENTER = images_service_pb.CompositeImageOptions.TOP
+TOP_RIGHT = images_service_pb.CompositeImageOptions.TOP_RIGHT
+CENTER_LEFT = images_service_pb.CompositeImageOptions.LEFT
+CENTER_CENTER = images_service_pb.CompositeImageOptions.CENTER
+CENTER_RIGHT = images_service_pb.CompositeImageOptions.RIGHT
+BOTTOM_LEFT = images_service_pb.CompositeImageOptions.BOTTOM_LEFT
+BOTTOM_CENTER = images_service_pb.CompositeImageOptions.BOTTOM
+BOTTOM_RIGHT = images_service_pb.CompositeImageOptions.BOTTOM_RIGHT
+
+ANCHOR_TYPES = frozenset([TOP_LEFT, TOP_CENTER, TOP_RIGHT, CENTER_LEFT,
+                          CENTER_CENTER, CENTER_RIGHT, BOTTOM_LEFT,
+                          BOTTOM_CENTER, BOTTOM_RIGHT])
+
 MAX_TRANSFORMS_PER_REQUEST = 10
+
+MAX_COMPOSITES_PER_REQUEST = 16
 
 
 class Error(Exception):
@@ -296,7 +312,7 @@ class Image(object):
       raise BadRequestError("At least one of width or height must be > 0.")
 
     if width > 4000 or height > 4000:
-      raise BadRequestError("Both width and height must be < 4000.")
+      raise BadRequestError("Both width and height must be <= 4000.")
 
     self._check_transform_limits()
 
@@ -424,7 +440,7 @@ class Image(object):
 
     Raises:
       BadRequestError if MAX_TRANSFORMS_PER_REQUEST transforms have already
-      been requested for this image.
+        been requested for this image.
     """
     self._check_transform_limits()
     transform = images_service_pb.Transform()
@@ -510,6 +526,47 @@ class Image(object):
     if self._height is None:
       self._update_dimensions()
     return self._height
+
+  def histogram(self):
+    """Calculates the histogram of the image.
+
+    Returns: 3 256-element lists containing the number of occurences of each
+    value of each color in the order RGB. As described at
+    http://en.wikipedia.org/wiki/Color_histogram for N = 256. i.e. the first
+    value of the first list contains the number of pixels with a red value of
+    0, the second the number with a red value of 1.
+
+    Raises:
+      NotImageError when the image data given is not an image.
+      BadImageError when the image data given is corrupt.
+      LargeImageError when the image data given is too large to process.
+      Error when something unknown, but bad, happens.
+    """
+    request = images_service_pb.ImagesHistogramRequest()
+    response = images_service_pb.ImagesHistogramResponse()
+
+    request.mutable_image().set_content(self._image_data)
+    try:
+      apiproxy_stub_map.MakeSyncCall("images",
+                                     "Histogram",
+                                     request,
+                                     response)
+    except apiproxy_errors.ApplicationError, e:
+      if (e.application_error ==
+          images_service_pb.ImagesServiceError.NOT_IMAGE):
+        raise NotImageError()
+      elif (e.application_error ==
+            images_service_pb.ImagesServiceError.BAD_IMAGE_DATA):
+        raise BadImageError()
+      elif (e.application_error ==
+            images_service_pb.ImagesServiceError.IMAGE_TOO_LARGE):
+        raise LargeImageError()
+      else:
+        raise Error()
+    histogram = response.histogram()
+    return [histogram.red_list(),
+            histogram.green_list(),
+            histogram.blue_list()]
 
 
 def resize(image_data, width=0, height=0, output_encoding=PNG):
@@ -631,3 +688,140 @@ def im_feeling_lucky(image_data, output_encoding=PNG):
   image = Image(image_data)
   image.im_feeling_lucky()
   return image.execute_transforms(output_encoding=output_encoding)
+
+def composite(inputs, width, height, color=0, output_encoding=PNG):
+  """Composite one or more images onto a canvas.
+
+  Args:
+    inputs: a list of tuples (image_data, x_offset, y_offset, opacity, anchor)
+    where
+      image_data: str, source image data.
+      x_offset: x offset in pixels from the anchor position
+      y_offset: y offset in piyels from the anchor position
+      opacity: opacity of the image specified as a float in range [0.0, 1.0]
+      anchor: anchoring point from ANCHOR_POINTS. The anchor point of the image
+      is aligned with the same anchor point of the canvas. e.g. TOP_RIGHT would
+      place the top right corner of the image at the top right corner of the
+      canvas then apply the x and y offsets.
+    width: canvas width in pixels.
+    height: canvas height in pixels.
+    color: canvas background color encoded as a 32 bit unsigned int where each
+    color channel is represented by one byte in order ARGB.
+    output_encoding: a value from OUTPUT_ENCODING_TYPES.
+
+  Returns:
+      str, image data of the composited image.
+
+  Raises:
+    TypeError If width, height, color, x_offset or y_offset are not of type
+    int or long or if opacity is not a float
+    BadRequestError If more than MAX_TRANSFORMS_PER_REQUEST compositions have
+    been requested, if the canvas width or height is greater than 4000 or less
+    than or equal to 0, if the color is invalid or if for any composition
+    option, the opacity is outside the range [0,1] or the anchor is invalid.
+  """
+  if (not isinstance(width, (int, long)) or
+      not isinstance(height, (int, long)) or
+      not isinstance(color, (int, long))):
+    raise TypeError("Width, height and color must be integers.")
+  if output_encoding not in OUTPUT_ENCODING_TYPES:
+    raise BadRequestError("Output encoding type '%s' not in recognized set "
+                          "%s" % (output_encoding, OUTPUT_ENCODING_TYPES))
+
+  if not inputs:
+    raise BadRequestError("Must provide at least one input")
+  if len(inputs) > MAX_COMPOSITES_PER_REQUEST:
+    raise BadRequestError("A maximum of %d composition operations can be"
+                          "performed in a single request" %
+                          MAX_COMPOSITES_PER_REQUEST)
+
+  if width <= 0 or height <= 0:
+    raise BadRequestError("Width and height must be > 0.")
+  if width > 4000 or height > 4000:
+    raise BadRequestError("Width and height must be <= 4000.")
+
+  if color > 0xffffffff or color < 0:
+    raise BadRequestError("Invalid color")
+  if color >= 0x80000000:
+    color -= 0x100000000
+
+  image_map = {}
+
+  request = images_service_pb.ImagesCompositeRequest()
+  response = images_service_pb.ImagesTransformResponse()
+  for (image, x, y, opacity, anchor) in inputs:
+    if not image:
+      raise BadRequestError("Each input must include an image")
+    if (not isinstance(x, (int, long)) or
+        not isinstance(y, (int, long)) or
+        not isinstance(opacity, (float))):
+      raise TypeError("x_offset, y_offset must be integers and opacity must"
+                      "be a float")
+    if x > 4000 or x < -4000:
+      raise BadRequestError("xOffsets must be in range [-4000, 4000]")
+    if y > 4000 or y < -4000:
+      raise BadRequestError("yOffsets must be in range [-4000, 4000]")
+    if opacity < 0 or opacity > 1:
+      raise BadRequestError("Opacity must be in the range 0.0 to 1.0")
+    if anchor not in ANCHOR_TYPES:
+      raise BadRequestError("Anchor type '%s' not in recognized set %s" %
+                            (anchor, ANCHOR_TYPES))
+    if image not in image_map:
+      image_map[image] = request.image_size()
+      request.add_image().set_content(image)
+
+    option = request.add_options()
+    option.set_x_offset(x)
+    option.set_y_offset(y)
+    option.set_opacity(opacity)
+    option.set_anchor(anchor)
+    option.set_source_index(image_map[image])
+
+  request.mutable_canvas().mutable_output().set_mime_type(output_encoding)
+  request.mutable_canvas().set_width(width)
+  request.mutable_canvas().set_height(height)
+  request.mutable_canvas().set_color(color)
+
+  try:
+    apiproxy_stub_map.MakeSyncCall("images",
+                                   "Composite",
+                                   request,
+                                   response)
+  except apiproxy_errors.ApplicationError, e:
+    if (e.application_error ==
+        images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA):
+      raise BadRequestError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.NOT_IMAGE):
+      raise NotImageError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.BAD_IMAGE_DATA):
+      raise BadImageError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.IMAGE_TOO_LARGE):
+      raise LargeImageError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR):
+      raise TransformationError()
+    else:
+      raise Error()
+
+  return response.image().content()
+
+
+def histogram(image_data):
+  """Calculates the histogram of the given image.
+
+  Args:
+    image_data: str, source image data.
+  Returns: 3 256-element lists containing the number of occurences of each
+  value of each color in the order RGB.
+
+  Raises:
+    NotImageError when the image data given is not an image.
+    BadImageError when the image data given is corrupt.
+    LargeImageError when the image data given is too large to process.
+    Error when something unknown, but bad, happens.
+  """
+  image = Image(image_data)
+  return image.histogram()

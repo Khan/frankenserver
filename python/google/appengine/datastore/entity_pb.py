@@ -247,6 +247,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
   nickname_ = ""
   has_gaiaid_ = 0
   gaiaid_ = 0
+  has_obfuscated_gaiaid_ = 0
+  obfuscated_gaiaid_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -303,6 +305,19 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
 
   def has_gaiaid(self): return self.has_gaiaid_
 
+  def obfuscated_gaiaid(self): return self.obfuscated_gaiaid_
+
+  def set_obfuscated_gaiaid(self, x):
+    self.has_obfuscated_gaiaid_ = 1
+    self.obfuscated_gaiaid_ = x
+
+  def clear_obfuscated_gaiaid(self):
+    if self.has_obfuscated_gaiaid_:
+      self.has_obfuscated_gaiaid_ = 0
+      self.obfuscated_gaiaid_ = ""
+
+  def has_obfuscated_gaiaid(self): return self.has_obfuscated_gaiaid_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -310,6 +325,7 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
     if (x.has_nickname()): self.set_nickname(x.nickname())
     if (x.has_gaiaid()): self.set_gaiaid(x.gaiaid())
+    if (x.has_obfuscated_gaiaid()): self.set_obfuscated_gaiaid(x.obfuscated_gaiaid())
 
   def Equals(self, x):
     if x is self: return 1
@@ -321,6 +337,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if self.has_nickname_ and self.nickname_ != x.nickname_: return 0
     if self.has_gaiaid_ != x.has_gaiaid_: return 0
     if self.has_gaiaid_ and self.gaiaid_ != x.gaiaid_: return 0
+    if self.has_obfuscated_gaiaid_ != x.has_obfuscated_gaiaid_: return 0
+    if self.has_obfuscated_gaiaid_ and self.obfuscated_gaiaid_ != x.obfuscated_gaiaid_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -345,6 +363,7 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.auth_domain_))
     if (self.has_nickname_): n += 1 + self.lengthString(len(self.nickname_))
     n += self.lengthVarInt64(self.gaiaid_)
+    if (self.has_obfuscated_gaiaid_): n += 2 + self.lengthString(len(self.obfuscated_gaiaid_))
     return n + 4
 
   def Clear(self):
@@ -352,6 +371,7 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     self.clear_auth_domain()
     self.clear_nickname()
     self.clear_gaiaid()
+    self.clear_obfuscated_gaiaid()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(74)
@@ -363,6 +383,9 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.nickname_)
     out.putVarInt32(144)
     out.putVarInt64(self.gaiaid_)
+    if (self.has_obfuscated_gaiaid_):
+      out.putVarInt32(154)
+      out.putPrefixedString(self.obfuscated_gaiaid_)
 
   def TryMerge(self, d):
     while 1:
@@ -380,6 +403,9 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
       if tt == 144:
         self.set_gaiaid(d.getVarInt64())
         continue
+      if tt == 154:
+        self.set_obfuscated_gaiaid(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -390,6 +416,7 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if self.has_auth_domain_: res+=prefix+("auth_domain: %s\n" % self.DebugFormatString(self.auth_domain_))
     if self.has_nickname_: res+=prefix+("nickname: %s\n" % self.DebugFormatString(self.nickname_))
     if self.has_gaiaid_: res+=prefix+("gaiaid: %s\n" % self.DebugFormatInt64(self.gaiaid_))
+    if self.has_obfuscated_gaiaid_: res+=prefix+("obfuscated_gaiaid: %s\n" % self.DebugFormatString(self.obfuscated_gaiaid_))
     return res
 
 class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
@@ -768,6 +795,7 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
   kUserValueauth_domain = 10
   kUserValuenickname = 11
   kUserValuegaiaid = 18
+  kUserValueobfuscated_gaiaid = 19
   kReferenceValueGroup = 12
   kReferenceValueapp = 13
   kReferenceValuePathElementGroup = 14
@@ -795,6 +823,7 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
    "id",
    "name",
    "gaiaid",
+   "obfuscated_gaiaid",
   )
 
   _TYPES = (
@@ -834,6 +863,8 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 
@@ -1478,6 +1509,8 @@ class User(ProtocolBuffer.ProtocolMessage):
   nickname_ = ""
   has_gaiaid_ = 0
   gaiaid_ = 0
+  has_obfuscated_gaiaid_ = 0
+  obfuscated_gaiaid_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1534,6 +1567,19 @@ class User(ProtocolBuffer.ProtocolMessage):
 
   def has_gaiaid(self): return self.has_gaiaid_
 
+  def obfuscated_gaiaid(self): return self.obfuscated_gaiaid_
+
+  def set_obfuscated_gaiaid(self, x):
+    self.has_obfuscated_gaiaid_ = 1
+    self.obfuscated_gaiaid_ = x
+
+  def clear_obfuscated_gaiaid(self):
+    if self.has_obfuscated_gaiaid_:
+      self.has_obfuscated_gaiaid_ = 0
+      self.obfuscated_gaiaid_ = ""
+
+  def has_obfuscated_gaiaid(self): return self.has_obfuscated_gaiaid_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1541,6 +1587,7 @@ class User(ProtocolBuffer.ProtocolMessage):
     if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
     if (x.has_nickname()): self.set_nickname(x.nickname())
     if (x.has_gaiaid()): self.set_gaiaid(x.gaiaid())
+    if (x.has_obfuscated_gaiaid()): self.set_obfuscated_gaiaid(x.obfuscated_gaiaid())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1552,6 +1599,8 @@ class User(ProtocolBuffer.ProtocolMessage):
     if self.has_nickname_ and self.nickname_ != x.nickname_: return 0
     if self.has_gaiaid_ != x.has_gaiaid_: return 0
     if self.has_gaiaid_ and self.gaiaid_ != x.gaiaid_: return 0
+    if self.has_obfuscated_gaiaid_ != x.has_obfuscated_gaiaid_: return 0
+    if self.has_obfuscated_gaiaid_ and self.obfuscated_gaiaid_ != x.obfuscated_gaiaid_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1576,6 +1625,7 @@ class User(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.auth_domain_))
     if (self.has_nickname_): n += 1 + self.lengthString(len(self.nickname_))
     n += self.lengthVarInt64(self.gaiaid_)
+    if (self.has_obfuscated_gaiaid_): n += 1 + self.lengthString(len(self.obfuscated_gaiaid_))
     return n + 3
 
   def Clear(self):
@@ -1583,6 +1633,7 @@ class User(ProtocolBuffer.ProtocolMessage):
     self.clear_auth_domain()
     self.clear_nickname()
     self.clear_gaiaid()
+    self.clear_obfuscated_gaiaid()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1594,6 +1645,9 @@ class User(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.nickname_)
     out.putVarInt32(32)
     out.putVarInt64(self.gaiaid_)
+    if (self.has_obfuscated_gaiaid_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.obfuscated_gaiaid_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1610,6 +1664,9 @@ class User(ProtocolBuffer.ProtocolMessage):
       if tt == 32:
         self.set_gaiaid(d.getVarInt64())
         continue
+      if tt == 42:
+        self.set_obfuscated_gaiaid(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1620,12 +1677,14 @@ class User(ProtocolBuffer.ProtocolMessage):
     if self.has_auth_domain_: res+=prefix+("auth_domain: %s\n" % self.DebugFormatString(self.auth_domain_))
     if self.has_nickname_: res+=prefix+("nickname: %s\n" % self.DebugFormatString(self.nickname_))
     if self.has_gaiaid_: res+=prefix+("gaiaid: %s\n" % self.DebugFormatInt64(self.gaiaid_))
+    if self.has_obfuscated_gaiaid_: res+=prefix+("obfuscated_gaiaid: %s\n" % self.DebugFormatString(self.obfuscated_gaiaid_))
     return res
 
   kemail = 1
   kauth_domain = 2
   knickname = 3
   kgaiaid = 4
+  kobfuscated_gaiaid = 5
 
   _TEXT = (
    "ErrorCode",
@@ -1633,6 +1692,7 @@ class User(ProtocolBuffer.ProtocolMessage):
    "auth_domain",
    "nickname",
    "gaiaid",
+   "obfuscated_gaiaid",
   )
 
   _TYPES = (
@@ -1644,6 +1704,8 @@ class User(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 

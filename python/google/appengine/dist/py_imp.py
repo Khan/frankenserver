@@ -27,29 +27,86 @@ PKG_DIRECTORY, C_BUILTIN, PY_FROZEN = 5, 6, 7
 
 
 def get_magic():
+  """Return the magic string used to recognize byte-compiled code files."""
   return '\0\0\0\0'
 
 
+_PY_SOURCE_SUFFIX = ('.py', 'U', PY_SOURCE)
+_PKG_DIRECTORY_SUFFIX = ('', '', PKG_DIRECTORY)
+
+
 def get_suffixes():
-  return [('.py', 'U', PY_SOURCE)]
+  """Return a list that describes the files that find_module() looks for."""
+  return [_PY_SOURCE_SUFFIX]
+
+
+def find_module(name, path=None):
+  """Try to find the named module on the given search path or sys.path."""
+  if path == None:
+    path = sys.path
+
+  for directory in path:
+    filename = os.path.join(directory, '%s.py' % name)
+    if os.path.exists(filename):
+      return open(filename, 'U'), filename, _PY_SOURCE_SUFFIX
+
+    dirname = os.path.join(directory, name)
+    filename = os.path.join(dirname, '__init__.py')
+    if os.path.exists(filename):
+      return None, dirname, _PKG_DIRECTORY_SUFFIX
+
+  raise ImportError('No module named %s' % name)
+
+
+def load_module(name, file_, pathname, description):
+  """Load or reload the specified module.
+
+  Please note that this function has only rudimentary supported on App Engine:
+  Only loading packages is supported.
+  """
+  suffix, mode, type_ = description
+  if type_ == PKG_DIRECTORY:
+    if name in sys.modules:
+      mod = sys.modules[name]
+    else:
+      mod = new_module(name)
+      sys.modules[name] = mod
+    filename = os.path.join(pathname, '__init__.py')
+    mod.__file__ = filename
+    execfile(filename, mod.__dict__, mod.__dict__)
+    return mod
+  else:
+    raise NotImplementedError('Only importing packages is supported on '
+                              'App Engine')
 
 
 def new_module(name):
-  return type(sys.modules[__name__])(name)
+  """Return a new empty module object."""
+  return type(sys)(name)
 
 
 def lock_held():
   """Return False since threading is not supported."""
   return False
 
+
 def acquire_lock():
   """Acquiring the lock is a no-op since no threading is supported."""
   pass
+
 
 def release_lock():
   """There is no lock to release since acquiring is a no-op when there is no
   threading."""
   pass
+
+
+def init_builtin(name):
+  raise NotImplementedError('This function is not supported on App Engine.')
+
+
+def init_frozen(name):
+  raise NotImplementedError('This function is not supported on App Engine.')
 
 
 def is_builtin(name):
@@ -60,7 +117,20 @@ def is_frozen(name):
   return False
 
 
+def load_compiled(name, pathname, file_=None):
+  raise NotImplementedError('This function is not supported on App Engine.')
+
+
+def load_dynamic(name, pathname, file_=None):
+  raise NotImplementedError('This function is not supported on App Engine.')
+
+
+def load_source(name, pathname, file_=None):
+  raise NotImplementedError('This function is not supported on App Engine.')
+
+
 class NullImporter(object):
+  """Null importer object"""
 
   def __init__(self, path_string):
     if not path_string:

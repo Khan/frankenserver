@@ -39,6 +39,12 @@ import Cookie
 import cStringIO
 import cgi
 import cgitb
+
+try:
+  import distutils.util
+except ImportError:
+  pass
+
 import dummy_thread
 import email.Utils
 import errno
@@ -258,17 +264,17 @@ class URLMatcher(object):
         access the URL; False if anyone can access the URL.
     """
     if not isinstance(dispatcher, URLDispatcher):
-      raise TypeError, 'dispatcher must be a URLDispatcher sub-class'
+      raise TypeError('dispatcher must be a URLDispatcher sub-class')
 
     if regex.startswith('^') or regex.endswith('$'):
-      raise InvalidAppConfigError, 'regex starts with "^" or ends with "$"'
+      raise InvalidAppConfigError('regex starts with "^" or ends with "$"')
 
     adjusted_regex = '^%s$' % regex
 
     try:
       url_re = re.compile(adjusted_regex)
     except re.error, e:
-      raise InvalidAppConfigError, 'regex invalid: %s' % e
+      raise InvalidAppConfigError('regex invalid: %s' % e)
 
     match_tuple = (url_re, dispatcher, path, requires_login, admin_only)
     self._url_patterns.append(match_tuple)
@@ -348,7 +354,7 @@ class MatcherDispatcher(URLDispatcher):
     path variable supplied to this method is ignored.
     """
     cookies = ', '.join(headers.getheaders('cookie'))
-    email, admin = self._get_user_info(cookies)
+    email, admin, user_id = self._get_user_info(cookies)
 
     for matcher in self._url_matchers:
       dispatcher, matched_path, requires_login, admin_only = matcher.Match(relative_url)
@@ -540,8 +546,9 @@ def SetupEnvironment(cgi_path,
   env['CONTENT_LENGTH'] = headers.getheader('content-length', '')
 
   cookies = ', '.join(headers.getheaders('cookie'))
-  email, admin = get_user_info(cookies)
+  email, admin, user_id = get_user_info(cookies)
   env['USER_EMAIL'] = email
+  env['USER_ID'] = user_id
   if admin:
     env['USER_IS_ADMIN'] = '1'
 
@@ -615,14 +622,14 @@ def FakeUname():
 def FakeUnlink(path):
   """Fake version of os.unlink."""
   if os.path.isdir(path):
-    raise OSError(2, "Is a directory", path)
+    raise OSError(errno.ENOENT, "Is a directory", path)
   else:
-    raise OSError(1, "Operation not permitted", path)
+    raise OSError(errno.EPERM, "Operation not permitted", path)
 
 
 def FakeReadlink(path):
   """Fake version of os.readlink."""
-  raise OSError(22, "Invalid argument", path)
+  raise OSError(errno.EINVAL, "Invalid argument", path)
 
 
 def FakeAccess(path, mode):
@@ -636,8 +643,31 @@ def FakeAccess(path, mode):
 def FakeSetLocale(category, value=None, original_setlocale=locale.setlocale):
   """Fake version of locale.setlocale that only supports the default."""
   if value not in (None, '', 'C', 'POSIX'):
-    raise locale.Error, 'locale emulation only supports "C" locale'
+    raise locale.Error('locale emulation only supports "C" locale')
   return original_setlocale(category, 'C')
+
+
+def FakeOpen(file, flags, mode=0777):
+  """Fake version of os.open."""
+  raise OSError(errno.EPERM, "Operation not permitted", file)
+
+
+def FakeRename(src, dst):
+  """Fake version of os.rename."""
+  raise OSError(errno.EPERM, "Operation not permitted", src)
+
+
+def FakeUTime(path, times):
+  """Fake version of os.utime."""
+  raise OSError(errno.EPERM, "Operation not permitted", path)
+
+
+def FakeGetPlatform():
+  """Fake distutils.util.get_platform on OS/X.  Pass-through otherwise."""
+  if sys.platform == 'darwin':
+    return 'macosx-'
+  else:
+    return distutils.util.get_platform()
 
 
 def IsPathInSubdirectories(filename,
@@ -739,6 +769,21 @@ def SetupSharedModules(module_dict):
   return output_dict
 
 
+def GeneratePythonPaths(*p):
+  """Generate all valid filenames for the given file
+
+  Args:
+    p: Positional args are the folders to the file and finally the file
+       without a suffix.
+
+  Returns:
+    A list of strings representing the given path to a file with each valid
+      suffix for this python build.
+  """
+  suffixes = imp.get_suffixes()
+  return [os.path.join(*p) + s for s, m, t in suffixes]
+
+
 class FakeFile(file):
   """File sub-class that enforces the security restrictions of the production
   environment.
@@ -770,6 +815,50 @@ class FakeFile(file):
     for path in [
 
   ])
+
+  ALLOWED_SITE_PACKAGE_FILES = set(
+    os.path.normcase(os.path.abspath(os.path.join(
+      os.path.dirname(os.__file__), 'site-packages', path)))
+    for path in itertools.chain(*[
+
+      [os.path.join('Crypto')],
+      GeneratePythonPaths('Crypto', '__init__'),
+      [os.path.join('Crypto', 'Cipher')],
+      GeneratePythonPaths('Crypto', 'Cipher', '__init__'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'AES'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'ARC2'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'ARC4'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'Blowfish'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'CAST'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'DES'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'DES3'),
+      GeneratePythonPaths('Crypto', 'Cipher', 'XOR'),
+      [os.path.join('Crypto', 'Hash')],
+      GeneratePythonPaths('Crypto', 'Hash', '__init__'),
+      GeneratePythonPaths('Crypto', 'Hash', 'HMAC'),
+      os.path.join('Crypto', 'Hash', 'MD2'),
+      os.path.join('Crypto', 'Hash', 'MD4'),
+      GeneratePythonPaths('Crypto', 'Hash', 'MD5'),
+      GeneratePythonPaths('Crypto', 'Hash', 'SHA'),
+      os.path.join('Crypto', 'Hash', 'SHA256'),
+      os.path.join('Crypto', 'Hash', 'RIPEMD'),
+      [os.path.join('Crypto', 'Protocol')],
+      GeneratePythonPaths('Crypto', 'Protocol', '__init__'),
+      GeneratePythonPaths('Crypto', 'Protocol', 'AllOrNothing'),
+      GeneratePythonPaths('Crypto', 'Protocol', 'Chaffing'),
+      [os.path.join('Crypto', 'PublicKey')],
+      GeneratePythonPaths('Crypto', 'PublicKey', '__init__'),
+      GeneratePythonPaths('Crypto', 'PublicKey', 'DSA'),
+      GeneratePythonPaths('Crypto', 'PublicKey', 'ElGamal'),
+      GeneratePythonPaths('Crypto', 'PublicKey', 'RSA'),
+      GeneratePythonPaths('Crypto', 'PublicKey', 'pubkey'),
+      GeneratePythonPaths('Crypto', 'PublicKey', 'qNEW'),
+      [os.path.join('Crypto', 'Util')],
+      GeneratePythonPaths('Crypto', 'Util', '__init__'),
+      GeneratePythonPaths('Crypto', 'Util', 'RFC1751'),
+      GeneratePythonPaths('Crypto', 'Util', 'number'),
+      GeneratePythonPaths('Crypto', 'Util', 'randpool'),
+  ]))
 
   _original_file = file
 
@@ -863,9 +952,6 @@ class FakeFile(file):
     """
     logical_filename = normcase(os.path.abspath(filename))
 
-    if os.path.isdir(logical_filename):
-      logical_filename = os.path.join(logical_filename, 'foo')
-
     result = FakeFile._availability_cache.get(logical_filename)
     if result is None:
       result = FakeFile._IsFileAccessibleNoCache(logical_filename,
@@ -886,9 +972,13 @@ class FakeFile(file):
     Returns:
       True if the file is accessible, False otherwise.
     """
-    if IsPathInSubdirectories(logical_filename, [FakeFile._root_path],
+    logical_dirfakefile = logical_filename
+    if os.path.isdir(logical_filename):
+      logical_dirfakefile = os.path.join(logical_filename, 'foo')
+
+    if IsPathInSubdirectories(logical_dirfakefile, [FakeFile._root_path],
                               normcase=normcase):
-      relative_filename = logical_filename[len(FakeFile._root_path):]
+      relative_filename = logical_dirfakefile[len(FakeFile._root_path):]
 
       if (not FakeFile._allow_skipped_files and
           FakeFile._skip_files.match(relative_filename)):
@@ -904,16 +994,19 @@ class FakeFile(file):
     if logical_filename in FakeFile.ALLOWED_FILES:
       return True
 
-    if IsPathInSubdirectories(logical_filename,
+    if logical_filename in FakeFile.ALLOWED_SITE_PACKAGE_FILES:
+      return True
+
+    if IsPathInSubdirectories(logical_dirfakefile,
                               FakeFile.ALLOWED_SITE_PACKAGE_DIRS,
                               normcase=normcase):
       return True
 
     allowed_dirs = FakeFile._application_paths | FakeFile.ALLOWED_DIRS
-    if (IsPathInSubdirectories(logical_filename,
+    if (IsPathInSubdirectories(logical_dirfakefile,
                                allowed_dirs,
                                normcase=normcase) and
-        not IsPathInSubdirectories(logical_filename,
+        not IsPathInSubdirectories(logical_dirfakefile,
                                    FakeFile.NOT_ALLOWED_DIRS,
                                    normcase=normcase)):
       return True
@@ -926,7 +1019,7 @@ class FakeFile(file):
       raise IOError('invalid mode: %s' % mode)
 
     if not FakeFile.IsFileAccessible(filename):
-      raise IOError(errno.EACCES, 'file not accessible')
+      raise IOError(errno.EACCES, 'file not accessible', filename)
 
     super(FakeFile, self).__init__(filename, mode, bufsize, **kwargs)
 
@@ -950,7 +1043,7 @@ class RestrictedPathFunction(object):
     """Enforces access permissions for the function passed to the constructor.
     """
     if not FakeFile.IsFileAccessible(path):
-      raise OSError(errno.EACCES, 'path not accessible')
+      raise OSError(errno.EACCES, 'path not accessible', path)
 
     return self._original_func(path, *args, **kwargs)
 
@@ -1035,6 +1128,31 @@ class HardenedModulesHook(object):
       print >>sys.stderr, indent + (message % args)
 
   _WHITE_LIST_C_MODULES = [
+    'AES',
+    'ARC2',
+    'ARC4',
+    'Blowfish',
+    'CAST',
+    'DES',
+    'DES3',
+    'MD2',
+    'MD4',
+    'RIPEMD',
+    'SHA256',
+    'XOR',
+
+    '_Crypto_Cipher__AES',
+    '_Crypto_Cipher__ARC2',
+    '_Crypto_Cipher__ARC4',
+    '_Crypto_Cipher__Blowfish',
+    '_Crypto_Cipher__CAST',
+    '_Crypto_Cipher__DES',
+    '_Crypto_Cipher__DES3',
+    '_Crypto_Cipher__XOR',
+    '_Crypto_Hash__MD2',
+    '_Crypto_Hash__MD4',
+    '_Crypto_Hash__RIPEMD',
+    '_Crypto_Hash__SHA256',
     'array',
     'binascii',
     'bz2',
@@ -1089,7 +1207,24 @@ class HardenedModulesHook(object):
     '__main__',
   ]
 
+  __CRYPTO_CIPHER_ALLOWED_MODULES = [
+    'MODE_CBC',
+    'MODE_CFB',
+    'MODE_CTR',
+    'MODE_ECB',
+    'MODE_OFB',
+    'block_size',
+    'key_size',
+    'new',
+  ]
   _WHITE_LIST_PARTIAL_MODULES = {
+    'Crypto.Cipher.AES': __CRYPTO_CIPHER_ALLOWED_MODULES,
+    'Crypto.Cipher.ARC2': __CRYPTO_CIPHER_ALLOWED_MODULES,
+    'Crypto.Cipher.Blowfish': __CRYPTO_CIPHER_ALLOWED_MODULES,
+    'Crypto.Cipher.CAST': __CRYPTO_CIPHER_ALLOWED_MODULES,
+    'Crypto.Cipher.DES': __CRYPTO_CIPHER_ALLOWED_MODULES,
+    'Crypto.Cipher.DES3': __CRYPTO_CIPHER_ALLOWED_MODULES,
+
     'gc': [
       'enable',
       'disable',
@@ -1149,12 +1284,14 @@ class HardenedModulesHook(object):
       'O_SYNC',
       'O_TRUNC',
       'O_WRONLY',
+      'open',
       'pardir',
       'path',
       'pathsep',
       'R_OK',
       'readlink',
       'remove',
+      'rename',
       'SEEK_CUR',
       'SEEK_END',
       'SEEK_SET',
@@ -1166,6 +1303,7 @@ class HardenedModulesHook(object):
       'TMP_MAX',
       'unlink',
       'urandom',
+      'utime',
       'walk',
       'WCOREDUMP',
       'WEXITSTATUS',
@@ -1191,12 +1329,19 @@ class HardenedModulesHook(object):
       'listdir': RestrictedPathFunction(os.listdir),
 
       'lstat': RestrictedPathFunction(os.stat),
+      'open': FakeOpen,
       'readlink': FakeReadlink,
       'remove': FakeUnlink,
+      'rename': FakeRename,
       'stat': RestrictedPathFunction(os.stat),
       'uname': FakeUname,
       'unlink': FakeUnlink,
       'urandom': FakeURandom,
+      'utime': FakeUTime,
+    },
+
+    'distutils.util': {
+      'get_platform': FakeGetPlatform,
     },
   }
 
@@ -1483,7 +1628,6 @@ class HardenedModulesHook(object):
       module.__name__ = 'cPickle'
     elif submodule_fullname == 'os':
       module.__dict__.update(self._os.__dict__)
-      self._module_dict['os.path'] = module.path
     elif self.StubModuleExists(submodule_fullname):
       module = self.ImportStubModule(submodule_fullname)
     else:
@@ -1497,6 +1641,12 @@ class HardenedModulesHook(object):
     self.FixModule(module)
     if submodule_fullname not in self._module_dict:
       self._module_dict[submodule_fullname] = module
+
+    if submodule_fullname == 'os':
+      os_path_name = module.path.__name__
+      os_path = self.FindAndLoadModule(os_path_name, os_path_name, search_path)
+      self._module_dict['os.path'] = os_path
+      module.__dict__['path'] = os_path
 
     return module
 
@@ -3013,6 +3163,9 @@ def SetupStubs(app_id, **config):
     enable_sendmail: Whether to use sendmail as an alternative to SMTP.
     show_mail_body: Whether to log the body of emails.
     remove: Used for dependency injection.
+    trusted: True if this app can access data belonging to other apps.  This
+      behavior is different from the real app server and should be left False
+      except for advanced uses of dev_appserver.
   """
   login_url = config['login_url']
   datastore_path = config['datastore_path']
@@ -3026,6 +3179,7 @@ def SetupStubs(app_id, **config):
   enable_sendmail = config.get('enable_sendmail', False)
   show_mail_body = config.get('show_mail_body', False)
   remove = config.get('remove', os.remove)
+  trusted = config.get('trusted', False)
 
   os.environ['APPLICATION_ID'] = app_id
 
@@ -3041,7 +3195,8 @@ def SetupStubs(app_id, **config):
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
 
   datastore = datastore_file_stub.DatastoreFileStub(
-      app_id, datastore_path, history_path, require_indexes=require_indexes)
+      app_id, datastore_path, history_path, require_indexes=require_indexes,
+      trusted=trusted)
   apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore)
 
   fixed_login_url = '%s?%s=%%s' % (login_url,

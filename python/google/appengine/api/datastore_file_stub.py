@@ -37,6 +37,7 @@ per-transaction, so they should only be used by one tx at a time.
 
 import datetime
 import logging
+import md5
 import os
 import struct
 import sys
@@ -145,7 +146,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
                datastore_file,
                history_file,
                require_indexes=False,
-               service_name='datastore_v3'):
+               service_name='datastore_v3',
+               trusted=False):
     """Constructor.
 
     Initializes and loads the datastore from the backing files, if they exist.
@@ -159,6 +161,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       require_indexes: bool, default False.  If True, composite indexes must
           exist in index.yaml for queries that need them.
       service_name: Service name expected for all calls.
+      trusted: bool, default False.  If True, this stub allows an app to
+        access the data of another app.
     """
     super(DatastoreFileStub, self).__init__(service_name)
 
@@ -167,6 +171,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__app_id = app_id
     self.__datastore_file = datastore_file
     self.__history_file = history_file
+    self.SetTrusted(trusted)
 
     self.__entities = {}
 
@@ -206,6 +211,31 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__transactions = {}
     self.__query_history = {}
     self.__schema_cache = {}
+
+  def SetTrusted(self, trusted):
+    """Set/clear the trusted bit in the stub.
+
+    This bit indicates that the app calling the stub is trusted. A
+    trusted app can write to datastores of other apps.
+
+    Args:
+      trusted: boolean.
+    """
+    self.__trusted = trusted
+
+  def __ValidateAppId(self, app_id):
+    """Verify that this is the stub for app_id.
+
+    Args:
+      app_id: An application ID.
+
+    Raises:
+      datastore_errors.BadRequestError: if this is not the stub for app_id.
+    """
+    if not self.__trusted and app_id != self.__app_id:
+      raise datastore_errors.BadRequestError(
+          'app %s cannot access app %s\'s data' % (self.__app_id, app_id))
+
 
   def _AppKindForKey(self, key):
     """ Get (app, kind) tuple from given key.
@@ -336,7 +366,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
           return pickle.load(open(filename, 'rb'))
         else:
           logging.warning('Could not read datastore data from %s', filename)
-      except (AttributeError, LookupError, NameError, TypeError,
+      except (AttributeError, LookupError, ImportError, NameError, TypeError,
               ValueError, struct.error, pickle.PickleError), e:
         raise datastore_errors.InternalError(
           'Could not read data from %s. Try running with the '
@@ -394,8 +424,18 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Put(self, put_request, put_response):
     clones = []
     for entity in put_request.entity_list():
+      self.__ValidateAppId(entity.key().app())
+
       clone = entity_pb.EntityProto()
       clone.CopyFrom(entity)
+
+      for property in clone.property_list():
+        if property.value().has_uservalue():
+          uid = md5.new(property.value().uservalue().email().lower()).digest()
+          uid = '1' + ''.join(['%02d' % ord(x) for x in uid])[:20]
+          property.mutable_value().mutable_uservalue().set_obfuscated_gaiaid(
+              uid)
+
       clones.append(clone)
 
       assert clone.has_key()
@@ -433,22 +473,24 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_Get(self, get_request, get_response):
     for key in get_request.key_list():
-        app_kind = self._AppKindForKey(key)
+      self.__ValidateAppId(key.app())
+      app_kind = self._AppKindForKey(key)
 
-        group = get_response.add_entity()
-        try:
-          entity = self.__entities[app_kind][key].protobuf
-        except KeyError:
-          entity = None
+      group = get_response.add_entity()
+      try:
+        entity = self.__entities[app_kind][key].protobuf
+      except KeyError:
+        entity = None
 
-        if entity:
-          group.mutable_entity().CopyFrom(entity)
+      if entity:
+        group.mutable_entity().CopyFrom(entity)
 
 
   def _Dynamic_Delete(self, delete_request, delete_response):
     self.__entities_lock.acquire()
     try:
       for key in delete_request.key_list():
+        self.__ValidateAppId(key.app())
         app_kind = self._AppKindForKey(key)
         try:
           del self.__entities[app_kind][key]
@@ -472,6 +514,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     else:
       self.__tx_lock.release()
 
+    app = query.app()
+    self.__ValidateAppId(app)
+
     if query.has_offset() and query.offset() > _MAX_QUERY_OFFSET:
       raise apiproxy_errors.ApplicationError(
           datastore_pb.Error.BAD_REQUEST, 'Too big query offset.')
@@ -484,8 +529,6 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
           datastore_pb.Error.BAD_REQUEST,
           ('query is too large. may not have more than %s filters'
            ' + sort orders ancestor total' % _MAX_QUERY_COMPONENTS))
-
-    app = query.app()
 
     if self.__require_indexes:
       required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
@@ -701,6 +744,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
                                              'Cursor %d not found' % cursor)
 
     count = next_request.count()
+
     results_pb = [r._ToPb() for r in results[:count]]
     query_result.result_list().extend(results_pb)
     del results[:count]
@@ -708,6 +752,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     query_result.set_more_results(len(results) > 0)
 
   def _Dynamic_Count(self, query, integer64proto):
+    self.__ValidateAppId(query.app())
     query_result = datastore_pb.QueryResult()
     self._Dynamic_RunQuery(query, query_result)
     cursor = query_result.cursor().cursor()
@@ -759,6 +804,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       minfloat = -1e300000
 
     app_str = app_str.value()
+    self.__ValidateAppId(app_str)
 
     kinds = []
 
@@ -816,6 +862,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       schema.add_kind().CopyFrom(kind_pb)
 
   def _Dynamic_CreateIndex(self, index, id_response):
+    self.__ValidateAppId(index.app_id())
     if index.id() != 0:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                              'New index id must be 0.')
@@ -843,10 +890,12 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       self.__indexes_lock.release()
 
   def _Dynamic_GetIndices(self, app_str, composite_indices):
+    self.__ValidateAppId(app_str.value())
     composite_indices.index_list().extend(
       self.__indexes.get(app_str.value(), []))
 
   def _Dynamic_UpdateIndex(self, index, void):
+    self.__ValidateAppId(index.app_id())
     stored_index = self.__FindIndex(index)
     if not stored_index:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
@@ -866,6 +915,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       self.__indexes_lock.release()
 
   def _Dynamic_DeleteIndex(self, index, void):
+    self.__ValidateAppId(index.app_id())
     stored_index = self.__FindIndex(index)
     if not stored_index:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
@@ -888,6 +938,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       entity_pb.CompositeIndex, if it exists; otherwise None
     """
     app = index.app_id()
+    self.__ValidateAppId(app)
     if app in self.__indexes:
       for stored_index in self.__indexes[app]:
         if index.definition() == stored_index.definition():

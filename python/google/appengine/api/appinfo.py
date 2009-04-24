@@ -70,6 +70,8 @@ SECURE_HTTP = 'never'
 SECURE_HTTPS = 'always'
 SECURE_HTTP_OR_HTTPS = 'optional'
 
+REQUIRE_MATCHING_FILE = 'require_matching_file'
+
 DEFAULT_SKIP_FILES = (r"^(.*/)?("
                       r"(app\.yaml)|"
                       r"(app\.yml)|"
@@ -199,13 +201,16 @@ class URLMap(validation.Validated):
 
 
     HANDLER_SCRIPT: validation.Optional(_FILES_REGEX),
+
+    REQUIRE_MATCHING_FILE: validation.Optional(bool),
   }
 
   COMMON_FIELDS = set([URL, LOGIN, SECURE])
 
   ALLOWED_FIELDS = {
-    HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION),
-    HANDLER_STATIC_DIR: (MIME_TYPE, EXPIRATION),
+    HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION,
+                           REQUIRE_MATCHING_FILE),
+    HANDLER_STATIC_DIR: (MIME_TYPE, EXPIRATION, REQUIRE_MATCHING_FILE),
     HANDLER_SCRIPT: (),
   }
 

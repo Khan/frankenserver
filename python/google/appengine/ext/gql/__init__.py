@@ -327,11 +327,11 @@ class GQL(object):
     """Cast input values to Key() class using encoded string or tuple list."""
     if not len(values) % 2:
       return datastore_types.Key.from_path(_app=self.__app, *values)
-    elif len(values) == 1 and isinstance(values[0], str):
+    elif len(values) == 1 and isinstance(values[0], basestring):
       return datastore_types.Key(values[0])
     else:
       self.__CastError('KEY', values,
-                       'requires an even number of operands'
+                       'requires an even number of operands '
                        'or a single encoded string')
 
   def __CastGeoPt(self, values):
@@ -530,7 +530,7 @@ class GQL(object):
         raise datastore_errors.BadArgumentError(
             'Missing argument for bind, requires argument #%i, '
             'but only has %i args.' % (reference, num_args))
-    elif isinstance(reference, str):
+    elif isinstance(reference, basestring):
       if reference in keyword_args:
         return keyword_args[reference]
       else:
@@ -919,7 +919,7 @@ class GQL(object):
       assert condition.lower() == 'is'
 
     if condition.lower() != 'in' and operator == 'list':
-      sef.__Error('Only IN can process a list of values')
+      self.__Error('Only IN can process a list of values')
 
     self.__filters.setdefault(filter_rule, []).append((operator, parameters))
     return True

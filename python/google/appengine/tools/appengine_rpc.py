@@ -41,6 +41,7 @@ try:
 except ImportError:
   pass
 
+logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
 def GetPlatformToken(os_module=os, sys_module=sys, platform=sys.platform):
   """Returns a 'User-agent' token for the host system platform.
@@ -61,6 +62,33 @@ def GetPlatformToken(os_module=os, sys_module=sys, platform=sys.platform):
   else:
     return "unknown"
 
+def HttpRequestToString(req, include_data=True):
+  """Converts a urllib2.Request to a string.
+
+  Args:
+    req: urllib2.Request
+  Returns:
+    Multi-line string representing the request.
+  """
+
+  headers = ""
+  for header in req.header_items():
+    headers += "%s: %s\n" % (header[0], header[1])
+
+  template = ("%(method)s %(selector)s %(type)s/1.1\n"
+              "Host: %(host)s\n"
+              "%(headers)s")
+  if include_data:
+    template = template + "\n%(data)s"
+
+  return template % {
+      'method' : req.get_method(),
+      'selector' : req.get_selector(),
+      'type' : req.get_type().upper(),
+      'host' : req.get_host(),
+      'headers': headers,
+      'data': req.get_data(),
+      }
 
 class ClientLoginError(urllib2.HTTPError):
   """Raised to indicate there was an error authenticating with ClientLogin."""
@@ -70,13 +98,16 @@ class ClientLoginError(urllib2.HTTPError):
     self.args = args
     self.reason = args["Error"]
 
+  def read(self):
+    return '%d %s: %s' % (self.code, self.msg, self.reason)
+
 
 class AbstractRpcServer(object):
   """Provides a common interface for a simple RPC server."""
 
   def __init__(self, host, auth_function, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
-               auth_tries=3, account_type=None):
+               auth_tries=3, account_type=None, debug_data=True, secure=False):
     """Creates a new HttpRpcServer.
 
     Args:
@@ -95,13 +126,19 @@ class AbstractRpcServer(object):
         implement this functionality.  Defaults to False.
       auth_tries: The number of times to attempt auth_function before failing.
       account_type: One of GOOGLE, HOSTED_OR_GOOGLE, or None for automatic.
+      debug_data: Whether debugging output should include data contents.
     """
+    if secure:
+      self.scheme = "https"
+    else:
+      self.scheme = "http"
     self.host = host
     self.host_override = host_override
     self.auth_function = auth_function
     self.source = source
     self.authenticated = False
     self.auth_tries = auth_tries
+    self.debug_data = debug_data
 
     self.account_type = account_type
 
@@ -115,9 +152,9 @@ class AbstractRpcServer(object):
     self.cookie_jar = cookielib.MozillaCookieJar()
     self.opener = self._GetOpener()
     if self.host_override:
-      logging.info("Server: %s; Host: %s", self.host, self.host_override)
+      logger.info("Server: %s; Host: %s", self.host, self.host_override)
     else:
-      logging.info("Server: %s", self.host)
+      logger.info("Server: %s", self.host)
 
     if ((self.host_override and self.host_override == "localhost") or
         self.host == "localhost" or self.host.startswith("localhost:")):
@@ -200,8 +237,9 @@ class AbstractRpcServer(object):
     continue_location = "http://localhost/"
     args = {"continue": continue_location, "auth": auth_token}
     login_path = os.environ.get("APPCFG_LOGIN_PATH", "/_ah")
-    req = self._CreateRequest("http://%s%s/login?%s" %
-                              (self.host, login_path, urllib.urlencode(args)))
+    req = self._CreateRequest("%s://%s%s/login?%s" %
+                              (self.scheme, self.host, login_path,
+                               urllib.urlencode(args)))
     try:
       response = self.opener.open(req)
     except urllib2.HTTPError, e:
@@ -291,30 +329,39 @@ class AbstractRpcServer(object):
     socket.setdefaulttimeout(timeout)
     try:
       tries = 0
+      auth_tried = False
       while True:
         tries += 1
         args = dict(kwargs)
-        url = "http://%s%s?%s" % (self.host, request_path,
-                                  urllib.urlencode(args))
+        url = "%s://%s%s?%s" % (self.scheme, self.host, request_path,
+                                urllib.urlencode(args))
         req = self._CreateRequest(url=url, data=payload)
         req.add_header("Content-Type", content_type)
         req.add_header("X-appcfg-api-version", "1")
         try:
+          logger.debug('Sending HTTP request:\n%s' %
+                       HttpRequestToString(req, include_data=self.debug_data))
           f = self.opener.open(req)
           response = f.read()
           f.close()
           return response
         except urllib2.HTTPError, e:
-          logging.debug("Got http error, this is try #%s" % tries)
+          logger.debug("Got http error, this is try #%s" % tries)
           if tries > self.auth_tries:
             raise
           elif e.code == 401:
+            if auth_tried:
+              raise
+            auth_tried = True
             self._Authenticate()
           elif e.code >= 500 and e.code < 600:
             continue
           elif e.code == 302:
+            if auth_tried:
+              raise
+            auth_tried = True
             loc = e.info()["location"]
-            logging.debug("Got 302 redirect. Location: %s" % loc)
+            logger.debug("Got 302 redirect. Location: %s" % loc)
             if loc.startswith("https://www.google.com/accounts/ServiceLogin"):
               self._Authenticate()
             elif re.match(r"https://www.google.com/a/[a-z0-9.-]+/ServiceLogin",
@@ -337,14 +384,14 @@ class HttpRpcServer(AbstractRpcServer):
   def _Authenticate(self):
     """Save the cookie jar after authentication."""
     if cert_file_available and not uses_cert_verification:
-      logging.warn("ssl module not found. Without this the identity of the "
-                   "remote host cannot be verified, and connections are NOT "
-                   "secure. To fix this, please install the ssl module from "
-                   "http://pypi.python.org/pypi/ssl")
+      logger.warn("ssl module not found. Without this the identity of the "
+                  "remote host cannot be verified, and connections are NOT "
+                  "secure. To fix this, please install the ssl module from "
+                  "http://pypi.python.org/pypi/ssl")
     super(HttpRpcServer, self)._Authenticate()
     if self.cookie_jar.filename is not None and self.save_cookies:
-      logging.info("Saving authentication cookies to %s" %
-                   self.cookie_jar.filename)
+      logger.info("Saving authentication cookies to %s" %
+                  self.cookie_jar.filename)
       self.cookie_jar.save()
 
   def _GetOpener(self):
@@ -369,19 +416,19 @@ class HttpRpcServer(AbstractRpcServer):
         try:
           self.cookie_jar.load()
           self.authenticated = True
-          logging.info("Loaded authentication cookies from %s" %
-                       self.cookie_jar.filename)
+          logger.info("Loaded authentication cookies from %s" %
+                      self.cookie_jar.filename)
         except (OSError, IOError, cookielib.LoadError), e:
-          logging.debug("Could not load authentication cookies; %s: %s",
-                        e.__class__.__name__, e)
+          logger.debug("Could not load authentication cookies; %s: %s",
+                       e.__class__.__name__, e)
           self.cookie_jar.filename = None
       else:
         try:
           fd = os.open(self.cookie_jar.filename, os.O_CREAT, 0600)
           os.close(fd)
         except (OSError, IOError), e:
-          logging.debug("Could not create authentication cookies file; %s: %s",
-                        e.__class__.__name__, e)
+          logger.debug("Could not create authentication cookies file; %s: %s",
+                       e.__class__.__name__, e)
           self.cookie_jar.filename = None
 
     opener.add_handler(urllib2.HTTPCookieProcessor(self.cookie_jar))

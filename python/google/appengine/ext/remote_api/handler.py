@@ -38,9 +38,13 @@ So unwise that the default handler insists on checking for itself.
 
 
 import google
+import logging
+import os
 import pickle
 import sha
 import wsgiref.handlers
+import yaml
+
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
@@ -192,8 +196,13 @@ class ApiCallHandler(webapp.RequestHandler):
     if not self.CheckIsAdmin():
       return
 
-    page = self.InfoPage()
-    self.response.out.write(page)
+    rtok = self.request.get('rtok', '0')
+    app_info = {
+        'app_id': os.environ['APPLICATION_ID'],
+        'rtok': rtok
+        }
+
+    self.response.out.write(yaml.dump(app_info))
 
   def post(self):
     """Handle POST requests by executing the API call."""
@@ -209,6 +218,7 @@ class ApiCallHandler(webapp.RequestHandler):
       response.mutable_response().set_contents(response_data.Encode())
       self.response.set_status(200)
     except Exception, e:
+      logging.exception('Exception while handling %s', request)
       self.response.set_status(200)
       response.mutable_exception().set_contents(pickle.dumps(e))
     self.response.out.write(response.Encode())

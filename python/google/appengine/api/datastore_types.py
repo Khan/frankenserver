@@ -1171,6 +1171,10 @@ def PackUser(name, value, pbvalue):
       value.auth_domain().encode('utf-8'))
   pbvalue.mutable_uservalue().set_gaiaid(0)
 
+  if value.user_id() is not None:
+    pbvalue.mutable_uservalue().set_obfuscated_gaiaid(
+        value.user_id().encode('utf-8'))
+
 
 def PackKey(name, value, pbvalue):
   """Packs a reference property into a entity_pb.PropertyValue.
@@ -1368,7 +1372,11 @@ def FromPropertyPb(pb):
   elif pbval.has_uservalue():
     email = unicode(pbval.uservalue().email().decode('utf-8'))
     auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
-    value = users.User(email=email, _auth_domain=auth_domain)
+    obfuscated_gaiaid = pbval.uservalue().obfuscated_gaiaid().decode('utf-8')
+    obfuscated_gaiaid = unicode(obfuscated_gaiaid)
+    value = users.User(email=email,
+                       _auth_domain=auth_domain,
+                       _user_id=obfuscated_gaiaid)
   else:
     value = None
 
@@ -1444,7 +1452,9 @@ def FromPropertyTypeName(type_name):
   return _PROPERTY_TYPE_STRINGS[type_name]
 
 
-def PropertyValueFromString(type_, value_string, _auth_domain=None):
+def PropertyValueFromString(type_,
+                            value_string,
+                            _auth_domain=None):
   """Returns an instance of a property value given a type and string value.
 
   The reverse of this method is just str() and type() of the python value.

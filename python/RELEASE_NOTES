@@ -1,17 +1,49 @@
 Copyright 2008 Google Inc.
 All rights reserved.
 
-App Engine SDK - Release Notes
+App Engine Python SDK - Release Notes
+
+Version 1.2.1 - April 13, 2009
+=============================
+
+  - Stable, unique IDs for User objects. The Users service now
+    provides a unique user_id for each user that stays the same even
+    if a user changes her email address.
+      http://code.google.com/p/googleappengine/issues/detail?id=1019
+  - The Images API now supports compositing images and calculating
+    a color histogram for an image.
+  - New allowed mail attachment types: ics, vcf
+      http://code.google.com/p/googleappengine/issues/detail?id=494
+  - Urlfetch requests can now set the User-Agent header.
+      http://code.google.com/p/googleappengine/issues/detail?id=342
+  - An App Engine-specific version of the Python PyCrypto cryptography
+    library is now available. Learn more at
+      http://code.google.com/appengine/docs/python/tools/libraries.html
+  - The bulk loader configuration format has changed.to allow non-CSV
+    input. This change is not backwards compatible, so you will need to
+    update your code.
+    An early release of the bulk downloader is also now available in
+    bulkloader.py. Learn more about these changes at:
+      http://code.google.com/appengine/docs/python/tools/uploadingdata.html
+  - Fixed parsing of unicode GQL queries.
+      http://code.google.com/p/googleappengine/issues/detail?id=1105
+  - Fixed dev_appserver security restrictions for os.path
+      http://code.google.com/p/googleappengine/issues/detail?id=1068
+  - Fixed Reply-To header set in emails sent from dev_appserver.
+      http://code.google.com/p/googleappengine/issues/detail?id=1017
+
+
 
 Version 1.2.0 - March 24, 2009
 ==============================
   - Cron support. Appcfg.py will upload the schedule to App Engine.
       The dev_appserver console at /_ah/admin describes your schedule but does
       not automatically run scheduled jobs. Learn more at
-      http://code.google.com/appengine/docs/python/config/cron.html
   - New allow_skipped_files flag in dev_appserver to allow it to read files
     which are not available in App Engine.
-        http://code.google.com/p/googleappengine/issues/detail?id=550
+      http://code.google.com/p/googleappengine/issues/detail?id=550
+  - New upload_data command in appcfg to run the bulk uploader.
+      http://code.google.com/appengine/docs/python/tools/uploadingdata.html
 
 Version 1.1.9 - February 2, 2009
 ================================

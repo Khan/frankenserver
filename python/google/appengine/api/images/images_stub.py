@@ -48,6 +48,92 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     super(ImagesServiceStub, self).__init__(service_name)
     Image.init()
 
+  def _Dynamic_Composite(self, request, response):
+    """Implementation of ImagesService::Composite.
+
+    Based off documentation of the PIL library at
+    http://www.pythonware.com/library/pil/handbook/index.htm
+
+    Args:
+      request: ImagesCompositeRequest, contains image request info.
+      response: ImagesCompositeResponse, contains transformed image.
+    """
+    width = request.canvas().width()
+    height = request.canvas().height()
+    color = request.canvas().color() % 0x100000000
+    reordered_color = int((color & 0xff000000) | ((color >> 16) & 0xff) |
+                          (color & 0xff00) | (color & 0xff) << 16)
+    canvas = Image.new("RGBA", (width, height), reordered_color)
+    sources = []
+    if (not request.canvas().width() or request.canvas().width() > 4000 or
+        not request.canvas().height() or request.canvas().height() > 4000):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+    if not request.image_size():
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+    if not request.options_size():
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+    if request.options_size() > images.MAX_COMPOSITES_PER_REQUEST:
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+    for image in request.image_list():
+      sources.append(self._OpenImage(image.content()))
+
+    for options in request.options_list():
+      if (options.anchor() < images.TOP_LEFT or
+          options.anchor() > images.BOTTOM_RIGHT):
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+      if options.source_index() >= len(sources) or options.source_index() < 0:
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+      if options.opacity() < 0 or options.opacity() > 1:
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+      source = sources[options.source_index()]
+      x_anchor = (options.anchor() % 3) * 0.5
+      y_anchor = (options.anchor() / 3) * 0.5
+      x_offset = int(options.x_offset() + x_anchor * (width - source.size[0]))
+      y_offset = int(options.y_offset() + y_anchor * (height - source.size[1]))
+      alpha = options.opacity() * 255
+      mask = Image.new("L", source.size, alpha)
+      canvas.paste(source, (x_offset, y_offset), mask)
+    response_value = self._EncodeImage(canvas, request.canvas().output())
+    response.mutable_image().set_content(response_value)
+
+  def _Dynamic_Histogram(self, request, response):
+    """Trivial implementation of ImagesService::Histogram.
+
+    Based off documentation of the PIL library at
+    http://www.pythonware.com/library/pil/handbook/index.htm
+
+    Args:
+      request: ImagesHistogramRequest, contains the image.
+      response: ImagesHistogramResponse, contains histogram of the image.
+    """
+    image = self._OpenImage(request.image().content())
+    img_format = image.format
+    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.NOT_IMAGE)
+    image = image.convert("RGBA")
+    red = [0] * 256
+    green = [0] * 256
+    blue = [0] * 256
+    for pixel in image.getdata():
+      red[int((pixel[0] * pixel[3]) / 255)] += 1
+      green[int((pixel[1] * pixel[3]) / 255)] += 1
+      blue[int((pixel[2] * pixel[3]) / 255)] += 1
+    histogram = response.mutable_histogram()
+    for value in red:
+      histogram.add_red(value)
+    for value in green:
+      histogram.add_green(value)
+    for value in blue:
+      histogram.add_blue(value)
+
   def _Dynamic_Transform(self, request, response):
     """Trivial implementation of ImagesService::Transform.
 
@@ -58,22 +144,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       request: ImagesTransformRequest, contains image request info.
       response: ImagesTransformResponse, contains transformed image.
     """
-    image = request.image().content()
-    if not image:
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.NOT_IMAGE)
-
-    image = StringIO.StringIO(image)
-    try:
-      original_image = Image.open(image)
-    except IOError:
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
-
-    img_format = original_image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.NOT_IMAGE)
+    original_image = self._OpenImage(request.image().content())
 
     new_image = self._ProcessTransforms(original_image,
                                         request.transform_list())
@@ -103,6 +174,36 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     image.save(image_string, image_encoding)
 
     return image_string.getvalue()
+
+  def _OpenImage(self, image):
+    """Opens an image provided as a string.
+
+    Args:
+      image: image data to be opened
+
+    Raises:
+      apiproxy_errors.ApplicationError if the image cannot be opened or if it
+      is an unsupported format.
+
+    Returns:
+      Image containing the image data passed in.
+    """
+    if not image:
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.NOT_IMAGE)
+
+    image = StringIO.StringIO(image)
+    try:
+      image = Image.open(image)
+    except IOError:
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
+
+    img_format = image.format
+    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.NOT_IMAGE)
+    return image
 
   def _ValidateCropArg(self, arg):
     """Check an argument for the Crop transform.

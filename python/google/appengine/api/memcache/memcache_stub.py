@@ -119,23 +119,27 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     self._byte_hits = 0
     self._cache_creation_time = self._gettime()
 
-  def _GetKey(self, key):
+  def _GetKey(self, namespace, key):
     """Retrieves a CacheEntry from the cache if it hasn't expired.
 
     Does not take deletion timeout into account.
 
     Args:
+      namespace: The namespace that keys are stored under.
       key: The key to retrieve from the cache.
 
     Returns:
       The corresponding CacheEntry instance, or None if it was not found or
       has already expired.
     """
-    entry = self._the_cache.get(key, None)
+    namespace_dict = self._the_cache.get(namespace, None)
+    if namespace_dict is None:
+      return None
+    entry = namespace_dict.get(key, None)
     if entry is None:
       return None
     elif entry.CheckExpired():
-      del self._the_cache[key]
+      del namespace_dict[key]
       return None
     else:
       return entry
@@ -147,9 +151,10 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       request: A MemcacheGetRequest.
       response: A MemcacheGetResponse.
     """
+    namespace = request.name_space()
     keys = set(request.key_list())
     for key in keys:
-      entry = self._GetKey(key)
+      entry = self._GetKey(namespace, key)
       if entry is None or entry.CheckLocked():
         self._misses += 1
         continue
@@ -167,10 +172,11 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       request: A MemcacheSetRequest.
       response: A MemcacheSetResponse.
     """
+    namespace = request.name_space()
     for item in request.item_list():
       key = item.key()
       set_policy = item.set_policy()
-      old_entry = self._GetKey(key)
+      old_entry = self._GetKey(namespace, key)
 
       set_status = MemcacheSetResponse.NOT_STORED
       if ((set_policy == MemcacheSetRequest.SET) or
@@ -180,10 +186,12 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
         if (old_entry is None or
             set_policy == MemcacheSetRequest.SET
             or not old_entry.CheckLocked()):
-          self._the_cache[key] = CacheEntry(item.value(),
-                                            item.expiration_time(),
-                                            item.flags(),
-                                            gettime=self._gettime)
+          if namespace not in self._the_cache:
+            self._the_cache[namespace] = {}
+          self._the_cache[namespace][key] = CacheEntry(item.value(),
+                                                       item.expiration_time(),
+                                                       item.flags(),
+                                                       gettime=self._gettime)
           set_status = MemcacheSetResponse.STORED
 
       response.add_set_status(set_status)
@@ -195,15 +203,16 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       request: A MemcacheDeleteRequest.
       response: A MemcacheDeleteResponse.
     """
+    namespace = request.name_space()
     for item in request.item_list():
       key = item.key()
-      entry = self._GetKey(key)
+      entry = self._GetKey(namespace, key)
 
       delete_status = MemcacheDeleteResponse.DELETED
       if entry is None:
         delete_status = MemcacheDeleteResponse.NOT_FOUND
       elif item.delete_time() == 0:
-        del self._the_cache[key]
+        del self._the_cache[namespace][key]
       else:
         entry.ExpireAndLock(item.delete_time())
 
@@ -216,8 +225,9 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       request: A MemcacheIncrementRequest.
       response: A MemcacheIncrementResponse.
     """
+    namespace = request.name_space()
     key = request.key()
-    entry = self._GetKey(key)
+    entry = self._GetKey(namespace, key)
     if entry is None:
       return
 
@@ -225,7 +235,7 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       old_value = long(entry.value)
       if old_value < 0:
         raise ValueError
-    except ValueError, e:
+    except ValueError:
       logging.error('Increment/decrement failed: Could not interpret '
                     'value for key = "%s" as an unsigned integer.', key)
       return
@@ -262,11 +272,13 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     stats.set_hits(self._hits)
     stats.set_misses(self._misses)
     stats.set_byte_hits(self._byte_hits)
-    stats.set_items(len(self._the_cache))
-
+    items = 0
     total_bytes = 0
-    for key, entry in self._the_cache.iteritems():
-      total_bytes += len(entry.value)
+    for namespace in self._the_cache.itervalues():
+      items += len(namespace)
+      for entry in namespace.itervalues():
+        total_bytes += len(entry.value)
+    stats.set_items(items)
     stats.set_bytes(total_bytes)
 
     stats.set_oldest_item_age(self._gettime() - self._cache_creation_time)

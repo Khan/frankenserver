@@ -79,9 +79,9 @@ class TimezoneValidator(validation.Validator):
     except IOError:
       return value
     except:
-      e, v, t = sys.exc_info()
-      logging.warning("pytz raised an unexpected error: %s.\n" % (v) +
-                      "Traceback:\n" + "\n".join(traceback.format_tb(t)))
+      unused_e, v, t = sys.exc_info()
+      logging.warning('pytz raised an unexpected error: %s.\n' % (v) +
+                      'Traceback:\n' + '\n'.join(traceback.format_tb(t)))
       raise
     return value
 

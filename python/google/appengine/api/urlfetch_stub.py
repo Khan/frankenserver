@@ -55,7 +55,6 @@ _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'content-length',
   'host',
   'referer',
-  'user-agent',
   'vary',
   'via',
   'x-forwarded-for',
@@ -104,6 +103,11 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL)
 
+    if not host:
+      logging.error('Missing host.')
+      raise apiproxy_errors.ApplicationError(
+          urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR)
+
     sanitized_headers = self._SanitizeHttpHeaders(_UNTRUSTED_REQUEST_HEADERS,
                                                   request.header_list())
     request.clear_header()
@@ -146,7 +150,12 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
           'urlfetch received %s ; port %s is not allowed in production!' %
           (url, port))
 
-      if host == '' and protocol == '':
+      if protocol and not host:
+        logging.error('Missing host on redirect; target url is %s' % url)
+        raise apiproxy_errors.ApplicationError(
+          urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR)
+
+      if not host and not protocol:
         host = last_host
         protocol = last_protocol
 

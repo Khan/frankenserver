@@ -61,17 +61,29 @@ A few caveats:
 
 
 
+import google
 import os
 import pickle
+import random
 import sha
 import sys
 import thread
 import threading
+import yaml
+
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools import appengine_rpc
+
+
+class Error(Exception):
+  """Base class for exceptions in this module."""
+
+
+class ConfigurationError(Error):
+  """Exception for configuration errors."""
 
 
 def GetUserAgent():
@@ -378,8 +390,14 @@ def ConfigureRemoteDatastore(app_id,
                              path,
                              auth_func,
                              servername=None,
-                             rpc_server_factory=appengine_rpc.HttpRpcServer):
+                             rpc_server_factory=appengine_rpc.HttpRpcServer,
+                             rtok=None,
+                             secure=False):
   """Does necessary setup to allow easy remote access to an AppEngine datastore.
+
+  Either servername must be provided or app_id must not be None.  If app_id
+  is None and a servername is provided, this function will send a request
+  to the server to retrieve the app_id.
 
   Args:
     app_id: The app_id of your app, as declared in app.yaml.
@@ -392,12 +410,38 @@ def ConfigureRemoteDatastore(app_id,
     servername: The hostname your app is deployed on. Defaults to
       <app_id>.appspot.com.
     rpc_server_factory: A factory to construct the rpc server for the datastore.
+    rtok: The validation token to sent with app_id lookups. If None, a random
+      token is used.
+    secure: Use SSL when communicating with the server.
+
+  Raises:
+    urllib2.HTTPError: if app_id is not provided and there is an error while
+      retrieving it.
+    ConfigurationError: if there is a error configuring the DatstoreFileStub.
   """
+  if not servername and not app_id:
+    raise ConfigurationError('app_id or servername required')
   if not servername:
     servername = '%s.appspot.com' % (app_id,)
+  server = rpc_server_factory(servername, auth_func, GetUserAgent(),
+                              GetSourceName(), debug_data=False, secure=secure)
+  if not app_id:
+    if not rtok:
+      random.seed()
+      rtok = str(random.randint)
+    urlargs = {'rtok': rtok}
+    response = server.Send(path, payload=None, **urlargs)
+    if not response.startswith('{'):
+      raise ConfigurationError(
+          'Invalid response recieved from server: %s' % response)
+    app_info = yaml.load(response)
+    if not app_info or 'rtok' not in app_info or 'app_id' not in app_info:
+      raise ConfigurationError('Error parsing app_id lookup response')
+    if app_info['rtok'] != rtok:
+      raise ConfigurationError('Token validation failed during app_id lookup.')
+    app_id = app_info['app_id']
+
   os.environ['APPLICATION_ID'] = app_id
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-  server = rpc_server_factory(servername, auth_func, GetUserAgent(),
-                                       GetSourceName())
   stub = RemoteDatastoreStub(server, path)
   apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', stub)

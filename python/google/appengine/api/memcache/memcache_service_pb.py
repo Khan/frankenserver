@@ -86,6 +86,8 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
+  has_name_space_ = 0
+  name_space_ = ""
 
   def __init__(self, contents=None):
     self.key_ = []
@@ -106,16 +108,32 @@ class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
   def clear_key(self):
     self.key_ = []
 
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.key_size()): self.add_key(x.key(i))
+    if (x.has_name_space()): self.set_name_space(x.name_space())
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.key_) != len(x.key_): return 0
     for e1, e2 in zip(self.key_, x.key_):
       if e1 != e2: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -126,21 +144,29 @@ class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(len(self.key_[i]))
+    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
     return n + 0
 
   def Clear(self):
     self.clear_key()
+    self.clear_name_space()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.key_[i])
+    if (self.has_name_space_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.add_key(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_name_space(d.getPrefixedString())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -154,17 +180,22 @@ class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("key%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
   kkey = 1
+  kname_space = 2
 
   _TEXT = (
    "ErrorCode",
    "key",
+   "name_space",
   )
 
   _TYPES = (
    ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.STRING,
+
    ProtocolBuffer.Encoder.STRING,
 
   )
@@ -592,6 +623,8 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
   def SetPolicy_Name(cls, x): return cls._SetPolicy_NAMES.get(x, "")
   SetPolicy_Name = classmethod(SetPolicy_Name)
 
+  has_name_space_ = 0
+  name_space_ = ""
 
   def __init__(self, contents=None):
     self.item_ = []
@@ -613,16 +646,32 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
 
   def clear_item(self):
     self.item_ = []
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.item_size()): self.add_item().CopyFrom(x.item(i))
+    if (x.has_name_space()): self.set_name_space(x.name_space())
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.item_) != len(x.item_): return 0
     for e1, e2 in zip(self.item_, x.item_):
       if e1 != e2: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -635,22 +684,30 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 2 * len(self.item_)
     for i in xrange(len(self.item_)): n += self.item_[i].ByteSize()
+    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
     return n + 0
 
   def Clear(self):
     self.clear_item()
+    self.clear_name_space()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.item_)):
       out.putVarInt32(11)
       self.item_[i].OutputUnchecked(out)
       out.putVarInt32(12)
+    if (self.has_name_space_):
+      out.putVarInt32(58)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 11:
         self.add_item().TryMerge(d)
+        continue
+      if tt == 58:
+        self.set_name_space(d.getPrefixedString())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -666,6 +723,7 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
       cnt+=1
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
   kItemGroup = 1
@@ -674,6 +732,7 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
   kItemflags = 4
   kItemset_policy = 5
   kItemexpiration_time = 6
+  kname_space = 7
 
   _TEXT = (
    "ErrorCode",
@@ -683,6 +742,7 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
    "flags",
    "set_policy",
    "expiration_time",
+   "name_space",
   )
 
   _TYPES = (
@@ -698,6 +758,8 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.FLOAT,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 
@@ -898,6 +960,8 @@ class MemcacheDeleteRequest_Item(ProtocolBuffer.ProtocolMessage):
     return res
 
 class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
+  has_name_space_ = 0
+  name_space_ = ""
 
   def __init__(self, contents=None):
     self.item_ = []
@@ -919,16 +983,32 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def clear_item(self):
     self.item_ = []
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.item_size()): self.add_item().CopyFrom(x.item(i))
+    if (x.has_name_space()): self.set_name_space(x.name_space())
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.item_) != len(x.item_): return 0
     for e1, e2 in zip(self.item_, x.item_):
       if e1 != e2: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -941,22 +1021,30 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 2 * len(self.item_)
     for i in xrange(len(self.item_)): n += self.item_[i].ByteSize()
+    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
     return n + 0
 
   def Clear(self):
     self.clear_item()
+    self.clear_name_space()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.item_)):
       out.putVarInt32(11)
       self.item_[i].OutputUnchecked(out)
       out.putVarInt32(12)
+    if (self.has_name_space_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 11:
         self.add_item().TryMerge(d)
+        continue
+      if tt == 34:
+        self.set_name_space(d.getPrefixedString())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -972,17 +1060,20 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
       cnt+=1
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
   kItemGroup = 1
   kItemkey = 2
   kItemdelete_time = 3
+  kname_space = 4
 
   _TEXT = (
    "ErrorCode",
    "Item",
    "key",
    "delete_time",
+   "name_space",
   )
 
   _TYPES = (
@@ -992,6 +1083,8 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.FLOAT,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 
@@ -1110,6 +1203,8 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
 
   has_key_ = 0
   key_ = ""
+  has_name_space_ = 0
+  name_space_ = ""
   has_delta_ = 0
   delta_ = 1
   has_direction_ = 0
@@ -1130,6 +1225,19 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
       self.key_ = ""
 
   def has_key(self): return self.has_key_
+
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
 
   def delta(self): return self.delta_
 
@@ -1161,6 +1269,7 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_key()): self.set_key(x.key())
+    if (x.has_name_space()): self.set_name_space(x.name_space())
     if (x.has_delta()): self.set_delta(x.delta())
     if (x.has_direction()): self.set_direction(x.direction())
 
@@ -1168,6 +1277,8 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_key_ != x.has_key_: return 0
     if self.has_key_ and self.key_ != x.key_: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     if self.has_delta_ != x.has_delta_: return 0
     if self.has_delta_ and self.delta_ != x.delta_: return 0
     if self.has_direction_ != x.has_direction_: return 0
@@ -1185,12 +1296,14 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.key_))
+    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
     if (self.has_delta_): n += 1 + self.lengthVarInt64(self.delta_)
     if (self.has_direction_): n += 1 + self.lengthVarInt64(self.direction_)
     return n + 1
 
   def Clear(self):
     self.clear_key()
+    self.clear_name_space()
     self.clear_delta()
     self.clear_direction()
 
@@ -1203,6 +1316,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_direction_):
       out.putVarInt32(24)
       out.putVarInt32(self.direction_)
+    if (self.has_name_space_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1216,6 +1332,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_direction(d.getVarInt32())
         continue
+      if tt == 34:
+        self.set_name_space(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1223,11 +1342,13 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_key_: res+=prefix+("key: %s\n" % self.DebugFormatString(self.key_))
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     if self.has_delta_: res+=prefix+("delta: %s\n" % self.DebugFormatInt64(self.delta_))
     if self.has_direction_: res+=prefix+("direction: %s\n" % self.DebugFormatInt32(self.direction_))
     return res
 
   kkey = 1
+  kname_space = 4
   kdelta = 2
   kdirection = 3
 
@@ -1236,6 +1357,7 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
    "key",
    "delta",
    "direction",
+   "name_space",
   )
 
   _TYPES = (
@@ -1245,6 +1367,8 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 

@@ -53,6 +53,7 @@ from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
 from google.appengine.tools import appengine_rpc
+from google.appengine.tools import bulkloader
 
 
 MAX_FILES_TO_CLONE = 100
@@ -1156,6 +1157,7 @@ class AppVersionUpload(object):
     StatusUpdate("Closing update: new version is ready to start serving.")
     self.server.Send("/api/appversion/startserving",
                      app_id=self.app_id, version=self.version)
+    self.in_transaction = False
 
   def Rollback(self):
     """Rolls back the transaction if one is in progress."""
@@ -1470,6 +1472,9 @@ class AppCfgApp(object):
     parser.add_option("-s", "--server", action="store", dest="server",
                       default="appengine.google.com",
                       metavar="SERVER", help="The server to connect to.")
+    parser.add_option("--secure", action="store_true", dest="secure",
+                      default=False,
+                      help="Use SSL when communicating with the server.")
     parser.add_option("-e", "--email", action="store", dest="email",
                       metavar="EMAIL", default=None,
                       help="The username to use. Will prompt if omitted.")
@@ -1557,7 +1562,8 @@ class AppCfgApp(object):
                                  host_override=self.options.host,
                                  save_cookies=self.options.save_cookies,
                                  auth_tries=auth_tries,
-                                 account_type="HOSTED_OR_GOOGLE")
+                                 account_type="HOSTED_OR_GOOGLE",
+                                 secure=self.options.secure)
 
   def _FindYaml(self, basepath, file_name):
     """Find yaml files in application directory.
@@ -1822,14 +1828,14 @@ class AppCfgApp(object):
 
     basepath = self.args[0]
     cron_entries = self._ParseCronYaml(basepath)
-    if cron_entries:
+    if cron_entries and cron_entries.cron:
       for entry in cron_entries.cron:
         description = entry.description
         if not description:
           description = "<no description>"
         print >>output, "\n%s:\nURL: %s\nSchedule: %s" % (description,
-                                                          entry.url,
-                                                          entry.schedule)
+                                                          entry.schedule,
+                                                          entry.url)
         schedule = groctimespecification.GrocTimeSpecification(entry.schedule)
         matches = schedule.GetMatches(now, self.options.num_runs)
         for match in matches:
@@ -1846,6 +1852,164 @@ class AppCfgApp(object):
                       action="store", default=5,
                       help="Number of runs of each cron job to display"
                       "Default is 5")
+
+  def _CheckRequiredUploadOptions(self):
+    """Checks that upload options are present."""
+    for option in ["filename", "kind", "config_file"]:
+      if getattr(self.options, option) is None:
+        self.parser.error("Option '%s' is required." % option)
+    if not self.options.url:
+      self.parser.error("You must have google.appengine.ext.remote_api.handler "
+                        "assigned to an endpoint in app.yaml, or provide "
+                        "the url of the handler via the 'url' option.")
+
+  def InferUploadUrl(self, appyaml):
+    """Uses app.yaml to determine the remote_api endpoint.
+
+    Args:
+      appyaml: A parsed app.yaml file.
+
+    Returns:
+      The url of the remote_api endpoint as a string, or None
+    """
+    handlers = appyaml.handlers
+    handler_suffix = "remote_api/handler.py"
+    app_id = appyaml.application
+    for handler in handlers:
+      if hasattr(handler, "script") and handler.script:
+        if handler.script.endswith(handler_suffix):
+          server = self.options.server
+          if server == "appengine.google.com":
+            return "http://%s.appspot.com%s" % (app_id, handler.url)
+          else:
+            return "http://%s%s" % (server, handler.url)
+    return None
+
+  def RunBulkloader(self, **kwargs):
+    """Invokes the bulkloader with the given keyword arguments.
+
+    Args:
+      kwargs: Keyword arguments to pass to bulkloader.Run().
+    """
+    try:
+      import sqlite3
+    except ImportError:
+      logging.error("upload_data action requires SQLite3 and the python "
+                    "sqlite3 module (included in python since 2.5).")
+      sys.exit(1)
+
+    sys.exit(bulkloader.Run(kwargs))
+
+  def PerformUpload(self, run_fn=None):
+    """Performs a datastore upload via the bulkloader.
+
+    Args:
+      run_fn: Function to invoke the bulkloader, used for testing.
+    """
+    if run_fn is None:
+      run_fn = self.RunBulkloader
+
+    if len(self.args) != 1:
+      self.parser.error("Expected <directory> argument.")
+
+    basepath = self.args[0]
+    appyaml = self._ParseAppYaml(basepath)
+
+    self.options.app_id = appyaml.application
+
+    if not self.options.url:
+      url = self.InferUploadUrl(appyaml)
+      if url is not None:
+        self.options.url = url
+
+    self._CheckRequiredUploadOptions()
+
+    if self.options.batch_size < 1:
+      self.parser.error("batch_size must be 1 or larger.")
+
+    if verbosity == 1:
+      logging.getLogger().setLevel(logging.INFO)
+      self.options.debug = False
+    else:
+      logging.getLogger().setLevel(logging.DEBUG)
+      self.options.debug = True
+
+    StatusUpdate("Uploading data records.")
+
+    run_fn(app_id=self.options.app_id,
+           url=self.options.url,
+           filename=self.options.filename,
+           batch_size=self.options.batch_size,
+           kind=self.options.kind,
+           num_threads=self.options.num_threads,
+           bandwidth_limit=self.options.bandwidth_limit,
+           rps_limit=self.options.rps_limit,
+           http_limit=self.options.http_limit,
+           db_filename=self.options.db_filename,
+           config_file=self.options.config_file,
+           auth_domain=self.options.auth_domain,
+           has_header=self.options.has_header,
+           loader_opts=self.options.loader_opts,
+           log_file=self.options.log_file,
+           passin=self.options.passin,
+           email=self.options.email,
+           debug=self.options.debug,
+
+           exporter_opts=None,
+           download=False,
+           result_db_filename=None,
+           )
+
+  def _PerformUploadOptions(self, parser):
+    """Adds 'upload_data' specific options to the 'parser' passed in.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    parser.add_option("--filename", type="string", dest="filename",
+                      action="store",
+                      help="The name of the file containing the input data."
+                      " (Required)")
+    parser.add_option("--config_file", type="string", dest="config_file",
+                      action="store",
+                      help="Name of the configuration file. (Required)")
+    parser.add_option("--kind", type="string", dest="kind",
+                      action="store",
+                      help="The kind of the entities to store. (Required)")
+    parser.add_option("--url", type="string", dest="url",
+                      action="store",
+                      help="The location of the remote_api endpoint.")
+    parser.add_option("--num_threads", type="int", dest="num_threads",
+                      action="store", default=10,
+                      help="Number of threads to upload records with.")
+    parser.add_option("--batch_size", type="int", dest="batch_size",
+                      action="store", default=10,
+                      help="Number of records to post in each request.")
+    parser.add_option("--bandwidth_limit", type="int", dest="bandwidth_limit",
+                      action="store", default=250000,
+                      help="The maximum bytes/second bandwidth for transfers.")
+    parser.add_option("--rps_limit", type="int", dest="rps_limit",
+                      action="store", default=20,
+                      help="The maximum records/second for transfers.")
+    parser.add_option("--http_limit", type="int", dest="http_limit",
+                      action="store", default=8,
+                      help="The maximum requests/second for transfers.")
+    parser.add_option("--db_filename", type="string", dest="db_filename",
+                      action="store",
+                      help="Name of the progress database file.")
+    parser.add_option("--auth_domain", type="string", dest="auth_domain",
+                      action="store", default="gmail.com",
+                      help="The name of the authorization domain to use.")
+    parser.add_option("--has_header", dest="has_header",
+                      action="store_true", default=False,
+                      help="Whether the first line of the input file should be"
+                      " skipped")
+    parser.add_option("--loader_opts", type="string", dest="loader_opts",
+                      help="A string to pass to the Loader.Initialize method.")
+    parser.add_option("--log_file", type="string", dest="log_file",
+                      help="File to write bulkloader logs.  If not supplied "
+                           "then a new log file will be created, named: "
+                           "bulkloader-log-TIMESTAMP.")
 
   class Action(object):
     """Contains information about a command line action.
@@ -1952,6 +2116,15 @@ chronologically.  If output file is '-' stdout will be written."""),
           long_desc="""
 The 'cron_info' command will display the next 'number' runs (default 5) for
 each cron job defined in the cron.yaml file."""),
+
+      "upload_data": Action(
+          function="PerformUpload",
+          usage="%prog [options] upload_data <directory>",
+          options=_PerformUploadOptions,
+          short_desc="Upload CSV records to datastore",
+          long_desc="""
+The 'upload_data' command translates CSV records into datastore entities and
+uploads them into your application's datastore."""),
 
 
 

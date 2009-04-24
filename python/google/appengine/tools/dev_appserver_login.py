@@ -28,8 +28,9 @@ supply no parameters.
 """
 
 
-import Cookie
 import cgi
+import Cookie
+import md5
 import os
 import sys
 import urllib
@@ -66,8 +67,8 @@ def GetUserInfo(http_cookie, cookie_name=COOKIE_NAME):
   if cookie_name in cookie:
     cookie_value = cookie[cookie_name].value
 
-  email, admin = (cookie_value.split(':') + ['', ''])[:2]
-  return email, (admin == 'True')
+  email, admin, user_id = (cookie_value.split(':') + ['', '', ''])[:3]
+  return email, (admin == 'True'), user_id
 
 
 def CreateCookieData(email, admin):
@@ -82,7 +83,12 @@ def CreateCookieData(email, admin):
   admin_string = 'False'
   if admin:
     admin_string = 'True'
-  return '%s:%s' % (email, admin_string)
+  if email:
+    user_id_digest = md5.new(email.lower()).digest()
+    user_id = '1' + ''.join(['%02d' % ord(x) for x in user_id_digest])[:20]
+  else:
+    user_id = ''
+  return '%s:%s:%s' % (email, admin_string, user_id)
 
 
 def SetUserInfoCookie(email, admin, cookie_name=COOKIE_NAME):

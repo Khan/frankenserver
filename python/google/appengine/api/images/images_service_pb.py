@@ -941,5 +941,1026 @@ class ImagesTransformResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class CompositeImageOptions(ProtocolBuffer.ProtocolMessage):
 
-__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','OutputSettings','ImagesTransformRequest','ImagesTransformResponse']
+  TOP_LEFT     =    0
+  TOP          =    1
+  TOP_RIGHT    =    2
+  LEFT         =    3
+  CENTER       =    4
+  RIGHT        =    5
+  BOTTOM_LEFT  =    6
+  BOTTOM       =    7
+  BOTTOM_RIGHT =    8
+
+  _ANCHOR_NAMES = {
+    0: "TOP_LEFT",
+    1: "TOP",
+    2: "TOP_RIGHT",
+    3: "LEFT",
+    4: "CENTER",
+    5: "RIGHT",
+    6: "BOTTOM_LEFT",
+    7: "BOTTOM",
+    8: "BOTTOM_RIGHT",
+  }
+
+  def ANCHOR_Name(cls, x): return cls._ANCHOR_NAMES.get(x, "")
+  ANCHOR_Name = classmethod(ANCHOR_Name)
+
+  has_source_index_ = 0
+  source_index_ = 0
+  has_x_offset_ = 0
+  x_offset_ = 0
+  has_y_offset_ = 0
+  y_offset_ = 0
+  has_opacity_ = 0
+  opacity_ = 0.0
+  has_anchor_ = 0
+  anchor_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def source_index(self): return self.source_index_
+
+  def set_source_index(self, x):
+    self.has_source_index_ = 1
+    self.source_index_ = x
+
+  def clear_source_index(self):
+    if self.has_source_index_:
+      self.has_source_index_ = 0
+      self.source_index_ = 0
+
+  def has_source_index(self): return self.has_source_index_
+
+  def x_offset(self): return self.x_offset_
+
+  def set_x_offset(self, x):
+    self.has_x_offset_ = 1
+    self.x_offset_ = x
+
+  def clear_x_offset(self):
+    if self.has_x_offset_:
+      self.has_x_offset_ = 0
+      self.x_offset_ = 0
+
+  def has_x_offset(self): return self.has_x_offset_
+
+  def y_offset(self): return self.y_offset_
+
+  def set_y_offset(self, x):
+    self.has_y_offset_ = 1
+    self.y_offset_ = x
+
+  def clear_y_offset(self):
+    if self.has_y_offset_:
+      self.has_y_offset_ = 0
+      self.y_offset_ = 0
+
+  def has_y_offset(self): return self.has_y_offset_
+
+  def opacity(self): return self.opacity_
+
+  def set_opacity(self, x):
+    self.has_opacity_ = 1
+    self.opacity_ = x
+
+  def clear_opacity(self):
+    if self.has_opacity_:
+      self.has_opacity_ = 0
+      self.opacity_ = 0.0
+
+  def has_opacity(self): return self.has_opacity_
+
+  def anchor(self): return self.anchor_
+
+  def set_anchor(self, x):
+    self.has_anchor_ = 1
+    self.anchor_ = x
+
+  def clear_anchor(self):
+    if self.has_anchor_:
+      self.has_anchor_ = 0
+      self.anchor_ = 0
+
+  def has_anchor(self): return self.has_anchor_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_source_index()): self.set_source_index(x.source_index())
+    if (x.has_x_offset()): self.set_x_offset(x.x_offset())
+    if (x.has_y_offset()): self.set_y_offset(x.y_offset())
+    if (x.has_opacity()): self.set_opacity(x.opacity())
+    if (x.has_anchor()): self.set_anchor(x.anchor())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_source_index_ != x.has_source_index_: return 0
+    if self.has_source_index_ and self.source_index_ != x.source_index_: return 0
+    if self.has_x_offset_ != x.has_x_offset_: return 0
+    if self.has_x_offset_ and self.x_offset_ != x.x_offset_: return 0
+    if self.has_y_offset_ != x.has_y_offset_: return 0
+    if self.has_y_offset_ and self.y_offset_ != x.y_offset_: return 0
+    if self.has_opacity_ != x.has_opacity_: return 0
+    if self.has_opacity_ and self.opacity_ != x.opacity_: return 0
+    if self.has_anchor_ != x.has_anchor_: return 0
+    if self.has_anchor_ and self.anchor_ != x.anchor_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_source_index_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: source_index not set.')
+    if (not self.has_x_offset_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: x_offset not set.')
+    if (not self.has_y_offset_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: y_offset not set.')
+    if (not self.has_opacity_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: opacity not set.')
+    if (not self.has_anchor_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: anchor not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthVarInt64(self.source_index_)
+    n += self.lengthVarInt64(self.x_offset_)
+    n += self.lengthVarInt64(self.y_offset_)
+    n += self.lengthVarInt64(self.anchor_)
+    return n + 9
+
+  def Clear(self):
+    self.clear_source_index()
+    self.clear_x_offset()
+    self.clear_y_offset()
+    self.clear_opacity()
+    self.clear_anchor()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8)
+    out.putVarInt32(self.source_index_)
+    out.putVarInt32(16)
+    out.putVarInt32(self.x_offset_)
+    out.putVarInt32(24)
+    out.putVarInt32(self.y_offset_)
+    out.putVarInt32(37)
+    out.putFloat(self.opacity_)
+    out.putVarInt32(40)
+    out.putVarInt32(self.anchor_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_source_index(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.set_x_offset(d.getVarInt32())
+        continue
+      if tt == 24:
+        self.set_y_offset(d.getVarInt32())
+        continue
+      if tt == 37:
+        self.set_opacity(d.getFloat())
+        continue
+      if tt == 40:
+        self.set_anchor(d.getVarInt32())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_source_index_: res+=prefix+("source_index: %s\n" % self.DebugFormatInt32(self.source_index_))
+    if self.has_x_offset_: res+=prefix+("x_offset: %s\n" % self.DebugFormatInt32(self.x_offset_))
+    if self.has_y_offset_: res+=prefix+("y_offset: %s\n" % self.DebugFormatInt32(self.y_offset_))
+    if self.has_opacity_: res+=prefix+("opacity: %s\n" % self.DebugFormatFloat(self.opacity_))
+    if self.has_anchor_: res+=prefix+("anchor: %s\n" % self.DebugFormatInt32(self.anchor_))
+    return res
+
+  ksource_index = 1
+  kx_offset = 2
+  ky_offset = 3
+  kopacity = 4
+  kanchor = 5
+
+  _TEXT = (
+   "ErrorCode",
+   "source_index",
+   "x_offset",
+   "y_offset",
+   "opacity",
+   "anchor",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.FLOAT,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
+  has_width_ = 0
+  width_ = 0
+  has_height_ = 0
+  height_ = 0
+  has_output_ = 0
+  has_color_ = 0
+  color_ = -1
+
+  def __init__(self, contents=None):
+    self.output_ = OutputSettings()
+    if contents is not None: self.MergeFromString(contents)
+
+  def width(self): return self.width_
+
+  def set_width(self, x):
+    self.has_width_ = 1
+    self.width_ = x
+
+  def clear_width(self):
+    if self.has_width_:
+      self.has_width_ = 0
+      self.width_ = 0
+
+  def has_width(self): return self.has_width_
+
+  def height(self): return self.height_
+
+  def set_height(self, x):
+    self.has_height_ = 1
+    self.height_ = x
+
+  def clear_height(self):
+    if self.has_height_:
+      self.has_height_ = 0
+      self.height_ = 0
+
+  def has_height(self): return self.has_height_
+
+  def output(self): return self.output_
+
+  def mutable_output(self): self.has_output_ = 1; return self.output_
+
+  def clear_output(self):self.has_output_ = 0; self.output_.Clear()
+
+  def has_output(self): return self.has_output_
+
+  def color(self): return self.color_
+
+  def set_color(self, x):
+    self.has_color_ = 1
+    self.color_ = x
+
+  def clear_color(self):
+    if self.has_color_:
+      self.has_color_ = 0
+      self.color_ = -1
+
+  def has_color(self): return self.has_color_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_width()): self.set_width(x.width())
+    if (x.has_height()): self.set_height(x.height())
+    if (x.has_output()): self.mutable_output().MergeFrom(x.output())
+    if (x.has_color()): self.set_color(x.color())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_width_ != x.has_width_: return 0
+    if self.has_width_ and self.width_ != x.width_: return 0
+    if self.has_height_ != x.has_height_: return 0
+    if self.has_height_ and self.height_ != x.height_: return 0
+    if self.has_output_ != x.has_output_: return 0
+    if self.has_output_ and self.output_ != x.output_: return 0
+    if self.has_color_ != x.has_color_: return 0
+    if self.has_color_ and self.color_ != x.color_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_width_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: width not set.')
+    if (not self.has_height_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: height not set.')
+    if (not self.has_output_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: output not set.')
+    elif not self.output_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthVarInt64(self.width_)
+    n += self.lengthVarInt64(self.height_)
+    n += self.lengthString(self.output_.ByteSize())
+    if (self.has_color_): n += 1 + self.lengthVarInt64(self.color_)
+    return n + 3
+
+  def Clear(self):
+    self.clear_width()
+    self.clear_height()
+    self.clear_output()
+    self.clear_color()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8)
+    out.putVarInt32(self.width_)
+    out.putVarInt32(16)
+    out.putVarInt32(self.height_)
+    out.putVarInt32(26)
+    out.putVarInt32(self.output_.ByteSize())
+    self.output_.OutputUnchecked(out)
+    if (self.has_color_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.color_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_width(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.set_height(d.getVarInt32())
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_output().TryMerge(tmp)
+        continue
+      if tt == 32:
+        self.set_color(d.getVarInt32())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_width_: res+=prefix+("width: %s\n" % self.DebugFormatInt32(self.width_))
+    if self.has_height_: res+=prefix+("height: %s\n" % self.DebugFormatInt32(self.height_))
+    if self.has_output_:
+      res+=prefix+"output <\n"
+      res+=self.output_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_color_: res+=prefix+("color: %s\n" % self.DebugFormatInt32(self.color_))
+    return res
+
+  kwidth = 1
+  kheight = 2
+  koutput = 3
+  kcolor = 4
+
+  _TEXT = (
+   "ErrorCode",
+   "width",
+   "height",
+   "output",
+   "color",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesCompositeRequest(ProtocolBuffer.ProtocolMessage):
+  has_canvas_ = 0
+
+  def __init__(self, contents=None):
+    self.image_ = []
+    self.options_ = []
+    self.canvas_ = ImagesCanvas()
+    if contents is not None: self.MergeFromString(contents)
+
+  def image_size(self): return len(self.image_)
+  def image_list(self): return self.image_
+
+  def image(self, i):
+    return self.image_[i]
+
+  def mutable_image(self, i):
+    return self.image_[i]
+
+  def add_image(self):
+    x = ImageData()
+    self.image_.append(x)
+    return x
+
+  def clear_image(self):
+    self.image_ = []
+  def options_size(self): return len(self.options_)
+  def options_list(self): return self.options_
+
+  def options(self, i):
+    return self.options_[i]
+
+  def mutable_options(self, i):
+    return self.options_[i]
+
+  def add_options(self):
+    x = CompositeImageOptions()
+    self.options_.append(x)
+    return x
+
+  def clear_options(self):
+    self.options_ = []
+  def canvas(self): return self.canvas_
+
+  def mutable_canvas(self): self.has_canvas_ = 1; return self.canvas_
+
+  def clear_canvas(self):self.has_canvas_ = 0; self.canvas_.Clear()
+
+  def has_canvas(self): return self.has_canvas_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.image_size()): self.add_image().CopyFrom(x.image(i))
+    for i in xrange(x.options_size()): self.add_options().CopyFrom(x.options(i))
+    if (x.has_canvas()): self.mutable_canvas().MergeFrom(x.canvas())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.image_) != len(x.image_): return 0
+    for e1, e2 in zip(self.image_, x.image_):
+      if e1 != e2: return 0
+    if len(self.options_) != len(x.options_): return 0
+    for e1, e2 in zip(self.options_, x.options_):
+      if e1 != e2: return 0
+    if self.has_canvas_ != x.has_canvas_: return 0
+    if self.has_canvas_ and self.canvas_ != x.canvas_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    for p in self.image_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.options_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    if (not self.has_canvas_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: canvas not set.')
+    elif not self.canvas_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.image_)
+    for i in xrange(len(self.image_)): n += self.lengthString(self.image_[i].ByteSize())
+    n += 1 * len(self.options_)
+    for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
+    n += self.lengthString(self.canvas_.ByteSize())
+    return n + 1
+
+  def Clear(self):
+    self.clear_image()
+    self.clear_options()
+    self.clear_canvas()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.image_)):
+      out.putVarInt32(10)
+      out.putVarInt32(self.image_[i].ByteSize())
+      self.image_[i].OutputUnchecked(out)
+    for i in xrange(len(self.options_)):
+      out.putVarInt32(18)
+      out.putVarInt32(self.options_[i].ByteSize())
+      self.options_[i].OutputUnchecked(out)
+    out.putVarInt32(26)
+    out.putVarInt32(self.canvas_.ByteSize())
+    self.canvas_.OutputUnchecked(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_image().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_options().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_canvas().TryMerge(tmp)
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.image_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("image%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
+    cnt=0
+    for e in self.options_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("options%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
+    if self.has_canvas_:
+      res+=prefix+"canvas <\n"
+      res+=self.canvas_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+  kimage = 1
+  koptions = 2
+  kcanvas = 3
+
+  _TEXT = (
+   "ErrorCode",
+   "image",
+   "options",
+   "canvas",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.STRING,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesCompositeResponse(ProtocolBuffer.ProtocolMessage):
+  has_image_ = 0
+
+  def __init__(self, contents=None):
+    self.image_ = ImageData()
+    if contents is not None: self.MergeFromString(contents)
+
+  def image(self): return self.image_
+
+  def mutable_image(self): self.has_image_ = 1; return self.image_
+
+  def clear_image(self):self.has_image_ = 0; self.image_.Clear()
+
+  def has_image(self): return self.has_image_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_image()): self.mutable_image().MergeFrom(x.image())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_image_ != x.has_image_: return 0
+    if self.has_image_ and self.image_ != x.image_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_image_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: image not set.')
+    elif not self.image_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.image_.ByteSize())
+    return n + 1
+
+  def Clear(self):
+    self.clear_image()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.image_.ByteSize())
+    self.image_.OutputUnchecked(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_image().TryMerge(tmp)
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_image_:
+      res+=prefix+"image <\n"
+      res+=self.image_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+  kimage = 1
+
+  _TEXT = (
+   "ErrorCode",
+   "image",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.STRING,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesHistogramRequest(ProtocolBuffer.ProtocolMessage):
+  has_image_ = 0
+
+  def __init__(self, contents=None):
+    self.image_ = ImageData()
+    if contents is not None: self.MergeFromString(contents)
+
+  def image(self): return self.image_
+
+  def mutable_image(self): self.has_image_ = 1; return self.image_
+
+  def clear_image(self):self.has_image_ = 0; self.image_.Clear()
+
+  def has_image(self): return self.has_image_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_image()): self.mutable_image().MergeFrom(x.image())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_image_ != x.has_image_: return 0
+    if self.has_image_ and self.image_ != x.image_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_image_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: image not set.')
+    elif not self.image_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.image_.ByteSize())
+    return n + 1
+
+  def Clear(self):
+    self.clear_image()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.image_.ByteSize())
+    self.image_.OutputUnchecked(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_image().TryMerge(tmp)
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_image_:
+      res+=prefix+"image <\n"
+      res+=self.image_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+  kimage = 1
+
+  _TEXT = (
+   "ErrorCode",
+   "image",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.STRING,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesHistogram(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    self.red_ = []
+    self.green_ = []
+    self.blue_ = []
+    if contents is not None: self.MergeFromString(contents)
+
+  def red_size(self): return len(self.red_)
+  def red_list(self): return self.red_
+
+  def red(self, i):
+    return self.red_[i]
+
+  def set_red(self, i, x):
+    self.red_[i] = x
+
+  def add_red(self, x):
+    self.red_.append(x)
+
+  def clear_red(self):
+    self.red_ = []
+
+  def green_size(self): return len(self.green_)
+  def green_list(self): return self.green_
+
+  def green(self, i):
+    return self.green_[i]
+
+  def set_green(self, i, x):
+    self.green_[i] = x
+
+  def add_green(self, x):
+    self.green_.append(x)
+
+  def clear_green(self):
+    self.green_ = []
+
+  def blue_size(self): return len(self.blue_)
+  def blue_list(self): return self.blue_
+
+  def blue(self, i):
+    return self.blue_[i]
+
+  def set_blue(self, i, x):
+    self.blue_[i] = x
+
+  def add_blue(self, x):
+    self.blue_.append(x)
+
+  def clear_blue(self):
+    self.blue_ = []
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.red_size()): self.add_red(x.red(i))
+    for i in xrange(x.green_size()): self.add_green(x.green(i))
+    for i in xrange(x.blue_size()): self.add_blue(x.blue(i))
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.red_) != len(x.red_): return 0
+    for e1, e2 in zip(self.red_, x.red_):
+      if e1 != e2: return 0
+    if len(self.green_) != len(x.green_): return 0
+    for e1, e2 in zip(self.green_, x.green_):
+      if e1 != e2: return 0
+    if len(self.blue_) != len(x.blue_): return 0
+    for e1, e2 in zip(self.blue_, x.blue_):
+      if e1 != e2: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.red_)
+    for i in xrange(len(self.red_)): n += self.lengthVarInt64(self.red_[i])
+    n += 1 * len(self.green_)
+    for i in xrange(len(self.green_)): n += self.lengthVarInt64(self.green_[i])
+    n += 1 * len(self.blue_)
+    for i in xrange(len(self.blue_)): n += self.lengthVarInt64(self.blue_[i])
+    return n + 0
+
+  def Clear(self):
+    self.clear_red()
+    self.clear_green()
+    self.clear_blue()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.red_)):
+      out.putVarInt32(8)
+      out.putVarInt32(self.red_[i])
+    for i in xrange(len(self.green_)):
+      out.putVarInt32(16)
+      out.putVarInt32(self.green_[i])
+    for i in xrange(len(self.blue_)):
+      out.putVarInt32(24)
+      out.putVarInt32(self.blue_[i])
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.add_red(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.add_green(d.getVarInt32())
+        continue
+      if tt == 24:
+        self.add_blue(d.getVarInt32())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.red_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("red%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
+    cnt=0
+    for e in self.green_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("green%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
+    cnt=0
+    for e in self.blue_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("blue%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
+    return res
+
+  kred = 1
+  kgreen = 2
+  kblue = 3
+
+  _TEXT = (
+   "ErrorCode",
+   "red",
+   "green",
+   "blue",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesHistogramResponse(ProtocolBuffer.ProtocolMessage):
+  has_histogram_ = 0
+
+  def __init__(self, contents=None):
+    self.histogram_ = ImagesHistogram()
+    if contents is not None: self.MergeFromString(contents)
+
+  def histogram(self): return self.histogram_
+
+  def mutable_histogram(self): self.has_histogram_ = 1; return self.histogram_
+
+  def clear_histogram(self):self.has_histogram_ = 0; self.histogram_.Clear()
+
+  def has_histogram(self): return self.has_histogram_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_histogram()): self.mutable_histogram().MergeFrom(x.histogram())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_histogram_ != x.has_histogram_: return 0
+    if self.has_histogram_ and self.histogram_ != x.histogram_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_histogram_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: histogram not set.')
+    elif not self.histogram_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.histogram_.ByteSize())
+    return n + 1
+
+  def Clear(self):
+    self.clear_histogram()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.histogram_.ByteSize())
+    self.histogram_.OutputUnchecked(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_histogram().TryMerge(tmp)
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_histogram_:
+      res+=prefix+"histogram <\n"
+      res+=self.histogram_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+  khistogram = 1
+
+  _TEXT = (
+   "ErrorCode",
+   "histogram",
+  )
+
+  _TYPES = (
+   ProtocolBuffer.Encoder.NUMERIC,
+   ProtocolBuffer.Encoder.STRING,
+
+  )
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+
+__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','OutputSettings','ImagesTransformRequest','ImagesTransformResponse','CompositeImageOptions','ImagesCanvas','ImagesCompositeRequest','ImagesCompositeResponse','ImagesHistogramRequest','ImagesHistogram','ImagesHistogramResponse']

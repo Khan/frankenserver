@@ -96,6 +96,9 @@ class Request(webob.Request):
   You can access parsed query and POST values with the get() method; do not
   parse the query string yourself.
   """
+
+  request_body_tempfile_limit = 0
+
   uri = property(lambda self: self.url)
   query = property(lambda self: self.query_string)
 

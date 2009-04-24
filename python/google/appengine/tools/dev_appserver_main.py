@@ -80,6 +80,7 @@ def SetGlobals():
   """
   global yaml_errors, appcfg, appengine_rpc, dev_appserver, os_compat
   from google.appengine.api import yaml_errors
+  from google.appengine.dist import py_zipimport
   from google.appengine.tools import appcfg
   from google.appengine.tools import appengine_rpc
   from google.appengine.tools import dev_appserver
@@ -110,6 +111,7 @@ ARG_SMTP_PORT = 'smtp_port'
 ARG_SMTP_USER = 'smtp_user'
 ARG_STATIC_CACHING = 'static_caching'
 ARG_TEMPLATE_DIR = 'template_dir'
+ARG_TRUSTED = 'trusted'
 
 SDK_PATH = os.path.dirname(
              os.path.dirname(
@@ -142,6 +144,7 @@ DEFAULT_ARGS = {
   ARG_ADMIN_CONSOLE_HOST: None,
   ARG_ALLOW_SKIPPED_FILES: False,
   ARG_STATIC_CACHING: True,
+  ARG_TRUSTED: False,
 }
 
 API_PATHS = {'1':
@@ -267,6 +270,7 @@ def ParseArguments(argv):
         'smtp_port=',
         'smtp_user=',
         'template_dir=',
+        'trusted',
       ])
   except getopt.GetoptError, e:
     print >>sys.stderr, 'Error: %s' % e
@@ -348,6 +352,9 @@ def ParseArguments(argv):
     if option == '--disable_static_caching':
       option_dict[ARG_STATIC_CACHING] = False
 
+    if option == '--trusted':
+      option_dict[ARG_TRUSTED] = True
+
   return args, option_dict
 
 
@@ -412,7 +419,7 @@ def main(argv):
 
   logging.basicConfig(
     level=log_level,
-    format='%(levelname)-8s %(asctime)s %(filename)s] %(message)s')
+    format='%(levelname)-8s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
 
   config = None
   try:

@@ -224,7 +224,7 @@ class CronPageHandler(BaseRequestHandler):
     cron_info = _ParseCronYaml()
     values['cronjobs'] = []
     values['now'] = str(now)
-    if cron_info:
+    if cron_info and cron_info.cron:
       for entry in cron_info.cron:
         job = {}
         values['cronjobs'].append(job)
