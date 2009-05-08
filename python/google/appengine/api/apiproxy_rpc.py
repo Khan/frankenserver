@@ -89,11 +89,12 @@ class RPC(object):
     assert self.__state is RPC.IDLE, ('RPC for %s.%s has already been started' %
                                       (self.package, self.call))
     assert self.callback is None or callable(self.callback)
-
     self._MakeCallImpl()
 
   def Wait(self):
     """Waits on the API call associated with this RPC."""
+    assert self.__state is not RPC.IDLE, ('RPC for %s.%s has not been started' %
+                                          (self.package, self.call))
     rpc_completed = self._WaitImpl()
 
     assert rpc_completed, ('RPC for %s.%s was not completed, and no other ' +

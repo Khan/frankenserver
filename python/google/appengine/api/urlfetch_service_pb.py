@@ -217,6 +217,8 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
   payload_ = ""
   has_followredirects_ = 0
   followredirects_ = 1
+  has_deadline_ = 0
+  deadline_ = 0.0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -290,6 +292,19 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_followredirects(self): return self.has_followredirects_
 
+  def deadline(self): return self.deadline_
+
+  def set_deadline(self, x):
+    self.has_deadline_ = 1
+    self.deadline_ = x
+
+  def clear_deadline(self):
+    if self.has_deadline_:
+      self.has_deadline_ = 0
+      self.deadline_ = 0.0
+
+  def has_deadline(self): return self.has_deadline_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -298,6 +313,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_payload()): self.set_payload(x.payload())
     if (x.has_followredirects()): self.set_followredirects(x.followredirects())
+    if (x.has_deadline()): self.set_deadline(x.deadline())
 
   def Equals(self, x):
     if x is self: return 1
@@ -312,6 +328,8 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_payload_ and self.payload_ != x.payload_: return 0
     if self.has_followredirects_ != x.has_followredirects_: return 0
     if self.has_followredirects_ and self.followredirects_ != x.followredirects_: return 0
+    if self.has_deadline_ != x.has_deadline_: return 0
+    if self.has_deadline_ and self.deadline_ != x.deadline_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -336,6 +354,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_payload_): n += 1 + self.lengthString(len(self.payload_))
     if (self.has_followredirects_): n += 2
+    if (self.has_deadline_): n += 9
     return n + 2
 
   def Clear(self):
@@ -344,6 +363,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_header()
     self.clear_payload()
     self.clear_followredirects()
+    self.clear_deadline()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -360,6 +380,9 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_followredirects_):
       out.putVarInt32(56)
       out.putBoolean(self.followredirects_)
+    if (self.has_deadline_):
+      out.putVarInt32(65)
+      out.putDouble(self.deadline_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -379,6 +402,9 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 56:
         self.set_followredirects(d.getBoolean())
         continue
+      if tt == 65:
+        self.set_deadline(d.getDouble())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -397,6 +423,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_payload_: res+=prefix+("Payload: %s\n" % self.DebugFormatString(self.payload_))
     if self.has_followredirects_: res+=prefix+("FollowRedirects: %s\n" % self.DebugFormatBool(self.followredirects_))
+    if self.has_deadline_: res+=prefix+("Deadline: %s\n" % self.DebugFormat(self.deadline_))
     return res
 
   kMethod = 1
@@ -406,6 +433,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
   kHeaderValue = 5
   kPayload = 6
   kFollowRedirects = 7
+  kDeadline = 8
 
   _TEXT = (
    "ErrorCode",
@@ -416,6 +444,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
    "Value",
    "Payload",
    "FollowRedirects",
+   "Deadline",
   )
 
   _TYPES = (
@@ -433,6 +462,8 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.DOUBLE,
 
   )
 
@@ -542,6 +573,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   statuscode_ = 0
   has_contentwastruncated_ = 0
   contentwastruncated_ = 0
+  has_externalbytessent_ = 0
+  externalbytessent_ = 0
+  has_externalbytesreceived_ = 0
+  externalbytesreceived_ = 0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -602,6 +637,32 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_contentwastruncated(self): return self.has_contentwastruncated_
 
+  def externalbytessent(self): return self.externalbytessent_
+
+  def set_externalbytessent(self, x):
+    self.has_externalbytessent_ = 1
+    self.externalbytessent_ = x
+
+  def clear_externalbytessent(self):
+    if self.has_externalbytessent_:
+      self.has_externalbytessent_ = 0
+      self.externalbytessent_ = 0
+
+  def has_externalbytessent(self): return self.has_externalbytessent_
+
+  def externalbytesreceived(self): return self.externalbytesreceived_
+
+  def set_externalbytesreceived(self, x):
+    self.has_externalbytesreceived_ = 1
+    self.externalbytesreceived_ = x
+
+  def clear_externalbytesreceived(self):
+    if self.has_externalbytesreceived_:
+      self.has_externalbytesreceived_ = 0
+      self.externalbytesreceived_ = 0
+
+  def has_externalbytesreceived(self): return self.has_externalbytesreceived_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -609,6 +670,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_statuscode()): self.set_statuscode(x.statuscode())
     for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_contentwastruncated()): self.set_contentwastruncated(x.contentwastruncated())
+    if (x.has_externalbytessent()): self.set_externalbytessent(x.externalbytessent())
+    if (x.has_externalbytesreceived()): self.set_externalbytesreceived(x.externalbytesreceived())
 
   def Equals(self, x):
     if x is self: return 1
@@ -621,6 +684,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_contentwastruncated_ != x.has_contentwastruncated_: return 0
     if self.has_contentwastruncated_ and self.contentwastruncated_ != x.contentwastruncated_: return 0
+    if self.has_externalbytessent_ != x.has_externalbytessent_: return 0
+    if self.has_externalbytessent_ and self.externalbytessent_ != x.externalbytessent_: return 0
+    if self.has_externalbytesreceived_ != x.has_externalbytesreceived_: return 0
+    if self.has_externalbytesreceived_ and self.externalbytesreceived_ != x.externalbytesreceived_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -640,6 +707,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.header_)
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_contentwastruncated_): n += 2
+    if (self.has_externalbytessent_): n += 1 + self.lengthVarInt64(self.externalbytessent_)
+    if (self.has_externalbytesreceived_): n += 1 + self.lengthVarInt64(self.externalbytesreceived_)
     return n + 1
 
   def Clear(self):
@@ -647,6 +716,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_statuscode()
     self.clear_header()
     self.clear_contentwastruncated()
+    self.clear_externalbytessent()
+    self.clear_externalbytesreceived()
 
   def OutputUnchecked(self, out):
     if (self.has_content_):
@@ -661,6 +732,12 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_contentwastruncated_):
       out.putVarInt32(48)
       out.putBoolean(self.contentwastruncated_)
+    if (self.has_externalbytessent_):
+      out.putVarInt32(56)
+      out.putVarInt64(self.externalbytessent_)
+    if (self.has_externalbytesreceived_):
+      out.putVarInt32(64)
+      out.putVarInt64(self.externalbytesreceived_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -676,6 +753,12 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 48:
         self.set_contentwastruncated(d.getBoolean())
+        continue
+      if tt == 56:
+        self.set_externalbytessent(d.getVarInt64())
+        continue
+      if tt == 64:
+        self.set_externalbytesreceived(d.getVarInt64())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -694,6 +777,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"}\n"
       cnt+=1
     if self.has_contentwastruncated_: res+=prefix+("ContentWasTruncated: %s\n" % self.DebugFormatBool(self.contentwastruncated_))
+    if self.has_externalbytessent_: res+=prefix+("ExternalBytesSent: %s\n" % self.DebugFormatInt64(self.externalbytessent_))
+    if self.has_externalbytesreceived_: res+=prefix+("ExternalBytesReceived: %s\n" % self.DebugFormatInt64(self.externalbytesreceived_))
     return res
 
   kContent = 1
@@ -702,6 +787,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   kHeaderKey = 4
   kHeaderValue = 5
   kContentWasTruncated = 6
+  kExternalBytesSent = 7
+  kExternalBytesReceived = 8
 
   _TEXT = (
    "ErrorCode",
@@ -711,6 +798,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
    "Key",
    "Value",
    "ContentWasTruncated",
+   "ExternalBytesSent",
+   "ExternalBytesReceived",
   )
 
   _TYPES = (
@@ -724,6 +813,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.NUMERIC,
 

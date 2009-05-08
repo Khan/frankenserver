@@ -23,39 +23,40 @@ from antlr3.compat import set, frozenset
 HIDDEN = BaseRecognizer.HIDDEN
 
 THIRD=12
-SEPTEMBER=34
+SEPTEMBER=35
 FOURTH=13
 SECOND=11
-WEDNESDAY=20
-NOVEMBER=36
-SATURDAY=23
-JULY=32
-APRIL=29
+WEDNESDAY=21
+NOVEMBER=37
+SATURDAY=24
+JULY=33
+APRIL=30
 DIGITS=8
-OCTOBER=35
-MAY=30
+OCTOBER=36
+MAY=31
 EVERY=6
-FEBRUARY=27
-MONDAY=18
-SUNDAY=24
-JUNE=31
+FEBRUARY=28
+MONDAY=19
+SUNDAY=25
+DAY=18
+JUNE=32
 OF=4
-MARCH=28
+MARCH=29
 EOF=-1
-JANUARY=26
-MONTH=25
-FRIDAY=22
+JANUARY=27
+MONTH=26
+FRIDAY=23
 MINUTES=17
 FIFTH=14
 TIME=5
-WS=39
-QUARTER=38
-THURSDAY=21
+WS=40
+QUARTER=39
+THURSDAY=22
 COMMA=9
-DECEMBER=37
-AUGUST=33
+DECEMBER=38
+AUGUST=34
 DIGIT=7
-TUESDAY=19
+TUESDAY=20
 HOURS=16
 FOURTH_OR_FIFTH=15
 FIRST=10
@@ -100,10 +101,10 @@ class GrocLexer(Lexer):
             if LA1 == 48:
                 LA1_1 = self.input.LA(2)
 
-                if ((48 <= LA1_1 <= 57)) :
-                    alt1 = 2
-                elif (LA1_1 == 58) :
+                if (LA1_1 == 58) :
                     alt1 = 1
+                elif ((48 <= LA1_1 <= 57)) :
+                    alt1 = 2
                 else:
                     nvae = NoViableAltException("", 1, 1, self.input)
 
@@ -112,10 +113,10 @@ class GrocLexer(Lexer):
             elif LA1 == 49:
                 LA1_2 = self.input.LA(2)
 
-                if ((48 <= LA1_2 <= 57)) :
-                    alt1 = 3
-                elif (LA1_2 == 58) :
+                if (LA1_2 == 58) :
                     alt1 = 1
+                elif ((48 <= LA1_2 <= 57)) :
+                    alt1 = 3
                 else:
                     nvae = NoViableAltException("", 1, 2, self.input)
 
@@ -124,7 +125,7 @@ class GrocLexer(Lexer):
             elif LA1 == 50:
                 LA1_3 = self.input.LA(2)
 
-                if ((48 <= LA1_3 <= 52)) :
+                if ((48 <= LA1_3 <= 51)) :
                     alt1 = 4
                 elif (LA1_3 == 58) :
                     alt1 = 1
@@ -169,7 +170,7 @@ class GrocLexer(Lexer):
                 pass
                 pass
                 self.match(50)
-                self.matchRange(48, 52)
+                self.matchRange(48, 51)
 
 
 
@@ -423,6 +424,27 @@ class GrocLexer(Lexer):
 
 
 
+
+
+
+            self._state.type = _type
+            self._state.channel = _channel
+
+        finally:
+
+            pass
+
+
+
+
+    def mDAY(self, ):
+
+        try:
+            _type = DAY
+            _channel = DEFAULT_CHANNEL
+
+            pass
+            self.match("day")
 
 
 
@@ -1330,7 +1352,7 @@ class GrocLexer(Lexer):
 
 
     def mTokens(self):
-        alt25 = 36
+        alt25 = 37
         alt25 = self.dfa25.predict(self.input)
         if alt25 == 1:
             pass
@@ -1369,145 +1391,150 @@ class GrocLexer(Lexer):
 
         elif alt25 == 8:
             pass
-            self.mMONDAY()
+            self.mDAY()
 
 
         elif alt25 == 9:
             pass
-            self.mTUESDAY()
+            self.mMONDAY()
 
 
         elif alt25 == 10:
             pass
-            self.mWEDNESDAY()
+            self.mTUESDAY()
 
 
         elif alt25 == 11:
             pass
-            self.mTHURSDAY()
+            self.mWEDNESDAY()
 
 
         elif alt25 == 12:
             pass
-            self.mFRIDAY()
+            self.mTHURSDAY()
 
 
         elif alt25 == 13:
             pass
-            self.mSATURDAY()
+            self.mFRIDAY()
 
 
         elif alt25 == 14:
             pass
-            self.mSUNDAY()
+            self.mSATURDAY()
 
 
         elif alt25 == 15:
             pass
-            self.mJANUARY()
+            self.mSUNDAY()
 
 
         elif alt25 == 16:
             pass
-            self.mFEBRUARY()
+            self.mJANUARY()
 
 
         elif alt25 == 17:
             pass
-            self.mMARCH()
+            self.mFEBRUARY()
 
 
         elif alt25 == 18:
             pass
-            self.mAPRIL()
+            self.mMARCH()
 
 
         elif alt25 == 19:
             pass
-            self.mMAY()
+            self.mAPRIL()
 
 
         elif alt25 == 20:
             pass
-            self.mJUNE()
+            self.mMAY()
 
 
         elif alt25 == 21:
             pass
-            self.mJULY()
+            self.mJUNE()
 
 
         elif alt25 == 22:
             pass
-            self.mAUGUST()
+            self.mJULY()
 
 
         elif alt25 == 23:
             pass
-            self.mSEPTEMBER()
+            self.mAUGUST()
 
 
         elif alt25 == 24:
             pass
-            self.mOCTOBER()
+            self.mSEPTEMBER()
 
 
         elif alt25 == 25:
             pass
-            self.mNOVEMBER()
+            self.mOCTOBER()
 
 
         elif alt25 == 26:
             pass
-            self.mDECEMBER()
+            self.mNOVEMBER()
 
 
         elif alt25 == 27:
             pass
-            self.mMONTH()
+            self.mDECEMBER()
 
 
         elif alt25 == 28:
             pass
-            self.mQUARTER()
+            self.mMONTH()
 
 
         elif alt25 == 29:
             pass
-            self.mEVERY()
+            self.mQUARTER()
 
 
         elif alt25 == 30:
             pass
-            self.mHOURS()
+            self.mEVERY()
 
 
         elif alt25 == 31:
             pass
-            self.mMINUTES()
+            self.mHOURS()
 
 
         elif alt25 == 32:
             pass
-            self.mCOMMA()
+            self.mMINUTES()
 
 
         elif alt25 == 33:
             pass
-            self.mOF()
+            self.mCOMMA()
 
 
         elif alt25 == 34:
             pass
-            self.mWS()
+            self.mOF()
 
 
         elif alt25 == 35:
             pass
-            self.mDIGIT()
+            self.mWS()
 
 
         elif alt25 == 36:
+            pass
+            self.mDIGIT()
+
+
+        elif alt25 == 37:
             pass
             self.mDIGITS()
 
@@ -1519,73 +1546,74 @@ class GrocLexer(Lexer):
 
 
     DFA25_eot = DFA.unpack(
-        u"\1\uffff\4\27\2\uffff\1\27\1\uffff\2\27\16\uffff\1\36\1\uffff\2"
-        u"\36\31\uffff\1\74\6\uffff"
+        u"\1\uffff\4\30\2\uffff\1\30\1\uffff\2\30\14\uffff\1\36\3\uffff\2"
+        u"\36\33\uffff\1\76\6\uffff"
         )
 
     DFA25_eof = DFA.unpack(
-        u"\75\uffff"
+        u"\77\uffff"
         )
 
     DFA25_min = DFA.unpack(
-        u"\1\11\4\60\1\145\1\141\1\60\1\150\2\60\1\141\1\uffff\1\141\1\160"
-        u"\1\143\11\uffff\1\72\1\uffff\2\72\3\uffff\1\146\3\uffff\1\143\3"
-        u"\uffff\1\151\2\uffff\1\156\1\162\2\uffff\1\154\6\uffff\1\164\6"
+        u"\1\11\4\60\1\145\1\141\1\60\1\150\2\60\2\141\1\uffff\1\141\1\160"
+        u"\1\143\6\uffff\1\72\3\uffff\2\72\3\uffff\1\146\3\uffff\1\143\3"
+        u"\uffff\1\151\4\uffff\1\156\1\162\2\uffff\1\154\6\uffff\1\164\6"
         u"\uffff"
         )
 
     DFA25_max = DFA.unpack(
-        u"\1\167\1\72\1\163\1\156\2\162\1\165\1\164\1\165\1\164\1\72\1\157"
-        u"\1\uffff\2\165\1\146\11\uffff\1\72\1\uffff\2\72\3\uffff\1\162\3"
-        u"\uffff\1\160\3\uffff\1\165\2\uffff\1\156\1\171\2\uffff\1\156\6"
-        u"\uffff\1\164\6\uffff"
+        u"\1\167\1\72\1\163\1\156\2\162\1\165\1\164\1\165\1\164\1\72\1\145"
+        u"\1\157\1\uffff\2\165\1\146\6\uffff\1\72\3\uffff\2\72\3\uffff\1"
+        u"\162\3\uffff\1\160\3\uffff\1\165\4\uffff\1\156\1\171\2\uffff\1"
+        u"\156\6\uffff\1\164\6\uffff"
         )
 
     DFA25_accept = DFA.unpack(
-        u"\14\uffff\1\12\3\uffff\1\31\1\32\1\34\1\35\1\36\1\40\1\42\1\43"
-        u"\1\1\1\uffff\1\2\2\uffff\1\3\1\44\1\4\1\uffff\1\7\1\14\1\20\1\uffff"
-        u"\1\15\1\16\1\5\1\uffff\1\11\1\6\2\uffff\1\37\1\17\1\uffff\1\22"
-        u"\1\26\1\30\1\41\1\27\1\13\1\uffff\1\21\1\23\1\24\1\25\1\33\1\10"
+        u"\15\uffff\1\13\3\uffff\1\32\1\35\1\36\1\37\1\41\1\43\1\uffff\1"
+        u"\44\1\1\1\2\2\uffff\1\3\1\45\1\4\1\uffff\1\7\1\15\1\21\1\uffff"
+        u"\1\16\1\17\1\5\1\uffff\1\12\1\6\1\10\1\33\2\uffff\1\40\1\20\1\uffff"
+        u"\1\23\1\27\1\31\1\42\1\30\1\14\1\uffff\1\22\1\24\1\25\1\26\1\34"
+        u"\1\11"
         )
 
     DFA25_special = DFA.unpack(
-        u"\75\uffff"
+        u"\77\uffff"
         )
 
 
     DFA25_transition = [
         DFA.unpack(u"\2\26\2\uffff\1\26\22\uffff\1\26\13\uffff\1\25\3\uffff"
-        u"\1\1\1\2\1\3\1\4\1\7\1\11\4\12\47\uffff\1\16\2\uffff\1\21\1\23"
-        u"\1\5\1\uffff\1\24\1\uffff\1\15\2\uffff\1\13\1\20\1\17\1\uffff\1"
-        u"\22\1\uffff\1\6\1\10\2\uffff\1\14"),
-        DFA.unpack(u"\12\31\1\30"),
-        DFA.unpack(u"\12\33\1\30\70\uffff\1\32"),
-        DFA.unpack(u"\5\34\5\36\1\30\63\uffff\1\35"),
-        DFA.unpack(u"\12\36\1\30\67\uffff\1\37"),
+        u"\1\1\1\2\1\3\1\4\1\7\1\11\4\12\47\uffff\1\17\2\uffff\1\13\1\23"
+        u"\1\5\1\uffff\1\24\1\uffff\1\16\2\uffff\1\14\1\21\1\20\1\uffff\1"
+        u"\22\1\uffff\1\6\1\10\2\uffff\1\15"),
+        DFA.unpack(u"\12\27\1\31"),
+        DFA.unpack(u"\12\33\1\31\70\uffff\1\32"),
+        DFA.unpack(u"\4\34\6\36\1\31\63\uffff\1\35"),
+        DFA.unpack(u"\12\36\1\31\67\uffff\1\37"),
         DFA.unpack(u"\1\43\3\uffff\1\40\5\uffff\1\41\2\uffff\1\42"),
         DFA.unpack(u"\1\45\3\uffff\1\44\17\uffff\1\46"),
-        DFA.unpack(u"\12\36\1\30\71\uffff\1\47"),
+        DFA.unpack(u"\12\36\1\31\71\uffff\1\47"),
         DFA.unpack(u"\1\50\14\uffff\1\51"),
-        DFA.unpack(u"\12\36\1\30\71\uffff\1\52"),
-        DFA.unpack(u"\12\36\1\30"),
-        DFA.unpack(u"\1\54\7\uffff\1\55\5\uffff\1\53"),
+        DFA.unpack(u"\12\36\1\31\71\uffff\1\52"),
+        DFA.unpack(u"\12\36\1\31"),
+        DFA.unpack(u"\1\53\3\uffff\1\54"),
+        DFA.unpack(u"\1\56\7\uffff\1\57\5\uffff\1\55"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\56\23\uffff\1\57"),
-        DFA.unpack(u"\1\60\4\uffff\1\61"),
-        DFA.unpack(u"\1\62\2\uffff\1\63"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
+        DFA.unpack(u"\1\60\23\uffff\1\61"),
+        DFA.unpack(u"\1\62\4\uffff\1\63"),
+        DFA.unpack(u"\1\64\2\uffff\1\65"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\30"),
+        DFA.unpack(u"\1\31"),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\30"),
-        DFA.unpack(u"\1\30"),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u"\1\31"),
+        DFA.unpack(u"\1\31"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
@@ -1593,25 +1621,27 @@ class GrocLexer(Lexer):
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\35\14\uffff\1\64"),
+        DFA.unpack(u"\1\35\14\uffff\1\66"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\37\13\uffff\1\65"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\66"),
-        DFA.unpack(u"\1\67\6\uffff\1\70"),
-        DFA.unpack(u""),
-        DFA.unpack(u""),
-        DFA.unpack(u"\1\72\1\uffff\1\71"),
+        DFA.unpack(u"\1\37\13\uffff\1\67"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),
+        DFA.unpack(u"\1\70"),
+        DFA.unpack(u"\1\71\6\uffff\1\72"),
         DFA.unpack(u""),
         DFA.unpack(u""),
-        DFA.unpack(u"\1\73"),
+        DFA.unpack(u"\1\74\1\uffff\1\73"),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u""),
+        DFA.unpack(u"\1\75"),
         DFA.unpack(u""),
         DFA.unpack(u""),
         DFA.unpack(u""),

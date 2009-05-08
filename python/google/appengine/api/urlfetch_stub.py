@@ -51,7 +51,6 @@ _API_CALL_DEADLINE = 5.0
 
 
 _UNTRUSTED_REQUEST_HEADERS = frozenset([
-  'accept-encoding',
   'content-length',
   'host',
   'referer',
@@ -112,13 +111,17 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
                                                   request.header_list())
     request.clear_header()
     request.header_list().extend(sanitized_headers)
+    deadline = _API_CALL_DEADLINE
+    if request.has_deadline():
+      deadline = request.deadline()
 
     self._RetrieveURL(request.url(), payload, method,
                       request.header_list(), response,
-                      follow_redirects=request.followredirects())
+                      follow_redirects=request.followredirects(),
+                      deadline=deadline)
 
   def _RetrieveURL(self, url, payload, method, headers, response,
-                   follow_redirects=True):
+                   follow_redirects=True, deadline=_API_CALL_DEADLINE):
     """Retrieves a URL.
 
     Args:
@@ -129,6 +132,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       response: Response object
       follow_redirects: optional setting (defaulting to True) for whether or not
         we should transparently follow redirects (up to MAX_REDIRECTS)
+      deadline: Number of seconds to wait for the urlfetch to finish.
 
     Raises:
       Raises an apiproxy_errors.ApplicationError exception with FETCH_ERROR
@@ -195,7 +199,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
         orig_timeout = socket.getdefaulttimeout()
         try:
-          socket.setdefaulttimeout(_API_CALL_DEADLINE)
+          socket.setdefaulttimeout(deadline)
           connection.request(method, full_path, payload, adjusted_headers)
           http_response = connection.getresponse()
           http_response_data = http_response.read()
@@ -238,4 +242,9 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       untrusted_headers: set of untrusted headers names
       headers: list of string pairs, first is header name and the second is header's value
     """
+    prohibited_headers = [h.key() for h in headers
+                          if h.key().lower() in untrusted_headers]
+    if prohibited_headers:
+      logging.warn("Stripped prohibited headers from URLFetch request: %s",
+                   prohibited_headers)
     return (h for h in headers if h.key().lower() not in untrusted_headers)

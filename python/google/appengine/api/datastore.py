@@ -274,7 +274,8 @@ class Entity(dict):
   Includes read-only accessors for app id, kind, and primary key. Also
   provides dictionary-style access to properties.
   """
-  def __init__(self, kind, parent=None, _app=None, name=None):
+  def __init__(self, kind, parent=None, _app=None, name=None,
+               unindexed_properties=[]):
     """Constructor. Takes the kind and transaction root, which cannot be
     changed after the entity is constructed, and an optional parent. Raises
     BadArgumentError or BadKeyError if kind is invalid or parent is not an
@@ -287,6 +288,9 @@ class Entity(dict):
       parent: Entity or Key
       # if provided, this entity's name.
       name: string
+      # if provided, a sequence of property names that should not be indexed
+      # by the built-in single property indices.
+      unindexed_properties: list or tuple of strings
     """
     ref = entity_pb.Reference()
     _app = datastore_types.ResolveAppId(_app)
@@ -310,6 +314,15 @@ class Entity(dict):
       if name[0] in string.digits:
         raise datastore_errors.BadValueError('name cannot begin with a digit')
       last_path.set_name(name.encode('utf-8'))
+
+    unindexed_properties, multiple = NormalizeAndTypeCheck(unindexed_properties, basestring)
+    if not multiple:
+      raise datastore_errors.BadArgumentError(
+        'unindexed_properties must be a sequence; received %s (a %s).' %
+        (unindexed_properties, typename(unindexed_properties)))
+    for prop in unindexed_properties:
+      datastore_types.ValidateProperty(prop, None)
+    self.__unindexed_properties = frozenset(unindexed_properties)
 
     self.__key = Key._FromPb(ref)
 
@@ -336,12 +349,16 @@ class Entity(dict):
     return self.key().parent()
 
   def entity_group(self):
-    """Returns this entitys's entity group as a Key.
+    """Returns this entity's entity group as a Key.
 
     Note that the returned Key will be incomplete if this is a a root entity
     and its key is incomplete.
     """
     return self.key().entity_group()
+
+  def unindexed_properties(self):
+    """Returns this entity's unindexed properties, as a frozenset of strings."""
+    return self.__unindexed_properties
 
   def __setitem__(self, name, value):
     """Implements the [] operator. Used to set property value(s).
@@ -492,7 +509,8 @@ class Entity(dict):
       if isinstance(sample, list):
         sample = values[0]
 
-      if isinstance(sample, datastore_types._RAW_PROPERTY_TYPES):
+      if (isinstance(sample, datastore_types._RAW_PROPERTY_TYPES) or
+          name in self.__unindexed_properties):
         pb.raw_property_list().extend(properties)
       else:
         pb.property_list().extend(properties)
@@ -530,7 +548,10 @@ class Entity(dict):
       assert last_path.has_name()
       assert last_path.name()
 
-    e = Entity(unicode(last_path.type().decode('utf-8')))
+    unindexed_properties = [p.name() for p in pb.raw_property_list()]
+
+    e = Entity(unicode(last_path.type().decode('utf-8')),
+               unindexed_properties=unindexed_properties)
     ref = e.__key._Key__reference
     ref.CopyFrom(pb.key())
 
@@ -538,11 +559,6 @@ class Entity(dict):
 
     for prop_list in (pb.property_list(), pb.raw_property_list()):
       for prop in prop_list:
-        if not prop.has_multiple():
-          raise datastore_errors.Error(
-            'Property %s is corrupt in the datastore; it\'s missing the '
-            'multiple valued field.' % prop.name())
-
         try:
           value = datastore_types.FromPropertyPb(prop)
         except (AssertionError, AttributeError, TypeError, ValueError), e:
@@ -684,7 +700,7 @@ class Query(dict):
   __inequality_prop = None
   __inequality_count = 0
 
-  def __init__(self, kind, filters={}, _app=None):
+  def __init__(self, kind, filters={}, _app=None, keys_only=False):
     """Constructor.
 
     Raises BadArgumentError if kind is not a string. Raises BadValueError or
@@ -692,9 +708,10 @@ class Query(dict):
 
     Args:
       # kind is required. filters is optional; if provided, it's used
-      # as an initial set of property filters.
+      # as an initial set of property filters. keys_only defaults to False.
       kind: string
       filters: dict
+      keys_only: boolean
     """
     datastore_types.ValidateString(kind, 'kind',
                                    datastore_errors.BadArgumentError)
@@ -705,6 +722,7 @@ class Query(dict):
     self.update(filters)
 
     self.__app = datastore_types.ResolveAppId(_app)
+    self.__keys_only = keys_only
 
   def Order(self, *orderings):
     """Specify how the query results should be sorted.
@@ -847,6 +865,10 @@ class Query(dict):
     self.__ancestor.CopyFrom(key._Key__reference)
     return self
 
+  def IsKeysOnly(self):
+    """Returns True if this query is keys only, false otherwise."""
+    return self.__keys_only
+
   def Run(self):
     """Runs this query.
 
@@ -890,7 +912,7 @@ class Query(dict):
         raise datastore_errors.NeedIndexError(
           str(exc) + '\nThis query needs this index:\n' + yaml)
 
-    return Iterator._FromPb(result.cursor())
+    return Iterator._FromPb(result)
 
   def Get(self, limit, offset=0):
     """Fetches and returns a maximum number of results from the query.
@@ -1120,6 +1142,7 @@ class Query(dict):
     pb = datastore_pb.Query()
 
     pb.set_kind(self.__kind.encode('utf-8'))
+    pb.set_keys_only(bool(self.__keys_only))
     if self.__app:
       pb.set_app(self.__app.encode('utf-8'))
     if limit is not None:
@@ -1171,6 +1194,11 @@ class MultiQuery(Query):
 
   This class is actually a subclass of datastore.Query as it is intended to act
   like a normal Query object (supporting the same interface).
+
+  Does not support keys only queries, since it needs whole entities in order
+  to merge sort them. (That's not true if there are no sort orders, or if the
+  sort order is on __key__, but allowing keys only queries in those cases, but
+  not in others, would be confusing.)
   """
 
   def __init__(self, bound_queries, orderings):
@@ -1179,6 +1207,12 @@ class MultiQuery(Query):
           'Cannot satisfy query -- too many subqueries (max: %d, got %d).'
           ' Probable cause: too many IN/!= filters in query.' %
           (MAX_ALLOWABLE_QUERIES, len(bound_queries)))
+
+    for query in bound_queries:
+      if query.IsKeysOnly():
+        raise datastore_errors.BadQueryError(
+            'MultiQuery does not support keys_only.')
+
     self.__bound_queries = bound_queries
     self.__orderings = orderings
 
@@ -1294,7 +1328,7 @@ class MultiQuery(Query):
       return 0
 
     def __GetValueForId(self, sort_order_entity, identifier, sort_order):
-      value = sort_order_entity.__entity[identifier]
+      value = _GetPropertyValue(sort_order_entity.__entity, identifier)
       entity_key = sort_order_entity.__entity.key()
       if (entity_key, identifier) in self.__min_max_value_cache:
         value = self.__min_max_value_cache[(entity_key, identifier)]
@@ -1479,10 +1513,11 @@ class Iterator(object):
   > for person in it:
   >   print 'Hi, %s!' % person['name']
   """
-  def __init__(self, cursor):
+  def __init__(self, cursor, keys_only=False):
     self.__cursor = cursor
     self.__buffer = []
     self.__more_results = True
+    self.__keys_only = keys_only
 
   def _Next(self, count):
     """Returns the next result(s) of the query.
@@ -1490,31 +1525,29 @@ class Iterator(object):
     Not intended to be used by application developers. Use the python
     iterator protocol instead.
 
-    This method returns the next entities from the list of resulting
-    entities that matched the query. If the query specified a sort
-    order, entities are returned in that order. Otherwise, the order
-    is undefined.
+    This method returns the next entities or keys from the list of matching
+    results. If the query specified a sort order, results are returned in that
+    order. Otherwise, the order is undefined.
 
-    The argument specifies the number of entities to return. If it's
-    greater than the number of remaining entities, all of the
-    remaining entities are returned. In that case, the length of the
-    returned list will be smaller than count.
+    The argument specifies the number of results to return. If it's greater
+    than the number of remaining results, all of the remaining results are
+    returned. In that case, the length of the returned list will be smaller
+    than count.
 
-    There is an internal buffer for use with the next() method.  If
-    this buffer is not empty, up to 'count' values are removed from
-    this buffer and returned.  It's best not to mix _Next() and
-    next().
+    There is an internal buffer for use with the next() method. If this buffer
+    is not empty, up to 'count' values are removed from this buffer and
+    returned. It's best not to mix _Next() and next().
 
-    The results are always returned as a list. If there are no results
-    left, an empty list is returned.
+    The results are always returned as a list. If there are no results left,
+    an empty list is returned.
 
     Args:
-      # the number of entities to return; must be >= 1
+      # the number of results to return; must be >= 1
       count: int or long
 
     Returns:
-      # a list of entities
-      [Entity, ...]
+      # a list of entities or keys
+      [Entity or Key, ...]
     """
     if not isinstance(count, (int, long)) or count <= 0:
       raise datastore_errors.BadArgumentError(
@@ -1539,8 +1572,10 @@ class Iterator(object):
 
     self.__more_results = result.more_results()
 
-    ret = [Entity._FromPb(r) for r in result.result_list()]
-    return ret
+    if self.__keys_only:
+      return [Key._FromPb(e.key()) for e in result.result_list()]
+    else:
+      return [Entity._FromPb(e) for e in result.result_list()]
 
   _BUFFER_SIZE = 20
 
@@ -1570,18 +1605,16 @@ class Iterator(object):
   @staticmethod
   def _FromPb(pb):
     """Static factory method. Returns the Iterator representation of the given
-    protocol buffer (datastore_pb.Cursor). Not intended to be used by
-    application developers. Enforced by not hiding the datastore_pb classes.
+    protocol buffer (datastore_pb.QueryResult). Not intended to be used by
+    application developers. Enforced by hiding the datastore_pb classes.
 
     Args:
-      # a protocol buffer Cursor
-      pb: datastore_pb.Cursor
+      pb: datastore_pb.QueryResult
 
     Returns:
-      # the Iterator representation of the argument
       Iterator
     """
-    return Iterator(pb.cursor())
+    return Iterator(pb.cursor().cursor(), keys_only=pb.keys_only())
 
 
 class _Transaction(object):
@@ -1918,6 +1951,28 @@ def _GetCompleteKeyOrError(arg):
     raise datastore_errors.BadKeyError('Key %r is not complete.' % key)
 
   return key
+
+
+def _GetPropertyValue(entity, property):
+  """Returns an entity's value for a given property name.
+
+  Handles special properties like __key__ as well as normal properties.
+
+  Args:
+    entity: datastore.Entity
+    property: str; the property name
+
+  Returns:
+    property value. For __key__, a datastore_types.Key.
+
+  Raises:
+    KeyError, if the entity does not have the given property.
+  """
+  if property in datastore_types._SPECIAL_PROPERTIES:
+    assert property == datastore_types._KEY_SPECIAL_PROPERTY
+    return entity.key()
+  else:
+    return entity[property]
 
 
 def _AddOrAppend(dictionary, key, value):

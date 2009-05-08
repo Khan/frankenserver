@@ -674,7 +674,7 @@ class LogsRequester(object):
   """Provide facilities to export request logs."""
 
   def __init__(self, server, config, output_file,
-               num_days, append, severity, now):
+               num_days, append, severity, now, vhost):
     """Constructor.
 
     Args:
@@ -686,6 +686,7 @@ class LogsRequester(object):
       append: True if appending to an existing file.
       severity: App log severity to request (0-4); None for no app logs.
       now: POSIX timestamp used for calculating valid dates for num_days.
+      vhost: The virtual host of log messages to get. None for all hosts.
     """
     self.server = server
     self.config = config
@@ -693,6 +694,7 @@ class LogsRequester(object):
     self.append = append
     self.num_days = num_days
     self.severity = severity
+    self.vhost = vhost
     self.version_id = self.config.version + ".1"
     self.sentinel = None
     self.write_mode = "w"
@@ -770,6 +772,8 @@ class LogsRequester(object):
       kwds["offset"] = offset
     if self.severity is not None:
       kwds["severity"] = str(self.severity)
+    if self.vhost is not None:
+      kwds["vhost"] = str(self.vhost)
     response = self.server.Send("/api/request_logs", payload=None, **kwds)
     response = response.replace("\r", "\0")
     lines = response.splitlines()
@@ -1789,7 +1793,8 @@ class AppCfgApp(object):
                                    self.options.num_days,
                                    self.options.append,
                                    self.options.severity,
-                                   time.time())
+                                   time.time(),
+                                   self.options.vhost)
     logs_requester.DownloadLogs()
 
   def _RequestLogsOptions(self, parser):
@@ -1813,6 +1818,10 @@ class AppCfgApp(object):
                       help="Severity of app-level log messages to get. "
                       "The range is 0 (DEBUG) through 4 (CRITICAL). "
                       "If omitted, only request logs are returned.")
+    parser.add_option("--vhost", type="string", dest="vhost",
+                      action="store", default=None,
+                      help="The virtual host of log messages to get. "
+                      "If omitted, all log messages are returned.")
 
   def CronInfo(self, now=None, output=sys.stdout):
     """Displays information about cron definitions.
@@ -1834,8 +1843,8 @@ class AppCfgApp(object):
         if not description:
           description = "<no description>"
         print >>output, "\n%s:\nURL: %s\nSchedule: %s" % (description,
-                                                          entry.schedule,
-                                                          entry.url)
+                                                          entry.url,
+                                                          entry.schedule)
         schedule = groctimespecification.GrocTimeSpecification(entry.schedule)
         matches = schedule.GetMatches(now, self.options.num_runs)
         for match in matches:
@@ -1853,8 +1862,8 @@ class AppCfgApp(object):
                       help="Number of runs of each cron job to display"
                       "Default is 5")
 
-  def _CheckRequiredUploadOptions(self):
-    """Checks that upload options are present."""
+  def _CheckRequiredLoadOptions(self):
+    """Checks that upload/download options are present."""
     for option in ["filename", "kind", "config_file"]:
       if getattr(self.options, option) is None:
         self.parser.error("Option '%s' is required." % option)
@@ -1863,7 +1872,7 @@ class AppCfgApp(object):
                         "assigned to an endpoint in app.yaml, or provide "
                         "the url of the handler via the 'url' option.")
 
-  def InferUploadUrl(self, appyaml):
+  def InferRemoteApiUrl(self, appyaml):
     """Uses app.yaml to determine the remote_api endpoint.
 
     Args:
@@ -1885,11 +1894,11 @@ class AppCfgApp(object):
             return "http://%s%s" % (server, handler.url)
     return None
 
-  def RunBulkloader(self, **kwargs):
+  def RunBulkloader(self, arg_dict):
     """Invokes the bulkloader with the given keyword arguments.
 
     Args:
-      kwargs: Keyword arguments to pass to bulkloader.Run().
+      arg_dict: Dictionary of arguments to pass to bulkloader.Run().
     """
     try:
       import sqlite3
@@ -1898,17 +1907,10 @@ class AppCfgApp(object):
                     "sqlite3 module (included in python since 2.5).")
       sys.exit(1)
 
-    sys.exit(bulkloader.Run(kwargs))
+    sys.exit(bulkloader.Run(arg_dict))
 
-  def PerformUpload(self, run_fn=None):
-    """Performs a datastore upload via the bulkloader.
-
-    Args:
-      run_fn: Function to invoke the bulkloader, used for testing.
-    """
-    if run_fn is None:
-      run_fn = self.RunBulkloader
-
+  def _SetupLoad(self):
+    """Performs common verification and set up for upload and download."""
     if len(self.args) != 1:
       self.parser.error("Expected <directory> argument.")
 
@@ -1918,11 +1920,11 @@ class AppCfgApp(object):
     self.options.app_id = appyaml.application
 
     if not self.options.url:
-      url = self.InferUploadUrl(appyaml)
+      url = self.InferRemoteApiUrl(appyaml)
       if url is not None:
         self.options.url = url
 
-    self._CheckRequiredUploadOptions()
+    self._CheckRequiredLoadOptions()
 
     if self.options.batch_size < 1:
       self.parser.error("batch_size must be 1 or larger.")
@@ -1934,34 +1936,68 @@ class AppCfgApp(object):
       logging.getLogger().setLevel(logging.DEBUG)
       self.options.debug = True
 
+  def _MakeLoaderArgs(self):
+    return dict([(arg_name, getattr(self.options, arg_name, None)) for
+                 arg_name in (
+        "app_id",
+        "url",
+        "filename",
+        "batch_size",
+        "kind",
+        "num_threads",
+        "bandwidth_limit",
+        "rps_limit",
+        "http_limit",
+        "db_filename",
+        "config_file",
+        "auth_domain",
+        "has_header",
+        "loader_opts",
+        "log_file",
+        "passin",
+        "email",
+        "debug",
+        "exporter_opts",
+        "result_db_filename",
+        )])
+
+  def PerformDownload(self, run_fn=None):
+    """Performs a datastore download via the bulkloader.
+
+    Args:
+      run_fn: Function to invoke the bulkloader, used for testing.
+    """
+    if run_fn is None:
+      run_fn = self.RunBulkloader
+    self._SetupLoad()
+
+    StatusUpdate("Downloading data records.")
+
+    args = self._MakeLoaderArgs()
+    args['download'] = True
+    args['has_header'] = False
+
+    run_fn(args)
+
+  def PerformUpload(self, run_fn=None):
+    """Performs a datastore upload via the bulkloader.
+
+    Args:
+      run_fn: Function to invoke the bulkloader, used for testing.
+    """
+    if run_fn is None:
+      run_fn = self.RunBulkloader
+    self._SetupLoad()
+
     StatusUpdate("Uploading data records.")
 
-    run_fn(app_id=self.options.app_id,
-           url=self.options.url,
-           filename=self.options.filename,
-           batch_size=self.options.batch_size,
-           kind=self.options.kind,
-           num_threads=self.options.num_threads,
-           bandwidth_limit=self.options.bandwidth_limit,
-           rps_limit=self.options.rps_limit,
-           http_limit=self.options.http_limit,
-           db_filename=self.options.db_filename,
-           config_file=self.options.config_file,
-           auth_domain=self.options.auth_domain,
-           has_header=self.options.has_header,
-           loader_opts=self.options.loader_opts,
-           log_file=self.options.log_file,
-           passin=self.options.passin,
-           email=self.options.email,
-           debug=self.options.debug,
+    args = self._MakeLoaderArgs()
+    args['download'] = False
 
-           exporter_opts=None,
-           download=False,
-           result_db_filename=None,
-           )
+    run_fn(args)
 
-  def _PerformUploadOptions(self, parser):
-    """Adds 'upload_data' specific options to the 'parser' passed in.
+  def _PerformLoadOptions(self, parser):
+    """Adds options common to 'upload_data' and 'download_data'.
 
     Args:
       parser: An instance of OptionsParser.
@@ -2000,16 +2036,39 @@ class AppCfgApp(object):
     parser.add_option("--auth_domain", type="string", dest="auth_domain",
                       action="store", default="gmail.com",
                       help="The name of the authorization domain to use.")
+    parser.add_option("--log_file", type="string", dest="log_file",
+                      help="File to write bulkloader logs.  If not supplied "
+                           "then a new log file will be created, named: "
+                           "bulkloader-log-TIMESTAMP.")
+
+  def _PerformUploadOptions(self, parser):
+    """Adds 'upload_data' specific options to the 'parser' passed in.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    self._PerformLoadOptions(parser)
     parser.add_option("--has_header", dest="has_header",
                       action="store_true", default=False,
                       help="Whether the first line of the input file should be"
                       " skipped")
     parser.add_option("--loader_opts", type="string", dest="loader_opts",
-                      help="A string to pass to the Loader.Initialize method.")
-    parser.add_option("--log_file", type="string", dest="log_file",
-                      help="File to write bulkloader logs.  If not supplied "
-                           "then a new log file will be created, named: "
-                           "bulkloader-log-TIMESTAMP.")
+                      help="A string to pass to the Loader.initialize method.")
+
+  def _PerformDownloadOptions(self, parser):
+    """Adds 'download_data' specific options to the 'parser' passed in.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    self._PerformLoadOptions(parser)
+    parser.add_option("--exporter_opts", type="string", dest="exporter_opts",
+                      help="A string to pass to the Exporter.initialize method."
+                      )
+    parser.add_option("--result_db_filename", type="string",
+                      dest="result_db_filename",
+                      action="store",
+                      help="Database to write entities to for download.")
 
   class Action(object):
     """Contains information about a command line action.
@@ -2121,10 +2180,19 @@ each cron job defined in the cron.yaml file."""),
           function="PerformUpload",
           usage="%prog [options] upload_data <directory>",
           options=_PerformUploadOptions,
-          short_desc="Upload CSV records to datastore",
+          short_desc="Upload data records to datastore.",
           long_desc="""
-The 'upload_data' command translates CSV records into datastore entities and
+The 'upload_data' command translates input records into datastore entities and
 uploads them into your application's datastore."""),
+
+      "download_data": Action(
+          function="PerformDownload",
+          usage="%prog [options] download_data <directory>",
+          options=_PerformDownloadOptions,
+          short_desc="Download entities from datastore.",
+          long_desc="""
+The 'download_data' command downloads datastore entities and writes them to
+file as CSV or developer defined format."""),
 
 
 

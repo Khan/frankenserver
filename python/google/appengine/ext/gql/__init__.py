@@ -77,7 +77,7 @@ class GQL(object):
 
   The syntax for SELECT is fairly straightforward:
 
-  SELECT * FROM <entity>
+  SELECT [* | __key__ ] FROM <entity>
     [WHERE <condition> [AND <condition> ...]]
     [ORDER BY <property> [ASC | DESC] [, <property> [ASC | DESC] ...]]
     [LIMIT [<offset>,]<count>]
@@ -144,9 +144,8 @@ class GQL(object):
       simple types (strings, integers, floats).
 
 
-  SELECT * will return an iterable set of entries, but other operations (schema
-  queries, updates, inserts or field selections) will return alternative
-  result types.
+  SELECT * will return an iterable set of entities; SELECT __key__ will return
+  an iterable set of Keys.
   """
 
   TOKENIZE_REGEX = re.compile(r"""
@@ -229,7 +228,8 @@ class GQL(object):
       query_count = 1
 
     for i in xrange(query_count):
-      queries.append(datastore.Query(self._entity, _app=self.__app))
+      queries.append(datastore.Query(self._entity, _app=self.__app,
+                                     keys_only=self._keys_only))
 
     logging.log(LOG_LEVEL,
                 'Binding with %i positional args %s and %i keywords %s'
@@ -552,6 +552,9 @@ class GQL(object):
     Raises:
       BadArgumentError if the filter is invalid (namely non-list with IN)
     """
+    if condition.lower() in ('!=', 'in') and self._keys_only:
+      raise datastore_errors.BadQueryError(
+        'Keys only queries do not support IN or != filters.')
 
     def CloneQueries(queries, n):
       """Do a full copy of the queries and append to the end of the queries.
@@ -675,6 +678,7 @@ class GQL(object):
 
   __iter__ = Run
 
+  __result_type_regex = re.compile(r'(\*|__key__)')
   __quoted_string_regex = re.compile(r'((?:\'[^\'\n\r]*\')+)')
   __ordinal_regex = re.compile(r':(\d+)$')
   __named_regex = re.compile(r':(\w+)$')
@@ -783,7 +787,8 @@ class GQL(object):
       True if parsing completed okay.
     """
     self.__Expect('SELECT')
-    self.__Expect('*')
+    result_type = self.__AcceptRegex(self.__result_type_regex)
+    self._keys_only = (result_type == '__key__')
     return self.__From()
 
   def __From(self):

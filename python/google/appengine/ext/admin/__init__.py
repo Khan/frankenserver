@@ -1101,6 +1101,9 @@ class NoneType(DataType):
   def parse(self, value):
     return None
 
+  def python_type(self):
+    return None
+
   def format(self, value):
     return 'None'
 

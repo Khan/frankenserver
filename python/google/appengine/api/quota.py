@@ -15,31 +15,25 @@
 # limitations under the License.
 #
 
-
-AF_INET = None
-SOCK_STREAM = None
-SOCK_DGRAM = None
-
-_GLOBAL_DEFAULT_TIMEOUT = object()
+"""Access to quota usage for this application."""
 
 
-class error(OSError):
-  pass
-
-class herror(error):
-  pass
-
-class gaierror(error):
-  pass
-
-class timeout(error):
-  pass
 
 
-def _fileobject(fp, mode='rb', bufsize=-1, close=False):
-  """Assuming that the argument is a StringIO or file instance."""
-  if not hasattr(fp, 'fileno'):
-    fp.fileno = lambda: None
-  return fp
+try:
+  from google3.apphosting.runtime import _apphosting_runtime___python__apiproxy
+except ImportError:
+  _apphosting_runtime___python__apiproxy = None
 
-ssl = None
+def get_request_cpu_usage():
+  """Get the amount of CPU used so far for the current request.
+
+  Returns the number of megacycles used so far for the current
+  request. Does not include CPU used by API calls.
+
+  Does nothing when used in the dev_appserver.
+  """
+
+  if _apphosting_runtime___python__apiproxy:
+    return _apphosting_runtime___python__apiproxy.get_request_cpu_usage()
+  return 0

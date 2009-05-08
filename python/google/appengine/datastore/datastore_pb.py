@@ -380,6 +380,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   limit_ = 0
   has_require_perfect_plan_ = 0
   require_perfect_plan_ = 0
+  has_keys_only_ = 0
+  keys_only_ = 0
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -545,6 +547,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_require_perfect_plan(self): return self.has_require_perfect_plan_
 
+  def keys_only(self): return self.keys_only_
+
+  def set_keys_only(self, x):
+    self.has_keys_only_ = 1
+    self.keys_only_ = x
+
+  def clear_keys_only(self):
+    if self.has_keys_only_:
+      self.has_keys_only_ = 0
+      self.keys_only_ = 0
+
+  def has_keys_only(self): return self.has_keys_only_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -559,6 +574,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (x.has_limit()): self.set_limit(x.limit())
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_require_perfect_plan()): self.set_require_perfect_plan(x.require_perfect_plan())
+    if (x.has_keys_only()): self.set_keys_only(x.keys_only())
 
   def Equals(self, x):
     if x is self: return 1
@@ -587,6 +603,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_require_perfect_plan_ != x.has_require_perfect_plan_: return 0
     if self.has_require_perfect_plan_ and self.require_perfect_plan_ != x.require_perfect_plan_: return 0
+    if self.has_keys_only_ != x.has_keys_only_: return 0
+    if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -620,6 +638,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.composite_index_)
     for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     if (self.has_require_perfect_plan_): n += 3
+    if (self.has_keys_only_): n += 3
     return n + 1
 
   def Clear(self):
@@ -634,6 +653,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_limit()
     self.clear_composite_index()
     self.clear_require_perfect_plan()
+    self.clear_keys_only()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -672,6 +692,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_require_perfect_plan_):
       out.putVarInt32(160)
       out.putBoolean(self.require_perfect_plan_)
+    if (self.has_keys_only_):
+      out.putVarInt32(168)
+      out.putBoolean(self.keys_only_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -715,6 +738,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 160:
         self.set_require_perfect_plan(d.getBoolean())
         continue
+      if tt == 168:
+        self.set_keys_only(d.getBoolean())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -756,6 +782,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
       cnt+=1
     if self.has_require_perfect_plan_: res+=prefix+("require_perfect_plan: %s\n" % self.DebugFormatBool(self.require_perfect_plan_))
+    if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
     return res
 
   kapp = 1
@@ -773,6 +800,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   klimit = 16
   kcomposite_index = 19
   krequire_perfect_plan = 20
+  kkeys_only = 21
 
   _TEXT = (
    "ErrorCode",
@@ -796,6 +824,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
    "hint",
    "composite_index",
    "require_perfect_plan",
+   "keys_only",
   )
 
   _TYPES = (
@@ -837,6 +866,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.NUMERIC,
 
@@ -2416,6 +2447,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   cursor_ = None
   has_more_results_ = 0
   more_results_ = 0
+  has_keys_only_ = 0
+  keys_only_ = 0
 
   def __init__(self, contents=None):
     self.result_ = []
@@ -2469,12 +2502,26 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def has_more_results(self): return self.has_more_results_
 
+  def keys_only(self): return self.keys_only_
+
+  def set_keys_only(self, x):
+    self.has_keys_only_ = 1
+    self.keys_only_ = x
+
+  def clear_keys_only(self):
+    if self.has_keys_only_:
+      self.has_keys_only_ = 0
+      self.keys_only_ = 0
+
+  def has_keys_only(self): return self.has_keys_only_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_cursor()): self.mutable_cursor().MergeFrom(x.cursor())
     for i in xrange(x.result_size()): self.add_result().CopyFrom(x.result(i))
     if (x.has_more_results()): self.set_more_results(x.more_results())
+    if (x.has_keys_only()): self.set_keys_only(x.keys_only())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2485,6 +2532,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_more_results_ != x.has_more_results_: return 0
     if self.has_more_results_ and self.more_results_ != x.more_results_: return 0
+    if self.has_keys_only_ != x.has_keys_only_: return 0
+    if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2503,12 +2552,14 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(self.cursor_.ByteSize())
     n += 1 * len(self.result_)
     for i in xrange(len(self.result_)): n += self.lengthString(self.result_[i].ByteSize())
+    if (self.has_keys_only_): n += 2
     return n + 2
 
   def Clear(self):
     self.clear_cursor()
     self.clear_result()
     self.clear_more_results()
+    self.clear_keys_only()
 
   def OutputUnchecked(self, out):
     if (self.has_cursor_):
@@ -2521,6 +2572,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       self.result_[i].OutputUnchecked(out)
     out.putVarInt32(24)
     out.putBoolean(self.more_results_)
+    if (self.has_keys_only_):
+      out.putVarInt32(32)
+      out.putBoolean(self.keys_only_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2539,6 +2593,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 24:
         self.set_more_results(d.getBoolean())
+        continue
+      if tt == 32:
+        self.set_keys_only(d.getBoolean())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -2559,17 +2616,20 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
       cnt+=1
     if self.has_more_results_: res+=prefix+("more_results: %s\n" % self.DebugFormatBool(self.more_results_))
+    if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
     return res
 
   kcursor = 1
   kresult = 2
   kmore_results = 3
+  kkeys_only = 4
 
   _TEXT = (
    "ErrorCode",
    "cursor",
    "result",
    "more_results",
+   "keys_only",
   )
 
   _TYPES = (
@@ -2577,6 +2637,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.STRING,
 
    ProtocolBuffer.Encoder.STRING,
+
+   ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.NUMERIC,
 

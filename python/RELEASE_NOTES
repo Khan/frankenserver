@@ -3,6 +3,40 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.2 - April 22, 2009
+==============================
+
+  - New quota API which returns the CPU usage of the current request.
+      from google.appengine.api import quota
+      cpu_usage_so_far = quota.get_request_cpu_usage()
+  - Urlfetch fetch now has support for user configurable deadlines.
+      http://code.google.com/p/googleappengine/issues/detail?id=79
+  - Urlfetch in the SDK allows the Accept-Encoding header to match App Engine.
+      http://code.google.com/p/googleappengine/issues/detail?id=1071
+  - urllib now supports HTTPS in addition to HTTP
+      http://code.google.com/p/googleappengine/issues/detail?id=1156
+  - Datastore indexes on single properties can now be disabled by setting
+    indexed=False on the property constructor.
+  - Datastore now supports Key-only queries, using either SELECT __key__ or
+    or db.Query(Model, keys_only=True)
+  - Fixed issues with Datastore IN filters and sorting: sort order is now
+    correct, and can be used with __key__.
+      http://code.google.com/p/googleappengine/issues/detail?id=1100
+      http://code.google.com/p/googleappengine/issues/detail?id=1016
+  - Cron supports additional time specification formats.
+      http://code.google.com/p/googleappengine/issues/detail?id=1261
+  - Fixed an issue in the dev_appserver admin console datastore viewer
+    (/_ah/admin/datastore) with sorting columns containing None types.
+      http://code.google.com/p/googleappengine/issues/detail?id=1007
+  - Bulk Loader improvements:  New appcfg download_data command.
+    Better backoff support and debugging output for long requests.
+  - New --vhost flag on appcfg.py request_logs command to select logs for
+    a particular host.
+  - Python _ast module is now available for import
+      http://code.google.com/p/googleappengine/issues/detail?id=779
+  - Fixed issue with the color argument of the Images API composite method.
+
+
 Version 1.2.1 - April 13, 2009
 =============================
 
@@ -33,12 +67,12 @@ Version 1.2.1 - April 13, 2009
       http://code.google.com/p/googleappengine/issues/detail?id=1017
 
 
-
 Version 1.2.0 - March 24, 2009
 ==============================
   - Cron support. Appcfg.py will upload the schedule to App Engine.
       The dev_appserver console at /_ah/admin describes your schedule but does
       not automatically run scheduled jobs. Learn more at
+      http://code.google.com/appengine/docs/python/config/cron.html
   - New allow_skipped_files flag in dev_appserver to allow it to read files
     which are not available in App Engine.
       http://code.google.com/p/googleappengine/issues/detail?id=550

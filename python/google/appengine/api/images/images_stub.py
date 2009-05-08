@@ -36,6 +36,22 @@ from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+def _ArgbToRgbaTuple(argb):
+  """Convert from a single ARGB value to a tuple containing RGBA.
+
+  Args:
+    argb: Signed 32 bit integer containing an ARGB value.
+
+  Returns:
+    RGBA tuple.
+  """
+  unsigned_argb = argb % 0x100000000
+  return ((unsigned_argb >> 16) & 0xFF,
+          (unsigned_argb >> 8) & 0xFF,
+          unsigned_argb & 0xFF,
+          (unsigned_argb >> 24) & 0xFF)
+
+
 class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
@@ -60,10 +76,8 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     """
     width = request.canvas().width()
     height = request.canvas().height()
-    color = request.canvas().color() % 0x100000000
-    reordered_color = int((color & 0xff000000) | ((color >> 16) & 0xff) |
-                          (color & 0xff00) | (color & 0xff) << 16)
-    canvas = Image.new("RGBA", (width, height), reordered_color)
+    color = _ArgbToRgbaTuple(request.canvas().color())
+    canvas = Image.new("RGBA", (width, height), color)
     sources = []
     if (not request.canvas().width() or request.canvas().width() > 4000 or
         not request.canvas().height() or request.canvas().height() > 4000):

@@ -30,6 +30,7 @@ import UserDict
 import urllib2
 import urlparse
 
+from google.appengine.api import apiproxy_rpc
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api.urlfetch_errors import *
@@ -186,13 +187,29 @@ def _is_fetching_self(url, method):
   return False
 
 
+def __create_rpc(deadline=None, callback=None):
+  """DO NOT USE.  WILL CHANGE AND BREAK YOUR CODE.
+
+  Creates an RPC object for use with the urlfetch API.
+
+  Args:
+    deadline: deadline in seconds for the operation.
+    callback: callable to invoke on completion.
+
+  Returns:
+    A _URLFetchRPC object.
+  """
+  return _URLFetchRPC(deadline, callback)
+
+
 def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
-          follow_redirects=True):
+          follow_redirects=True, deadline=None):
   """Fetches the given HTTP URL, blocking until the result is returned.
 
   Other optional parameters are:
      method: GET, POST, HEAD, PUT, or DELETE
-     payload: POST or PUT payload (implies method is not GET, HEAD, or DELETE)
+     payload: POST or PUT payload (implies method is not GET, HEAD, or DELETE).
+       this is ignored if the method is not POST or PUT.
      headers: dictionary of HTTP headers to send with the request
      allow_truncated: if true, truncate large responses and return them without
        error. otherwise, ResponseTooLargeError will be thrown when a response is
@@ -204,6 +221,7 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
        information.  If false, you see the HTTP response yourself,
        including the 'Location' header, and redirects are not
        followed.
+     deadline: deadline in seconds for the operation.
 
   We use a HTTP/1.1 compliant proxy to fetch the result.
 
@@ -218,73 +236,173 @@ def fetch(url, payload=None, method=GET, headers={}, allow_truncated=False,
   of the returned structure, so HTTP errors like 404 do not result in an
   exception.
   """
-  if isinstance(method, basestring):
-    method = method.upper()
-  method = _URL_STRING_MAP.get(method, method)
-  if method not in _VALID_METHODS:
-    raise InvalidMethodError('Invalid method %s.' % str(method))
+  rpc = __create_rpc(deadline=deadline)
+  rpc.make_call(url, payload, method, headers, follow_redirects)
+  return rpc.get_result(allow_truncated)
 
-  if _is_fetching_self(url, method):
-    raise InvalidURLError("App cannot fetch the same URL as the one used for "
-                          "the request.")
 
-  request = urlfetch_service_pb.URLFetchRequest()
-  response = urlfetch_service_pb.URLFetchResponse()
-  request.set_url(url)
+class _URLFetchRPC(object):
+  """A RPC object that manages the urlfetch RPC.
 
-  if method == GET:
-    request.set_method(urlfetch_service_pb.URLFetchRequest.GET)
-  elif method == POST:
-    request.set_method(urlfetch_service_pb.URLFetchRequest.POST)
-  elif method == HEAD:
-    request.set_method(urlfetch_service_pb.URLFetchRequest.HEAD)
-  elif method == PUT:
-    request.set_method(urlfetch_service_pb.URLFetchRequest.PUT)
-  elif method == DELETE:
-    request.set_method(urlfetch_service_pb.URLFetchRequest.DELETE)
+  Its primary functions are the following:
+  1. Convert error codes to the URLFetchServiceError namespace and raise them
+     when get_result is called.
+  2. Wrap the urlfetch response with a _URLFetchResult object.
+  """
 
-  if payload and (method == POST or method == PUT):
-    request.set_payload(payload)
+  def __init__(self, deadline=None, callback=None):
+    """Construct a new url fetch RPC.
 
-  for key, value in headers.iteritems():
-    header_proto = request.add_header()
-    header_proto.set_key(key)
-    header_proto.set_value(str(value))
+    Args:
+      deadline: deadline in seconds for the operation.
+      callback: callable to invoke on completion.
+    """
+    self.__rpc = apiproxy_stub_map.CreateRPC('urlfetch')
+    self.__rpc.deadline = deadline
+    self.__rpc.callback = callback
+    self.__called_hooks = False
 
-  request.set_followredirects(follow_redirects)
+  def make_call(self, url, payload=None, method=GET, headers={},
+                follow_redirects=True):
+    """Executes the RPC call to fetch a given HTTP URL.
 
-  try:
-    apiproxy_stub_map.MakeSyncCall('urlfetch', 'Fetch', request, response)
-  except apiproxy_errors.ApplicationError, e:
-    if (e.application_error ==
-        urlfetch_service_pb.URLFetchServiceError.INVALID_URL):
-      raise InvalidURLError(str(e))
-    if (e.application_error ==
-        urlfetch_service_pb.URLFetchServiceError.UNSPECIFIED_ERROR):
-      raise DownloadError(str(e))
-    if (e.application_error ==
-        urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR):
-      raise DownloadError(str(e))
-    if (e.application_error ==
-        urlfetch_service_pb.URLFetchServiceError.RESPONSE_TOO_LARGE):
-      raise ResponseTooLargeError(None)
-    if (e.application_error ==
-        urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED):
-      raise DownloadError(str(e))
-    raise e
-  result = _URLFetchResult(response)
+    See urlfetch.fetch for a thorough description of arguments.
+    """
+    assert self.__rpc.state is apiproxy_rpc.RPC.IDLE
+    if isinstance(method, basestring):
+      method = method.upper()
+    method = _URL_STRING_MAP.get(method, method)
+    if method not in _VALID_METHODS:
+      raise InvalidMethodError('Invalid method %s.' % str(method))
 
-  if not allow_truncated and response.contentwastruncated():
-    raise ResponseTooLargeError(result)
+    if _is_fetching_self(url, method):
+      raise InvalidURLError("App cannot fetch the same URL as the one used for "
+                            "the request.")
 
-  return result
+    self.__request = urlfetch_service_pb.URLFetchRequest()
+    self.__response = urlfetch_service_pb.URLFetchResponse()
+    self.__result = None
+    self.__request.set_url(url)
+
+    if method == GET:
+      self.__request.set_method(urlfetch_service_pb.URLFetchRequest.GET)
+    elif method == POST:
+      self.__request.set_method(urlfetch_service_pb.URLFetchRequest.POST)
+    elif method == HEAD:
+      self.__request.set_method(urlfetch_service_pb.URLFetchRequest.HEAD)
+    elif method == PUT:
+      self.__request.set_method(urlfetch_service_pb.URLFetchRequest.PUT)
+    elif method == DELETE:
+      self.__request.set_method(urlfetch_service_pb.URLFetchRequest.DELETE)
+
+    if payload and (method == POST or method == PUT):
+      self.__request.set_payload(payload)
+
+    for key, value in headers.iteritems():
+      header_proto = self.__request.add_header()
+      header_proto.set_key(key)
+      header_proto.set_value(str(value))
+
+    self.__request.set_followredirects(follow_redirects)
+    if self.__rpc.deadline:
+      self.__request.set_deadline(self.__rpc.deadline)
+
+    apiproxy_stub_map.apiproxy.GetPreCallHooks().Call(
+        'urlfetch', 'Fetch', self.__request, self.__response)
+    self.__rpc.MakeCall('urlfetch', 'Fetch', self.__request, self.__response)
+
+  def wait(self):
+    """Waits for the urlfetch RPC to finish.  Idempotent.
+    """
+    assert self.__rpc.state is not apiproxy_rpc.RPC.IDLE
+    if self.__rpc.state is apiproxy_rpc.RPC.RUNNING:
+      self.__rpc.Wait()
+
+  def check_success(self, allow_truncated=False):
+    """Check success and convert RPC exceptions to urlfetch exceptions.
+
+    This method waits for the RPC if it has not yet finished, and calls the
+    post-call hooks on the first invocation.
+
+    Args:
+      allow_truncated: if False, an error is raised if the response was
+        truncated.
+
+    Raises:
+      InvalidURLError if the url was invalid.
+      DownloadError if there was a problem fetching the url.
+      ResponseTooLargeError if the response was either truncated (and
+        allow_truncated is false) or if it was too big for us to download.
+    """
+    assert self.__rpc.state is not apiproxy_rpc.RPC.IDLE
+    if self.__rpc.state is apiproxy_rpc.RPC.RUNNING:
+      self.wait()
+
+    try:
+      self.__rpc.CheckSuccess()
+      if not self.__called_hooks:
+        self.__called_hooks = True
+        apiproxy_stub_map.apiproxy.GetPostCallHooks().Call(
+            'urlfetch', 'Fetch', self.__request, self.__response)
+    except apiproxy_errors.ApplicationError, e:
+      if (e.application_error ==
+          urlfetch_service_pb.URLFetchServiceError.INVALID_URL):
+        raise InvalidURLError(str(e))
+      if (e.application_error ==
+          urlfetch_service_pb.URLFetchServiceError.UNSPECIFIED_ERROR):
+        raise DownloadError(str(e))
+      if (e.application_error ==
+          urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR):
+        raise DownloadError(str(e))
+      if (e.application_error ==
+          urlfetch_service_pb.URLFetchServiceError.RESPONSE_TOO_LARGE):
+        raise ResponseTooLargeError(None)
+      if (e.application_error ==
+          urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED):
+        raise DownloadError(str(e))
+      raise e
+
+    if self.__response.contentwastruncated() and not allow_truncated:
+      raise ResponseTooLargeError(_URLFetchResult(self.__response))
+
+  def get_result(self, allow_truncated=False):
+    """Returns the RPC result or raises an exception if the rpc failed.
+
+    This method waits for the RPC if not completed, and checks success.
+
+    Args:
+      allow_truncated: if False, an error is raised if the response was
+        truncated.
+
+    Returns:
+      The urlfetch result.
+
+    Raises:
+      Error if the rpc has not yet finished.
+      InvalidURLError if the url was invalid.
+      DownloadError if there was a problem fetching the url.
+      ResponseTooLargeError if the response was either truncated (and
+        allow_truncated is false) or if it was too big for us to download.
+    """
+    if self.__result is None:
+      self.check_success(allow_truncated)
+      self.__result = _URLFetchResult(self.__response)
+    return self.__result
+
 
 Fetch = fetch
 
 
 class _URLFetchResult(object):
-  """A Pythonic representation of our fetch response protocol buffer."""
+  """A Pythonic representation of our fetch response protocol buffer.
+  """
+
   def __init__(self, response_proto):
+    """Constructor.
+
+    Args:
+      response_proto: the URLFetchResponse proto buffer to wrap.
+    """
     self.__pb = response_proto
     self.content = response_proto.content()
     self.status_code = response_proto.statuscode()

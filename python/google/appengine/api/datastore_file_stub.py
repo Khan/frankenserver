@@ -98,6 +98,44 @@ class _StoredEntity(object):
     self.native = datastore.Entity._FromPb(entity)
 
 
+class _Cursor(object):
+  """A query cursor.
+
+  Public properties:
+    cursor: the integer cursor
+    count: the original total number of results
+    keys_only: whether the query is keys_only
+  """
+  def __init__(self, results, keys_only):
+    """Constructor.
+
+    Args:
+      # the query results, in order, such that pop(0) is the next result
+      results: list of entity_pb.EntityProto
+      keys_only: integer
+    """
+    self.__results = results
+    self.count = len(results)
+    self.keys_only = keys_only
+    self.cursor = id(self)
+
+  def PopulateQueryResult(self, result, count):
+    """Populates a QueryResult with this cursor and the given number of results.
+
+    Args:
+      result: datastore_pb.QueryResult
+      count: integer
+    """
+    result.mutable_cursor().set_cursor(self.cursor)
+    result.set_keys_only(self.keys_only)
+
+    results_pbs = [r._ToPb() for r in self.__results[:count]]
+    result.result_list().extend(results_pbs)
+    del self.__results[:count]
+
+    result.set_more_results(len(self.__results) > 0)
+
+
 class DatastoreFileStub(apiproxy_stub.APIProxyStub):
   """ Persistent stub for the Python datastore API.
 
@@ -189,11 +227,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__query_history = {}
 
     self.__next_id = 1
-    self.__next_cursor = 1
     self.__next_tx_handle = 1
     self.__next_index_id = 1
     self.__id_lock = threading.Lock()
-    self.__cursor_lock = threading.Lock()
     self.__tx_handle_lock = threading.Lock()
     self.__index_id_lock = threading.Lock()
     self.__tx_lock = threading.Lock()
@@ -581,6 +617,22 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
                  datastore_pb.Query_Filter.EQUAL:                 '==',
                  }
 
+    def has_prop_indexed(entity, prop):
+      """Returns True if prop is in the entity and is indexed."""
+      if prop in datastore_types._SPECIAL_PROPERTIES:
+        return True
+      elif prop in entity.unindexed_properties():
+        return False
+
+      values = entity.get(prop, [])
+      if not isinstance(values, (tuple, list)):
+        values = [values]
+
+      for value in values:
+        if type(value) not in datastore_types._RAW_PROPERTY_TYPES:
+          return True
+      return False
+
     for filt in query.filter_list():
       assert filt.op() != datastore_pb.Query_Filter.IN
 
@@ -590,20 +642,24 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       filter_val_list = [datastore_types.FromPropertyPb(filter_prop)
                          for filter_prop in filt.property_list()]
 
-      def passes(entity):
-        """ Returns True if the entity passes the filter, False otherwise. """
-        if prop in datastore_types._SPECIAL_PROPERTIES:
-          entity_vals = self.__GetSpecialPropertyValue(entity, prop)
-        else:
-          entity_vals = entity.get(prop, [])
+      def passes_filter(entity):
+        """Returns True if the entity passes the filter, False otherwise.
+
+        The filter being evaluated is filt, the current filter that we're on
+        in the list of filters in the query.
+        """
+        if not has_prop_indexed(entity, prop):
+          return False
+
+        try:
+          entity_vals = datastore._GetPropertyValue(entity, prop)
+        except KeyError:
+          entity_vals = []
 
         if not isinstance(entity_vals, list):
           entity_vals = [entity_vals]
 
         for fixed_entity_val in entity_vals:
-          if type(fixed_entity_val) in datastore_types._RAW_PROPERTY_TYPES:
-            continue
-
           for filter_val in filter_val_list:
             fixed_entity_type = self._PROPERTY_TYPE_TAGS.get(
               fixed_entity_val.__class__)
@@ -627,22 +683,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
         return False
 
-      results = filter(passes, results)
-
-    def has_prop_indexed(entity, prop):
-      """Returns True if prop is in the entity and is not a raw property, or
-      is a special property."""
-      if prop in datastore_types._SPECIAL_PROPERTIES:
-        return True
-
-      values = entity.get(prop, [])
-      if not isinstance(values, (tuple, list)):
-        values = [values]
-
-      for value in values:
-        if type(value) not in datastore_types._RAW_PROPERTY_TYPES:
-          return True
-      return False
+      results = filter(passes_filter, results)
 
     for order in query.order_list():
       prop = order.property().decode('utf-8')
@@ -658,17 +699,13 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
         reverse = (o.direction() is datastore_pb.Query_Order.DESCENDING)
 
-        if prop in datastore_types._SPECIAL_PROPERTIES:
-          a_val = self.__GetSpecialPropertyValue(a, prop)
-          b_val = self.__GetSpecialPropertyValue(b, prop)
-        else:
-          a_val = a[prop]
-          if isinstance(a_val, list):
-            a_val = sorted(a_val, order_compare_properties, reverse=reverse)[0]
+        a_val = datastore._GetPropertyValue(a, prop)
+        if isinstance(a_val, list):
+          a_val = sorted(a_val, order_compare_properties, reverse=reverse)[0]
 
-          b_val = b[prop]
-          if isinstance(b_val, list):
-            b_val = sorted(b_val, order_compare_properties, reverse=reverse)[0]
+        b_val = datastore._GetPropertyValue(b, prop)
+        if isinstance(b_val, list):
+          b_val = sorted(b_val, order_compare_properties, reverse=reverse)[0]
 
         cmped = order_compare_properties(a_val, b_val)
 
@@ -725,39 +762,27 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       self.__query_history[clone] = 1
     self.__WriteHistory()
 
-    self.__cursor_lock.acquire()
-    cursor = self.__next_cursor
-    self.__next_cursor += 1
-    self.__cursor_lock.release()
-    self.__queries[cursor] = (results, len(results))
-
-    query_result.mutable_cursor().set_cursor(cursor)
-    query_result.set_more_results(len(results) > 0)
+    cursor = _Cursor(results, query.keys_only())
+    self.__queries[cursor.cursor] = cursor
+    cursor.PopulateQueryResult(query_result, 0)
 
   def _Dynamic_Next(self, next_request, query_result):
-    cursor = next_request.cursor().cursor()
+    cursor_handle = next_request.cursor().cursor()
 
     try:
-      results, orig_count = self.__queries[cursor]
+      cursor = self.__queries[cursor_handle]
     except KeyError:
-      raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
-                                             'Cursor %d not found' % cursor)
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST, 'Cursor %d not found' % cursor_handle)
 
-    count = next_request.count()
-
-    results_pb = [r._ToPb() for r in results[:count]]
-    query_result.result_list().extend(results_pb)
-    del results[:count]
-
-    query_result.set_more_results(len(results) > 0)
+    cursor.PopulateQueryResult(query_result, next_request.count())
 
   def _Dynamic_Count(self, query, integer64proto):
     self.__ValidateAppId(query.app())
     query_result = datastore_pb.QueryResult()
     self._Dynamic_RunQuery(query, query_result)
     cursor = query_result.cursor().cursor()
-    results, count = self.__queries[cursor]
-    integer64proto.set_value(count)
+    integer64proto.set_value(self.__queries[cursor].count)
     del self.__queries[cursor]
 
   def _Dynamic_BeginTransaction(self, request, transaction):
@@ -945,23 +970,3 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
           return stored_index
 
     return None
-
-  @classmethod
-  def __GetSpecialPropertyValue(cls, entity, property):
-    """Returns an entity's value for a special property.
-
-    Right now, the only special property is __key__, whose value is the
-    entity's key.
-
-    Args:
-      entity: datastore.Entity
-
-    Returns:
-      property value. For __key__, a datastore_types.Key.
-
-    Raises:
-      AssertionError, if the given property is not special.
-    """
-    assert property in datastore_types._SPECIAL_PROPERTIES
-    if property == datastore_types._KEY_SPECIAL_PROPERTY:
-      return entity.key()

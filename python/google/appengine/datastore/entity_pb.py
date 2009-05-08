@@ -1019,6 +1019,10 @@ class Property(ProtocolBuffer.ProtocolMessage):
       if debug_strs is not None:
         debug_strs.append('Required field: value not set.')
     elif not self.value_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_multiple_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: multiple not set.')
     return initialized
 
   def ByteSize(self):
@@ -1027,8 +1031,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     if (self.has_meaning_uri_): n += 1 + self.lengthString(len(self.meaning_uri_))
     n += self.lengthString(len(self.name_))
     n += self.lengthString(self.value_.ByteSize())
-    if (self.has_multiple_): n += 2
-    return n + 2
+    return n + 4
 
   def Clear(self):
     self.clear_meaning()
@@ -1046,9 +1049,8 @@ class Property(ProtocolBuffer.ProtocolMessage):
       out.putPrefixedString(self.meaning_uri_)
     out.putVarInt32(26)
     out.putPrefixedString(self.name_)
-    if (self.has_multiple_):
-      out.putVarInt32(32)
-      out.putBoolean(self.multiple_)
+    out.putVarInt32(32)
+    out.putBoolean(self.multiple_)
     out.putVarInt32(42)
     out.putVarInt32(self.value_.ByteSize())
     self.value_.OutputUnchecked(out)

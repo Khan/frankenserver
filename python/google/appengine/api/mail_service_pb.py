@@ -22,7 +22,7 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
-from google.appengine.api.api_base_pb import VoidProto
+from google.appengine.api.api_base_pb import *
 class MailServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
