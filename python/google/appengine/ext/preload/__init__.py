@@ -189,7 +189,6 @@ import xmlrpclib
 import zipfile
 import zlib
 
-import django
 import neo_cs
 import neo_util
 import webob
@@ -202,13 +201,11 @@ from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import users
 
-from google.appengine.ext import admin
 from google.appengine.ext import bulkload
 from google.appengine.ext import db
 from google.appengine.ext import gql
 from google.appengine.ext import search
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
 
 from google.appengine.runtime import apiproxy
 

@@ -428,7 +428,7 @@ def ConfigureRemoteDatastore(app_id,
   if not app_id:
     if not rtok:
       random.seed()
-      rtok = str(random.randint)
+      rtok = str(random.random())[2:]
     urlargs = {'rtok': rtok}
     response = server.Send(path, payload=None, **urlargs)
     if not response.startswith('{'):

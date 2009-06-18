@@ -3493,7 +3493,8 @@ class QueueJoinThread(threading.Thread):
 def InterruptibleQueueJoin(queue,
                            thread_local,
                            thread_gate,
-                           queue_join_thread_factory=QueueJoinThread):
+                           queue_join_thread_factory=QueueJoinThread,
+                           check_workers=True):
   """Repeatedly joins the given ReQueue or Queue.Queue with short timeout.
 
   Between each timeout on the join, worker threads are checked.
@@ -3503,6 +3504,7 @@ def InterruptibleQueueJoin(queue,
     thread_local: A threading.local instance which indicates interrupts.
     thread_gate: A ThreadGate instance.
     queue_join_thread_factory: Used for dependency injection.
+    check_workers: Whether to interrupt the join on worker death.
 
   Returns:
     True unless the queue join is interrupted by SIGINT or worker death.
@@ -3516,9 +3518,10 @@ def InterruptibleQueueJoin(queue,
     if thread_local.shut_down:
       logger.debug('Queue join interrupted')
       return False
-    for worker_thread in thread_gate.Threads():
-      if not worker_thread.isAlive():
-        return False
+    if check_workers:
+      for worker_thread in thread_gate.Threads():
+        if not worker_thread.isAlive():
+          return False
 
 
 def ShutdownThreads(data_source_thread, work_queue, thread_gate):
@@ -3732,7 +3735,8 @@ class BulkTransporterApp(object):
       thread.CheckError()
 
     if self.progress_thread.isAlive():
-      _Join(progress_queue, 'progress_queue to finish')
+      InterruptibleQueueJoin(progress_queue, thread_local, thread_gate,
+                             check_workers=False)
     else:
       logger.warn('Progress thread exited prematurely')
 
@@ -4004,7 +4008,7 @@ config file.  Please make the following changes:
 
 1. At the top of the file, add this:
 
-from google.appengine.tools import bulkloader.Loader
+from google.appengine.tools.bulkloader import Loader
 
 2. For each of your Loader subclasses add the following at the end of the
    __init__ definitioion:

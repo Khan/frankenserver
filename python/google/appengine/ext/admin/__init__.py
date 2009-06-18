@@ -49,11 +49,13 @@ except ImportError:
 else:
   HAVE_CRON = True
 
+from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_types
 from google.appengine.api import datastore_errors
 from google.appengine.api import memcache
+from google.appengine.api.labs import taskqueue
 from google.appengine.api import users
 from google.appengine.ext import db
 from google.appengine.ext import webapp
@@ -116,6 +118,7 @@ class BaseRequestHandler(webapp.RequestHandler):
       'interactive_path': base_path + InteractivePageHandler.PATH,
       'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
       'memcache_path': base_path + MemcachePageHandler.PATH,
+      'queues_path': base_path + QueuesPageHandler.PATH,
     }
     if HAVE_CRON:
       values['cron_path'] = base_path + CronPageHandler.PATH
@@ -243,6 +246,80 @@ class CronPageHandler(BaseRequestHandler):
           job['times'].append({'runtime': match.strftime("%Y-%m-%d %H:%M:%SZ"),
                                'difference': str(match - now)})
     self.generate('cron.html', values)
+
+
+class QueuesPageHandler(BaseRequestHandler):
+  """Shows information about configured (and default) task queues."""
+  PATH = '/queues'
+
+  def __init__(self):
+    self.stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+
+  def get(self):
+    """Shows template displaying the configured task queues."""
+    values = {
+      'request': self.request,
+      'queues': self.stub.GetQueues(),
+    }
+    self.generate('queues.html', values)
+
+  def post(self):
+    """Handle modifying actions and/or redirect to GET page."""
+
+    if self.request.get('action:flushqueue'):
+      self.stub.FlushQueue(self.request.get('queue'))
+    self.redirect(self.request.path_url)
+
+
+class TasksPageHandler(BaseRequestHandler):
+  """Shows information about a queue's tasks."""
+
+  PATH = '/tasks'
+
+  PAGE_SIZE = 20
+
+  def __init__(self):
+    self.stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+
+  def get(self):
+    """Shows template displaying the queue's tasks."""
+    queue = self.request.get('queue')
+    start = int(self.request.get('start', 0))
+    all_tasks = self.stub.GetTasks(queue)
+
+    next_start = start + self.PAGE_SIZE
+    tasks = all_tasks[start:next_start]
+    current_page = int(start / self.PAGE_SIZE) + 1
+    pages = []
+    for number in xrange(int(math.ceil(len(all_tasks) /
+                                       float(self.PAGE_SIZE)))):
+      pages.append({
+        'number': number + 1,
+        'start': number * self.PAGE_SIZE
+      })
+    if not all_tasks[next_start:]:
+      next_start = -1
+    prev_start = start - self.PAGE_SIZE
+    if prev_start < 0:
+      prev_start = -1
+
+    values = {
+      'request': self.request,
+      'queue_name': queue,
+      'tasks': tasks,
+      'start_base_url': self.filter_url(['queue']),
+      'prev_start': prev_start,
+      'next_start': next_start,
+      'pages': pages,
+      'current_page': current_page,
+    }
+    self.generate('tasks.html', values)
+
+  def post(self):
+    if self.request.get('action:deletetask'):
+      self.stub.DeleteTask(self.request.get('queue'), self.request.get('task'))
+    self.redirect(self.request.path_url + '?queue=' + self.request.get('queue'))
+    return
 
 
 class MemcachePageHandler(BaseRequestHandler):
@@ -1161,6 +1238,8 @@ def main():
     ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
     ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
     ('.*' + ImageHandler.PATH, ImageHandler),
+    ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
+    ('.*' + TasksPageHandler.PATH, TasksPageHandler),
     ('.*', DefaultPageHandler),
   ]
   if HAVE_CRON:

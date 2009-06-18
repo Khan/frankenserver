@@ -21,6 +21,7 @@ Classes/variables/functions defined here:
   APIProxyStubMap: container of APIProxy stubs.
   apiproxy: global instance of an APIProxyStubMap.
   MakeSyncCall: APIProxy entry point.
+  UserRPC: User-visible class wrapping asynchronous RPCs.
 """
 
 
@@ -29,6 +30,9 @@ Classes/variables/functions defined here:
 
 import inspect
 import sys
+
+from google.appengine.api import apiproxy_rpc
+
 
 def CreateRPC(service):
   """Creates a RPC instance for the given service.
@@ -160,7 +164,7 @@ class ListOfHooks(object):
         function(service, call, request, response)
 
 
-class APIProxyStubMap:
+class APIProxyStubMap(object):
   """Container of APIProxy stubs for more convenient unittesting.
 
   Stubs may be either trivial implementations of APIProxy services (e.g.
@@ -202,7 +206,7 @@ class APIProxyStubMap:
       service: string
       stub: stub
     """
-    assert not self.__stub_map.has_key(service)
+    assert not self.__stub_map.has_key(service), repr(service)
     self.__stub_map[service] = stub
 
     if service == 'datastore':
@@ -241,6 +245,203 @@ class APIProxyStubMap:
     self.__postcall_hooks.Call(service, call, request, response)
 
 
+class UserRPC(object):
+  """Wrapper class for asynchronous RPC.
+
+  Simplest low-level usage pattern:
+
+    rpc = UserRPC('service', [deadline], [callback])
+    rpc.make_call('method', request, response)
+    .
+    .
+    .
+    rpc.wait()
+    rpc.check_success()
+
+  However, a service module normally provides a wrapper so that the
+  typical usage pattern becomes more like this:
+
+    from google.appengine.api import service
+    rpc = service.create_rpc([deadline], [callback])
+    service.make_method_call(rpc, [service-specific-args])
+    .
+    .
+    .
+    rpc.wait()
+    result = rpc.get_result()
+
+  The service.make_method_call() function sets a service- and method-
+  specific hook function that is called by rpc.get_result() with the
+  rpc object as its first argument, and service-specific value as its
+  second argument.  The hook function should call rpc.check_success()
+  and then extract the user-level result from the rpc.result
+  protobuffer.  Additional arguments may be passed from
+  make_method_call() to the get_result hook via the second argument.
+  """
+
+  __method = None
+  __get_result_hook = None
+  __user_data = None
+  __postcall_hooks_called = False
+
+  def __init__(self, service, deadline=None, callback=None):
+    """Constructor.
+
+    Args:
+      service: The service name.
+      deadline: Optional deadline.  Default depends on the implementation.
+      callback: Optional argument-less callback function.
+    """
+    self.__service = service
+    self.__rpc = CreateRPC(service)
+    self.__rpc.deadline = deadline
+    self.__rpc.callback = callback
+
+  @property
+  def service(self):
+    """Return the service name."""
+    return self.__service
+
+  @property
+  def method(self):
+    """Return the method name."""
+    return self.__method
+
+  @property
+  def deadline(self):
+    """Return the deadline, if set explicitly (otherwise None)."""
+    return self.__rpc.deadline
+
+  def __get_callback(self):
+    """Return the callback attribute, a function without arguments.
+
+    This attribute can also be assigned to.  For example, the
+    following code calls some_other_function(rpc) when the RPC is
+    complete:
+
+      rpc = service.create_rpc()
+      rpc.callback = lambda: some_other_function(rpc)
+      service.make_method_call(rpc)
+      rpc.wait()
+    """
+    return self.__rpc.callback
+  def __set_callback(self, callback):
+    """Set the callback function."""
+    self.__rpc.callback = callback
+  callback = property(__get_callback, __set_callback)
+
+  @property
+  def request(self):
+    """Return the request protocol buffer object."""
+    return self.__rpc.request
+
+  @property
+  def response(self):
+    """Return the response protocol buffer object."""
+    return self.__rpc.response
+
+  @property
+  def state(self):
+    """Return the RPC state.
+
+    Possible values are attributes of apiproxy_rpc.RPC: IDLE, RUNNING,
+    FINISHING.
+    """
+    return self.__rpc.state
+
+  @property
+  def get_result_hook(self):
+    """Return the get-result hook function."""
+    return self.__get_result_hook
+
+  @property
+  def user_data(self):
+    """Return the user data for the hook function."""
+    return self.__user_data
+
+  def make_call(self, method, request, response,
+                get_result_hook=None, user_data=None):
+    """Initiate a call.
+
+    Args:
+      method: The method name.
+      request: The request protocol buffer.
+      response: The response protocol buffer.
+      get_result_hook: Optional get-result hook function.  If not None,
+        this must be a function with exactly one argument, the RPC
+        object (self).  Its return value is returned from get_result().
+      user_data: Optional additional arbitrary data for the get-result
+        hook function.  This can be accessed as rpc.user_data.  The
+        type of this value is up to the service module.
+
+    This function may only be called once per RPC object.  It sends
+    the request to the remote server, but does not wait for a
+    response.  This allows concurrent execution of the remote call and
+    further local processing (e.g., making additional remote calls).
+
+    Before the call is initiated, the precall hooks are called.
+    """
+    assert self.__rpc.state == apiproxy_rpc.RPC.IDLE, repr(self.state)
+    self.__method = method
+    self.__get_result_hook = get_result_hook
+    self.__user_data = user_data
+    apiproxy.GetPreCallHooks().Call(self.__service, method, request, response)
+    self.__rpc.MakeCall(self.__service, method, request, response)
+
+  def wait(self):
+    """Wait for the call to complete, and call callbacks.
+
+    This is the only time callback functions may be called.  (However,
+    note that check_success() and get_result() call wait().)   Waiting
+    for one RPC may cause callbacks for other RPCs to be called.
+    Callback functions may call check_success() and get_result().
+
+    Callbacks are called without arguments; if a callback needs access
+    to the RPC object a Python nested function (a.k.a. closure) or a
+    bound may be used.  To facilitate this, the callback may be
+    assigned after the RPC object is created (but before make_call()
+    is called).
+
+    Note: don't confuse callbacks with get-result hooks or precall
+    and postcall hooks.
+    """
+    assert self.__rpc.state != apiproxy_rpc.RPC.IDLE, repr(self.state)
+    if self.__rpc.state == apiproxy_rpc.RPC.RUNNING:
+      self.__rpc.Wait()
+    assert self.__rpc.state == apiproxy_rpc.RPC.FINISHING, repr(self.state)
+
+  def check_success(self):
+    """Check for success of the RPC, possibly raising an exception.
+
+    This function should be called at least once per RPC.  If wait()
+    hasn't been called yet, it is called first.  If the RPC caused
+    an exceptional condition, an exception will be raised here.
+    The first time check_success() is called, the postcall hooks
+    are called.
+    """
+    self.wait()
+    self.__rpc.CheckSuccess()
+    if not self.__postcall_hooks_called:
+      self.__postcall_hooks_called = True
+      apiproxy.GetPostCallHooks().Call(self.__service, self.__method,
+                                       self.request, self.response)
+
+  def get_result(self):
+    """Get the result of the RPC, or possibly raise an exception.
+
+    This implies a call to check_success().  If a get-result hook was
+    passed to make_call(), that hook is responsible for calling
+    check_success(), and the return value of the hook is returned.
+    Otherwise, check_success() is called directly and None is
+    returned.
+    """
+    if self.__get_result_hook is None:
+      self.check_success()
+      return None
+    else:
+      return self.__get_result_hook(self)
+
+
 def GetDefaultAPIProxy():
   try:
     runtime = __import__('google.appengine.runtime', globals(), locals(),
@@ -248,5 +449,6 @@ def GetDefaultAPIProxy():
     return APIProxyStubMap(runtime.apiproxy)
   except (AttributeError, ImportError):
     return APIProxyStubMap()
+
 
 apiproxy = GetDefaultAPIProxy()

@@ -188,7 +188,10 @@ class HTTPConnection:
         host = '%s:%s' % (self.host, self.port)
     else:
         host = self.host
-    url = '%s://%s%s' % (self.protocol, host, self._url)
+    if not self._url.startswith(self.protocol):
+      url = '%s://%s%s' % (self.protocol, host, self._url)
+    else:
+      url = self._url
     headers = dict(self.headers)
 
     try:
@@ -237,7 +240,7 @@ class HTTPResponse(object):
   def msg(self):
     msg = mimetools.Message(StringIO.StringIO(''))
     for name, value in self._fetch_response.headers.items():
-      msg[name] = value
+      msg[name] = str(value)
     return msg
 
   version = 11

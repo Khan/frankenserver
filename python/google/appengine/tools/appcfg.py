@@ -48,6 +48,7 @@ import yaml
 from google.appengine.cron import groctimespecification
 from google.appengine.api import appinfo
 from google.appengine.api import croninfo
+from google.appengine.api import queueinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
@@ -57,21 +58,21 @@ from google.appengine.tools import bulkloader
 
 
 MAX_FILES_TO_CLONE = 100
-LIST_DELIMITER = "\n"
-TUPLE_DELIMITER = "|"
+LIST_DELIMITER = '\n'
+TUPLE_DELIMITER = '|'
 
-VERSION_FILE = "../VERSION"
+VERSION_FILE = '../VERSION'
 
 UPDATE_CHECK_TIMEOUT = 3
 
-NAG_FILE = ".appcfg_nag"
+NAG_FILE = '.appcfg_nag'
 
 MAX_LOG_LEVEL = 4
 
 verbosity = 1
 
 
-appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = "python"
+appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = 'python'
 _api_versions = os.environ.get('GOOGLE_TEST_API_VERSIONS', '1')
 _options = validation.Options(*_api_versions.split(','))
 appinfo.AppInfoExternal.ATTRIBUTES[appinfo.API_VERSION] = _options
@@ -106,9 +107,9 @@ def GetMimeTypeIfStaticFile(config, filename):
   """
   for handler in config.handlers:
     handler_type = handler.GetHandlerType()
-    if handler_type in ("static_dir", "static_files"):
-      if handler_type == "static_dir":
-        regex = os.path.join(re.escape(handler.GetHandler()), ".*")
+    if handler_type in ('static_dir', 'static_files'):
+      if handler_type == 'static_dir':
+        regex = os.path.join(re.escape(handler.GetHandler()), '.*')
       else:
         regex = handler.upload
       if re.match(regex, filename):
@@ -117,8 +118,8 @@ def GetMimeTypeIfStaticFile(config, filename):
         else:
           guess = mimetypes.guess_type(filename)[0]
           if guess is None:
-            default = "application/octet-stream"
-            print >>sys.stderr, ("Could not guess mimetype for %s.  Using %s."
+            default = 'application/octet-stream'
+            print >>sys.stderr, ('Could not guess mimetype for %s.  Using %s.'
                                  % (filename, default))
             return default
           return guess
@@ -153,8 +154,8 @@ class NagFile(validation.Validated):
   """
 
   ATTRIBUTES = {
-      "timestamp": validation.TYPE_FLOAT,
-      "opt_in": validation.Optional(validation.TYPE_BOOL),
+      'timestamp': validation.TYPE_FLOAT,
+      'opt_in': validation.Optional(validation.TYPE_BOOL),
   }
 
   @staticmethod
@@ -183,10 +184,10 @@ def GetVersionObject(isfile=os.path.isfile, open_fn=open):
   version_filename = os.path.join(os.path.dirname(google.__file__),
                                   VERSION_FILE)
   if not isfile(version_filename):
-    logging.error("Could not find version file at %s", version_filename)
+    logging.error('Could not find version file at %s', version_filename)
     return None
 
-  version_fh = open_fn(version_filename, "r")
+  version_fh = open_fn(version_filename, 'r')
   try:
     version = yaml.safe_load(version_fh)
   finally:
@@ -194,28 +195,29 @@ def GetVersionObject(isfile=os.path.isfile, open_fn=open):
 
   return version
 
-def RetryWithBackoff(initial_delay, backoff_factor, max_tries, callable):
-    """Calls a function multiple times, backing off more and more each time.
 
-    Args:
-      initial_delay: Initial delay after first try, in seconds.
-      backoff_factor: Delay will be multiplied by this factor after each try.
-      max_tries: Maximum number of tries.
-      callable: The method to call, will pass no arguments.
+def RetryWithBackoff(initial_delay, backoff_factor, max_tries, callable_func):
+  """Calls a function multiple times, backing off more and more each time.
 
-    Returns:
-      True if the function succeded in one of its tries.
+  Args:
+    initial_delay: Initial delay after first try, in seconds.
+    backoff_factor: Delay will be multiplied by this factor after each try.
+    max_tries: Maximum number of tries.
+    callable_func: The method to call, will pass no arguments.
 
-    Raises:
-      Whatever the function raises--an exception will immediately stop retries.
-    """
-    delay = initial_delay
-    while not callable() and max_tries > 0:
-      StatusUpdate("Will check again in %s seconds." % delay)
-      time.sleep(delay)
-      delay *= backoff_factor
-      max_tries -= 1
-    return max_tries > 0
+  Returns:
+    True if the function succeded in one of its tries.
+
+  Raises:
+    Whatever the function raises--an exception will immediately stop retries.
+  """
+  delay = initial_delay
+  while not callable_func() and max_tries > 0:
+    StatusUpdate('Will check again in %s seconds.' % delay)
+    time.sleep(delay)
+    delay *= backoff_factor
+    max_tries -= 1
+  return max_tries > 0
 
 
 class UpdateCheck(object):
@@ -260,13 +262,13 @@ class UpdateCheck(object):
   @staticmethod
   def MakeNagFilename():
     """Returns the filename for the nag file for this user."""
-    user_homedir = os.path.expanduser("~/")
+    user_homedir = os.path.expanduser('~/')
     if not os.path.isdir(user_homedir):
       drive, unused_tail = os.path.splitdrive(os.__file__)
       if drive:
-        os.environ["HOMEDRIVE"] = drive
+        os.environ['HOMEDRIVE'] = drive
 
-    return os.path.expanduser("~/" + NAG_FILE)
+    return os.path.expanduser('~/' + NAG_FILE)
 
   def _ParseVersionFile(self):
     """Parse the local VERSION file.
@@ -287,14 +289,14 @@ class UpdateCheck(object):
     """
     version = self._ParseVersionFile()
     if version is None:
-      logging.error("Could not determine if the SDK supports the api_version "
-                    "requested in app.yaml.")
+      logging.error('Could not determine if the SDK supports the api_version '
+                    'requested in app.yaml.')
       return
-    if self.config.api_version not in version["api_versions"]:
-      logging.critical("The api_version specified in app.yaml (%s) is not "
-                       "supported by this release of the SDK.  The supported "
-                       "api_versions are %s.",
-                       self.config.api_version, version["api_versions"])
+    if self.config.api_version not in version['api_versions']:
+      logging.critical('The api_version specified in app.yaml (%s) is not '
+                       'supported by this release of the SDK.  The supported '
+                       'api_versions are %s.',
+                       self.config.api_version, version['api_versions'])
       sys.exit(1)
 
   def CheckForUpdates(self):
@@ -303,9 +305,9 @@ class UpdateCheck(object):
     Queries the server for the latest SDK version at the same time reporting
     the local SDK version.  The server will respond with a yaml document
     containing the fields:
-      "release": The name of the release (e.g. 1.2).
-      "timestamp": The time the release was created (YYYY-MM-DD HH:MM AM/PM TZ).
-      "api_versions": A list of api_version strings (e.g. ['1', 'beta']).
+      'release': The name of the release (e.g. 1.2).
+      'timestamp': The time the release was created (YYYY-MM-DD HH:MM AM/PM TZ).
+      'api_versions': A list of api_version strings (e.g. ['1', 'beta']).
 
     We will nag the user with increasing severity if:
     - There is a new release.
@@ -315,42 +317,42 @@ class UpdateCheck(object):
     """
     version = self._ParseVersionFile()
     if version is None:
-      logging.info("Skipping update check")
+      logging.info('Skipping update check')
       return
-    logging.info("Checking for updates to the SDK.")
+    logging.info('Checking for updates to the SDK.')
 
     try:
-      response = self.server.Send("/api/updatecheck",
+      response = self.server.Send('/api/updatecheck',
                                   timeout=UPDATE_CHECK_TIMEOUT,
-                                  release=version["release"],
-                                  timestamp=version["timestamp"],
-                                  api_versions=version["api_versions"])
+                                  release=version['release'],
+                                  timestamp=version['timestamp'],
+                                  api_versions=version['api_versions'])
     except urllib2.URLError, e:
-      logging.info("Update check failed: %s", e)
+      logging.info('Update check failed: %s', e)
       return
 
     latest = yaml.safe_load(response)
-    if latest["release"] == version["release"]:
-      logging.info("The SDK is up to date.")
+    if latest['release'] == version['release']:
+      logging.info('The SDK is up to date.')
       return
 
-    api_versions = latest["api_versions"]
+    api_versions = latest['api_versions']
     if self.config.api_version not in api_versions:
       self._Nag(
-          "The api version you are using (%s) is obsolete!  You should\n"
-          "upgrade your SDK and test that your code works with the new\n"
-          "api version." % self.config.api_version,
+          'The api version you are using (%s) is obsolete!  You should\n'
+          'upgrade your SDK and test that your code works with the new\n'
+          'api version.' % self.config.api_version,
           latest, version, force=True)
       return
 
     if self.config.api_version != api_versions[len(api_versions) - 1]:
       self._Nag(
-          "The api version you are using (%s) is deprecated. You should\n"
-          "upgrade your SDK to try the new functionality." %
+          'The api version you are using (%s) is deprecated. You should\n'
+          'upgrade your SDK to try the new functionality.' %
           self.config.api_version, latest, version)
       return
 
-    self._Nag("There is a new release of the SDK available.",
+    self._Nag('There is a new release of the SDK available.',
               latest, version)
 
   def _ParseNagFile(self):
@@ -361,7 +363,7 @@ class UpdateCheck(object):
     """
     nag_filename = UpdateCheck.MakeNagFilename()
     if self.isfile(nag_filename):
-      fh = self.open(nag_filename, "r")
+      fh = self.open(nag_filename, 'r')
       try:
         nag = NagFile.Load(fh)
       finally:
@@ -380,13 +382,13 @@ class UpdateCheck(object):
     """
     nagfilename = UpdateCheck.MakeNagFilename()
     try:
-      fh = self.open(nagfilename, "w")
+      fh = self.open(nagfilename, 'w')
       try:
         fh.write(nag.ToYAML())
       finally:
         fh.close()
     except (OSError, IOError), e:
-      logging.error("Could not write nag file to %s. Error: %s", nagfilename, e)
+      logging.error('Could not write nag file to %s. Error: %s', nagfilename, e)
 
   def _Nag(self, msg, latest, version, force=False):
     """Prints a nag message and updates the nag file's timestamp.
@@ -406,7 +408,7 @@ class UpdateCheck(object):
     if nag and not force:
       last_nag = datetime.datetime.fromtimestamp(nag.timestamp)
       if datetime.datetime.now() - last_nag < datetime.timedelta(weeks=1):
-        logging.debug("Skipping nag message")
+        logging.debug('Skipping nag message')
         return
 
     if nag is None:
@@ -414,17 +416,17 @@ class UpdateCheck(object):
     nag.timestamp = time.time()
     self._WriteNagFile(nag)
 
-    print "****************************************************************"
+    print '****************************************************************'
     print msg
-    print "-----------"
-    print "Latest SDK:"
+    print '-----------'
+    print 'Latest SDK:'
     print yaml.dump(latest)
-    print "-----------"
-    print "Your SDK:"
+    print '-----------'
+    print 'Your SDK:'
     print yaml.dump(version)
-    print "-----------"
-    print "Please visit http://code.google.com/appengine for the latest SDK"
-    print "****************************************************************"
+    print '-----------'
+    print 'Please visit http://code.google.com/appengine for the latest SDK'
+    print '****************************************************************'
 
   def AllowedToCheckForUpdates(self, input_fn=raw_input):
     """Determines if the user wants to check for updates.
@@ -450,16 +452,16 @@ class UpdateCheck(object):
       nag.timestamp = time.time()
 
     if nag.opt_in is None:
-      answer = input_fn("Allow dev_appserver to check for updates on startup? "
-                        "(Y/n): ")
+      answer = input_fn('Allow dev_appserver to check for updates on startup? '
+                        '(Y/n): ')
       answer = answer.strip().lower()
-      if answer == "n" or answer == "no":
-        print ("dev_appserver will not check for updates on startup.  To "
-               "change this setting, edit %s" % UpdateCheck.MakeNagFilename())
+      if answer == 'n' or answer == 'no':
+        print ('dev_appserver will not check for updates on startup.  To '
+               'change this setting, edit %s' % UpdateCheck.MakeNagFilename())
         nag.opt_in = False
       else:
-        print ("dev_appserver will check for updates on startup.  To change "
-               "this setting, edit %s" % UpdateCheck.MakeNagFilename())
+        print ('dev_appserver will check for updates on startup.  To change '
+               'this setting, edit %s' % UpdateCheck.MakeNagFilename())
         nag.opt_in = True
       self._WriteNagFile(nag)
     return nag.opt_in
@@ -483,8 +485,8 @@ class IndexDefinitionUpload(object):
 
   def DoUpload(self):
     """Uploads the index definitions."""
-    StatusUpdate("Uploading index definitions.")
-    self.server.Send("/api/datastore/index/add",
+    StatusUpdate('Uploading index definitions.')
+    self.server.Send('/api/datastore/index/add',
                      app_id=self.config.application,
                      version=self.config.version,
                      payload=self.definitions.ToYAML())
@@ -508,11 +510,36 @@ class CronEntryUpload(object):
 
   def DoUpload(self):
     """Uploads the cron entries."""
-    StatusUpdate("Uploading cron entries.")
-    self.server.Send("/api/datastore/cron/update",
+    StatusUpdate('Uploading cron entries.')
+    self.server.Send('/api/datastore/cron/update',
                      app_id=self.config.application,
                      version=self.config.version,
                      payload=self.cron.ToYAML())
+
+
+class QueueEntryUpload(object):
+  """Provides facilities to upload task queue entries to the hosting service."""
+
+  def __init__(self, server, config, queue):
+    """Creates a new QueueEntryUpload.
+
+    Args:
+      server: The RPC server to use.  Should be an instance of a subclass of
+      AbstractRpcServer
+      config: The AppInfoExternal object derived from the app.yaml file.
+      queue: The QueueInfoExternal object loaded from the queue.yaml file.
+    """
+    self.server = server
+    self.config = config
+    self.queue = queue
+
+  def DoUpload(self):
+    """Uploads the task queue entries."""
+    StatusUpdate('Uploading task queue entries.')
+    self.server.Send('/api/queue/update',
+                     app_id=self.config.application,
+                     version=self.config.version,
+                     payload=self.queue.ToYAML())
 
 
 class IndexOperation(object):
@@ -543,8 +570,8 @@ class IndexOperation(object):
       present on the server but missing from the index.yaml file (indicating
       that these indexes should probably be vacuumed).
     """
-    StatusUpdate("Fetching index definitions diff.")
-    response = self.server.Send("/api/datastore/index/diff",
+    StatusUpdate('Fetching index definitions diff.')
+    response = self.server.Send('/api/datastore/index/diff',
                                 app_id=self.config.application,
                                 payload=definitions.ToYAML())
     return datastore_index.ParseMultipleIndexDefinitions(response)
@@ -561,8 +588,8 @@ class IndexOperation(object):
       be normal behavior as there is a potential race condition between fetching
       the index-diff and sending deletion confirmation through.
     """
-    StatusUpdate("Deleting selected index definitions.")
-    response = self.server.Send("/api/datastore/index/delete",
+    StatusUpdate('Deleting selected index definitions.')
+    response = self.server.Send('/api/datastore/index/delete',
                                 app_id=self.config.application,
                                 payload=definitions.ToYAML())
     return datastore_index.ParseIndexDefinitions(response)
@@ -608,24 +635,24 @@ class VacuumIndexesOperation(IndexOperation):
       True if user enters 'y' or 'a'.  False if user enter 'n'.
     """
     while True:
-      print "This index is no longer defined in your index.yaml file."
+      print 'This index is no longer defined in your index.yaml file.'
       print
       print index.ToYAML()
       print
 
       confirmation = self.confirmation_fn(
-          "Are you sure you want to delete this index? (N/y/a): ")
+          'Are you sure you want to delete this index? (N/y/a): ')
       confirmation = confirmation.strip().lower()
 
-      if confirmation == "y":
+      if confirmation == 'y':
         return True
-      elif confirmation == "n" or not confirmation:
+      elif confirmation == 'n' or not confirmation:
         return False
-      elif confirmation == "a":
+      elif confirmation == 'a':
         self.force = True
         return True
       else:
-        print "Did not understand your response."
+        print 'Did not understand your response.'
 
   def DoVacuum(self, definitions):
     """Vacuum indexes in datastore.
@@ -659,11 +686,11 @@ class VacuumIndexesOperation(IndexOperation):
       if not_deleted.indexes:
         not_deleted_count = len(not_deleted.indexes)
         if not_deleted_count == 1:
-          warning_message = ("An index was not deleted.  Most likely this is "
-                             "because it no longer exists.\n\n")
+          warning_message = ('An index was not deleted.  Most likely this is '
+                             'because it no longer exists.\n\n')
         else:
-          warning_message = ("%d indexes were not deleted.  Most likely this "
-                             "is because they no longer exist.\n\n"
+          warning_message = ('%d indexes were not deleted.  Most likely this '
+                             'is because they no longer exist.\n\n'
                              % not_deleted_count)
         for index in not_deleted.indexes:
           warning_message += index.ToYAML()
@@ -674,7 +701,7 @@ class LogsRequester(object):
   """Provide facilities to export request logs."""
 
   def __init__(self, server, config, output_file,
-               num_days, append, severity, now, vhost):
+               num_days, append, severity, now, vhost, include_vhost):
     """Constructor.
 
     Args:
@@ -687,6 +714,7 @@ class LogsRequester(object):
       severity: App log severity to request (0-4); None for no app logs.
       now: POSIX timestamp used for calculating valid dates for num_days.
       vhost: The virtual host of log messages to get. None for all hosts.
+      include_vhost: If true, the virtual host is included in log messages.
     """
     self.server = server
     self.config = config
@@ -695,21 +723,22 @@ class LogsRequester(object):
     self.num_days = num_days
     self.severity = severity
     self.vhost = vhost
-    self.version_id = self.config.version + ".1"
+    self.include_vhost = include_vhost
+    self.version_id = self.config.version + '.1'
     self.sentinel = None
-    self.write_mode = "w"
+    self.write_mode = 'w'
     if self.append:
       self.sentinel = FindSentinel(self.output_file)
-      self.write_mode = "a"
+      self.write_mode = 'a'
     self.valid_dates = None
     if self.num_days:
       patterns = []
       now = PacificTime(now)
       for i in xrange(self.num_days):
         then = time.gmtime(now - 24*3600 * i)
-        patterns.append(re.escape(time.strftime("%d/%m/%Y", then)))
-        patterns.append(re.escape(time.strftime("%d/%b/%Y", then)))
-      self.valid_dates = re.compile(r"[^[]+\[(" + "|".join(patterns) + r"):")
+        patterns.append(re.escape(time.strftime('%d/%m/%Y', then)))
+        patterns.append(re.escape(time.strftime('%d/%b/%Y', then)))
+      self.valid_dates = re.compile(r'[^[]+\[(' + '|'.join(patterns) + r'):')
 
   def DownloadLogs(self):
     """Download the requested logs.
@@ -718,7 +747,7 @@ class LogsRequester(object):
     self.output_file, or to stdout if the filename is '-'.
     Multiple roundtrips to the server may be made.
     """
-    StatusUpdate("Downloading request logs for %s %s." %
+    StatusUpdate('Downloading request logs for %s %s.' %
                  (self.config.application, self.version_id))
     tf = tempfile.TemporaryFile()
     offset = None
@@ -729,16 +758,16 @@ class LogsRequester(object):
           if not offset:
             break
         except KeyboardInterrupt:
-          StatusUpdate("Keyboard interrupt; saving data downloaded so far.")
+          StatusUpdate('Keyboard interrupt; saving data downloaded so far.')
           break
-      StatusUpdate("Copying request logs to %r." % self.output_file)
-      if self.output_file == "-":
+      StatusUpdate('Copying request logs to %r.' % self.output_file)
+      if self.output_file == '-':
         of = sys.stdout
       else:
         try:
           of = open(self.output_file, self.write_mode)
         except IOError, err:
-          StatusUpdate("Can't write %r: %s." % (self.output_file, err))
+          StatusUpdate('Can\'t write %r: %s.' % (self.output_file, err))
           sys.exit(1)
       try:
         line_count = CopyReversedLines(tf, of)
@@ -748,7 +777,7 @@ class LogsRequester(object):
           of.close()
     finally:
       tf.close()
-    StatusUpdate("Copied %d records." % line_count)
+    StatusUpdate('Copied %d records.' % line_count)
 
   def RequestLogLines(self, tf, offset):
     """Make a single roundtrip to the server.
@@ -763,28 +792,30 @@ class LogsRequester(object):
       The offset string to be used for the next request, if another
       request should be issued; or None, if not.
     """
-    logging.info("Request with offset %r.", offset)
-    kwds = {"app_id": self.config.application,
-            "version": self.version_id,
-            "limit": 100,
+    logging.info('Request with offset %r.', offset)
+    kwds = {'app_id': self.config.application,
+            'version': self.version_id,
+            'limit': 100,
            }
     if offset:
-      kwds["offset"] = offset
+      kwds['offset'] = offset
     if self.severity is not None:
-      kwds["severity"] = str(self.severity)
+      kwds['severity'] = str(self.severity)
     if self.vhost is not None:
-      kwds["vhost"] = str(self.vhost)
-    response = self.server.Send("/api/request_logs", payload=None, **kwds)
-    response = response.replace("\r", "\0")
+      kwds['vhost'] = str(self.vhost)
+    if self.include_vhost is not None:
+      kwds['include_vhost'] = str(self.include_vhost)
+    response = self.server.Send('/api/request_logs', payload=None, **kwds)
+    response = response.replace('\r', '\0')
     lines = response.splitlines()
-    logging.info("Received %d bytes, %d records.", len(response), len(lines))
+    logging.info('Received %d bytes, %d records.', len(response), len(lines))
     offset = None
-    if lines and lines[0].startswith("#"):
-      match = re.match(r"^#\s*next_offset=(\S+)\s*$", lines[0])
+    if lines and lines[0].startswith('#'):
+      match = re.match(r'^#\s*next_offset=(\S+)\s*$', lines[0])
       del lines[0]
       if match:
         offset = match.group(1)
-    if lines and lines[-1].startswith("#"):
+    if lines and lines[-1].startswith('#'):
       del lines[-1]
     valid_dates = self.valid_dates
     sentinel = self.sentinel
@@ -794,10 +825,10 @@ class LogsRequester(object):
     for line in lines:
       if ((sentinel and
            line.startswith(sentinel) and
-           line[len_sentinel : len_sentinel+1] in ("", "\0")) or
+           line[len_sentinel : len_sentinel+1] in ('', '\0')) or
           (valid_dates and not valid_dates.match(line))):
         return None
-      tf.write(line + "\n")
+      tf.write(line + '\n')
     if not lines:
       return None
     return offset
@@ -861,9 +892,9 @@ def CopyReversedLines(instream, outstream, blocksize=2**16):
   r"""Copy lines from input stream to output stream in reverse order.
 
   As a special feature, null bytes in the input are turned into
-  newlines followed by tabs in the output, but these "sub-lines"
+  newlines followed by tabs in the output, but these 'sub-lines'
   separated by null bytes are not reversed.  E.g. If the input is
-  "A\0B\nC\0D\n", the output is "C\n\tD\nA\n\tB\n".
+  'A\0B\nC\0D\n', the output is 'C\n\tD\nA\n\tB\n'.
 
   Args:
     instream: A seekable stream open for reading in binary mode.
@@ -876,20 +907,20 @@ def CopyReversedLines(instream, outstream, blocksize=2**16):
   line_count = 0
   instream.seek(0, 2)
   last_block = instream.tell() // blocksize
-  spillover = ""
+  spillover = ''
   for iblock in xrange(last_block + 1, -1, -1):
     instream.seek(iblock * blocksize)
     data = instream.read(blocksize)
     lines = data.splitlines(True)
-    lines[-1:] = "".join(lines[-1:] + [spillover]).splitlines(True)
-    if lines and not lines[-1].endswith("\n"):
-      lines[-1] += "\n"
+    lines[-1:] = ''.join(lines[-1:] + [spillover]).splitlines(True)
+    if lines and not lines[-1].endswith('\n'):
+      lines[-1] += '\n'
     lines.reverse()
     if lines and iblock > 0:
       spillover = lines.pop()
     if lines:
       line_count += len(lines)
-      data = "".join(lines).replace("\0", "\n\t")
+      data = ''.join(lines).replace('\0', '\n\t')
       outstream.write(data)
   return line_count
 
@@ -907,13 +938,13 @@ def FindSentinel(filename, blocksize=2**16):
     couldn't be opened or no such line could be found by inspecting
     the last 'blocksize' bytes of the file.
   """
-  if filename == "-":
-    StatusUpdate("Can't combine --append with output to stdout.")
+  if filename == '-':
+    StatusUpdate('Can\'t combine --append with output to stdout.')
     sys.exit(2)
   try:
-    fp = open(filename, "rb")
+    fp = open(filename, 'rb')
   except IOError, err:
-    StatusUpdate("Append mode disabled: can't read %r: %s." % (filename, err))
+    StatusUpdate('Append mode disabled: can\'t read %r: %s.' % (filename, err))
     return None
   try:
     fp.seek(0, 2)
@@ -922,13 +953,13 @@ def FindSentinel(filename, blocksize=2**16):
     del lines[:1]
     sentinel = None
     for line in lines:
-      if not line.startswith("\t"):
+      if not line.startswith('\t'):
         sentinel = line
     if not sentinel:
-      StatusUpdate("Append mode disabled: can't find sentinel in %r." %
+      StatusUpdate('Append mode disabled: can\'t find sentinel in %r.' %
                    filename)
       return None
-    return sentinel.rstrip("\n")
+    return sentinel.rstrip('\n')
   finally:
     fp.close()
 
@@ -975,7 +1006,7 @@ class AppVersionUpload(object):
       The string representation of the hash.
     """
     h = sha.new(content).hexdigest()
-    return "%s_%s_%s_%s_%s" % (h[0:8], h[8:16], h[16:24], h[24:32], h[32:40])
+    return '%s_%s_%s_%s_%s' % (h[0:8], h[8:16], h[16:24], h[24:32], h[32:40])
 
   def AddFile(self, path, file_handle):
     """Adds the provided file to the list to be pushed to the server.
@@ -984,7 +1015,7 @@ class AppVersionUpload(object):
       path: The path the file should be uploaded as.
       file_handle: A stream containing data to upload.
     """
-    assert not self.in_transaction, "Already in a transaction."
+    assert not self.in_transaction, 'Already in a transaction.'
     assert file_handle is not None
 
     reason = appinfo.ValidFilename(path)
@@ -1007,10 +1038,10 @@ class AppVersionUpload(object):
       A list of pathnames for files that should be uploaded using UploadFile()
       before Commit() can be called.
     """
-    assert not self.in_transaction, "Already in a transaction."
+    assert not self.in_transaction, 'Already in a transaction.'
 
-    StatusUpdate("Initiating update.")
-    self.server.Send("/api/appversion/create", app_id=self.app_id,
+    StatusUpdate('Initiating update.')
+    self.server.Send('/api/appversion/create', app_id=self.app_id,
                      version=self.version, payload=self.config.ToYAML())
     self.in_transaction = True
 
@@ -1036,11 +1067,11 @@ class AppVersionUpload(object):
       if not files:
         return
 
-      StatusUpdate("Cloning %d %s file%s." %
-                   (len(files), file_type, len(files) != 1 and "s" or ""))
+      StatusUpdate('Cloning %d %s file%s.' %
+                   (len(files), file_type, len(files) != 1 and 's' or ''))
       for i in xrange(0, len(files), MAX_FILES_TO_CLONE):
         if i > 0 and i % MAX_FILES_TO_CLONE == 0:
-          StatusUpdate("Cloned %d files." % i)
+          StatusUpdate('Cloned %d files.' % i)
 
         chunk = files[i:min(len(files), i + MAX_FILES_TO_CLONE)]
         result = self.server.Send(url,
@@ -1050,10 +1081,10 @@ class AppVersionUpload(object):
           files_to_upload.update(dict(
               (f, self.files[f]) for f in result.split(LIST_DELIMITER)))
 
-    CloneFiles("/api/appversion/cloneblobs", blobs_to_clone, "static")
-    CloneFiles("/api/appversion/clonefiles", files_to_clone, "application")
+    CloneFiles('/api/appversion/cloneblobs', blobs_to_clone, 'static')
+    CloneFiles('/api/appversion/clonefiles', files_to_clone, 'application')
 
-    logging.info("Files to upload: " + str(files_to_upload))
+    logging.info('Files to upload: ' + str(files_to_upload))
 
     self.files = files_to_upload
     return sorted(files_to_upload.iterkeys())
@@ -1071,19 +1102,19 @@ class AppVersionUpload(object):
     Raises:
       KeyError: The provided file is not amongst those to be uploaded.
     """
-    assert self.in_transaction, "Begin() must be called before UploadFile()."
+    assert self.in_transaction, 'Begin() must be called before UploadFile().'
     if path not in self.files:
-      raise KeyError("File '%s' is not in the list of files to be uploaded."
+      raise KeyError('File \'%s\' is not in the list of files to be uploaded.'
                      % path)
 
     del self.files[path]
     mime_type = GetMimeTypeIfStaticFile(self.config, path)
     if mime_type is not None:
-      self.server.Send("/api/appversion/addblob", app_id=self.app_id,
+      self.server.Send('/api/appversion/addblob', app_id=self.app_id,
                        version=self.version, path=path, content_type=mime_type,
                        payload=file_handle.read())
     else:
-      self.server.Send("/api/appversion/addfile", app_id=self.app_id,
+      self.server.Send('/api/appversion/addfile', app_id=self.app_id,
                        version=self.version, path=path,
                        payload=file_handle.read())
 
@@ -1098,21 +1129,21 @@ class AppVersionUpload(object):
     Raises:
       Exception: Some required files were not uploaded.
     """
-    assert self.in_transaction, "Begin() must be called before Commit()."
+    assert self.in_transaction, 'Begin() must be called before Commit().'
     if self.files:
-      raise Exception("Not all required files have been uploaded.")
+      raise Exception('Not all required files have been uploaded.')
 
     try:
       self.Deploy()
       if not RetryWithBackoff(1, 2, 8, self.IsReady):
-        logging.warning("Version still not ready to serve, aborting.")
-        raise Exception("Version not ready.")
+        logging.warning('Version still not ready to serve, aborting.')
+        raise Exception('Version not ready.')
       self.StartServing()
     except urllib2.HTTPError, e:
       if e.code != 404:
         raise
-      StatusUpdate("Closing update.")
-      self.server.Send("/api/appversion/commit", app_id=self.app_id,
+      StatusUpdate('Closing update.')
+      self.server.Send('/api/appversion/commit', app_id=self.app_id,
                        version=self.version)
       self.in_transaction = False
 
@@ -1125,12 +1156,12 @@ class AppVersionUpload(object):
     Raises:
       Exception: Some required files were not uploaded.
     """
-    assert self.in_transaction, "Begin() must be called before Deploy()."
+    assert self.in_transaction, 'Begin() must be called before Deploy().'
     if self.files:
-      raise Exception("Not all required files have been uploaded.")
+      raise Exception('Not all required files have been uploaded.')
 
-    StatusUpdate("Deploying new version.")
-    self.server.Send("/api/appversion/deploy", app_id=self.app_id,
+    StatusUpdate('Deploying new version.')
+    self.server.Send('/api/appversion/deploy', app_id=self.app_id,
                      version=self.version)
     self.deployed = True
 
@@ -1143,12 +1174,12 @@ class AppVersionUpload(object):
     Returns:
       True if the server returned the app is ready to serve.
     """
-    assert self.deployed, "Deploy() must be called before IsReady()."
+    assert self.deployed, 'Deploy() must be called before IsReady().'
 
-    StatusUpdate("Checking if new version is ready to serve.")
-    result = self.server.Send("/api/appversion/isready", app_id=self.app_id,
+    StatusUpdate('Checking if new version is ready to serve.')
+    result = self.server.Send('/api/appversion/isready', app_id=self.app_id,
                               version=self.version)
-    return result == "1"
+    return result == '1'
 
   def StartServing(self):
     """Start serving with the newly created version.
@@ -1156,10 +1187,10 @@ class AppVersionUpload(object):
     Raises:
       Exception: Deploy has not yet been called.
     """
-    assert self.deployed, "Deploy() must be called before IsReady()."
+    assert self.deployed, 'Deploy() must be called before IsReady().'
 
-    StatusUpdate("Closing update: new version is ready to start serving.")
-    self.server.Send("/api/appversion/startserving",
+    StatusUpdate('Closing update: new version is ready to start serving.')
+    self.server.Send('/api/appversion/startserving',
                      app_id=self.app_id, version=self.version)
     self.in_transaction = False
 
@@ -1167,8 +1198,8 @@ class AppVersionUpload(object):
     """Rolls back the transaction if one is in progress."""
     if not self.in_transaction:
       return
-    StatusUpdate("Rolling back the update.")
-    self.server.Send("/api/appversion/rollback", app_id=self.app_id,
+    StatusUpdate('Rolling back the update.')
+    self.server.Send('/api/appversion/rollback', app_id=self.app_id,
                      version=self.version)
     self.in_transaction = False
     self.files = {}
@@ -1181,47 +1212,47 @@ class AppVersionUpload(object):
       max_size: The maximum size file to upload.
       openfunc: A function that takes a path and returns a file-like object.
     """
-    logging.info("Reading app configuration.")
+    logging.info('Reading app configuration.')
 
-    path = ""
+    path = ''
     try:
-      StatusUpdate("Scanning files on local disk.")
+      StatusUpdate('Scanning files on local disk.')
       num_files = 0
       for path in paths:
         file_handle = openfunc(path)
         try:
           if self.config.skip_files.match(path):
-            logging.info("Ignoring file '%s': File matches ignore regex.",
+            logging.info('Ignoring file \'%s\': File matches ignore regex.',
                          path)
           else:
             file_length = GetFileLength(file_handle)
             if file_length > max_size:
-              logging.error("Ignoring file '%s': Too long "
-                            "(max %d bytes, file is %d bytes)",
+              logging.error('Ignoring file \'%s\': Too long '
+                            '(max %d bytes, file is %d bytes)',
                             path, max_size, file_length)
             else:
-              logging.info("Processing file '%s'", path)
+              logging.info('Processing file \'%s\'', path)
               self.AddFile(path, file_handle)
         finally:
           file_handle.close()
         num_files += 1
         if num_files % 500 == 0:
-          StatusUpdate("Scanned %d files." % num_files)
+          StatusUpdate('Scanned %d files.' % num_files)
     except KeyboardInterrupt:
-      logging.info("User interrupted. Aborting.")
+      logging.info('User interrupted. Aborting.')
       raise
     except EnvironmentError, e:
-      logging.error("An error occurred processing file '%s': %s. Aborting.",
+      logging.error('An error occurred processing file \'%s\': %s. Aborting.',
                     path, e)
       raise
 
     try:
       missing_files = self.Begin()
       if missing_files:
-        StatusUpdate("Uploading %d files." % len(missing_files))
+        StatusUpdate('Uploading %d files.' % len(missing_files))
         num_files = 0
         for missing_file in missing_files:
-          logging.info("Uploading file '%s'" % missing_file)
+          logging.info('Uploading file \'%s\'' % missing_file)
           file_handle = openfunc(missing_file)
           try:
             self.UploadFile(missing_file, file_handle)
@@ -1229,20 +1260,20 @@ class AppVersionUpload(object):
             file_handle.close()
           num_files += 1
           if num_files % 500 == 0:
-            StatusUpdate("Uploaded %d files." % num_files)
+            StatusUpdate('Uploaded %d files.' % num_files)
 
       self.Commit()
 
     except KeyboardInterrupt:
-      logging.info("User interrupted. Aborting.")
+      logging.info('User interrupted. Aborting.')
       self.Rollback()
       raise
     except:
-      logging.exception("An unexpected error occurred. Aborting.")
+      logging.exception('An unexpected error occurred. Aborting.')
       self.Rollback()
       raise
 
-    logging.info("Done!")
+    logging.info('Done!')
 
 
 def FileIterator(base, separator=os.path.sep):
@@ -1255,15 +1286,15 @@ def FileIterator(base, separator=os.path.sep):
   Yields:
     Paths of files found, relative to base.
   """
-  dirs = [""]
+  dirs = ['']
   while dirs:
     current_dir = dirs.pop()
     for entry in os.listdir(os.path.join(base, current_dir)):
       name = os.path.join(current_dir, entry)
       fullname = os.path.join(base, name)
       if os.path.isfile(fullname):
-        if separator == "\\":
-          name = name.replace("\\", "/")
+        if separator == '\\':
+          name = name.replace('\\', '/')
         yield name
       elif os.path.isdir(fullname):
         dirs.append(name)
@@ -1302,38 +1333,38 @@ def GetUserAgent(get_version=GetVersionObject,
   Returns:
     String containing the 'user-agent' header value, which includes the SDK
     version, the platform information, and the version of Python;
-    e.g., "appcfg_py/1.0.1 Darwin/9.2.0 Python/2.5.2".
+    e.g., 'appcfg_py/1.0.1 Darwin/9.2.0 Python/2.5.2'.
   """
   product_tokens = []
 
-  sdk_name = os.environ.get("APPCFG_SDK_NAME")
+  sdk_name = os.environ.get('APPCFG_SDK_NAME')
   if sdk_name:
     product_tokens.append(sdk_name)
   else:
     version = get_version()
     if version is None:
-      release = "unknown"
+      release = 'unknown'
     else:
-      release = version["release"]
+      release = version['release']
 
-    product_tokens.append("appcfg_py/%s" % release)
+    product_tokens.append('appcfg_py/%s' % release)
 
   product_tokens.append(get_platform())
 
-  python_version = ".".join(str(i) for i in sys.version_info)
-  product_tokens.append("Python/%s" % python_version)
+  python_version = '.'.join(str(i) for i in sys.version_info)
+  product_tokens.append('Python/%s' % python_version)
 
-  return " ".join(product_tokens)
+  return ' '.join(product_tokens)
 
 
 def GetSourceName(get_version=GetVersionObject):
   """Gets the name of this source version."""
   version = get_version()
   if version is None:
-    release = "unknown"
+    release = 'unknown'
   else:
-    release = version["release"]
-  return "Google-appcfg-%s" % (release,)
+    release = version['release']
+  return 'Google-appcfg-%s' % (release,)
 
 
 class AppCfgApp(object):
@@ -1397,7 +1428,7 @@ class AppCfgApp(object):
     if len(self.args) < 1:
       self._PrintHelpAndExit()
     if self.args[0] not in self.actions:
-      self.parser.error("Unknown action '%s'\n%s" %
+      self.parser.error('Unknown action \'%s\'\n%s' %
                         (self.args[0], self.parser.get_description()))
     action_name = self.args.pop(0)
     self.action = self.actions[action_name]
@@ -1419,17 +1450,20 @@ class AppCfgApp(object):
     """Executes the requested action.
 
     Catches any HTTPErrors raised by the action and prints them to stderr.
+
+    Returns:
+      1 on error, 0 if successful.
     """
     try:
       self.action(self)
     except urllib2.HTTPError, e:
       body = e.read()
-      print >>self.error_fh, ("Error %d: --- begin server output ---\n"
-                              "%s\n--- end server output ---" %
-                              (e.code, body.rstrip("\n")))
+      print >>self.error_fh, ('Error %d: --- begin server output ---\n'
+                              '%s\n--- end server output ---' %
+                              (e.code, body.rstrip('\n')))
       return 1
     except yaml_errors.EventListenerError, e:
-      print >>self.error_fh, ("Error parsing yaml file:\n%s" % e)
+      print >>self.error_fh, ('Error parsing yaml file:\n%s' % e)
       return 1
     return 0
 
@@ -1437,9 +1471,9 @@ class AppCfgApp(object):
     """Returns a formatted string containing the short_descs for all actions."""
     action_names = self.actions.keys()
     action_names.sort()
-    desc = ""
+    desc = ''
     for action_name in action_names:
-      desc += "  %s: %s\n" % (action_name, self.actions[action_name].short_desc)
+      desc += '  %s: %s\n' % (action_name, self.actions[action_name].short_desc)
     return desc
 
   def _GetOptionParser(self):
@@ -1454,43 +1488,43 @@ class AppCfgApp(object):
 
       def format_description(self, description):
         """Very simple formatter."""
-        return description + "\n"
+        return description + '\n'
 
     desc = self._GetActionDescriptions()
-    desc = ("Action must be one of:\n%s"
-            "Use 'help <action>' for a detailed description.") % desc
+    desc = ('Action must be one of:\n%s'
+            'Use \'help <action>\' for a detailed description.') % desc
 
-    parser = self.parser_class(usage="%prog [options] <action>",
+    parser = self.parser_class(usage='%prog [options] <action>',
                                description=desc,
                                formatter=Formatter(),
-                               conflict_handler="resolve")
-    parser.add_option("-h", "--help", action="store_true",
-                      dest="help", help="Show the help message and exit.")
-    parser.add_option("-q", "--quiet", action="store_const", const=0,
-                      dest="verbose", help="Print errors only.")
-    parser.add_option("-v", "--verbose", action="store_const", const=2,
-                      dest="verbose", default=1,
-                      help="Print info level logs.")
-    parser.add_option("--noisy", action="store_const", const=3,
-                      dest="verbose", help="Print all logs.")
-    parser.add_option("-s", "--server", action="store", dest="server",
-                      default="appengine.google.com",
-                      metavar="SERVER", help="The server to connect to.")
-    parser.add_option("--secure", action="store_true", dest="secure",
+                               conflict_handler='resolve')
+    parser.add_option('-h', '--help', action='store_true',
+                      dest='help', help='Show the help message and exit.')
+    parser.add_option('-q', '--quiet', action='store_const', const=0,
+                      dest='verbose', help='Print errors only.')
+    parser.add_option('-v', '--verbose', action='store_const', const=2,
+                      dest='verbose', default=1,
+                      help='Print info level logs.')
+    parser.add_option('--noisy', action='store_const', const=3,
+                      dest='verbose', help='Print all logs.')
+    parser.add_option('-s', '--server', action='store', dest='server',
+                      default='appengine.google.com',
+                      metavar='SERVER', help='The server to connect to.')
+    parser.add_option('--secure', action='store_true', dest='secure',
                       default=False,
-                      help="Use SSL when communicating with the server.")
-    parser.add_option("-e", "--email", action="store", dest="email",
-                      metavar="EMAIL", default=None,
-                      help="The username to use. Will prompt if omitted.")
-    parser.add_option("-H", "--host", action="store", dest="host",
-                      metavar="HOST", default=None,
-                      help="Overrides the Host header sent with all RPCs.")
-    parser.add_option("--no_cookies", action="store_false",
-                      dest="save_cookies", default=True,
-                      help="Do not save authentication cookies to local disk.")
-    parser.add_option("--passin", action="store_true",
-                      dest="passin", default=False,
-                      help="Read the login password from stdin.")
+                      help='Use SSL when communicating with the server.')
+    parser.add_option('-e', '--email', action='store', dest='email',
+                      metavar='EMAIL', default=None,
+                      help='The username to use. Will prompt if omitted.')
+    parser.add_option('-H', '--host', action='store', dest='host',
+                      metavar='HOST', default=None,
+                      help='Overrides the Host header sent with all RPCs.')
+    parser.add_option('--no_cookies', action='store_false',
+                      dest='save_cookies', default=True,
+                      help='Do not save authentication cookies to local disk.')
+    parser.add_option('--passin', action='store_true',
+                      dest='passin', default=False,
+                      help='Read the login password from stdin.')
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -1506,7 +1540,7 @@ class AppCfgApp(object):
     """
     parser = self._GetOptionParser()
     parser.set_usage(action.usage)
-    parser.set_description("%s\n%s" % (action.short_desc, action.long_desc))
+    parser.set_description('%s\n%s' % (action.short_desc, action.long_desc))
     action.options(self, parser)
     options, unused_args = parser.parse_args(self.argv[1:])
     return parser, options
@@ -1531,9 +1565,9 @@ class AppCfgApp(object):
       """Prompts the user for a username and password."""
       email = self.options.email
       if email is None:
-        email = self.raw_input_fn("Email: ")
+        email = self.raw_input_fn('Email: ')
 
-      password_prompt = "Password for %s: " % email
+      password_prompt = 'Password for %s: ' % email
       if self.options.passin:
         password = self.raw_input_fn(password_prompt)
       else:
@@ -1541,14 +1575,14 @@ class AppCfgApp(object):
 
       return (email, password)
 
-    if self.options.host and self.options.host == "localhost":
+    if self.options.host and self.options.host == 'localhost':
       email = self.options.email
       if email is None:
-        email = "test@example.com"
-        logging.info("Using debug user %s.  Override with --email" % email)
+        email = 'test@example.com'
+        logging.info('Using debug user %s.  Override with --email' % email)
       server = self.rpc_server_class(
           self.options.server,
-          lambda: (email, "password"),
+          lambda: (email, 'password'),
           GetUserAgent(),
           GetSourceName(),
           host_override=self.options.host,
@@ -1566,7 +1600,7 @@ class AppCfgApp(object):
                                  host_override=self.options.host,
                                  save_cookies=self.options.save_cookies,
                                  auth_tries=auth_tries,
-                                 account_type="HOSTED_OR_GOOGLE",
+                                 account_type='HOSTED_OR_GOOGLE',
                                  secure=self.options.secure)
 
   def _FindYaml(self, basepath, file_name):
@@ -1580,9 +1614,9 @@ class AppCfgApp(object):
       Path to located yaml file if one exists, else None.
     """
     if not os.path.isdir(basepath):
-      self.parser.error("Not a directory: %s" % basepath)
+      self.parser.error('Not a directory: %s' % basepath)
 
-    for yaml_file in (file_name + ".yaml", file_name + ".yml"):
+    for yaml_file in (file_name + '.yaml', file_name + '.yml'):
       yaml_path = os.path.join(basepath, yaml_file)
       if os.path.isfile(yaml_path):
         return yaml_path
@@ -1598,17 +1632,38 @@ class AppCfgApp(object):
     Returns:
       An AppInfoExternal object.
     """
-    appyaml_filename = self._FindYaml(basepath, "app")
+    appyaml_filename = self._FindYaml(basepath, 'app')
     if appyaml_filename is None:
-      self.parser.error("Directory does not contain an app.yaml "
-                        "configuration file.")
+      self.parser.error('Directory does not contain an app.yaml '
+                        'configuration file.')
 
-    fh = open(appyaml_filename, "r")
+    fh = open(appyaml_filename, 'r')
     try:
       appyaml = appinfo.LoadSingleAppInfo(fh)
     finally:
       fh.close()
     return appyaml
+
+  def _ParseYamlFile(self, basepath, basename, parser):
+    """Parses the a yaml file.
+
+    Args:
+      basepath: the directory of the application.
+      basename: the base name of the file (with the '.yaml' stripped off).
+      parser: the function or method used to parse the file.
+
+    Returns:
+      A single parsed yaml file or None if the file does not exist.
+    """
+    file_name = self._FindYaml(basepath, basename)
+    if file_name is not None:
+      fh = open(file_name, 'r')
+      try:
+        defns = parser(fh)
+      finally:
+        fh.close()
+      return defns
+    return None
 
   def _ParseIndexYaml(self, basepath):
     """Parses the index.yaml file.
@@ -1619,15 +1674,8 @@ class AppCfgApp(object):
     Returns:
       A single parsed yaml file or None if the file does not exist.
     """
-    file_name = self._FindYaml(basepath, "index")
-    if file_name is not None:
-      fh = open(file_name, "r")
-      try:
-        index_defs = datastore_index.ParseIndexDefinitions(fh)
-      finally:
-        fh.close()
-      return index_defs
-    return None
+    return self._ParseYamlFile(basepath, 'index',
+                               datastore_index.ParseIndexDefinitions)
 
   def _ParseCronYaml(self, basepath):
     """Parses the cron.yaml file.
@@ -1636,17 +1684,20 @@ class AppCfgApp(object):
       basepath: the directory of the application.
 
     Returns:
-      A CronInfoExternal object.
+      A CronInfoExternal object or None if the file does not exist.
     """
-    file_name = self._FindYaml(basepath, "cron")
-    if file_name is not None:
-      fh = open(file_name, "r")
-      try:
-        cron_info = croninfo.LoadSingleCron(fh)
-      finally:
-        fh.close()
-      return cron_info
-    return None
+    return self._ParseYamlFile(basepath, 'cron', croninfo.LoadSingleCron)
+
+  def _ParseQueueYaml(self, basepath):
+    """Parses the queue.yaml file.
+
+    Args:
+      basepath: the directory of the application.
+
+    Returns:
+      A CronInfoExternal object or None if the file does not exist.
+    """
+    return self._ParseYamlFile(basepath, 'queue', queueinfo.LoadSingleQueue)
 
   def Help(self):
     """Prints help for a specific action.
@@ -1655,7 +1706,7 @@ class AppCfgApp(object):
     Exits the program after printing the help message.
     """
     if len(self.args) != 1 or self.args[0] not in self.actions:
-      self.parser.error("Expected a single action argument. Must be one of:\n" +
+      self.parser.error('Expected a single action argument. Must be one of:\n' +
                         self._GetActionDescriptions())
 
     action = self.actions[self.args[0]]
@@ -1665,7 +1716,7 @@ class AppCfgApp(object):
   def Update(self):
     """Updates and deploys a new appversion."""
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
 
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
@@ -1676,7 +1727,7 @@ class AppCfgApp(object):
 
     appversion = AppVersionUpload(rpc_server, appyaml)
     appversion.DoUpload(FileIterator(basepath), self.options.max_size,
-                        lambda path: open(os.path.join(basepath, path), "rb"))
+                        lambda path: open(os.path.join(basepath, path), 'rb'))
 
     index_defs = self._ParseIndexYaml(basepath)
     if index_defs:
@@ -1684,17 +1735,22 @@ class AppCfgApp(object):
       try:
         index_upload.DoUpload()
       except urllib2.HTTPError, e:
-        StatusUpdate("Error %d: --- begin server output ---\n"
-                     "%s\n--- end server output ---" %
-                     (e.code, e.read().rstrip("\n")))
+        StatusUpdate('Error %d: --- begin server output ---\n'
+                     '%s\n--- end server output ---' %
+                     (e.code, e.read().rstrip('\n')))
         print >> self.error_fh, (
-            "Your app was updated, but there was an error updating your "
-            "indexes. Please retry later with appcfg.py update_indexes.")
+            'Your app was updated, but there was an error updating your '
+            'indexes. Please retry later with appcfg.py update_indexes.')
 
     cron_entries = self._ParseCronYaml(basepath)
     if cron_entries:
       cron_upload = CronEntryUpload(rpc_server, appyaml, cron_entries)
       cron_upload.DoUpload()
+
+    queue_entries = self._ParseQueueYaml(basepath)
+    if queue_entries:
+      queue_upload = QueueEntryUpload(rpc_server, appyaml, queue_entries)
+      queue_upload.DoUpload()
 
   def _UpdateOptions(self, parser):
     """Adds update-specific options to 'parser'.
@@ -1702,14 +1758,14 @@ class AppCfgApp(object):
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option("-S", "--max_size", type="int", dest="max_size",
-                      default=10485760, metavar="SIZE",
-                      help="Maximum size of a file to upload.")
+    parser.add_option('-S', '--max_size', type='int', dest='max_size',
+                      default=10485760, metavar='SIZE',
+                      help='Maximum size of a file to upload.')
 
   def VacuumIndexes(self):
     """Deletes unused indexes."""
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
 
     basepath = self.args[0]
     config = self._ParseAppYaml(basepath)
@@ -1730,14 +1786,14 @@ class AppCfgApp(object):
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option("-f", "--force", action="store_true", dest="force_delete",
+    parser.add_option('-f', '--force', action='store_true', dest='force_delete',
                       default=False,
-                      help="Force deletion without being prompted.")
+                      help='Force deletion without being prompted.')
 
   def UpdateCron(self):
     """Updates any new or changed cron definitions."""
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
 
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
@@ -1751,7 +1807,7 @@ class AppCfgApp(object):
   def UpdateIndexes(self):
     """Updates indexes."""
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
 
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
@@ -1762,10 +1818,24 @@ class AppCfgApp(object):
       index_upload = IndexDefinitionUpload(rpc_server, appyaml, index_defs)
       index_upload.DoUpload()
 
+  def UpdateQueues(self):
+    """Updates any new or changed task queue definitions."""
+    if len(self.args) != 1:
+      self.parser.error('Expected a single <directory> argument.')
+
+    basepath = self.args[0]
+    appyaml = self._ParseAppYaml(basepath)
+    rpc_server = self._GetRpcServer()
+
+    queue_entries = self._ParseQueueYaml(basepath)
+    if queue_entries:
+      queue_upload = QueueEntryUpload(rpc_server, appyaml, queue_entries)
+      queue_upload.DoUpload()
+
   def Rollback(self):
     """Does a rollback of any existing transaction for this app version."""
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
 
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
@@ -1778,11 +1848,11 @@ class AppCfgApp(object):
     """Write request logs to a file."""
     if len(self.args) != 2:
       self.parser.error(
-          "Expected a <directory> argument and an <output_file> argument.")
+          'Expected a <directory> argument and an <output_file> argument.')
     if (self.options.severity is not None and
         not 0 <= self.options.severity <= MAX_LOG_LEVEL):
       self.parser.error(
-          "Severity range is 0 (DEBUG) through %s (CRITICAL)." % MAX_LOG_LEVEL)
+          'Severity range is 0 (DEBUG) through %s (CRITICAL).' % MAX_LOG_LEVEL)
 
     if self.options.num_days is None:
       self.options.num_days = int(not self.options.append)
@@ -1794,7 +1864,8 @@ class AppCfgApp(object):
                                    self.options.append,
                                    self.options.severity,
                                    time.time(),
-                                   self.options.vhost)
+                                   self.options.vhost,
+                                   self.options.include_vhost)
     logs_requester.DownloadLogs()
 
   def _RequestLogsOptions(self, parser):
@@ -1803,25 +1874,28 @@ class AppCfgApp(object):
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option("-n", "--num_days", type="int", dest="num_days",
-                      action="store", default=None,
-                      help="Number of days worth of log data to get. "
-                      "The cut-off point is midnight UTC. "
-                      "Use 0 to get all available logs. "
-                      "Default is 1, unless --append is also given; "
-                      "then the default is 0.")
-    parser.add_option("-a", "--append", dest="append",
-                      action="store_true", default=False,
-                      help="Append to existing file.")
-    parser.add_option("--severity", type="int", dest="severity",
-                      action="store", default=None,
-                      help="Severity of app-level log messages to get. "
-                      "The range is 0 (DEBUG) through 4 (CRITICAL). "
-                      "If omitted, only request logs are returned.")
-    parser.add_option("--vhost", type="string", dest="vhost",
-                      action="store", default=None,
-                      help="The virtual host of log messages to get. "
-                      "If omitted, all log messages are returned.")
+    parser.add_option('-n', '--num_days', type='int', dest='num_days',
+                      action='store', default=None,
+                      help='Number of days worth of log data to get. '
+                      'The cut-off point is midnight UTC. '
+                      'Use 0 to get all available logs. '
+                      'Default is 1, unless --append is also given; '
+                      'then the default is 0.')
+    parser.add_option('-a', '--append', dest='append',
+                      action='store_true', default=False,
+                      help='Append to existing file.')
+    parser.add_option('--severity', type='int', dest='severity',
+                      action='store', default=None,
+                      help='Severity of app-level log messages to get. '
+                      'The range is 0 (DEBUG) through 4 (CRITICAL). '
+                      'If omitted, only request logs are returned.')
+    parser.add_option('--vhost', type='string', dest='vhost',
+                      action='store', default=None,
+                      help='The virtual host of log messages to get. '
+                      'If omitted, all log messages are returned.')
+    parser.add_option('--include_vhost', dest='include_vhost',
+                      action='store_true', default=False,
+                      help='Include virtual host in log messages.')
 
   def CronInfo(self, now=None, output=sys.stdout):
     """Displays information about cron definitions.
@@ -1831,7 +1905,7 @@ class AppCfgApp(object):
       output: Used for testing.
     """
     if len(self.args) != 1:
-      self.parser.error("Expected a single <directory> argument.")
+      self.parser.error('Expected a single <directory> argument.')
     if now is None:
       now = datetime.datetime.now()
 
@@ -1841,15 +1915,15 @@ class AppCfgApp(object):
       for entry in cron_entries.cron:
         description = entry.description
         if not description:
-          description = "<no description>"
-        print >>output, "\n%s:\nURL: %s\nSchedule: %s" % (description,
+          description = '<no description>'
+        print >>output, '\n%s:\nURL: %s\nSchedule: %s' % (description,
                                                           entry.url,
                                                           entry.schedule)
         schedule = groctimespecification.GrocTimeSpecification(entry.schedule)
         matches = schedule.GetMatches(now, self.options.num_runs)
         for match in matches:
-          print >>output, "%s, %s from now" % (
-              match.strftime("%Y-%m-%d %H:%M:%S"), match - now)
+          print >>output, '%s, %s from now' % (
+              match.strftime('%Y-%m-%d %H:%M:%S'), match - now)
 
   def _CronInfoOptions(self, parser):
     """Adds cron_info-specific options to 'parser'.
@@ -1857,20 +1931,20 @@ class AppCfgApp(object):
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option("-n", "--num_runs", type="int", dest="num_runs",
-                      action="store", default=5,
-                      help="Number of runs of each cron job to display"
-                      "Default is 5")
+    parser.add_option('-n', '--num_runs', type='int', dest='num_runs',
+                      action='store', default=5,
+                      help='Number of runs of each cron job to display'
+                      'Default is 5')
 
   def _CheckRequiredLoadOptions(self):
     """Checks that upload/download options are present."""
-    for option in ["filename", "kind", "config_file"]:
+    for option in ['filename', 'kind', 'config_file']:
       if getattr(self.options, option) is None:
-        self.parser.error("Option '%s' is required." % option)
+        self.parser.error('Option \'%s\' is required.' % option)
     if not self.options.url:
-      self.parser.error("You must have google.appengine.ext.remote_api.handler "
-                        "assigned to an endpoint in app.yaml, or provide "
-                        "the url of the handler via the 'url' option.")
+      self.parser.error('You must have google.appengine.ext.remote_api.handler '
+                        'assigned to an endpoint in app.yaml, or provide '
+                        'the url of the handler via the \'url\' option.')
 
   def InferRemoteApiUrl(self, appyaml):
     """Uses app.yaml to determine the remote_api endpoint.
@@ -1882,16 +1956,16 @@ class AppCfgApp(object):
       The url of the remote_api endpoint as a string, or None
     """
     handlers = appyaml.handlers
-    handler_suffix = "remote_api/handler.py"
+    handler_suffix = 'remote_api/handler.py'
     app_id = appyaml.application
     for handler in handlers:
-      if hasattr(handler, "script") and handler.script:
+      if hasattr(handler, 'script') and handler.script:
         if handler.script.endswith(handler_suffix):
           server = self.options.server
-          if server == "appengine.google.com":
-            return "http://%s.appspot.com%s" % (app_id, handler.url)
+          if server == 'appengine.google.com':
+            return 'http://%s.appspot.com%s' % (app_id, handler.url)
           else:
-            return "http://%s%s" % (server, handler.url)
+            return 'http://%s%s' % (server, handler.url)
     return None
 
   def RunBulkloader(self, arg_dict):
@@ -1903,8 +1977,8 @@ class AppCfgApp(object):
     try:
       import sqlite3
     except ImportError:
-      logging.error("upload_data action requires SQLite3 and the python "
-                    "sqlite3 module (included in python since 2.5).")
+      logging.error('upload_data action requires SQLite3 and the python '
+                    'sqlite3 module (included in python since 2.5).')
       sys.exit(1)
 
     sys.exit(bulkloader.Run(arg_dict))
@@ -1912,7 +1986,7 @@ class AppCfgApp(object):
   def _SetupLoad(self):
     """Performs common verification and set up for upload and download."""
     if len(self.args) != 1:
-      self.parser.error("Expected <directory> argument.")
+      self.parser.error('Expected <directory> argument.')
 
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
@@ -1927,7 +2001,7 @@ class AppCfgApp(object):
     self._CheckRequiredLoadOptions()
 
     if self.options.batch_size < 1:
-      self.parser.error("batch_size must be 1 or larger.")
+      self.parser.error('batch_size must be 1 or larger.')
 
     if verbosity == 1:
       logging.getLogger().setLevel(logging.INFO)
@@ -1939,27 +2013,27 @@ class AppCfgApp(object):
   def _MakeLoaderArgs(self):
     return dict([(arg_name, getattr(self.options, arg_name, None)) for
                  arg_name in (
-        "app_id",
-        "url",
-        "filename",
-        "batch_size",
-        "kind",
-        "num_threads",
-        "bandwidth_limit",
-        "rps_limit",
-        "http_limit",
-        "db_filename",
-        "config_file",
-        "auth_domain",
-        "has_header",
-        "loader_opts",
-        "log_file",
-        "passin",
-        "email",
-        "debug",
-        "exporter_opts",
-        "result_db_filename",
-        )])
+                     'app_id',
+                     'url',
+                     'filename',
+                     'batch_size',
+                     'kind',
+                     'num_threads',
+                     'bandwidth_limit',
+                     'rps_limit',
+                     'http_limit',
+                     'db_filename',
+                     'config_file',
+                     'auth_domain',
+                     'has_header',
+                     'loader_opts',
+                     'log_file',
+                     'passin',
+                     'email',
+                     'debug',
+                     'exporter_opts',
+                     'result_db_filename',
+                     )])
 
   def PerformDownload(self, run_fn=None):
     """Performs a datastore download via the bulkloader.
@@ -1971,7 +2045,7 @@ class AppCfgApp(object):
       run_fn = self.RunBulkloader
     self._SetupLoad()
 
-    StatusUpdate("Downloading data records.")
+    StatusUpdate('Downloading data records.')
 
     args = self._MakeLoaderArgs()
     args['download'] = True
@@ -1989,7 +2063,7 @@ class AppCfgApp(object):
       run_fn = self.RunBulkloader
     self._SetupLoad()
 
-    StatusUpdate("Uploading data records.")
+    StatusUpdate('Uploading data records.')
 
     args = self._MakeLoaderArgs()
     args['download'] = False
@@ -2002,44 +2076,44 @@ class AppCfgApp(object):
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option("--filename", type="string", dest="filename",
-                      action="store",
-                      help="The name of the file containing the input data."
-                      " (Required)")
-    parser.add_option("--config_file", type="string", dest="config_file",
-                      action="store",
-                      help="Name of the configuration file. (Required)")
-    parser.add_option("--kind", type="string", dest="kind",
-                      action="store",
-                      help="The kind of the entities to store. (Required)")
-    parser.add_option("--url", type="string", dest="url",
-                      action="store",
-                      help="The location of the remote_api endpoint.")
-    parser.add_option("--num_threads", type="int", dest="num_threads",
-                      action="store", default=10,
-                      help="Number of threads to upload records with.")
-    parser.add_option("--batch_size", type="int", dest="batch_size",
-                      action="store", default=10,
-                      help="Number of records to post in each request.")
-    parser.add_option("--bandwidth_limit", type="int", dest="bandwidth_limit",
-                      action="store", default=250000,
-                      help="The maximum bytes/second bandwidth for transfers.")
-    parser.add_option("--rps_limit", type="int", dest="rps_limit",
-                      action="store", default=20,
-                      help="The maximum records/second for transfers.")
-    parser.add_option("--http_limit", type="int", dest="http_limit",
-                      action="store", default=8,
-                      help="The maximum requests/second for transfers.")
-    parser.add_option("--db_filename", type="string", dest="db_filename",
-                      action="store",
-                      help="Name of the progress database file.")
-    parser.add_option("--auth_domain", type="string", dest="auth_domain",
-                      action="store", default="gmail.com",
-                      help="The name of the authorization domain to use.")
-    parser.add_option("--log_file", type="string", dest="log_file",
-                      help="File to write bulkloader logs.  If not supplied "
-                           "then a new log file will be created, named: "
-                           "bulkloader-log-TIMESTAMP.")
+    parser.add_option('--filename', type='string', dest='filename',
+                      action='store',
+                      help='The name of the file containing the input data.'
+                      ' (Required)')
+    parser.add_option('--config_file', type='string', dest='config_file',
+                      action='store',
+                      help='Name of the configuration file. (Required)')
+    parser.add_option('--kind', type='string', dest='kind',
+                      action='store',
+                      help='The kind of the entities to store. (Required)')
+    parser.add_option('--url', type='string', dest='url',
+                      action='store',
+                      help='The location of the remote_api endpoint.')
+    parser.add_option('--num_threads', type='int', dest='num_threads',
+                      action='store', default=10,
+                      help='Number of threads to upload records with.')
+    parser.add_option('--batch_size', type='int', dest='batch_size',
+                      action='store', default=10,
+                      help='Number of records to post in each request.')
+    parser.add_option('--bandwidth_limit', type='int', dest='bandwidth_limit',
+                      action='store', default=250000,
+                      help='The maximum bytes/second bandwidth for transfers.')
+    parser.add_option('--rps_limit', type='int', dest='rps_limit',
+                      action='store', default=20,
+                      help='The maximum records/second for transfers.')
+    parser.add_option('--http_limit', type='int', dest='http_limit',
+                      action='store', default=8,
+                      help='The maximum requests/second for transfers.')
+    parser.add_option('--db_filename', type='string', dest='db_filename',
+                      action='store',
+                      help='Name of the progress database file.')
+    parser.add_option('--auth_domain', type='string', dest='auth_domain',
+                      action='store', default='gmail.com',
+                      help='The name of the authorization domain to use.')
+    parser.add_option('--log_file', type='string', dest='log_file',
+                      help='File to write bulkloader logs.  If not supplied '
+                      'then a new log file will be created, named: '
+                      'bulkloader-log-TIMESTAMP.')
 
   def _PerformUploadOptions(self, parser):
     """Adds 'upload_data' specific options to the 'parser' passed in.
@@ -2048,12 +2122,12 @@ class AppCfgApp(object):
       parser: An instance of OptionsParser.
     """
     self._PerformLoadOptions(parser)
-    parser.add_option("--has_header", dest="has_header",
-                      action="store_true", default=False,
-                      help="Whether the first line of the input file should be"
-                      " skipped")
-    parser.add_option("--loader_opts", type="string", dest="loader_opts",
-                      help="A string to pass to the Loader.initialize method.")
+    parser.add_option('--has_header', dest='has_header',
+                      action='store_true', default=False,
+                      help='Whether the first line of the input file should be'
+                      ' skipped')
+    parser.add_option('--loader_opts', type='string', dest='loader_opts',
+                      help='A string to pass to the Loader.initialize method.')
 
   def _PerformDownloadOptions(self, parser):
     """Adds 'download_data' specific options to the 'parser' passed in.
@@ -2062,13 +2136,13 @@ class AppCfgApp(object):
       parser: An instance of OptionsParser.
     """
     self._PerformLoadOptions(parser)
-    parser.add_option("--exporter_opts", type="string", dest="exporter_opts",
-                      help="A string to pass to the Exporter.initialize method."
-                      )
-    parser.add_option("--result_db_filename", type="string",
-                      dest="result_db_filename",
-                      action="store",
-                      help="Database to write entities to for download.")
+    parser.add_option('--exporter_opts', type='string', dest='exporter_opts',
+                      help='A string to pass to the Exporter.initialize method.'
+                     )
+    parser.add_option('--result_db_filename', type='string',
+                      dest='result_db_filename',
+                      action='store',
+                      help='Database to write entities to for download.')
 
   class Action(object):
     """Contains information about a command line action.
@@ -2084,7 +2158,7 @@ class AppCfgApp(object):
         object.
     """
 
-    def __init__(self, function, usage, short_desc, long_desc="",
+    def __init__(self, function, usage, short_desc, long_desc='',
                  options=lambda obj, parser: None):
       """Initializer for the class attributes."""
       self.function = function
@@ -2097,22 +2171,28 @@ class AppCfgApp(object):
       """Invoke this Action on the specified AppCfg.
 
       This calls the function of the appropriate name on AppCfg, and
-      respects polymophic overrides."""
+      respects polymophic overrides.
+
+      Args:
+        appcfg: The appcfg to use.
+      Returns:
+        The result of the function call.
+      """
       method = getattr(appcfg, self.function)
       return method()
 
   actions = {
 
-      "help": Action(
-          function="Help",
-          usage="%prog help <action>",
-          short_desc="Print help for a specific action."),
+      'help': Action(
+          function='Help',
+          usage='%prog help <action>',
+          short_desc='Print help for a specific action.'),
 
-      "update": Action(
-          function="Update",
-          usage="%prog [options] update <directory>",
+      'update': Action(
+          function='Update',
+          usage='%prog [options] update <directory>',
           options=_UpdateOptions,
-          short_desc="Create or update an app version.",
+          short_desc='Create or update an app version.',
           long_desc="""
 Specify a directory that contains all of the files required by
 the app, and appcfg.py will create/update the app version referenced
@@ -2120,27 +2200,35 @@ in the app.yaml file at the top level of that directory.  appcfg.py
 will follow symlinks and recursively upload all files to the server.
 Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
 
-      "update_cron": Action(
-          function="UpdateCron",
-          usage="%prog [options] update_cron <directory>",
-          short_desc="Update application cron definitions.",
+      'update_cron': Action(
+          function='UpdateCron',
+          usage='%prog [options] update_cron <directory>',
+          short_desc='Update application cron definitions.',
           long_desc="""
 The 'update_cron' command will update any new, removed or changed cron
-definitions from the cron.yaml file."""),
+definitions from the optional cron.yaml file."""),
 
-      "update_indexes": Action(
-          function="UpdateIndexes",
-          usage="%prog [options] update_indexes <directory>",
-          short_desc="Update application indexes.",
+      'update_indexes': Action(
+          function='UpdateIndexes',
+          usage='%prog [options] update_indexes <directory>',
+          short_desc='Update application indexes.',
           long_desc="""
 The 'update_indexes' command will add additional indexes which are not currently
 in production as well as restart any indexes that were not completed."""),
 
-      "vacuum_indexes": Action(
-          function="VacuumIndexes",
-          usage="%prog [options] vacuum_indexes <directory>",
+      'update_queues': Action(
+          function='UpdateQueues',
+          usage='%prog [options] update_queues <directory>',
+          short_desc='Update application task queue definitions.',
+          long_desc="""
+The 'update_queue' command will update any new, removed or changed task queue
+definitions from the optional queue.yaml file."""),
+
+      'vacuum_indexes': Action(
+          function='VacuumIndexes',
+          usage='%prog [options] vacuum_indexes <directory>',
           options=_VacuumIndexesOptions,
-          short_desc="Delete unused indexes from application.",
+          short_desc='Delete unused indexes from application.',
           long_desc="""
 The 'vacuum_indexes' command will help clean up indexes which are no longer
 in use.  It does this by comparing the local index configuration with
@@ -2148,48 +2236,48 @@ indexes that are actually defined on the server.  If any indexes on the
 server do not exist in the index configuration file, the user is given the
 option to delete them."""),
 
-      "rollback": Action(
-          function="Rollback",
-          usage="%prog [options] rollback <directory>",
-          short_desc="Rollback an in-progress update.",
+      'rollback': Action(
+          function='Rollback',
+          usage='%prog [options] rollback <directory>',
+          short_desc='Rollback an in-progress update.',
           long_desc="""
 The 'update' command requires a server-side transaction.  Use 'rollback'
 if you get an error message about another transaction being in progress
 and you are sure that there is no such transaction."""),
 
-      "request_logs": Action(
-          function="RequestLogs",
-          usage="%prog [options] request_logs <directory> <output_file>",
+      'request_logs': Action(
+          function='RequestLogs',
+          usage='%prog [options] request_logs <directory> <output_file>',
           options=_RequestLogsOptions,
-          short_desc="Write request logs in Apache common log format.",
+          short_desc='Write request logs in Apache common log format.',
           long_desc="""
 The 'request_logs' command exports the request logs from your application
 to a file.  It will write Apache common log format records ordered
 chronologically.  If output file is '-' stdout will be written."""),
 
-      "cron_info": Action(
-          function="CronInfo",
-          usage="%prog [options] cron_info <directory>",
+      'cron_info': Action(
+          function='CronInfo',
+          usage='%prog [options] cron_info <directory>',
           options=_CronInfoOptions,
-          short_desc="Display information about cron jobs.",
+          short_desc='Display information about cron jobs.',
           long_desc="""
 The 'cron_info' command will display the next 'number' runs (default 5) for
 each cron job defined in the cron.yaml file."""),
 
-      "upload_data": Action(
-          function="PerformUpload",
-          usage="%prog [options] upload_data <directory>",
+      'upload_data': Action(
+          function='PerformUpload',
+          usage='%prog [options] upload_data <directory>',
           options=_PerformUploadOptions,
-          short_desc="Upload data records to datastore.",
+          short_desc='Upload data records to datastore.',
           long_desc="""
 The 'upload_data' command translates input records into datastore entities and
 uploads them into your application's datastore."""),
 
-      "download_data": Action(
-          function="PerformDownload",
-          usage="%prog [options] download_data <directory>",
+      'download_data': Action(
+          function='PerformDownload',
+          usage='%prog [options] download_data <directory>',
           options=_PerformDownloadOptions,
-          short_desc="Download entities from datastore.",
+          short_desc='Download entities from datastore.',
           long_desc="""
 The 'download_data' command downloads datastore entities and writes them to
 file as CSV or developer defined format."""),
@@ -2200,16 +2288,16 @@ file as CSV or developer defined format."""),
 
 
 def main(argv):
-  logging.basicConfig(format=("%(asctime)s %(levelname)s %(filename)s:"
-                              "%(lineno)s %(message)s "))
+  logging.basicConfig(format=('%(asctime)s %(levelname)s %(filename)s:'
+                              '%(lineno)s %(message)s '))
   try:
     result = AppCfgApp(argv).Run()
     if result:
       sys.exit(result)
   except KeyboardInterrupt:
-    StatusUpdate("Interrupted.")
+    StatusUpdate('Interrupted.')
     sys.exit(1)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   main(sys.argv)

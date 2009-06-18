@@ -508,13 +508,18 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
 
   def _Dynamic_Get(self, get_request, get_response):
+    if get_request.has_transaction():
+      entities = self.__tx_snapshot
+    else:
+      entities = self.__entities
+
     for key in get_request.key_list():
       self.__ValidateAppId(key.app())
       app_kind = self._AppKindForKey(key)
 
       group = get_response.add_entity()
       try:
-        entity = self.__entities[app_kind][key].protobuf
+        entity = entities[app_kind][key].protobuf
       except KeyError:
         entity = None
 
@@ -545,9 +550,13 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_RunQuery(self, query, query_result):
     if not self.__tx_lock.acquire(False):
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST, 'Can\'t query inside a transaction.')
+      if not query.has_ancestor():
+        raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'Only ancestor queries are allowed inside transactions.')
+      entities = self.__tx_snapshot
     else:
+      entities = self.__entities
       self.__tx_lock.release()
 
     app = query.app()
@@ -598,7 +607,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
     try:
       query.set_app(app)
-      results = self.__entities[app, query.kind()].values()
+      results = entities[app, query.kind()].values()
       results = [entity.native for entity in results]
     except KeyError:
       results = []

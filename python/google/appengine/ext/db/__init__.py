@@ -77,6 +77,7 @@ preconfigured to return all matching comments:
 
 
 
+
 import copy
 import datetime
 import logging
@@ -2610,8 +2611,13 @@ class ReferenceProperty(Property):
 
     if self.collection_name is None:
       self.collection_name = '%s_set' % (model_class.__name__.lower())
-    if hasattr(self.reference_class, self.collection_name):
-      raise DuplicatePropertyError('Class %s already has property %s'
+    existing_prop = getattr(self.reference_class, self.collection_name, None)
+    if existing_prop is not None:
+      if not (isinstance(existing_prop, _ReverseReferenceProperty) and
+              existing_prop._prop_name == property_name and
+              existing_prop._model.__name__ == model_class.__name__ and
+              existing_prop._model.__module__ == model_class.__module__):
+        raise DuplicatePropertyError('Class %s already has property %s '
                                    % (self.reference_class.__name__,
                                       self.collection_name))
     setattr(self.reference_class,
@@ -2759,12 +2765,22 @@ class _ReverseReferenceProperty(Property):
     Constructor does not take standard values of other property types.
 
     Args:
-      model: Model that this property is a collection of.
-      property: Foreign property on referred model that points back to this
-        properties entity.
+      model: Model class that this property is a collection of.
+      property: Name of foreign property on referred model that points back
+        to this properties entity.
     """
     self.__model = model
     self.__property = prop
+
+  @property
+  def _model(self):
+    """Internal helper to access the model class, read-only."""
+    return self.__model
+
+  @property
+  def _prop_name(self):
+    """Internal helper to access the property name, read-only."""
+    return self.__property
 
   def __get__(self, model_instance, model_class):
     """Fetches collection of model instances of this collection property."""

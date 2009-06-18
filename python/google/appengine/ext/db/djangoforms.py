@@ -105,8 +105,9 @@ from google.appengine.ext import db
 def monkey_patch(name, bases, namespace):
   """A 'metaclass' for adding new methods to an existing class.
 
-  In this version, existing methods can't be overridden; this is by
-  design, to avoid accidents.
+  This shouldn't be used to override existing methods.  However,
+  because loading this module (like loading any module) should be
+  idempotent, we don't assert that.
 
   Usage example:
 
@@ -131,7 +132,6 @@ def monkey_patch(name, bases, namespace):
   base = bases[0]
   for name, value in namespace.iteritems():
     if name not in ('__metaclass__', '__module__'):
-      assert name not in base.__dict__, "Won't override attribute %r" % (name,)
       setattr(base, name, value)
   return base
 

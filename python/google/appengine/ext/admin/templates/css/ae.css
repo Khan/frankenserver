@@ -42,6 +42,7 @@ h1 {
 #ae-content {
   padding-left: 1em;
   border-left: 3px solid #e5ecf9;
+  min-height: 200px;
 }
 
 /* Tables */
@@ -147,4 +148,7 @@ ol.ae-even {
 .ae-error-td td {
   border: 2px solid #f00;
   background-color: #fee;
+}
+.ae-table .ae-pager {
+  background-color: #c5d7ef;
 }

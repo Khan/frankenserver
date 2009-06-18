@@ -14,23 +14,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-"""Specify the modules for which a stub exists."""
-
-__all__ = [
-
-    'ftplib',
-    'httplib',
-    'neo_cgi',
-    'py_imp',
-    'select',
-    'socket',
-    'subprocess',
-    'tempfile',
-
-    'use_library',
-    ]
-
-from google.appengine.dist import _library
-
-use_library = _library.use_library

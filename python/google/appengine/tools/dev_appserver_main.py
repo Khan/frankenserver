@@ -417,6 +417,8 @@ def main(argv):
   allow_skipped_files = option_dict[ARG_ALLOW_SKIPPED_FILES]
   static_caching = option_dict[ARG_STATIC_CACHING]
 
+  option_dict['root_path'] = os.path.realpath(root_path)
+
   logging.basicConfig(
     level=log_level,
     format='%(levelname)-8s %(asctime)s %(filename)s:%(lineno)s] %(message)s')

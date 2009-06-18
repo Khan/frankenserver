@@ -19,9 +19,11 @@
 
 
 
+import gzip
 import httplib
 import logging
 import socket
+import StringIO
 import urllib
 import urlparse
 
@@ -164,8 +166,11 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         protocol = last_protocol
 
       adjusted_headers = {
-        'Host': host,
-        'Accept': '*/*',
+          'User-Agent':
+          'AppEngine-Google; (+http://code.google.com/appengine)',
+          'Referer': 'http://localhost/',
+          'Host': host,
+          'Accept-Encoding': 'gzip',
       }
       if payload is not None:
         adjusted_headers['Content-Length'] = len(payload)
@@ -173,7 +178,12 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         adjusted_headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
       for header in headers:
-        adjusted_headers[header.key().title()] = header.value()
+        if header.key().title().lower() == 'user-agent':
+          adjusted_headers['User-Agent'] = (
+              '%s %s' %
+              (header.value(), adjusted_headers['User-Agent']))
+        else:
+          adjusted_headers[header.key().title()] = header.value()
 
       logging.debug('Making HTTP request: host = %s, '
                     'url = %s, payload = %s, headers = %s',
@@ -219,8 +229,17 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
               urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, error_msg)
       else:
         response.set_statuscode(http_response.status)
+        if http_response.getheader('content-encoding') == 'gzip':
+          gzip_stream = StringIO.StringIO(http_response_data)
+          gzip_file = gzip.GzipFile(fileobj=gzip_stream)
+          http_response_data = gzip_file.read()
         response.set_content(http_response_data[:MAX_RESPONSE_SIZE])
         for header_key, header_value in http_response.getheaders():
+          if (header_key.lower() == 'content-encoding' and
+              header_value == 'gzip'):
+            continue
+          if header_key.lower() == 'content-length':
+            header_value = len(response.content())
           header_proto = response.add_header()
           header_proto.set_key(header_key)
           header_proto.set_value(header_value)
@@ -245,6 +264,6 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     prohibited_headers = [h.key() for h in headers
                           if h.key().lower() in untrusted_headers]
     if prohibited_headers:
-      logging.warn("Stripped prohibited headers from URLFetch request: %s",
+      logging.warn('Stripped prohibited headers from URLFetch request: %s',
                    prohibited_headers)
     return (h for h in headers if h.key().lower() not in untrusted_headers)

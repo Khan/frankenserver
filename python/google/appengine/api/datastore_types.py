@@ -430,7 +430,7 @@ class Key(object):
     """
     args = []
     for elem in self.__reference.path().element_list():
-      args.append(repr(elem.type()))
+      args.append(repr(elem.type().decode('utf-8')))
       if elem.has_name():
         args.append(repr(elem.name().decode('utf-8')))
       else:

@@ -28,6 +28,7 @@ import cStringIO
 import math
 import pickle
 import types
+import sha
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
@@ -91,14 +92,14 @@ def _key_string(key, key_prefix='', server_to_user_dict=None):
       (which does not have the prefix).
 
   Returns:
-    The key as a non-unicode string prepended with key_prefix. This is the key
-    sent to and stored by the server.
+    The key as a non-unicode string prepended with key_prefix. This is
+    the key sent to and stored by the server. If the resulting key is
+    longer then MAX_KEY_SIZE, it will be hashed with sha1 and will be
+    replaced with the hex representation of the said hash.
 
   Raises:
     TypeError: If provided key isn't a string or tuple of (int, string)
       or key_prefix or server_to_user_dict are of the wrong type.
-    ValueError: If the key, when translated to the server key, is more than
-      250 bytes in length.
   """
   if type(key) is types.TupleType:
     key = key[1]
@@ -113,8 +114,7 @@ def _key_string(key, key_prefix='', server_to_user_dict=None):
     server_key = server_key.encode('utf-8')
 
   if len(server_key) > MAX_KEY_SIZE:
-    raise ValueError('Keys may not be more than %d bytes in length, '
-                     'received %d bytes' % (MAX_KEY_SIZE, len(server_key)))
+    server_key = sha.new(server_key).hexdigest()
 
   if server_to_user_dict is not None:
     if not isinstance(server_to_user_dict, dict):

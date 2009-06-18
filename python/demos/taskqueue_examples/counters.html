@@ -1,0 +1,32 @@
+<html>
+<head>
+  <title>Counters</title>
+</head>
+<body>
+
+<h1>Counters</h1>
+{% if counters %}
+<table border="1">
+  <tr>
+    <th>Name</th>
+    <th>Count</th>
+  </tr>
+{% for counter in counters %}
+  <tr>
+    <td>{{counter.key.name|escape}}</td>
+    <td>{{counter.count}}</td>
+  </tr>
+{% endfor %}
+</table>
+{% else %}
+No counters yet!
+{% endif %}
+
+<h2>Increment</h2>
+<form action="/counters" method="post">
+  <p><label for="name">Name:</label> <input type="text" name="key" id="name">
+  <p><input type="submit" name="" value="Increment">
+</form>
+
+</body>
+</html>

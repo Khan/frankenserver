@@ -214,7 +214,7 @@ class ProtocolMessage:
       return self.DebugFormatFixed32(value)
     return "%d" % value
   def DebugFormatInt64(self, value):
-    if (value <= -2000000000 or value >= 2000000000):
+    if (value <= -20000000000000 or value >= 20000000000000):
       return self.DebugFormatFixed64(value)
     return "%d" % value
   def DebugFormatString(self, value):

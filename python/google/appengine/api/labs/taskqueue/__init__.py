@@ -15,22 +15,6 @@
 # limitations under the License.
 #
 
-"""Specify the modules for which a stub exists."""
+"""Task Queue API module."""
 
-__all__ = [
-
-    'ftplib',
-    'httplib',
-    'neo_cgi',
-    'py_imp',
-    'select',
-    'socket',
-    'subprocess',
-    'tempfile',
-
-    'use_library',
-    ]
-
-from google.appengine.dist import _library
-
-use_library = _library.use_library
+from taskqueue import *

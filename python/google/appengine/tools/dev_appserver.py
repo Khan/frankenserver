@@ -36,6 +36,7 @@ from google.appengine.tools import os_compat
 import __builtin__
 import BaseHTTPServer
 import Cookie
+import base64
 import cStringIO
 import cgi
 import cgitb
@@ -88,6 +89,7 @@ from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api import yaml_errors
 from google.appengine.api.capabilities import capability_stub
+from google.appengine.api.labs.taskqueue import taskqueue_stub
 from google.appengine.api.memcache import memcache_stub
 
 from google.appengine import dist
@@ -127,6 +129,9 @@ MAX_RUNTIME_RESPONSE_SIZE = 10 << 20
 MAX_REQUEST_SIZE = 10 * 1024 * 1024
 
 API_VERSION = '1'
+
+SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
+                                              'site-packages'))
 
 
 class Error(Exception):
@@ -517,9 +522,11 @@ class ApplicationLoggingHandler(logging.Handler):
 _IGNORE_REQUEST_HEADERS = frozenset(['content-type', 'content-length',
                                      'accept-encoding', 'transfer-encoding'])
 
+
 def SetupEnvironment(cgi_path,
                      relative_url,
                      headers,
+                     infile,
                      split_url=SplitURL,
                      get_user_info=dev_appserver_login.GetUserInfo):
   """Sets up environment variables for a CGI.
@@ -528,6 +535,7 @@ def SetupEnvironment(cgi_path,
     cgi_path: Full file-system path to the CGI being executed.
     relative_url: Relative URL used to access the CGI.
     headers: Instance of mimetools.Message containing request headers.
+    infile: File-like object with input data from the request.
     split_url, get_user_info: Used for dependency injection.
 
   Returns:
@@ -557,6 +565,16 @@ def SetupEnvironment(cgi_path,
       continue
     adjusted_name = key.replace('-', '_').upper()
     env['HTTP_' + adjusted_name] = ', '.join(headers.getheaders(key))
+
+  PAYLOAD_HEADER = 'HTTP_X_APPENGINE_DEVELOPMENT_PAYLOAD'
+  if PAYLOAD_HEADER in env:
+    del env[PAYLOAD_HEADER]
+    new_data = base64.standard_b64decode(infile.getvalue())
+    infile.seek(0)
+    infile.truncate()
+    infile.write(new_data)
+    infile.seek(0)
+    env['CONTENT_LENGTH'] = str(len(new_data))
 
   return env
 
@@ -805,13 +823,11 @@ class FakeFile(file):
 
 
 
-    os.path.normcase(os.path.join(os.path.dirname(os.__file__),
-                                  'site-packages'))
+    SITE_PACKAGES,
   ])
 
   ALLOWED_SITE_PACKAGE_DIRS = set(
-    os.path.normcase(os.path.abspath(os.path.join(
-      os.path.dirname(os.__file__), 'site-packages', path)))
+    os.path.normcase(os.path.abspath(os.path.join(SITE_PACKAGES, path)))
     for path in [
 
   ])
@@ -903,6 +919,31 @@ class FakeFile(file):
     """
     FakeFile._allow_skipped_files = allow_skipped_files
     FakeFile._availability_cache = {}
+
+  @staticmethod
+  def SetAllowedModule(name):
+    """Allow the use of a module based on where it is located.
+
+    Meant to be used by use_library() so that it has a link back into the
+    trusted part of the interpreter.
+
+    Args:
+      name: Name of the module to allow.
+    """
+    stream, pathname, description = imp.find_module(name)
+    pathname = os.path.normcase(os.path.abspath(pathname))
+    if stream:
+      stream.close()
+      FakeFile.ALLOWED_FILES.add(pathname)
+      FakeFile.ALLOWED_FILES.add(os.path.realpath(pathname))
+    else:
+      assert description[2] == imp.PKG_DIRECTORY
+      if pathname.startswith(SITE_PACKAGES):
+        FakeFile.ALLOWED_SITE_PACKAGE_DIRS.add(pathname)
+        FakeFile.ALLOWED_SITE_PACKAGE_DIRS.add(os.path.realpath(pathname))
+      else:
+        FakeFile.ALLOWED_DIRS.add(pathname)
+        FakeFile.ALLOWED_DIRS.add(os.path.realpath(pathname))
 
   @staticmethod
   def SetSkippedFiles(skip_files):
@@ -1022,6 +1063,10 @@ class FakeFile(file):
       raise IOError(errno.EACCES, 'file not accessible', filename)
 
     super(FakeFile, self).__init__(filename, mode, bufsize, **kwargs)
+
+
+from google.appengine.dist import _library
+_library.SetAllowedModule = FakeFile.SetAllowedModule
 
 
 class RestrictedPathFunction(object):
@@ -2053,7 +2098,7 @@ def ExecuteCGI(root_path,
     ClearAllButEncodingsModules(sys.modules)
     sys.modules.update(module_dict)
     sys.argv = [cgi_path]
-    sys.stdin = infile
+    sys.stdin = cStringIO.StringIO(infile.getvalue())
     sys.stdout = outfile
     os.environ.clear()
     os.environ.update(env)
@@ -2153,7 +2198,7 @@ class CGIDispatcher(URLDispatcher):
       if base_env_dict:
         env.update(base_env_dict)
       cgi_path = self._path_adjuster.AdjustPath(path)
-      env.update(self._setup_env(cgi_path, relative_url, headers))
+      env.update(self._setup_env(cgi_path, relative_url, headers, infile))
       self._exec_cgi(self._root_path,
                      path,
                      cgi_path,
@@ -2855,8 +2900,10 @@ def CreateRequestHandler(root_path,
         if require_indexes:
           dev_appserver_index.SetupIndexes(config.application, root_path)
 
-        infile = cStringIO.StringIO(self.rfile.read(
+        infile = cStringIO.StringIO()
+        infile.write(self.rfile.read(
             int(self.headers.get('content-length', 0))))
+        infile.seek(0)
 
         request_size = len(infile.getvalue())
         if request_size > MAX_REQUEST_SIZE:
@@ -3153,6 +3200,8 @@ def SetupStubs(app_id, **config):
     app_id: Application ID being served.
 
   Keywords:
+    root_path: Root path to the directory of the application which should
+        contain the app.yaml, indexes.yaml, and queues.yaml files.
     login_url: Relative URL which should be used for handling user login/logout.
     datastore_path: Path to the file to store Datastore file stub data in.
     history_path: Path to the file to store Datastore history in.
@@ -3168,6 +3217,7 @@ def SetupStubs(app_id, **config):
       behavior is different from the real app server and should be left False
       except for advanced uses of dev_appserver.
   """
+  root_path = config.get('root_path', None)
   login_url = config['login_url']
   datastore_path = config['datastore_path']
   history_path = config['history_path']
@@ -3231,6 +3281,10 @@ def SetupStubs(app_id, **config):
     'capability_service',
     capability_stub.CapabilityServiceStub())
 
+  apiproxy_stub_map.apiproxy.RegisterStub(
+    'taskqueue',
+    taskqueue_stub.TaskQueueServiceStub(root_path=root_path))
+
 
   try:
     from google.appengine.api.images import images_stub
@@ -3275,7 +3329,6 @@ def CreateImplicitMatcher(module_dict,
                      '',
                      False,
                      False)
-
 
   admin_dispatcher = create_cgi_dispatcher(module_dict, root_path,
                                            path_adjuster)

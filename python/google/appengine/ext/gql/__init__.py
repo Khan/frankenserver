@@ -676,6 +676,10 @@ class GQL(object):
     """Return the result ordering list."""
     return self.__orderings
 
+  def is_keys_only(self):
+    """Returns True if this query returns Keys, False if it returns Entities."""
+    return self._keys_only
+
   __iter__ = Run
 
   __result_type_regex = re.compile(r'(\*|__key__)')

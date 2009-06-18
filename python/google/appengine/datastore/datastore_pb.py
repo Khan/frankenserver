@@ -382,6 +382,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   require_perfect_plan_ = 0
   has_keys_only_ = 0
   keys_only_ = 0
+  has_transaction_ = 0
+  transaction_ = None
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -560,6 +562,24 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_keys_only(self): return self.has_keys_only_
 
+  def transaction(self):
+    if self.transaction_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.transaction_ is None: self.transaction_ = Transaction()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.transaction_
+
+  def mutable_transaction(self): self.has_transaction_ = 1; return self.transaction()
+
+  def clear_transaction(self):
+    if self.has_transaction_:
+      self.has_transaction_ = 0;
+      if self.transaction_ is not None: self.transaction_.Clear()
+
+  def has_transaction(self): return self.has_transaction_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -575,6 +595,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_require_perfect_plan()): self.set_require_perfect_plan(x.require_perfect_plan())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
+    if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
 
   def Equals(self, x):
     if x is self: return 1
@@ -605,6 +626,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_require_perfect_plan_ and self.require_perfect_plan_ != x.require_perfect_plan_: return 0
     if self.has_keys_only_ != x.has_keys_only_: return 0
     if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
+    if self.has_transaction_ != x.has_transaction_: return 0
+    if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -620,6 +643,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if not p.IsInitialized(debug_strs): initialized=0
     for p in self.composite_index_:
       if not p.IsInitialized(debug_strs): initialized=0
+    if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -639,6 +663,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     if (self.has_require_perfect_plan_): n += 3
     if (self.has_keys_only_): n += 3
+    if (self.has_transaction_): n += 2 + self.lengthString(self.transaction_.ByteSize())
     return n + 1
 
   def Clear(self):
@@ -654,6 +679,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_composite_index()
     self.clear_require_perfect_plan()
     self.clear_keys_only()
+    self.clear_transaction()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -695,6 +721,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_keys_only_):
       out.putVarInt32(168)
       out.putBoolean(self.keys_only_)
+    if (self.has_transaction_):
+      out.putVarInt32(178)
+      out.putVarInt32(self.transaction_.ByteSize())
+      self.transaction_.OutputUnchecked(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -741,6 +771,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 168:
         self.set_keys_only(d.getBoolean())
         continue
+      if tt == 178:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_transaction().TryMerge(tmp)
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -783,6 +819,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_require_perfect_plan_: res+=prefix+("require_perfect_plan: %s\n" % self.DebugFormatBool(self.require_perfect_plan_))
     if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
+    if self.has_transaction_:
+      res+=prefix+"transaction <\n"
+      res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
   kapp = 1
@@ -801,6 +841,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kcomposite_index = 19
   krequire_perfect_plan = 20
   kkeys_only = 21
+  ktransaction = 22
 
   _TEXT = (
    "ErrorCode",
@@ -825,6 +866,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
    "composite_index",
    "require_perfect_plan",
    "keys_only",
+   "transaction",
   )
 
   _TYPES = (
@@ -870,6 +912,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
    ProtocolBuffer.Encoder.NUMERIC,
 
    ProtocolBuffer.Encoder.NUMERIC,
+
+   ProtocolBuffer.Encoder.STRING,
 
   )
 

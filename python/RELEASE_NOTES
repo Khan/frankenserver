@@ -3,6 +3,30 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.3 - June 1, 2009
+============================
+
+  - Task Queue support available as google.appengine.api.labs.taskqueue.
+      http://code.google.com/appengine/docs/python/taskqueue
+  - Django 1.0 support. You must install Django locally on your machine
+    for the SDK but no longer need to upload it to App Engine.
+      from google.appengine.dist import use_library
+      use_library('django', '1.0')
+      http://code.google.com/p/googleappengine/issues/detail?id=872
+  - Urlfetch supports asynchronous requests.
+      http://code.google.com/p/googleappengine/issues/detail?id=958
+  - Urlfetch in SDK now matches App Engine more closely:
+    By default, it now sets the referer header, does not set the Accept
+    header, and sets Accept-Encoding to gzip.
+      http://code.google.com/p/googleappengine/issues/detail?id=970
+  - Fixed issue with httplib and absolute URLs.
+      http://code.google.com/p/googleappengine/issues/detail?id=1311
+  - Memcache key length is no longer restricted to 250 bytes: longer keys
+    will be replaced with a hash of the key.
+  - Datastore ancestor queries now work within transactions.
+  - Datastore transactions in SDK now snapshot on the first operation so they
+    do not see writes made during the transaction. Matches App Engine.  
+
 Version 1.2.2 - April 22, 2009
 ==============================
 
@@ -35,7 +59,6 @@ Version 1.2.2 - April 22, 2009
   - Python _ast module is now available for import
       http://code.google.com/p/googleappengine/issues/detail?id=779
   - Fixed issue with the color argument of the Images API composite method.
-
 
 Version 1.2.1 - April 13, 2009
 =============================
