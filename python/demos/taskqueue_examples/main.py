@@ -64,7 +64,7 @@ class MailWorker(webapp.RequestHandler):
   @require_admin
   def post(self):
     mail.send_mail(
-      'bslatkin@google.com',  # Remove this from public examples.
+      'user@example.com',
       self.request.get('to'),
       'A special message to you',
       'This is a test of the task queue')
