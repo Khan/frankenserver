@@ -143,22 +143,24 @@ class CapabilityConfigList(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kconfig = 1
   kdefault_config = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "config",
-   "default_config",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "config",
+    2: "default_config",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -409,6 +411,10 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
     if self.has_error_message_: res+=prefix+("error_message: %s\n" % self.DebugFormatString(self.error_message_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kpackage = 1
   kcapability = 2
   kstatus = 3
@@ -417,34 +423,27 @@ class CapabilityConfig(ProtocolBuffer.ProtocolMessage):
   kadmin_message = 5
   kerror_message = 6
 
-  _TEXT = (
-   "ErrorCode",
-   "package",
-   "capability",
-   "status",
-   "internal_message",
-   "admin_message",
-   "error_message",
-   "scheduled_time",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "package",
+    2: "capability",
+    3: "status",
+    4: "internal_message",
+    5: "admin_message",
+    6: "error_message",
+    7: "scheduled_time",
+  }, 7)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.STRING,
+    7: ProtocolBuffer.Encoder.STRING,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

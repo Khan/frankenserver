@@ -147,7 +147,7 @@ def Put(entities):
     return []
 
   for entity in entities:
-    if not entity.kind() or not entity.app():
+    if not entity.kind() or not entity.app_id_namespace():
       raise datastore_errors.BadRequestError(
           'App and kind must not be empty, in entity: %s' % entity)
 
@@ -276,7 +276,7 @@ class Entity(dict):
   provides dictionary-style access to properties.
   """
   def __init__(self, kind, parent=None, _app=None, name=None,
-               unindexed_properties=[]):
+               unindexed_properties=[], _namespace=None):
     """Constructor. Takes the kind and transaction root, which cannot be
     changed after the entity is constructed, and an optional parent. Raises
     BadArgumentError or BadKeyError if kind is invalid or parent is not an
@@ -294,17 +294,17 @@ class Entity(dict):
       unindexed_properties: list or tuple of strings
     """
     ref = entity_pb.Reference()
-    _app = datastore_types.ResolveAppId(_app)
-    ref.set_app(_app)
+    _app_namespace = datastore_types.ResolveAppIdNamespace(_app, _namespace)
+    ref.set_app(_app_namespace.to_encoded())
 
     datastore_types.ValidateString(kind, 'kind',
                                    datastore_errors.BadArgumentError)
-
     if parent is not None:
       parent = _GetCompleteKeyOrError(parent)
-      if _app != parent.app():
+      if _app_namespace != parent.app_id_namespace():
         raise datastore_errors.BadArgumentError(
-            "_app %s doesn't match parent's app %s" % (_app, parent.app()))
+            " %s doesn't match parent's app_namespace %s" %
+            (_app_namespace, parent.app_id_namespace()))
       ref.CopyFrom(parent._Key__reference)
 
     last_path = ref.mutable_path().add_element()
@@ -329,9 +329,19 @@ class Entity(dict):
 
   def app(self):
     """Returns the name of the application that created this entity, a
-    string.
+    string or None if not set.
     """
     return self.__key.app()
+
+  def namespace(self):
+    """Returns the namespace of this entity, a string or None.
+    """
+    return self.__key.namespace()
+
+  def app_id_namespace(self):
+    """Returns the AppIdNamespace of this entity or None if not set.
+    """
+    return self.__key.app_id_namespace()
 
   def kind(self):
     """Returns this entity's kind, a string.
@@ -701,7 +711,8 @@ class Query(dict):
   __inequality_prop = None
   __inequality_count = 0
 
-  def __init__(self, kind, filters={}, _app=None, keys_only=False):
+  def __init__(self, kind=None, filters={}, _app=None, keys_only=False,
+               _namespace=None):
     """Constructor.
 
     Raises BadArgumentError if kind is not a string. Raises BadValueError or
@@ -714,15 +725,17 @@ class Query(dict):
       filters: dict
       keys_only: boolean
     """
-    datastore_types.ValidateString(kind, 'kind',
-                                   datastore_errors.BadArgumentError)
+    if kind is not None:
+      datastore_types.ValidateString(kind, 'kind',
+                                     datastore_errors.BadArgumentError)
 
     self.__kind = kind
     self.__orderings = []
     self.__filter_order = {}
     self.update(filters)
 
-    self.__app = datastore_types.ResolveAppId(_app)
+    self.__app = datastore_types.ResolveAppIdNamespace(_app,
+                                                       _namespace).to_encoded()
     self.__keys_only = keys_only
 
   def Order(self, *orderings):
@@ -793,6 +806,13 @@ class Query(dict):
             'Order() expects Query.ASCENDING or DESCENDING; received %s' %
             str(direction))
         direction = Query.ASCENDING
+
+      if (self.__kind is None and
+          (property != datastore_types._KEY_SPECIAL_PROPERTY or
+          direction != Query.ASCENDING)):
+        raise datastore_errors.BadArgumentError(
+            'Only %s ascending orders are supported on kindless queries' %
+            datastore_types._KEY_SPECIAL_PROPERTY)
 
       orderings[i] = (property, direction)
 
@@ -884,16 +904,17 @@ class Query(dict):
     """
     return self._Run()
 
-  def _Run(self, limit=None, offset=None):
+  def _Run(self, limit=None, offset=None,
+           prefetch_count=None, next_count=None):
     """Runs this query, with an optional result limit and an optional offset.
 
-    Identical to Run, with the extra optional limit and offset parameters.
-    limit and offset must both be integers >= 0.
+    Identical to Run, with the extra optional limit, offset, prefetch_count,
+    next_count parameters. These parameters must be integers >= 0.
 
     This is not intended to be used by application developers. Use Get()
     instead!
     """
-    pb = self._ToPb(limit, offset)
+    pb = self._ToPb(limit, offset, prefetch_count)
     result = datastore_pb.QueryResult()
 
     try:
@@ -907,7 +928,7 @@ class Query(dict):
         raise datastore_errors.NeedIndexError(
           str(exc) + '\nThis query needs this index:\n' + yaml)
 
-    return Iterator(result)
+    return Iterator(result, batch_size=next_count)
 
   def Get(self, limit, offset=0):
     """Fetches and returns a maximum number of results from the query.
@@ -956,7 +977,8 @@ class Query(dict):
           'Argument to Get named \'offset\' must be an int greater than or '
           'equal to 0; received %s (a %s)' % (offset, typename(offset)))
 
-    return self._Run(limit, offset)._Get(limit)
+    return self._Run(limit=limit, offset=offset,
+                     prefetch_count=limit)._Get(limit)
 
   def Count(self, limit=None):
     """Returns the number of entities that this query matches. The returned
@@ -1108,6 +1130,12 @@ class Query(dict):
           'first sort order, if any sort orders are supplied' %
           ', '.join(self.INEQUALITY_OPERATORS))
 
+    if (self.__kind is None and
+        property != datastore_types._KEY_SPECIAL_PROPERTY):
+      raise datastore_errors.BadFilterError(
+          'Only %s filters are allowed on kindless queries.' %
+          datastore_types._KEY_SPECIAL_PROPERTY)
+
     if property in datastore_types._SPECIAL_PROPERTIES:
       if property == datastore_types._KEY_SPECIAL_PROPERTY:
         for value in values:
@@ -1118,7 +1146,7 @@ class Query(dict):
 
     return match
 
-  def _ToPb(self, limit=None, offset=None):
+  def _ToPb(self, limit=None, offset=None, count=None):
     """Converts this Query to its protocol buffer representation. Not
     intended to be used by application developers. Enforced by hiding the
     datastore_pb classes.
@@ -1129,6 +1157,8 @@ class Query(dict):
       # number of results that match the query to skip.  limit is applied
       # after the offset is fulfilled
       offset: int
+      # the requested initial batch size
+      count: int
 
     Returns:
       # the PB representation of this Query
@@ -1138,6 +1168,7 @@ class Query(dict):
       BadRequestError if called inside a transaction and the query does not
       include an ancestor.
     """
+
     if not self.__ancestor and _CurrentTransactionKey():
       raise datastore_errors.BadRequestError(
         'Only ancestor queries are allowed inside transactions.')
@@ -1145,7 +1176,8 @@ class Query(dict):
     pb = datastore_pb.Query()
     _MaybeSetupTransaction(pb, [self.__ancestor])
 
-    pb.set_kind(self.__kind.encode('utf-8'))
+    if self.__kind is not None:
+      pb.set_kind(self.__kind.encode('utf-8'))
     pb.set_keys_only(bool(self.__keys_only))
     if self.__app:
       pb.set_app(self.__app.encode('utf-8'))
@@ -1153,6 +1185,8 @@ class Query(dict):
       pb.set_limit(limit)
     if offset is not None:
       pb.set_offset(offset)
+    if count is not None:
+      pb.set_count(count)
     if self.__ancestor:
       pb.mutable_ancestor().CopyFrom(self.__ancestor._Key__reference)
 
@@ -1517,9 +1551,10 @@ class Iterator(object):
   > for person in it:
   >   print 'Hi, %s!' % person['name']
   """
-  def __init__(self, query_result_pb):
+  def __init__(self, query_result_pb, batch_size=None):
     self.__cursor = query_result_pb.cursor()
     self.__keys_only = query_result_pb.keys_only()
+    self.__batch_size = batch_size
     self.__buffer = self._ProcessQueryResult(query_result_pb)
 
   def _Get(self, count):
@@ -1547,16 +1582,16 @@ class Iterator(object):
       # a list of entities or keys
       [Entity or Key, ...]
     """
-    entityList = self._Next(count)
-    while len(entityList) < count and self.__more_results:
-      next_results = self._Next(count - len(entityList))
+    entity_list = self._Next(count)
+    while len(entity_list) < count and self.__more_results:
+      next_results = self._Next(count - len(entity_list), self.__batch_size)
       if not next_results:
         break
-      entityList += next_results
-    return entityList;
+      entity_list += next_results
+    return entity_list;
 
-  def _Next(self, count):
-    """Returns the next result(s) of the query.
+  def _Next(self, count=None):
+    """Returns the next batch of results.
 
     Not intended to be used by application developers. Use the python
     iterator protocol instead.
@@ -1565,11 +1600,14 @@ class Iterator(object):
     results. If the query specified a sort order, results are returned in that
     order. Otherwise, the order is undefined.
 
-    The argument, count, specifies the number of results to return. However, the
-    length of the returned list may be smaller than count. This is the case if
-    count is greater than the number of remaining results or the size of the
-    remaining results exciteds the RPC buffer limit. Use _Get to insure all
-    possible entities are retrieved.
+    The optional argument, count, specifies the number of results to return.
+    However, the length of the returned list may be smaller than count. This is
+    the case if count is greater than the number of remaining results or the
+    size of the remaining results exceeds the RPC buffer limit. Use _Get to
+    insure all possible entities are retrieved.
+
+    If the count is omitted, the datastore backend decides how many entities to
+    send.
 
     There is an internal buffer for use with the next() method. If this buffer
     is not empty, up to 'count' values are removed from this buffer and
@@ -1580,19 +1618,23 @@ class Iterator(object):
 
     Args:
       # the number of results to return; must be >= 1
-      count: int or long
+      count: int or long or None
 
     Returns:
       # a list of entities or keys
       [Entity or Key, ...]
     """
-    if not isinstance(count, (int, long)) or count <= 0:
+    if count is not None and (not isinstance(count, (int, long)) or count <= 0):
       raise datastore_errors.BadArgumentError(
         'Argument to _Next must be an int greater than 0; received %s (a %s)' %
         (count, typename(count)))
 
     if self.__buffer:
-      if count <= len(self.__buffer):
+      if count is None:
+        entity_list = self.__buffer
+        self.__buffer = []
+        return entity_list
+      elif count <= len(self.__buffer):
         entity_list = self.__buffer[:count]
         del self.__buffer[:count]
         return entity_list
@@ -1601,13 +1643,15 @@ class Iterator(object):
         self.__buffer = []
         count -= len(entity_list)
     else:
-        entity_list=[]
+        entity_list = []
+
 
     if not self.__more_results:
       return entity_list
 
     req = datastore_pb.NextRequest()
-    req.set_count(count)
+    if count is not None:
+      req.set_count(count)
     req.mutable_cursor().CopyFrom(self.__cursor)
     result = datastore_pb.QueryResult()
     try:
@@ -1642,11 +1686,9 @@ class Iterator(object):
     else:
       return [Entity._FromPb(e) for e in result.result_list()]
 
-  _BUFFER_SIZE = 20
-
   def next(self):
     if not self.__buffer:
-      self.__buffer = self._Next(self._BUFFER_SIZE)
+      self.__buffer = self._Next(self.__batch_size)
     try:
       return self.__buffer.pop(0)
     except IndexError:
@@ -1657,9 +1699,6 @@ class Iterator(object):
 class _Transaction(object):
   """Encapsulates a transaction currently in progress.
 
-  If we've sent a BeginTransaction call, then handle will be a
-  datastore_pb.Transaction that holds the transaction handle.
-
   If we know the entity group for this transaction, it's stored in the
   entity_group attribute, which is set by RecordModifiedKeys().
 
@@ -1667,9 +1706,17 @@ class _Transaction(object):
   or deleted) in this transaction. If an entity is modified more than once, a
   BadRequestError is raised.
   """
-  def __init__(self):
-    """Initializes modified_keys to the empty set."""
-    self.handle = None
+  def __init__(self, handle):
+    """Initializes the transaction.
+
+    Args:
+      handle: a datastore_pb.Transaction returned by a BeginTransaction call
+    """
+    assert isinstance(handle, datastore_pb.Transaction)
+    explanation = []
+    assert handle.IsInitialized(explanation), explanation
+
+    self.handle = handle
     self.entity_group = None
     self.modified_keys = None
     self.modified_keys = set()
@@ -1799,26 +1846,31 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
 
   try:
     tx_key = _NewTransactionKey()
-    tx = _Transaction()
-    _txes[tx_key] = tx
 
     for i in range(0, retries + 1):
-      tx.modified_keys.clear()
+      handle = datastore_pb.Transaction()
+      try:
+        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'BeginTransaction',
+                                       api_base_pb.VoidProto(), handle)
+      except apiproxy_errors.ApplicationError, err:
+        raise _ToDatastoreError(err)
+
+      tx = _Transaction(handle)
+      _txes[tx_key] = tx
 
       try:
         result = function(*args, **kwargs)
       except:
         original_exception = sys.exc_info()
 
-        if tx.handle:
-          try:
-            resp = api_base_pb.VoidProto()
-            apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Rollback',
-                                           tx.handle, resp)
-          except:
-            exc_info = sys.exc_info()
-            logging.info('Exception sending Rollback:\n' +
-                         ''.join(traceback.format_exception(*exc_info)))
+        try:
+          resp = api_base_pb.VoidProto()
+          apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Rollback',
+                                         tx.handle, resp)
+        except:
+          exc_info = sys.exc_info()
+          logging.info('Exception sending Rollback:\n' +
+                       ''.join(traceback.format_exception(*exc_info)))
 
         type, value, trace = original_exception
         if type is datastore_errors.Rollback:
@@ -1826,21 +1878,20 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
         else:
           raise type, value, trace
 
-      if tx.handle:
-        try:
-          resp = datastore_pb.CommitResponse()
-          apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Commit',
-                                         tx.handle, resp)
-        except apiproxy_errors.ApplicationError, err:
-          if (err.application_error ==
-              datastore_pb.Error.CONCURRENT_TRANSACTION):
-            logging.warning('Transaction collision for entity group with '
-                            'key %r. Retrying...', tx.entity_group)
-            tx.handle = None
-            tx.entity_group = None
-            continue
-          else:
-            raise _ToDatastoreError(err)
+      try:
+        resp = datastore_pb.CommitResponse()
+        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Commit',
+                                       tx.handle, resp)
+      except apiproxy_errors.ApplicationError, err:
+        if (err.application_error ==
+            datastore_pb.Error.CONCURRENT_TRANSACTION):
+          logging.warning('Transaction collision for entity group with '
+                          'key %r. Retrying...', tx.entity_group)
+          tx.handle = None
+          tx.entity_group = None
+          continue
+        else:
+          raise _ToDatastoreError(err)
 
       return result
 
@@ -1854,12 +1905,11 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
 
 
 def _MaybeSetupTransaction(request, keys):
-  """Begins a transaction, if necessary, and populates it in the request.
+  """If we're in a transaction, validates and populates it in the request.
 
   If we're currently inside a transaction, this records the entity group,
-  checks that the keys are all in that entity group, creates the transaction
-  PB, and sends the BeginTransaction. It then populates the transaction handle
-  in the request.
+  checks that the keys are all in that entity group, and populates the
+  transaction handle in the request.
 
   Raises BadRequestError if the entity has a different entity group than the
   current transaction.
@@ -1901,12 +1951,7 @@ def _MaybeSetupTransaction(request, keys):
         if not tx.entity_group and group.has_id_or_name():
           tx.entity_group = group
 
-      if not tx.handle:
-        tx.handle = datastore_pb.Transaction()
-        req = api_base_pb.VoidProto()
-        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'BeginTransaction', req,
-                                       tx.handle)
-
+      assert tx.handle.IsInitialized()
       request.mutable_transaction().CopyFrom(tx.handle)
 
       return tx

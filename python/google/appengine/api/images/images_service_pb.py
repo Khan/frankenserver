@@ -80,13 +80,17 @@ class ImagesServiceError(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -150,13 +154,17 @@ class ImagesServiceTransform(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -466,6 +474,10 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if self.has_autolevels_: res+=prefix+("autolevels: %s\n" % self.DebugFormatBool(self.autolevels_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kwidth = 1
   kheight = 2
   krotate = 3
@@ -477,43 +489,33 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   kcrop_bottom_y = 9
   kautolevels = 10
 
-  _TEXT = (
-   "ErrorCode",
-   "width",
-   "height",
-   "rotate",
-   "horizontal_flip",
-   "vertical_flip",
-   "crop_left_x",
-   "crop_top_y",
-   "crop_right_x",
-   "crop_bottom_y",
-   "autolevels",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "width",
+    2: "height",
+    3: "rotate",
+    4: "horizontal_flip",
+    5: "vertical_flip",
+    6: "crop_left_x",
+    7: "crop_top_y",
+    8: "crop_right_x",
+    9: "crop_bottom_y",
+    10: "autolevels",
+  }, 10)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+    6: ProtocolBuffer.Encoder.FLOAT,
+    7: ProtocolBuffer.Encoder.FLOAT,
+    8: ProtocolBuffer.Encoder.FLOAT,
+    9: ProtocolBuffer.Encoder.FLOAT,
+    10: ProtocolBuffer.Encoder.NUMERIC,
+  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -583,18 +585,21 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if self.has_content_: res+=prefix+("content: %s\n" % self.DebugFormatString(self.content_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcontent = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "content",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "content",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -673,18 +678,21 @@ class OutputSettings(ProtocolBuffer.ProtocolMessage):
     if self.has_mime_type_: res+=prefix+("mime_type: %s\n" % self.DebugFormatInt32(self.mime_type_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kmime_type = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "mime_type",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "mime_type",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -834,26 +842,27 @@ class ImagesTransformRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kimage = 1
   ktransform = 2
   koutput = 3
 
-  _TEXT = (
-   "ErrorCode",
-   "image",
-   "transform",
-   "output",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "image",
+    2: "transform",
+    3: "output",
+  }, 3)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -926,18 +935,21 @@ class ImagesTransformResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kimage = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "image",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "image",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1152,34 +1164,33 @@ class CompositeImageOptions(ProtocolBuffer.ProtocolMessage):
     if self.has_anchor_: res+=prefix+("anchor: %s\n" % self.DebugFormatInt32(self.anchor_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   ksource_index = 1
   kx_offset = 2
   ky_offset = 3
   kopacity = 4
   kanchor = 5
 
-  _TEXT = (
-   "ErrorCode",
-   "source_index",
-   "x_offset",
-   "y_offset",
-   "opacity",
-   "anchor",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "source_index",
+    2: "x_offset",
+    3: "y_offset",
+    4: "opacity",
+    5: "anchor",
+  }, 5)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.FLOAT,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1339,30 +1350,30 @@ class ImagesCanvas(ProtocolBuffer.ProtocolMessage):
     if self.has_color_: res+=prefix+("color: %s\n" % self.DebugFormatInt32(self.color_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kwidth = 1
   kheight = 2
   koutput = 3
   kcolor = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "width",
-   "height",
-   "output",
-   "color",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "width",
+    2: "height",
+    3: "output",
+    4: "color",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1523,26 +1534,27 @@ class ImagesCompositeRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kimage = 1
   koptions = 2
   kcanvas = 3
 
-  _TEXT = (
-   "ErrorCode",
-   "image",
-   "options",
-   "canvas",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "image",
+    2: "options",
+    3: "canvas",
+  }, 3)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1615,18 +1627,21 @@ class ImagesCompositeResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kimage = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "image",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "image",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1699,18 +1714,21 @@ class ImagesHistogramRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kimage = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "image",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "image",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1855,26 +1873,27 @@ class ImagesHistogram(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kred = 1
   kgreen = 2
   kblue = 3
 
-  _TEXT = (
-   "ErrorCode",
-   "red",
-   "green",
-   "blue",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "red",
+    2: "green",
+    3: "blue",
+  }, 3)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1947,18 +1966,21 @@ class ImagesHistogramResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   khistogram = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "histogram",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "histogram",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

@@ -22,7 +22,6 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
-from google.appengine.api.api_base_pb import *
 class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
@@ -75,13 +74,17 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -183,22 +186,24 @@ class MemcacheGetRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkey = 1
   kname_space = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "key",
-   "name_space",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "key",
+    2: "name_space",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -403,30 +408,30 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kItemGroup = 1
   kItemkey = 2
   kItemvalue = 3
   kItemflags = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "Item",
-   "key",
-   "value",
-   "flags",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Item",
+    2: "key",
+    3: "value",
+    4: "flags",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STARTGROUP,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.FLOAT,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -726,6 +731,10 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kItemGroup = 1
   kItemkey = 2
   kItemvalue = 3
@@ -734,34 +743,27 @@ class MemcacheSetRequest(ProtocolBuffer.ProtocolMessage):
   kItemexpiration_time = 6
   kname_space = 7
 
-  _TEXT = (
-   "ErrorCode",
-   "Item",
-   "key",
-   "value",
-   "flags",
-   "set_policy",
-   "expiration_time",
-   "name_space",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Item",
+    2: "key",
+    3: "value",
+    4: "flags",
+    5: "set_policy",
+    6: "expiration_time",
+    7: "name_space",
+  }, 7)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STARTGROUP,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.FLOAT,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+    6: ProtocolBuffer.Encoder.FLOAT,
+    7: ProtocolBuffer.Encoder.STRING,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -850,18 +852,21 @@ class MemcacheSetResponse(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kset_status = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "set_status",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "set_status",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1063,30 +1068,30 @@ class MemcacheDeleteRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kItemGroup = 1
   kItemkey = 2
   kItemdelete_time = 3
   kname_space = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "Item",
-   "key",
-   "delete_time",
-   "name_space",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Item",
+    2: "key",
+    3: "delete_time",
+    4: "name_space",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STARTGROUP,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.FLOAT,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1173,18 +1178,21 @@ class MemcacheDeleteResponse(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kdelete_status = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "delete_status",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "delete_status",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1209,6 +1217,8 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
   delta_ = 1
   has_direction_ = 0
   direction_ = 1
+  has_initial_value_ = 0
+  initial_value_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1265,6 +1275,19 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_direction(self): return self.has_direction_
 
+  def initial_value(self): return self.initial_value_
+
+  def set_initial_value(self, x):
+    self.has_initial_value_ = 1
+    self.initial_value_ = x
+
+  def clear_initial_value(self):
+    if self.has_initial_value_:
+      self.has_initial_value_ = 0
+      self.initial_value_ = 0
+
+  def has_initial_value(self): return self.has_initial_value_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1272,6 +1295,7 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_name_space()): self.set_name_space(x.name_space())
     if (x.has_delta()): self.set_delta(x.delta())
     if (x.has_direction()): self.set_direction(x.direction())
+    if (x.has_initial_value()): self.set_initial_value(x.initial_value())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1283,6 +1307,8 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_delta_ and self.delta_ != x.delta_: return 0
     if self.has_direction_ != x.has_direction_: return 0
     if self.has_direction_ and self.direction_ != x.direction_: return 0
+    if self.has_initial_value_ != x.has_initial_value_: return 0
+    if self.has_initial_value_ and self.initial_value_ != x.initial_value_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1299,6 +1325,7 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
     if (self.has_delta_): n += 1 + self.lengthVarInt64(self.delta_)
     if (self.has_direction_): n += 1 + self.lengthVarInt64(self.direction_)
+    if (self.has_initial_value_): n += 1 + self.lengthVarInt64(self.initial_value_)
     return n + 1
 
   def Clear(self):
@@ -1306,6 +1333,7 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_name_space()
     self.clear_delta()
     self.clear_direction()
+    self.clear_initial_value()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1319,6 +1347,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_name_space_):
       out.putVarInt32(34)
       out.putPrefixedString(self.name_space_)
+    if (self.has_initial_value_):
+      out.putVarInt32(40)
+      out.putVarUint64(self.initial_value_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1335,6 +1366,9 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_name_space(d.getPrefixedString())
         continue
+      if tt == 40:
+        self.set_initial_value(d.getVarUint64())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1345,32 +1379,36 @@ class MemcacheIncrementRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     if self.has_delta_: res+=prefix+("delta: %s\n" % self.DebugFormatInt64(self.delta_))
     if self.has_direction_: res+=prefix+("direction: %s\n" % self.DebugFormatInt32(self.direction_))
+    if self.has_initial_value_: res+=prefix+("initial_value: %s\n" % self.DebugFormatInt64(self.initial_value_))
     return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kkey = 1
   kname_space = 4
   kdelta = 2
   kdirection = 3
+  kinitial_value = 5
 
-  _TEXT = (
-   "ErrorCode",
-   "key",
-   "delta",
-   "direction",
-   "name_space",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "key",
+    2: "delta",
+    3: "direction",
+    4: "name_space",
+    5: "initial_value",
+  }, 5)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1437,18 +1475,21 @@ class MemcacheIncrementResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_new_value_: res+=prefix+("new_value: %s\n" % self.DebugFormatInt64(self.new_value_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   knew_value = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "new_value",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "new_value",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1492,13 +1533,17 @@ class MemcacheFlushRequest(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1542,13 +1587,17 @@ class MemcacheFlushResponse(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1592,13 +1641,17 @@ class MemcacheStatsRequest(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1817,6 +1870,10 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
     if self.has_oldest_item_age_: res+=prefix+("oldest_item_age: %s\n" % self.DebugFormatFixed32(self.oldest_item_age_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   khits = 1
   kmisses = 2
   kbyte_hits = 3
@@ -1824,31 +1881,25 @@ class MergedNamespaceStats(ProtocolBuffer.ProtocolMessage):
   kbytes = 5
   koldest_item_age = 6
 
-  _TEXT = (
-   "ErrorCode",
-   "hits",
-   "misses",
-   "byte_hits",
-   "items",
-   "bytes",
-   "oldest_item_age",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "hits",
+    2: "misses",
+    3: "byte_hits",
+    4: "items",
+    5: "bytes",
+    6: "oldest_item_age",
+  }, 6)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.FLOAT,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+    6: ProtocolBuffer.Encoder.FLOAT,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1929,18 +1980,21 @@ class MemcacheStatsResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kstats = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "stats",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "stats",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

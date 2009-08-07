@@ -27,8 +27,8 @@ before user code begins executing.
 import os
 
 ENV_DEFAULT_NAMESPACE = 'HTTP_X_APPENGINE_DEFAULT_NAMESPACE'
+ENV_CURRENT_NAMESPACE = '__INTERNAL_CURRENT_NAMESPACE'
 
-__default_namespace = None
 
 def set_request_namespace(namespace):
   """Set the default namespace to use for future calls, for this request only.
@@ -37,20 +37,28 @@ def set_request_namespace(namespace):
     namespace: A string naming the new namespace to use. The empty
       string specifies the root namespace for this app.
   """
-  global __default_namespace
-  __default_namespace = namespace
+  os.environ[ENV_CURRENT_NAMESPACE] = namespace
 
 
 def get_request_namespace():
-  """Get the name of the current default namespace. The empty string
-  indicates that the root namespace is the default."""
-  global __default_namespace
-  if __default_namespace is None:
+  """Get the name of the current default namespace.
+
+  The empty string indicates that the root namespace is the default.
+  """
+  return os.getenv(ENV_CURRENT_NAMESPACE, '')
+
+
+def _enable_request_namespace():
+  """Automatically enable namespace to default for domain.
+
+  Calling this function will automatically default the namespace to the
+  chosen Google Apps domain for the current request.
+  """
+  if ENV_CURRENT_NAMESPACE not in os.environ:
     if ENV_DEFAULT_NAMESPACE in os.environ:
-      __default_namespace = os.environ[ENV_DEFAULT_NAMESPACE]
+      os.environ[ENV_CURRENT_NAMESPACE] = os.environ[ENV_DEFAULT_NAMESPACE]
     else:
-      __default_namespace = ''
-  return __default_namespace
+      os.environ[ENV_CURRENT_NAMESPACE] = ''
 
 
 def _add_name_space(request, namespace=None):

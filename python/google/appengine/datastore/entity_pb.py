@@ -783,6 +783,10 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"}\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kint64Value = 1
   kbooleanValue = 2
   kstringValue = 3
@@ -803,70 +807,51 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
   kReferenceValuePathElementid = 16
   kReferenceValuePathElementname = 17
 
-  _TEXT = (
-   "ErrorCode",
-   "int64Value",
-   "booleanValue",
-   "stringValue",
-   "doubleValue",
-   "PointValue",
-   "x",
-   "y",
-   "UserValue",
-   "email",
-   "auth_domain",
-   "nickname",
-   "ReferenceValue",
-   "app",
-   "PathElement",
-   "type",
-   "id",
-   "name",
-   "gaiaid",
-   "obfuscated_gaiaid",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "int64Value",
+    2: "booleanValue",
+    3: "stringValue",
+    4: "doubleValue",
+    5: "PointValue",
+    6: "x",
+    7: "y",
+    8: "UserValue",
+    9: "email",
+    10: "auth_domain",
+    11: "nickname",
+    12: "ReferenceValue",
+    13: "app",
+    14: "PathElement",
+    15: "type",
+    16: "id",
+    17: "name",
+    18: "gaiaid",
+    19: "obfuscated_gaiaid",
+  }, 19)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.DOUBLE,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.DOUBLE,
-
-   ProtocolBuffer.Encoder.DOUBLE,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.DOUBLE,
+    5: ProtocolBuffer.Encoder.STARTGROUP,
+    6: ProtocolBuffer.Encoder.DOUBLE,
+    7: ProtocolBuffer.Encoder.DOUBLE,
+    8: ProtocolBuffer.Encoder.STARTGROUP,
+    9: ProtocolBuffer.Encoder.STRING,
+    10: ProtocolBuffer.Encoder.STRING,
+    11: ProtocolBuffer.Encoder.STRING,
+    12: ProtocolBuffer.Encoder.STARTGROUP,
+    13: ProtocolBuffer.Encoder.STRING,
+    14: ProtocolBuffer.Encoder.STARTGROUP,
+    15: ProtocolBuffer.Encoder.STRING,
+    16: ProtocolBuffer.Encoder.NUMERIC,
+    17: ProtocolBuffer.Encoder.STRING,
+    18: ProtocolBuffer.Encoder.NUMERIC,
+    19: ProtocolBuffer.Encoder.STRING,
+  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -888,6 +873,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
   GD_PHONENUMBER =   11
   GD_POSTALADDRESS =   12
   GD_RATING    =   13
+  BLOBKEY      =   17
 
   _Meaning_NAMES = {
     14: "BLOB",
@@ -906,6 +892,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     11: "GD_PHONENUMBER",
     12: "GD_POSTALADDRESS",
     13: "GD_RATING",
+    17: "BLOBKEY",
   }
 
   def Meaning_Name(cls, x): return cls._Meaning_NAMES.get(x, "")
@@ -1092,34 +1079,33 @@ class Property(ProtocolBuffer.ProtocolMessage):
     if self.has_multiple_: res+=prefix+("multiple: %s\n" % self.DebugFormatBool(self.multiple_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kmeaning = 1
   kmeaning_uri = 2
   kname = 3
   kvalue = 5
   kmultiple = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "meaning",
-   "meaning_uri",
-   "name",
-   "multiple",
-   "value",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "meaning",
+    2: "meaning_uri",
+    3: "name",
+    4: "multiple",
+    5: "value",
+  }, 5)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1321,30 +1307,30 @@ class Path(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kElementGroup = 1
   kElementtype = 2
   kElementid = 3
   kElementname = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "Element",
-   "type",
-   "id",
-   "name",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Element",
+    2: "type",
+    3: "id",
+    4: "name",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STARTGROUP,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1447,58 +1433,24 @@ class Reference(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kapp = 13
   kpath = 14
 
-  _TEXT = (
-   "ErrorCode",
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   "app",
-   "path",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    13: "app",
+    14: "path",
+  }, 14)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    13: ProtocolBuffer.Encoder.STRING,
+    14: ProtocolBuffer.Encoder.STRING,
+  }, 14, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1682,34 +1634,33 @@ class User(ProtocolBuffer.ProtocolMessage):
     if self.has_obfuscated_gaiaid_: res+=prefix+("obfuscated_gaiaid: %s\n" % self.DebugFormatString(self.obfuscated_gaiaid_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kemail = 1
   kauth_domain = 2
   knickname = 3
   kgaiaid = 4
   kobfuscated_gaiaid = 5
 
-  _TEXT = (
-   "ErrorCode",
-   "email",
-   "auth_domain",
-   "nickname",
-   "gaiaid",
-   "obfuscated_gaiaid",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "email",
+    2: "auth_domain",
+    3: "nickname",
+    4: "gaiaid",
+    5: "obfuscated_gaiaid",
+  }, 5)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2012,6 +1963,10 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkey = 13
   kentity_group = 16
   kowner = 17
@@ -2020,64 +1975,27 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
   kproperty = 14
   kraw_property = 15
 
-  _TEXT = (
-   "ErrorCode",
-   None,
-   None,
-   None,
-   "kind",
-   "kind_uri",
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   None,
-   "key",
-   "property",
-   "raw_property",
-   "entity_group",
-   "owner",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    4: "kind",
+    5: "kind_uri",
+    13: "key",
+    14: "property",
+    15: "raw_property",
+    16: "entity_group",
+    17: "owner",
+  }, 17)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+    13: ProtocolBuffer.Encoder.STRING,
+    14: ProtocolBuffer.Encoder.STRING,
+    15: ProtocolBuffer.Encoder.STRING,
+    16: ProtocolBuffer.Encoder.STRING,
+    17: ProtocolBuffer.Encoder.STRING,
+  }, 17, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2182,22 +2100,24 @@ class CompositeProperty(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kindex_id = 1
   kvalue = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "index_id",
-   "value",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "index_id",
+    2: "value",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2443,34 +2363,33 @@ class Index(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kentity_type = 1
   kancestor = 5
   kPropertyGroup = 2
   kPropertyname = 3
   kPropertydirection = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "entity_type",
-   "Property",
-   "name",
-   "direction",
-   "ancestor",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "entity_type",
+    2: "Property",
+    3: "name",
+    4: "direction",
+    5: "ancestor",
+  }, 5)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STARTGROUP,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2649,30 +2568,30 @@ class CompositeIndex(ProtocolBuffer.ProtocolMessage):
     if self.has_state_: res+=prefix+("state: %s\n" % self.DebugFormatInt32(self.state_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kapp_id = 1
   kid = 2
   kdefinition = 3
   kstate = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "app_id",
-   "id",
-   "definition",
-   "state",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app_id",
+    2: "id",
+    3: "definition",
+    4: "state",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

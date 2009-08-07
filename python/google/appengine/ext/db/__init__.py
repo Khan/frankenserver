@@ -122,6 +122,7 @@ Rating = datastore_types.Rating
 Text = datastore_types.Text
 Blob = datastore_types.Blob
 ByteString = datastore_types.ByteString
+BlobKey = datastore_types.BlobKey
 
 _kind_map = {}
 
@@ -186,6 +187,7 @@ _ALLOWED_PROPERTY_TYPES = set([
     PhoneNumber,
     PostalAddress,
     Rating,
+    BlobKey,
     ])
 
 _ALLOWED_EXPANDO_PROPERTY_TYPES = set(_ALLOWED_PROPERTY_TYPES)
@@ -241,6 +243,24 @@ def check_reserved_word(attr_name):
         "definition." % locals())
 
 
+def query_descendants(model_instance):
+  """Returns a query for all the descendants of a model instance.
+
+  Args:
+    model_instance: Model instance to find the descendants of.
+
+  Returns:
+    Query that will retrieve all entities that have the given model instance
+  as an ancestor. Unlike normal ancestor queries, this does not include the
+  ancestor itself.
+  """
+
+  result = Query().ancestor(model_instance);
+  result.filter(datastore_types._KEY_SPECIAL_PROPERTY + ' >',
+                model_instance.key());
+  return result;
+
+
 def _initialize_properties(model_class, name, bases, dct):
   """Initialize Property attributes for Model-class.
 
@@ -248,17 +268,31 @@ def _initialize_properties(model_class, name, bases, dct):
     model_class: Model class to initialize properties for.
   """
   model_class._properties = {}
+  property_source = {}
+
+  def get_attr_source(name, cls):
+    for src_cls  in cls.mro():
+      if name in src_cls.__dict__:
+        return src_cls
+
   defined = set()
   for base in bases:
     if hasattr(base, '_properties'):
-      property_keys = base._properties.keys()
-      duplicate_properties = defined.intersection(property_keys)
-      if duplicate_properties:
-        raise DuplicatePropertyError(
-            'Duplicate properties in base class %s already defined: %s' %
-            (base.__name__, list(duplicate_properties)))
-      defined.update(property_keys)
-      model_class._properties.update(base._properties)
+      property_keys = set(base._properties.keys())
+      duplicate_property_keys = defined & property_keys
+      for dupe_prop_name in duplicate_property_keys:
+        old_source = property_source[dupe_prop_name] = get_attr_source(
+            dupe_prop_name, property_source[dupe_prop_name])
+        new_source = get_attr_source(dupe_prop_name, base)
+        if old_source != new_source:
+          raise DuplicatePropertyError(
+              'Duplicate property, %s, is inherited from both %s and %s.' %
+              (dupe_prop_name, old_source.__name__, new_source.__name__))
+      property_keys -= duplicate_property_keys
+      if property_keys:
+        defined |= property_keys
+        property_source.update(dict.fromkeys(property_keys, base))
+        model_class._properties.update(base._properties)
 
   for attr_name in dct.keys():
     attr = dct[attr_name]
@@ -613,7 +647,6 @@ class Model(object):
     self._key_name = key_name
     self._app = _app
 
-    properties = self.properties()
     for prop in self.properties().values():
       if prop.name in kwds:
         value = kwds[prop.name]
@@ -641,10 +674,6 @@ class Model(object):
     if self.is_saved():
       return self._entity.key()
     elif self._key_name:
-      if self._parent_key:
-        parent_key = self._parent_key
-      elif self._parent:
-          parent_key = self._parent.key()
       parent = self._parent_key or (self._parent and self._parent.key())
       return Key.from_path(self.kind(), self._key_name, parent=parent)
     else:
@@ -1322,7 +1351,7 @@ class Expando(Model):
 class _BaseQuery(object):
   """Base class for both Query and GqlQuery."""
 
-  def __init__(self, model_class, keys_only=False):
+  def __init__(self, model_class=None, keys_only=False):
     """Constructor.
 
     Args:
@@ -1428,7 +1457,10 @@ class _BaseQuery(object):
     if self._keys_only:
       return raw
     else:
-      return [self._model_class.from_entity(e) for e in raw]
+      if self._model_class is not None:
+        return [self._model_class.from_entity(e) for e in raw]
+      else:
+        return [class_for_kind(e.kind()).from_entity(e) for e in raw]
 
   def __getitem__(self, arg):
     """Support for query[index] and query[start:stop].
@@ -1505,7 +1537,11 @@ class _QueryIterator(object):
     Raises:
       StopIteration when there are no more results in query.
     """
-    return self.__model_class.from_entity(self.__iterator.next())
+    if self.__model_class is not None:
+      return self.__model_class.from_entity(self.__iterator.next())
+    else:
+      entity = self.__iterator.next()
+      return class_for_kind(entity.kind()).from_entity(entity)
 
 
 def _normalize_query_parameter(value):
@@ -1569,7 +1605,7 @@ class Query(_BaseQuery):
        print story.title
   """
 
-  def __init__(self, model_class, keys_only=False):
+  def __init__(self, model_class=None, keys_only=False):
     """Constructs a query over instances of the given Model.
 
     Args:
@@ -1586,7 +1622,11 @@ class Query(_BaseQuery):
                  _multi_query_class=datastore.MultiQuery):
     queries = []
     for query_set in self.__query_sets:
-      query = _query_class(self._model_class.kind(),
+      if self._model_class is not None:
+        kind = self._model_class.kind()
+      else:
+        kind = None
+      query = _query_class(kind,
                            query_set,
                            keys_only=self._keys_only)
       query.Order(*self.__orderings)
@@ -1665,7 +1705,12 @@ class Query(_BaseQuery):
     else:
       operator = '=='
 
-    if prop in self._model_class._unindexed_properties:
+    if self._model_class is None:
+      if prop != datastore_types._KEY_SPECIAL_PROPERTY:
+        raise BadQueryError(
+            'Only %s filters are allowed on kindless queries.' %
+            datastore_types._KEY_SPECIAL_PROPERTY)
+    elif prop in self._model_class._unindexed_properties:
       raise PropertyError('Property \'%s\' is not indexed' % prop)
 
     if operator.lower() == 'in':
@@ -1711,13 +1756,20 @@ class Query(_BaseQuery):
     else:
       order = datastore.Query.ASCENDING
 
-    if not issubclass(self._model_class, Expando):
-      if (property not in self._model_class.properties() and
-          property not in datastore_types._SPECIAL_PROPERTIES):
-        raise PropertyError('Invalid property name \'%s\'' % property)
+    if self._model_class is None:
+      if (property != datastore_types._KEY_SPECIAL_PROPERTY or
+          order != datastore.Query.ASCENDING):
+        raise BadQueryError(
+            'Only %s ascending orders are supported on kindless queries' %
+            datastore_types._KEY_SPECIAL_PROPERTY)
+    else:
+      if not issubclass(self._model_class, Expando):
+        if (property not in self._model_class.properties() and
+            property not in datastore_types._SPECIAL_PROPERTIES):
+          raise PropertyError('Invalid property name \'%s\'' % property)
 
-    if property in self._model_class._unindexed_properties:
-      raise PropertyError('Property \'%s\' is not indexed' % property)
+      if property in self._model_class._unindexed_properties:
+        raise PropertyError('Property \'%s\' is not indexed' % property)
 
     self.__orderings.append((property, order))
     return self
@@ -1774,14 +1826,18 @@ class GqlQuery(_BaseQuery):
     app = kwds.pop('_app', None)
 
     self._proto_query = gql.GQL(query_string, _app=app)
-    model_class = class_for_kind(self._proto_query._entity)
+    if self._proto_query._entity is not None:
+      model_class = class_for_kind(self._proto_query._entity)
+    else:
+      model_class = None
     super(GqlQuery, self).__init__(model_class,
                                    keys_only=self._proto_query._keys_only)
 
-    for property, unused in (self._proto_query.filters().keys() +
-                             self._proto_query.orderings()):
-      if property in model_class._unindexed_properties:
-        raise PropertyError('Property \'%s\' is not indexed' % property)
+    if model_class is not None:
+      for property, unused in (self._proto_query.filters().keys() +
+                               self._proto_query.orderings()):
+        if property in model_class._unindexed_properties:
+          raise PropertyError('Property \'%s\' is not indexed' % property)
 
     self.bind(*args, **kwds)
 
@@ -2402,7 +2458,6 @@ class UserProperty(Property):
     return super(UserProperty, self).get_value_for_datastore(model_instance)
 
   data_type = users.User
-
 
 
 class ListProperty(Property):

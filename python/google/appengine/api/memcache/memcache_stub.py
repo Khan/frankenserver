@@ -229,7 +229,16 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     key = request.key()
     entry = self._GetKey(namespace, key)
     if entry is None:
-      return
+      if not request.has_initial_value():
+        return
+      if namespace not in self._the_cache:
+        self._the_cache[namespace] = {}
+      self._the_cache[namespace][key] = CacheEntry(str(request.initial_value()),
+                                                   expiration=0,
+                                                   flags=0,
+                                                   gettime=self._gettime)
+      entry = self._GetKey(namespace, key)
+      assert entry is not None
 
     try:
       old_value = long(entry.value)

@@ -77,13 +77,17 @@ class UserServiceError(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

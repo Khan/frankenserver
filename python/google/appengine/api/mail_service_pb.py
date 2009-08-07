@@ -81,13 +81,17 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -187,22 +191,24 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if self.has_data_: res+=prefix+("Data: %s\n" % self.DebugFormatString(self.data_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kFileName = 1
   kData = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "FileName",
-   "Data",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "FileName",
+    2: "Data",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -532,6 +538,10 @@ class MailMessage(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kSender = 1
   kReplyTo = 2
   kTo = 3
@@ -542,40 +552,31 @@ class MailMessage(ProtocolBuffer.ProtocolMessage):
   kHtmlBody = 8
   kAttachment = 9
 
-  _TEXT = (
-   "ErrorCode",
-   "Sender",
-   "ReplyTo",
-   "To",
-   "Cc",
-   "Bcc",
-   "Subject",
-   "TextBody",
-   "HtmlBody",
-   "Attachment",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Sender",
+    2: "ReplyTo",
+    3: "To",
+    4: "Cc",
+    5: "Bcc",
+    6: "Subject",
+    7: "TextBody",
+    8: "HtmlBody",
+    9: "Attachment",
+  }, 9)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.STRING,
+    7: ProtocolBuffer.Encoder.STRING,
+    8: ProtocolBuffer.Encoder.STRING,
+    9: ProtocolBuffer.Encoder.STRING,
+  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

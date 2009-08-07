@@ -48,7 +48,13 @@ import yaml
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import datastore_errors
+from google.appengine.api import mail_service_pb
+from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import users
+from google.appengine.api.capabilities import capability_service_pb
+from google.appengine.api.images import images_service_pb
+from google.appengine.api.memcache import memcache_service_pb
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext import webapp
 from google.appengine.ext.remote_api import remote_api_pb
@@ -76,6 +82,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     runquery_response = datastore_pb.QueryResult()
     apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery',
                                    request, runquery_response)
+    if runquery_response.result_size() > 0:
+      response.CopyFrom(runquery_response)
+      return
+
     next_request = datastore_pb.NextRequest()
     next_request.mutable_cursor().CopyFrom(runquery_response.cursor())
     next_request.set_count(request.limit())
@@ -154,18 +164,52 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
 
 SERVICE_PB_MAP = {
+    'capability_service': {
+        'IsEnabled': (capability_service_pb.IsEnabledRequest,
+                      capability_service_pb.IsEnabledResponse),
+    },
     'datastore_v3': {
-        'Get': (datastore_pb.GetRequest, datastore_pb.GetResponse),
-        'Put': (datastore_pb.PutRequest, datastore_pb.PutResponse),
-        'Delete': (datastore_pb.DeleteRequest, datastore_pb.DeleteResponse),
-        'Count': (datastore_pb.Query, api_base_pb.Integer64Proto),
+        'Get':        (datastore_pb.GetRequest, datastore_pb.GetResponse),
+        'Put':        (datastore_pb.PutRequest, datastore_pb.PutResponse),
+        'Delete':     (datastore_pb.DeleteRequest, datastore_pb.DeleteResponse),
+        'Count':      (datastore_pb.Query, api_base_pb.Integer64Proto),
         'GetIndices': (api_base_pb.StringProto, datastore_pb.CompositeIndices),
     },
+    'images': {
+        'Transform': (images_service_pb.ImagesTransformRequest,
+                      images_service_pb.ImagesTransformResponse),
+        'Composite': (images_service_pb.ImagesCompositeRequest,
+                      images_service_pb.ImagesCompositeResponse),
+        'Histogram': (images_service_pb.ImagesHistogramRequest,
+                      images_service_pb.ImagesHistogramResponse),
+    },
+    'mail': {
+        'Send':         (mail_service_pb.MailMessage, api_base_pb.VoidProto),
+        'SendToAdmins': (mail_service_pb.MailMessage, api_base_pb.VoidProto),
+    },
+    'memcache': {
+        'Get':       (memcache_service_pb.MemcacheGetRequest,
+                      memcache_service_pb.MemcacheGetResponse),
+        'Set':       (memcache_service_pb.MemcacheSetRequest,
+                      memcache_service_pb.MemcacheSetResponse),
+        'Delete':    (memcache_service_pb.MemcacheDeleteRequest,
+                      memcache_service_pb.MemcacheDeleteResponse),
+        'Increment': (memcache_service_pb.MemcacheIncrementRequest,
+                      memcache_service_pb.MemcacheIncrementResponse),
+        'FlushAll':  (memcache_service_pb.MemcacheFlushRequest,
+                      memcache_service_pb.MemcacheFlushResponse),
+        'Stats':     (memcache_service_pb.MemcacheStatsRequest,
+                      memcache_service_pb.MemcacheStatsResponse),
+    },
     'remote_datastore': {
-        'RunQuery': (datastore_pb.Query, datastore_pb.QueryResult),
+        'RunQuery':    (datastore_pb.Query, datastore_pb.QueryResult),
         'Transaction': (remote_api_pb.TransactionRequest,
-                             datastore_pb.PutResponse),
-        'GetIDs': (remote_api_pb.PutRequest, datastore_pb.PutResponse),
+                        datastore_pb.PutResponse),
+        'GetIDs':      (remote_api_pb.PutRequest, datastore_pb.PutResponse),
+    },
+    'urlfetch': {
+        'Fetch': (urlfetch_service_pb.URLFetchRequest,
+                  urlfetch_service_pb.URLFetchResponse),
     },
 }
 
@@ -187,6 +231,7 @@ class ApiCallHandler(webapp.RequestHandler):
     elif 'X-appcfg-api-version' not in self.request.headers:
       self.response.set_status(403)
       self.response.out.write("This request did not contain a necessary header")
+      self.response.headers['Content-Type'] = 'text/plain'
       return False
     return True
 
@@ -202,6 +247,7 @@ class ApiCallHandler(webapp.RequestHandler):
         'rtok': rtok
         }
 
+    self.response.headers['Content-Type'] = 'text/plain'
     self.response.out.write(yaml.dump(app_info))
 
   def post(self):
@@ -221,6 +267,10 @@ class ApiCallHandler(webapp.RequestHandler):
       logging.exception('Exception while handling %s', request)
       self.response.set_status(200)
       response.mutable_exception().set_contents(pickle.dumps(e))
+      if isinstance(e, datastore_errors.Error):
+        application_error = response.mutable_application_error()
+        application_error.setCode(e.application_error)
+        application_error.setDetail(e.error_detail)
     self.response.out.write(response.Encode())
 
   def ExecuteRequest(self, request):

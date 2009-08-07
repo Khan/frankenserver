@@ -131,6 +131,7 @@ class RPC(apiproxy_rpc.RPC):
 
   def __MakeCallDone(self):
     self.__state = RPC.FINISHING
+    self.cpu_usage_mcycles = self.__result_dict['cpu_usage_mcycles']
     if self.__result_dict['error'] == APPLICATION_ERROR:
       self.__exception = apiproxy_errors.ApplicationError(
           self.__result_dict['application_error'],

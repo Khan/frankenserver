@@ -39,7 +39,7 @@ _DIRECTION_MAP = {
     }
 
 
-def GetSchema(_app=None):
+def GetSchema(_app=None, properties=True, start_kind=None, end_kind=None):
   """Infers an app's schema from the entities in the datastore.
 
   Note that the PropertyValue PBs in the returned EntityProtos are empty
@@ -48,11 +48,21 @@ def GetSchema(_app=None):
   throw UserNotFoundError because their email and auth domain fields will be
   empty.
 
+  Args:
+    properties: boolean, whether to include property names and types
+    start_kind, end_kind: optional range endpoints for the kinds to return,
+      compared lexicographically
+
   Returns:
     list of entity_pb.EntityProto, with kind and property names and types
   """
-  req = api_base_pb.StringProto()
-  req.set_value(datastore_types.ResolveAppId(_app))
+  req = datastore_pb.GetSchemaRequest()
+  req.set_app(datastore_types.ResolveAppId(_app))
+  req.set_properties(properties)
+  if start_kind is not None:
+    req.set_start_kind(start_kind)
+  if end_kind is not None:
+    req.set_end_kind(end_kind)
   resp = datastore_pb.Schema()
 
   _Call('GetSchema', req, resp)

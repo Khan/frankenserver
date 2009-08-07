@@ -770,15 +770,16 @@ class Client(object):
                                        time=time, key_prefix=key_prefix,
                                        namespace=namespace)
 
-  def incr(self, key, delta=1, namespace=None):
+  def incr(self, key, delta=1, namespace=None, initial_value=None):
     """Atomically increments a key's value.
 
     Internally, the value is a unsigned 64-bit integer.  Memcache
     doesn't check 64-bit overflows.  The value, if too large, will
     wrap around.
 
-    The key must already exist in the cache to be incremented.  To
-    initialize a counter, set() it to the initial value, as an
+    Unless an initial_value is specified, the key must already exist
+    in the cache to be incremented.  To initialize a counter, either
+    specify initial_value or set() it to the initial value, as an
     ASCII decimal integer.  Future get()s of the key, post-increment,
     will still be an ASCII decimal value.
 
@@ -788,6 +789,9 @@ class Client(object):
         defaulting to 1.
       namespace: a string specifying an optional namespace to use in
         the request.
+      initial_value: initial value to put in the cache, if it doesn't
+        already exist.  The default value, None, will not create a cache
+        entry if it doesn't already exist.
 
     Returns:
       New long integer value, or None if key was not in the cache, could not
@@ -798,9 +802,10 @@ class Client(object):
       ValueError: If number is negative.
       TypeError: If delta isn't an int or long.
     """
-    return self._incrdecr(key, False, delta, namespace=namespace)
+    return self._incrdecr(key, False, delta, namespace=namespace,
+                          initial_value=initial_value)
 
-  def decr(self, key, delta=1, namespace=None):
+  def decr(self, key, delta=1, namespace=None, initial_value=None):
     """Atomically decrements a key's value.
 
     Internally, the value is a unsigned 64-bit integer.  Memcache
@@ -815,6 +820,9 @@ class Client(object):
         defaulting to 1.
       namespace: a string specifying an optional namespace to use in
         the request.
+      initial_value: initial value to put in the cache, if it doesn't
+        already exist.  The default value, None, will not create a cache
+        entry if it doesn't already exist.
 
     Returns:
       New long integer value, or None if key wasn't in cache and couldn't
@@ -824,9 +832,11 @@ class Client(object):
       ValueError: If number is negative.
       TypeError: If delta isn't an int or long.
     """
-    return self._incrdecr(key, True, delta, namespace=namespace)
+    return self._incrdecr(key, True, delta, namespace=namespace,
+                          initial_value=initial_value)
 
-  def _incrdecr(self, key, is_negative, delta, namespace=None):
+  def _incrdecr(self, key, is_negative, delta, namespace=None,
+                initial_value=None):
     """Increment or decrement a key by a provided delta.
 
     Args:
@@ -836,6 +846,9 @@ class Client(object):
         or decrement by.
       namespace: a string specifying an optional namespace to use in
         the request.
+      initial_value: initial value to put in the cache, if it doesn't
+        already exist.  The default value, None, will not create a cache
+        entry if it doesn't already exist.
 
     Returns:
       New long integer value, or None on cache miss or network/RPC/server
@@ -859,6 +872,8 @@ class Client(object):
       request.set_direction(MemcacheIncrementRequest.DECREMENT)
     else:
       request.set_direction(MemcacheIncrementRequest.INCREMENT)
+    if initial_value is not None:
+      request.set_initial_value(long(initial_value))
 
     try:
       self._make_sync_call('memcache', 'Increment', request, response)

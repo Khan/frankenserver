@@ -25,6 +25,7 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
 from google.appengine.api.api_base_pb import Integer64Proto;
 from google.appengine.api.api_base_pb import StringProto;
 from google.appengine.api.api_base_pb import VoidProto;
+from google.appengine.datastore.action_pb import Action
 from google.appengine.datastore.entity_pb import CompositeIndex
 from google.appengine.datastore.entity_pb import EntityProto
 from google.appengine.datastore.entity_pb import Index
@@ -95,18 +96,21 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if self.has_handle_: res+=prefix+("handle: %s\n" % self.DebugFormatFixed64(self.handle_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   khandle = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "handle",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "handle",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.DOUBLE,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.DOUBLE,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -374,6 +378,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   search_query_ = ""
   has_hint_ = 0
   hint_ = 0
+  has_count_ = 0
+  count_ = 0
   has_offset_ = 0
   offset_ = 0
   has_limit_ = 0
@@ -384,6 +390,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   keys_only_ = 0
   has_transaction_ = 0
   transaction_ = None
+  has_distinct_ = 0
+  distinct_ = 0
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -494,6 +502,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_hint(self): return self.has_hint_
 
+  def count(self): return self.count_
+
+  def set_count(self, x):
+    self.has_count_ = 1
+    self.count_ = x
+
+  def clear_count(self):
+    if self.has_count_:
+      self.has_count_ = 0
+      self.count_ = 0
+
+  def has_count(self): return self.has_count_
+
   def offset(self): return self.offset_
 
   def set_offset(self, x):
@@ -580,6 +601,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_transaction(self): return self.has_transaction_
 
+  def distinct(self): return self.distinct_
+
+  def set_distinct(self, x):
+    self.has_distinct_ = 1
+    self.distinct_ = x
+
+  def clear_distinct(self):
+    if self.has_distinct_:
+      self.has_distinct_ = 0
+      self.distinct_ = 0
+
+  def has_distinct(self): return self.has_distinct_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -590,12 +624,14 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (x.has_search_query()): self.set_search_query(x.search_query())
     for i in xrange(x.order_size()): self.add_order().CopyFrom(x.order(i))
     if (x.has_hint()): self.set_hint(x.hint())
+    if (x.has_count()): self.set_count(x.count())
     if (x.has_offset()): self.set_offset(x.offset())
     if (x.has_limit()): self.set_limit(x.limit())
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_require_perfect_plan()): self.set_require_perfect_plan(x.require_perfect_plan())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
+    if (x.has_distinct()): self.set_distinct(x.distinct())
 
   def Equals(self, x):
     if x is self: return 1
@@ -615,6 +651,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_hint_ != x.has_hint_: return 0
     if self.has_hint_ and self.hint_ != x.hint_: return 0
+    if self.has_count_ != x.has_count_: return 0
+    if self.has_count_ and self.count_ != x.count_: return 0
     if self.has_offset_ != x.has_offset_: return 0
     if self.has_offset_ and self.offset_ != x.offset_: return 0
     if self.has_limit_ != x.has_limit_: return 0
@@ -628,6 +666,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
+    if self.has_distinct_ != x.has_distinct_: return 0
+    if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -657,6 +697,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.order_)
     for i in xrange(len(self.order_)): n += self.order_[i].ByteSize()
     if (self.has_hint_): n += 2 + self.lengthVarInt64(self.hint_)
+    if (self.has_count_): n += 2 + self.lengthVarInt64(self.count_)
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_limit_): n += 2 + self.lengthVarInt64(self.limit_)
     n += 2 * len(self.composite_index_)
@@ -664,6 +705,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_require_perfect_plan_): n += 3
     if (self.has_keys_only_): n += 3
     if (self.has_transaction_): n += 2 + self.lengthString(self.transaction_.ByteSize())
+    if (self.has_distinct_): n += 3
     return n + 1
 
   def Clear(self):
@@ -674,12 +716,14 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_search_query()
     self.clear_order()
     self.clear_hint()
+    self.clear_count()
     self.clear_offset()
     self.clear_limit()
     self.clear_composite_index()
     self.clear_require_perfect_plan()
     self.clear_keys_only()
     self.clear_transaction()
+    self.clear_distinct()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -725,6 +769,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(178)
       out.putVarInt32(self.transaction_.ByteSize())
       self.transaction_.OutputUnchecked(out)
+    if (self.has_count_):
+      out.putVarInt32(184)
+      out.putVarInt32(self.count_)
+    if (self.has_distinct_):
+      out.putVarInt32(192)
+      out.putBoolean(self.distinct_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -777,6 +827,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_transaction().TryMerge(tmp)
         continue
+      if tt == 184:
+        self.set_count(d.getVarInt32())
+        continue
+      if tt == 192:
+        self.set_distinct(d.getBoolean())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -807,6 +863,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"}\n"
       cnt+=1
     if self.has_hint_: res+=prefix+("hint: %s\n" % self.DebugFormatInt32(self.hint_))
+    if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt32(self.count_))
     if self.has_offset_: res+=prefix+("offset: %s\n" % self.DebugFormatInt32(self.offset_))
     if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
     cnt=0
@@ -823,7 +880,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
     return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kapp = 1
   kkind = 3
@@ -836,86 +898,60 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kOrderproperty = 10
   kOrderdirection = 11
   khint = 18
+  kcount = 23
   koffset = 12
   klimit = 16
   kcomposite_index = 19
   krequire_perfect_plan = 20
   kkeys_only = 21
   ktransaction = 22
+  kdistinct = 24
 
-  _TEXT = (
-   "ErrorCode",
-   "app",
-   None,
-   "kind",
-   "Filter",
-   None,
-   "op",
-   None,
-   "search_query",
-   "Order",
-   "property",
-   "direction",
-   "offset",
-   None,
-   "property",
-   None,
-   "limit",
-   "ancestor",
-   "hint",
-   "composite_index",
-   "require_perfect_plan",
-   "keys_only",
-   "transaction",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app",
+    3: "kind",
+    4: "Filter",
+    6: "op",
+    8: "search_query",
+    9: "Order",
+    10: "property",
+    11: "direction",
+    12: "offset",
+    14: "property",
+    16: "limit",
+    17: "ancestor",
+    18: "hint",
+    19: "composite_index",
+    20: "require_perfect_plan",
+    21: "keys_only",
+    22: "transaction",
+    23: "count",
+    24: "distinct",
+  }, 24)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.STARTGROUP,
+    6: ProtocolBuffer.Encoder.NUMERIC,
+    8: ProtocolBuffer.Encoder.STRING,
+    9: ProtocolBuffer.Encoder.STARTGROUP,
+    10: ProtocolBuffer.Encoder.STRING,
+    11: ProtocolBuffer.Encoder.NUMERIC,
+    12: ProtocolBuffer.Encoder.NUMERIC,
+    14: ProtocolBuffer.Encoder.STRING,
+    16: ProtocolBuffer.Encoder.NUMERIC,
+    17: ProtocolBuffer.Encoder.STRING,
+    18: ProtocolBuffer.Encoder.NUMERIC,
+    19: ProtocolBuffer.Encoder.STRING,
+    20: ProtocolBuffer.Encoder.NUMERIC,
+    21: ProtocolBuffer.Encoder.NUMERIC,
+    22: ProtocolBuffer.Encoder.STRING,
+    23: ProtocolBuffer.Encoder.NUMERIC,
+    24: ProtocolBuffer.Encoder.NUMERIC,
+  }, 24, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1080,30 +1116,30 @@ class QueryExplanation(ProtocolBuffer.ProtocolMessage):
     if self.has_native_limit_: res+=prefix+("native_limit: %s\n" % self.DebugFormatInt32(self.native_limit_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   knative_ancestor = 1
   knative_index = 2
   knative_offset = 3
   knative_limit = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "native_ancestor",
-   "native_index",
-   "native_offset",
-   "native_limit",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "native_ancestor",
+    2: "native_index",
+    3: "native_offset",
+    4: "native_limit",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1172,18 +1208,21 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     if self.has_cursor_: res+=prefix+("cursor: %s\n" % self.DebugFormatFixed64(self.cursor_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcursor = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "cursor",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "cursor",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.DOUBLE,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.DOUBLE,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1245,13 +1284,17 @@ class Error(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1399,30 +1442,30 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if self.has_entity_write_bytes_: res+=prefix+("entity_write_bytes: %s\n" % self.DebugFormatInt32(self.entity_write_bytes_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kindex_writes = 1
   kindex_write_bytes = 2
   kentity_writes = 3
   kentity_write_bytes = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "index_writes",
-   "index_write_bytes",
-   "entity_writes",
-   "entity_write_bytes",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "index_writes",
+    2: "index_write_bytes",
+    3: "entity_writes",
+    4: "entity_write_bytes",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1547,22 +1590,24 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkey = 1
   ktransaction = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "key",
-   "transaction",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "key",
+    2: "transaction",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1721,22 +1766,24 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kEntityGroup = 1
   kEntityentity = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "Entity",
-   "entity",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Entity",
+    2: "entity",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STARTGROUP,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1932,30 +1979,30 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kentity = 1
   ktransaction = 2
   kcomposite_index = 3
   ktrusted = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "entity",
-   "transaction",
-   "composite_index",
-   "trusted",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "entity",
+    2: "transaction",
+    3: "composite_index",
+    4: "trusted",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2080,22 +2127,24 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkey = 1
   kcost = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "key",
-   "cost",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "key",
+    2: "cost",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2247,35 +2296,27 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkey = 6
   ktransaction = 5
   ktrusted = 4
 
-  _TEXT = (
-   "ErrorCode",
-   None,
-   None,
-   None,
-   "trusted",
-   "transaction",
-   "key",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    4: "trusted",
+    5: "transaction",
+    6: "key",
+  }, 6)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.MAX_TYPE,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.STRING,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2356,25 +2397,28 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcost = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "cost",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "cost",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class NextRequest(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   has_count_ = 0
-  count_ = 1
+  count_ = 0
 
   def __init__(self, contents=None):
     self.cursor_ = Cursor()
@@ -2397,7 +2441,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
   def clear_count(self):
     if self.has_count_:
       self.has_count_ = 0
-      self.count_ = 1
+      self.count_ = 0
 
   def has_count(self): return self.has_count_
 
@@ -2467,22 +2511,24 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt32(self.count_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcursor = 1
   kcount = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "cursor",
-   "count",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "cursor",
+    2: "count",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2663,34 +2709,210 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcursor = 1
   kresult = 2
   kmore_results = 3
   kkeys_only = 4
 
-  _TEXT = (
-   "ErrorCode",
-   "cursor",
-   "result",
-   "more_results",
-   "keys_only",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "cursor",
+    2: "result",
+    3: "more_results",
+    4: "keys_only",
+  }, 4)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
-   ProtocolBuffer.Encoder.STRING,
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class GetSchemaRequest(ProtocolBuffer.ProtocolMessage):
+  has_app_ = 0
+  app_ = ""
+  has_start_kind_ = 0
+  start_kind_ = ""
+  has_end_kind_ = 0
+  end_kind_ = ""
+  has_properties_ = 0
+  properties_ = 1
 
-   ProtocolBuffer.Encoder.NUMERIC,
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
 
-   ProtocolBuffer.Encoder.NUMERIC,
+  def app(self): return self.app_
 
-  )
+  def set_app(self, x):
+    self.has_app_ = 1
+    self.app_ = x
+
+  def clear_app(self):
+    if self.has_app_:
+      self.has_app_ = 0
+      self.app_ = ""
+
+  def has_app(self): return self.has_app_
+
+  def start_kind(self): return self.start_kind_
+
+  def set_start_kind(self, x):
+    self.has_start_kind_ = 1
+    self.start_kind_ = x
+
+  def clear_start_kind(self):
+    if self.has_start_kind_:
+      self.has_start_kind_ = 0
+      self.start_kind_ = ""
+
+  def has_start_kind(self): return self.has_start_kind_
+
+  def end_kind(self): return self.end_kind_
+
+  def set_end_kind(self, x):
+    self.has_end_kind_ = 1
+    self.end_kind_ = x
+
+  def clear_end_kind(self):
+    if self.has_end_kind_:
+      self.has_end_kind_ = 0
+      self.end_kind_ = ""
+
+  def has_end_kind(self): return self.has_end_kind_
+
+  def properties(self): return self.properties_
+
+  def set_properties(self, x):
+    self.has_properties_ = 1
+    self.properties_ = x
+
+  def clear_properties(self):
+    if self.has_properties_:
+      self.has_properties_ = 0
+      self.properties_ = 1
+
+  def has_properties(self): return self.has_properties_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_app()): self.set_app(x.app())
+    if (x.has_start_kind()): self.set_start_kind(x.start_kind())
+    if (x.has_end_kind()): self.set_end_kind(x.end_kind())
+    if (x.has_properties()): self.set_properties(x.properties())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_app_ != x.has_app_: return 0
+    if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_start_kind_ != x.has_start_kind_: return 0
+    if self.has_start_kind_ and self.start_kind_ != x.start_kind_: return 0
+    if self.has_end_kind_ != x.has_end_kind_: return 0
+    if self.has_end_kind_ and self.end_kind_ != x.end_kind_: return 0
+    if self.has_properties_ != x.has_properties_: return 0
+    if self.has_properties_ and self.properties_ != x.properties_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_app_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: app not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.app_))
+    if (self.has_start_kind_): n += 1 + self.lengthString(len(self.start_kind_))
+    if (self.has_end_kind_): n += 1 + self.lengthString(len(self.end_kind_))
+    if (self.has_properties_): n += 2
+    return n + 1
+
+  def Clear(self):
+    self.clear_app()
+    self.clear_start_kind()
+    self.clear_end_kind()
+    self.clear_properties()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.app_)
+    if (self.has_start_kind_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.start_kind_)
+    if (self.has_end_kind_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.end_kind_)
+    if (self.has_properties_):
+      out.putVarInt32(32)
+      out.putBoolean(self.properties_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_app(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_start_kind(d.getPrefixedString())
+        continue
+      if tt == 26:
+        self.set_end_kind(d.getPrefixedString())
+        continue
+      if tt == 32:
+        self.set_properties(d.getBoolean())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_start_kind_: res+=prefix+("start_kind: %s\n" % self.DebugFormatString(self.start_kind_))
+    if self.has_end_kind_: res+=prefix+("end_kind: %s\n" % self.DebugFormatString(self.end_kind_))
+    if self.has_properties_: res+=prefix+("properties: %s\n" % self.DebugFormatBool(self.properties_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kapp = 1
+  kstart_kind = 2
+  kend_kind = 3
+  kproperties = 4
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app",
+    2: "start_kind",
+    3: "end_kind",
+    4: "properties",
+  }, 4)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class Schema(ProtocolBuffer.ProtocolMessage):
+  has_more_results_ = 0
+  more_results_ = 0
 
   def __init__(self, contents=None):
     self.kind_ = []
@@ -2712,16 +2934,32 @@ class Schema(ProtocolBuffer.ProtocolMessage):
 
   def clear_kind(self):
     self.kind_ = []
+  def more_results(self): return self.more_results_
+
+  def set_more_results(self, x):
+    self.has_more_results_ = 1
+    self.more_results_ = x
+
+  def clear_more_results(self):
+    if self.has_more_results_:
+      self.has_more_results_ = 0
+      self.more_results_ = 0
+
+  def has_more_results(self): return self.has_more_results_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.kind_size()): self.add_kind().CopyFrom(x.kind(i))
+    if (x.has_more_results()): self.set_more_results(x.more_results())
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.kind_) != len(x.kind_): return 0
     for e1, e2 in zip(self.kind_, x.kind_):
       if e1 != e2: return 0
+    if self.has_more_results_ != x.has_more_results_: return 0
+    if self.has_more_results_ and self.more_results_ != x.more_results_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2734,16 +2972,21 @@ class Schema(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.kind_)
     for i in xrange(len(self.kind_)): n += self.lengthString(self.kind_[i].ByteSize())
+    if (self.has_more_results_): n += 2
     return n + 0
 
   def Clear(self):
     self.clear_kind()
+    self.clear_more_results()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.kind_)):
       out.putVarInt32(10)
       out.putVarInt32(self.kind_[i].ByteSize())
       self.kind_[i].OutputUnchecked(out)
+    if (self.has_more_results_):
+      out.putVarInt32(16)
+      out.putBoolean(self.more_results_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2753,6 +2996,9 @@ class Schema(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_kind().TryMerge(tmp)
+        continue
+      if tt == 16:
+        self.set_more_results(d.getBoolean())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -2768,20 +3014,27 @@ class Schema(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_more_results_: res+=prefix+("more_results: %s\n" % self.DebugFormatBool(self.more_results_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kkind = 1
+  kmore_results = 2
 
-  _TEXT = (
-   "ErrorCode",
-   "kind",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "kind",
+    2: "more_results",
+  }, 2)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2865,18 +3118,198 @@ class CompositeIndices(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kindex = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "index",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "index",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
-  )
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ActionRequest(ProtocolBuffer.ProtocolMessage):
+  has_transaction_ = 0
+  has_action_ = 0
+
+  def __init__(self, contents=None):
+    self.transaction_ = Transaction()
+    self.action_ = Action()
+    if contents is not None: self.MergeFromString(contents)
+
+  def transaction(self): return self.transaction_
+
+  def mutable_transaction(self): self.has_transaction_ = 1; return self.transaction_
+
+  def clear_transaction(self):self.has_transaction_ = 0; self.transaction_.Clear()
+
+  def has_transaction(self): return self.has_transaction_
+
+  def action(self): return self.action_
+
+  def mutable_action(self): self.has_action_ = 1; return self.action_
+
+  def clear_action(self):self.has_action_ = 0; self.action_.Clear()
+
+  def has_action(self): return self.has_action_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
+    if (x.has_action()): self.mutable_action().MergeFrom(x.action())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_transaction_ != x.has_transaction_: return 0
+    if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
+    if self.has_action_ != x.has_action_: return 0
+    if self.has_action_ and self.action_ != x.action_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_transaction_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: transaction not set.')
+    elif not self.transaction_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_action_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: action not set.')
+    elif not self.action_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.transaction_.ByteSize())
+    n += self.lengthString(self.action_.ByteSize())
+    return n + 2
+
+  def Clear(self):
+    self.clear_transaction()
+    self.clear_action()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.transaction_.ByteSize())
+    self.transaction_.OutputUnchecked(out)
+    out.putVarInt32(18)
+    out.putVarInt32(self.action_.ByteSize())
+    self.action_.OutputUnchecked(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_transaction().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_action().TryMerge(tmp)
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_transaction_:
+      res+=prefix+"transaction <\n"
+      res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_action_:
+      res+=prefix+"action <\n"
+      res+=self.action_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  ktransaction = 1
+  kaction = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "transaction",
+    2: "action",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ActionResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 0
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2957,20 +3390,23 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kcost = 1
 
-  _TEXT = (
-   "ErrorCode",
-   "cost",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "cost",
+  }, 1)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['Transaction','Query','Query_Filter','Query_Order','QueryExplanation','Cursor','Error','Cost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','Schema','CompositeIndices','CommitResponse']
+__all__ = ['Transaction','Query','Query_Filter','Query_Order','QueryExplanation','Cursor','Error','Cost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','GetSchemaRequest','Schema','CompositeIndices','ActionRequest','ActionResponse','CommitResponse']

@@ -77,7 +77,7 @@ class GQL(object):
 
   The syntax for SELECT is fairly straightforward:
 
-  SELECT [* | __key__ ] FROM <entity>
+  SELECT [* | __key__ ] [FROM <entity>]
     [WHERE <condition> [AND <condition> ...]]
     [ORDER BY <property> [ASC | DESC] [, <property> [ASC | DESC] ...]]
     [LIMIT [<offset>,]<count>]
@@ -805,14 +805,16 @@ class GQL(object):
     Returns:
       True if parsing completed okay.
     """
-    self.__Expect('FROM')
-    entity = self.__AcceptRegex(self.__identifier_regex)
-    if entity:
-      self._entity = entity
-      return self.__Where()
+    if self.__Accept('FROM'):
+      kind = self.__AcceptRegex(self.__identifier_regex)
+      if kind:
+        self._entity = kind
+      else:
+        self.__Error('Identifier Expected')
+        return False
     else:
-      self.__Error('Identifier Expected')
-      return False
+      self._entity = None
+    return self.__Where()
 
   def __Where(self):
     """Consume the WHERE cluase.

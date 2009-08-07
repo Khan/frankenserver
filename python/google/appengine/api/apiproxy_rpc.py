@@ -64,6 +64,7 @@ class RPC(object):
     self.callback = callback
     self.deadline = deadline
     self.stub = stub
+    self.cpu_usage_mcycles = 0
 
   def MakeCall(self, package=None, call=None, request=None, response=None,
                callback=None, deadline=None):

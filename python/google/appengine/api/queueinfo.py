@@ -21,20 +21,22 @@ A library for working with QueueInfo records, describing task queue entries
 for an application. Supports loading the records from queue.yaml.
 
 A queue has two required parameters and one optional one. The required
-parameters are 'name' (must be unique for an appid) and 'rate' (the
-rate at which jobs in the queue are run). There is an optional 'bucket_size'
-that will allow tokens to be 'saved up' and bucket_size. Rate and bucket_size rate are
-expressed as number/unit, with number being an int or a float, and unit being
-one of 's' (seconds), 'm' (minutes), 'h' (hours) or 'd' (days).
+parameters are 'name' (must be unique for an appid) and 'rate' (the rate
+at which jobs in the queue are run). There is an optional parameter
+'bucket_size' that will allow tokens to be 'saved up' (for more on the
+algorithm, see http://en.wikipedia.org/wiki/Token_Bucket). rate is expressed
+as number/unit, with number being an int or a float, and unit being one of
+'s' (seconds), 'm' (minutes), 'h' (hours) or 'd' (days). bucket_size is
+an integer.
 
-An example of the use of bucket_size rate: the free email quota is 2000/d, and the
-maximum you can send in a single minute is 11. So we can define a queue for
-sending email like this:
+An example of the use of bucket_size rate: the free email quota is 2000/d,
+and the maximum you can send in a single minute is 11. So we can define a
+queue for sending email like this:
 
 queue:
 - name: mail_queue
   rate: 2000/d
-  bucket_size: 10/m
+  bucket_size: 10
 
 If this queue had been idle for a while before some jobs were submitted to it,
 the first 10 jobs submitted would be run immediately, then subsequent ones
@@ -49,7 +51,7 @@ from google.appengine.api import yaml_listener
 from google.appengine.api import yaml_object
 
 _NAME_REGEX = r'^[A-Za-z0-9-]{0,499}$'
-_RATE_REGEX = r'^[0-9]+(\.[0-9]+)?/[smhd]'
+_RATE_REGEX = r'^(0|[0-9]+(\.[0-9]*)?/[smhd])'
 
 QUEUE = 'queue'
 
@@ -102,7 +104,7 @@ def LoadSingleQueue(queue_info):
 
 
 def ParseRate(rate):
-  """Parses a rate string in the form number/unit.
+  """Parses a rate string in the form number/unit, or the literal 0.
 
   The unit is one of s (seconds), m (minutes), h (hours) or d (days).
 
@@ -115,6 +117,8 @@ def ParseRate(rate):
   Raises:
     MalformedQueueConfiguration: if the rate is invalid
   """
+  if rate == "0":
+    return 0.0
   elements = rate.split('/')
   if len(elements) != 2:
     raise MalformedQueueConfiguration('Rate "%s" is invalid.' % rate)

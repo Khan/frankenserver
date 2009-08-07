@@ -239,7 +239,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
               header_value == 'gzip'):
             continue
           if header_key.lower() == 'content-length':
-            header_value = len(response.content())
+            header_value = str(len(response.content()))
           header_proto = response.add_header()
           header_proto.set_key(header_key)
           header_proto.set_value(header_value)

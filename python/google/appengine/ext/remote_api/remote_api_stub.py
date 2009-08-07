@@ -71,6 +71,7 @@ import thread
 import threading
 import yaml
 
+from google.appengine.api import datastore
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext.remote_api import remote_api_pb
@@ -84,6 +85,10 @@ class Error(Exception):
 
 class ConfigurationError(Error):
   """Exception for configuration errors."""
+
+
+class UnknownJavaServerError(Error):
+  """Exception for exceptions returned from a Java remote_api handler."""
 
 
 def GetUserAgent():
@@ -136,20 +141,37 @@ class RemoteStub(object):
     self._server = server
     self._path = path
 
+  def _PreHookHandler(self, service, call, request, response):
+    pass
+
+  def _PostHookHandler(self, service, call, request, response):
+    pass
+
   def MakeSyncCall(self, service, call, request, response):
+    self._PreHookHandler(service, call, request, response)
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
     request_pb.mutable_request().set_contents(request.Encode())
 
     response_pb = remote_api_pb.Response()
-    response_pb.ParseFromString(self._server.Send(self._path,
-                                                  request_pb.Encode()))
+    encoded_request = request_pb.Encode()
+    encoded_response = self._server.Send(self._path, encoded_request)
+    response_pb.ParseFromString(encoded_response)
 
-    if response_pb.has_exception():
-      raise pickle.loads(response_pb.exception().contents())
-    else:
-      response.ParseFromString(response_pb.response().contents())
+    try:
+      if response_pb.has_application_error():
+        error_pb = response_pb.application_error()
+        raise datastore._ToDatastoreError(error_pb.code())(error_pb.detail())
+      elif response_pb.has_exception():
+        raise pickle.loads(response_pb.exception().contents())
+      elif response_pb.has_java_exception():
+        raise UnknownJavaServerError("An unknown error has occured in the "
+                                     "Java remote_api handler for this call.")
+      else:
+        response.ParseFromString(response_pb.response().contents())
+    finally:
+      self._PostHookHandler(service, call, request, response)
 
 
 class RemoteDatastoreStub(RemoteStub):
@@ -192,6 +214,7 @@ class RemoteDatastoreStub(RemoteStub):
       self.__next_local_cursor += 1
     finally:
       self.__local_cursor_lock.release()
+    query.clear_count()
     self.__queries[cursor_id] = query
 
     query_result.mutable_cursor().set_cursor(cursor_id)
@@ -214,6 +237,7 @@ class RemoteDatastoreStub(RemoteStub):
       request.set_limit(min(request.limit(), next_request.count()))
     else:
       request.set_limit(next_request.count())
+    request.set_count(request.limit())
 
     super(RemoteDatastoreStub, self).MakeSyncCall(
         'remote_datastore', 'RunQuery', request, query_result)
@@ -229,8 +253,8 @@ class RemoteDatastoreStub(RemoteStub):
     if get_request.has_transaction():
       txid = get_request.transaction().handle()
       txdata = self.__transactions[txid]
-      assert (txdata.thread_id == thread.get_ident(),
-              "Transactions are single-threaded.")
+      assert (txdata.thread_id ==
+          thread.get_ident()), "Transactions are single-threaded."
 
       keys = [(k, k.Encode()) for k in get_request.key_list()]
 
@@ -296,8 +320,8 @@ class RemoteDatastoreStub(RemoteStub):
 
       txid = put_request.transaction().handle()
       txdata = self.__transactions[txid]
-      assert (txdata.thread_id == thread.get_ident(),
-              "Transactions are single-threaded.")
+      assert (txdata.thread_id ==
+          thread.get_ident()), "Transactions are single-threaded."
       for entity in entities:
         txdata.entities[entity.key().Encode()] = (entity.key(), entity)
         put_response.add_key().CopyFrom(entity.key())
@@ -309,8 +333,8 @@ class RemoteDatastoreStub(RemoteStub):
     if delete_request.has_transaction():
       txid = delete_request.transaction().handle()
       txdata = self.__transactions[txid]
-      assert (txdata.thread_id == thread.get_ident(),
-              "Transactions are single-threaded.")
+      assert (txdata.thread_id ==
+          thread.get_ident()), "Transactions are single-threaded."
       for key in delete_request.key_list():
         txdata.entities[key.Encode()] = (key, None)
     else:
@@ -335,8 +359,8 @@ class RemoteDatastoreStub(RemoteStub):
           'Transaction %d not found.' % (txid,))
 
     txdata = self.__transactions[txid]
-    assert (txdata.thread_id == thread.get_ident(),
-            "Transactions are single-threaded.")
+    assert (txdata.thread_id ==
+        thread.get_ident()), "Transactions are single-threaded."
     del self.__transactions[txid]
 
     tx = remote_api_pb.TransactionRequest()
@@ -367,8 +391,8 @@ class RemoteDatastoreStub(RemoteStub):
             datastore_pb.Error.BAD_REQUEST,
             'Transaction %d not found.' % (txid,))
 
-      assert (txdata[txid].thread_id == thread.get_ident(),
-              "Transactions are single-threaded.")
+      assert (txdata[txid].thread_id ==
+          thread.get_ident()), "Transactions are single-threaded."
       del self.__transactions[txid]
     finally:
       self.__local_tx_lock.release()
@@ -386,14 +410,14 @@ class RemoteDatastoreStub(RemoteStub):
         'The remote datastore does not support index manipulation.')
 
 
-def ConfigureRemoteDatastore(app_id,
-                             path,
-                             auth_func,
-                             servername=None,
-                             rpc_server_factory=appengine_rpc.HttpRpcServer,
-                             rtok=None,
-                             secure=False):
-  """Does necessary setup to allow easy remote access to an AppEngine datastore.
+def ConfigureRemoteApi(app_id,
+                       path,
+                       auth_func,
+                       servername=None,
+                       rpc_server_factory=appengine_rpc.HttpRpcServer,
+                       rtok=None,
+                       secure=False):
+  """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
   is None and a servername is provided, this function will send a request
@@ -438,10 +462,32 @@ def ConfigureRemoteDatastore(app_id,
     if not app_info or 'rtok' not in app_info or 'app_id' not in app_info:
       raise ConfigurationError('Error parsing app_id lookup response')
     if app_info['rtok'] != rtok:
-      raise ConfigurationError('Token validation failed during app_id lookup.')
+      raise ConfigurationError('Token validation failed during app_id lookup. '
+                               '(sent %s, got %s)' % (repr(rtok),
+                                                      repr(app_info['rtok'])))
     app_id = app_info['app_id']
 
   os.environ['APPLICATION_ID'] = app_id
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-  stub = RemoteDatastoreStub(server, path)
-  apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', stub)
+  datastore_stub = RemoteDatastoreStub(server, path)
+  apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
+  stub = RemoteStub(server, path)
+  for service in ['capability_service', 'images', 'mail', 'memcache',
+                  'urlfetch']:
+    apiproxy_stub_map.apiproxy.RegisterStub(service, stub)
+
+
+def MaybeInvokeAuthentication():
+  """Sends an empty request through to the configured end-point.
+
+  If authentication is necessary, this will cause the rpc_server to invoke
+  interactive authentication.
+  """
+  datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
+  if isinstance(datastore_stub, RemoteStub):
+    datastore_stub._server.Send(datastore_stub._path, payload=None)
+  else:
+    raise ConfigurationError('remote_api is not configured.')
+
+
+ConfigureRemoteDatastore = ConfigureRemoteApi

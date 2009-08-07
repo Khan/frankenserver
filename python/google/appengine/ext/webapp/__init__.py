@@ -247,6 +247,9 @@ class Response(object):
       except UnicodeError, e:
         logging.warning('Response written is not UTF-8: %s', e)
 
+    if (self.headers.get('Cache-Control') == 'no-cache' and
+        not self.headers.get('Expires')):
+      self.headers['Expires'] = 'Fri, 01 Jan 1990 00:00:00 GMT'
     self.headers['Content-Length'] = str(len(body))
     write = start_response('%d %s' % self.__status, self.__wsgi_headers)
     write(body)
@@ -463,6 +466,9 @@ class WSGIApplication(object):
   The URL mapping is first-match based on the list ordering.
   """
 
+  REQUEST_CLASS = Request
+  RESPONSE_CLASS = Response
+
   def __init__(self, url_mapping, debug=False):
     """Initializes this application with the given URL mapping.
 
@@ -477,8 +483,8 @@ class WSGIApplication(object):
 
   def __call__(self, environ, start_response):
     """Called by WSGI when a request comes in."""
-    request = Request(environ)
-    response = Response()
+    request = self.REQUEST_CLASS(environ)
+    response = self.RESPONSE_CLASS()
 
     WSGIApplication.active_instance = self
 

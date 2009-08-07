@@ -119,7 +119,7 @@ class IntervalTimeSpecification(TimeSpecification):
   """
 
   def __init__(self, interval, period):
-    super(IntervalTimeSpecification, self).__init__(self)
+    super(IntervalTimeSpecification, self).__init__()
     self.interval = interval
     self.period = period
 

@@ -83,13 +83,17 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
     return res
 
 
-  _TEXT = (
-   "ErrorCode",
-  )
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-  )
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -426,6 +430,10 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_deadline_: res+=prefix+("Deadline: %s\n" % self.DebugFormat(self.deadline_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kMethod = 1
   kUrl = 2
   kHeaderGroup = 3
@@ -435,37 +443,29 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
   kFollowRedirects = 7
   kDeadline = 8
 
-  _TEXT = (
-   "ErrorCode",
-   "Method",
-   "Url",
-   "Header",
-   "Key",
-   "Value",
-   "Payload",
-   "FollowRedirects",
-   "Deadline",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Method",
+    2: "Url",
+    3: "Header",
+    4: "Key",
+    5: "Value",
+    6: "Payload",
+    7: "FollowRedirects",
+    8: "Deadline",
+  }, 8)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.DOUBLE,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STARTGROUP,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.STRING,
+    7: ProtocolBuffer.Encoder.NUMERIC,
+    8: ProtocolBuffer.Encoder.DOUBLE,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -781,6 +781,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_externalbytesreceived_: res+=prefix+("ExternalBytesReceived: %s\n" % self.DebugFormatInt64(self.externalbytesreceived_))
     return res
 
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
   kContent = 1
   kStatusCode = 2
   kHeaderGroup = 3
@@ -790,37 +794,29 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   kExternalBytesSent = 7
   kExternalBytesReceived = 8
 
-  _TEXT = (
-   "ErrorCode",
-   "Content",
-   "StatusCode",
-   "Header",
-   "Key",
-   "Value",
-   "ContentWasTruncated",
-   "ExternalBytesSent",
-   "ExternalBytesReceived",
-  )
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "Content",
+    2: "StatusCode",
+    3: "Header",
+    4: "Key",
+    5: "Value",
+    6: "ContentWasTruncated",
+    7: "ExternalBytesSent",
+    8: "ExternalBytesReceived",
+  }, 8)
 
-  _TYPES = (
-   ProtocolBuffer.Encoder.NUMERIC,
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.STARTGROUP,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.STRING,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-   ProtocolBuffer.Encoder.NUMERIC,
-
-  )
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.STARTGROUP,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.NUMERIC,
+    7: ProtocolBuffer.Encoder.NUMERIC,
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

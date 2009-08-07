@@ -47,6 +47,7 @@ from xml.sax import saxutils
 from google.appengine.datastore import datastore_pb
 from google.appengine.api import datastore_errors
 from google.appengine.api import users
+from google.appengine.api import namespace_manager
 from google.net.proto import ProtocolBuffer
 from google.appengine.datastore import entity_pb
 
@@ -58,6 +59,8 @@ RESERVED_PROPERTY_NAME = re.compile('^__.*__$')
 
 _KEY_SPECIAL_PROPERTY = '__key__'
 _SPECIAL_PROPERTIES = frozenset([_KEY_SPECIAL_PROPERTY])
+
+_NAMESPACE_SEPARATOR='!'
 
 class UtcTzinfo(datetime.tzinfo):
   def utcoffset(self, dt): return datetime.timedelta(0)
@@ -80,7 +83,8 @@ def typename(obj):
 def ValidateString(value,
                    name='unused',
                    exception=datastore_errors.BadValueError,
-                   max_len=_MAX_STRING_LENGTH):
+                   max_len=_MAX_STRING_LENGTH,
+                   empty_ok=False):
   """Raises an exception if value is not a valid string or a subclass thereof.
 
   A string is valid if it's not empty, no more than _MAX_STRING_LENGTH bytes,
@@ -91,12 +95,15 @@ def ValidateString(value,
     value: the value to validate.
     name: the name of this value; used in the exception message.
     exception: the type of exception to raise.
-    max_len: the maximum allowed length, in bytes
+    max_len: the maximum allowed length, in bytes.
+    empty_ok: allow empty value.
   """
+  if value is None and empty_ok:
+    return
   if not isinstance(value, basestring) or isinstance(value, Blob):
     raise exception('%s should be a string; received %s (a %s):' %
                     (name, value, typename(value)))
-  if not value:
+  if not value and not empty_ok:
     raise exception('%s must not be empty.' % name)
 
   if len(value.encode('utf-8')) > max_len:
@@ -122,6 +129,152 @@ def ResolveAppId(app, name='_app'):
     app = os.environ.get('APPLICATION_ID', '')
   ValidateString(app, '_app', datastore_errors.BadArgumentError)
   return app
+
+
+class AppIdNamespace(object):
+  """Combined AppId and Namespace
+
+  An identifier that combines the application identifier and the
+  namespace.
+  """
+  __app_id = None
+  __namespace = None
+
+  def __init__(self, app_id, namespace):
+    """Constructor. Creates a AppIdNamespace from two strings.
+
+    Args:
+      app_id: application identifier string
+      namespace: namespace identifier string
+    Raises:
+      BadArgumentError if the values contain
+      the _NAMESPACE_SEPARATOR character (!) or
+      the app_id is empty.
+    """
+    self.__app_id = app_id
+    if namespace:
+      self.__namespace = namespace
+    else:
+      self.__namespace = None
+    ValidateString(self.__app_id, 'app_id', datastore_errors.BadArgumentError)
+    ValidateString(self.__namespace,
+                   'namespace', datastore_errors.BadArgumentError,
+                   empty_ok=True)
+    if _NAMESPACE_SEPARATOR in self.__app_id:
+      raise datastore_errors.BadArgumentError(
+        'app_id must not contain a "%s"' % _NAMESPACE_SEPARATOR)
+    if self.__namespace and _NAMESPACE_SEPARATOR in self.__namespace:
+      raise datastore_errors.BadArgumentError(
+        'namespace must not contain a "%s"' % _NAMESPACE_SEPARATOR)
+
+  def __cmp__(self, other):
+    """Returns negative, zero, or positive when comparing two AppIdNamespace.
+
+    Args:
+      other: AppIdNamespace to compare to.
+
+    Returns:
+      Negative if self is less than "other"
+      Zero if "other" is equal to self
+      Positive if self is greater than "other"
+    """
+    if not isinstance(other, AppIdNamespace):
+      return cmp(id(self), id(other))
+    return cmp((self.__app_id, self.__namespace),
+               (other.__app_id, other.__namespace))
+
+  def to_encoded(self):
+    """Returns this AppIdNamespace's string equivalent
+
+    i.e. "app!namespace"
+    """
+    if not self.__namespace:
+      return self.__app_id
+    else:
+      return self.__app_id + _NAMESPACE_SEPARATOR + self.__namespace
+
+  def app_id(self):
+    """Returns this AppId portion of this AppIdNamespace.
+    """
+    return self.__app_id;
+
+  def namespace(self):
+    """Returns this namespace portion of this AppIdNamespace.
+    """
+    return self.__namespace;
+
+
+def PartitionString(value, separator):
+  """Equivalent to python2.5 str.partition()
+     TODO(gmariani) use str.partition() when python 2.5 is adopted.
+
+  Args:
+    value: String to be partitioned
+    separator: Separator string
+  """
+  index = value.find(separator);
+  if index == -1:
+    return (value, '', value[0:0]);
+  else:
+    return (value[0:index], separator, value[index+len(separator):len(value)])
+
+
+def parse_app_id_namespace(app_id_namespace):
+  """
+  An app_id_namespace string is valid if it's not empty, and contains
+  at most one namespace separator ('!').  Also, an app_id_namespace
+  with an empty namespace must not contain a namespace separator.
+
+  Args:
+    app_id_namespace: an encoded app_id_namespace.
+  Raises exception if format of app_id_namespace is invalid.
+  """
+  if not app_id_namespace:
+    raise datastore_errors.BadArgumentError(
+        'app_id_namespace must be non empty')
+  parts = PartitionString(app_id_namespace, _NAMESPACE_SEPARATOR)
+  if parts[1] == _NAMESPACE_SEPARATOR:
+    if not parts[2]:
+      raise datastore_errors.BadArgumentError(
+        'app_id_namespace must not contain a "%s" if the namespace is empty' %
+        _NAMESPACE_SEPARATOR)
+  if parts[2]:
+    return AppIdNamespace(parts[0], parts[2])
+  return AppIdNamespace(parts[0], None)
+
+def ResolveAppIdNamespace(
+    app_id=None, namespace=None, app_id_namespace=None):
+  """Validate an app id/namespace and substitute default values.
+
+  If the argument is None, $APPLICATION_ID!$NAMESPACE is substituted.
+
+  Args:
+    app_id: The app id argument value to be validated.
+    namespace: The namespace argument value to be validated.
+    app_id_namespace: An AppId/Namespace pair
+
+  Returns:
+    An AppIdNamespace object initialized with AppId and Namespace.
+
+  Raises:
+    BadArgumentError if the value is empty or not a string.
+  """
+  if app_id_namespace is None:
+    if app_id is None:
+      app_id = os.environ.get('APPLICATION_ID', '')
+    if namespace is None:
+      namespace = namespace_manager.get_request_namespace();
+  else:
+    if not app_id is None:
+      raise datastore_errors.BadArgumentError(
+          'app_id is overspecified.  Cannot define app_id_namespace and app_id')
+    if not namespace is None:
+      raise datastore_errors.BadArgumentError(
+          'namespace is overspecified.  ' +
+          'Cannot define app_id_namespace and namespace')
+    return parse_app_id_namespace(app_id_namespace)
+
+  return AppIdNamespace(app_id, namespace)
 
 
 class Key(object):
@@ -172,6 +325,26 @@ class Key(object):
     else:
       self.__reference = entity_pb.Reference()
 
+  def to_path(self):
+    """Construct the "path" of this key as a list.
+
+    Returns:
+      A list [kind_1, id_or_name_1, ..., kind_n, id_or_name_n] of the key path.
+
+    Raises:
+      datastore_errors.BadKeyError if this key does not have a valid path.
+    """
+    path = []
+    for path_element in self.__reference.path().element_list():
+      path.append(path_element.type().decode('utf-8'))
+      if path_element.has_name():
+        path.append(path_element.name().decode('utf-8'))
+      elif path_element.has_id():
+        path.append(path_element.id())
+      else:
+        raise datastore_errors.BadKeyError('Incomplete key found in to_path')
+    return path
+
   @staticmethod
   def from_path(*args, **kwds):
     """Static method to construct a Key out of a "path" (kind, id or name, ...).
@@ -202,7 +375,10 @@ class Key(object):
       BadKeyError if the parent key is incomplete.
     """
     parent = kwds.pop('parent', None)
-    _app = ResolveAppId(kwds.pop('_app', None))
+    _app_id_namespace_obj = ResolveAppIdNamespace(
+        kwds.pop('_app', None),
+        kwds.pop('_namespace', None),
+        kwds.pop('_app_id_namespace', None))
 
     if kwds:
       raise datastore_errors.BadArgumentError(
@@ -221,17 +397,18 @@ class Key(object):
       if not parent.has_id_or_name():
         raise datastore_errors.BadKeyError(
             'The parent Key is incomplete.')
-      if _app != parent.app():
+      if _app_id_namespace_obj != parent.app_id_namespace():
         raise datastore_errors.BadArgumentError(
-            'The _app argument (%r) should match parent.app() (%s)' %
-            (_app, parent.app()))
+            'The app_id/namespace arguments (%r) should match ' +
+            'parent.app_id_namespace().to_encoded() (%s)' %
+            (_app_id_namespace_obj, parent.app_id_namespace()))
 
     key = Key()
     ref = key.__reference
     if parent is not None:
       ref.CopyFrom(parent.__reference)
     else:
-      ref.set_app(_app)
+      ref.set_app(_app_id_namespace_obj.to_encoded())
 
     path = ref.mutable_path()
     for i in xrange(0, len(args), 2):
@@ -263,7 +440,21 @@ class Key(object):
   def app(self):
     """Returns this entity's app id, a string."""
     if self.__reference.app():
-      return self.__reference.app().decode('utf-8')
+      return self.app_id_namespace().app_id().decode('utf-8')
+    else:
+      return None
+
+  def namespace(self):
+    """Returns this entity's app id, a string."""
+    if self.__reference.app():
+      return self.app_id_namespace().namespace().decode('utf-8')
+    else:
+      return None
+
+  def app_id_namespace(self):
+    """Returns this entity's app id/namespace, an appIdNamespace object."""
+    if self.__reference.app():
+      return parse_app_id_namespace(self.__reference.app())
     else:
       return None
 
@@ -339,11 +530,13 @@ class Key(object):
       raise datastore_errors.BadKeyError(
         'ToTagUri() called for an entity with an incomplete key.')
 
-    return u'tag:%s.%s,%s:%s[%s]' % (saxutils.escape(self.app()),
-                                     os.environ['AUTH_DOMAIN'],
-                                     datetime.date.today().isoformat(),
-                                     saxutils.escape(self.kind()),
-                                     saxutils.escape(str(self)))
+    return u'tag:%s.%s,%s:%s[%s]' % (
+        saxutils.escape(self.app_id_namespace().to_encoded()),
+        os.environ['AUTH_DOMAIN'],
+        datetime.date.today().isoformat(),
+        saxutils.escape(self.kind()),
+        saxutils.escape(str(self)))
+
   ToXml = ToTagUri
 
   def entity_group(self):
@@ -436,7 +629,7 @@ class Key(object):
       else:
         args.append(repr(elem.id()))
 
-    args.append('_app=%r' % self.__reference.app().decode('utf-8'))
+    args.append('_app_id_namespace=%r' % self.__reference.app().decode('utf-8'))
     return u'datastore_types.Key.from_path(%s)' % ', '.join(args)
 
   def __cmp__(self, other):
@@ -459,25 +652,29 @@ class Key(object):
     self_args = []
     other_args = []
 
-    self_args.append(self.__reference.app().decode('utf-8'))
-    other_args.append(other.__reference.app().decode('utf-8'))
+    self_args.append(self.__reference.app())
+    other_args.append(other.__reference.app())
 
     for elem in self.__reference.path().element_list():
-      self_args.append(repr(elem.type()))
+      self_args.append(elem.type())
       if elem.has_name():
-        self_args.append(repr(elem.name().decode('utf-8')))
+        self_args.append(elem.name())
       else:
         self_args.append(elem.id())
 
     for elem in other.__reference.path().element_list():
-      other_args.append(repr(elem.type()))
+      other_args.append(elem.type())
       if elem.has_name():
-        other_args.append(repr(elem.name().decode('utf-8')))
+        other_args.append(elem.name())
       else:
         other_args.append(elem.id())
 
-    result = cmp(self_args, other_args)
-    return result
+    for self_component, other_component in zip(self_args, other_args):
+      comparison = cmp(self_component, other_component)
+      if comparison != 0:
+        return comparison
+
+    return cmp(len(self_args), len(other_args))
 
   def __hash__(self):
     """Returns a 32-bit integer hash of this key.
@@ -698,6 +895,7 @@ class IM(object):
       except datastore_errors.BadValueError:
         return NotImplemented
 
+
     return cmp((self.address, self.protocol),
                (other.address, other.protocol))
 
@@ -900,6 +1098,63 @@ class ByteString(str):
     return saxutils.escape(encoded)
 
 
+class BlobKey(object):
+  """Key used to identify a blob in Blobstore.
+
+  This object wraps a string that gets used internally by the Blobstore API
+  to identify application blobs.  The BlobKey corresponds to the entity name
+  of the underlying BlobReference entity.  The structure of the key is:
+
+    _<blob-key>
+
+  This class is exposed in the API in both google.appengine.ext.db and
+  google.appengine.ext.blobstore.
+  """
+
+  def __init__(self, blob_key):
+    """Constructor.
+
+    Used to convert a string to a BlobKey.  Normally used internally by
+    Blobstore API.
+
+    Args:
+      blob_key:  Key name of BlobReference that this key belongs to.
+    """
+    self.__blob_key = blob_key
+
+  def __str__(self):
+    """Convert to string."""
+    return self.__blob_key
+
+  def __repr__(self):
+    """Returns an eval()able string representation of this key.
+
+    Returns a Python string of the form 'datastore_types.BlobKey(...)'
+    that can be used to recreate this key.
+
+    Returns:
+      string
+    """
+    s = type(self).__module__
+    return '%s.%s(%r)' % (type(self).__module__,
+                       type(self).__name__,
+                       self.__blob_key)
+
+  def __cmp__(self, other):
+    if type(other) is type(self):
+      return cmp(str(self), str(other))
+    elif isinstance(other, basestring):
+      return cmp(self.__blob_key, other)
+    else:
+      return NotImplemented
+
+  def __hash__(self):
+    return hash(self.__blob_key)
+
+  def ToXml(self):
+    return str(self)
+
+
 _PROPERTY_MEANINGS = {
 
 
@@ -916,6 +1171,7 @@ _PROPERTY_MEANINGS = {
   PhoneNumber:       entity_pb.Property.GD_PHONENUMBER,
   PostalAddress:     entity_pb.Property.GD_POSTALADDRESS,
   Rating:            entity_pb.Property.GD_RATING,
+  BlobKey:           entity_pb.Property.BLOBKEY,
 }
 
 _PROPERTY_TYPES = frozenset([
@@ -940,6 +1196,7 @@ _PROPERTY_TYPES = frozenset([
   type(None),
   unicode,
   users.User,
+  BlobKey,
 ])
 
 _RAW_PROPERTY_TYPES = (Blob, Text)
@@ -1043,6 +1300,7 @@ _VALIDATE_PROPERTY_VALUES = {
   type(None): ValidatePropertyNothing,
   unicode: ValidatePropertyString,
   users.User: ValidatePropertyNothing,
+  BlobKey: ValidatePropertyString,
 }
 
 assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
@@ -1222,6 +1480,7 @@ def PackFloat(name, value, pbvalue):
   """
   pbvalue.set_doublevalue(value)
 
+
 _PACK_PROPERTY_VALUES = {
   Blob: PackBlob,
   ByteString: PackBlob,
@@ -1244,6 +1503,7 @@ _PACK_PROPERTY_VALUES = {
   type(None): lambda name, value, pbvalue: None,
   unicode: PackString,
   users.User: PackUser,
+  BlobKey: PackString,
 }
 
 assert set(_PACK_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
@@ -1331,7 +1591,6 @@ _PROPERTY_CONVERSIONS = {
   entity_pb.Property.ATOM_CATEGORY:     Category,
   entity_pb.Property.ATOM_LINK:         Link,
   entity_pb.Property.GD_EMAIL:          Email,
-  entity_pb.Property.GEORSS_POINT:      lambda coords: GeoPt(*coords),
   entity_pb.Property.GD_IM:             IM,
   entity_pb.Property.GD_PHONENUMBER:    PhoneNumber,
   entity_pb.Property.GD_POSTALADDRESS:  PostalAddress,
@@ -1339,6 +1598,7 @@ _PROPERTY_CONVERSIONS = {
   entity_pb.Property.BLOB:              Blob,
   entity_pb.Property.BYTESTRING:        ByteString,
   entity_pb.Property.TEXT:              Text,
+  entity_pb.Property.BLOBKEY:           BlobKey,
 }
 
 
@@ -1368,7 +1628,7 @@ def FromPropertyPb(pb):
   elif pbval.has_referencevalue():
     value = FromReferenceProperty(pbval)
   elif pbval.has_pointvalue():
-    value = (pbval.pointvalue().x(), pbval.pointvalue().y())
+    value = GeoPt(pbval.pointvalue().x(), pbval.pointvalue().y())
   elif pbval.has_uservalue():
     email = unicode(pbval.uservalue().email().decode('utf-8'))
     auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
@@ -1381,7 +1641,7 @@ def FromPropertyPb(pb):
     value = None
 
   try:
-    if pb.has_meaning():
+    if pb.has_meaning() and pb.meaning() in _PROPERTY_CONVERSIONS:
       conversion = _PROPERTY_CONVERSIONS[meaning]
       value = conversion(value)
   except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:
@@ -1437,6 +1697,7 @@ _PROPERTY_TYPE_STRINGS = {
     'gd:phonenumber':   PhoneNumber,
     'gd:postaladdress': PostalAddress,
     'gd:rating':        Rating,
+    'blobkey':          BlobKey,
     }
 
 

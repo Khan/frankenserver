@@ -111,7 +111,10 @@ class ListOfHooks(object):
     unique_key = (key, inspect.getmodule(function))
     if unique_key in self.__unique_keys:
       return False
-    self.__content.insert(index, (key, function, service))
+    num_args = len(inspect.getargspec(function)[0])
+    if (inspect.ismethod(function)):
+      num_args -= 1
+    self.__content.insert(index, (key, function, service, num_args))
     self.__unique_keys.add(unique_key)
     return True
 
@@ -150,7 +153,7 @@ class ListOfHooks(object):
     self.__content = []
     self.__unique_keys = set()
 
-  def Call(self, service, call, request, response):
+  def Call(self, service, call, request, response, rpc=None):
     """Invokes all hooks in this collection.
 
     Args:
@@ -158,10 +161,14 @@ class ListOfHooks(object):
       call: string representing which function to call
       request: protocol buffer for the request
       response: protocol buffer for the response
+      rpc: optional RPC used to make this call
     """
-    for key, function, srv in self.__content:
+    for key, function, srv, num_args in self.__content:
       if srv is None or srv == service:
-        function(service, call, request, response)
+        if num_args == 5:
+          function(service, call, request, response, rpc)
+        else:
+          function(service, call, request, response)
 
 
 class APIProxyStubMap(object):
@@ -240,9 +247,17 @@ class APIProxyStubMap(object):
     """
     stub = self.GetStub(service)
     assert stub, 'No api proxy found for service "%s"' % service
-    self.__precall_hooks.Call(service, call, request, response)
-    stub.MakeSyncCall(service, call, request, response)
-    self.__postcall_hooks.Call(service, call, request, response)
+    if hasattr(stub, 'CreateRPC'):
+      rpc = stub.CreateRPC()
+      self.__precall_hooks.Call(service, call, request, response, rpc)
+      rpc.MakeCall(service, call, request, response)
+      rpc.Wait()
+      rpc.CheckSuccess()
+      self.__postcall_hooks.Call(service, call, request, response, rpc)
+    else:
+      self.__precall_hooks.Call(service, call, request, response)
+      stub.MakeSyncCall(service, call, request, response)
+      self.__postcall_hooks.Call(service, call, request, response)
 
 
 class UserRPC(object):
@@ -385,7 +400,8 @@ class UserRPC(object):
     self.__method = method
     self.__get_result_hook = get_result_hook
     self.__user_data = user_data
-    apiproxy.GetPreCallHooks().Call(self.__service, method, request, response)
+    apiproxy.GetPreCallHooks().Call(
+        self.__service, method, request, response, self.__rpc)
     self.__rpc.MakeCall(self.__service, method, request, response)
 
   def wait(self):
@@ -424,7 +440,7 @@ class UserRPC(object):
     if not self.__postcall_hooks_called:
       self.__postcall_hooks_called = True
       apiproxy.GetPostCallHooks().Call(self.__service, self.__method,
-                                       self.request, self.response)
+                                       self.request, self.response, self.__rpc)
 
   def get_result(self):
     """Get the result of the RPC, or possibly raise an exception.

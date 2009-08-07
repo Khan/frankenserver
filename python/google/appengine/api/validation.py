@@ -919,7 +919,9 @@ class Repeated(Validator):
                             'but found \'%s\'.' % value)
 
     for item in value:
-      if not isinstance(item, self.constructor):
+      if isinstance(self.constructor, Validator):
+        item = self.constructor.Validate(item)
+      elif not isinstance(item, self.constructor):
         raise ValidationError('Repeated items must be %s, but found \'%s\'.'
                               % (str(self.constructor), str(item)))
 

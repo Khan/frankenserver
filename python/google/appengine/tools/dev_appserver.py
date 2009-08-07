@@ -67,7 +67,6 @@ import sre_compile
 import sre_constants
 import sre_parse
 
-import mimetypes
 import socket
 import sys
 import time
@@ -111,9 +110,9 @@ MIDDLE_TEMPLATE = 'logging_console_middle.html'
 FOOTER_TEMPLATE = 'logging_console_footer.html'
 
 DEFAULT_ENV = {
-  'GATEWAY_INTERFACE': 'CGI/1.1',
-  'AUTH_DOMAIN': 'gmail.com',
-  'TZ': 'UTC',
+    'GATEWAY_INTERFACE': 'CGI/1.1',
+    'AUTH_DOMAIN': 'gmail.com',
+    'TZ': 'UTC',
 }
 
 for ext, mime_type in (('.asc', 'text/plain'),
@@ -134,17 +133,22 @@ SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
                                               'site-packages'))
 
 
+
 class Error(Exception):
   """Base-class for exceptions in this module."""
+
 
 class InvalidAppConfigError(Error):
   """The supplied application configuration file is invalid."""
 
+
 class AppConfigNotFoundError(Error):
   """Application configuration file not found."""
 
+
 class TemplatesNotLoadedError(Error):
   """Templates for the debugging console were not loaded."""
+
 
 
 def SplitURL(relative_url):
@@ -159,7 +163,8 @@ def SplitURL(relative_url):
       script_name: Relative URL of the script that was accessed.
       query_string: String containing everything after the '?' character.
   """
-  scheme, netloc, path, query, fragment = urlparse.urlsplit(relative_url)
+  (unused_scheme, unused_netloc, path, query,
+   unused_fragment) = urlparse.urlsplit(relative_url)
   return path, query
 
 
@@ -180,6 +185,7 @@ def GetFullURL(server_name, server_port, relative_url):
   else:
     netloc = server_name
   return 'http://%s%s' % (netloc, relative_url)
+
 
 
 class URLDispatcher(object):
@@ -231,6 +237,7 @@ class URLDispatcher(object):
     Args:
       dispatched_output: StringIO buffer containing the results from the
        dispatched
+      original_output: The original output file.
     """
     original_output.write(dispatched_output.read())
 
@@ -267,6 +274,10 @@ class URLMatcher(object):
         URL; False if anyone can access this URL.
       admin_only: True if the user must be a logged-in administrator to
         access the URL; False if anyone can access the URL.
+
+    Raises:
+      TypeError: if dispatcher is not a URLDispatcher sub-class instance.
+      InvalidAppConfigError: if regex isn't valid.
     """
     if not isinstance(dispatcher, URLDispatcher):
       raise TypeError('dispatcher must be a URLDispatcher sub-class')
@@ -294,6 +305,7 @@ class URLMatcher(object):
 
     Args:
       relative_url: Relative URL being accessed in a request.
+      split_url: Used for dependency injection.
 
     Returns:
       Tuple (dispatcher, matched_path, requires_login, admin_only), which are
@@ -302,7 +314,7 @@ class URLMatcher(object):
       replaced using values matched by the URL pattern. If no match was found,
       dispatcher will be None.
     """
-    adjusted_url, query_string = split_url(relative_url)
+    adjusted_url, unused_query_string = split_url(relative_url)
 
     for url_tuple in self._url_patterns:
       url_re, dispatcher, path, requires_login, admin_only = url_tuple
@@ -325,6 +337,7 @@ class URLMatcher(object):
     return set([url_tuple[1] for url_tuple in self._url_patterns])
 
 
+
 class MatcherDispatcher(URLDispatcher):
   """Dispatcher across multiple URLMatcher instances."""
 
@@ -338,7 +351,8 @@ class MatcherDispatcher(URLDispatcher):
     Args:
       login_url: Relative URL which should be used for handling user logins.
       url_matchers: Sequence of URLMatcher objects.
-      get_user_info, login_redirect: Used for dependency injection.
+      get_user_info: Used for dependency injection.
+      login_redirect: Used for dependency injection.
     """
     self._login_url = login_url
     self._url_matchers = tuple(url_matchers)
@@ -359,30 +373,30 @@ class MatcherDispatcher(URLDispatcher):
     path variable supplied to this method is ignored.
     """
     cookies = ', '.join(headers.getheaders('cookie'))
-    email, admin, user_id = self._get_user_info(cookies)
+    email_addr, admin, user_id = self._get_user_info(cookies)
 
     for matcher in self._url_matchers:
-      dispatcher, matched_path, requires_login, admin_only = matcher.Match(relative_url)
+      dispatcher, matched_path, requires_login, admin_only = matcher.Match(
+          relative_url)
       if dispatcher is None:
         continue
 
       logging.debug('Matched "%s" to %s with path %s',
                     relative_url, dispatcher, matched_path)
 
-      if (requires_login or admin_only) and not email:
+      if (requires_login or admin_only) and not email_addr:
         logging.debug('Login required, redirecting user')
-        self._login_redirect(
-          self._login_url,
-          base_env_dict['SERVER_NAME'],
-          base_env_dict['SERVER_PORT'],
-          relative_url,
-          outfile)
+        self._login_redirect(self._login_url,
+                             base_env_dict['SERVER_NAME'],
+                             base_env_dict['SERVER_PORT'],
+                             relative_url,
+                             outfile)
       elif admin_only and not admin:
         outfile.write('Status: %d Not authorized\r\n'
                       '\r\n'
                       'Current logged in user %s is not '
                       'authorized to view this page.'
-                      % (httplib.FORBIDDEN, email))
+                      % (httplib.FORBIDDEN, email_addr))
       else:
         forward = dispatcher.Dispatch(relative_url,
                                       matched_path,
@@ -393,7 +407,7 @@ class MatcherDispatcher(URLDispatcher):
 
         if forward:
           new_path, new_headers, new_input = forward
-          logging.info('Internal redirection to %s' % new_path)
+          logging.info('Internal redirection to %s', new_path)
           new_outfile = cStringIO.StringIO()
           self.Dispatch(new_path,
                         None,
@@ -411,6 +425,7 @@ class MatcherDispatcher(URLDispatcher):
                   'Not found error: %s did not match any patterns '
                   'in application configuration.'
                   % (httplib.NOT_FOUND, relative_url))
+
 
 
 class ApplicationLoggingHandler(logging.Handler):
@@ -487,7 +502,7 @@ class ApplicationLoggingHandler(logging.Handler):
       outfile: Output stream to which the console should be written if either
         a debug parameter was supplied or a logging cookie is present.
     """
-    script_name, query_string = SplitURL(relative_url)
+    unused_script_name, query_string = SplitURL(relative_url)
     param_dict = cgi.parse_qs(query_string, True)
     cookie_dict = Cookie.SimpleCookie(env.get('HTTP_COOKIE', ''))
     if 'debug' not in param_dict and self._COOKIE_NAME not in cookie_dict:
@@ -554,8 +569,8 @@ def SetupEnvironment(cgi_path,
   env['CONTENT_LENGTH'] = headers.getheader('content-length', '')
 
   cookies = ', '.join(headers.getheaders('cookie'))
-  email, admin, user_id = get_user_info(cookies)
-  env['USER_EMAIL'] = email
+  email_addr, admin, user_id = get_user_info(cookies)
+  env['USER_EMAIL'] = email_addr
   env['USER_ID'] = user_id
   if admin:
     env['USER_IS_ADMIN'] = '1'
@@ -583,12 +598,11 @@ def NotImplementedFake(*args, **kwargs):
   """Fake for methods/functions that are not implemented in the production
   environment.
   """
-  raise NotImplementedError("This class/method is not available.")
+  raise NotImplementedError('This class/method is not available.')
 
 
 class NotImplementedFakeClass(object):
-  """Fake class for classes that are not implemented in the production
-  environment.
+  """Fake class for classes that are not implemented in the production env.
   """
   __init__ = NotImplementedFake
 
@@ -627,7 +641,7 @@ def ClearAllButEncodingsModules(module_dict):
 def FakeURandom(n):
   """Fake version of os.urandom."""
   bytes = ''
-  for i in xrange(n):
+  for _ in range(n):
     bytes += chr(random.randint(0, 255))
   return bytes
 
@@ -665,9 +679,9 @@ def FakeSetLocale(category, value=None, original_setlocale=locale.setlocale):
   return original_setlocale(category, 'C')
 
 
-def FakeOpen(file, flags, mode=0777):
+def FakeOpen(filename, flags, mode=0777):
   """Fake version of os.open."""
-  raise OSError(errno.EPERM, "Operation not permitted", file)
+  raise OSError(errno.EPERM, "Operation not permitted", filename)
 
 
 def FakeRename(src, dst):
@@ -711,27 +725,27 @@ def IsPathInSubdirectories(filename,
   return False
 
 SHARED_MODULE_PREFIXES = set([
-  'google',
-  'logging',
-  'sys',
-  'warnings',
+    'google',
+    'logging',
+    'sys',
+    'warnings',
 
 
 
 
-  're',
-  'sre_compile',
-  'sre_constants',
-  'sre_parse',
+    're',
+    'sre_compile',
+    'sre_constants',
+    'sre_parse',
 
 
 
 
-  'wsgiref',
+    'wsgiref',
 ])
 
 NOT_SHARED_MODULE_PREFIXES = set([
-  'google.appengine.ext',
+    'google.appengine.ext',
 ])
 
 
@@ -788,7 +802,7 @@ def SetupSharedModules(module_dict):
 
 
 def GeneratePythonPaths(*p):
-  """Generate all valid filenames for the given file
+  """Generate all valid filenames for the given file.
 
   Args:
     p: Positional args are the folders to the file and finally the file
@@ -814,8 +828,8 @@ class FakeFile(file):
                       if os.path.isfile(filename))
 
   ALLOWED_DIRS = set([
-    os.path.normcase(os.path.realpath(os.path.dirname(os.__file__))),
-    os.path.normcase(os.path.abspath(os.path.dirname(os.__file__))),
+      os.path.normcase(os.path.realpath(os.path.dirname(os.__file__))),
+      os.path.normcase(os.path.abspath(os.path.dirname(os.__file__))),
   ])
 
   NOT_ALLOWED_DIRS = set([
@@ -823,58 +837,58 @@ class FakeFile(file):
 
 
 
-    SITE_PACKAGES,
+      SITE_PACKAGES,
   ])
 
   ALLOWED_SITE_PACKAGE_DIRS = set(
-    os.path.normcase(os.path.abspath(os.path.join(SITE_PACKAGES, path)))
-    for path in [
+      os.path.normcase(os.path.abspath(os.path.join(SITE_PACKAGES, path)))
+      for path in [
 
-  ])
+          ])
 
   ALLOWED_SITE_PACKAGE_FILES = set(
-    os.path.normcase(os.path.abspath(os.path.join(
-      os.path.dirname(os.__file__), 'site-packages', path)))
-    for path in itertools.chain(*[
+      os.path.normcase(os.path.abspath(os.path.join(
+          os.path.dirname(os.__file__), 'site-packages', path)))
+      for path in itertools.chain(*[
 
-      [os.path.join('Crypto')],
-      GeneratePythonPaths('Crypto', '__init__'),
-      [os.path.join('Crypto', 'Cipher')],
-      GeneratePythonPaths('Crypto', 'Cipher', '__init__'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'AES'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'ARC2'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'ARC4'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'Blowfish'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'CAST'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'DES'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'DES3'),
-      GeneratePythonPaths('Crypto', 'Cipher', 'XOR'),
-      [os.path.join('Crypto', 'Hash')],
-      GeneratePythonPaths('Crypto', 'Hash', '__init__'),
-      GeneratePythonPaths('Crypto', 'Hash', 'HMAC'),
-      os.path.join('Crypto', 'Hash', 'MD2'),
-      os.path.join('Crypto', 'Hash', 'MD4'),
-      GeneratePythonPaths('Crypto', 'Hash', 'MD5'),
-      GeneratePythonPaths('Crypto', 'Hash', 'SHA'),
-      os.path.join('Crypto', 'Hash', 'SHA256'),
-      os.path.join('Crypto', 'Hash', 'RIPEMD'),
-      [os.path.join('Crypto', 'Protocol')],
-      GeneratePythonPaths('Crypto', 'Protocol', '__init__'),
-      GeneratePythonPaths('Crypto', 'Protocol', 'AllOrNothing'),
-      GeneratePythonPaths('Crypto', 'Protocol', 'Chaffing'),
-      [os.path.join('Crypto', 'PublicKey')],
-      GeneratePythonPaths('Crypto', 'PublicKey', '__init__'),
-      GeneratePythonPaths('Crypto', 'PublicKey', 'DSA'),
-      GeneratePythonPaths('Crypto', 'PublicKey', 'ElGamal'),
-      GeneratePythonPaths('Crypto', 'PublicKey', 'RSA'),
-      GeneratePythonPaths('Crypto', 'PublicKey', 'pubkey'),
-      GeneratePythonPaths('Crypto', 'PublicKey', 'qNEW'),
-      [os.path.join('Crypto', 'Util')],
-      GeneratePythonPaths('Crypto', 'Util', '__init__'),
-      GeneratePythonPaths('Crypto', 'Util', 'RFC1751'),
-      GeneratePythonPaths('Crypto', 'Util', 'number'),
-      GeneratePythonPaths('Crypto', 'Util', 'randpool'),
-  ]))
+          [os.path.join('Crypto')],
+          GeneratePythonPaths('Crypto', '__init__'),
+          [os.path.join('Crypto', 'Cipher')],
+          GeneratePythonPaths('Crypto', 'Cipher', '__init__'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'AES'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'ARC2'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'ARC4'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'Blowfish'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'CAST'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'DES'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'DES3'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'XOR'),
+          [os.path.join('Crypto', 'Hash')],
+          GeneratePythonPaths('Crypto', 'Hash', '__init__'),
+          GeneratePythonPaths('Crypto', 'Hash', 'HMAC'),
+          os.path.join('Crypto', 'Hash', 'MD2'),
+          os.path.join('Crypto', 'Hash', 'MD4'),
+          GeneratePythonPaths('Crypto', 'Hash', 'MD5'),
+          GeneratePythonPaths('Crypto', 'Hash', 'SHA'),
+          os.path.join('Crypto', 'Hash', 'SHA256'),
+          os.path.join('Crypto', 'Hash', 'RIPEMD'),
+          [os.path.join('Crypto', 'Protocol')],
+          GeneratePythonPaths('Crypto', 'Protocol', '__init__'),
+          GeneratePythonPaths('Crypto', 'Protocol', 'AllOrNothing'),
+          GeneratePythonPaths('Crypto', 'Protocol', 'Chaffing'),
+          [os.path.join('Crypto', 'PublicKey')],
+          GeneratePythonPaths('Crypto', 'PublicKey', '__init__'),
+          GeneratePythonPaths('Crypto', 'PublicKey', 'DSA'),
+          GeneratePythonPaths('Crypto', 'PublicKey', 'ElGamal'),
+          GeneratePythonPaths('Crypto', 'PublicKey', 'RSA'),
+          GeneratePythonPaths('Crypto', 'PublicKey', 'pubkey'),
+          GeneratePythonPaths('Crypto', 'PublicKey', 'qNEW'),
+          [os.path.join('Crypto', 'Util')],
+          GeneratePythonPaths('Crypto', 'Util', '__init__'),
+          GeneratePythonPaths('Crypto', 'Util', 'RFC1751'),
+          GeneratePythonPaths('Crypto', 'Util', 'number'),
+          GeneratePythonPaths('Crypto', 'Util', 'randpool'),
+          ]))
 
   _original_file = file
 
@@ -912,7 +926,7 @@ class FakeFile(file):
 
   @staticmethod
   def SetAllowSkippedFiles(allow_skipped_files):
-    """Configures access to files matching FakeFile._skip_files
+    """Configures access to files matching FakeFile._skip_files.
 
     Args:
       allow_skipped_files: Boolean whether to allow access to skipped files
@@ -1106,6 +1120,7 @@ def GetSubmoduleName(fullname):
   return fullname.rsplit('.', 1)[-1]
 
 
+
 class CouldNotFindModuleError(ImportError):
   """Raised when a module could not be found.
 
@@ -1115,10 +1130,19 @@ class CouldNotFindModuleError(ImportError):
 
 
 def Trace(func):
-  """Decorator that logs the call stack of the HardenedModulesHook class as
+  """Call stack logging decorator for HardenedModulesHook class.
+
+  This decorator logs the call stack of the HardenedModulesHook class as
   it executes, indenting logging messages based on the current stack depth.
+
+  Args:
+    func: the function to decorate.
+
+  Returns:
+    The decorated function.
   """
-  def decorate(self, *args, **kwargs):
+
+  def Decorate(self, *args, **kwargs):
     args_to_show = []
     if args is not None:
       args_to_show.extend(str(argument) for argument in args)
@@ -1136,7 +1160,7 @@ def Trace(func):
       self._indent_level -= 1
       self.log('Exiting %s(%s)', func.func_name, args_string)
 
-  return decorate
+  return Decorate
 
 
 class HardenedModulesHook(object):
@@ -1173,229 +1197,229 @@ class HardenedModulesHook(object):
       print >>sys.stderr, indent + (message % args)
 
   _WHITE_LIST_C_MODULES = [
-    'AES',
-    'ARC2',
-    'ARC4',
-    'Blowfish',
-    'CAST',
-    'DES',
-    'DES3',
-    'MD2',
-    'MD4',
-    'RIPEMD',
-    'SHA256',
-    'XOR',
+      'AES',
+      'ARC2',
+      'ARC4',
+      'Blowfish',
+      'CAST',
+      'DES',
+      'DES3',
+      'MD2',
+      'MD4',
+      'RIPEMD',
+      'SHA256',
+      'XOR',
 
-    '_Crypto_Cipher__AES',
-    '_Crypto_Cipher__ARC2',
-    '_Crypto_Cipher__ARC4',
-    '_Crypto_Cipher__Blowfish',
-    '_Crypto_Cipher__CAST',
-    '_Crypto_Cipher__DES',
-    '_Crypto_Cipher__DES3',
-    '_Crypto_Cipher__XOR',
-    '_Crypto_Hash__MD2',
-    '_Crypto_Hash__MD4',
-    '_Crypto_Hash__RIPEMD',
-    '_Crypto_Hash__SHA256',
-    'array',
-    'binascii',
-    'bz2',
-    'cmath',
-    'collections',
-    'crypt',
-    'cStringIO',
-    'datetime',
-    'errno',
-    'exceptions',
-    'gc',
-    'itertools',
-    'math',
-    'md5',
-    'operator',
-    'posix',
-    'posixpath',
-    'pyexpat',
-    'sha',
-    'struct',
-    'sys',
-    'time',
-    'timing',
-    'unicodedata',
-    'zlib',
-    '_ast',
-    '_bisect',
-    '_codecs',
-    '_codecs_cn',
-    '_codecs_hk',
-    '_codecs_iso2022',
-    '_codecs_jp',
-    '_codecs_kr',
-    '_codecs_tw',
-    '_collections',
-    '_csv',
-    '_elementtree',
-    '_functools',
-    '_hashlib',
-    '_heapq',
-    '_locale',
-    '_lsprof',
-    '_md5',
-    '_multibytecodec',
-    '_random',
-    '_sha',
-    '_sha256',
-    '_sha512',
-    '_sre',
-    '_struct',
-    '_types',
-    '_weakref',
-    '__main__',
+      '_Crypto_Cipher__AES',
+      '_Crypto_Cipher__ARC2',
+      '_Crypto_Cipher__ARC4',
+      '_Crypto_Cipher__Blowfish',
+      '_Crypto_Cipher__CAST',
+      '_Crypto_Cipher__DES',
+      '_Crypto_Cipher__DES3',
+      '_Crypto_Cipher__XOR',
+      '_Crypto_Hash__MD2',
+      '_Crypto_Hash__MD4',
+      '_Crypto_Hash__RIPEMD',
+      '_Crypto_Hash__SHA256',
+      'array',
+      'binascii',
+      'bz2',
+      'cmath',
+      'collections',
+      'crypt',
+      'cStringIO',
+      'datetime',
+      'errno',
+      'exceptions',
+      'gc',
+      'itertools',
+      'math',
+      'md5',
+      'operator',
+      'posix',
+      'posixpath',
+      'pyexpat',
+      'sha',
+      'struct',
+      'sys',
+      'time',
+      'timing',
+      'unicodedata',
+      'zlib',
+      '_ast',
+      '_bisect',
+      '_codecs',
+      '_codecs_cn',
+      '_codecs_hk',
+      '_codecs_iso2022',
+      '_codecs_jp',
+      '_codecs_kr',
+      '_codecs_tw',
+      '_collections',
+      '_csv',
+      '_elementtree',
+      '_functools',
+      '_hashlib',
+      '_heapq',
+      '_locale',
+      '_lsprof',
+      '_md5',
+      '_multibytecodec',
+      '_random',
+      '_sha',
+      '_sha256',
+      '_sha512',
+      '_sre',
+      '_struct',
+      '_types',
+      '_weakref',
+      '__main__',
   ]
 
   __CRYPTO_CIPHER_ALLOWED_MODULES = [
-    'MODE_CBC',
-    'MODE_CFB',
-    'MODE_CTR',
-    'MODE_ECB',
-    'MODE_OFB',
-    'block_size',
-    'key_size',
-    'new',
+      'MODE_CBC',
+      'MODE_CFB',
+      'MODE_CTR',
+      'MODE_ECB',
+      'MODE_OFB',
+      'block_size',
+      'key_size',
+      'new',
   ]
   _WHITE_LIST_PARTIAL_MODULES = {
-    'Crypto.Cipher.AES': __CRYPTO_CIPHER_ALLOWED_MODULES,
-    'Crypto.Cipher.ARC2': __CRYPTO_CIPHER_ALLOWED_MODULES,
-    'Crypto.Cipher.Blowfish': __CRYPTO_CIPHER_ALLOWED_MODULES,
-    'Crypto.Cipher.CAST': __CRYPTO_CIPHER_ALLOWED_MODULES,
-    'Crypto.Cipher.DES': __CRYPTO_CIPHER_ALLOWED_MODULES,
-    'Crypto.Cipher.DES3': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.AES': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.ARC2': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.Blowfish': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.CAST': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.DES': __CRYPTO_CIPHER_ALLOWED_MODULES,
+      'Crypto.Cipher.DES3': __CRYPTO_CIPHER_ALLOWED_MODULES,
 
-    'gc': [
-      'enable',
-      'disable',
-      'isenabled',
-      'collect',
-      'get_debug',
-      'set_threshold',
-      'get_threshold',
-      'get_count'
-    ],
+      'gc': [
+          'enable',
+          'disable',
+          'isenabled',
+          'collect',
+          'get_debug',
+          'set_threshold',
+          'get_threshold',
+          'get_count'
+      ],
 
 
 
-    'os': [
-      'access',
-      'altsep',
-      'curdir',
-      'defpath',
-      'devnull',
-      'environ',
-      'error',
-      'extsep',
-      'EX_NOHOST',
-      'EX_NOINPUT',
-      'EX_NOPERM',
-      'EX_NOUSER',
-      'EX_OK',
-      'EX_OSERR',
-      'EX_OSFILE',
-      'EX_PROTOCOL',
-      'EX_SOFTWARE',
-      'EX_TEMPFAIL',
-      'EX_UNAVAILABLE',
-      'EX_USAGE',
-      'F_OK',
-      'getcwd',
-      'getcwdu',
-      'getenv',
-      'listdir',
-      'lstat',
-      'name',
-      'NGROUPS_MAX',
-      'O_APPEND',
-      'O_CREAT',
-      'O_DIRECT',
-      'O_DIRECTORY',
-      'O_DSYNC',
-      'O_EXCL',
-      'O_LARGEFILE',
-      'O_NDELAY',
-      'O_NOCTTY',
-      'O_NOFOLLOW',
-      'O_NONBLOCK',
-      'O_RDONLY',
-      'O_RDWR',
-      'O_RSYNC',
-      'O_SYNC',
-      'O_TRUNC',
-      'O_WRONLY',
-      'open',
-      'pardir',
-      'path',
-      'pathsep',
-      'R_OK',
-      'readlink',
-      'remove',
-      'rename',
-      'SEEK_CUR',
-      'SEEK_END',
-      'SEEK_SET',
-      'sep',
-      'stat',
-      'stat_float_times',
-      'stat_result',
-      'strerror',
-      'TMP_MAX',
-      'unlink',
-      'urandom',
-      'utime',
-      'walk',
-      'WCOREDUMP',
-      'WEXITSTATUS',
-      'WIFEXITED',
-      'WIFSIGNALED',
-      'WIFSTOPPED',
-      'WNOHANG',
-      'WSTOPSIG',
-      'WTERMSIG',
-      'WUNTRACED',
-      'W_OK',
-      'X_OK',
-    ],
+      'os': [
+          'access',
+          'altsep',
+          'curdir',
+          'defpath',
+          'devnull',
+          'environ',
+          'error',
+          'extsep',
+          'EX_NOHOST',
+          'EX_NOINPUT',
+          'EX_NOPERM',
+          'EX_NOUSER',
+          'EX_OK',
+          'EX_OSERR',
+          'EX_OSFILE',
+          'EX_PROTOCOL',
+          'EX_SOFTWARE',
+          'EX_TEMPFAIL',
+          'EX_UNAVAILABLE',
+          'EX_USAGE',
+          'F_OK',
+          'getcwd',
+          'getcwdu',
+          'getenv',
+          'listdir',
+          'lstat',
+          'name',
+          'NGROUPS_MAX',
+          'O_APPEND',
+          'O_CREAT',
+          'O_DIRECT',
+          'O_DIRECTORY',
+          'O_DSYNC',
+          'O_EXCL',
+          'O_LARGEFILE',
+          'O_NDELAY',
+          'O_NOCTTY',
+          'O_NOFOLLOW',
+          'O_NONBLOCK',
+          'O_RDONLY',
+          'O_RDWR',
+          'O_RSYNC',
+          'O_SYNC',
+          'O_TRUNC',
+          'O_WRONLY',
+          'open',
+          'pardir',
+          'path',
+          'pathsep',
+          'R_OK',
+          'readlink',
+          'remove',
+          'rename',
+          'SEEK_CUR',
+          'SEEK_END',
+          'SEEK_SET',
+          'sep',
+          'stat',
+          'stat_float_times',
+          'stat_result',
+          'strerror',
+          'TMP_MAX',
+          'unlink',
+          'urandom',
+          'utime',
+          'walk',
+          'WCOREDUMP',
+          'WEXITSTATUS',
+          'WIFEXITED',
+          'WIFSIGNALED',
+          'WIFSTOPPED',
+          'WNOHANG',
+          'WSTOPSIG',
+          'WTERMSIG',
+          'WUNTRACED',
+          'W_OK',
+          'X_OK',
+      ],
   }
 
   _MODULE_OVERRIDES = {
-    'locale': {
-      'setlocale': FakeSetLocale,
-    },
+      'locale': {
+          'setlocale': FakeSetLocale,
+      },
 
-    'os': {
-      'access': FakeAccess,
-      'listdir': RestrictedPathFunction(os.listdir),
+      'os': {
+          'access': FakeAccess,
+          'listdir': RestrictedPathFunction(os.listdir),
 
-      'lstat': RestrictedPathFunction(os.stat),
-      'open': FakeOpen,
-      'readlink': FakeReadlink,
-      'remove': FakeUnlink,
-      'rename': FakeRename,
-      'stat': RestrictedPathFunction(os.stat),
-      'uname': FakeUname,
-      'unlink': FakeUnlink,
-      'urandom': FakeURandom,
-      'utime': FakeUTime,
-    },
+          'lstat': RestrictedPathFunction(os.stat),
+          'open': FakeOpen,
+          'readlink': FakeReadlink,
+          'remove': FakeUnlink,
+          'rename': FakeRename,
+          'stat': RestrictedPathFunction(os.stat),
+          'uname': FakeUname,
+          'unlink': FakeUnlink,
+          'urandom': FakeURandom,
+          'utime': FakeUTime,
+      },
 
-    'distutils.util': {
-      'get_platform': FakeGetPlatform,
-    },
+      'distutils.util': {
+          'get_platform': FakeGetPlatform,
+      },
   }
 
   _ENABLED_FILE_TYPES = (
-    imp.PKG_DIRECTORY,
-    imp.PY_SOURCE,
-    imp.PY_COMPILED,
-    imp.C_BUILTIN,
+      imp.PKG_DIRECTORY,
+      imp.PY_SOURCE,
+      imp.PY_COMPILED,
+      imp.C_BUILTIN,
   )
 
   def __init__(self,
@@ -1822,6 +1846,7 @@ class HardenedModulesHook(object):
     return compile(source_code, full_path, 'exec')
 
 
+
 def ModuleHasValidMainFunction(module):
   """Determines if a module has a main function that takes no arguments.
 
@@ -1835,7 +1860,8 @@ def ModuleHasValidMainFunction(module):
     True if the module has a valid, reusable main function; False otherwise.
   """
   if hasattr(module, 'main') and type(module.main) is types.FunctionType:
-    arg_names, var_args, var_kwargs, default_values = inspect.getargspec(module.main)
+    arg_names, var_args, var_kwargs, default_values = inspect.getargspec(
+        module.main)
     if len(arg_names) == 0:
       return True
     if default_values is not None and len(arg_names) == len(default_values):
@@ -1878,6 +1904,7 @@ def FindMissingInitFiles(cgi_path, module_fullname, isfile=os.path.isfile):
     cgi_path: Absolute path of the CGI module file on disk.
     module_fullname: Fully qualified Python module name used to import the
       cgi_path module.
+    isfile: Used for testing.
 
   Returns:
     List containing the paths to the missing __init__.py files.
@@ -1935,7 +1962,7 @@ def LoadTargetModule(handler_path,
   module_fullname = GetScriptModuleName(handler_path)
   script_module = module_dict.get(module_fullname)
   module_code = None
-  if script_module != None and ModuleHasValidMainFunction(script_module):
+  if script_module is not None and ModuleHasValidMainFunction(script_module):
     logging.debug('Reusing main() function of module "%s"', module_fullname)
   else:
     if script_module is None:
@@ -1944,7 +1971,8 @@ def LoadTargetModule(handler_path,
 
     try:
       module_code = import_hook.get_code(module_fullname)
-      full_path, search_path, submodule = import_hook.GetModuleInfo(module_fullname)
+      full_path, search_path, submodule = (
+        import_hook.GetModuleInfo(module_fullname))
       script_module.__file__ = full_path
       if search_path is not None:
         script_module.__path__ = search_path
@@ -1955,7 +1983,7 @@ def LoadTargetModule(handler_path,
         import_error_message += ': ' + str(exc_value)
 
       logging.exception('Encountered error loading module "%s": %s',
-                    module_fullname, import_error_message)
+                        module_fullname, import_error_message)
       missing_inits = FindMissingInitFiles(cgi_path, module_fullname)
       if missing_inits:
         logging.warning('Missing package initialization files: %s',
@@ -1989,8 +2017,10 @@ def LoadTargetModule(handler_path,
 
 
 def ExecuteOrImportScript(handler_path, cgi_path, import_hook):
-  """Executes a CGI script by importing it as a new module; possibly reuses
-  the module's main() function if it is defined and takes no arguments.
+  """Executes a CGI script by importing it as a new module.
+
+  This possibly reuses the module's main() function if it is defined and
+  takes no arguments.
 
   Basic technique lifted from PEP 338 and Python2.5's runpy module. See:
     http://www.python.org/dev/peps/pep-0338/
@@ -2260,6 +2290,7 @@ class LocalCGIDispatcher(CGIDispatcher):
     return 'Local CGI dispatcher for %s' % self._cgi_func
 
 
+
 class PathAdjuster(object):
   """Adjusts application file paths to paths relative to the application or
   external library directories."""
@@ -2273,8 +2304,10 @@ class PathAdjuster(object):
     self._root_path = os.path.abspath(root_path)
 
   def AdjustPath(self, path):
-    """Adjusts application file path to paths relative to the application or
-    external library directories.
+    """Adjusts application file paths to relative to the application.
+
+    More precisely this method adjusts application file path to paths
+    relative to the application or external library directories.
 
     Handler paths that start with $PYTHON_LIB will be converted to paths
     relative to the google directory.
@@ -2292,6 +2325,7 @@ class PathAdjuster(object):
       path = os.path.join(self._root_path, path)
 
     return path
+
 
 
 class StaticFileConfigMatcher(object):
@@ -2382,13 +2416,13 @@ class StaticFileConfigMatcher(object):
       String containing the mime type to use. Will be 'application/octet-stream'
       if we have no idea what it should be.
     """
-    for (path_re, mime_type, expiration) in self._patterns:
-      if mime_type is not None:
+    for (path_re, mimetype, unused_expiration) in self._patterns:
+      if mimetype is not None:
         the_match = path_re.match(path)
         if the_match:
-          return mime_type
+          return mimetype
 
-    filename, extension = os.path.splitext(path)
+    unused_filename, extension = os.path.splitext(path)
     return mimetypes.types_map.get(extension, 'application/octet-stream')
 
   def GetExpiration(self, path):
@@ -2400,12 +2434,13 @@ class StaticFileConfigMatcher(object):
     Returns:
       Integer number of seconds to be used for browser cache expiration time.
     """
-    for (path_re, mime_type, expiration) in self._patterns:
+    for (path_re, unused_mimetype, expiration) in self._patterns:
       the_match = path_re.match(path)
       if the_match:
         return expiration
 
     return self._default_expiration or 0
+
 
 
 
@@ -2548,6 +2583,8 @@ def CacheRewriter(status_code, status_message, headers, body):
   """Update the cache header."""
   if not 'Cache-Control' in headers:
     headers['Cache-Control'] = 'no-cache'
+    if not 'Expires' in headers:
+      headers['Expires'] = 'Fri, 01 Jan 1990 00:00:00 GMT'
   return status_code, status_message, headers, body
 
 
@@ -2609,7 +2646,7 @@ def CreateResponseRewritersChain():
           ParseStatusRewriter,
           CacheRewriter,
           ContentLengthRewriter,
-  ]
+         ]
 
 
 def RewriteResponse(response_file, response_rewriters=None):
@@ -2663,6 +2700,7 @@ def RewriteResponse(response_file, response_rewriters=None):
   return status_code, status_message, header_data, response_file.read()
 
 
+
 class ModuleManager(object):
   """Manages loaded modules in the runtime.
 
@@ -2695,7 +2733,7 @@ class ModuleManager(object):
       Path of the module's corresponding Python source file if it exists, or
       just the module's compiled Python file. If the module has an invalid
       __file__ attribute, None will be returned.
-      """
+    """
     module_file = getattr(module, '__file__', None)
     if module_file is None:
       return None
@@ -2727,8 +2765,7 @@ class ModuleManager(object):
     return False
 
   def UpdateModuleFileModificationTimes(self):
-    """Records the current modification times of all monitored modules.
-    """
+    """Records the current modification times of all monitored modules."""
     self._modification_times.clear()
     for name, module in self._modules.items():
       if not isinstance(module, types.ModuleType):
@@ -2750,23 +2787,29 @@ class ModuleManager(object):
     sys.path_hooks[:] = self._save_path_hooks
 
 
+
 def _ClearTemplateCache(module_dict=sys.modules):
   """Clear template cache in webapp.template module.
 
   Attempts to load template module.  Ignores failure.  If module loads, the
   template cache is cleared.
+
+  Args:
+    module_dict: Used for dependency injection.
   """
   template_module = module_dict.get('google.appengine.ext.webapp.template')
   if template_module is not None:
     template_module.template_cache.clear()
 
 
+
 def CreateRequestHandler(root_path,
                          login_url,
                          require_indexes=False,
                          static_caching=True):
-  """Creates a new BaseHTTPRequestHandler sub-class for use with the Python
-  BaseHTTPServer module's HTTP server.
+  """Creates a new BaseHTTPRequestHandler sub-class.
+
+  This class will be used with the Python BaseHTTPServer module's HTTP server.
 
   Python's built-in HTTP server does not support passing context information
   along to instances of its request handlers. This function gets around that
@@ -2792,9 +2835,11 @@ def CreateRequestHandler(root_path,
   application_config_cache = AppConfigCache()
 
   class DevAppServerRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-    """Dispatches URLs using patterns from a URLMatcher, which is created by
-    loading an application's configuration file. Executes CGI scripts in the
-    local process so the scripts can use mock versions of APIs.
+    """Dispatches URLs using patterns from a URLMatcher.
+
+    The URLMatcher is created by loading an application's configuration file.
+    Executes CGI scripts in the local process so the scripts can use mock
+    versions of APIs.
 
     HTTP requests that correctly specify a user info cookie
     (dev_appserver_login.COOKIE_NAME) will have the 'USER_EMAIL' environment
@@ -2819,13 +2864,13 @@ def CreateRequestHandler(root_path,
       """Initializer.
 
       Args:
-        args, kwargs: Positional and keyword arguments passed to the constructor
-          of the super class.
+        args: Positional arguments passed to the superclass constructor.
+        kwargs: Keyword arguments passed to the superclass constructor.
       """
       BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def version_string(self):
-      """Returns server's version string used for Server HTTP header"""
+      """Returns server's version string used for Server HTTP header."""
       return self.server_version
 
     def do_GET(self):
@@ -2862,12 +2907,12 @@ def CreateRequestHandler(root_path,
       server_name = server_name.split(':', 1)[0]
 
       env_dict = {
-        'REQUEST_METHOD': self.command,
-        'REMOTE_ADDR': self.client_address[0],
-        'SERVER_SOFTWARE': self.server_version,
-        'SERVER_NAME': server_name,
-        'SERVER_PROTOCOL': self.protocol_version,
-        'SERVER_PORT': str(self.server.server_port),
+          'REQUEST_METHOD': self.command,
+          'REMOTE_ADDR': self.client_address[0],
+          'SERVER_SOFTWARE': self.server_version,
+          'SERVER_NAME': server_name,
+          'SERVER_PROTOCOL': self.protocol_version,
+          'SERVER_PORT': str(self.server.server_port),
       }
 
       full_url = GetFullURL(server_name, self.server.server_port, self.path)
@@ -2889,8 +2934,9 @@ def CreateRequestHandler(root_path,
                                                  cache=self.config_cache,
                                                  static_caching=static_caching)
         if config.api_version != API_VERSION:
-          logging.error("API versions cannot be switched dynamically: %r != %r"
-                        % (config.api_version, API_VERSION))
+          logging.error(
+              "API versions cannot be switched dynamically: %r != %r",
+              config.api_version, API_VERSION)
           sys.exit(1)
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
         env_dict['APPLICATION_ID'] = config.application
@@ -2927,7 +2973,8 @@ def CreateRequestHandler(root_path,
         outfile.flush()
         outfile.seek(0)
 
-        status_code, status_message, header_data, body = RewriteResponse(outfile, self.rewriter_chain)
+        status_code, status_message, header_data, body = (
+            RewriteResponse(outfile, self.rewriter_chain))
 
         runtime_response_size = len(outfile.getvalue())
         if runtime_response_size > MAX_RUNTIME_RESPONSE_SIZE:
@@ -2984,6 +3031,7 @@ def CreateRequestHandler(root_path,
   return DevAppServerRequestHandler
 
 
+
 def ReadAppConfig(appinfo_path, parse_app_config=appinfo.LoadSingleAppInfo):
   """Reads app.yaml file and returns its app id and list of URLMap instances.
 
@@ -3001,9 +3049,9 @@ def ReadAppConfig(appinfo_path, parse_app_config=appinfo.LoadSingleAppInfo):
   """
   try:
     appinfo_file = file(appinfo_path, 'r')
-  except IOError, e:
+  except IOError, unused_e:
     raise InvalidAppConfigError(
-      'Application configuration could not be read from "%s"' % appinfo_path)
+        'Application configuration could not be read from "%s"' % appinfo_path)
   try:
     return parse_app_config(appinfo_file)
   finally:
@@ -3035,11 +3083,17 @@ def CreateURLMatcherFromMaps(root_path,
     default_expiration: String describing default expiration time for browser
       based caching of static files.  If set to None this disallows any
       browser caching of static content.
-    create_url_matcher, create_cgi_dispatcher, create_file_dispatcher,
+    create_url_matcher: Used for dependency injection.
+    create_cgi_dispatcher: Used for dependency injection.
+    create_file_dispatcher: Used for dependency injection.
     create_path_adjuster: Used for dependency injection.
+    normpath: Used for dependency injection.
 
   Returns:
     Instance of URLMatcher with the supplied URLMap objects properly loaded.
+
+  Raises:
+    InvalidAppConfigError: if the handler in url_map_list is an unknown type.
   """
   url_matcher = create_url_matcher()
   path_adjuster = create_path_adjuster(root_path)
@@ -3121,10 +3175,14 @@ def LoadAppConfig(root_path,
       sys.modules dictionary.
     cache: Instance of AppConfigCache or None.
     static_caching: True if browser caching of static files should be allowed.
-    read_app_config, create_matcher: Used for dependency injection.
+    read_app_config: Used for dependency injection.
+    create_matcher: Used for dependency injection.
 
   Returns:
      tuple: (AppInfoExternal, URLMatcher)
+
+  Raises:
+    AppConfigNotFound: if an app.yaml file cannot be found.
   """
   for appinfo_path in [os.path.join(root_path, 'app.yaml'),
                        os.path.join(root_path, 'app.yml')]:
@@ -3181,16 +3239,18 @@ def ReadCronConfig(croninfo_path, parse_cron_config=croninfo.LoadSingleCron):
   Raises:
     If the config file is unreadable, empty or invalid, this function will
     raise an InvalidAppConfigError or a MalformedCronConfiguration exception.
-    """
+  """
   try:
     croninfo_file = file(croninfo_path, 'r')
   except IOError, e:
     raise InvalidAppConfigError(
-        'Cron configuration could not be read from "%s"' % croninfo_path)
+        'Cron configuration could not be read from "%s": %s'
+        % (croninfo_path, e))
   try:
     return parse_cron_config(croninfo_file)
   finally:
     croninfo_file.close()
+
 
 
 def SetupStubs(app_id, **config):
@@ -3198,6 +3258,7 @@ def SetupStubs(app_id, **config):
 
   Args:
     app_id: Application ID being served.
+    config: keyword arguments.
 
   Keywords:
     root_path: Root path to the directory of the application which should
@@ -3256,47 +3317,49 @@ def SetupStubs(app_id, **config):
                                 dev_appserver_login.LOGOUT_PARAM)
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'user',
-    user_service_stub.UserServiceStub(login_url=fixed_login_url,
-                                      logout_url=fixed_logout_url))
+      'user',
+      user_service_stub.UserServiceStub(login_url=fixed_login_url,
+                                        logout_url=fixed_logout_url))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'urlfetch',
-    urlfetch_stub.URLFetchServiceStub())
+      'urlfetch',
+      urlfetch_stub.URLFetchServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'mail',
-    mail_stub.MailServiceStub(smtp_host,
-                              smtp_port,
-                              smtp_user,
-                              smtp_password,
-                              enable_sendmail=enable_sendmail,
-                              show_mail_body=show_mail_body))
+      'mail',
+      mail_stub.MailServiceStub(smtp_host,
+                                smtp_port,
+                                smtp_user,
+                                smtp_password,
+                                enable_sendmail=enable_sendmail,
+                                show_mail_body=show_mail_body))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'memcache',
-    memcache_stub.MemcacheServiceStub())
+      'memcache',
+      memcache_stub.MemcacheServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'capability_service',
-    capability_stub.CapabilityServiceStub())
+      'capability_service',
+      capability_stub.CapabilityServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-    'taskqueue',
-    taskqueue_stub.TaskQueueServiceStub(root_path=root_path))
+      'taskqueue',
+      taskqueue_stub.TaskQueueServiceStub(root_path=root_path))
+
 
 
   try:
     from google.appengine.api.images import images_stub
     apiproxy_stub_map.apiproxy.RegisterStub(
-      'images',
-      images_stub.ImagesServiceStub())
+        'images',
+        images_stub.ImagesServiceStub())
   except ImportError, e:
     logging.warning('Could not initialize images API; you are likely missing '
                     'the Python "PIL" module. ImportError: %s', e)
     from google.appengine.api.images import images_not_implemented_stub
-    apiproxy_stub_map.apiproxy.RegisterStub('images',
-      images_not_implemented_stub.ImagesNotImplementedServiceStub())
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'images',
+        images_not_implemented_stub.ImagesNotImplementedServiceStub())
 
 
 def CreateImplicitMatcher(module_dict,
@@ -3314,7 +3377,9 @@ def CreateImplicitMatcher(module_dict,
     module_dict: Dictionary in the form used by sys.modules.
     root_path: Path to the root of the application.
     login_url: Relative URL which should be used for handling user login/logout.
+    create_path_adjuster: Used for dependedency injection.
     create_local_dispatcher: Used for dependency injection.
+    create_cgi_dispatcher: Used for dependedency injection.
 
   Returns:
     Instance of URLMatcher with appropriate dispatchers.
@@ -3393,6 +3458,7 @@ def CreateServer(root_path,
       are stored.
     serve_address: Address on which the server should serve.
     require_indexes: True if index.yaml is read-only gospel; default False.
+    allow_skipped_files: True if skipped files should be accessible.
     static_caching: True if browser caching of static files should be allowed.
     python_path_list: Used for dependency injection.
     sdk_dir: Directory where the SDK is stored.

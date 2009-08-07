@@ -344,13 +344,13 @@ class Encoder:
 
   def putFloat(self, v):
     a = array.array('B')
-    a.fromstring(struct.pack("f", v))
+    a.fromstring(struct.pack("<f", v))
     self.buf.extend(a)
     return
 
   def putDouble(self, v):
     a = array.array('B')
-    a.fromstring(struct.pack("d", v))
+    a.fromstring(struct.pack("<d", v))
     self.buf.extend(a)
     return
 
@@ -362,6 +362,7 @@ class Encoder:
     return
 
   def putPrefixedString(self, v):
+    v = str(v)
     self.putVarInt32(len(v))
     self.buf.fromstring(v)
     return
@@ -499,13 +500,13 @@ class Decoder:
     if self.idx + 4 > self.limit: raise ProtocolBufferDecodeError, "truncated"
     a = self.buf[self.idx:self.idx+4]
     self.idx += 4
-    return struct.unpack("f", a)[0]
+    return struct.unpack("<f", a)[0]
 
   def getDouble(self):
     if self.idx + 8 > self.limit: raise ProtocolBufferDecodeError, "truncated"
     a = self.buf[self.idx:self.idx+8]
     self.idx += 8
-    return struct.unpack("d", a)[0]
+    return struct.unpack("<d", a)[0]
 
   def getBoolean(self):
     b = self.get8()

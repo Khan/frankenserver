@@ -3,6 +3,24 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.4 - July 16, 2009
+=============================
+  - Added support for kindless queries, ie. transaction descendant queries.
+      http://code.google.com/p/googleappengine/issues/detail?id=913
+  - Composite indexes no longer required for certain types of key queries.
+  - Improved exception reporting in the bulkloader.
+  - Datastore transaction RPC sent at beginning of transaction rather than
+    upon first Datastore request.
+  - PolyModel supports keys_only query.
+      http://code.google.com/p/googleappengine/issues/detail?id=1630
+  - Remote API supports more API's (Images, Memcache and URLFetch).
+      http://code.google.com/p/googleappengine/issues/detail?id=1596
+  - Remote API shell.
+  - Support for multiple inheritance for Model and PolyModel.
+  - Enhancement to SearchableModel allowing multiple properties to be
+    indexed.
+  - Various code quality improvements.
+
 Version 1.2.3 - June 1, 2009
 ============================
 

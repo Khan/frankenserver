@@ -171,7 +171,7 @@ class HTTPConnection:
     self._url = selector
 
   def putheader(self, header, *lines):
-    line = '\r\n\t'.join(lines)
+    line = '\r\n\t'.join([str(line) for line in lines])
     self.headers.append((header, line))
 
   def endheaders(self):
@@ -295,7 +295,7 @@ class HTTP:
 
   def putheader(self, header, *values):
     "The superclass allows only one value argument."
-    self._conn.putheader(header, '\r\n\t'.join(values))
+    self._conn.putheader(header, '\r\n\t'.join([str(v) for v in values]))
 
   def getreply(self):
     """Compat definition since superclass does not define it.

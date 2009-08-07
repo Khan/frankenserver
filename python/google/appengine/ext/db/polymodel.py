@@ -87,9 +87,12 @@ class PolymorphicClass(db.PropertiedClass):
         itself so that it subclasses can quickly know what the root of
         their hierarchy is and what kind they are stored in.
       __class_hierarchy__: List of classes describing the new model's place
-        in the class hierarchy.  The first element is always the root
-        element while the last element is the new class itself.  For example:
+        in the class hierarchy in reverse MRO order.  The first element is
+        always the root class while the last element is always the new class.
 
+        MRO documentation: http://www.python.org/download/releases/2.3/mro/
+
+        For example:
           class Foo(PolymorphicClass): ...
 
           class Bar(Foo): ...
@@ -107,30 +110,29 @@ class PolymorphicClass(db.PropertiedClass):
     discriminator (the 'class' property of the entity) when loading from the
     datastore.
     """
-    if name == 'PolyModel' or PolyModel not in bases:
-      db._initialize_properties(cls, name, bases, dct)
-      super(db.PropertiedClass, cls).__init__(name, bases, dct)
-    else:
-      cls.__root_class__ = cls
-      super(PolymorphicClass, cls).__init__(name, bases, dct)
-
     if name == 'PolyModel':
+      super(PolymorphicClass, cls).__init__(name, bases, dct, map_kind=False)
       return
 
-    if cls is not cls.__root_class__:
-      poly_class = None
-      for base in cls.__bases__:
-        if issubclass(base, PolyModel):
-          poly_class = base
-          break
-      else:
-        raise db.ConfigurationError(
-            "Polymorphic class '%s' does not inherit from PolyModel."
-            % cls.__name__)
-
-      cls.__class_hierarchy__ = poly_class.__class_hierarchy__ + [cls]
-    else:
+    elif PolyModel in bases:
+      if getattr(cls, '__class_hierarchy__', None):
+        raise db.ConfigurationError(('%s cannot derive from PolyModel as '
+            '__class_hierarchy__ is already defined.') % cls.__name__)
       cls.__class_hierarchy__ = [cls]
+      cls.__root_class__ = cls
+      super(PolymorphicClass, cls).__init__(name, bases, dct)
+    else:
+      super(PolymorphicClass, cls).__init__(name, bases, dct, map_kind=False)
+
+      cls.__class_hierarchy__ = [c for c in reversed(cls.mro())
+          if issubclass(c, PolyModel) and c != PolyModel]
+
+      if cls.__class_hierarchy__[0] != cls.__root_class__:
+        raise db.ConfigurationError(
+            '%s cannot be derived from both root classes %s and %s' %
+            (cls.__name__,
+            cls.__class_hierarchy__[0].__name__,
+            cls.__root_class__.__name__))
 
     _class_map[cls.class_key()] = cls
 
@@ -310,13 +312,16 @@ class PolyModel(db.Model):
     return super(PolyModel, cls).from_entity(entity)
 
   @classmethod
-  def all(cls):
+  def all(cls, **kwds):
     """Get all instance of a class hierarchy.
+
+    Args:
+      kwds: Keyword parameters passed on to Model.all.
 
     Returns:
       Query with filter set to match this class' discriminator.
     """
-    query = super(PolyModel, cls).all()
+    query = super(PolyModel, cls).all(**kwds)
     if cls != cls.__root_class__:
       query.filter(_CLASS_KEY_PROPERTY + ' =', cls.class_name())
     return query
