@@ -75,7 +75,10 @@ def PylonsVersion():
 
 PACKAGES = {
     'django': (DjangoVersion,
-               {'1.0': None, '0.96': None}),
+               {'0.96': None,
+                '1.0': None,
+                '1.1': None,
+                }),
 
 
 

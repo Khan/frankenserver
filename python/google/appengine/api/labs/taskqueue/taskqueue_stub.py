@@ -43,6 +43,8 @@ DEFAULT_RATE = '5.00/s'
 
 DEFAULT_BUCKET_SIZE = 5
 
+MAX_ETA_DELTA_DAYS = 30
+
 
 def _ParseQueueYaml(unused_self, root_path):
   """Loads the queue.yaml file and parses it.
@@ -137,6 +139,17 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       request: A taskqueue_service_pb.TaskQueueAddRequest.
       response: A taskqueue_service_pb.TaskQueueAddResponse.
     """
+    if request.eta_usec() < 0:
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_ETA)
+
+    eta = datetime.datetime.utcfromtimestamp(request.eta_usec() / 1e6)
+    max_eta = (datetime.datetime.utcnow() +
+               datetime.timedelta(days=MAX_ETA_DELTA_DAYS))
+    if eta > max_eta:
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_ETA)
+
     if not self._IsValidQueue(request.queue_name()):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)

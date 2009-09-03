@@ -480,19 +480,9 @@ class Task(object):
     """
     return self.__enqueued
 
-  def add(self, queue_name=_DEFAULT_QUEUE):
-    """Adds this Task to a queue.
-
-    Args:
-      queue_name: Name of the queue to add this Task to. (optional)
-
-    Returns:
-      This Task itself.
-
-    Raises:
-      BadTaskStateError if this task has already been enqueued.
-    """
-    return Queue(queue_name).add(self)
+  def add(self, queue_name=_DEFAULT_QUEUE, transactional=True):
+    """Adds this Task to a queue. See Queue.add."""
+    return Queue(queue_name).add(self, transactional=transactional)
 
 
 class Queue(object):
@@ -514,11 +504,13 @@ class Queue(object):
     self.__name = name
     self.__url = '%s/%s' % (_DEFAULT_QUEUE_PATH, self.__name)
 
-  def add(self, task):
+  def add(self, task, transactional=True):
     """Adds a Task to this Queue.
 
     Args:
       task: The Task to add.
+      transactional: If false adds the task to a queue irrespectively to the
+        enclosing transaction success or failure. (optional)
 
     Returns:
       The Task that was supplied to this method.
@@ -554,6 +546,10 @@ class Queue(object):
       header = request.add_header()
       header.set_key(key)
       header.set_value(value)
+
+    if transactional:
+      from google.appengine.api import datastore
+      datastore._MaybeSetupTransaction(request, [])
 
     call_tuple = ('taskqueue', 'Add', request, response)
     apiproxy_stub_map.apiproxy.GetPreCallHooks().Call(*call_tuple)

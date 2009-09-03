@@ -346,7 +346,14 @@ class Client(object):
       return None
 
     if not response.has_stats():
-      return None
+      return {
+        STAT_HITS: 0,
+        STAT_MISSES: 0,
+        STAT_BYTE_HITS: 0,
+        STAT_ITEMS: 0,
+        STAT_BYTES: 0,
+        STAT_OLDEST_ITEM_AGES: 0,
+      }
 
     stats = response.stats()
     return {

@@ -68,9 +68,14 @@ import getopt
 import logging
 import os
 import re
+import signal
 import sys
 import traceback
 import tempfile
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)-8s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
 
 
 def SetGlobals():
@@ -379,6 +384,14 @@ def MakeRpcServer(option_dict):
   return server
 
 
+def SigTermHandler(signum, frame):
+  """Handler for TERM signal.
+
+  Raises a KeyboardInterrupt to perform a graceful shutdown on SIGTERM signal.
+  """
+  raise KeyboardInterrupt()
+
+
 def main(argv):
   """Runs the development application server."""
   args, option_dict = ParseArguments(argv)
@@ -419,9 +432,7 @@ def main(argv):
 
   option_dict['root_path'] = os.path.realpath(root_path)
 
-  logging.basicConfig(
-    level=log_level,
-    format='%(levelname)-8s %(asctime)s %(filename)s:%(lineno)s] %(message)s')
+  logging.getLogger().setLevel(log_level)
 
   config = None
   try:
@@ -460,6 +471,8 @@ def main(argv):
       require_indexes=require_indexes,
       allow_skipped_files=allow_skipped_files,
       static_caching=static_caching)
+
+  signal.signal(signal.SIGTERM, SigTermHandler)
 
   logging.info('Running application %s on port %d: http://%s:%d',
                config.application, port, serve_address, port)

@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 """Imports data over HTTP.
 
 Usage:
@@ -33,7 +32,7 @@ Usage:
                             the URL endpoint. The more data per row/Entity, the
                             smaller the batch size should be. (Default 10)
     --config_file=<path>    File containing Model and Loader definitions.
-                            (Required)
+                            (Required unless --dump or --restore are used)
     --db_filename=<path>    Specific progress database to write to, or to
                             resume from. If not supplied, then a new database
                             will be started, named:
@@ -41,6 +40,8 @@ Usage:
                             The special filename "skip" may be used to simply
                             skip reading/writing any progress information.
     --download              Export entities to a file.
+    --dry_run               Do not execute any remote_api calls.
+    --dump                  Use zero-configuration dump format.
     --email=<string>        The username to use. Will prompt if omitted.
     --exporter_opts=<string>
                             A string to pass to the Exporter.initialize method.
@@ -59,6 +60,7 @@ Usage:
     --num_threads=<int>     Number of threads to use for uploading entities
                             (Default 10)
     --passin                Read the login password from stdin.
+    --restore               Restore from zero-configuration dump format.
     --result_db_filename=<path>
                             Result database to write to for downloads.
     --rps_limit=<int>       The maximum number of records per second to
@@ -80,7 +82,6 @@ Example:
 
 
 
-import cPickle
 import csv
 import errno
 import getopt
@@ -90,6 +91,7 @@ import logging
 import os
 import Queue
 import re
+import shutil
 import signal
 import StringIO
 import sys
@@ -99,15 +101,20 @@ import traceback
 import urllib2
 import urlparse
 
+from google.appengine.datastore import entity_pb
+
+from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
+from google.appengine.datastore import datastore_pb
 from google.appengine.ext import db
 from google.appengine.ext import key_range as key_range_module
 from google.appengine.ext.db import polymodel
 from google.appengine.ext.remote_api import remote_api_stub
 from google.appengine.ext.remote_api import throttle as remote_api_throttle
 from google.appengine.runtime import apiproxy_errors
-from google.appengine.tools import appengine_rpc
 from google.appengine.tools import adaptive_thread_pool
+from google.appengine.tools import appengine_rpc
 from google.appengine.tools.requeue import ReQueue
 
 try:
@@ -122,6 +129,8 @@ KeyRange = key_range_module.KeyRange
 DEFAULT_THREAD_COUNT = 10
 
 DEFAULT_BATCH_SIZE = 10
+
+DEFAULT_DOWNLOAD_BATCH_SIZE = 100
 
 DEFAULT_QUEUE_SIZE = DEFAULT_THREAD_COUNT * 10
 
@@ -563,7 +572,6 @@ class KeyRangeItemGenerator(object):
                                                state=STATE_READ)
           yield result
     else:
-      logging.info('Progress: Generating full key range')
       key_range = KeyRange()
 
       yield self.key_range_item_factory(self.request_manager,
@@ -603,7 +611,7 @@ class DownloadResult(object):
 
   def __str__(self):
     return 'continued = %s\n%s' % (
-        str(self.continued), '\n'.join(self.entities))
+        str(self.continued), '\n'.join(str(self.entities)))
 
 
 class _WorkItem(adaptive_thread_pool.WorkItem):
@@ -657,43 +665,57 @@ class _WorkItem(adaptive_thread_pool.WorkItem):
       A tuple (status, instruction) of the work status and an instruction
       for the ThreadGate.
     """
-    self.MarkAsTransferring()
     status = adaptive_thread_pool.WorkItem.FAILURE
     instruction = adaptive_thread_pool.ThreadGate.DECREASE
+
     try:
-      transfer_time = self._TransferItem(thread_pool)
-      status = adaptive_thread_pool.WorkItem.SUCCESS
+      self.MarkAsTransferring()
 
-      if transfer_time <= MAXIMUM_INCREASE_DURATION:
-        instruction = adaptive_thread_pool.ThreadGate.INCREASE
-      elif transfer_time <= MAXIMUM_HOLD_DURATION:
-        instruction = adaptive_thread_pool.ThreadGate.HOLD
+      try:
+        transfer_time = self._TransferItem(thread_pool)
+        if transfer_time is None:
+          status = adaptive_thread_pool.WorkItem.RETRY
+          instruction = adaptive_thread_pool.ThreadGate.HOLD
+        else:
+          logger.debug('[%s] %s Transferred %d entities in %0.1f seconds',
+                       threading.currentThread().getName(), self, self.count,
+                       transfer_time)
+          sys.stdout.write('.')
+          sys.stdout.flush()
+          status = adaptive_thread_pool.WorkItem.SUCCESS
+          if transfer_time <= MAXIMUM_INCREASE_DURATION:
+            instruction = adaptive_thread_pool.ThreadGate.INCREASE
+          elif transfer_time <= MAXIMUM_HOLD_DURATION:
+            instruction = adaptive_thread_pool.ThreadGate.HOLD
+      except (db.InternalError, db.NotSavedError, db.Timeout,
+              db.TransactionFailedError,
+              apiproxy_errors.OverQuotaError,
+              apiproxy_errors.DeadlineExceededError,
+              apiproxy_errors.ApplicationError), e:
+        status = adaptive_thread_pool.WorkItem.RETRY
+        logger.exception('Retrying on non-fatal datastore error: %s', e)
+      except urllib2.HTTPError, e:
+        http_status = e.code
+        if http_status == 403 or (http_status >= 500 and http_status < 600):
+          status = adaptive_thread_pool.WorkItem.RETRY
+          logger.exception('Retrying on non-fatal HTTP error: %d %s',
+                           http_status, e.msg)
+        else:
+          self.SetError()
+          status = adaptive_thread_pool.WorkItem.FAILURE
+      except urllib2.URLError, e:
+        if IsURLErrorFatal(e):
+          self.SetError()
+          status = adaptive_thread_pool.WorkItem.FAILURE
+        else:
+          status = adaptive_thread_pool.WorkItem.RETRY
+          logger.exception('Retrying on non-fatal URL error: %s', e.reason)
 
-      logger.debug('[%s] %s Transferred %d entities in %0.1f seconds',
-                   threading.currentThread().getName(), self, self.count,
-                   transfer_time)
-    except (db.InternalError, db.NotSavedError, db.Timeout,
-            db.TransactionFailedError,
-            apiproxy_errors.OverQuotaError,
-            apiproxy_errors.DeadlineExceededError), e:
-      status = adaptive_thread_pool.WorkItem.RETRY
-      logger.exception('Caught non-fatal datastore error: %s', e)
-    except urllib2.HTTPError, e:
-      http_status = e.code
-      if http_status == 403 or (http_status >= 500 and http_status < 600):
-        status = adaptive_thread_pool.WorkItem.RETRY
-        logger.exception('Caught non-fatal HTTP error: %d %s',
-                         http_status, e.msg)
+    finally:
+      if status == adaptive_thread_pool.WorkItem.SUCCESS:
+        self.MarkAsTransferred()
       else:
-        self.SetError()
-        status = adaptive_thread_pool.WorkItem.FAILURE
-    except urllib2.URLError, e:
-      if IsURLErrorFatal(e):
-        self.SetError()
-        status = adaptive_thread_pool.WorkItem.FAILURE
-      else:
-        status = adaptive_thread_pool.WorkItem.RETRY
-        logger.exception('Caught non-fatal URL error: %s', e.reason)
+        self.MarkAsError()
 
     return (status, instruction)
 
@@ -801,15 +823,14 @@ class UploadWorkItem(_WorkItem):
 
     Args:
       thread_pool: An AdaptiveThreadPool instance.
+      get_time: Used for dependency injection.
     """
     t = get_time()
     if not self.content:
       self.content = self.request_manager.EncodeContent(self.rows)
     try:
       self.request_manager.PostEntities(self.content)
-      self.MarkAsTransferred()
     except:
-      self.MarkAsError()
       raise
     return get_time() - t
 
@@ -849,8 +870,8 @@ def KeyLEQ(key1, key2):
   an unbounded end-point so it is both greater and less than any other key.
 
   Args:
-    key1: An int or db.Key instance.
-    key2: An int or db.Key instance.
+    key1: An int or datastore.Key instance.
+    key2: An int or datastore.Key instance.
 
   Returns:
     True if key1 <= key2
@@ -930,9 +951,6 @@ class KeyRangeItem(_WorkItem):
       thread_pool: An AdaptiveThreadPool instance.
       batch_size: The number of entities to transfer per request.
       new_state: The state to transition the completed range to.
-
-    Returns:
-      A list of KeyRangeItems representing undownloaded datastore key ranges.
     """
     self._AssertInState(STATE_GETTING)
     self._AssertProgressKey()
@@ -994,7 +1012,7 @@ class KeyRangeItem(_WorkItem):
           key_end=self.download_result.key_start,
           include_end=False)
 
-    if thread_pool.QueuedItemCount() > 2 * thread_pool.num_threads:
+    if thread_pool.QueuedItemCount() > 2 * thread_pool.num_threads():
       ranges = [key_range]
     else:
       ranges = key_range.split_range(batch_size=batch_size)
@@ -1035,26 +1053,25 @@ class DownloadItem(KeyRangeItem):
     t = get_time()
     download_result = self.request_manager.GetEntities(self)
     transfer_time = get_time() - t
-    self.Process(download_result, thread_pool, self.request_manager.batch_size)
-    self.state = STATE_GOT
+    self.Process(download_result, thread_pool,
+                 self.request_manager.batch_size)
     return transfer_time
 
 
 class MapperItem(KeyRangeItem):
   """A KeyRangeItem for mapping over key ranges."""
 
-  def _TransferItem(self, thread_pool):
+  def _TransferItem(self, thread_pool, get_time=time.time):
     t = get_time()
     download_result = self.request_manager.GetEntities(self)
     transfer_time = get_time() - t
+    mapper = self.request_manager.GetMapper()
     try:
-      mapper = self.request_manager.GetMapper()
       mapper.batch_apply(download_result.Entities())
-      self.Process(download_result, thread_pool,
-                   self.request_manager.batch_size)
-    except:
-      logging.exception('Exception while mapping over entities:')
-      raise
+    except MapperRetry:
+      return None
+    self.Process(download_result, thread_pool,
+                 self.request_manager.batch_size)
     return transfer_time
 
 
@@ -1070,7 +1087,8 @@ class RequestManager(object):
                batch_size,
                secure,
                email,
-               passin):
+               passin,
+               dry_run=False):
     """Initialize a RequestManager object.
 
     Args:
@@ -1100,6 +1118,11 @@ class RequestManager(object):
     self.email = email
     self.passin = passin
     self.mapper = None
+    self.dry_run = dry_run
+
+    if self.dry_run:
+      logger.info('Running in dry run mode, skipping remote_api setup')
+      return
 
     logger.debug('Configuring remote_api. url_path = %s, '
                  'servername = %s' % (url_path, host_port))
@@ -1117,12 +1140,15 @@ class RequestManager(object):
         rpc_server_factory=CookieHttpRpcServer,
         secure=self.secure)
     remote_api_throttle.ThrottleRemoteDatastore(self.throttle)
-
     logger.debug('Bulkloader using app_id: %s', os.environ['APPLICATION_ID'])
 
   def Authenticate(self):
     """Invoke authentication if necessary."""
-    logger.info('Connecting to %s', self.url_path)
+    logger.info('Connecting to %s%s', self.host_port, self.url_path)
+    if self.dry_run:
+      self.authenticated = True
+      return
+
     remote_api_stub.MaybeInvokeAuthentication()
     self.authenticated = True
 
@@ -1168,7 +1194,7 @@ class RequestManager(object):
       loader: Used for dependency injection.
 
     Returns:
-      A list of db.Model instances.
+      A list of datastore.Entity instances.
 
     Raises:
       ConfigurationError: if no loader is defined for self.kind
@@ -1182,16 +1208,23 @@ class RequestManager(object):
     entities = []
     for line_number, values in rows:
       key = loader.generate_key(line_number, values)
-      if isinstance(key, db.Key):
+      if isinstance(key, datastore.Key):
         parent = key.parent()
         key = key.name()
       else:
         parent = None
       entity = loader.create_entity(values, key_name=key, parent=parent)
+
+      def ToEntity(entity):
+        if isinstance(entity, db.Model):
+          return entity._populate_entity()
+        else:
+          return entity
+
       if isinstance(entity, list):
-        entities.extend(entity)
+        entities.extend(map(ToEntity, entity))
       elif entity:
-        entities.append(entity)
+        entities.append(ToEntity(entity))
 
     return entities
 
@@ -1201,13 +1234,32 @@ class RequestManager(object):
     Args:
       entities: A list of datastore entities.
     """
-    db.put(entities)
+    if self.dry_run:
+      return
+    datastore.Put(entities)
 
-  def GetEntities(self, key_range_item):
+  def _QueryForPbs(self, query):
+    """Perform the given query and return a list of entity_pb's."""
+    try:
+      query_pb = query._ToPb(limit=self.batch_size)
+      result_pb = datastore_pb.QueryResult()
+      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery', query_pb,
+                                     result_pb)
+      next_pb = datastore_pb.NextRequest()
+      next_pb.set_count(self.batch_size)
+      next_pb.mutable_cursor().CopyFrom(result_pb.cursor())
+      result_pb = datastore_pb.QueryResult()
+      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Next', next_pb, result_pb)
+      return result_pb.result_list()
+    except apiproxy_errors.ApplicationError, e:
+      raise datastore._ToDatastoreError(e)
+
+  def GetEntities(self, key_range_item, key_factory=datastore.Key):
     """Gets Entity records from a remote endpoint over HTTP.
 
     Args:
      key_range_item: Range of keys to get.
+     key_factory: Used for dependency injection.
 
     Returns:
       A DownloadResult instance.
@@ -1217,12 +1269,11 @@ class RequestManager(object):
     """
     keys = []
     entities = []
-    kind_class = GetImplementationClass(self.kind)
 
     if self.parallel_download:
-      query = key_range_item.key_range.make_directed_query(kind_class)
+      query = key_range_item.key_range.make_directed_datastore_query(self.kind)
       try:
-        results = query.fetch(self.batch_size)
+        results = self._QueryForPbs(query)
       except datastore_errors.NeedIndexError:
         logger.info('%s: No descending index on __key__, '
                     'performing serial download', self.kind)
@@ -1230,14 +1281,15 @@ class RequestManager(object):
 
     if not self.parallel_download:
       key_range_item.key_range.direction = key_range_module.KeyRange.ASC
-      query = key_range_item.key_range.make_ascending_query(kind_class)
-      results = query.fetch(self.batch_size)
+      query = key_range_item.key_range.make_ascending_datastore_query(self.kind)
+      results = self._QueryForPbs(query)
 
     size = len(results)
 
-    for model in results:
-      key = model.key()
-      entities.append(model)
+    for entity in results:
+      key = key_factory()
+      key._Key__reference = entity.key()
+      entities.append(entity)
       keys.append(key)
 
     continued = (size == self.batch_size)
@@ -1317,7 +1369,7 @@ class _ThreadBase(threading.Thread):
 
   def run(self):
     """Perform the work of the thread."""
-    logger.info('[%s] %s: started', self.getName(), self.__class__.__name__)
+    logger.debug('[%s] %s: started', self.getName(), self.__class__.__name__)
 
     try:
       self.PerformWork()
@@ -1325,7 +1377,7 @@ class _ThreadBase(threading.Thread):
       self.SetError()
       logger.exception('[%s] %s:', self.getName(), self.__class__.__name__)
 
-    logger.info('[%s] %s: exiting', self.getName(), self.__class__.__name__)
+    logger.debug('[%s] %s: exiting', self.getName(), self.__class__.__name__)
 
   def SetError(self):
     """Sets the error and traceback information for this thread.
@@ -1585,6 +1637,70 @@ class _Database(object):
     self.update_cursor = self.secondary_conn.cursor()
 
 
+zero_matcher = re.compile(r'\x00')
+
+zero_one_matcher = re.compile(r'\x00\x01')
+
+
+def KeyStr(key):
+  """Returns a string to represent a key, preserving ordering.
+
+  Unlike datastore.Key.__str__(), we have the property:
+
+    key1 < key2 ==> KeyStr(key1) < KeyStr(key2)
+
+  The key string is constructed from the key path as follows:
+    (1) Strings are prepended with ':' and numeric id's are padded to
+        20 digits.
+    (2) Any null characters (u'\0') present are replaced with u'\0\1'
+    (3) The sequence u'\0\0' is used to separate each component of the path.
+
+  (1) assures that names and ids compare properly, while (2) and (3) enforce
+  the part-by-part comparison of pieces of the path.
+
+  Args:
+    key: A datastore.Key instance.
+
+  Returns:
+    A string representation of the key, which preserves ordering.
+  """
+  assert isinstance(key, datastore.Key)
+  path = key.to_path()
+
+  out_path = []
+  for part in path:
+    if isinstance(part, (int, long)):
+      part = '%020d' % part
+    else:
+      part = ':%s' % part
+
+    out_path.append(zero_matcher.sub(u'\0\1', part))
+
+  out_str = u'\0\0'.join(out_path)
+
+  return out_str
+
+
+def StrKey(key_str):
+  """The inverse of the KeyStr function.
+
+  Args:
+    key_str: A string in the range of KeyStr.
+
+  Returns:
+    A datastore.Key instance k, such that KeyStr(k) == key_str.
+  """
+  parts = key_str.split(u'\0\0')
+  for i in xrange(len(parts)):
+    if parts[i][0] == ':':
+      part = parts[i][1:]
+      part = zero_one_matcher.sub(u'\0', part)
+      parts[i] = part
+    else:
+      parts[i] = int(parts[i])
+  return datastore.Key.from_path(*parts)
+
+
 class ResultDatabase(_Database):
   """Persistently record all the entities downloaded during an export.
 
@@ -1603,7 +1719,7 @@ class ResultDatabase(_Database):
     """
     self.complete = False
     create_table = ('create table result (\n'
-                    'id TEXT primary key,\n'
+                    'id BLOB primary key,\n'
                     'value BLOB not null)')
 
     _Database.__init__(self,
@@ -1623,7 +1739,7 @@ class ResultDatabase(_Database):
     """Store an entity in the result database.
 
     Args:
-      entity_id: A db.Key for the entity.
+      entity_id: A datastore.Key for the entity.
       entity: The entity to store.
 
     Returns:
@@ -1631,23 +1747,25 @@ class ResultDatabase(_Database):
     """
 
     assert _RunningInThread(self.secondary_thread)
-    assert isinstance(entity_id, db.Key)
+    assert isinstance(entity_id, datastore.Key), (
+        'expected a datastore.Key, got a %s' % entity_id.__class__.__name__)
 
-    entity_id = entity_id.id_or_name()
+    key_str = buffer(KeyStr(entity_id).encode('utf-8'))
     self.insert_cursor.execute(
-        'select count(*) from result where id = ?', (unicode(entity_id),))
+        'select count(*) from result where id = ?', (key_str,))
+
     already_present = self.insert_cursor.fetchone()[0]
     result = True
     if already_present:
       result = False
       self.insert_cursor.execute('delete from result where id = ?',
-                                 (unicode(entity_id),))
+                                 (key_str,))
     else:
       self.count += 1
-    value = cPickle.dumps(entity)
+    value = entity.Encode()
     self.insert_cursor.execute(
         'insert into result (id, value) values (?, ?)',
-        (unicode(entity_id), buffer(value)))
+        (key_str, buffer(value)))
     return result
 
   def StoreEntities(self, keys, entities):
@@ -1687,7 +1805,8 @@ class ResultDatabase(_Database):
         'select id, value from result order by id')
 
     for unused_entity_id, entity in cursor:
-      yield cPickle.loads(str(entity))
+      entity_proto = entity_pb.EntityProto(contents=entity)
+      yield datastore.Entity._FromPb(entity_proto)
 
 
 class _ProgressDatabase(_Database):
@@ -1783,10 +1902,16 @@ class _ProgressDatabase(_Database):
     self._OpenSecondaryConnection()
 
     assert _RunningInThread(self.secondary_thread)
-    assert not key_start or isinstance(key_start, self.py_type), (
-        '%s is a %s, expected %s' % (key_end, key_end.__class__, self.py_type))
-    assert not key_end or isinstance(key_end, self.py_type), (
-        '%s is a %s, expected %s' % (key_end, key_end.__class__, self.py_type))
+    assert (not key_start) or isinstance(key_start, self.py_type), (
+        '%s is a %s, %s expected %s' % (key_start,
+                                        key_start.__class__,
+                                        self.__class__.__name__,
+                                        self.py_type))
+    assert (not key_end) or isinstance(key_end, self.py_type), (
+        '%s is a %s, %s expected %s' % (key_end,
+                                        key_end.__class__,
+                                        self.__class__.__name__,
+                                        self.py_type))
     assert KeyLEQ(key_start, key_end), '%s not less than %s' % (
         repr(key_start), repr(key_end))
 
@@ -1904,7 +2029,7 @@ class ExportProgressDatabase(_ProgressDatabase):
     _ProgressDatabase.__init__(self,
                                db_filename,
                                'TEXT',
-                               db.Key,
+                               datastore.Key,
                                signature,
                                commit_periodicity=1)
 
@@ -2125,19 +2250,19 @@ class MapperProgressThread(_ProgressThreadBase):
 
 
 def ParseKey(key_string):
-  """Turn a key stored in the database into a db.Key or None.
+  """Turn a key stored in the database into a Key or None.
 
   Args:
-    key_string: The string representation of a db.Key.
+    key_string: The string representation of a Key.
 
   Returns:
-    A db.Key instance or None
+    A datastore.Key instance or None
   """
   if not key_string:
     return None
   if key_string == 'None':
     return None
-  return db.Key(encoded=key_string)
+  return datastore.Key(encoded=key_string)
 
 
 def Validate(value, typ):
@@ -2267,7 +2392,7 @@ class Loader(object):
     Args:
       values: list/tuple of str
       key_name: if provided, the name for the (single) resulting entity
-      parent: A db.Key instance for the parent, or None
+      parent: A datastore.Key instance for the parent, or None
 
     Returns:
       list of db.Model
@@ -2323,7 +2448,7 @@ class Loader(object):
     server generated numeric key), or a string which neither starts
     with a digit nor has the form __*__ (see
     http://code.google.com/appengine/docs/python/datastore/keysandentitygroups.html),
-    or a db.Key instance.
+    or a datastore.Key instance.
 
     If you generate your own string keys, keep in mind:
 
@@ -2404,6 +2529,51 @@ class Loader(object):
   def RegisteredLoader(kind):
     """Returns the loader instance for the given kind if it exists."""
     return Loader.__loaders[kind]
+
+
+class RestoreThread(_ThreadBase):
+  """A thread to read saved entity_pbs from sqlite3."""
+  NAME = 'RestoreThread'
+  _ENTITIES_DONE = 'Entities Done'
+
+  def __init__(self, queue, filename):
+    _ThreadBase.__init__(self)
+    self.queue = queue
+    self.filename = filename
+
+  def PerformWork(self):
+    db_conn = sqlite3.connect(self.filename)
+    cursor = db_conn.cursor()
+    cursor.execute('select id, value from result')
+    for entity_id, value in cursor:
+      self.queue.put([entity_id, value], block=True)
+    self.queue.put(RestoreThread._ENTITIES_DONE, block=True)
+
+
+class RestoreLoader(Loader):
+  """A Loader which imports protobuffers from a file."""
+
+  def __init__(self, kind):
+    self.kind = kind
+
+  def initialize(self, filename, loader_opts):
+    CheckFile(filename)
+    self.queue = Queue.Queue(1000)
+    restore_thread = RestoreThread(self.queue, filename)
+    restore_thread.start()
+
+  def generate_records(self, filename):
+    while True:
+      record = self.queue.get(block=True)
+      if id(record) == id(RestoreThread._ENTITIES_DONE):
+        break
+      yield record
+
+  def create_entity(self, values, key_name=None, parent=None):
+    key = StrKey(unicode(values[0], 'utf-8'))
+    entity_proto = entity_pb.EntityProto(contents=str(values[1]))
+    entity_proto.mutable_key().CopyFrom(key._Key__reference)
+    return datastore.Entity._FromPb(entity_proto)
 
 
 class Exporter(object):
@@ -2491,7 +2661,7 @@ class Exporter(object):
     encoding = []
     for name, fn, default in self.__properties:
       try:
-        encoding.append(fn(getattr(entity, name)))
+        encoding.append(fn(entity[name]))
       except AttributeError:
         if default is None:
           raise MissingPropertyError(name)
@@ -2569,6 +2739,17 @@ class Exporter(object):
   def RegisteredExporter(kind):
     """Returns an exporter instance for the given kind if it exists."""
     return Exporter.__exporters[kind]
+
+
+class DumpExporter(Exporter):
+  """An exporter which dumps protobuffers to a file."""
+
+  def __init__(self, kind, result_db_filename):
+    self.kind = kind
+    self.result_db_filename = result_db_filename
+
+  def output_entities(self, entity_generator):
+    shutil.copyfile(self.result_db_filename, self.output_filename)
 
 
 class MapperRetry(Error):
@@ -2759,6 +2940,7 @@ class BulkTransporterApp(object):
     self.num_threads = arg_dict['num_threads']
     self.email = arg_dict['email']
     self.passin = arg_dict['passin']
+    self.dry_run = arg_dict['dry_run']
     self.throttle = throttle
     self.progress_db = progress_db
     self.progresstrackerthread_factory = progresstrackerthread_factory
@@ -2797,7 +2979,8 @@ class BulkTransporterApp(object):
                                                    self.batch_size,
                                                    self.secure,
                                                    self.email,
-                                                   self.passin)
+                                                   self.passin,
+                                                   self.dry_run)
     try:
       request_manager.Authenticate()
     except Exception, e:
@@ -2880,6 +3063,7 @@ class BulkTransporterApp(object):
     thread_pool.Shutdown()
     thread_pool.JoinThreads()
     thread_pool.CheckErrors()
+    print ''
 
     if self.progress_thread.isAlive():
       InterruptibleQueueJoin(progress_queue, thread_local, thread_pool,
@@ -2950,7 +3134,7 @@ class BulkDownloaderApp(BulkTransporterApp):
     existing_count = self.progress_thread.existing_count
     xfer_count = self.progress_thread.EntitiesTransferred()
     logger.info('Have %d entities, %d previously transferred',
-                xfer_count + existing_count, existing_count)
+                xfer_count, existing_count)
     logger.info('%d entities (%d bytes) transferred in %.1f seconds',
                 xfer_count, total, duration)
     if self.error:
@@ -2974,6 +3158,8 @@ class BulkMapperApp(BulkTransporterApp):
     total_down += s_total_down
     total = total_down
     xfer_count = self.progress_thread.EntitiesTransferred()
+    logger.info('The following may be inaccurate if any mapper tasks '
+                'encountered errors and had to be retried.')
     logger.info('Applied mapper to %s entities.',
                  xfer_count)
     logger.info('%s entities (%s bytes) transferred in %.1f seconds',
@@ -3024,6 +3210,9 @@ FLAG_SPEC = ['debug',
              'email=',
              'passin',
              'map',
+             'dry_run',
+             'dump',
+             'restore',
              ]
 
 
@@ -3048,10 +3237,10 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
 
   arg_dict['url'] = REQUIRED_OPTION
   arg_dict['filename'] = None
-  arg_dict['config_file'] = REQUIRED_OPTION
-  arg_dict['kind'] = REQUIRED_OPTION
+  arg_dict['config_file'] = None
+  arg_dict['kind'] = None
 
-  arg_dict['batch_size'] = DEFAULT_BATCH_SIZE
+  arg_dict['batch_size'] = None
   arg_dict['num_threads'] = DEFAULT_THREAD_COUNT
   arg_dict['bandwidth_limit'] = DEFAULT_BANDWIDTH_LIMIT
   arg_dict['rps_limit'] = DEFAULT_RPS_LIMIT
@@ -3071,6 +3260,9 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
   arg_dict['passin'] = False
   arg_dict['mapper_opts'] = None
   arg_dict['map'] = False
+  arg_dict['dry_run'] = False
+  arg_dict['dump'] = False
+  arg_dict['restore'] = False
 
   def ExpandFilename(filename):
     """Expand shell variables and ~usernames in filename."""
@@ -3129,6 +3321,12 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
       arg_dict['map'] = True
     elif option == '--mapper_opts':
       arg_dict['mapper_opts'] = value
+    elif option == '--dry_run':
+      arg_dict['dry_run'] = True
+    elif option == '--dump':
+      arg_dict['dump'] = True
+    elif option == '--restore':
+      arg_dict['restore'] = True
 
   return ProcessArguments(arg_dict, die_fn=die_fn)
 
@@ -3256,7 +3454,9 @@ def _MakeSignature(app_id=None,
                    perform_map=None,
                    download=None,
                    has_header=None,
-                   result_db_filename=None):
+                   result_db_filename=None,
+                   dump=None,
+                   restore=None):
   """Returns a string that identifies the important options for the database."""
   if download:
     result_db_line = 'result_db: %s' % result_db_filename
@@ -3268,11 +3468,13 @@ def _MakeSignature(app_id=None,
   kind: %s
   download: %s
   map: %s
+  dump: %s
+  restore: %s
   progress_db: %s
   has_header: %s
   %s
-  """ % (app_id, url, kind, perform_map, download, db_filename, has_header,
-         result_db_line)
+  """ % (app_id, url, kind, download, perform_map, dump, restore, db_filename,
+         has_header, result_db_line)
 
 
 def ProcessArguments(arg_dict,
@@ -3288,6 +3490,8 @@ def ProcessArguments(arg_dict,
   """
   app_id = GetArgument(arg_dict, 'app_id', die_fn)
   url = GetArgument(arg_dict, 'url', die_fn)
+  dump = GetArgument(arg_dict, 'dump', die_fn)
+  restore = GetArgument(arg_dict, 'restore', die_fn)
   filename = GetArgument(arg_dict, 'filename', die_fn)
   batch_size = GetArgument(arg_dict, 'batch_size', die_fn)
   kind = GetArgument(arg_dict, 'kind', die_fn)
@@ -3300,6 +3504,14 @@ def ProcessArguments(arg_dict,
 
   errors = []
 
+  if batch_size is None:
+    if download or perform_map:
+      arg_dict['batch_size'] = DEFAULT_DOWNLOAD_BATCH_SIZE
+    else:
+      arg_dict['batch_size'] = DEFAULT_BATCH_SIZE
+  elif batch_size <= 0:
+    errors.append('batch_size must be at least 1')
+
   if db_filename is None:
     arg_dict['db_filename'] = time.strftime(
         'bulkloader-progress-%Y%m%d.%H%M%S.sql3')
@@ -3311,11 +3523,10 @@ def ProcessArguments(arg_dict,
   if log_file is None:
     arg_dict['log_file'] = time.strftime('bulkloader-log-%Y%m%d.%H%M%S')
 
-  if batch_size <= 0:
-    errors.append('batch_size must be at least 1')
-
   required = '%s argument required'
 
+  if config_file is None and not dump and not restore:
+    errors.append('One of --config_file, --dump, or --restore is required')
 
   if url is REQUIRED_OPTION:
     errors.append(required % 'url')
@@ -3323,11 +3534,12 @@ def ProcessArguments(arg_dict,
   if not filename and not perform_map:
     errors.append(required % 'filename')
 
-  if kind is REQUIRED_OPTION:
-    errors.append(required % 'kind')
-
-  if config_file is REQUIRED_OPTION:
-    errors.append(required % 'config_file')
+  if kind is None:
+    if download or map:
+      errors.append('kind argument required for this operation')
+    elif not dump and not restore:
+      errors.append(
+          'kind argument required unless --dump or --restore is specified')
 
   if not app_id:
     if url and url is not REQUIRED_OPTION:
@@ -3392,26 +3604,38 @@ def _PerformBulkload(arg_dict,
   email = arg_dict['email']
   passin = arg_dict['passin']
   perform_map = arg_dict['map']
+  dump = arg_dict['dump']
+  restore = arg_dict['restore']
 
   os.environ['AUTH_DOMAIN'] = auth_domain
 
   kind = ParseKind(kind)
 
-  check_file(config_file)
+  if not dump and not restore:
+    check_file(config_file)
 
   if download and perform_map:
     logger.error('--download and --map are mutually exclusive.')
 
-  if download:
+  if download or dump:
     check_output_file(filename)
   elif not perform_map:
     check_file(filename)
 
-  LoadConfig(config_file)
+  if dump:
+    Exporter.RegisterExporter(DumpExporter(kind, result_db_filename))
+  elif restore:
+    Loader.RegisterLoader(RestoreLoader(kind))
+  else:
+    LoadConfig(config_file)
 
   os.environ['APPLICATION_ID'] = app_id
 
   throttle_layout = ThrottleLayout(bandwidth_limit, http_limit, rps_limit)
+  logger.info('Throttling transfers:')
+  logger.info('Bandwidth: %s bytes/second', bandwidth_limit)
+  logger.info('HTTP connections: %s/second', http_limit)
+  logger.info('Entities inserted/fetched/modified: %s/second', rps_limit)
 
   throttle = remote_api_throttle.Throttle(layout=throttle_layout)
   signature = _MakeSignature(app_id=app_id,
@@ -3421,21 +3645,23 @@ def _PerformBulkload(arg_dict,
                              download=download,
                              perform_map=perform_map,
                              has_header=has_header,
-                             result_db_filename=result_db_filename)
+                             result_db_filename=result_db_filename,
+                             dump=dump,
+                             restore=restore)
 
 
   max_queue_size = max(DEFAULT_QUEUE_SIZE, 3 * num_threads + 5)
 
   if db_filename == 'skip':
     progress_db = StubProgressDatabase()
-  elif not download and not perform_map:
+  elif not download and not perform_map and not dump:
     progress_db = ProgressDatabase(db_filename, signature)
   else:
     progress_db = ExportProgressDatabase(db_filename, signature)
 
   return_code = 1
 
-  if not download and not perform_map:
+  if not download and not perform_map and not dump:
     loader = Loader.RegisteredLoader(kind)
     try:
       loader.initialize(filename, loader_opts)
@@ -3496,7 +3722,7 @@ def _PerformBulkload(arg_dict,
       def KeyRangeGeneratorFactory(request_manager, progress_queue,
                                    progress_gen):
         return KeyRangeItemGenerator(request_manager, kind, progress_queue,
-                                     progress_gen, DownloadItem)
+                                     progress_gen, MapperItem)
 
       def MapperProgressThreadFactory(progress_queue, progress_db):
         return MapperProgressThread(kind,

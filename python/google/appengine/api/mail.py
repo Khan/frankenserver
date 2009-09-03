@@ -25,10 +25,12 @@ for their applications.  Also provides a few utility methods.
 
 
 
+
+import email
 from email import MIMEBase
 from email import MIMEMultipart
 from email import MIMEText
-import types
+import logging
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
@@ -38,51 +40,53 @@ from google.appengine.api.mail_errors import *
 from google.appengine.runtime import apiproxy_errors
 
 
+
 ERROR_MAP = {
-  mail_service_pb.MailServiceError.BAD_REQUEST:
-    BadRequestError,
+    mail_service_pb.MailServiceError.BAD_REQUEST:
+      BadRequestError,
 
-  mail_service_pb.MailServiceError.UNAUTHORIZED_SENDER:
-    InvalidSenderError,
+    mail_service_pb.MailServiceError.UNAUTHORIZED_SENDER:
+      InvalidSenderError,
 
-  mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE:
-    InvalidAttachmentTypeError,
+    mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE:
+      InvalidAttachmentTypeError,
 }
 
 
 EXTENSION_MIME_MAP = {
-  'asc': 'text/plain',
-  'bmp': 'image/x-ms-bmp',
-  'css': 'text/css',
-  'csv': 'text/csv',
-  'diff': 'text/plain',
-  'gif': 'image/gif',
-  'htm': 'text/html',
-  'html': 'text/html',
-  'ics': 'text/calendar',
-  'jpe': 'image/jpeg',
-  'jpeg': 'image/jpeg',
-  'jpg': 'image/jpeg',
-  'pdf': 'application/pdf',
-  'png': 'image/png',
-  'pot': 'text/plain',
-  'rss': 'text/rss+xml',
-  'text': 'text/plain',
-  'tif': 'image/tiff',
-  'tiff': 'image/tiff',
-  'txt': 'text/plain',
-  'vcf': 'text/directory',
-  'wbmp': 'image/vnd.wap.wbmp',
-}
+    'asc': 'text/plain',
+    'bmp': 'image/x-ms-bmp',
+    'css': 'text/css',
+    'csv': 'text/csv',
+    'diff': 'text/plain',
+    'gif': 'image/gif',
+    'htm': 'text/html',
+    'html': 'text/html',
+    'ics': 'text/calendar',
+    'jpe': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'jpg': 'image/jpeg',
+    'pdf': 'application/pdf',
+    'png': 'image/png',
+    'pot': 'text/plain',
+    'rss': 'text/rss+xml',
+    'text': 'text/plain',
+    'tif': 'image/tiff',
+    'tiff': 'image/tiff',
+    'txt': 'text/plain',
+    'vcf': 'text/directory',
+    'wbmp': 'image/vnd.wap.wbmp',
+    }
 
 EXTENSION_WHITELIST = frozenset(EXTENSION_MIME_MAP.iterkeys())
 
 
 def invalid_email_reason(email_address, field):
-  """Determine reason why email is invalid
+  """Determine reason why email is invalid.
 
   Args:
     email_address: Email to check.
+    field: Field that is invalid.
 
   Returns:
     String indicating invalid email reason if there is one,
@@ -93,7 +97,7 @@ def invalid_email_reason(email_address, field):
 
   if isinstance(email_address, users.User):
     email_address = email_address.email()
-  if not isinstance(email_address, types.StringTypes):
+  if not isinstance(email_address, basestring):
     return 'Invalid email address type for %s.' % field
   stripped_address = email_address.strip()
   if not stripped_address:
@@ -118,10 +122,11 @@ IsEmailValid = is_email_valid
 
 
 def check_email_valid(email_address, field):
-  """Check that email is valid
+  """Check that email is valid.
 
   Args:
     email_address: Email to check.
+    field: Field to check.
 
   Raises:
     InvalidEmailError if email_address is invalid.
@@ -165,7 +170,7 @@ def _email_sequence(emails):
     Single tuple with email in it if only one email string provided,
     else returns emails as is.
   """
-  if isinstance(emails, types.StringTypes):
+  if isinstance(emails, basestring):
     return emails,
   return emails
 
@@ -183,9 +188,27 @@ def _attachment_sequence(attachments):
     Single tuple with attachment tuple in it if only one attachment provided,
     else returns attachments as is.
   """
-  if len(attachments) == 2 and isinstance(attachments[0], types.StringTypes):
+  if len(attachments) == 2 and isinstance(attachments[0], basestring):
     return attachments,
   return attachments
+
+
+def _parse_mime_message(mime_message):
+  """Helper function converts a mime_message in to email.Message.Message.
+
+  Args:
+    mime_message: MIME Message, string or file containing mime message.
+
+  Returns:
+    Instance of email.Message.Message.  Will return mime_message if already
+    an instance.
+  """
+  if isinstance(mime_message, email.Message.Message):
+    return mime_message
+  elif isinstance(mime_message, basestring):
+    return email.message_from_string(mime_message)
+  else:
+    return email.message_from_file(mime_message)
 
 
 def send_mail(sender,
@@ -285,7 +308,7 @@ def mail_message_to_mime_message(protocol_message):
   to a list of comma separated email addresses.
 
   Args:
-    message: Message PB to convert to MIMEMultitype.
+    protocol_message: Message PB to convert to MIMEMultitype.
 
   Returns:
     MIMEMultitype representing the provided MailMessage.
@@ -334,7 +357,7 @@ MailMessageToMIMEMessage = mail_message_to_mime_message
 
 
 def _to_str(value):
-  """Helper function to make sure unicode values converted to utf-8
+  """Helper function to make sure unicode values converted to utf-8.
 
   Args:
     value: str or unicode to convert to utf-8.
@@ -346,6 +369,129 @@ def _to_str(value):
     return value.encode('utf-8')
   return value
 
+
+class EncodedPayload(object):
+  """Wrapper for a payload that contains encoding information.
+
+  When an email is recieved, it is usually encoded using a certain
+  character set, and then possibly further encoded using a transfer
+  encoding in that character set.  Most of the times, it is possible
+  to decode the encoded payload as is, however, in the case where it
+  is not, the encoded payload and the original encoding information
+  must be preserved.
+
+  Attributes:
+    payload: The original encoded payload.
+    charset: The character set of the encoded payload.  None means use
+      default character set.
+    encoding: The transfer encoding of the encoded payload.  None means
+      content not encoded.
+  """
+
+  def __init__(self, payload, charset=None, encoding=None):
+    """Constructor.
+
+    Args:
+      payload: Maps to attribute of the same name.
+      charset: Maps to attribute of the same name.
+      encoding: Maps to attribute of the same name.
+    """
+    self.payload = payload
+    self.charset = charset
+    self.encoding = encoding
+
+  def decode(self):
+    """Attempt to decode the encoded data.
+
+    Attempt to use pythons codec library to decode the payload.  All
+    exceptions are passed back to the caller.
+
+    Returns:
+      Binary or unicode version of payload content.
+    """
+    payload = self.payload
+
+    if self.encoding and self.encoding.lower() != '7bit':
+      try:
+        payload = payload.decode(self.encoding).lower()
+      except LookupError:
+        raise UnknownEncodingError('Unknown decoding %s.' % self.encoding)
+      except (Exception, Error), e:
+        raise PayloadEncodingError('Could not decode payload: %s' % e)
+
+    if self.charset and str(self.charset).lower() != '7bit':
+      try:
+        payload = payload.decode(str(self.charset)).lower()
+      except LookupError:
+        raise UnknownCharsetError('Unknown charset %s.' % self.charset)
+      except (Exception, Error), e:
+        raise PayloadEncodingError('Could read characters: %s' % e)
+
+    return payload
+
+  def __eq__(self, other):
+    """Equality operator.
+
+    Args:
+      other: The other EncodedPayload object to compare with.  Comparison
+        with other object types are not implemented.
+
+    Returns:
+      True of payload and encodings are equal, else false.
+    """
+    if isinstance(other, EncodedPayload):
+      return (self.payload == other.payload and
+              self.charset == other.charset and
+              self.encoding == other.encoding)
+    else:
+      return NotImplemented
+
+  def copy_to(self, mime_message):
+    """Copy contents to MIME message payload.
+
+    If no content transfer encoding is specified, and the character set does
+    not equal the over-all message encoding, the payload will be base64
+    encoded.
+
+    Args:
+      mime_message: Message instance to receive new payload.
+    """
+    if self.encoding:
+      mime_message['content-transfer-encoding'] = self.encoding
+    mime_message.set_payload(self.payload, self.charset)
+
+  def to_mime_message(self):
+    """Convert to MIME message.
+
+    Returns:
+      MIME message instance of payload.
+    """
+    mime_message = email.Message.Message()
+    self.copy_to(mime_message)
+    return mime_message
+
+  def __str__(self):
+    """String representation of encoded message.
+
+    Returns:
+      MIME encoded representation of encoded payload as an independent message.
+    """
+    return str(self.to_mime_message())
+
+  def __repr__(self):
+    """Basic representation of encoded payload.
+
+    Returns:
+      Payload itself is represented by its hash value.
+    """
+    result = '<EncodedPayload payload=#%d' % hash(self.payload)
+    if self.charset:
+      result += ' charset=%s' % self.charset
+    if self.encoding:
+      result += ' encoding=%s' % self.encoding
+    return result + '>'
+
+
 class _EmailMessageBase(object):
   """Base class for email API service objects.
 
@@ -354,24 +500,38 @@ class _EmailMessageBase(object):
   """
 
   PROPERTIES = set([
-    'sender',
-    'reply_to',
-    'subject',
-    'body',
-    'html',
-    'attachments',
+      'sender',
+      'reply_to',
+      'subject',
+      'body',
+      'html',
+      'attachments',
   ])
 
-  def __init__(self, **kw):
+  PROPERTIES.update(('to', 'cc', 'bcc'))
+
+  def __init__(self, mime_message=None, **kw):
     """Initialize Email message.
 
     Creates new MailMessage protocol buffer and initializes it with any
     keyword arguments.
 
     Args:
+      mime_message: MIME message to initialize from.  If instance of
+        email.Message.Message will take ownership as original message.
       kw: List of keyword properties as defined by PROPERTIES.
     """
+    if mime_message:
+      mime_message = _parse_mime_message(mime_message)
+      self.update_from_mime_message(mime_message)
+      self.__original = mime_message
+
     self.initialize(**kw)
+
+  @property
+  def original(self):
+    """Get original MIME message from which values were set."""
+    return self.__original
 
   def initialize(self, **kw):
     """Keyword initialization.
@@ -398,6 +558,7 @@ class _EmailMessageBase(object):
       - Subject must be set.
       - A recipient must be specified.
       - Must contain a body.
+      - All bodies and attachments must decode properly.
 
     This check does not include determining if the sender is actually
     authorized to send email for the application.
@@ -410,16 +571,44 @@ class _EmailMessageBase(object):
         MissingSenderError:         No sender specified.
         MissingSubjectError:        Subject is not specified.
         MissingBodyError:           No body specified.
+        PayloadEncodingError:       Payload is not properly encoded.
+        UnknownEncodingError:       Payload has unknown encoding.
+        UnknownCharsetError:        Payload has unknown character set.
     """
     if not hasattr(self, 'sender'):
       raise MissingSenderError()
     if not hasattr(self, 'subject'):
       raise MissingSubjectError()
-    if not hasattr(self, 'body') and not hasattr(self, 'html'):
+
+    found_body = False
+
+    try:
+      body = self.body
+    except AttributeError:
+      pass
+    else:
+      if isinstance(body, EncodedPayload):
+        body.decode()
+      found_body = True
+
+    try:
+      html = self.html
+    except AttributeError:
+      pass
+    else:
+      if isinstance(html, EncodedPayload):
+        html.decode()
+      found_body = True
+
+    if not found_body:
       raise MissingBodyError()
+
     if hasattr(self, 'attachments'):
       for file_name, data in _attachment_sequence(self.attachments):
         _GetMimeType(file_name)
+
+        if isinstance(data, EncodedPayload):
+          data.decode()
 
   def CheckInitialized(self):
     self.check_initialized()
@@ -448,6 +637,10 @@ class _EmailMessageBase(object):
 
     Returns:
       MailMessage protocol version of mail message.
+
+    Raises:
+      Passes through decoding errors that occur when using when decoding
+      EncodedPayload objects.
     """
     self.check_initialized()
     message = mail_service_pb.MailMessage()
@@ -456,13 +649,22 @@ class _EmailMessageBase(object):
     if hasattr(self, 'reply_to'):
       message.set_replyto(_to_str(self.reply_to))
     message.set_subject(_to_str(self.subject))
+
     if hasattr(self, 'body'):
-      message.set_textbody(_to_str(self.body))
+      body = self.body
+      if isinstance(body, EncodedPayload):
+        body = body.decode()
+      message.set_textbody(_to_str(body))
     if hasattr(self, 'html'):
-      message.set_htmlbody(_to_str(self.html))
+      html = self.html
+      if isinstance(html, EncodedPayload):
+        html = html.decode()
+      message.set_htmlbody(_to_str(html))
 
     if hasattr(self, 'attachments'):
       for file_name, data in _attachment_sequence(self.attachments):
+        if isinstance(data, EncodedPayload):
+          data = data.decode()
         attachment = message.add_attachment()
         attachment.set_filename(_to_str(file_name))
         attachment.set_data(_to_str(data))
@@ -485,7 +687,7 @@ class _EmailMessageBase(object):
       MissingSenderError:         No sender specified.
       MissingSubjectError:        Subject is not specified.
       MissingBodyError:           No body specified.
-  """
+    """
     return mail_message_to_mime_message(self.ToProto())
 
   def ToMIMEMessage(self):
@@ -517,8 +719,8 @@ class _EmailMessageBase(object):
 
   def _check_attachment(self, attachment):
     file_name, data = attachment
-    if not (isinstance(file_name, types.StringTypes) or
-            isinstance(data, types.StringTypes)):
+    if not (isinstance(file_name, basestring) or
+            isinstance(data, basestring)):
       raise TypeError()
 
   def _check_attachments(self, attachments):
@@ -534,7 +736,7 @@ class _EmailMessageBase(object):
     Raises:
       TypeError if values are not string type.
     """
-    if len(attachments) == 2 and isinstance(attachments[0], types.StringTypes):
+    if len(attachments) == 2 and isinstance(attachments[0], basestring):
       self._check_attachment(attachments)
     else:
       for attachment in attachments:
@@ -548,20 +750,133 @@ class _EmailMessageBase(object):
     Args:
       attr: Attribute to access.
       value: New value for field.
+
+    Raises:
+      ValueError: If provided with an empty field.
+      AttributeError: If not an allowed assignment field.
     """
-    if attr in ['sender', 'reply_to']:
-      check_email_valid(value, attr)
+    if not attr.startswith('_EmailMessageBase'):
+      if attr in ['sender', 'reply_to']:
+        check_email_valid(value, attr)
 
-    if not value:
-      raise ValueError('May not set empty value for \'%s\'' % attr)
+      if not value:
+        raise ValueError('May not set empty value for \'%s\'' % attr)
 
-    if attr not in self.PROPERTIES:
-      raise AttributeError('\'EmailMessage\' has no attribute \'%s\'' % attr)
+      if attr not in self.PROPERTIES:
+        raise AttributeError('\'EmailMessage\' has no attribute \'%s\'' % attr)
 
-    if attr == 'attachments':
-      self._check_attachments(value)
+      if attr == 'attachments':
+        self._check_attachments(value)
 
     super(_EmailMessageBase, self).__setattr__(attr, value)
+
+  def _add_body(self, content_type, payload):
+    """Add body to email from payload.
+
+    Will overwrite any existing default plain or html body.
+
+    Args:
+      content_type: Content-type of body.
+      payload: Payload to store body as.
+    """
+    if content_type == 'text/plain':
+      self.body = payload
+    elif content_type == 'text/html':
+      self.html = payload
+
+  def _update_payload(self, mime_message):
+    """Update payload of mail message from mime_message.
+
+    This function works recusively when it receives a multipart body.
+    If it receives a non-multi mime object, it will determine whether or
+    not it is an attachment by whether it has a filename or not.  Attachments
+    and bodies are then wrapped in EncodedPayload with the correct charsets and
+    encodings.
+
+    Args:
+      mime_message: A Message MIME email object.
+    """
+    payload = mime_message.get_payload()
+
+    if payload:
+      if mime_message.get_content_maintype() == 'multipart':
+        for alternative in payload:
+          self._update_payload(alternative)
+      else:
+        filename = mime_message.get_param('filename',
+                                          header='content-disposition')
+        if not filename:
+          filename = mime_message.get_param('name')
+
+        payload = EncodedPayload(payload,
+                                 mime_message.get_charset(),
+                                 mime_message['content-transfer-encoding'])
+
+        if filename:
+          try:
+            attachments = self.attachments
+          except AttributeError:
+            self.attachments = (filename, payload)
+          else:
+            if isinstance(attachments[0], basestring):
+              self.attachments = [attachments]
+              attachments = self.attachments
+            attachments.append((filename, payload))
+        else:
+          self._add_body(mime_message.get_content_type(), payload)
+
+  def update_from_mime_message(self, mime_message):
+    """Copy information from a mime message.
+
+    Set information of instance to values of mime message.  This method
+    will only copy values that it finds.  Any missing values will not
+    be copied, nor will they overwrite old values with blank values.
+
+    This object is not guaranteed to be initialized after this call.
+
+    Args:
+      mime_message: email.Message instance to copy information from.
+
+    Returns:
+      MIME Message instance of mime_message argument.
+    """
+    mime_message = _parse_mime_message(mime_message)
+
+    sender = mime_message['from']
+    if sender:
+      self.sender = sender
+
+    reply_to = mime_message['reply-to']
+    if reply_to:
+      self.reply_to = reply_to
+
+    subject = mime_message['subject']
+    if subject:
+      self.subject = subject
+
+    self._update_payload(mime_message)
+
+  def bodies(self, content_type=None):
+    """Iterate over all bodies.
+
+    Yields:
+      Tuple (content_type, payload) for html and body in that order.
+    """
+    if (not content_type or
+        content_type == 'text' or
+        content_type == 'text/html'):
+      try:
+        yield 'text/html', self.html
+      except AttributeError:
+        pass
+
+    if (not content_type or
+        content_type == 'text' or
+        content_type == 'text/plain'):
+      try:
+        yield 'text/plain', self.body
+      except AttributeError:
+        pass
 
 
 class EmailMessage(_EmailMessageBase):
@@ -592,8 +907,7 @@ class EmailMessage(_EmailMessageBase):
   """
 
   _API_CALL = 'Send'
-  PROPERTIES = _EmailMessageBase.PROPERTIES
-  PROPERTIES.update(('to', 'cc', 'bcc'))
+  PROPERTIES = set(_EmailMessageBase.PROPERTIES)
 
   def check_initialized(self):
     """Provide additional checks to ensure recipients have been specified.
@@ -629,12 +943,45 @@ class EmailMessage(_EmailMessageBase):
   def __setattr__(self, attr, value):
     """Provides additional checks on recipient fields."""
     if attr in ['to', 'cc', 'bcc']:
-      if isinstance(value, types.StringTypes):
+      if isinstance(value, basestring):
         check_email_valid(value, attr)
       else:
-        _email_check_and_list(value, attr)
+        for address in value:
+          check_email_valid(address, attr)
 
     super(EmailMessage, self).__setattr__(attr, value)
+
+  def update_from_mime_message(self, mime_message):
+    """Copy information from a mime message.
+
+    Update fields for recipients.
+
+    Args:
+      mime_message: email.Message instance to copy information from.
+    """
+    mime_message = _parse_mime_message(mime_message)
+    super(EmailMessage, self).update_from_mime_message(mime_message)
+
+    to = mime_message.get_all('to')
+    if to:
+      if len(to) == 1:
+        self.to = to[0]
+      else:
+        self.to = to
+
+    cc = mime_message.get_all('cc')
+    if cc:
+      if len(cc) == 1:
+        self.cc = cc[0]
+      else:
+        self.cc = cc
+
+    bcc = mime_message.get_all('bcc')
+    if bcc:
+      if len(bcc) == 1:
+        self.bcc = bcc[0]
+      else:
+        self.bcc = bcc
 
 
 class AdminEmailMessage(_EmailMessageBase):
@@ -667,3 +1014,114 @@ class AdminEmailMessage(_EmailMessageBase):
   """
 
   _API_CALL = 'SendToAdmins'
+  __UNUSED_PROPERTIES = set(('to', 'cc', 'bcc'))
+
+  def __setattr__(self, attr, value):
+    if attr in self.__UNUSED_PROPERTIES:
+      logging.warning('\'%s\' is not a valid property to set '
+                      'for AdminEmailMessage.  It is unused.', attr)
+    super(AdminEmailMessage, self).__setattr__(attr, value)
+
+
+class InboundEmailMessage(EmailMessage):
+  """Parsed email object as recevied from external source.
+
+  Has a date field and can store any number of additional bodies.  These
+  additional attributes make the email more flexible as required for
+  incoming mail, where the developer has less control over the content.
+
+  Example Usage:
+
+    # Read mail message from CGI input.
+    message = InboundEmailMessage(sys.stdin.read())
+    logging.info('Received email message from %s at %s',
+                 message.sender,
+                 message.date)
+    enriched_body = list(message.bodies('text/enriched'))[0]
+    ... Do something with body ...
+  """
+
+  __HEADER_PROPERTIES = {'date': 'date',
+                         'message_id': 'message-id',
+                        }
+
+  PROPERTIES = frozenset(_EmailMessageBase.PROPERTIES |
+                         set(('alternate_bodies',)) |
+                         set(__HEADER_PROPERTIES.iterkeys()))
+
+  def update_from_mime_message(self, mime_message):
+    """Update values from MIME message.
+
+    Copies over date values.
+
+    Args:
+      mime_message: email.Message instance to copy information from.
+    """
+    mime_message = _parse_mime_message(mime_message)
+    super(InboundEmailMessage, self).update_from_mime_message(mime_message)
+
+    for property, header in InboundEmailMessage.__HEADER_PROPERTIES.iteritems():
+      value = mime_message[header]
+      if value:
+        setattr(self, property, value)
+
+  def _add_body(self, content_type, payload):
+    """Add body to inbound message.
+
+    Method is overidden to handle incoming messages that have more than one
+    plain or html bodies or has any unidentified bodies.
+
+    This method will not overwrite existing html and body values.  This means
+    that when updating, the text and html bodies that are first in the MIME
+    document order are assigned to the body and html properties.
+
+    Args:
+      content_type: Content-type of additional body.
+      payload: Content of additional body.
+    """
+    if (content_type == 'text/plain' and not hasattr(self, 'body') or
+        content_type == 'text/html' and not hasattr(self, 'html')):
+      super(InboundEmailMessage, self)._add_body(content_type, payload)
+    else:
+      try:
+        alternate_bodies = self.alternate_bodies
+      except AttributeError:
+        alternate_bodies = self.alternate_bodies = [(content_type, payload)]
+      else:
+        alternate_bodies.append((content_type, payload))
+
+  def bodies(self, content_type=None):
+    """Iterate over all bodies.
+
+    Args:
+      content_type: Content type to filter on.  Allows selection of only
+        specific types of content.  Can be just the base type of the content
+        type.  For example:
+          content_type = 'text/html'  # Matches only HTML content.
+          content_type = 'text'       # Matches text of any kind.
+
+    Yields:
+      Tuple (content_type, payload) for all bodies of message, including body,
+      html and all alternate_bodies in that order.
+    """
+    main_bodies = super(InboundEmailMessage, self).bodies(content_type)
+    for payload_type, payload in main_bodies:
+      yield payload_type, payload
+
+    partial_type = bool(content_type and content_type.find('/') < 0)
+
+    try:
+      for payload_type, payload in self.alternate_bodies:
+        if content_type:
+          if partial_type:
+            match_type = payload_type.split('/')[0]
+          else:
+            match_type = payload_type
+          match = match_type == content_type
+        else:
+          match = True
+
+        if match:
+          yield payload_type, payload
+    except AttributeError:
+      pass

@@ -65,9 +65,9 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       response: the login URL; a base.StringProto
     """
     self.__num_requests += 1
-    response.set_value(
+    response.set_login_url(
         self._login_url %
-        urllib.quote(self._AddHostToContinueURL(request.value())))
+        urllib.quote(self._AddHostToContinueURL(request.destination_url())))
 
   def _Dynamic_CreateLogoutURL(self, request, response):
     """Trivial implementation of UserService.CreateLogoutURL().
@@ -77,9 +77,9 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       response: the logout URL; a base.StringProto
     """
     self.__num_requests += 1
-    response.set_value(
+    response.set_logout_url(
         self._logout_url %
-        urllib.quote(self._AddHostToContinueURL(request.value())))
+        urllib.quote(self._AddHostToContinueURL(request.destination_url())))
 
   def _AddHostToContinueURL(self, continue_url):
     """Adds the request host to the continue url if no host is specified.

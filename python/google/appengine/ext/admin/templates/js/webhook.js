@@ -33,7 +33,7 @@ Webhook.prototype.parse = function() {
       this.payload = value;
     }
   }
-  
+
   if (this.action == '') {
     return 'action not found';
   }
@@ -61,7 +61,20 @@ Webhook.prototype.send = function(callback) {
     callback(this, req, e);
     return;
   }
-  callback(this, req, null);
+
+  // If the responseText matches our <form action="/_ah/login then the
+  // user is not logged in as an Administrator so we'll fake the request.
+  if (req.responseText.match(/<form[^>]+_ah\/login/)) {
+    var fakeReq = {
+      'status': 403,
+      'responseText': 'Current logged in user is not authorized ' +
+                      'to view this page'
+    }
+    fakeReq.getAllResponseHeaders = function(){};
+    callback(this, fakeReq, null);
+  } else {
+    callback(this, req, null);
+  }
 };
 
 Webhook.prototype.run = function(callback) {

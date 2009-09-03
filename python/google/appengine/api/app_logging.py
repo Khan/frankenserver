@@ -68,7 +68,9 @@ class AppLogsHandler(logging.StreamHandler):
     StreamHandler.emit()."""
     try:
       message = self._AppLogsMessage(record)
-      self.stream.write(message.encode("UTF-8"))
+      if isinstance(message, unicode):
+        message = message.encode("UTF-8")
+      self.stream.write(message)
       self.flush()
     except (KeyboardInterrupt, SystemExit):
       raise

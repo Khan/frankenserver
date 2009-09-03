@@ -49,6 +49,7 @@ except ImportError:
 import dummy_thread
 import email.Utils
 import errno
+import heapq
 import httplib
 import imp
 import inspect
@@ -61,6 +62,7 @@ import os
 import pickle
 import pprint
 import random
+import select
 
 import re
 import sre_compile
@@ -90,6 +92,7 @@ from google.appengine.api import yaml_errors
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.labs.taskqueue import taskqueue_stub
 from google.appengine.api.memcache import memcache_stub
+from google.appengine.api.xmpp import xmpp_service_stub
 
 from google.appengine import dist
 
@@ -114,6 +117,8 @@ DEFAULT_ENV = {
     'AUTH_DOMAIN': 'gmail.com',
     'TZ': 'UTC',
 }
+
+DEFAULT_SELECT_DELAY = 30.0
 
 for ext, mime_type in (('.asc', 'text/plain'),
                        ('.diff', 'text/plain'),
@@ -3346,6 +3351,10 @@ def SetupStubs(app_id, **config):
       'taskqueue',
       taskqueue_stub.TaskQueueServiceStub(root_path=root_path))
 
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'xmpp',
+      xmpp_service_stub.XmppServiceStub())
+
 
 
   try:
@@ -3481,5 +3490,53 @@ def CreateServer(root_path,
 
   if absolute_root_path not in python_path_list:
     python_path_list.insert(0, absolute_root_path)
+  return HTTPServerWithScheduler((serve_address, port), handler_class)
 
-  return BaseHTTPServer.HTTPServer((serve_address, port), handler_class)
+
+class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
+  """A BaseHTTPServer subclass that calls a method at a regular interval."""
+
+  def __init__(self, server_address, request_handler_class):
+    """Constructor.
+
+    Args:
+      server_address: the bind address of the server.
+      request_handler_class: class used to handle requests.
+    """
+    BaseHTTPServer.HTTPServer.__init__(self, server_address,
+                                       request_handler_class)
+    self._events = []
+
+  def get_request(self, time_func=time.time, select_func=select.select):
+    """Overrides the base get_request call.
+
+    Args:
+      time_func: used for testing.
+      select_func: used for testing.
+
+    Returns:
+      a (socket_object, address info) tuple.
+    """
+    while True:
+      if self._events:
+        current_time = time_func()
+        next_eta = self._events[0][0]
+        delay = next_eta - current_time
+      else:
+        delay = DEFAULT_SELECT_DELAY
+      readable, _, _ = select_func([self.socket], [], [], max(delay, 0))
+      if readable:
+        return self.socket.accept()
+      current_time = time_func()
+      if self._events and current_time >= self._events[0][0]:
+        unused_eta, runnable = heapq.heappop(self._events)
+        runnable()
+
+  def AddEvent(self, eta, runnable):
+    """Add a runnable event to be run at the specified time.
+
+    Args:
+      eta: when to run the event, in seconds since epoch.
+      runnable: a callable object.
+    """
+    heapq.heappush(self._events, (eta, runnable))

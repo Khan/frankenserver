@@ -47,8 +47,11 @@ MINUTES = 'minutes'
 
 try:
   from pytz import NonExistentTimeError
+  from pytz import AmbiguousTimeError
 except ImportError:
   class NonExistentTimeError(Exception):
+    pass
+  class AmbiguousTimeError(Exception):
     pass
 
 
@@ -286,13 +289,15 @@ class SpecificTimeSpecification(TimeSpecification):
                                       microsecond=0)
         if self.timezone and pytz is not None:
           try:
+            out = self.timezone.localize(out, is_dst=None)
+          except AmbiguousTimeError:
             out = self.timezone.localize(out)
-          except (NonExistentTimeError, IndexError):
+          except NonExistentTimeError:
             for _ in range(24):
               out = out.replace(minute=1) + datetime.timedelta(minutes=60)
               try:
                 out = self.timezone.localize(out)
-              except (NonExistentTimeError, IndexError):
+              except NonExistentTimeError:
                 continue
               break
           out = out.astimezone(pytz.utc)

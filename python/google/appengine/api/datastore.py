@@ -49,11 +49,18 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.datastore import entity_pb
 
+try:
+  from google.appengine.api.labs.taskqueue import taskqueue_service_pb
+except ImportError:
+  from google.appengine.api.taskqueue import taskqueue_service_pb
+
 MAX_ALLOWABLE_QUERIES = 30
 
 DEFAULT_TRANSACTION_RETRIES = 3
 
 _MAX_INDEXED_PROPERTIES = 5000
+
+_MAX_ID_BATCH_SIZE = 1000 * 1000 * 1000
 
 Key = datastore_types.Key
 typename = datastore_types.typename
@@ -156,8 +163,6 @@ def Put(entities):
 
   keys = [e.key() for e in entities]
   tx = _MaybeSetupTransaction(req, keys)
-  if tx:
-    tx.RecordModifiedKeys([k for k in keys if k.has_id_or_name()])
 
   resp = datastore_pb.PutResponse()
   try:
@@ -177,7 +182,6 @@ def Put(entities):
     entity._Entity__key._Key__reference.CopyFrom(key)
 
   if tx:
-    tx.RecordModifiedKeys([e.key() for e in entities], error_on_repeat=False)
     tx.entity_group = entities[0].entity_group()
 
   if multiple:
@@ -259,8 +263,6 @@ def Delete(keys):
   req.key_list().extend([key._Key__reference for key in keys])
 
   tx = _MaybeSetupTransaction(req, keys)
-  if tx:
-    tx.RecordModifiedKeys(keys)
 
   resp = datastore_pb.DeleteResponse()
   try:
@@ -275,7 +277,7 @@ class Entity(dict):
   Includes read-only accessors for app id, kind, and primary key. Also
   provides dictionary-style access to properties.
   """
-  def __init__(self, kind, parent=None, _app=None, name=None,
+  def __init__(self, kind, parent=None, _app=None, name=None, id=None,
                unindexed_properties=[], _namespace=None):
     """Constructor. Takes the kind and transaction root, which cannot be
     changed after the entity is constructed, and an optional parent. Raises
@@ -289,6 +291,8 @@ class Entity(dict):
       parent: Entity or Key
       # if provided, this entity's name.
       name: string
+      # if provided, this entity's id.
+      id: integer
       # if provided, a sequence of property names that should not be indexed
       # by the built-in single property indices.
       unindexed_properties: list or tuple of strings
@@ -310,11 +314,17 @@ class Entity(dict):
     last_path = ref.mutable_path().add_element()
     last_path.set_type(kind.encode('utf-8'))
 
+    if name is not None and id is not None:
+      raise datastore_errors.BadArgumentError(
+          "Cannot set both name and id on an Entity")
+
     if name is not None:
       datastore_types.ValidateString(name, 'name')
-      if name[0] in string.digits:
-        raise datastore_errors.BadValueError('name cannot begin with a digit')
       last_path.set_name(name.encode('utf-8'))
+
+    if id is not None:
+      datastore_types.ValidateInteger(id, 'id')
+      last_path.set_id(id)
 
     unindexed_properties, multiple = NormalizeAndTypeCheck(unindexed_properties, basestring)
     if not multiple:
@@ -347,6 +357,13 @@ class Entity(dict):
     """Returns this entity's kind, a string.
     """
     return self.__key.kind()
+
+  def is_saved(self):
+    """Returns if this entity has been saved to the datastore
+    """
+    last_path = self.__key._Key__reference.path().element_list()[-1]
+    return ((last_path.has_name() ^ last_path.has_id()) and
+            self.__key.has_id_or_name())
 
   def key(self):
     """Returns this entity's primary key, a Key instance.
@@ -493,7 +510,15 @@ class Entity(dict):
 
     return xml
 
-  def _ToPb(self):
+  def ToPb(self):
+    """Converts this Entity to its protocol buffer representation.
+
+    Returns:
+      entity_pb.Entity
+    """
+    return self._ToPb(False)
+
+  def _ToPb(self, mark_key_as_saved=True):
     """Converts this Entity to its protocol buffer representation. Not
     intended to be used by application developers.
 
@@ -503,6 +528,9 @@ class Entity(dict):
 
     pb = entity_pb.EntityProto()
     pb.mutable_key().CopyFrom(self.key()._ToPb())
+    last_path = pb.key().path().element_list()[-1]
+    if mark_key_as_saved and last_path.has_name() and last_path.has_id():
+      last_path.clear_id()
 
     group = pb.mutable_entity_group()
     if self.__key.has_id_or_name():
@@ -533,7 +561,25 @@ class Entity(dict):
     return pb
 
   @staticmethod
-  def _FromPb(pb):
+  def FromPb(pb):
+    """Static factory method. Returns the Entity representation of the
+    given protocol buffer (datastore_pb.Entity).
+
+    Args:
+      pb: datastore_pb.Entity or str encoding of a datastore_pb.Entity
+
+    Returns:
+      Entity: the Entity representation of pb
+    """
+    if isinstance(pb, str):
+      real_pb = entity_pb.EntityProto()
+      real_pb.ParseFromString(pb)
+      pb = real_pb
+
+    return Entity._FromPb(pb, require_valid_key=False)
+
+  @staticmethod
+  def _FromPb(pb, require_valid_key=True):
     """Static factory method. Returns the Entity representation of the
     given protocol buffer (datastore_pb.Entity). Not intended to be used by
     application developers.
@@ -552,12 +598,13 @@ class Entity(dict):
     assert pb.key().path().element_size() > 0
 
     last_path = pb.key().path().element_list()[-1]
-    assert last_path.has_id() ^ last_path.has_name()
-    if last_path.has_id():
-      assert last_path.id() != 0
-    else:
-      assert last_path.has_name()
-      assert last_path.name()
+    if require_valid_key:
+      assert last_path.has_id() ^ last_path.has_name()
+      if last_path.has_id():
+        assert last_path.id() != 0
+      else:
+        assert last_path.has_name()
+        assert last_path.name()
 
     unindexed_properties = [p.name() for p in pb.raw_property_list()]
 
@@ -1227,6 +1274,44 @@ class Query(dict):
     return pb
 
 
+def AllocateIds(model_key, size):
+  """Allocates a range of IDs of size for the key defined by model_key
+
+  Allocates a range of IDs in the datastore such that those IDs will not
+  be automatically assigned to new entities. You can only allocate IDs
+  for model keys from your app. If there is an error, raises a subclass of
+  datastore_errors.Error.
+
+  Args:
+    model_key: Key or string to serve as a model specifying the ID sequence
+               in which to allocate IDs
+
+  Returns:
+    (start, end) of the allocated range, inclusive.
+  """
+  keys, multiple = NormalizeAndTypeCheckKeys(model_key)
+
+  if len(keys) > 1:
+    raise datastore_errors.BadArgumentError(
+        'Cannot allocate IDs for more than one model key at a time')
+
+  if size > _MAX_ID_BATCH_SIZE:
+    raise datastore_errors.BadArgumentError(
+        'Cannot allocate more than %s ids at a time' % _MAX_ID_BATCH_SIZE)
+
+  req = datastore_pb.AllocateIdsRequest()
+  req.mutable_model_key().CopyFrom(keys[0]._Key__reference)
+  req.set_size(size)
+
+  resp = datastore_pb.AllocateIdsResponse()
+  try:
+    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'AllocateIds', req, resp)
+  except apiproxy_errors.ApplicationError, err:
+    raise _ToDatastoreError(err)
+
+  return resp.start(), resp.end()
+
+
 class MultiQuery(Query):
   """Class representing a query which requires multiple datastore queries.
 
@@ -1700,7 +1785,7 @@ class _Transaction(object):
   """Encapsulates a transaction currently in progress.
 
   If we know the entity group for this transaction, it's stored in the
-  entity_group attribute, which is set by RecordModifiedKeys().
+  entity_group attribute, which is set by RunInTransaction().
 
   modified_keys is a set containing the Keys of all entities modified (ie put
   or deleted) in this transaction. If an entity is modified more than once, a
@@ -1720,27 +1805,6 @@ class _Transaction(object):
     self.entity_group = None
     self.modified_keys = None
     self.modified_keys = set()
-
-  def RecordModifiedKeys(self, keys, error_on_repeat=True):
-    """Updates the modified keys seen so far.
-
-    If error_on_repeat is True and any of the given keys have already been
-    modified, raises BadRequestError.
-
-    Args:
-      keys: sequence of Keys
-    """
-    keys, _ = NormalizeAndTypeCheckKeys(keys)
-    keys = set(keys)
-
-    if error_on_repeat:
-      already_modified = self.modified_keys.intersection(keys)
-      if already_modified:
-        raise datastore_errors.BadRequestError(
-          "Can't update entity more than once in a transaction: %r" %
-          already_modified.pop())
-
-    self.modified_keys.update(keys)
 
 
 def RunInTransaction(function, *args, **kwargs):
@@ -1922,7 +1986,9 @@ def _MaybeSetupTransaction(request, keys):
     _Transaction if we're inside a transaction, otherwise None
   """
   assert isinstance(request, (datastore_pb.GetRequest, datastore_pb.PutRequest,
-                              datastore_pb.DeleteRequest, datastore_pb.Query))
+                              datastore_pb.DeleteRequest, datastore_pb.Query,
+                              taskqueue_service_pb.TaskQueueAddRequest,
+                              )), request.__class__
   tx_key = None
 
   try:
@@ -1933,8 +1999,10 @@ def _MaybeSetupTransaction(request, keys):
       groups = [k.entity_group() for k in keys]
       if tx.entity_group:
         expected_group = tx.entity_group
-      else:
+      elif groups:
         expected_group = groups[0]
+      else:
+        expected_group = None
 
       for group in groups:
         if (group != expected_group or

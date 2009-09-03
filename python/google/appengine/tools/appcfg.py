@@ -227,6 +227,25 @@ def RetryWithBackoff(initial_delay, backoff_factor, max_tries, callable_func):
   return max_tries > 0
 
 
+def _VersionList(release):
+  """Parse a version string into a list of ints.
+
+  Args:
+    release: The 'release' version, e.g. '1.2.4'.
+        (Due to YAML parsing this may also be an int or float.)
+
+  Returns:
+    A list of ints corresponding to the parts of the version string
+    between periods.  Example:
+      '1.2.4' -> [1, 2, 4]
+      '1.2.3.4' -> [1, 2, 3, 4]
+
+  Raises:
+    ValueError if not all the parts are valid integers.
+  """
+  return [int(part) for part in str(release).split('.')]
+
+
 class UpdateCheck(object):
   """Determines if the local SDK is the latest version.
 
@@ -339,9 +358,25 @@ class UpdateCheck(object):
       return
 
     latest = yaml.safe_load(response)
-    if latest['release'] == version['release']:
+    if version['release'] == latest['release']:
       logging.info('The SDK is up to date.')
       return
+
+    try:
+      this_release = _VersionList(version['release'])
+    except ValueError:
+      logging.warn('Could not parse this release version (%r)',
+                   version['release'])
+    else:
+      try:
+        advertised_release = _VersionList(latest['release'])
+      except ValueError:
+        logging.warn('Could not parse advertised release version (%r)',
+                     latest['release'])
+      else:
+        if this_release > advertised_release:
+          logging.info('This SDK release is newer than the advertised release.')
+          return
 
     api_versions = latest['api_versions']
     if self.config.api_version not in api_versions:
@@ -2003,6 +2038,12 @@ class AppCfgApp(object):
 
     if self.options.num_days is None:
       self.options.num_days = int(not self.options.append)
+
+    try:
+      end_date = self._ParseEndDate(self.options.end_date)
+    except ValueError:
+      self.parser.error('End date must be in the format YYYY-MM-DD.')
+
     basepath = self.args[0]
     appyaml = self._ParseAppYaml(basepath)
     rpc_server = self._GetRpcServer()
@@ -2010,10 +2051,26 @@ class AppCfgApp(object):
                                    self.options.num_days,
                                    self.options.append,
                                    self.options.severity,
-                                   time.time(),
+                                   end_date,
                                    self.options.vhost,
                                    self.options.include_vhost)
     logs_requester.DownloadLogs()
+
+  def _ParseEndDate(self, date, time_func=time.time):
+    """Translates a user-readable end date to a POSIX timestamp.
+
+    Args:
+      date: A utc date string as YYYY-MM-DD.
+      time_func: time.time() function for testing.
+
+    Returns:
+      A POSIX timestamp representing the last moment of that day.
+      If no date is given, returns a timestamp representing now.
+    """
+    if not date:
+      return time_func()
+    struct_time = time.strptime('%s' % date, '%Y-%m-%d')
+    return calendar.timegm(struct_time) + 86400
 
   def _RequestLogsOptions(self, parser):
     """Adds request_logs-specific options to 'parser'.
@@ -2043,6 +2100,10 @@ class AppCfgApp(object):
     parser.add_option('--include_vhost', dest='include_vhost',
                       action='store_true', default=False,
                       help='Include virtual host in log messages.')
+    parser.add_option('--end_date', dest='end_date',
+                      action='store', default='',
+                      help='End date (as YYYY-MM-DD) of period for log data. '
+                      'Defaults to today.')
 
   def CronInfo(self, now=None, output=sys.stdout):
     """Displays information about cron definitions.
@@ -2179,8 +2240,12 @@ class AppCfgApp(object):
                      'email',
                      'debug',
                      'exporter_opts',
+                     'mapper_opts',
                      'result_db_filename',
                      'mapper_opts',
+                     'dry_run',
+                     'dump',
+                     'restore',
                      )])
 
   def PerformDownload(self, run_fn=None):
@@ -2199,6 +2264,8 @@ class AppCfgApp(object):
     args['download'] = True
     args['has_header'] = False
     args['map'] = False
+    args['dump'] = False
+    args['restore'] = False
 
     run_fn(args)
 
@@ -2217,6 +2284,8 @@ class AppCfgApp(object):
     args = self._MakeLoaderArgs()
     args['download'] = False
     args['map'] = False
+    args['dump'] = False
+    args['restore'] = False
 
     run_fn(args)
 
@@ -2264,6 +2333,9 @@ class AppCfgApp(object):
                       help='File to write bulkloader logs.  If not supplied '
                       'then a new log file will be created, named: '
                       'bulkloader-log-TIMESTAMP.')
+    parser.add_option('--dry_run', action='store_true',
+                      dest='dry_run', default=False,
+                      help='Do not execute any remote_api calls')
 
   def _PerformUploadOptions(self, parser):
     """Adds 'upload_data' specific options to the 'parser' passed in.

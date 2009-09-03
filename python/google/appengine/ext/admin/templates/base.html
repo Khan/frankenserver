@@ -10,29 +10,29 @@
   </head>
   <body {% block bodyattributes %}{% endblock %}>
     <div class="g-doc">
-    
+
     <div id="hd" class="g-section">
 
       <div class="g-section">
         <img id="ae-logo" src="./images/google.gif" width="153" height="47"
          alt="Google App Engine"/>
       </div>
-      
+
       <div id="ae-appbar-lrg" class="g-section">
         <h1>{{ application_name }} Development Console</h1>
       </div>
-      
+
     </div>
-    
-    
+
+
     <div id="bd" class="g-section">
-    
+
       <div class="g-section g-tpl-160">
-    
+
         <div id="ae-lhs-nav" class="g-unit g-first">
-    
+
           <div id="ae-nav" class="g-c">
-        
+
             <ul id="menu">
               <li><a href="{{ datastore_path }}">Datastore Viewer</a></li>
               <li><a href="{{ interactive_path }}">Interactive Console</a></li>
@@ -41,18 +41,22 @@
               {% if cron_path %}
               <li><a href="{{ cron_path }}">Cron Jobs</a></li>
               {% endif %}
+              <li><a href="{{ xmpp_path }}">XMPP</a></li>
+              {% comment %}
+              <li><a href="{{ inboundmail_path }}">Inbound Mail</a></li>
+              {% endcomment %}
             </ul>
-        
+
           </div>
-        
+
         </div>
-        
+
         <div id="ae-content" class="g-unit">
           {% block body %}{% endblock %}
         </div>
-    
+
     </div>
-    
+
         <div id="ft">
           <p>
             &copy;2009 Google
@@ -83,7 +87,7 @@
     function makeSelected(e) {
       e.className = "ae-nav-selected";
     }
-    
+
     walk(document.getElementById("menu"), isCurrentLink, makeSelected);
 
     //]]>

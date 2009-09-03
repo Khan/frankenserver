@@ -86,8 +86,6 @@ DEFAULT_SKIP_FILES = (r'^(.*/)?('
                       r'(\..*)|'
                       r')$')
 
-SERVICE = 'service'
-
 LOGIN = 'login'
 SECURE = 'secure'
 URL = 'url'
@@ -105,7 +103,7 @@ API_VERSION = 'api_version'
 HANDLERS = 'handlers'
 DEFAULT_EXPIRATION = 'default_expiration'
 SKIP_FILES = 'skip_files'
-SERVICES = 'services'
+SERVICES = 'inbound_services'
 
 
 class URLMap(validation.Validated):

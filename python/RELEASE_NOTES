@@ -3,6 +3,30 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.5 - August 13, 2009
+===============================
+  - The Windows Python SDK now includes a GUI launcher, similar to the Mac SDK.
+  - Added XMPP support.
+    http://code.google.com/appengine/docs/python/xmpp
+    http://code.google.com/p/googleappengine/issues/detail?id=231
+  - Datastore now supports multiple writes to the same entity within a 
+    transaction.
+  - Datastore entity key names can now start with a digit.
+      http://code.google.com/p/googleappengine/issues/detail?id=1352
+  - Datastore now supports ancestor + kind queries without a composite index
+      http://code.google.com/p/googleappengine/issues/detail?id=1003
+  - Bulkloader now supports configurationless dump and restore with new
+    --dump and --restore options.
+  - Bulkloader now supports a --dry_run flag to testing data prior to uploading.
+  - Appcfg.py now allows specifying any end date for request_logs.
+  - Urlfetch now allows setting the Referer header.
+      http://code.google.com/p/googleappengine/issues/detail?id=445
+  - Urlfetch stub now correctly handles HEAD requests.
+      http://code.google.com/p/googleappengine/issues/detail?id=866
+  - New remote_api_shell tool for interactive remote_api operations.
+  - New google.ext.ereporter module to collect and email exception reports.
+  - New google.ext.deferred module to execute ad-hoc tasks on the Task Queue.
+
 Version 1.2.4 - July 16, 2009
 =============================
   - Added support for kindless queries, ie. transaction descendant queries.

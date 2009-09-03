@@ -44,3 +44,12 @@ class MissingSubjectError(Error):
 
 class MissingBodyError(Error):
   """No body specified in message."""
+
+class PayloadEncodingError(Error):
+  """Unknown payload encoding."""
+
+class UnknownEncodingError(PayloadEncodingError):
+  """Raised when encoding is not known."""
+
+class UnknownCharsetError(PayloadEncodingError):
+  """Raised when charset is not known."""

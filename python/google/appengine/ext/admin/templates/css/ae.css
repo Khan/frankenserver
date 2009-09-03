@@ -152,3 +152,19 @@ ol.ae-even {
 .ae-table .ae-pager {
   background-color: #c5d7ef;
 }
+
+.ae-errorbox {
+  border: 1px solid #f00;
+  background-color: #fee;
+  margin-bottom: 1em;
+  padding: 1em;
+  display: inline-block;
+}
+
+.ae-message {
+  border: 1px solid #e5ecf9;
+  background-color: #f6f9ff;
+  margin-bottom: 1em;
+  padding: 1em;
+  display: inline-block;
+}

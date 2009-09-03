@@ -162,9 +162,9 @@ def create_login_url(dest_url):
   Returns:
     string
   """
-  req = user_service_pb.StringProto()
-  resp = user_service_pb.StringProto()
-  req.set_value(dest_url)
+  req = user_service_pb.CreateLoginURLRequest()
+  resp = user_service_pb.CreateLoginURLResponse()
+  req.set_destination_url(dest_url)
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLoginURL', req, resp)
   except apiproxy_errors.ApplicationError, e:
@@ -176,7 +176,7 @@ def create_login_url(dest_url):
       raise NotAllowedError
     else:
       raise e
-  return resp.value()
+  return resp.login_url()
 
 CreateLoginURL = create_login_url
 
@@ -192,9 +192,9 @@ def create_logout_url(dest_url):
   Returns:
     string
   """
-  req = user_service_pb.StringProto()
-  resp = user_service_pb.StringProto()
-  req.set_value(dest_url)
+  req = user_service_pb.CreateLogoutURLRequest()
+  resp = user_service_pb.CreateLogoutURLResponse()
+  req.set_destination_url(dest_url)
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLogoutURL', req, resp)
   except apiproxy_errors.ApplicationError, e:
@@ -203,7 +203,7 @@ def create_logout_url(dest_url):
       raise RedirectTooLongError
     else:
       raise e
-  return resp.value()
+  return resp.logout_url()
 
 CreateLogoutURL = create_logout_url
 

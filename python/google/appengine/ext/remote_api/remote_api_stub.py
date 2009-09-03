@@ -72,6 +72,7 @@ import threading
 import yaml
 
 from google.appengine.api import datastore
+from google.appengine.api import apiproxy_rpc
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext.remote_api import remote_api_pb
@@ -162,7 +163,8 @@ class RemoteStub(object):
     try:
       if response_pb.has_application_error():
         error_pb = response_pb.application_error()
-        raise datastore._ToDatastoreError(error_pb.code())(error_pb.detail())
+        raise datastore._ToDatastoreError(
+            apiproxy_errors.ApplicationError(error_pb.code(), error_pb.detail()))
       elif response_pb.has_exception():
         raise pickle.loads(response_pb.exception().contents())
       elif response_pb.has_java_exception():
@@ -172,6 +174,9 @@ class RemoteStub(object):
         response.ParseFromString(response_pb.response().contents())
     finally:
       self._PostHookHandler(service, call, request, response)
+
+  def CreateRPC(self):
+    return apiproxy_rpc.RPC(stub=self)
 
 
 class RemoteDatastoreStub(RemoteStub):
@@ -219,6 +224,7 @@ class RemoteDatastoreStub(RemoteStub):
 
     query_result.mutable_cursor().set_cursor(cursor_id)
     query_result.set_more_results(True)
+    query_result.set_keys_only(query.keys_only())
 
   def _Dynamic_Next(self, next_request, query_result):
     cursor = next_request.cursor().cursor()

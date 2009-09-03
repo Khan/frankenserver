@@ -286,6 +286,23 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       raise datastore_errors.BadRequestError(
           'app %s cannot access app %s\'s data' % (self.__app_id, app_id))
 
+  def __ValidateKey(self, key):
+    """Validate this key.
+
+    Args:
+      key: entity_pb.Reference
+
+    Raises:
+      datastore_errors.BadRequestError: if the key is invalid
+    """
+    assert isinstance(key, entity_pb.Reference)
+
+    self.__ValidateAppId(key.app())
+
+    for elem in key.path().element_list():
+      if elem.has_id() == elem.has_name():
+        raise datastore_errors.BadRequestError(
+          'each key path element should have id or name but not both: %r' % key)
 
   def _AppIdNamespaceKindForKey(self, key):
     """ Get (app, kind) tuple from given key.
@@ -478,7 +495,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Put(self, put_request, put_response):
     clones = []
     for entity in put_request.entity_list():
-      self.__ValidateAppId(entity.key().app())
+      self.__ValidateKey(entity.key())
 
       clone = entity_pb.EntityProto()
       clone.CopyFrom(entity)
@@ -594,6 +611,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
           ('query is too large. may not have more than %s filters'
            ' + sort orders ancestor total' % _MAX_QUERY_COMPONENTS))
 
+    (filters, orders) = datastore_index.Normalize(query.filter_list(),
+                                                  query.order_list())
+
     if self.__require_indexes:
       required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
       if required:
@@ -667,7 +687,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
           return True
       return False
 
-    for filt in query.filter_list():
+    for filt in filters:
       assert filt.op() != datastore_pb.Query_Filter.IN
 
       prop = filt.property(0).name().decode('utf-8')
@@ -719,7 +739,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
       results = filter(passes_filter, results)
 
-    for order in query.order_list():
+    for order in orders:
       prop = order.property().decode('utf-8')
       results = [entity for entity in results if has_prop_indexed(entity, prop)]
 
@@ -728,7 +748,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       entity a is considered smaller than, equal to, or larger than b,
       according to the query's orderings. """
       cmped = 0
-      for o in query.order_list():
+      for o in orders:
         prop = o.property().decode('utf-8')
 
         reverse = (o.direction() is datastore_pb.Query_Order.DESCENDING)
@@ -937,6 +957,23 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         kind.clear_property()
 
     schema.set_more_results(False)
+
+  def _Dynamic_AllocateIds(self, allocate_ids_request, allocate_ids_response):
+    model_key = allocate_ids_request.model_key()
+    size = allocate_ids_request.size()
+
+    self.__ValidateAppId(model_key.app())
+
+    try:
+      self.__id_lock.acquire()
+      start = self.__next_id
+      self.__next_id += size
+      end = self.__next_id - 1
+    finally:
+     self.__id_lock.release()
+
+    allocate_ids_response.set_start(start)
+    allocate_ids_response.set_end(end)
 
   def _Dynamic_CreateIndex(self, index, id_response):
     self.__ValidateAppId(index.app_id())

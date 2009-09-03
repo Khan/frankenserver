@@ -20,6 +20,13 @@
 
 import os
 
+try:
+  import simplejson
+except ImportError:
+  simplejson = None
+
+from google.appengine.api import datastore
+from google.appengine.datastore import datastore_pb
 from google.appengine.ext import db
 
 
@@ -31,7 +38,12 @@ class KeyRangeError(Error):
   """Error while trying to generate a KeyRange."""
 
 
-class EmptyQuery(db.Query):
+class SimplejsonUnavailableError(Error):
+  """Error while using json functionality whith unavailable simplejson."""
+
+class EmptyDbQuery(db.Query):
+  """A query that returns no results."""
+
   def get(self):
     return None
 
@@ -40,6 +52,28 @@ class EmptyQuery(db.Query):
 
   def count(self, limit=1000):
     return 0
+
+
+class EmptyDatastoreQuery(datastore.Query):
+  """A query that returns no results."""
+
+  def __init__(self, kind):
+    datastore.Query.__init__(self, kind)
+
+  def _Run(self, *unused_args, **unused_kwargs):
+    empty_result_pb = datastore_pb.QueryResult()
+    empty_result_pb.set_cursor(0)
+    empty_result_pb.set_more_results(False)
+    return datastore.Iterator(empty_result_pb)
+
+  def Count(self, *unused_args, **unused_kwargs):
+    return 0
+
+  def Get(self, *unused_args, **unused_kwargs):
+    return []
+
+  def Next(self, *unused_args, **unused_kwargs):
+    return []
 
 
 class KeyRange(object):
@@ -102,10 +136,15 @@ class KeyRange(object):
 
     Args:
       query: A db.Query instance.
+
+    Returns:
+      The input query restricted to this key range or an empty query if
+      this key range is empty.
     """
+    assert isinstance(query, db.Query)
     if self.key_start == self.key_end and not (
         self.include_start or self.include_end):
-      return EmptyQuery()
+      return EmptyDbQuery()
     if self.include_start:
       start_comparator = '>='
     else:
@@ -114,13 +153,59 @@ class KeyRange(object):
       end_comparator = '<='
     else:
       end_comparator = '<'
-    if self.key_start and self.key_end:
+    if self.key_start:
       query.filter('__key__ %s' % start_comparator, self.key_start)
+    if self.key_end:
       query.filter('__key__ %s' % end_comparator, self.key_end)
-    elif self.key_start:
-      query.filter('__key__ %s' % start_comparator, self.key_start)
-    elif self.key_end:
-      query.filter('__key__ %s' % end_comparator, self.key_end)
+    return query
+
+  def filter_datastore_query(self, query):
+    """Add query filter to restrict to this key range.
+
+    Args:
+      query: A datastore.Query instance.
+
+    Returns:
+      The input query restricted to this key range or an empty query if
+      this key range is empty.
+    """
+    assert isinstance(query, datastore.Query)
+    if self.key_start == self.key_end and not (
+        self.include_start or self.include_end):
+      return EmptyDatastoreQuery(query.kind)
+    if self.include_start:
+      start_comparator = '>='
+    else:
+      start_comparator = '>'
+    if self.include_end:
+      end_comparator = '<='
+    else:
+      end_comparator = '<'
+    if self.key_start:
+      query.update({'__key__ %s' % start_comparator: self.key_start})
+    if self.key_end:
+      query.update({'__key__ %s' % end_comparator: self.key_end})
+    return query
+
+  def __get_direction(self, asc, desc):
+    """Check that self.direction is in (KeyRange.ASC, KeyRange.DESC).
+
+    Args:
+      asc: Argument to return if self.direction is KeyRange.ASC
+      desc: Argument to return if self.direction is KeyRange.DESC
+
+    Returns:
+      asc or desc appropriately
+
+    Raises:
+      KeyRangeError: if self.direction is not in (KeyRange.ASC, KeyRange.DESC).
+    """
+    if self.direction == KeyRange.ASC:
+      return asc
+    elif self.direction == KeyRange.DESC:
+      return desc
+    else:
+      raise KeyRangeError('KeyRange direction unexpected: %s', self.direction)
 
   def make_directed_query(self, kind_class):
     """Construct a query for this key range, including the scan direction.
@@ -132,18 +217,33 @@ class KeyRange(object):
       A db.Query instance.
 
     Raises:
-      Error: if self.direction is not one of KeyRange.ASC, KeyRange.DESC
+      KeyRangeError: if self.direction is not in (KeyRange.ASC, KeyRange.DESC).
     """
-    if self.direction == KeyRange.ASC:
-      direction = ''
-    elif self.direction == KeyRange.DESC:
-      direction = '-'
-    else:
-      raise KeyRangeError('KeyRange direction unexpected: %s', self.direction)
+    direction = self.__get_direction('', '-')
     query = db.Query(kind_class)
     query.order('%s__key__' % direction)
 
-    self.filter_query(query)
+    query = self.filter_query(query)
+    return query
+
+  def make_directed_datastore_query(self, kind):
+    """Construct a query for this key range, including the scan direction.
+
+    Args:
+      kind: A string.
+
+    Returns:
+      A datastore.Query instance.
+
+    Raises:
+      KeyRangeError: if self.direction is not in (KeyRange.ASC, KeyRange.DESC).
+    """
+    direction = self.__get_direction(datastore.Query.ASCENDING,
+                                     datastore.Query.DESCENDING)
+    query = datastore.Query(kind)
+    query.Order(('__key__', direction))
+
+    query = self.filter_datastore_query(query)
     return query
 
   def make_ascending_query(self, kind_class):
@@ -158,7 +258,22 @@ class KeyRange(object):
     query = db.Query(kind_class)
     query.order('__key__')
 
-    self.filter_query(query)
+    query = self.filter_query(query)
+    return query
+
+  def make_ascending_datastore_query(self, kind):
+    """Construct a query for this key range without setting the scan direction.
+
+    Args:
+      kind: A string.
+
+    Returns:
+      A datastore.Query instance.
+    """
+    query = datastore.Query(kind)
+    query.Order(('__key__', datastore.Query.ASCENDING))
+
+    query = self.filter_datastore_query(query)
     return query
 
   def split_range(self, batch_size=0):
@@ -194,10 +309,20 @@ class KeyRange(object):
                         KeyRange.DESC))
     else:
       key_split = KeyRange.split_keys(key_start, key_end, batch_size)
+      first_include_end = True
+      if key_split == key_start:
+        first_include_end = first_include_end and include_start
+
       key_pairs.append((key_start, include_start,
-                        key_split, True, KeyRange.DESC))
+                        key_split, first_include_end,
+                        KeyRange.DESC))
+
+      second_include_end = include_end
+      if key_split == key_end:
+        second_include_end = False
       key_pairs.append((key_split, False,
-                        key_end, include_end, KeyRange.ASC))
+                        key_end, second_include_end,
+                        KeyRange.ASC))
 
     ranges = [KeyRange(key_start=start,
                        include_start=include_start,
@@ -217,6 +342,14 @@ class KeyRange(object):
     when comparing.  Since None indicates an unbounded side of the range,
     the include specifier is meaningless.  The ordering generated is total
     but somewhat arbitrary.
+
+    Args:
+      other: An object to compare to this one.
+
+    Returns:
+      -1: if this key range is less than other.
+      0:  if this key range is equal to other.
+      1: if this key range is greater than other.
     """
     if not isinstance(other, KeyRange):
       return 1
@@ -383,3 +516,55 @@ class KeyRange(object):
       assert (isinstance(id_or_name1, (int, long)) and
               isinstance(id_or_name2, basestring))
       return unichr(0)
+
+  def to_json(self):
+    """Serialize KeyRange to json.
+
+    Returns:
+      string with KeyRange json representation.
+    """
+    if simplejson is None:
+      raise SimplejsonUnavailableError(
+          "JSON functionality requires simplejson to be available")
+
+    def key_to_str(key):
+      if key:
+        return str(key)
+      else:
+        return None
+
+    return simplejson.dumps({
+        "direction": self.direction,
+        "key_start": key_to_str(self.key_start),
+        "key_end": key_to_str(self.key_end),
+        "include_start": self.include_start,
+        "include_end": self.include_end,
+        }, sort_keys=True)
+
+
+  @staticmethod
+  def from_json(json_str):
+    """Deserialize KeyRange from its json representation.
+
+    Args:
+      json_str: string with json representation created by key_range_to_json.
+
+    Returns:
+      deserialized KeyRange instance.
+    """
+    if simplejson is None:
+      raise SimplejsonUnavailableError(
+          "JSON functionality requires simplejson to be available")
+
+    def key_from_str(key_str):
+      if key_str:
+        return db.Key(key_str)
+      else:
+        return None
+
+    json = simplejson.loads(json_str)
+    return KeyRange(key_from_str(json["key_start"]),
+                    key_from_str(json["key_end"]),
+                    json["direction"],
+                    json["include_start"],
+                    json["include_end"])

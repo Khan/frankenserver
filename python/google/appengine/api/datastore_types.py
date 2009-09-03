@@ -109,6 +109,35 @@ def ValidateString(value,
   if len(value.encode('utf-8')) > max_len:
     raise exception('%s must be under %d bytes.' % (name, max_len))
 
+def ValidateInteger(value,
+                   name='unused',
+                   exception=datastore_errors.BadValueError,
+                   empty_ok=False,
+                   zero_ok=False,
+                   negative_ok=False):
+  """Raises an exception if value is not a valid integer.
+
+  An integer is valid if it's not negative or empty and is an integer.
+  The exception type can be specified with the exception argument;
+  it defaults to BadValueError.
+
+  Args:
+    value: the value to validate.
+    name: the name of this value; used in the exception message.
+    exception: the type of exception to raise.
+    empty_ok: allow None value.
+    zero_ok: allow zero value.
+    negative_ok: allow negative value.
+  """
+  if value is None and empty_ok:
+    return
+  if not isinstance(value, int):
+    raise exception('%s should be an integer; received %s (a %s).' %
+                    (name, value, typename(value)))
+  if not value and not zero_ok:
+    raise exception('%s must not be 0 (zero)' % name)
+  if value < 0 and not negative_ok:
+    raise exception('%s must not be negative.' % name)
 
 def ResolveAppId(app, name='_app'):
   """Validate app id, providing a default.
@@ -425,9 +454,6 @@ class Key(object):
         elem.set_id(id_or_name)
       elif isinstance(id_or_name, basestring):
         ValidateString(id_or_name, 'name')
-        if id_or_name and id_or_name[0] in string.digits:
-          raise datastore_errors.BadArgumentError(
-            'Names may not begin with a digit; received %s.' % id_or_name)
         elem.set_name(id_or_name.encode('utf-8'))
       else:
         raise datastore_errors.BadArgumentError(

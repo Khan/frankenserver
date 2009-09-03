@@ -119,6 +119,8 @@ class BaseRequestHandler(webapp.RequestHandler):
       'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
       'memcache_path': base_path + MemcachePageHandler.PATH,
       'queues_path': base_path + QueuesPageHandler.PATH,
+      'xmpp_path': base_path + XMPPPageHandler.PATH,
+      'inboundmail_path': base_path + InboundMailPageHandler.PATH,
     }
     if HAVE_CRON:
       values['cron_path'] = base_path + CronPageHandler.PATH
@@ -246,6 +248,34 @@ class CronPageHandler(BaseRequestHandler):
           job['times'].append({'runtime': match.strftime("%Y-%m-%d %H:%M:%SZ"),
                                'difference': str(match - now)})
     self.generate('cron.html', values)
+
+
+class XMPPPageHandler(BaseRequestHandler):
+  """Tests XMPP requests."""
+  PATH = '/xmpp'
+
+  def get(self):
+    """Shows template displaying the XMPP."""
+    xmpp_configured = True
+    values = {
+      'xmpp_configured': xmpp_configured,
+      'request': self.request
+    }
+    self.generate('xmpp.html', values)
+
+
+class InboundMailPageHandler(BaseRequestHandler):
+  """Tests Mail requests."""
+  PATH = '/inboundmail'
+
+  def get(self):
+    """Shows template displaying the Inbound Mail form."""
+    inboundmail_configured = True
+    values = {
+      'inboundmail_configured': inboundmail_configured,
+      'request': self.request
+    }
+    self.generate('inboundmail.html', values)
 
 
 class QueuesPageHandler(BaseRequestHandler):
@@ -1214,7 +1244,12 @@ for data_type in _DATA_TYPES.values():
 
 
 def _ParseCronYaml():
-  """Load the cron.yaml file and parse it."""
+  """Loads the cron.yaml file and parses it.
+
+  The CWD of the dev_appserver is the root of the application here.
+
+  Returns a dict representing the contents of cron.yaml.
+  """
   cronyaml_files = 'cron.yaml', 'cron.yml'
   for cronyaml in cronyaml_files:
     try:
@@ -1240,6 +1275,8 @@ def main():
     ('.*' + ImageHandler.PATH, ImageHandler),
     ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
     ('.*' + TasksPageHandler.PATH, TasksPageHandler),
+    ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
+    ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
     ('.*', DefaultPageHandler),
   ]
   if HAVE_CRON:

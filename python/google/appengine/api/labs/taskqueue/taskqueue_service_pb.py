@@ -22,6 +22,7 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+from google.appengine.datastore.datastore_v3_pb import *
 class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
@@ -240,9 +241,12 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   url_ = ""
   has_body_ = 0
   body_ = ""
+  has_transaction_ = 0
+  transaction_ = None
 
   def __init__(self, contents=None):
     self.header_ = []
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def queue_name(self): return self.queue_name_
@@ -339,6 +343,24 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_body(self): return self.has_body_
 
+  def transaction(self):
+    if self.transaction_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.transaction_ is None: self.transaction_ = Transaction()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.transaction_
+
+  def mutable_transaction(self): self.has_transaction_ = 1; return self.transaction()
+
+  def clear_transaction(self):
+    if self.has_transaction_:
+      self.has_transaction_ = 0;
+      if self.transaction_ is not None: self.transaction_.Clear()
+
+  def has_transaction(self): return self.has_transaction_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -349,6 +371,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_url()): self.set_url(x.url())
     for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_body()): self.set_body(x.body())
+    if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
 
   def Equals(self, x):
     if x is self: return 1
@@ -367,6 +390,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_body_ != x.has_body_: return 0
     if self.has_body_ and self.body_ != x.body_: return 0
+    if self.has_transaction_ != x.has_transaction_: return 0
+    if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -389,6 +414,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: url not set.')
     for p in self.header_:
       if not p.IsInitialized(debug_strs): initialized=0
+    if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -401,6 +427,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.header_)
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_body_): n += 1 + self.lengthString(len(self.body_))
+    if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
     return n + 4
 
   def Clear(self):
@@ -411,6 +438,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_url()
     self.clear_header()
     self.clear_body()
+    self.clear_transaction()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -431,6 +459,10 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_body_):
       out.putVarInt32(74)
       out.putPrefixedString(self.body_)
+    if (self.has_transaction_):
+      out.putVarInt32(82)
+      out.putVarInt32(self.transaction_.ByteSize())
+      self.transaction_.OutputUnchecked(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -456,6 +488,12 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 74:
         self.set_body(d.getPrefixedString())
         continue
+      if tt == 82:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_transaction().TryMerge(tmp)
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -476,6 +514,10 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"}\n"
       cnt+=1
     if self.has_body_: res+=prefix+("body: %s\n" % self.DebugFormatString(self.body_))
+    if self.has_transaction_:
+      res+=prefix+"transaction <\n"
+      res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -491,6 +533,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   kHeaderkey = 7
   kHeadervalue = 8
   kbody = 9
+  ktransaction = 10
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -503,7 +546,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     7: "key",
     8: "value",
     9: "body",
-  }, 9)
+    10: "transaction",
+  }, 10)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -516,7 +560,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     7: ProtocolBuffer.Encoder.STRING,
     8: ProtocolBuffer.Encoder.STRING,
     9: ProtocolBuffer.Encoder.STRING,
-  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
+    10: ProtocolBuffer.Encoder.STRING,
+  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

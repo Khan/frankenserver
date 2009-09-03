@@ -27,8 +27,12 @@ import code
 import getpass
 import optparse
 import os
-import readline
 import sys
+
+try:
+  import readline
+except ImportError:
+  readline = None
 
 from google.appengine.ext.remote_api import remote_api_stub
 
@@ -74,11 +78,14 @@ def main(argv):
                                      servername=options.server)
   remote_api_stub.MaybeInvokeAuthentication()
 
-  readline.parse_and_bind('tab: complete')
-  atexit.register(lambda: readline.write_history_file(HISTORY_PATH))
+  os.environ['SERVER_SOFTWARE'] = 'Development (remote_api_shell)/1.0'
+
   sys.ps1 = '%s> ' % appid
-  if os.path.exists(HISTORY_PATH):
-    readline.read_history_file(HISTORY_PATH)
+  if readline is not None:
+    readline.parse_and_bind('tab: complete')
+    atexit.register(lambda: readline.write_history_file(HISTORY_PATH))
+    if os.path.exists(HISTORY_PATH):
+      readline.read_history_file(HISTORY_PATH)
 
   code.interact(banner=BANNER, local=globals())
 

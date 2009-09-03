@@ -220,11 +220,14 @@ class zipimporter:
 
   def get_data(self, fullpath):
     """Return (binary) content of a data file in the zipfile."""
-    required_prefix = os.path.join(self.archive, '')
-    if not fullpath.startswith(required_prefix):
-      raise IOError('Path %r doesn\'t start with zipfile name %r' %
-                    (fullpath, required_prefix))
-    relpath = fullpath[len(required_prefix):]
+    prefix = os.path.join(self.archive, '')
+    if fullpath.startswith(prefix):
+      relpath = fullpath[len(prefix):]
+    elif os.path.isabs(fullpath):
+      raise IOError('Absolute path %r doesn\'t start with zipfile name %r' %
+                    (fullpath, prefix))
+    else:
+      relpath = fullpath
     try:
       return self.zipfile.read(relpath)
     except KeyError:
