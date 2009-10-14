@@ -24,7 +24,11 @@ Kept in a separate file from the __init__ module for testing purposes.
 __all__ = ['use_library']
 
 
-import distutils.version
+try:
+  import distutils.version
+except ImportError:
+  distutils = None
+
 import os
 import sys
 

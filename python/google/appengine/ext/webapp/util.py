@@ -21,13 +21,18 @@
 
 
 
-__all__ = ["login_required", "run_wsgi_app"]
+__all__ = ['login_required',
+           'run_wsgi_app',
+           'add_wsgi_middleware',
+           'run_bare_wsgi_app',
+           ]
 
 import os
 import sys
 import wsgiref.util
 
 from google.appengine.api import users
+from google.appengine.api import lib_config
 from google.appengine.ext import webapp
 
 
@@ -58,13 +63,47 @@ def login_required(handler_method):
   return check_login
 
 
+_config_handle = lib_config.register(
+    'webapp',
+    {'add_wsgi_middleware': lambda app: app})
+
+
 def run_wsgi_app(application):
   """Runs your WSGI-compliant application object in a CGI environment.
 
   Compared to wsgiref.handlers.CGIHandler().run(application), this
   function takes some shortcuts.  Those are possible because the
   app server makes stronger promises than the CGI standard.
+
+  Also, this function may wrap custom WSGI middleware around the
+  application.  (You can use run_bare_wsgi_app() to run an application
+  without adding WSGI middleware, and add_wsgi_middleware() to wrap
+  the configured WSGI middleware around an application without running
+  it.  This function is merely a convenient combination of the latter
+  two.)
+
+  To configure custom WSGI middleware, define a function
+  webapp_add_wsgi_middleware(app) to your appengine_config.py file in
+  your application root directory:
+
+    def webapp_add_wsgi_middleware(app):
+      app = MiddleWareClassOne(app)
+      app = MiddleWareClassTwo(app)
+      return app
+
+  You must import the middleware classes elsewhere in the file.  If
+  the function is not found, no WSGI middleware is added.
   """
+  run_bare_wsgi_app(add_wsgi_middleware(application))
+
+
+def add_wsgi_middleware(application):
+  """Wrap WSGI middleware around a WSGI application object."""
+  return _config_handle.add_wsgi_middleware(application)
+
+
+def run_bare_wsgi_app(application):
+  """Like run_wsgi_app() but doesn't add WSGI middleware."""
   env = dict(os.environ)
   env["wsgi.input"] = sys.stdin
   env["wsgi.errors"] = sys.stderr

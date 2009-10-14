@@ -28,11 +28,17 @@ class UserServiceError(ProtocolBuffer.ProtocolMessage):
   OK           =    0
   REDIRECT_URL_TOO_LONG =    1
   NOT_ALLOWED  =    2
+  OAUTH_INVALID_TOKEN =    3
+  OAUTH_INVALID_REQUEST =    4
+  OAUTH_ERROR  =    5
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "REDIRECT_URL_TOO_LONG",
     2: "NOT_ALLOWED",
+    3: "OAUTH_INVALID_TOKEN",
+    4: "OAUTH_INVALID_REQUEST",
+    5: "OAUTH_ERROR",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -487,5 +493,275 @@ class CreateLogoutURLResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
 
-__all__ = ['UserServiceError','CreateLoginURLRequest','CreateLoginURLResponse','CreateLogoutURLRequest','CreateLogoutURLResponse']
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 0
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
+  has_email_ = 0
+  email_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def email(self): return self.email_
+
+  def set_email(self, x):
+    self.has_email_ = 1
+    self.email_ = x
+
+  def clear_email(self):
+    if self.has_email_:
+      self.has_email_ = 0
+      self.email_ = ""
+
+  def has_email(self): return self.has_email_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_email()): self.set_email(x.email())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_email_ != x.has_email_: return 0
+    if self.has_email_ and self.email_ != x.email_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_email_): n += 1 + self.lengthString(len(self.email_))
+    return n + 0
+
+  def Clear(self):
+    self.clear_email()
+
+  def OutputUnchecked(self, out):
+    if (self.has_email_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.email_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_email(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_email_: res+=prefix+("email: %s\n" % self.DebugFormatString(self.email_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kemail = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "email",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class CheckOAuthSignatureRequest(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 0
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class CheckOAuthSignatureResponse(ProtocolBuffer.ProtocolMessage):
+  has_oauth_consumer_key_ = 0
+  oauth_consumer_key_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def oauth_consumer_key(self): return self.oauth_consumer_key_
+
+  def set_oauth_consumer_key(self, x):
+    self.has_oauth_consumer_key_ = 1
+    self.oauth_consumer_key_ = x
+
+  def clear_oauth_consumer_key(self):
+    if self.has_oauth_consumer_key_:
+      self.has_oauth_consumer_key_ = 0
+      self.oauth_consumer_key_ = ""
+
+  def has_oauth_consumer_key(self): return self.has_oauth_consumer_key_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_oauth_consumer_key()): self.set_oauth_consumer_key(x.oauth_consumer_key())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_oauth_consumer_key_ != x.has_oauth_consumer_key_: return 0
+    if self.has_oauth_consumer_key_ and self.oauth_consumer_key_ != x.oauth_consumer_key_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_oauth_consumer_key_): n += 1 + self.lengthString(len(self.oauth_consumer_key_))
+    return n + 0
+
+  def Clear(self):
+    self.clear_oauth_consumer_key()
+
+  def OutputUnchecked(self, out):
+    if (self.has_oauth_consumer_key_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.oauth_consumer_key_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_oauth_consumer_key(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_oauth_consumer_key_: res+=prefix+("oauth_consumer_key: %s\n" % self.DebugFormatString(self.oauth_consumer_key_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  koauth_consumer_key = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "oauth_consumer_key",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+
+__all__ = ['UserServiceError','CreateLoginURLRequest','CreateLoginURLResponse','CreateLogoutURLRequest','CreateLogoutURLResponse','GetOAuthUserRequest','GetOAuthUserResponse','CheckOAuthSignatureRequest','CheckOAuthSignatureResponse']

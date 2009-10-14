@@ -76,13 +76,6 @@ def GenerateIndexFromHistory(query_history,
   res = []
   for (kind, ancestor, props), count in sorted(indexes.iteritems()):
     res.append('')
-    if count == 0:
-      message = '# Unused in query history -- copied from input.'
-    elif count == 1:
-      message = '# Used once in query history.'
-    else:
-      message = '# Used %d times in query history.' % count
-    res.append(message)
     res.append(datastore_index.IndexYamlForQuery(kind, ancestor, props))
 
   res.append('')

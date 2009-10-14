@@ -52,8 +52,8 @@ def CreateRPC(service):
   """
   stub = apiproxy.GetStub(service)
   assert stub, 'No api proxy found for service "%s"' % service
-  assert hasattr(stub, 'CreateRPC'), ('The service "%s" doesn\'t have ' +
-                                      'a CreateRPC method.' % service)
+  assert hasattr(stub, 'CreateRPC'), (('The service "%s" doesn\'t have ' +
+                                       'a CreateRPC method.') % service)
   return stub.CreateRPC()
 
 
@@ -153,8 +153,13 @@ class ListOfHooks(object):
     self.__content = []
     self.__unique_keys = set()
 
-  def Call(self, service, call, request, response, rpc=None):
+  def Call(self, service, call, request, response, rpc=None, error=None):
     """Invokes all hooks in this collection.
+
+    NOTE: For backwards compatibility, if error is not None, hooks
+    with 4 or 5 arguments are *not* called.  This situation
+    (error=None) only occurs when the RPC request raised an exception;
+    in the past no hooks would be called at all in that case.
 
     Args:
       service: string representing which service to call
@@ -162,10 +167,15 @@ class ListOfHooks(object):
       request: protocol buffer for the request
       response: protocol buffer for the response
       rpc: optional RPC used to make this call
+      error: optional Exception instance to be passed as 6th argument
     """
     for key, function, srv, num_args in self.__content:
       if srv is None or srv == service:
-        if num_args == 5:
+        if num_args == 6:
+          function(service, call, request, response, rpc, error)
+        elif error is not None:
+          pass
+        elif num_args == 5:
           function(service, call, request, response, rpc)
         else:
           function(service, call, request, response)
@@ -250,14 +260,24 @@ class APIProxyStubMap(object):
     if hasattr(stub, 'CreateRPC'):
       rpc = stub.CreateRPC()
       self.__precall_hooks.Call(service, call, request, response, rpc)
-      rpc.MakeCall(service, call, request, response)
-      rpc.Wait()
-      rpc.CheckSuccess()
-      self.__postcall_hooks.Call(service, call, request, response, rpc)
+      try:
+        rpc.MakeCall(service, call, request, response)
+        rpc.Wait()
+        rpc.CheckSuccess()
+      except Exception, err:
+        self.__postcall_hooks.Call(service, call, request, response, rpc, err)
+        raise
+      else:
+        self.__postcall_hooks.Call(service, call, request, response, rpc)
     else:
       self.__precall_hooks.Call(service, call, request, response)
-      stub.MakeSyncCall(service, call, request, response)
-      self.__postcall_hooks.Call(service, call, request, response)
+      try:
+        stub.MakeSyncCall(service, call, request, response)
+      except Exception, err:
+        self.__postcall_hooks.Call(service, call, request, response, None, err)
+        raise
+      else:
+        self.__postcall_hooks.Call(service, call, request, response)
 
 
 class UserRPC(object):

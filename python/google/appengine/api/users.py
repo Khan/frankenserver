@@ -151,7 +151,7 @@ class User(object):
                (other.__email, other.__auth_domain))
 
 
-def create_login_url(dest_url):
+def create_login_url(dest_url, _auth_domain=None):
   """Computes the login URL for this request and specified destination URL.
 
   Args:
@@ -165,6 +165,9 @@ def create_login_url(dest_url):
   req = user_service_pb.CreateLoginURLRequest()
   resp = user_service_pb.CreateLoginURLResponse()
   req.set_destination_url(dest_url)
+  if _auth_domain:
+    req.set_auth_domain(_auth_domain)
+
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLoginURL', req, resp)
   except apiproxy_errors.ApplicationError, e:
@@ -181,7 +184,7 @@ def create_login_url(dest_url):
 CreateLoginURL = create_login_url
 
 
-def create_logout_url(dest_url):
+def create_logout_url(dest_url, _auth_domain=None):
   """Computes the logout URL for this request and specified destination URL.
 
   Args:
@@ -195,6 +198,9 @@ def create_logout_url(dest_url):
   req = user_service_pb.CreateLogoutURLRequest()
   resp = user_service_pb.CreateLogoutURLResponse()
   req.set_destination_url(dest_url)
+  if _auth_domain:
+    req.set_auth_domain(_auth_domain)
+
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLogoutURL', req, resp)
   except apiproxy_errors.ApplicationError, e:

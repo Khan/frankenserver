@@ -109,6 +109,10 @@ class PermissionDeniedError(Error):
   """The requested operation is not allowed for this app."""
 
 
+class DatastoreError(Error):
+  """There was a datastore error while accessing the queue."""
+
+
 MAX_QUEUE_NAME_LENGTH = 100
 
 MAX_TASK_NAME_LENGTH = 500
@@ -480,7 +484,7 @@ class Task(object):
     """
     return self.__enqueued
 
-  def add(self, queue_name=_DEFAULT_QUEUE, transactional=True):
+  def add(self, queue_name=_DEFAULT_QUEUE, transactional=False):
     """Adds this Task to a queue. See Queue.add."""
     return Queue(queue_name).add(self, transactional=transactional)
 
@@ -504,7 +508,7 @@ class Queue(object):
     self.__name = name
     self.__url = '%s/%s' % (_DEFAULT_QUEUE_PATH, self.__name)
 
-  def add(self, task, transactional=True):
+  def add(self, task, transactional=False):
     """Adds a Task to this Queue.
 
     Args:
@@ -550,6 +554,9 @@ class Queue(object):
     if transactional:
       from google.appengine.api import datastore
       datastore._MaybeSetupTransaction(request, [])
+
+    if request.has_transaction() and task.name:
+      raise InvalidTaskNameError('Task bound to a transaction cannot be named.')
 
     call_tuple = ('taskqueue', 'Add', request, response)
     apiproxy_stub_map.apiproxy.GetPreCallHooks().Call(*call_tuple)
@@ -616,6 +623,22 @@ class Queue(object):
     elif (error.application_error ==
           taskqueue_service_pb.TaskQueueServiceError.INVALID_ETA):
       raise InvalidTaskError(error.error_detail)
+    elif ((error.application_error >=
+           taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR) and
+           isinstance(error.application_error, int)):
+      from google.appengine.api import datastore
+      error.application_error = (error.application_error -
+          taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR)
+      datastore_exception = datastore._ToDatastoreError(error)
+
+      class JointException(datastore_exception.__class__, DatastoreError):
+        """There was a datastore error while accessing the queue."""
+        __msg = (u'taskqueue.DatastoreError caused by: %s %s' %
+                 (datastore_exception.__class__, error.error_detail))
+        def __str__(self):
+          return JointException.__msg
+
+      raise JointException
     else:
       raise Error('Application error %s: %s' %
                   (error.application_error, error.error_detail))
@@ -630,4 +653,5 @@ def add(*args, **kwargs):
   Returns:
     The Task that was added to the queue.
   """
-  return Task(*args, **kwargs).add()
+  transactional = kwargs.pop('transactional', False)
+  return Task(*args, **kwargs).add(transactional=transactional)

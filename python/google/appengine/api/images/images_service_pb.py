@@ -29,6 +29,7 @@ class ImagesServiceError(ProtocolBuffer.ProtocolMessage):
   NOT_IMAGE    =    3
   BAD_IMAGE_DATA =    4
   IMAGE_TOO_LARGE =    5
+  INVALID_BLOB_KEY =    6
 
   _ErrorCode_NAMES = {
     1: "UNSPECIFIED_ERROR",
@@ -36,6 +37,7 @@ class ImagesServiceError(ProtocolBuffer.ProtocolMessage):
     3: "NOT_IMAGE",
     4: "BAD_IMAGE_DATA",
     5: "IMAGE_TOO_LARGE",
+    6: "INVALID_BLOB_KEY",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -522,6 +524,8 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 class ImageData(ProtocolBuffer.ProtocolMessage):
   has_content_ = 0
   content_ = ""
+  has_blob_key_ = 0
+  blob_key_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -539,15 +543,31 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   def has_content(self): return self.has_content_
 
+  def blob_key(self): return self.blob_key_
+
+  def set_blob_key(self, x):
+    self.has_blob_key_ = 1
+    self.blob_key_ = x
+
+  def clear_blob_key(self):
+    if self.has_blob_key_:
+      self.has_blob_key_ = 0
+      self.blob_key_ = ""
+
+  def has_blob_key(self): return self.has_blob_key_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_content()): self.set_content(x.content())
+    if (x.has_blob_key()): self.set_blob_key(x.blob_key())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_content_ != x.has_content_: return 0
     if self.has_content_ and self.content_ != x.content_: return 0
+    if self.has_blob_key_ != x.has_blob_key_: return 0
+    if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -561,20 +581,28 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.content_))
+    if (self.has_blob_key_): n += 1 + self.lengthString(len(self.blob_key_))
     return n + 1
 
   def Clear(self):
     self.clear_content()
+    self.clear_blob_key()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.content_)
+    if (self.has_blob_key_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.blob_key_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_content(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_blob_key(d.getPrefixedString())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -583,6 +611,7 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_content_: res+=prefix+("content: %s\n" % self.DebugFormatString(self.content_))
+    if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
     return res
 
 
@@ -590,16 +619,19 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kcontent = 1
+  kblob_key = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "content",
-  }, 1)
+    2: "blob_key",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

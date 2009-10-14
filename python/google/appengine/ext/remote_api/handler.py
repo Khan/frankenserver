@@ -48,13 +48,14 @@ import yaml
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import datastore_errors
 from google.appengine.api import mail_service_pb
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import users
 from google.appengine.api.capabilities import capability_service_pb
 from google.appengine.api.images import images_service_pb
 from google.appengine.api.memcache import memcache_service_pb
+from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.xmpp import xmpp_service_pb
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext import webapp
 from google.appengine.ext.remote_api import remote_api_pb
@@ -73,6 +74,19 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
   RunQuery that immediately returns the query results.
   """
 
+  def __init__(self, service='datastore_v3', _test_stub_map=None):
+    """Constructor.
+
+    Args:
+      service: The name of the service
+      _test_stub_map: An APIProxyStubMap to use for testing purposes.
+    """
+    super(RemoteDatastoreStub, self).__init__(service)
+    if _test_stub_map:
+      self.__call = _test_stub_map.MakeSyncCall
+    else:
+      self.__call = apiproxy_stub_map.MakeSyncCall
+
   def _Dynamic_RunQuery(self, request, response):
     """Handle a RunQuery request.
 
@@ -80,8 +94,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     of the Next request.
     """
     runquery_response = datastore_pb.QueryResult()
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery',
-                                   request, runquery_response)
+    self.__call('datastore_v3', 'RunQuery', request, runquery_response)
     if runquery_response.result_size() > 0:
       response.CopyFrom(runquery_response)
       return
@@ -89,8 +102,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     next_request = datastore_pb.NextRequest()
     next_request.mutable_cursor().CopyFrom(runquery_response.cursor())
     next_request.set_count(request.limit())
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Next',
-                                   next_request, response)
+    self.__call('datastore_v3', 'Next', next_request, response)
 
   def _Dynamic_Transaction(self, request, response):
     """Handle a Transaction request.
@@ -102,8 +114,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     transaction of its own to make the updates.
     """
     tx = datastore_pb.Transaction()
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'BeginTransaction',
-                                   api_base_pb.VoidProto(), tx)
+    self.__call('datastore_v3', 'BeginTransaction', api_base_pb.VoidProto(), tx)
 
     preconditions = request.precondition_list()
     if preconditions:
@@ -113,8 +124,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
         key = get_request.add_key()
         key.CopyFrom(precondition.key())
       get_response = datastore_pb.GetResponse()
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Get', get_request,
-                                     get_response)
+      self.__call('datastore_v3', 'Get', get_request, get_response)
       entities = get_response.entity_list()
       assert len(entities) == request.precondition_size()
       for precondition, entity in zip(preconditions, entities):
@@ -132,17 +142,15 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     if request.has_puts():
       put_request = request.puts()
       put_request.mutable_transaction().CopyFrom(tx)
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Put',
-                                     put_request, response)
+      self.__call('datastore_v3', 'Put', put_request, response)
 
     if request.has_deletes():
       delete_request = request.deletes()
       delete_request.mutable_transaction().CopyFrom(tx)
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Delete',
-                                     delete_request, api_base_pb.VoidProto())
+      self.__call('datastore_v3', 'Delete', delete_request,
+                 api_base_pb.VoidProto())
 
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Commit', tx,
-                                   api_base_pb.VoidProto())
+    self.__call('datastore_v3', 'Commit', tx, api_base_pb.VoidProto())
 
   def _Dynamic_GetIDs(self, request, response):
     """Fetch unique IDs for a set of paths."""
@@ -154,13 +162,11 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       assert lastpart.id() == 0 and not lastpart.has_name()
 
     tx = datastore_pb.Transaction()
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'BeginTransaction',
-                                   api_base_pb.VoidProto(), tx)
+    self.__call('datastore_v3', 'BeginTransaction', api_base_pb.VoidProto(), tx)
 
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Put', request, response)
+    self.__call('datastore_v3', 'Put', request, response)
 
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Rollback', tx,
-                                   api_base_pb.VoidProto())
+    self.__call('datastore_v3', 'Rollback', tx, api_base_pb.VoidProto())
 
 
 SERVICE_PB_MAP = {
@@ -174,6 +180,8 @@ SERVICE_PB_MAP = {
         'Delete':     (datastore_pb.DeleteRequest, datastore_pb.DeleteResponse),
         'Count':      (datastore_pb.Query, api_base_pb.Integer64Proto),
         'GetIndices': (api_base_pb.StringProto, datastore_pb.CompositeIndices),
+        'AllocateIds':(datastore_pb.AllocateIdsRequest,
+                       datastore_pb.AllocateIdsResponse),
     },
     'images': {
         'Transform': (images_service_pb.ImagesTransformRequest,
@@ -201,6 +209,17 @@ SERVICE_PB_MAP = {
         'Stats':     (memcache_service_pb.MemcacheStatsRequest,
                       memcache_service_pb.MemcacheStatsResponse),
     },
+    'taskqueue': {
+        'Add':       (taskqueue_service_pb.TaskQueueAddRequest,
+                      taskqueue_service_pb.TaskQueueAddResponse),
+        'UpdateQueue':(taskqueue_service_pb.TaskQueueUpdateQueueRequest,
+                       taskqueue_service_pb.TaskQueueUpdateQueueResponse),
+        'FetchQueues':(taskqueue_service_pb.TaskQueueFetchQueuesRequest,
+                       taskqueue_service_pb.TaskQueueFetchQueuesResponse),
+        'FetchQueueStats':(
+            taskqueue_service_pb.TaskQueueFetchQueueStatsRequest,
+            taskqueue_service_pb.TaskQueueFetchQueueStatsResponse),
+    },
     'remote_datastore': {
         'RunQuery':    (datastore_pb.Query, datastore_pb.QueryResult),
         'Transaction': (remote_api_pb.TransactionRequest,
@@ -210,6 +229,14 @@ SERVICE_PB_MAP = {
     'urlfetch': {
         'Fetch': (urlfetch_service_pb.URLFetchRequest,
                   urlfetch_service_pb.URLFetchResponse),
+    },
+    'xmpp': {
+        'GetPresence': (xmpp_service_pb.PresenceRequest,
+                        xmpp_service_pb.PresenceResponse),
+        'SendMessage': (xmpp_service_pb.XmppMessageRequest,
+                        xmpp_service_pb.XmppMessageResponse),
+        'SendInvite':  (xmpp_service_pb.XmppInviteRequest,
+                        xmpp_service_pb.XmppInviteResponse),
     },
 }
 
@@ -267,10 +294,10 @@ class ApiCallHandler(webapp.RequestHandler):
       logging.exception('Exception while handling %s', request)
       self.response.set_status(200)
       response.mutable_exception().set_contents(pickle.dumps(e))
-      if isinstance(e, datastore_errors.Error):
+      if isinstance(e, apiproxy_errors.ApplicationError):
         application_error = response.mutable_application_error()
-        application_error.setCode(e.application_error)
-        application_error.setDetail(e.error_detail)
+        application_error.set_code(e.application_error)
+        application_error.set_detail(e.error_detail)
     self.response.out.write(response.Encode())
 
   def ExecuteRequest(self, request):

@@ -172,7 +172,7 @@ class KeyRange(object):
     assert isinstance(query, datastore.Query)
     if self.key_start == self.key_end and not (
         self.include_start or self.include_end):
-      return EmptyDatastoreQuery(query.kind)
+      return EmptyDatastoreQuery(query._ToPb().kind())
     if self.include_start:
       start_comparator = '>='
     else:

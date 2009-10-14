@@ -42,6 +42,7 @@ from xml.sax import saxutils
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import capabilities
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_index
@@ -50,13 +51,22 @@ from google.appengine.runtime import apiproxy_errors
 from google.appengine.datastore import entity_pb
 
 try:
-  from google.appengine.api.labs.taskqueue import taskqueue_service_pb
+  __import__('google.appengine.api.labs.taskqueue.taskqueue_service_pb')
+  taskqueue_service_pb = sys.modules.get(
+      'google.appengine.api.labs.taskqueue.taskqueue_service_pb')
 except ImportError:
   from google.appengine.api.taskqueue import taskqueue_service_pb
 
 MAX_ALLOWABLE_QUERIES = 30
 
+MAXIMUM_RESULTS = 1000
+
 DEFAULT_TRANSACTION_RETRIES = 3
+
+READ_CAPABILITY = capabilities.CapabilitySet('datastore_v3')
+WRITE_CAPABILITY = capabilities.CapabilitySet(
+    'datastore_v3',
+    capabilities=['write'])
 
 _MAX_INDEXED_PROPERTIES = 5000
 
@@ -609,7 +619,8 @@ class Entity(dict):
     unindexed_properties = [p.name() for p in pb.raw_property_list()]
 
     e = Entity(unicode(last_path.type().decode('utf-8')),
-               unindexed_properties=unindexed_properties)
+               unindexed_properties=unindexed_properties,
+               _app=pb.key().app())
     ref = e.__key._Key__reference
     ref.CopyFrom(pb.key())
 
@@ -751,6 +762,9 @@ class Query(dict):
   __cached_count = None
   __hint = None
   __ancestor = None
+  __compile = None
+
+  __cursor = None
 
   __filter_order = None
   __filter_counter = 0
@@ -759,7 +773,7 @@ class Query(dict):
   __inequality_count = 0
 
   def __init__(self, kind=None, filters={}, _app=None, keys_only=False,
-               _namespace=None):
+               compile=True, cursor=None, _namespace=None):
     """Constructor.
 
     Raises BadArgumentError if kind is not a string. Raises BadValueError or
@@ -784,6 +798,8 @@ class Query(dict):
     self.__app = datastore_types.ResolveAppIdNamespace(_app,
                                                        _namespace).to_encoded()
     self.__keys_only = keys_only
+    self.__compile = compile
+    self.__cursor = cursor
 
   def Order(self, *orderings):
     """Specify how the query results should be sorted.
@@ -935,6 +951,14 @@ class Query(dict):
     """Returns True if this query is keys only, false otherwise."""
     return self.__keys_only
 
+  def GetCompiledQuery(self):
+    try:
+      return self.__compiled_query
+    except AttributeError:
+      raise AssertionError('No cursor available, either this query has not '
+                           'been executed or there is no compilation '
+                           'available for this kind of query')
+
   def Run(self):
     """Runs this query.
 
@@ -949,6 +973,7 @@ class Query(dict):
       # an iterator that provides access to the query results
       Iterator
     """
+    self.__compile = False
     return self._Run()
 
   def _Run(self, limit=None, offset=None,
@@ -963,17 +988,27 @@ class Query(dict):
     """
     pb = self._ToPb(limit, offset, prefetch_count)
     result = datastore_pb.QueryResult()
+    api_call = 'RunQuery'
+    if self.__cursor:
+      pb = self._ToCompiledPb(pb, self.__cursor, prefetch_count)
+      api_call = 'RunCompiledQuery'
 
     try:
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery', pb, result)
+      apiproxy_stub_map.MakeSyncCall('datastore_v3', api_call, pb, result)
     except apiproxy_errors.ApplicationError, err:
       try:
-        _ToDatastoreError(err)
+        raise _ToDatastoreError(err)
       except datastore_errors.NeedIndexError, exc:
         yaml = datastore_index.IndexYamlForQuery(
           *datastore_index.CompositeIndexForQuery(pb)[1:-1])
         raise datastore_errors.NeedIndexError(
           str(exc) + '\nThis query needs this index:\n' + yaml)
+
+    if self.__compile:
+      if result.has_compiled_query():
+        self.__compiled_query = result.compiled_query()
+      else:
+        self.__compiled_query = None
 
     return Iterator(result, batch_size=next_count)
 
@@ -1039,6 +1074,7 @@ class Query(dict):
     Returns:
       The number of results.
     """
+    self.__compile = False
     if self.__cached_count:
       return self.__cached_count
 
@@ -1228,6 +1264,8 @@ class Query(dict):
     pb.set_keys_only(bool(self.__keys_only))
     if self.__app:
       pb.set_app(self.__app.encode('utf-8'))
+    if self.__compile:
+      pb.set_compile(True)
     if limit is not None:
       pb.set_limit(limit)
     if offset is not None:
@@ -1273,6 +1311,13 @@ class Query(dict):
 
     return pb
 
+  def _ToCompiledPb(self, query_pb, cursor, count=None):
+    compiled_pb = datastore_pb.RunCompiledQueryRequest()
+    compiled_pb.mutable_original_query().CopyFrom(query_pb)
+    compiled_pb.mutable_compiled_query().CopyFrom(cursor)
+    if count is not None:
+      compiled_pb.set_count(count)
+    return compiled_pb
 
 def AllocateIds(model_key, size):
   """Allocates a range of IDs of size for the key defined by model_key
@@ -1298,9 +1343,12 @@ def AllocateIds(model_key, size):
   if size > _MAX_ID_BATCH_SIZE:
     raise datastore_errors.BadArgumentError(
         'Cannot allocate more than %s ids at a time' % _MAX_ID_BATCH_SIZE)
+  if size <= 0:
+    raise datastore_errors.BadArgumentError(
+        'Cannot allocate less than 1 id')
 
   req = datastore_pb.AllocateIdsRequest()
-  req.mutable_model_key().CopyFrom(keys[0]._Key__reference)
+  req.mutable_model_key().CopyFrom(keys[0]._ToPb())
   req.set_size(size)
 
   resp = datastore_pb.AllocateIdsResponse()
@@ -1338,6 +1386,7 @@ class MultiQuery(Query):
 
     self.__bound_queries = bound_queries
     self.__orderings = orderings
+    self.__compile = False
 
   def __str__(self):
     res = 'MultiQuery: '
@@ -1452,11 +1501,11 @@ class MultiQuery(Query):
 
     def __GetValueForId(self, sort_order_entity, identifier, sort_order):
       value = _GetPropertyValue(sort_order_entity.__entity, identifier)
-      entity_key = sort_order_entity.__entity.key()
-      if (entity_key, identifier) in self.__min_max_value_cache:
-        value = self.__min_max_value_cache[(entity_key, identifier)]
-      elif isinstance(value, list):
-        if sort_order == Query.DESCENDING:
+      if isinstance(value, list):
+        entity_key = sort_order_entity.__entity.key()
+        if (entity_key, identifier) in self.__min_max_value_cache:
+          value = self.__min_max_value_cache[(entity_key, identifier)]
+        elif sort_order == Query.DESCENDING:
           value = min(value)
         else:
           value = max(value)
@@ -1562,6 +1611,10 @@ class MultiQuery(Query):
     else:
       return len(self.Get(limit))
 
+  def GetCompiledQuery(self):
+    raise AssertionError('No cursor available for a MultiQuery (queries '
+                         'using "IN" or "!=" operators)')
+
   def __setitem__(self, query_filter, value):
     """Add a new filter by setting it on all subqueries.
 
@@ -1623,6 +1676,7 @@ class MultiQuery(Query):
     return iter(self.__bound_queries)
 
 
+
 class Iterator(object):
   """An iterator over the results of a datastore query.
 
@@ -1667,9 +1721,11 @@ class Iterator(object):
       # a list of entities or keys
       [Entity or Key, ...]
     """
+    if count > MAXIMUM_RESULTS:
+      count = MAXIMUM_RESULTS
     entity_list = self._Next(count)
     while len(entity_list) < count and self.__more_results:
-      next_results = self._Next(count - len(entity_list), self.__batch_size)
+      next_results = self._Next(count - len(entity_list))
       if not next_results:
         break
       entity_list += next_results
@@ -2165,6 +2221,6 @@ def _ToDatastoreError(err):
     }
 
   if err.application_error in errors:
-    raise errors[err.application_error](err.error_detail)
+    return errors[err.application_error](err.error_detail)
   else:
-    raise datastore_errors.Error(err.error_detail)
+    return datastore_errors.Error(err.error_detail)

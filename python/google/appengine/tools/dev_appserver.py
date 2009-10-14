@@ -1202,6 +1202,7 @@ class HardenedModulesHook(object):
       print >>sys.stderr, indent + (message % args)
 
   _WHITE_LIST_C_MODULES = [
+      'py_streamhtmlparser',
       'AES',
       'ARC2',
       'ARC4',
@@ -2790,6 +2791,9 @@ class ModuleManager(object):
     self._modules.clear()
     self._modules.update(self._default_modules)
     sys.path_hooks[:] = self._save_path_hooks
+    apiproxy_stub_map.apiproxy.GetPreCallHooks().Clear()
+    apiproxy_stub_map.apiproxy.GetPostCallHooks().Clear()
+
 
 
 
@@ -3270,8 +3274,8 @@ def SetupStubs(app_id, **config):
         contain the app.yaml, indexes.yaml, and queues.yaml files.
     login_url: Relative URL which should be used for handling user login/logout.
     datastore_path: Path to the file to store Datastore file stub data in.
-    history_path: Path to the file to store Datastore history in.
-    clear_datastore: If the datastore and history should be cleared on startup.
+    history_path: DEPRECATED, No-op.
+    clear_datastore: If the datastore should be cleared on startup.
     smtp_host: SMTP host used for sending test mail.
     smtp_port: SMTP port.
     smtp_user: SMTP user.
@@ -3286,7 +3290,6 @@ def SetupStubs(app_id, **config):
   root_path = config.get('root_path', None)
   login_url = config['login_url']
   datastore_path = config['datastore_path']
-  history_path = config['history_path']
   clear_datastore = config['clear_datastore']
   require_indexes = config.get('require_indexes', False)
   smtp_host = config.get('smtp_host', None)
@@ -3301,18 +3304,18 @@ def SetupStubs(app_id, **config):
   os.environ['APPLICATION_ID'] = app_id
 
   if clear_datastore:
-    for path in (datastore_path, history_path):
-      if os.path.lexists(path):
-        logging.info('Attempting to remove file at %s', path)
-        try:
-          remove(path)
-        except OSError, e:
-          logging.warning('Removing file failed: %s', e)
+    path = datastore_path
+    if os.path.lexists(path):
+      logging.info('Attempting to remove file at %s', path)
+      try:
+        remove(path)
+      except OSError, e:
+        logging.warning('Removing file failed: %s', e)
 
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
 
   datastore = datastore_file_stub.DatastoreFileStub(
-      app_id, datastore_path, history_path, require_indexes=require_indexes,
+      app_id, datastore_path, require_indexes=require_indexes,
       trusted=trusted)
   apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore)
 

@@ -30,6 +30,8 @@ application's queues and tasks.
 import base64
 import datetime
 import os
+import random
+import time
 
 import taskqueue_service_pb
 
@@ -129,6 +131,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     self._next_task_id = 1
     self._root_path = root_path
 
+    self._app_queues = {}
+
   def _Dynamic_Add(self, request, response):
     """Local implementation of the Add RPC in TaskQueueService.
 
@@ -200,6 +204,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           'oldest_task': '2009/02/02 05:37:42',
           'eta_delta': '0:00:06.342511 ago',
           'tasks_in_queue': 12}, ...]
+      The list of queues always includes the default queue.
     """
     queues = []
     queue_info = self.queue_yaml_parser(self._root_path)
@@ -325,3 +330,67 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       queue_name: the name of the queue to remove tasks from.
     """
     self._taskqueues[queue_name] = []
+
+  def _Dynamic_UpdateQueue(self, request, unused_response):
+    """Local implementation of the UpdateQueue RPC in TaskQueueService.
+
+    Must adhere to the '_Dynamic_' naming convention for stubbing to work.
+    See taskqueue_service.proto for a full description of the RPC.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueUpdateQueueRequest.
+      unused_response: A taskqueue_service_pb.TaskQueueUpdateQueueResponse.
+                       Not used.
+    """
+    queues = self._app_queues.setdefault(request.app_id(), {})
+    defensive_copy = taskqueue_service_pb.TaskQueueUpdateQueueRequest()
+    defensive_copy.CopyFrom(request)
+    queues[request.queue_name()] = defensive_copy
+
+  def _Dynamic_FetchQueues(self, request, response):
+    """Local implementation of the FetchQueues RPC in TaskQueueService.
+
+    Must adhere to the '_Dynamic_' naming convention for stubbing to work.
+    See taskqueue_service.proto for a full description of the RPC.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueFetchQueuesRequest.
+      response: A taskqueue_service_pb.TaskQueueFetchQueuesResponse.
+    """
+    queues = self._app_queues.get(request.app_id(), {})
+    for unused_key, queue in sorted(queues.items()[:request.max_rows()]):
+      response_queue = response.add_queue()
+      response_queue.set_queue_name(queue.queue_name())
+      response_queue.set_bucket_refill_per_second(
+          queue.bucket_refill_per_second())
+      response_queue.set_bucket_capacity(queue.bucket_capacity())
+      response_queue.set_user_specified_rate(queue.user_specified_rate())
+
+  def _Dynamic_FetchQueueStats(self, request, response):
+    """Local 'random' implementation of the TaskQueueService.FetchQueueStats.
+
+    This implementation just populates the stats with random numbers.
+    Must adhere to the '_Dynamic_' naming convention for stubbing to work.
+    See taskqueue_service.proto for a full description of the RPC.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueFetchQueueStatsRequest.
+      response: A taskqueue_service_pb.TaskQueueFetchQueueStatsResponse.
+    """
+    for _ in request.queue_name_list():
+      stats = response.add_queuestats()
+      stats.set_num_tasks(random.randint(0, request.max_num_tasks()))
+      if stats.num_tasks() == 0:
+        stats.set_oldest_eta_usec(-1)
+      else:
+        now = datetime.datetime.utcnow()
+        now_sec = time.mktime(now.timetuple())
+        stats.set_oldest_eta_usec(now_sec * 1e6 + random.randint(-1e6, 1e6))
+
+      if random.randint(0, 9) > 0:
+        scanner_info = stats.mutable_scanner_info()
+        scanner_info.set_executed_last_minute(random.randint(0, 10))
+        scanner_info.set_executed_last_hour(scanner_info.executed_last_minute()
+                                            + random.randint(0, 100))
+        scanner_info.set_sampling_duration_seconds(random.random() * 10000.0)
+    return

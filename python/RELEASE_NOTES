@@ -3,6 +3,28 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.6 - September 17, 2009
+==================================
+  - Added incoming email support.
+    http://code.google.com/p/googleappengine/issues/detail?id=165
+  - Remote API now supports XMPP and task queues.
+  - The default for all handlers is now secure: optional. Users can
+    now access all pages via SSL unless explicitly disallowed.
+  - Remote API now supports HTTPS.
+    http://code.google.com/p/googleappengine/issues/detail?id=1461
+  - Appcfg now uses https by default.
+    http://code.google.com/p/googleappengine/issues/detail?id=794
+  - Appcfg.py now supports the --application and --version flags to
+    override the values specified in app.yaml.
+    http://code.google.com/p/googleappengine/issues/detail?id=670
+  - GQL now supports '= NULL' queries.
+  - The db.Model constructor now supports explicitly setting a key
+    (and thus an id) for a Model instance.
+  - New Datastore stats api. Stats are also visible in the admin console.
+  - Bulkloader dump and restore now supports restoring to a different
+    app id and restoring numeric keys.
+  
+
 Version 1.2.5 - August 13, 2009
 ===============================
   - The Windows Python SDK now includes a GUI launcher, similar to the Mac SDK.

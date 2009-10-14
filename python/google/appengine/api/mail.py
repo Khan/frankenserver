@@ -1125,3 +1125,21 @@ class InboundEmailMessage(EmailMessage):
           yield payload_type, payload
     except AttributeError:
       pass
+
+  def to_mime_message(self):
+    """Convert to MIME message.
+
+    Adds additional headers from inbound email.
+
+    Returns:
+      MIME message instance of payload.
+    """
+    mime_message = super(InboundEmailMessage, self).to_mime_message()
+
+    for property, header in InboundEmailMessage.__HEADER_PROPERTIES.iteritems():
+      try:
+        mime_message[header] = getattr(self, property)
+      except AttributeError:
+        pass
+
+    return mime_message

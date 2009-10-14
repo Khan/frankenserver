@@ -71,6 +71,7 @@ LOGIN_ADMIN = 'admin'
 SECURE_HTTP = 'never'
 SECURE_HTTPS = 'always'
 SECURE_HTTP_OR_HTTPS = 'optional'
+SECURE_DEFAULT = 'default'
 
 REQUIRE_MATCHING_FILE = 'require_matching_file'
 
@@ -188,7 +189,8 @@ class URLMap(validation.Validated):
       SECURE: validation.Options(SECURE_HTTP,
                                  SECURE_HTTPS,
                                  SECURE_HTTP_OR_HTTPS,
-                                 default=SECURE_HTTP),
+                                 SECURE_DEFAULT,
+                                 default=SECURE_DEFAULT),
 
 
 
@@ -342,6 +344,19 @@ class AppInfoExternal(validation.Validated):
           'Found more than %d URLMap entries in application configuration' %
           MAX_URL_MAPS)
 
+  def FixSecureDefaults(self):
+    """Force omitted 'secure: ...' handler fields to 'secure: optional'.
+
+    The effect is that handler.secure is never equal to the (nominal)
+    default.
+
+    See http://b/issue?id=2073962.
+    """
+    if self.handlers:
+      for handler in self.handlers:
+        if handler.secure == SECURE_DEFAULT:
+          handler.secure = SECURE_HTTP_OR_HTTPS
+
 
 def LoadSingleAppInfo(app_info):
   """Load a single AppInfo object where one and only one is expected.
@@ -370,6 +385,7 @@ def LoadSingleAppInfo(app_info):
     raise appinfo_errors.EmptyConfigurationFile()
   if len(app_infos) > 1:
     raise appinfo_errors.MultipleConfigurationFile()
+  app_infos[0].FixSecureDefaults()
   return app_infos[0]
 
 

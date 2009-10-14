@@ -1693,8 +1693,9 @@ class AppCfgApp(object):
                       default='appengine.google.com',
                       metavar='SERVER', help='The server to connect to.')
     parser.add_option('--secure', action='store_true', dest='secure',
-                      default=False,
-                      help='Use SSL when communicating with the server.')
+                      default=True, help=optparse.SUPPRESS_HELP)
+    parser.add_option('--insecure', action='store_false', dest='secure',
+                      help='Use HTTP when communicating with the server.')
     parser.add_option('-e', '--email', action='store', dest='email',
                       metavar='EMAIL', default=None,
                       help='The username to use. Will prompt if omitted.')
@@ -1707,6 +1708,10 @@ class AppCfgApp(object):
     parser.add_option('--passin', action='store_true',
                       dest='passin', default=False,
                       help='Read the login password from stdin.')
+    parser.add_option('-A', '--application', action='store', dest='app_id',
+                      help='Override application from app.yaml file.')
+    parser.add_option('-V', '--version', action='store', dest='version',
+                      help='Override (major) version from app.yaml file.')
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -1757,6 +1762,8 @@ class AppCfgApp(object):
 
       return (email, password)
 
+    StatusUpdate('Server: %s.' % self.options.server)
+
     if self.options.host and self.options.host == 'localhost':
       email = self.options.email
       if email is None:
@@ -1768,7 +1775,9 @@ class AppCfgApp(object):
           GetUserAgent(),
           GetSourceName(),
           host_override=self.options.host,
-          save_cookies=self.options.save_cookies)
+          save_cookies=self.options.save_cookies,
+
+          secure=False)
       server.authenticated = True
       return server
 
@@ -1824,6 +1833,20 @@ class AppCfgApp(object):
       appyaml = appinfo.LoadSingleAppInfo(fh)
     finally:
       fh.close()
+    orig_application = appyaml.application
+    orig_version = appyaml.version
+    if self.options.app_id:
+      appyaml.application = self.options.app_id
+    if self.options.version:
+      appyaml.version = self.options.version
+    msg = 'Application: %s' % appyaml.application
+    if appyaml.application != orig_application:
+      msg += ' (was: %s)' % orig_application
+    msg += '; version: %s' % appyaml.version
+    if appyaml.version != orig_version:
+      msg += ' (was: %s)' % orig_version
+    msg += '.'
+    StatusUpdate(msg)
     return appyaml
 
   def _ParseYamlFile(self, basepath, basename, parser):

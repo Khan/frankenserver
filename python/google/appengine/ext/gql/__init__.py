@@ -104,7 +104,7 @@ class GQL(object):
   Execute('SELECT * FROM Story WHERE Author = :1 AND Date > :2')
   - Named parameters
   Execute('SELECT * FROM Story WHERE Author = :author AND Date > :date')
-  - Literals (numbers, and strings)
+  - Literals (numbers, strings, booleans, and NULL)
   Execute('SELECT * FROM Story WHERE Author = \'James\'')
 
   Users are also given the option of doing type conversions to other datastore
@@ -343,7 +343,9 @@ class GQL(object):
   def __CastUser(self, values):
     """Cast to User() class using the email address in values[0]."""
     if len(values) != 1:
-      self.__CastError(values, 'user', 'requires one and only one value')
+      self.__CastError('user', values, 'requires one and only one value')
+    elif values[0] is None:
+      self.__CastError('user', values, 'must be non-null')
     else:
       return users.User(email=values[0], _auth_domain=self.__auth_domain)
 
@@ -420,7 +422,8 @@ class GQL(object):
     elif len(values) <= 4:
       time_tuple = (1970, 1, 1) + tuple(values)
     else:
-      self.__CastError('TIME', values, err)
+      self.__CastError('TIME', values,
+                       'function takes 1 to 4 integers or 1 string')
 
     try:
       return datetime.datetime(*time_tuple)
@@ -929,7 +932,7 @@ class GQL(object):
       filter_rule = (self.__ANCESTOR, 'is')
       assert condition.lower() == 'is'
 
-    if condition.lower() != 'in' and operator == 'list':
+    if operator == 'list' and condition.lower() != 'in':
       self.__Error('Only IN can process a list of values')
 
     self.__filters.setdefault(filter_rule, []).append((operator, parameters))
@@ -1008,6 +1011,9 @@ class GQL(object):
 
     if literal is not None:
       return Literal(literal)
+
+    if self.__Accept('NULL'):
+      return Literal(None)
     else:
       return None
 

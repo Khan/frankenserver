@@ -131,7 +131,7 @@ class RemoteStub(object):
   You can use this to stub out any service that the remote server supports.
   """
 
-  def __init__(self, server, path):
+  def __init__(self, server, path, _test_stub_map=None):
     """Constructs a new RemoteStub that communicates with the specified server.
 
     Args:
@@ -141,6 +141,7 @@ class RemoteStub(object):
     """
     self._server = server
     self._path = path
+    self._test_stub_map = _test_stub_map
 
   def _PreHookHandler(self, service, call, request, response):
     pass
@@ -150,6 +151,16 @@ class RemoteStub(object):
 
   def MakeSyncCall(self, service, call, request, response):
     self._PreHookHandler(service, call, request, response)
+    try:
+      test_stub = self._test_stub_map and self._test_stub_map.GetStub(service)
+      if test_stub:
+        test_stub.MakeSyncCall(service, call, request, response)
+      else:
+        self._MakeRealSyncCall(service, call, request, response)
+    finally:
+      self._PostHookHandler(service, call, request, response)
+
+  def _MakeRealSyncCall(self, service, call, request, response):
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
@@ -160,20 +171,17 @@ class RemoteStub(object):
     encoded_response = self._server.Send(self._path, encoded_request)
     response_pb.ParseFromString(encoded_response)
 
-    try:
-      if response_pb.has_application_error():
-        error_pb = response_pb.application_error()
-        raise datastore._ToDatastoreError(
-            apiproxy_errors.ApplicationError(error_pb.code(), error_pb.detail()))
-      elif response_pb.has_exception():
-        raise pickle.loads(response_pb.exception().contents())
-      elif response_pb.has_java_exception():
-        raise UnknownJavaServerError("An unknown error has occured in the "
-                                     "Java remote_api handler for this call.")
-      else:
-        response.ParseFromString(response_pb.response().contents())
-    finally:
-      self._PostHookHandler(service, call, request, response)
+    if response_pb.has_application_error():
+      error_pb = response_pb.application_error()
+      raise apiproxy_errors.ApplicationError(error_pb.code(),
+                                             error_pb.detail())
+    elif response_pb.has_exception():
+      raise pickle.loads(response_pb.exception().contents())
+    elif response_pb.has_java_exception():
+      raise UnknownJavaServerError("An unknown error has occured in the "
+                                   "Java remote_api handler for this call.")
+    else:
+      response.ParseFromString(response_pb.response().contents())
 
   def CreateRPC(self):
     return apiproxy_rpc.RPC(stub=self)
@@ -187,8 +195,19 @@ class RemoteDatastoreStub(RemoteStub):
   Transactions on the remote datastore are unfortunately still impossible.
   """
 
-  def __init__(self, server, path):
-    super(RemoteDatastoreStub, self).__init__(server, path)
+  def __init__(self, server, path, default_result_count=20,
+               _test_stub_map=None):
+    """Constructor.
+
+    Args:
+      server: The server name to connect to.
+      path: The URI path on the server.
+      default_result_count: The number of items to fetch, by default, in a
+        datastore Query or Next operation. This affects the batch size of
+        query iterators.
+    """
+    super(RemoteDatastoreStub, self).__init__(server, path, _test_stub_map)
+    self.default_result_count = default_result_count
     self.__queries = {}
     self.__transactions = {}
 
@@ -237,13 +256,14 @@ class RemoteDatastoreStub(RemoteStub):
       query_result.set_more_results(False)
       return
 
+    if next_request.has_count():
+      result_count = next_request.count()
+    else:
+      result_count = self.default_result_count
+
     request = datastore_pb.Query()
     request.CopyFrom(query)
-    if request.has_limit():
-      request.set_limit(min(request.limit(), next_request.count()))
-    else:
-      request.set_limit(next_request.count())
-    request.set_count(request.limit())
+    request.set_count(result_count)
 
     super(RemoteDatastoreStub, self).MakeSyncCall(
         'remote_datastore', 'RunQuery', request, query_result)
@@ -416,13 +436,27 @@ class RemoteDatastoreStub(RemoteStub):
         'The remote datastore does not support index manipulation.')
 
 
+ALL_SERVICES = set([
+    'capability_service',
+    'datastore_v3',
+    'images',
+    'mail',
+    'memcache',
+    'taskqueue',
+    'urlfetch',
+    'xmpp',
+])
+
+
 def ConfigureRemoteApi(app_id,
                        path,
                        auth_func,
                        servername=None,
                        rpc_server_factory=appengine_rpc.HttpRpcServer,
                        rtok=None,
-                       secure=False):
+                       secure=False,
+                       services=None,
+                       default_auth_domain=None):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
@@ -443,6 +477,9 @@ def ConfigureRemoteApi(app_id,
     rtok: The validation token to sent with app_id lookups. If None, a random
       token is used.
     secure: Use SSL when communicating with the server.
+    services: A list of services to set up stubs for. If specified, only those
+      services are configured; by default all supported services are configured.
+    default_auth_domain: The authentication domain to use by default.
 
   Raises:
     urllib2.HTTPError: if app_id is not provided and there is an error while
@@ -473,13 +510,27 @@ def ConfigureRemoteApi(app_id,
                                                       repr(app_info['rtok'])))
     app_id = app_info['app_id']
 
+  if services is not None:
+    services = set(services)
+    unsupported = services.difference(ALL_SERVICES)
+    if unsupported:
+      raise ConfigurationError('Unsupported service(s): %s'
+                               % (', '.join(unsupported),))
+  else:
+    services = set(ALL_SERVICES)
+
   os.environ['APPLICATION_ID'] = app_id
+  if default_auth_domain:
+    os.environ['AUTH_DOMAIN'] = default_auth_domain
+  elif 'AUTH_DOMAIN' not in os.environ:
+    os.environ['AUTH_DOMAIN'] = 'gmail.com'
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-  datastore_stub = RemoteDatastoreStub(server, path)
-  apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
+  if 'datastore_v3' in services:
+    services.remove('datastore_v3')
+    datastore_stub = RemoteDatastoreStub(server, path)
+    apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
   stub = RemoteStub(server, path)
-  for service in ['capability_service', 'images', 'mail', 'memcache',
-                  'urlfetch']:
+  for service in services:
     apiproxy_stub_map.apiproxy.RegisterStub(service, stub)
 
 

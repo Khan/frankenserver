@@ -107,7 +107,7 @@ class AbstractRpcServer(object):
 
   def __init__(self, host, auth_function, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
-               auth_tries=3, account_type=None, debug_data=True, secure=False):
+               auth_tries=3, account_type=None, debug_data=True, secure=True):
     """Creates a new HttpRpcServer.
 
     Args:

@@ -32,6 +32,7 @@ import sha
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import capabilities
 from google.appengine.api import namespace_manager
 from google.appengine.api.memcache import memcache_service_pb
 from google.appengine.runtime import apiproxy_errors
@@ -77,6 +78,8 @@ TYPE_PICKLED = 2
 TYPE_INT = 3
 TYPE_LONG = 4
 TYPE_BOOL = 5
+
+CAPABILITY = capabilities.CapabilitySet('memcache')
 
 
 def _key_string(key, key_prefix='', server_to_user_dict=None):

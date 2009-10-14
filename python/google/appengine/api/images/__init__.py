@@ -85,22 +85,30 @@ class LargeImageError(Error):
   """The image data given is too large to process."""
 
 
+class InvalidBlobKeyError(Error):
+  """The provided blob key was invalid."""
+
+
 class Image(object):
   """Image object to manipulate."""
 
-  def __init__(self, image_data):
+  def __init__(self, image_data=None, blob_key=None):
     """Constructor.
 
     Args:
       image_data: str, image data in string form.
+      blob_key: str, image data as a blobstore blob key.
 
     Raises:
       NotImageError if the given data is empty.
     """
-    if not image_data:
+    if not image_data and not blob_key:
       raise NotImageError("Empty image data.")
+    if image_data and blob_key:
+      raise NotImageError("Can only take one image or blob key.")
 
     self._image_data = image_data
+    self._blob_key = blob_key
     self._transforms = []
     self._width = None
     self._height = None
@@ -123,6 +131,8 @@ class Image(object):
       NotImageError if the image data is not an image.
       BadImageError if the image data is corrupt.
     """
+    if not self._image_data:
+      raise NotImageError("Dimensions unavailable for blob key input")
     size = len(self._image_data)
     if size >= 6 and self._image_data.startswith("GIF"):
       self._update_gif_dimensions()
@@ -448,6 +458,18 @@ class Image(object):
 
     self._transforms.append(transform)
 
+  def _set_imagedata(self, imagedata):
+    """Fills in an ImageData PB from this Image instance.
+
+    Args:
+      imagedata: An ImageData PB instance
+    """
+    if self._blob_key:
+      imagedata.set_content("")
+      imagedata.set_blob_key(self._blob_key)
+    else:
+      imagedata.set_content(self._image_data)
+
   def execute_transforms(self, output_encoding=PNG):
     """Perform transformations on given image.
 
@@ -463,6 +485,7 @@ class Image(object):
       NotImageError when the image data given is not an image.
       BadImageError when the image data given is corrupt.
       LargeImageError when the image data given is too large to process.
+      InvalidBlobKeyError when the blob key provided is invalid.
       TransformtionError when something errors during image manipulation.
       Error when something unknown, but bad, happens.
     """
@@ -476,7 +499,7 @@ class Image(object):
     request = images_service_pb.ImagesTransformRequest()
     response = images_service_pb.ImagesTransformResponse()
 
-    request.mutable_image().set_content(self._image_data)
+    self._set_imagedata(request.mutable_image())
 
     for transform in self._transforms:
       request.add_transform().CopyFrom(transform)
@@ -502,12 +525,16 @@ class Image(object):
             images_service_pb.ImagesServiceError.IMAGE_TOO_LARGE):
         raise LargeImageError()
       elif (e.application_error ==
+            images_service_pb.ImagesServiceError.INVALID_BLOB_KEY):
+        raise InvalidBlobKeyError()
+      elif (e.application_error ==
             images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR):
         raise TransformationError()
       else:
         raise Error()
 
     self._image_data = response.image().content()
+    self._blob_key = None
     self._transforms = []
     self._width = None
     self._height = None
@@ -545,7 +572,8 @@ class Image(object):
     request = images_service_pb.ImagesHistogramRequest()
     response = images_service_pb.ImagesHistogramResponse()
 
-    request.mutable_image().set_content(self._image_data)
+    self._set_imagedata(request.mutable_image())
+
     try:
       apiproxy_stub_map.MakeSyncCall("images",
                                      "Histogram",
@@ -561,6 +589,9 @@ class Image(object):
       elif (e.application_error ==
             images_service_pb.ImagesServiceError.IMAGE_TOO_LARGE):
         raise LargeImageError()
+      elif (e.application_error ==
+            images_service_pb.ImagesServiceError.INVALID_BLOB_KEY):
+        raise InvalidBlobKeyError()
       else:
         raise Error()
     histogram = response.histogram()
@@ -768,7 +799,11 @@ def composite(inputs, width, height, color=0, output_encoding=PNG):
                             (anchor, ANCHOR_TYPES))
     if image not in image_map:
       image_map[image] = request.image_size()
-      request.add_image().set_content(image)
+
+      if isinstance(image, Image):
+        image._set_imagedata(request.add_image())
+      else:
+        request.add_image().set_content(image)
 
     option = request.add_options()
     option.set_x_offset(x)
@@ -800,6 +835,9 @@ def composite(inputs, width, height, color=0, output_encoding=PNG):
     elif (e.application_error ==
           images_service_pb.ImagesServiceError.IMAGE_TOO_LARGE):
       raise LargeImageError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.INVALID_BLOB_KEY):
+      raise InvalidBlobKeyError()
     elif (e.application_error ==
           images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR):
       raise TransformationError()
