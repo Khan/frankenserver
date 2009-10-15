@@ -3,6 +3,13 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.7 - October 14, 2009
+================================
+  - Changed the 'key' parameter to Model.__init__ to be keyword only.
+  - Fixed taskqueue import in Remote API.
+    http://code.google.com/p/googleappengine/issues/detail?id=2259
+
+
 Version 1.2.6 - September 17, 2009
 ==================================
   - Added incoming email support.

@@ -621,7 +621,6 @@ class Model(object):
   def __init__(self,
                parent=None,
                key_name=None,
-               key=None,
                _app=None,
                _from_entity=False,
                **kwds):
@@ -647,10 +646,11 @@ class Model(object):
       parent: Parent instance for this instance or None, indicating a top-
         level instance.
       key_name: Name for new model instance.
-      key: Key instance for this instance, overrides parent and key_name
       _from_entity: Intentionally undocumented.
-      args: Keyword arguments mapping to properties of model.
+      kwds: Keyword arguments mapping to properties of model.  Also:
+        key: Key instance for this instance, overrides parent and key_name
     """
+    key = kwds.get('key', None)
     if key is not None:
       if isinstance(key, (tuple, list)):
         key = Key.from_path(*key)
@@ -703,6 +703,11 @@ class Model(object):
       self._key = None
 
     self._entity = None
+    if _app is not None and isinstance(_app, Key):
+      raise BadArgumentError('_app should be a string; received Key(\'%s\'):\n'
+                             '  This may be the result of passing \'key\' as '
+                             'a positional parameter in SDK 1.2.6.  Please '
+                             'only pass \'key\' as a keyword parameter.' % _app)
     self._app = _app
 
     for prop in self.properties().values():
