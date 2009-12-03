@@ -41,41 +41,6 @@ class KeyRangeError(Error):
 class SimplejsonUnavailableError(Error):
   """Error while using json functionality whith unavailable simplejson."""
 
-class EmptyDbQuery(db.Query):
-  """A query that returns no results."""
-
-  def get(self):
-    return None
-
-  def fetch(self, limit=1000, offset=0):
-    return []
-
-  def count(self, limit=1000):
-    return 0
-
-
-class EmptyDatastoreQuery(datastore.Query):
-  """A query that returns no results."""
-
-  def __init__(self, kind):
-    datastore.Query.__init__(self, kind)
-
-  def _Run(self, *unused_args, **unused_kwargs):
-    empty_result_pb = datastore_pb.QueryResult()
-    empty_result_pb.set_cursor(0)
-    empty_result_pb.set_more_results(False)
-    return datastore.Iterator(empty_result_pb)
-
-  def Count(self, *unused_args, **unused_kwargs):
-    return 0
-
-  def Get(self, *unused_args, **unused_kwargs):
-    return []
-
-  def Next(self, *unused_args, **unused_kwargs):
-    return []
-
-
 class KeyRange(object):
   """Represents a range of keys in the datastore.
 
@@ -138,13 +103,9 @@ class KeyRange(object):
       query: A db.Query instance.
 
     Returns:
-      The input query restricted to this key range or an empty query if
-      this key range is empty.
+      The input query restricted to this key range.
     """
     assert isinstance(query, db.Query)
-    if self.key_start == self.key_end and not (
-        self.include_start or self.include_end):
-      return EmptyDbQuery()
     if self.include_start:
       start_comparator = '>='
     else:
@@ -166,13 +127,9 @@ class KeyRange(object):
       query: A datastore.Query instance.
 
     Returns:
-      The input query restricted to this key range or an empty query if
-      this key range is empty.
+      The input query restricted to this key range.
     """
     assert isinstance(query, datastore.Query)
-    if self.key_start == self.key_end and not (
-        self.include_start or self.include_end):
-      return EmptyDatastoreQuery(query._ToPb().kind())
     if self.include_start:
       start_comparator = '>='
     else:
@@ -226,11 +183,12 @@ class KeyRange(object):
     query = self.filter_query(query)
     return query
 
-  def make_directed_datastore_query(self, kind):
+  def make_directed_datastore_query(self, kind, keys_only=False):
     """Construct a query for this key range, including the scan direction.
 
     Args:
       kind: A string.
+      keys_only: bool, default False, use keys_only on Query?
 
     Returns:
       A datastore.Query instance.
@@ -240,7 +198,7 @@ class KeyRange(object):
     """
     direction = self.__get_direction(datastore.Query.ASCENDING,
                                      datastore.Query.DESCENDING)
-    query = datastore.Query(kind)
+    query = datastore.Query(kind, keys_only=keys_only)
     query.Order(('__key__', direction))
 
     query = self.filter_datastore_query(query)
@@ -261,16 +219,17 @@ class KeyRange(object):
     query = self.filter_query(query)
     return query
 
-  def make_ascending_datastore_query(self, kind):
+  def make_ascending_datastore_query(self, kind, keys_only=False):
     """Construct a query for this key range without setting the scan direction.
 
     Args:
       kind: A string.
+      keys_only: bool, default False, use keys_only on Query?
 
     Returns:
       A datastore.Query instance.
     """
-    query = datastore.Query(kind)
+    query = datastore.Query(kind, keys_only=keys_only)
     query.Order(('__key__', datastore.Query.ASCENDING))
 
     query = self.filter_datastore_query(query)

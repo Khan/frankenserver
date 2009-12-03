@@ -576,6 +576,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   externalbytessent_ = 0
   has_externalbytesreceived_ = 0
   externalbytesreceived_ = 0
+  has_finalurl_ = 0
+  finalurl_ = ""
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -662,6 +664,19 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_externalbytesreceived(self): return self.has_externalbytesreceived_
 
+  def finalurl(self): return self.finalurl_
+
+  def set_finalurl(self, x):
+    self.has_finalurl_ = 1
+    self.finalurl_ = x
+
+  def clear_finalurl(self):
+    if self.has_finalurl_:
+      self.has_finalurl_ = 0
+      self.finalurl_ = ""
+
+  def has_finalurl(self): return self.has_finalurl_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -671,6 +686,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_contentwastruncated()): self.set_contentwastruncated(x.contentwastruncated())
     if (x.has_externalbytessent()): self.set_externalbytessent(x.externalbytessent())
     if (x.has_externalbytesreceived()): self.set_externalbytesreceived(x.externalbytesreceived())
+    if (x.has_finalurl()): self.set_finalurl(x.finalurl())
 
   def Equals(self, x):
     if x is self: return 1
@@ -687,6 +703,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_externalbytessent_ and self.externalbytessent_ != x.externalbytessent_: return 0
     if self.has_externalbytesreceived_ != x.has_externalbytesreceived_: return 0
     if self.has_externalbytesreceived_ and self.externalbytesreceived_ != x.externalbytesreceived_: return 0
+    if self.has_finalurl_ != x.has_finalurl_: return 0
+    if self.has_finalurl_ and self.finalurl_ != x.finalurl_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -708,6 +726,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_contentwastruncated_): n += 2
     if (self.has_externalbytessent_): n += 1 + self.lengthVarInt64(self.externalbytessent_)
     if (self.has_externalbytesreceived_): n += 1 + self.lengthVarInt64(self.externalbytesreceived_)
+    if (self.has_finalurl_): n += 1 + self.lengthString(len(self.finalurl_))
     return n + 1
 
   def Clear(self):
@@ -717,6 +736,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_contentwastruncated()
     self.clear_externalbytessent()
     self.clear_externalbytesreceived()
+    self.clear_finalurl()
 
   def OutputUnchecked(self, out):
     if (self.has_content_):
@@ -737,6 +757,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_externalbytesreceived_):
       out.putVarInt32(64)
       out.putVarInt64(self.externalbytesreceived_)
+    if (self.has_finalurl_):
+      out.putVarInt32(74)
+      out.putPrefixedString(self.finalurl_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -759,6 +782,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 64:
         self.set_externalbytesreceived(d.getVarInt64())
         continue
+      if tt == 74:
+        self.set_finalurl(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -778,6 +804,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_contentwastruncated_: res+=prefix+("ContentWasTruncated: %s\n" % self.DebugFormatBool(self.contentwastruncated_))
     if self.has_externalbytessent_: res+=prefix+("ExternalBytesSent: %s\n" % self.DebugFormatInt64(self.externalbytessent_))
     if self.has_externalbytesreceived_: res+=prefix+("ExternalBytesReceived: %s\n" % self.DebugFormatInt64(self.externalbytesreceived_))
+    if self.has_finalurl_: res+=prefix+("FinalUrl: %s\n" % self.DebugFormatString(self.finalurl_))
     return res
 
 
@@ -792,6 +819,7 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   kContentWasTruncated = 6
   kExternalBytesSent = 7
   kExternalBytesReceived = 8
+  kFinalUrl = 9
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -803,7 +831,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     6: "ContentWasTruncated",
     7: "ExternalBytesSent",
     8: "ExternalBytesReceived",
-  }, 8)
+    9: "FinalUrl",
+  }, 9)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -815,7 +844,8 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     6: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.NUMERIC,
-  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
+    9: ProtocolBuffer.Encoder.STRING,
+  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

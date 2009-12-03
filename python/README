@@ -11,6 +11,7 @@ CONTENTS
    * Installing on Linux and other platforms
    * Running the SDK
    * Using the SDK
+   * Using the App Engine Launcher
 
 
 INSTALLING ON Mac OSX
@@ -89,3 +90,23 @@ For instructions on getting started with Google App Engine, please see the
 Google App Engine Getting Started Guide
 
 http://code.google.com/appengine/docs/gettingstarted
+
+
+USING THE APP ENGINE LAUNCHER
+=============================
+The Windows and Mac OSX Python SDKs include an additional development tool
+called the App Engine Launcher.  This tool provides a simple graphical
+interface to create projects, run them locally, and deploy them to Google's App
+Engine servers. It can be used in place of the dev_appserver and appcfg
+command-line tools.
+
+The Windows SDK can optionally install a desktop short-cut during
+installation. If you are missing the short-cut, you can find the launcher in
+the launcher subdirectory of your App Engine installation. The default
+location is
+C:\Program Files\Google\google_appengine\launcher\GoogleAppEngineLauncher.exe
+
+In Mac OSX, the Launcher is installed by dragging it out of the .dmg to a
+location specified by the user. The Launcher contains the SDK inside of it.
+A typical drag-install destination for the Launcher and SDK is
+/Applications/GoogleAppEngineLauncher.app

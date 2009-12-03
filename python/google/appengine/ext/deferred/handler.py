@@ -15,11 +15,21 @@
 # limitations under the License.
 #
 
+"""Request handler module for the deferred library.
+
+See deferred.py for full documentation.
+"""
 
 
 
 
-from deferred import *
+
+from google.appengine.ext import deferred
+from google.appengine.ext.webapp.util import run_wsgi_app
+
+
+def main():
+  run_wsgi_app(deferred.application)
 
 
 if __name__ == "__main__":

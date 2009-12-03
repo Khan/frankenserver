@@ -61,7 +61,7 @@ following to your app.yaml handlers section:
 
 handlers:
 - url: /_ah/queue/deferred
-  script: $PYTHON_LIB/google/appengine/ext/deferred/__init__.py
+  script: $PYTHON_LIB/google/appengine/ext/deferred/handler.py
   login: admin
 
 By default, the deferred module uses the URL above, and the default queue.
@@ -85,6 +85,7 @@ Example usage:
 
 
 import logging
+import os
 import pickle
 import types
 
@@ -260,6 +261,11 @@ application = webapp.WSGIApplication([(".*", TaskHandler)])
 
 
 def main():
+  if os.environ["SERVER_SOFTWARE"].startswith("Devel"):
+    logging.warn("You are using deferred in a deprecated fashion. Please change"
+                 " the request handler path for /_ah/queue/deferred in app.yaml"
+                 " to $PYTHON_LIB/google/appengine/ext/deferred/handler.py to"
+                 " avoid encountering import errors.")
   run_wsgi_app(application)
 
 

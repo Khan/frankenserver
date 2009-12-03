@@ -357,5 +357,6 @@ class _URLFetchResult(object):
     self.status_code = response_proto.statuscode()
     self.content_was_truncated = response_proto.contentwastruncated()
     self.headers = _CaselessDict()
+    self.final_url = response_proto.finalurl() or None
     for header_proto in response_proto.header_list():
       self.headers[header_proto.key()] = header_proto.value()

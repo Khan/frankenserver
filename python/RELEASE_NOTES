@@ -3,6 +3,44 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.2.8 - October 28, 2009
+================================
+  - New memcache offset_multi method and batch support in incr and decr.
+  - Urlfetch Response object now contains final_url of 302 redirects.
+      http://code.google.com/p/googleappengine/issues/detail?id=1464
+  - Additional file extensions permitted when sending mail.
+      http://code.google.com/p/googleappengine/issues/detail?id=494
+  - Fixed issue decoding messages for incoming mail.
+      http://code.google.com/p/googleappengine/issues/detail?id=2289
+  - Fixed issue with datastore list properties containing both blob (or text)
+    and non-blob values.
+  - Admin console includes more information about indexes being built.
+  - Fixed Users API usage with remote_api
+      http://code.google.com/p/googleappengine/issues/detail?id=1205
+  - Fixed issue with IN queries in remote_api
+      http://code.google.com/p/googleappengine/issues/detail?id=1986
+  - Bulk Loader --dump and --restore now work across app IDs.
+  - Bulk Loader --restore works with numeric IDs.
+  - Bulk Loader exporter maps __key__ property to the entity key.
+  - Fixed issue in Bulk Loader with missing properties on export.
+      http://code.google.com/p/googleappengine/issues/detail?id=2068
+  - Fixed issue in Bulk Loader with line breaks in data.
+  - Fixed exception in Bulk Loader with certain data ranges.
+      http://code.google.com/p/googleappengine/issues/detail?id=2085
+  - Added SERVER_SOFTWARE environment variable to runtime.
+  - Over Quota HTTP status code changed from 403 to 503
+      http://code.google.com/p/googleappengine/issues/detail?id=961
+  - Task Queue now considers all HTTP 2xx status codes to represent success
+      http://code.google.com/p/googleappengine/issues/detail?id=1779
+  - Task Queue now supports purging all tasks in a queue from the Admin Console.
+      http://code.google.com/p/googleappengine/issues/detail?id=2159
+  - Task Queue now supports deleting a non-empty queue from the Admin Console.
+      http://code.google.com/p/googleappengine/issues/detail?id=1740
+  - New "auth_fail_action: unauthorized" option in app.yaml: when present, a
+    401 status code will be returned instead of a 302 redirect to the Google
+    Accounts login page for pages with login: required. [Python only for now]
+
+
 Version 1.2.7 - October 14, 2009
 ================================
   - Changed the 'key' parameter to Model.__init__ to be keyword only.
@@ -30,7 +68,7 @@ Version 1.2.6 - September 17, 2009
   - New Datastore stats api. Stats are also visible in the admin console.
   - Bulkloader dump and restore now supports restoring to a different
     app id and restoring numeric keys.
-  
+
 
 Version 1.2.5 - August 13, 2009
 ===============================
@@ -38,7 +76,7 @@ Version 1.2.5 - August 13, 2009
   - Added XMPP support.
     http://code.google.com/appengine/docs/python/xmpp
     http://code.google.com/p/googleappengine/issues/detail?id=231
-  - Datastore now supports multiple writes to the same entity within a 
+  - Datastore now supports multiple writes to the same entity within a
     transaction.
   - Datastore entity key names can now start with a digit.
       http://code.google.com/p/googleappengine/issues/detail?id=1352
@@ -96,7 +134,7 @@ Version 1.2.3 - June 1, 2009
     will be replaced with a hash of the key.
   - Datastore ancestor queries now work within transactions.
   - Datastore transactions in SDK now snapshot on the first operation so they
-    do not see writes made during the transaction. Matches App Engine.  
+    do not see writes made during the transaction. Matches App Engine.
 
 Version 1.2.2 - April 22, 2009
 ==============================

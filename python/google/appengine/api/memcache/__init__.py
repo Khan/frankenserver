@@ -49,11 +49,17 @@ MemcacheDeleteRequest = memcache_service_pb.MemcacheDeleteRequest
 MemcacheIncrementResponse = memcache_service_pb.MemcacheIncrementResponse
 MemcacheIncrementRequest = memcache_service_pb.MemcacheIncrementRequest
 
+MemcacheBatchIncrementResponse = memcache_service_pb.MemcacheBatchIncrementResponse
+MemcacheBatchIncrementRequest = memcache_service_pb.MemcacheBatchIncrementRequest
+
 MemcacheFlushResponse = memcache_service_pb.MemcacheFlushResponse
 MemcacheFlushRequest = memcache_service_pb.MemcacheFlushRequest
 
 MemcacheStatsRequest = memcache_service_pb.MemcacheStatsRequest
 MemcacheStatsResponse = memcache_service_pb.MemcacheStatsResponse
+
+MemcacheGrabTailResponse = memcache_service_pb.MemcacheGrabTailResponse
+MemcacheGrabTailRequest = memcache_service_pb.MemcacheGrabTailRequest
 
 DELETE_NETWORK_FAILURE = 0
 DELETE_ITEM_MISSING = 1
@@ -221,6 +227,7 @@ def _decode_value(stored_value, flags, do_unpickle):
   else:
     assert False, "Unknown stored type"
   assert False, "Shouldn't get here."
+
 
 class Client(object):
   """Memcache client object, through which one invokes all memcache operations.
@@ -794,7 +801,8 @@ class Client(object):
     will still be an ASCII decimal value.
 
     Args:
-      key: Key to increment.  See Client's docstring for details.
+      key: Key to increment. If an iterable collection, each one of the keys
+          will be offset. See Client's docstring for details.
       delta: Non-negative integer value (int or long) to increment key by,
         defaulting to 1.
       namespace: a string specifying an optional namespace to use in
@@ -804,9 +812,13 @@ class Client(object):
         entry if it doesn't already exist.
 
     Returns:
-      New long integer value, or None if key was not in the cache, could not
-      be incremented for any other reason, or a network/RPC/server error
-      occurred.
+      If key was a single value, the new long integer value, or None if key
+      was not in the cache, could not be incremented for any other reason, or
+      a network/RPC/server error occurred.
+
+      If key was an iterable collection, a dictionary will be returned
+      mapping supplied keys to values, with the values having the same meaning
+      as the singular return value of this method.
 
     Raises:
       ValueError: If number is negative.
@@ -825,7 +837,8 @@ class Client(object):
     docs on incr() for details.
 
     Args:
-      key: Key to decrement.  See Client's docstring for details.
+      key: Key to decrement. If an iterable collection, each one of the keys
+          will be offset.  See Client's docstring for details.
       delta: Non-negative integer value (int or long) to decrement key by,
         defaulting to 1.
       namespace: a string specifying an optional namespace to use in
@@ -835,8 +848,13 @@ class Client(object):
         entry if it doesn't already exist.
 
     Returns:
-      New long integer value, or None if key wasn't in cache and couldn't
-      be decremented, or a network/RPC/server error occurred.
+      If key was a single value, the new long integer value, or None if key
+      was not in the cache, could not be decremented for any other reason, or
+      a network/RPC/server error occurred.
+
+      If key was an iterable collection, a dictionary will be returned
+      mapping supplied keys to values, with the values having the same meaning
+      as the singular return value of this method.
 
     Raises:
       ValueError: If number is negative.
@@ -850,7 +868,8 @@ class Client(object):
     """Increment or decrement a key by a provided delta.
 
     Args:
-      key: Key to increment or decrement.
+      key: Key to increment or decrement. If an iterable collection, each
+        one of the keys will be offset.
       is_negative: Boolean, if this is a decrement.
       delta: Non-negative integer amount (int or long) to increment
         or decrement by.
@@ -873,6 +892,18 @@ class Client(object):
     if delta < 0:
       raise ValueError('Delta must not be negative.')
 
+    if not isinstance(key, basestring):
+      try:
+        iter(key)
+        if is_negative:
+          delta = -delta
+        return self.offset_multi(
+            dict((k, delta) for k in key),
+            namespace=namespace,
+            initial_value=initial_value)
+      except TypeError:
+        pass
+
     request = MemcacheIncrementRequest()
     namespace_manager._add_name_space(request, namespace)
     response = MemcacheIncrementResponse()
@@ -893,6 +924,117 @@ class Client(object):
     if response.has_new_value():
       return response.new_value()
     return None
+
+  def grab_tail(self, item_count, namespace):
+    """Grab items from the tail of namespace's LRU cache.
+
+    Grab means atomically get and delete.
+
+    This method can be used to create queue systems with very high throughput
+    and low latency, but low reliability.
+
+    Args:
+      item_count: Number of items to retrieve off the tail of LRU cache.
+      namespace: a string specifying namespace to use in the request. Can't
+        be empty.
+
+    Returns:
+      A list of values that were present in memcache.
+
+    Raises:
+      ValueError: if namespace is empty.
+    """
+    if not isinstance(item_count, int):
+      raise TypeError('Item count must be an integer.')
+    if item_count < 0:
+      raise ValueError('Item count must not be negative.')
+    if item_count >= 0x80000000:
+      raise ValueError('Item count must be less than 2147483648.')
+    if not namespace:
+      raise ValueError('Namespace must not be empty.')
+    if not isinstance(namespace, str):
+      raise TypeError('Namespace must be a string.')
+
+    request = MemcacheGrabTailRequest()
+    namespace_manager._add_name_space(request, namespace)
+    response = MemcacheGrabTailResponse()
+    request.set_item_count(item_count)
+    try:
+      self._make_sync_call('memcache', 'GrabTail', request, response)
+    except apiproxy_errors.Error:
+      return []
+
+    return_value = []
+    for returned_item in response.item_list():
+      value = _decode_value(returned_item.value(), returned_item.flags(),
+                            self._do_unpickle)
+      return_value.append(value)
+    return return_value
+
+  def offset_multi(self, mapping, key_prefix='',
+                   namespace=None, initial_value=None):
+    """Offsets multiple keys by a delta, incrementing and decrementing in batch.
+
+    Args:
+      mapping: Dictionary mapping keys to deltas (positive or negative integers)
+        to apply to each corresponding key.
+      key_prefix: Prefix for to prepend to all keys.
+      initial_value: Initial value to put in the cache, if it doesn't
+        already exist. The default value, None, will not create a cache
+        entry if it doesn't already exist.
+      namespace: A string specifying an optional namespace to use in
+        the request.
+
+    Returns:
+      Dictionary mapping input keys to new integer values. The new value will
+      be None if an error occurs, the key does not already exist, or the value
+      was not an integer type. The values will wrap-around at unsigned 64-bit
+      integer-maximum and underflow will be floored at zero.
+    """
+    if initial_value is not None:
+      if not isinstance(initial_value, (int, long)):
+        raise TypeError('initial_value must be an integer')
+      if initial_value < 0:
+        raise ValueError('initial_value must be >= 0')
+
+    request = MemcacheBatchIncrementRequest()
+    response = MemcacheBatchIncrementResponse()
+    namespace_manager._add_name_space(request, namespace)
+
+    for key, delta in mapping.iteritems():
+      if not isinstance(delta, (int, long)):
+        raise TypeError('Delta must be an integer or long, received %r' % delta)
+      if delta >= 0:
+        direction = MemcacheIncrementRequest.INCREMENT
+      else:
+        delta = -delta
+        direction = MemcacheIncrementRequest.DECREMENT
+
+      server_key = _key_string(key, key_prefix)
+
+      item = request.add_item()
+      item.set_key(server_key)
+      item.set_delta(delta)
+      item.set_direction(direction)
+      if initial_value is not None:
+        item.set_initial_value(initial_value)
+
+    try:
+      self._make_sync_call('memcache', 'BatchIncrement', request, response)
+    except apiproxy_errors.Error:
+      return dict((k, None) for k in mapping.iterkeys())
+
+    assert response.item_size() == len(mapping)
+
+    result_dict = {}
+    for key, resp_item in zip(mapping.iterkeys(), response.item_list()):
+      if (resp_item.increment_status() == MemcacheIncrementResponse.OK and
+          resp_item.has_new_value()):
+        result_dict[key] = resp_item.new_value()
+      else:
+        result_dict[key] = None
+
+    return result_dict
 
 
 _CLIENT = None
@@ -929,6 +1071,8 @@ def setup_client(client_obj):
   var_dict['decr'] = _CLIENT.decr
   var_dict['flush_all'] = _CLIENT.flush_all
   var_dict['get_stats'] = _CLIENT.get_stats
+  var_dict['grab_tail'] = _CLIENT.grab_tail
+  var_dict['offset_multi'] = _CLIENT.offset_multi
 
 
 setup_client(Client())

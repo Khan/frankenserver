@@ -54,11 +54,17 @@ ERROR_MAP = {
 
 
 EXTENSION_MIME_MAP = {
+    'aif': 'audio/x-aiff',
+    'aifc': 'audio/x-aiff',
+    'aiff': 'audio/x-aiff',
     'asc': 'text/plain',
+    'au': 'audio/basic',
+    'avi': 'video/x-msvideo',
     'bmp': 'image/x-ms-bmp',
     'css': 'text/css',
     'csv': 'text/csv',
     'diff': 'text/plain',
+    'flac': 'audio/flac',
     'gif': 'image/gif',
     'htm': 'text/html',
     'html': 'text/html',
@@ -66,15 +72,30 @@ EXTENSION_MIME_MAP = {
     'jpe': 'image/jpeg',
     'jpeg': 'image/jpeg',
     'jpg': 'image/jpeg',
+    'm4a': 'audio/mp4',
+    'mid': 'audio/mid',
+    'mov': 'video/quicktime',
+    'mp3': 'audio/mpeg',
+    'mp4': 'video/mp4',
+    'mpe': 'video/mpeg',
+    'mpeg': 'video/mpeg',
+    'mpg': 'video/mpeg',
+    'oga': 'audio/ogg',
+    'ogg': 'audio/ogg',
+    'ogv': 'video/ogg',
     'pdf': 'application/pdf',
     'png': 'image/png',
     'pot': 'text/plain',
+    'qt': 'video/quicktime',
+    'rmi': 'audio/mid',
     'rss': 'text/rss+xml',
+    'snd': 'audio/basic',
     'text': 'text/plain',
     'tif': 'image/tiff',
     'tiff': 'image/tiff',
     'txt': 'text/plain',
     'vcf': 'text/directory',
+    'wav': 'audio/x-wav',
     'wbmp': 'image/vnd.wap.wbmp',
     }
 
@@ -413,7 +434,7 @@ class EncodedPayload(object):
 
     if self.encoding and self.encoding.lower() != '7bit':
       try:
-        payload = payload.decode(self.encoding).lower()
+        payload = payload.decode(self.encoding)
       except LookupError:
         raise UnknownEncodingError('Unknown decoding %s.' % self.encoding)
       except (Exception, Error), e:
@@ -421,7 +442,7 @@ class EncodedPayload(object):
 
     if self.charset and str(self.charset).lower() != '7bit':
       try:
-        payload = payload.decode(str(self.charset)).lower()
+        payload = payload.decode(str(self.charset))
       except LookupError:
         raise UnknownCharsetError('Unknown charset %s.' % self.charset)
       except (Exception, Error), e:

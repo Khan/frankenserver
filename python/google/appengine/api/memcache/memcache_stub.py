@@ -29,6 +29,7 @@ from google.appengine.api.memcache import memcache_service_pb
 MemcacheSetResponse = memcache_service_pb.MemcacheSetResponse
 MemcacheSetRequest = memcache_service_pb.MemcacheSetRequest
 MemcacheIncrementRequest = memcache_service_pb.MemcacheIncrementRequest
+MemcacheIncrementResponse = memcache_service_pb.MemcacheIncrementResponse
 MemcacheDeleteResponse = memcache_service_pb.MemcacheDeleteResponse
 
 
@@ -218,19 +219,22 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
 
       response.add_delete_status(delete_status)
 
-  def _Dynamic_Increment(self, request, response):
-    """Implementation of MemcacheService::Increment().
+  def _internal_increment(self, namespace, request):
+    """Internal function for incrementing from a MemcacheIncrementRequest.
 
     Args:
-      request: A MemcacheIncrementRequest.
-      response: A MemcacheIncrementResponse.
+      namespace: A string containing the namespace for the request, if any.
+        Pass an empty string if there is no namespace.
+      request: A MemcacheIncrementRequest instance.
+
+    Returns:
+      An integer or long if the offset was successful, None on error.
     """
-    namespace = request.name_space()
     key = request.key()
     entry = self._GetKey(namespace, key)
     if entry is None:
       if not request.has_initial_value():
-        return
+        return None
       if namespace not in self._the_cache:
         self._the_cache[namespace] = {}
       self._the_cache[namespace][key] = CacheEntry(str(request.initial_value()),
@@ -247,7 +251,7 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     except ValueError:
       logging.error('Increment/decrement failed: Could not interpret '
                     'value for key = "%s" as an unsigned integer.', key)
-      return
+      return None
 
     delta = request.delta()
     if request.direction() == MemcacheIncrementRequest.DECREMENT:
@@ -258,7 +262,34 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       new_value = 0
 
     entry.value = str(new_value)
-    response.set_new_value(new_value)
+    return new_value
+
+  def _Dynamic_Increment(self, request, response):
+    """Implementation of MemcacheService::Increment().
+
+    Args:
+      request: A MemcacheIncrementRequest.
+      response: A MemcacheIncrementResponse.
+    """
+    namespace = request.name_space()
+    response.set_new_value(self._internal_increment(namespace, request))
+
+  def _Dynamic_BatchIncrement(self, request, response):
+    """Implementation of MemcacheService::BatchIncrement().
+
+    Args:
+      request: A MemcacheBatchIncrementRequest.
+      response: A MemcacheBatchIncrementResponse.
+    """
+    namespace = request.name_space()
+    for request_item in request.item_list():
+      new_value = self._internal_increment(namespace, request_item)
+      item = response.add_item()
+      if new_value is None:
+        item.set_increment_status(MemcacheIncrementResponse.NOT_CHANGED)
+      else:
+        item.set_increment_status(MemcacheIncrementResponse.OK)
+        item.set_new_value(new_value)
 
   def _Dynamic_FlushAll(self, request, response):
     """Implementation of MemcacheService::FlushAll().
@@ -291,3 +322,41 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     stats.set_bytes(total_bytes)
 
     stats.set_oldest_item_age(self._gettime() - self._cache_creation_time)
+
+  def _Dynamic_GrabTail(self, request, response):
+    """Implementation of MemcacheService::GrabTail().
+
+    Args:
+      request: A MemcacheGrabTailRequest.
+      response: A MemcacheGrabTailResponse.
+    """
+    if request.item_count() <= 0:
+      return
+
+    namespace = request.name_space()
+
+    if not namespace:
+      return
+
+    namespace_dict = self._the_cache.get(namespace, None)
+    if namespace_dict is None:
+      return
+
+    items = namespace_dict.items()
+    items.sort(None, lambda (key, entry): entry.created_time)
+
+    item_count = 0
+    for (key, entry) in items:
+      if entry.CheckExpired():
+        del namespace_dict[key]
+      elif not entry.CheckLocked():
+        del namespace_dict[key]
+        item = response.add_item()
+        item.set_value(entry.value)
+        item.set_flags(entry.flags)
+        item_count += 1
+        self._hits += 1
+        self._byte_hits += len(entry.value)
+        if item_count == request.item_count():
+          return
+

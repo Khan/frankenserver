@@ -14,7 +14,7 @@ Webhook.prototype.parse = function() {
   var form = document.getElementById(this.formId);
   if (form == null) {
     return 'could not find form with id "' + this.formId + '"';
-  };
+  }
   this.action = form.action;
   this.method = form.method;
   for (var i = 0, n = form.elements.length; i < n; i++) {
@@ -28,7 +28,11 @@ Webhook.prototype.parse = function() {
     var headerIndex = key.indexOf(this.HEADER_KEY);
     if (headerIndex == 0) {
       var header = key.substr(this.HEADER_KEY.length);
-      this.headers[header] = value;
+      if (this.headers[header] === undefined) {
+        this.headers[header] = [value];
+      } else {
+        this.headers[header].push(value);
+      }
     } else if (key == 'payload') {
       this.payload = value;
     }
@@ -54,8 +58,16 @@ Webhook.prototype.send = function(callback) {
   try {
     req.open(this.method, this.action, false);
     for (var key in this.headers) {
-      req.setRequestHeader(key, this.headers[key]);
-    };
+      // According to the W3C, multiple calls to setRequestHeader should result
+      // in a single header with comma-seperated values being set (see
+      // http://www.w3.org/TR/2009/WD-XMLHttpRequest-20090820/). Unfortunately,
+      // both FireFox 3 and Konqueror 3.5 set the header value to the value in
+      // the last call to setRequestHeader so the joined header is generated
+      // manually. The equivalence of headers with comma-separated values and
+      // repeated headers is described here:
+      // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
+      req.setRequestHeader(key, this.headers[key].join(', '));
+    }
     req.send(this.payload);
   } catch (e) {
     callback(this, req, e);

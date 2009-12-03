@@ -140,6 +140,29 @@ def NormalizeAndTypeCheckKeys(keys):
   return (keys, multiple)
 
 
+def _MakeSyncCall(service, call, request, response):
+  """The APIProxy entry point for a synchronous API call.
+
+  Args:
+    service: string representing which service to call
+    call: string representing which function to call
+    request: protocol buffer for the request
+    response: protocol buffer for the response
+
+  Returns:
+    Response protocol buffer. Caller should always use returned value
+    which may or may not be same as passed in 'response'.
+
+  Raises:
+    apiproxy_errors.Error or a subclass.
+  """
+
+  resp = apiproxy_stub_map.MakeSyncCall(service, call, request, response)
+  if resp is not None:
+    return resp
+  return response
+
+
 def Put(entities):
   """Store one or more entities in the datastore.
 
@@ -174,9 +197,8 @@ def Put(entities):
   keys = [e.key() for e in entities]
   tx = _MaybeSetupTransaction(req, keys)
 
-  resp = datastore_pb.PutResponse()
   try:
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Put', req, resp)
+    resp = _MakeSyncCall('datastore_v3', 'Put', req, datastore_pb.PutResponse())
   except apiproxy_errors.ApplicationError, err:
     raise _ToDatastoreError(err)
 
@@ -229,9 +251,8 @@ def Get(keys):
   req.key_list().extend([key._Key__reference for key in keys])
   _MaybeSetupTransaction(req, keys)
 
-  resp = datastore_pb.GetResponse()
   try:
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Get', req, resp)
+    resp = _MakeSyncCall('datastore_v3', 'Get', req, datastore_pb.GetResponse())
   except apiproxy_errors.ApplicationError, err:
     raise _ToDatastoreError(err)
 
@@ -274,9 +295,8 @@ def Delete(keys):
 
   tx = _MaybeSetupTransaction(req, keys)
 
-  resp = datastore_pb.DeleteResponse()
   try:
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Delete', req, resp)
+    _MakeSyncCall('datastore_v3', 'Delete', req, datastore_pb.DeleteResponse())
   except apiproxy_errors.ApplicationError, err:
     raise _ToDatastoreError(err)
 
@@ -336,14 +356,7 @@ class Entity(dict):
       datastore_types.ValidateInteger(id, 'id')
       last_path.set_id(id)
 
-    unindexed_properties, multiple = NormalizeAndTypeCheck(unindexed_properties, basestring)
-    if not multiple:
-      raise datastore_errors.BadArgumentError(
-        'unindexed_properties must be a sequence; received %s (a %s).' %
-        (unindexed_properties, typename(unindexed_properties)))
-    for prop in unindexed_properties:
-      datastore_types.ValidateProperty(prop, None)
-    self.__unindexed_properties = frozenset(unindexed_properties)
+    self.set_unindexed_properties(unindexed_properties)
 
     self.__key = Key._FromPb(ref)
 
@@ -397,6 +410,16 @@ class Entity(dict):
   def unindexed_properties(self):
     """Returns this entity's unindexed properties, as a frozenset of strings."""
     return getattr(self, '_Entity__unindexed_properties', [])
+
+  def set_unindexed_properties(self, unindexed_properties):
+    unindexed_properties, multiple = NormalizeAndTypeCheck(unindexed_properties, basestring)
+    if not multiple:
+      raise datastore_errors.BadArgumentError(
+        'unindexed_properties must be a sequence; received %s (a %s).' %
+        (unindexed_properties, typename(unindexed_properties)))
+    for prop in unindexed_properties:
+      datastore_types.ValidateProperty(prop, None)
+    self.__unindexed_properties = frozenset(unindexed_properties)
 
   def __setitem__(self, name, value):
     """Implements the [] operator. Used to set property value(s).
@@ -554,15 +577,12 @@ class Entity(dict):
       if not isinstance(properties, list):
         properties = [properties]
 
-      sample = values
-      if isinstance(sample, list):
-        sample = values[0]
-
-      if (isinstance(sample, datastore_types._RAW_PROPERTY_TYPES) or
-          name in self.unindexed_properties()):
-        pb.raw_property_list().extend(properties)
-      else:
-        pb.property_list().extend(properties)
+      for prop in properties:
+        if (prop.meaning() in datastore_types._RAW_PROPERTY_MEANINGS or
+            name in self.unindexed_properties()):
+          pb.raw_property_list().append(prop)
+        else:
+          pb.property_list().append(prop)
 
     if pb.property_size() > _MAX_INDEXED_PROPERTIES:
       raise datastore_errors.BadRequestError(
@@ -987,14 +1007,10 @@ class Query(dict):
     instead!
     """
     pb = self._ToPb(limit, offset, prefetch_count)
-    result = datastore_pb.QueryResult()
-    api_call = 'RunQuery'
-    if self.__cursor:
-      pb = self._ToCompiledPb(pb, self.__cursor, prefetch_count)
-      api_call = 'RunCompiledQuery'
 
     try:
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', api_call, pb, result)
+      result = _MakeSyncCall('datastore_v3', 'RunQuery', pb,
+                             datastore_pb.QueryResult())
     except apiproxy_errors.ApplicationError, err:
       try:
         raise _ToDatastoreError(err)
@@ -1078,10 +1094,10 @@ class Query(dict):
     if self.__cached_count:
       return self.__cached_count
 
-    resp = api_base_pb.Integer64Proto()
     try:
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Count',
-                                     self._ToPb(limit=limit), resp)
+      resp = _MakeSyncCall('datastore_v3', 'Count',
+                           self._ToPb(limit=limit),
+                           api_base_pb.Integer64Proto())
     except apiproxy_errors.ApplicationError, err:
       raise _ToDatastoreError(err)
     else:
@@ -1309,15 +1325,18 @@ class Query(dict):
       order.set_property(property.encode('utf-8'))
       order.set_direction(direction)
 
+    if self.__cursor:
+      if (self.__cursor.has_primaryscan() and
+          self.__cursor.primaryscan().has_start_key()):
+        pb.set_start_key(self.__cursor.primaryscan().start_key())
+        pb.set_start_inclusive(self.__cursor.primaryscan().start_inclusive())
+      if self.__cursor.has_offset():
+        pb.set_offset(pb.offset() + self.__cursor.offset())
+      if self.__cursor.has_limit() and not pb.has_limit():
+        pb.set_limit(self.__cursor.limit())
+
     return pb
 
-  def _ToCompiledPb(self, query_pb, cursor, count=None):
-    compiled_pb = datastore_pb.RunCompiledQueryRequest()
-    compiled_pb.mutable_original_query().CopyFrom(query_pb)
-    compiled_pb.mutable_compiled_query().CopyFrom(cursor)
-    if count is not None:
-      compiled_pb.set_count(count)
-    return compiled_pb
 
 def AllocateIds(model_key, size):
   """Allocates a range of IDs of size for the key defined by model_key
@@ -1351,9 +1370,9 @@ def AllocateIds(model_key, size):
   req.mutable_model_key().CopyFrom(keys[0]._ToPb())
   req.set_size(size)
 
-  resp = datastore_pb.AllocateIdsResponse()
   try:
-    apiproxy_stub_map.MakeSyncCall('datastore_v3', 'AllocateIds', req, resp)
+    resp = _MakeSyncCall('datastore_v3', 'AllocateIds', req,
+                         datastore_pb.AllocateIdsResponse())
   except apiproxy_errors.ApplicationError, err:
     raise _ToDatastoreError(err)
 
@@ -1794,9 +1813,9 @@ class Iterator(object):
     if count is not None:
       req.set_count(count)
     req.mutable_cursor().CopyFrom(self.__cursor)
-    result = datastore_pb.QueryResult()
     try:
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Next', req, result)
+      result = _MakeSyncCall('datastore_v3', 'Next', req,
+                             datastore_pb.QueryResult())
     except apiproxy_errors.ApplicationError, err:
       raise _ToDatastoreError(err)
 
@@ -1968,10 +1987,10 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
     tx_key = _NewTransactionKey()
 
     for i in range(0, retries + 1):
-      handle = datastore_pb.Transaction()
       try:
-        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'BeginTransaction',
-                                       api_base_pb.VoidProto(), handle)
+        handle = _MakeSyncCall('datastore_v3', 'BeginTransaction',
+                               api_base_pb.VoidProto(),
+                               datastore_pb.Transaction())
       except apiproxy_errors.ApplicationError, err:
         raise _ToDatastoreError(err)
 
@@ -1984,9 +2003,8 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
         original_exception = sys.exc_info()
 
         try:
-          resp = api_base_pb.VoidProto()
-          apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Rollback',
-                                         tx.handle, resp)
+          _MakeSyncCall('datastore_v3', 'Rollback',
+                        tx.handle, api_base_pb.VoidProto())
         except:
           exc_info = sys.exc_info()
           logging.info('Exception sending Rollback:\n' +
@@ -1999,9 +2017,8 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
           raise type, value, trace
 
       try:
-        resp = datastore_pb.CommitResponse()
-        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Commit',
-                                       tx.handle, resp)
+        _MakeSyncCall('datastore_v3', 'Commit',
+                      tx.handle, datastore_pb.CommitResponse())
       except apiproxy_errors.ApplicationError, err:
         if (err.application_error ==
             datastore_pb.Error.CONCURRENT_TRANSACTION):

@@ -69,7 +69,7 @@ def GrocTimeSpecification(schedule):
   parser = groc.CreateParser(schedule)
   parser.timespec()
 
-  if parser.interval_mins:
+  if parser.period_string:
     return IntervalTimeSpecification(parser.interval_mins,
                                      parser.period_string)
   else:
@@ -123,6 +123,8 @@ class IntervalTimeSpecification(TimeSpecification):
 
   def __init__(self, interval, period):
     super(IntervalTimeSpecification, self).__init__()
+    if interval < 1:
+      raise groc.GrocException("interval must be greater than zero")
     self.interval = interval
     self.period = period
 

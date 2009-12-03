@@ -70,6 +70,13 @@ Example library use:
 """
 
 
+__all__ = ['DEFAULT_MODNAME',
+           'LibConfigRegistry',
+           'ConfigHandle',
+           'register',
+           'main',
+           ]
+
 
 import logging
 import os
@@ -119,20 +126,33 @@ class LibConfigRegistry(object):
     handle._update_defaults(mapping)
     return handle
 
-  def initialize(self):
+  def initialize(self, import_func=__import__):
     """Attempt to import the config module, if not already imported.
 
     This function always sets self._module to a value unequal
     to None: either the imported module (if imported successfully), or
     a dummy object() instance (if an ImportError was raised).  Other
     exceptions are *not* caught.
+
+    When a dummy instance is used, it is also put in sys.modules.
+    This allows us to detect when sys.modules was changed (as
+    dev_appserver.py does when it notices source code changes) and
+    re-try the __import__ in that case, while skipping it (for speed)
+    if nothing has changed.
+
+    Args:
+      import_func: Used for dependency injection.
     """
-    if self._module is not None:
+    if (self._module is not None and
+        self._module is sys.modules.get(self._modname)):
       return
     try:
-      __import__(self._modname)
+      import_func(self._modname)
     except ImportError, err:
+      if str(err) != 'No module named %s' % self._modname:
+        raise
       self._module = object()
+      sys.modules[self._modname] = self._module
     else:
       self._module = sys.modules[self._modname]
 

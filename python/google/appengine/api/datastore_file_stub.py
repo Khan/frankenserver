@@ -43,14 +43,19 @@ import struct
 import sys
 import tempfile
 import threading
+import urllib
 import warnings
+try:
+  from urlparse import parse_qsl
+except ImportError:
+  from cgi import parse_qsl
 
 import cPickle as pickle
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
-from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api import users
@@ -75,7 +80,12 @@ _MAX_QUERY_OFFSET = 1000
 
 _MAX_QUERY_COMPONENTS = 100
 
+
 _BATCH_SIZE = 20
+
+
+_MAX_ACTIONS_PER_TXN = 5
+
 
 class _StoredEntity(object):
   """Simple wrapper around an entity stored by the stub.
@@ -110,11 +120,12 @@ class _Cursor(object):
     _next_cursor: the next cursor to allocate
     _next_cursor_lock: protects _next_cursor
     _offset: the internal index for where we are in the results
+    _limit: the limit on the original query, used to track remaining results
   """
   _next_cursor = 1
   _next_cursor_lock = threading.Lock()
 
-  def __init__(self, results, keys_only):
+  def __init__(self, results, keys_only, limit=None):
     """Constructor.
 
     Args:
@@ -122,11 +133,13 @@ class _Cursor(object):
       # the next result
       results: list of entity_pb.EntityProto
       keys_only: integer
+      limit: limit set on the original query used to track remaining results
     """
     self.__results = results
     self.count = len(results)
     self.keys_only = keys_only
     self._offset = 0
+    self._limit = limit
 
     self._next_cursor_lock.acquire()
     try:
@@ -161,27 +174,52 @@ class _Cursor(object):
     if offset is None:
       self._offset += self.count
 
-    result.set_more_results(len(self.__results[_offset + self.count:]) > 0)
-    if compiled and result.more_results():
+    if self._limit:
+      limit = max(0, self._limit - self._offset)
+      result.set_more_results(limit > 0)
+    else:
+      limit = None
+      result.set_more_results(len(self.__results[_offset + self.count:]) > 0)
+    if compiled:
       compiled_query = _FakeCompiledQuery(cursor=self.cursor,
                                           offset=_offset + self.count,
-                                          keys_only=self.keys_only)
+                                          keys_only=self.keys_only,
+                                          limit=limit)
       result.mutable_compiled_query().CopyFrom(compiled_query._ToPb())
 
 
 class _FakeCompiledQuery(object):
-  def __init__(self, cursor, offset, keys_only=False):
+  """A stand-in for a compiled query because we don't yet implement them.
+
+  For the moment this translates the concept of a database cursor as the stub
+  handles them internally (a result handle and an offset into it) into a
+  compiled query as would be returned by the actual datastore.
+  """
+
+  def __init__(self, cursor, offset, keys_only=False, limit=None):
+    """Constructor.
+
+    Args:
+      cursor: handle to internal result set.
+      offset: internal offset into the result set.
+      keys_only: the keys only status of the original query.
+      limit: if a limit was set on the original query this is the number of
+          remaining results up to that limit.
+    """
     self.cursor = cursor
+    self.limit = limit
     self.offset = offset
     self.keys_only = keys_only
 
   def _ToPb(self):
     compiled_pb = datastore_pb.CompiledQuery()
-    compiled_pb.mutable_primaryscan()
     compiled_pb.set_keys_only(self.keys_only)
+    if self.limit:
+      compiled_pb.set_limit(self.limit)
 
-    compiled_pb.set_limit(self.cursor)
-    compiled_pb.set_offset(self.offset)
+    primaryscan = compiled_pb.mutable_primaryscan()
+    primaryscan.set_start_key(urllib.urlencode({'cursor': self.cursor,
+                                                'offset': self.offset}))
     return compiled_pb
 
 class DatastoreFileStub(apiproxy_stub.APIProxyStub):
@@ -262,6 +300,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__schema_cache = {}
 
     self.__tx_snapshot = {}
+
+    self.__tx_actions = []
 
     self.__queries = {}
 
@@ -635,7 +675,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         eq_filters_set = set(props[:num_eq_filters])
         remaining_filters = props[num_eq_filters:]
         for index in indexes:
-          definition = datastore_admin.ProtoToIndexDefinition(index)
+          definition = datastore_index.ProtoToIndexDefinition(index)
           index_key = datastore_index.IndexToKey(definition)
           if required_key == index_key:
             break
@@ -806,7 +846,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     results.sort(order_compare_entities)
 
     offset = 0
-    limit = len(results)
+    limit = None
     if query.has_offset():
       offset = query.offset()
     if query.has_limit():
@@ -823,8 +863,25 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     else:
       self.__query_history[clone] = 1
 
-    cursor = _Cursor(results, query.keys_only())
-    self.__queries[cursor.cursor] = cursor
+    if query.has_start_key() and query.start_key():
+      start_key = dict(parse_qsl(query.start_key()))
+      cursor_handle = int(start_key.get('cursor'))
+      cursor_offset = start_key.get('offset', None)
+      if cursor_offset is not None:
+        cursor_offset = int(cursor_offset)
+      cursor_offset += offset
+      compiled = True
+      try:
+        cursor = self.__queries[cursor_handle]
+      except KeyError:
+        raise apiproxy_errors.ApplicationError(
+            datastore_pb.Error.BAD_REQUEST,
+            'Cursor %d not found' % cursor_handle)
+    else:
+      cursor = _Cursor(results, query.keys_only(), limit=limit)
+      self.__queries[cursor.cursor] = cursor
+      cursor_offset = None
+      compiled = query.compile()
 
     if count is None:
       if query.has_count():
@@ -834,23 +891,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       else:
         count = _BATCH_SIZE
 
-    cursor.PopulateQueryResult(query_result, count, compiled=query.compile())
-
-  def _Dynamic_RunCompiledQuery(self, compiled_request, query_result):
-    cursor_handle = compiled_request.compiled_query().limit()
-    cursor_offset = compiled_request.compiled_query().offset()
-
-    try:
-      cursor = self.__queries[cursor_handle]
-    except KeyError:
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST, 'Cursor %d not found' % cursor_handle)
-
-    count = _BATCH_SIZE
-    if compiled_request.has_count():
-      count = compiled_request.count()
     cursor.PopulateQueryResult(
-        query_result, count, cursor_offset, compiled=True)
+        query_result, count, cursor_offset, compiled=compiled)
 
   def _Dynamic_Next(self, next_request, query_result):
     cursor_handle = next_request.cursor().cursor()
@@ -890,6 +932,21 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     snapshot = [(app_kind, dict(entities))
                 for app_kind, entities in self.__entities.items()]
     self.__tx_snapshot = dict(snapshot)
+    self.__tx_actions = []
+
+  def _Dynamic_AddAction(self, request, void):
+    if not self.__transactions.has_key(request.transaction().handle()):
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'Transaction handle %d not found' % request.transaction().handle())
+
+    if len(self.__tx_actions) >= _MAX_ACTIONS_PER_TXN:
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'Too many messages, maximum allowed %s' % _MAX_ACTIONS_PER_TXN)
+
+    request.clear_transaction()
+    self.__tx_actions.append(request)
 
   def _Dynamic_Commit(self, transaction, transaction_response):
     if not self.__transactions.has_key(transaction.handle()):
@@ -900,7 +957,18 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__tx_snapshot = {}
     try:
       self.__WriteDatastore()
+
+      for action in self.__tx_actions:
+        try:
+          apiproxy_stub_map.MakeSyncCall(
+              'taskqueue', 'Add', action, api_base_pb.VoidProto())
+        except apiproxy_errors.ApplicationError, e:
+          logging.warning('Transactional task %s has been dropped, %s',
+                          action, e)
+          pass
+
     finally:
+      self.__tx_actions = []
       self.__tx_lock.release()
 
   def _Dynamic_Rollback(self, transaction, transaction_response):
@@ -911,6 +979,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
     self.__entities = self.__tx_snapshot
     self.__tx_snapshot = {}
+    self.__tx_actions = []
     self.__tx_lock.release()
 
   def _Dynamic_GetSchema(self, req, schema):

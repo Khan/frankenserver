@@ -43,13 +43,9 @@ db.put(houses)
 ---
 
 A few caveats:
-- Where possible, avoid iterating over queries directly. Fetching as many
-  results as you will need is faster and more efficient.
-- If you need to iterate, consider instead fetching items in batches with a sort
-  order and constructing a new query starting from where the previous one left
-  off. The __key__ pseudo-property can be used as a sort key for this purpose,
-  and does not even require a custom index if you are iterating over all
-  entities of a given type.
+- Where possible, avoid iterating over queries. Fetching as many results as you
+  will need is faster and more efficient. If you don't know how many results
+  you need, or you need 'all of them', iterating is fine.
 - Likewise, it's a good idea to put entities in batches. Instead of calling put
   for each individual entity, accumulate them and put them in batches using
   db.put(), if you can.
@@ -231,48 +227,45 @@ class RemoteDatastoreStub(RemoteStub):
 
     assert response.IsInitialized(explanation), explanation
 
-  def _Dynamic_RunQuery(self, query, query_result):
-    self.__local_cursor_lock.acquire()
-    try:
-      cursor_id = self.__next_local_cursor
-      self.__next_local_cursor += 1
-    finally:
-      self.__local_cursor_lock.release()
-    query.clear_count()
-    self.__queries[cursor_id] = query
+  def _Dynamic_RunQuery(self, query, query_result, cursor_id = None):
+    super(RemoteDatastoreStub, self).MakeSyncCall(
+        'datastore_v3', 'RunQuery', query, query_result)
+
+    if cursor_id is None:
+      self.__local_cursor_lock.acquire()
+      try:
+        cursor_id = self.__next_local_cursor
+        self.__next_local_cursor += 1
+      finally:
+        self.__local_cursor_lock.release()
+
+    if query_result.more_results():
+      query.set_offset(query.offset() + query_result.result_size())
+      if query.has_limit():
+        query.set_limit(query.limit() - query_result.result_size())
+      self.__queries[cursor_id] = query
+    else:
+      self.__queries[cursor_id] = None
 
     query_result.mutable_cursor().set_cursor(cursor_id)
-    query_result.set_more_results(True)
-    query_result.set_keys_only(query.keys_only())
 
   def _Dynamic_Next(self, next_request, query_result):
-    cursor = next_request.cursor().cursor()
-    if cursor not in self.__queries:
+    cursor_id = next_request.cursor().cursor()
+    if cursor_id not in self.__queries:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
-                                             'Cursor %d not found' % cursor)
-    query = self.__queries[cursor]
+                                             'Cursor %d not found' % cursor_id)
+    query = self.__queries[cursor_id]
 
     if query is None:
       query_result.set_more_results(False)
       return
-
-    if next_request.has_count():
-      result_count = next_request.count()
     else:
-      result_count = self.default_result_count
+      if next_request.has_count():
+        query.set_count(next_request.count())
+      else:
+        query.clear_count()
 
-    request = datastore_pb.Query()
-    request.CopyFrom(query)
-    request.set_count(result_count)
-
-    super(RemoteDatastoreStub, self).MakeSyncCall(
-        'remote_datastore', 'RunQuery', request, query_result)
-
-    query.set_offset(query.offset() + query_result.result_size())
-    if query.has_limit():
-      query.set_limit(query.limit() - query_result.result_size())
-    if not query_result.more_results():
-      self.__queries[cursor] = None
+    self._Dynamic_RunQuery(query, query_result, cursor_id)
 
   def _Dynamic_Get(self, get_request, get_response):
     txid = None
@@ -417,6 +410,7 @@ class RemoteDatastoreStub(RemoteStub):
             datastore_pb.Error.BAD_REQUEST,
             'Transaction %d not found.' % (txid,))
 
+      txdata = self.__transactions[txid]
       assert (txdata[txid].thread_id ==
           thread.get_ident()), "Transactions are single-threaded."
       del self.__transactions[txid]

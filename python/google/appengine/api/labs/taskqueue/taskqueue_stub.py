@@ -27,17 +27,22 @@ application's queues and tasks.
 
 
 
+
 import base64
+import bisect
 import datetime
+import logging
 import os
 import random
+import string
 import time
 
 import taskqueue_service_pb
 
+from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import queueinfo
-from google.appengine.api import urlfetch
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -46,6 +51,137 @@ DEFAULT_RATE = '5.00/s'
 DEFAULT_BUCKET_SIZE = 5
 
 MAX_ETA_DELTA_DAYS = 30
+
+admin_console_dummy_tasks = {}
+
+BUILT_IN_HEADERS = set(['x-appengine-queuename',
+                        'x-appengine-taskname',
+                        'x-appengine-taskretrycount',
+                        'x-appengine-development-payload',
+                        'content-length'])
+
+
+class _DummyTaskStore(object):
+  """A class that encapsulates a sorted store of tasks.
+
+  Used for testing the admin console.
+  """
+
+  def __init__(self):
+    """Constructor."""
+    self._sorted_by_name = []
+    self._sorted_by_eta = []
+
+  def _InsertTask(self, task):
+    """Insert a task into the dummy store, keeps lists sorted.
+
+    Args:
+      task: the new task.
+    """
+    eta = task.eta_usec()
+    name = task.task_name()
+    bisect.insort_left(self._sorted_by_eta, (eta, name, task))
+    bisect.insort_left(self._sorted_by_name, (name, task))
+
+  def Lookup(self, maximum, name=None, eta=None):
+    """Lookup a number of sorted tasks from the store.
+
+    If 'eta' is specified, the tasks are looked up in a list sorted by 'eta',
+    then 'name'. Otherwise they are sorted by 'name'. We need to be able to
+    sort by 'eta' and 'name' because tasks can have identical eta. If you had
+    20 tasks with the same ETA, you wouldn't be able to page past them, since
+    the 'next eta' would give the first one again. Names are unique, though.
+
+    Args:
+      maximum: the maximum number of tasks to return.
+      name: a task name to start with.
+      eta: an eta to start with.
+
+    Returns:
+      A list of up to 'maximum' tasks.
+
+    Raises:
+      ValueError: if the task store gets corrupted.
+    """
+    if eta is None:
+      pos = bisect.bisect_left(self._sorted_by_name, (name,))
+      tasks = (x[1] for x in self._sorted_by_name[pos:pos + maximum])
+      return list(tasks)
+    if name is None:
+      raise ValueError('must supply name or eta')
+    pos = bisect.bisect_left(self._sorted_by_eta, (eta, name))
+    tasks = (x[2] for x in self._sorted_by_eta[pos:pos + maximum])
+    return list(tasks)
+
+  def Count(self):
+    """Returns the number of tasks in the store."""
+    return len(self._sorted_by_name)
+
+  def Oldest(self):
+    """Returns the oldest eta in the store, or None if no tasks."""
+    if self._sorted_by_eta:
+      return self._sorted_by_eta[0][0]
+    return None
+
+  def Delete(self, name):
+    """Deletes a task from the store by name.
+
+    Args:
+      name: the name of the task to delete.
+
+    Returns:
+      TaskQueueServiceError.UNKNOWN_TASK: if the task is unknown.
+      TaskQueueServiceError.INTERNAL_ERROR: if the store is corrupted.
+      TaskQueueServiceError.OK: otherwise.
+    """
+    pos = bisect.bisect_left(self._sorted_by_name, (name,))
+    if pos >= len(self._sorted_by_name):
+      return taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_TASK
+    if self._sorted_by_name[pos][1].task_name() != name:
+      logging.info('looking for task name %s, got task name %s', name,
+                   self._sorted_by_name[pos][1].task_name())
+      return taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_TASK
+    old_task = self._sorted_by_name.pop(pos)[1]
+    eta = old_task.eta_usec()
+    pos = bisect.bisect_left(self._sorted_by_eta, (eta, name, None))
+    if self._sorted_by_eta[pos][2] is not old_task:
+      logging.error('task store corrupted')
+      return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
+    self._sorted_by_eta.pop(pos)
+    return taskqueue_service_pb.TaskQueueServiceError.OK
+
+  def Populate(self, num_tasks):
+    """Populates the store with a number of tasks.
+
+    Args:
+      num_tasks: the number of tasks to insert.
+    """
+    now = datetime.datetime.utcnow()
+    now_sec = time.mktime(now.timetuple())
+
+    def RandomTask():
+      """Creates a new task and randomly populates values."""
+      task = taskqueue_service_pb.TaskQueueQueryTasksResponse_Task()
+      task.set_task_name(''.join(random.choice(string.ascii_lowercase)
+                                 for x in range(20)))
+      task.set_eta_usec(int(now_sec * 1e6) + random.randint(-10e6, 600e6))
+
+      task.set_creation_time_usec(min(now_sec * 1e6, task.eta_usec()) -
+                                  random.randint(0, 2e7))
+
+      task.set_url(random.choice(['/a', '/b', '/c', '/d']))
+      if random.random() < 0.2:
+        task.set_method(
+            taskqueue_service_pb.TaskQueueQueryTasksResponse_Task.POST)
+        task.set_body('A' * 2000)
+      else:
+        task.set_method(
+            taskqueue_service_pb.TaskQueueQueryTasksResponse_Task.GET)
+      task.set_retry_count(max(0, random.randint(-10, 5)))
+      return task
+
+    for _ in range(num_tasks):
+      self._InsertTask(RandomTask())
 
 
 def _ParseQueueYaml(unused_self, root_path):
@@ -57,7 +193,7 @@ def _ParseQueueYaml(unused_self, root_path):
 
   Returns:
     None if queue.yaml doesn't exist, otherwise a queueinfo.QueueEntry object
-    populaeted from the queue.yaml.
+    populated from the queue.yaml.
   """
   if root_path is None:
     return None
@@ -163,13 +299,22 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       response.set_chosen_task_name(request.task_name())
       self._next_task_id += 1
 
-    tasks = self._taskqueues.setdefault(request.queue_name(), [])
-    for task in tasks:
-      if task.task_name() == request.task_name():
-        raise apiproxy_errors.ApplicationError(
-            taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS)
-    tasks.append(request)
-    tasks.sort(_CompareTasksByEta)
+    if request.has_transaction():
+      try:
+        apiproxy_stub_map.MakeSyncCall(
+            'datastore_v3', 'AddAction', request, api_base_pb.VoidProto())
+      except apiproxy_errors.ApplicationError, e:
+        e.application_error = (e.application_error +
+            taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR)
+        raise e
+    else:
+      tasks = self._taskqueues.setdefault(request.queue_name(), [])
+      for task in tasks:
+        if task.task_name() == request.task_name():
+          raise apiproxy_errors.ApplicationError(
+              taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS)
+      tasks.append(request)
+      tasks.sort(_CompareTasksByEta)
 
   def _IsValidQueue(self, queue_name):
     """Determines whether a queue is valid, i.e. tasks can be added to it.
@@ -261,12 +406,13 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           'eta': '2009/02/02 05:37:42',
           'eta_delta': '0:00:06.342511 ago',
           'body': '',
-          'headers': {'X-AppEngine-QueueName': 'update-queue',
-                      'X-AppEngine-TaskName': 'task-123',
-                      'X-AppEngine-TaskRetryCount': '0',
-                      'X-AppEngine-Development-Payload': '1',
-                      'Content-Length': 0,
-                      'Content-Type': 'application/octet-streamn'}, ...]
+          'headers': [('user-header', 'some-value')
+                      ('X-AppEngine-QueueName': 'update-queue'),
+                      ('X-AppEngine-TaskName': 'task-123'),
+                      ('X-AppEngine-TaskRetryCount': '0'),
+                      ('X-AppEngine-Development-Payload': '1'),
+                      ('Content-Length': 0),
+                      ('Content-Type': 'application/octet-stream')]
 
     Raises:
       ValueError: A task request contains an unknown HTTP method type.
@@ -295,18 +441,19 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       task['eta'] = _FormatEta(task_request.eta_usec())
       task['eta_delta'] = _EtaDelta(task_request.eta_usec())
       task['body'] = base64.b64encode(task_request.body())
-      headers = urlfetch._CaselessDict()
-      task['headers'] = headers
-      for req_header in task_request.header_list():
-        headers[req_header.key()] = req_header.value()
 
-      headers['X-AppEngine-QueueName'] = queue_name
-      headers['X-AppEngine-TaskName'] = task['name']
-      headers['X-AppEngine-TaskRetryCount'] = '0'
-      headers['X-AppEngine-Development-Payload'] = '1'
-      headers['Content-Length'] = len(task['body'])
-      headers['Content-Type'] = headers.get(
-          'Content-Type', 'application/octet-stream')
+      headers = [(header.key(), header.value())
+                 for header in task_request.header_list()
+                 if header.key().lower() not in BUILT_IN_HEADERS]
+
+      headers.append(('X-AppEngine-QueueName', queue_name))
+      headers.append(('X-AppEngine-TaskName', task['name']))
+      headers.append(('X-AppEngine-TaskRetryCount', '0'))
+      headers.append(('X-AppEngine-Development-Payload', '1'))
+      headers.append(('Content-Length', len(task['body'])))
+      if 'content-type' not in frozenset(key.lower() for key, _ in headers):
+        headers.append(('Content-Type', 'application/octet-stream'))
+      task['headers'] = headers
 
     return result_tasks
 
@@ -369,7 +516,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_FetchQueueStats(self, request, response):
     """Local 'random' implementation of the TaskQueueService.FetchQueueStats.
 
-    This implementation just populates the stats with random numbers.
+    This implementation loads some stats from the dummy store,
+    the rest with random numbers.
     Must adhere to the '_Dynamic_' naming convention for stubbing to work.
     See taskqueue_service.proto for a full description of the RPC.
 
@@ -377,15 +525,14 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       request: A taskqueue_service_pb.TaskQueueFetchQueueStatsRequest.
       response: A taskqueue_service_pb.TaskQueueFetchQueueStatsResponse.
     """
-    for _ in request.queue_name_list():
+    for queue in request.queue_name_list():
+      store = self.GetDummyTaskStore(request.app_id(), queue)
       stats = response.add_queuestats()
-      stats.set_num_tasks(random.randint(0, request.max_num_tasks()))
+      stats.set_num_tasks(store.Count())
       if stats.num_tasks() == 0:
         stats.set_oldest_eta_usec(-1)
       else:
-        now = datetime.datetime.utcnow()
-        now_sec = time.mktime(now.timetuple())
-        stats.set_oldest_eta_usec(now_sec * 1e6 + random.randint(-1e6, 1e6))
+        stats.set_oldest_eta_usec(store.Oldest())
 
       if random.randint(0, 9) > 0:
         scanner_info = stats.mutable_scanner_info()
@@ -393,4 +540,107 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
         scanner_info.set_executed_last_hour(scanner_info.executed_last_minute()
                                             + random.randint(0, 100))
         scanner_info.set_sampling_duration_seconds(random.random() * 10000.0)
-    return
+
+  def GetDummyTaskStore(self, app_id, queue_name):
+    """Get the dummy task store for this app_id/queue_name pair.
+
+    Creates an entry and populates it, if there's not already an entry.
+
+    Args:
+      app_id: the app_id.
+      queue_name: the queue_name.
+
+    Returns:
+      the existing or the new dummy store.
+    """
+    task_store_key = (app_id, queue_name)
+    if task_store_key not in admin_console_dummy_tasks:
+      store = _DummyTaskStore()
+      store.Populate(random.randint(10, 100))
+      admin_console_dummy_tasks[task_store_key] = store
+    else:
+      store = admin_console_dummy_tasks[task_store_key]
+    return store
+
+  def _Dynamic_QueryTasks(self, request, response):
+    """Local implementation of the TaskQueueService.QueryTasks RPC.
+
+    Uses the dummy store, creating tasks if this is the first time the
+    queue has been seen.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueQueryTasksRequest.
+      response: A taskqueue_service_pb.TaskQueueQueryTasksResponse.
+    """
+    store = self.GetDummyTaskStore(request.app_id(), request.queue_name())
+
+    if request.has_start_eta_usec():
+      tasks = store.Lookup(request.max_rows(), name=request.start_task_name(),
+                           eta=request.start_eta_usec())
+    else:
+      tasks = store.Lookup(request.max_rows(), name=request.start_task_name())
+    for task in tasks:
+      response.add_task().MergeFrom(task)
+
+  def _Dynamic_Delete(self, request, response):
+    """Local delete implementation of TaskQueueService.Delete.
+
+    Deletes tasks from the dummy store. A 1/20 chance of a transient error.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueDeleteTasksRequest.
+      response: A taskqueue_service_pb.TaskQueueDeleteTasksResponse.
+    """
+    task_store_key = (request.app_id(), request.queue_name())
+    if task_store_key not in admin_console_dummy_tasks:
+      for _ in request.task_name_list():
+        response.add_result(
+            taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
+        return
+
+    store = admin_console_dummy_tasks[task_store_key]
+    for taskname in request.task_name_list():
+      if random.random() <= 0.05:
+        response.add_result(
+            taskqueue_service_pb.TaskQueueServiceError.TRANSIENT_ERROR)
+      else:
+        response.add_result(store.Delete(taskname))
+
+  def _Dynamic_DeleteQueue(self, request, response):
+    """Local delete implementation of TaskQueueService.DeleteQueue.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueDeleteQueueRequest.
+      response: A taskqueue_service_pb.TaskQueueDeleteQueueResponse.
+    """
+    if not request.queue_name():
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME)
+
+    queues = self._app_queues.get(request.app_id(), {})
+    if request.queue_name() not in queues:
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
+    del queues[request.queue_name()]
+
+  def _Dynamic_PurgeQueue(self, request, response):
+    """Local purge implementation of TaskQueueService.PurgeQueue.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueuePurgeQueueRequest.
+      response: A taskqueue_service_pb.TaskQueuePurgeQueueResponse.
+    """
+    if not request.queue_name():
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME)
+
+    queues = self._app_queues.get(request.app_id(), {})
+    if request.queue_name() != 'default' and request.queue_name() not in queues:
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
+
+    store = self.GetDummyTaskStore(request.app_id(), request.queue_name())
+    for task in store.Lookup(store.Count()):
+      store.Delete(task.task_name())
+
+    self.FlushQueue(request.queue_name())

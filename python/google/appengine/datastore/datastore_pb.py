@@ -385,6 +385,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
   offset_ = 0
   has_limit_ = 0
   limit_ = 0
+  has_start_key_ = 0
+  start_key_ = ""
+  has_start_inclusive_ = 0
+  start_inclusive_ = 1
   has_require_perfect_plan_ = 0
   require_perfect_plan_ = 0
   has_keys_only_ = 0
@@ -395,6 +399,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   distinct_ = 0
   has_compile_ = 0
   compile_ = 0
+  has_failover_ms_ = 0
+  failover_ms_ = 0
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -544,6 +550,32 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_limit(self): return self.has_limit_
 
+  def start_key(self): return self.start_key_
+
+  def set_start_key(self, x):
+    self.has_start_key_ = 1
+    self.start_key_ = x
+
+  def clear_start_key(self):
+    if self.has_start_key_:
+      self.has_start_key_ = 0
+      self.start_key_ = ""
+
+  def has_start_key(self): return self.has_start_key_
+
+  def start_inclusive(self): return self.start_inclusive_
+
+  def set_start_inclusive(self, x):
+    self.has_start_inclusive_ = 1
+    self.start_inclusive_ = x
+
+  def clear_start_inclusive(self):
+    if self.has_start_inclusive_:
+      self.has_start_inclusive_ = 0
+      self.start_inclusive_ = 1
+
+  def has_start_inclusive(self): return self.has_start_inclusive_
+
   def composite_index_size(self): return len(self.composite_index_)
   def composite_index_list(self): return self.composite_index_
 
@@ -630,6 +662,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_compile(self): return self.has_compile_
 
+  def failover_ms(self): return self.failover_ms_
+
+  def set_failover_ms(self, x):
+    self.has_failover_ms_ = 1
+    self.failover_ms_ = x
+
+  def clear_failover_ms(self):
+    if self.has_failover_ms_:
+      self.has_failover_ms_ = 0
+      self.failover_ms_ = 0
+
+  def has_failover_ms(self): return self.has_failover_ms_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -643,12 +688,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (x.has_count()): self.set_count(x.count())
     if (x.has_offset()): self.set_offset(x.offset())
     if (x.has_limit()): self.set_limit(x.limit())
+    if (x.has_start_key()): self.set_start_key(x.start_key())
+    if (x.has_start_inclusive()): self.set_start_inclusive(x.start_inclusive())
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_require_perfect_plan()): self.set_require_perfect_plan(x.require_perfect_plan())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     if (x.has_distinct()): self.set_distinct(x.distinct())
     if (x.has_compile()): self.set_compile(x.compile())
+    if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
 
   def Equals(self, x):
     if x is self: return 1
@@ -674,6 +722,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_offset_ and self.offset_ != x.offset_: return 0
     if self.has_limit_ != x.has_limit_: return 0
     if self.has_limit_ and self.limit_ != x.limit_: return 0
+    if self.has_start_key_ != x.has_start_key_: return 0
+    if self.has_start_key_ and self.start_key_ != x.start_key_: return 0
+    if self.has_start_inclusive_ != x.has_start_inclusive_: return 0
+    if self.has_start_inclusive_ and self.start_inclusive_ != x.start_inclusive_: return 0
     if len(self.composite_index_) != len(x.composite_index_): return 0
     for e1, e2 in zip(self.composite_index_, x.composite_index_):
       if e1 != e2: return 0
@@ -687,6 +739,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
     if self.has_compile_ != x.has_compile_: return 0
     if self.has_compile_ and self.compile_ != x.compile_: return 0
+    if self.has_failover_ms_ != x.has_failover_ms_: return 0
+    if self.has_failover_ms_ and self.failover_ms_ != x.failover_ms_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -719,6 +773,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_count_): n += 2 + self.lengthVarInt64(self.count_)
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_limit_): n += 2 + self.lengthVarInt64(self.limit_)
+    if (self.has_start_key_): n += 2 + self.lengthString(len(self.start_key_))
+    if (self.has_start_inclusive_): n += 3
     n += 2 * len(self.composite_index_)
     for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     if (self.has_require_perfect_plan_): n += 3
@@ -726,6 +782,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_transaction_): n += 2 + self.lengthString(self.transaction_.ByteSize())
     if (self.has_distinct_): n += 3
     if (self.has_compile_): n += 3
+    if (self.has_failover_ms_): n += 2 + self.lengthVarInt64(self.failover_ms_)
     return n + 1
 
   def Clear(self):
@@ -739,12 +796,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_count()
     self.clear_offset()
     self.clear_limit()
+    self.clear_start_key()
+    self.clear_start_inclusive()
     self.clear_composite_index()
     self.clear_require_perfect_plan()
     self.clear_keys_only()
     self.clear_transaction()
     self.clear_distinct()
     self.clear_compile()
+    self.clear_failover_ms()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -799,6 +859,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_compile_):
       out.putVarInt32(200)
       out.putBoolean(self.compile_)
+    if (self.has_failover_ms_):
+      out.putVarInt32(208)
+      out.putVarInt64(self.failover_ms_)
+    if (self.has_start_key_):
+      out.putVarInt32(218)
+      out.putPrefixedString(self.start_key_)
+    if (self.has_start_inclusive_):
+      out.putVarInt32(224)
+      out.putBoolean(self.start_inclusive_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -860,6 +929,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 200:
         self.set_compile(d.getBoolean())
         continue
+      if tt == 208:
+        self.set_failover_ms(d.getVarInt64())
+        continue
+      if tt == 218:
+        self.set_start_key(d.getPrefixedString())
+        continue
+      if tt == 224:
+        self.set_start_inclusive(d.getBoolean())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -893,6 +971,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt32(self.count_))
     if self.has_offset_: res+=prefix+("offset: %s\n" % self.DebugFormatInt32(self.offset_))
     if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
+    if self.has_start_key_: res+=prefix+("start_key: %s\n" % self.DebugFormatString(self.start_key_))
+    if self.has_start_inclusive_: res+=prefix+("start_inclusive: %s\n" % self.DebugFormatBool(self.start_inclusive_))
     cnt=0
     for e in self.composite_index_:
       elm=""
@@ -909,6 +989,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
     if self.has_compile_: res+=prefix+("compile: %s\n" % self.DebugFormatBool(self.compile_))
+    if self.has_failover_ms_: res+=prefix+("failover_ms: %s\n" % self.DebugFormatInt64(self.failover_ms_))
     return res
 
 
@@ -929,12 +1010,15 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kcount = 23
   koffset = 12
   klimit = 16
+  kstart_key = 27
+  kstart_inclusive = 28
   kcomposite_index = 19
   krequire_perfect_plan = 20
   kkeys_only = 21
   ktransaction = 22
   kdistinct = 24
   kcompile = 25
+  kfailover_ms = 26
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -958,7 +1042,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
     23: "count",
     24: "distinct",
     25: "compile",
-  }, 25)
+    26: "failover_ms",
+    27: "start_key",
+    28: "start_inclusive",
+  }, 28)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -982,7 +1069,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
     23: ProtocolBuffer.Encoder.NUMERIC,
     24: ProtocolBuffer.Encoder.NUMERIC,
     25: ProtocolBuffer.Encoder.NUMERIC,
-  }, 25, ProtocolBuffer.Encoder.MAX_TYPE)
+    26: ProtocolBuffer.Encoder.NUMERIC,
+    27: ProtocolBuffer.Encoder.STRING,
+    28: ProtocolBuffer.Encoder.NUMERIC,
+  }, 28, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1744,16 +1834,33 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
+  has_app_ = 0
+  app_ = ""
   has_compiled_query_ = 0
   has_original_query_ = 0
   original_query_ = None
   has_count_ = 0
   count_ = 0
+  has_failover_ms_ = 0
+  failover_ms_ = 0
 
   def __init__(self, contents=None):
     self.compiled_query_ = CompiledQuery()
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
+
+  def app(self): return self.app_
+
+  def set_app(self, x):
+    self.has_app_ = 1
+    self.app_ = x
+
+  def clear_app(self):
+    if self.has_app_:
+      self.has_app_ = 0
+      self.app_ = ""
+
+  def has_app(self): return self.has_app_
 
   def compiled_query(self): return self.compiled_query_
 
@@ -1794,25 +1901,48 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_count(self): return self.has_count_
 
+  def failover_ms(self): return self.failover_ms_
+
+  def set_failover_ms(self, x):
+    self.has_failover_ms_ = 1
+    self.failover_ms_ = x
+
+  def clear_failover_ms(self):
+    if self.has_failover_ms_:
+      self.has_failover_ms_ = 0
+      self.failover_ms_ = 0
+
+  def has_failover_ms(self): return self.has_failover_ms_
+
 
   def MergeFrom(self, x):
     assert x is not self
+    if (x.has_app()): self.set_app(x.app())
     if (x.has_compiled_query()): self.mutable_compiled_query().MergeFrom(x.compiled_query())
     if (x.has_original_query()): self.mutable_original_query().MergeFrom(x.original_query())
     if (x.has_count()): self.set_count(x.count())
+    if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
 
   def Equals(self, x):
     if x is self: return 1
+    if self.has_app_ != x.has_app_: return 0
+    if self.has_app_ and self.app_ != x.app_: return 0
     if self.has_compiled_query_ != x.has_compiled_query_: return 0
     if self.has_compiled_query_ and self.compiled_query_ != x.compiled_query_: return 0
     if self.has_original_query_ != x.has_original_query_: return 0
     if self.has_original_query_ and self.original_query_ != x.original_query_: return 0
     if self.has_count_ != x.has_count_: return 0
     if self.has_count_ and self.count_ != x.count_: return 0
+    if self.has_failover_ms_ != x.has_failover_ms_: return 0
+    if self.has_failover_ms_ and self.failover_ms_ != x.failover_ms_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (not self.has_app_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: app not set.')
     if (not self.has_compiled_query_):
       initialized = 0
       if debug_strs is not None:
@@ -1823,15 +1953,19 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
+    n += self.lengthString(len(self.app_))
     n += self.lengthString(self.compiled_query_.ByteSize())
     if (self.has_original_query_): n += 1 + self.lengthString(self.original_query_.ByteSize())
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
-    return n + 1
+    if (self.has_failover_ms_): n += 1 + self.lengthVarInt64(self.failover_ms_)
+    return n + 2
 
   def Clear(self):
+    self.clear_app()
     self.clear_compiled_query()
     self.clear_original_query()
     self.clear_count()
+    self.clear_failover_ms()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1844,6 +1978,11 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_count_):
       out.putVarInt32(24)
       out.putVarInt32(self.count_)
+    if (self.has_failover_ms_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.failover_ms_)
+    out.putVarInt32(42)
+    out.putPrefixedString(self.app_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1863,12 +2002,19 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_count(d.getVarInt32())
         continue
+      if tt == 32:
+        self.set_failover_ms(d.getVarInt64())
+        continue
+      if tt == 42:
+        self.set_app(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
+    if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
     if self.has_compiled_query_:
       res+=prefix+"compiled_query <\n"
       res+=self.compiled_query_.__str__(prefix + "  ", printElemNumber)
@@ -1878,29 +2024,36 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
       res+=self.original_query_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt32(self.count_))
+    if self.has_failover_ms_: res+=prefix+("failover_ms: %s\n" % self.DebugFormatInt64(self.failover_ms_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
+  kapp = 5
   kcompiled_query = 1
   koriginal_query = 2
   kcount = 3
+  kfailover_ms = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "compiled_query",
     2: "original_query",
     3: "count",
-  }, 3)
+    4: "failover_ms",
+    5: "app",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2423,6 +2576,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 class GetRequest(ProtocolBuffer.ProtocolMessage):
   has_transaction_ = 0
   transaction_ = None
+  has_failover_ms_ = 0
+  failover_ms_ = 0
 
   def __init__(self, contents=None):
     self.key_ = []
@@ -2463,11 +2618,25 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_transaction(self): return self.has_transaction_
 
+  def failover_ms(self): return self.failover_ms_
+
+  def set_failover_ms(self, x):
+    self.has_failover_ms_ = 1
+    self.failover_ms_ = x
+
+  def clear_failover_ms(self):
+    if self.has_failover_ms_:
+      self.has_failover_ms_ = 0
+      self.failover_ms_ = 0
+
+  def has_failover_ms(self): return self.has_failover_ms_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
+    if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2476,6 +2645,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
+    if self.has_failover_ms_ != x.has_failover_ms_: return 0
+    if self.has_failover_ms_ and self.failover_ms_ != x.failover_ms_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2490,11 +2661,13 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
+    if (self.has_failover_ms_): n += 1 + self.lengthVarInt64(self.failover_ms_)
     return n + 0
 
   def Clear(self):
     self.clear_key()
     self.clear_transaction()
+    self.clear_failover_ms()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.key_)):
@@ -2505,6 +2678,9 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.transaction_.ByteSize())
       self.transaction_.OutputUnchecked(out)
+    if (self.has_failover_ms_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.failover_ms_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2520,6 +2696,9 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_transaction().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.set_failover_ms(d.getVarInt64())
         continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
@@ -2539,6 +2718,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_failover_ms_: res+=prefix+("failover_ms: %s\n" % self.DebugFormatInt64(self.failover_ms_))
     return res
 
 
@@ -2547,18 +2727,21 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   kkey = 1
   ktransaction = 2
+  kfailover_ms = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "key",
     2: "transaction",
-  }, 2)
+    3: "failover_ms",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

@@ -762,6 +762,8 @@ class Model(object):
       else:
         entity[prop.name] = datastore_value
 
+    entity.set_unindexed_properties(self._unindexed_properties)
+
   def _populate_internal_entity(self, _entity_class=datastore.Entity):
     """Populates self._entity, saving its state to the datastore.
 
@@ -1249,8 +1251,8 @@ def allocate_ids(model, size):
   datastore_errors.Error.
 
   Args:
-    model: Model, Key or string to serve as a model specifying the ID sequence
-           in which to allocate IDs
+    model: Model instance, Key or string to serve as a model specifying the
+      ID sequence in which to allocate IDs.
 
   Returns:
     (start, end) of the allocated range, inclusive.
@@ -1463,6 +1465,7 @@ class Expando(Model):
 class _BaseQuery(object):
   """Base class for both Query and GqlQuery."""
   _compile = False
+
   def __init__(self, model_class=None, keys_only=False, compile=True,
                cursor=None):
     """Constructor.
@@ -1476,7 +1479,10 @@ class _BaseQuery(object):
     self._model_class = model_class
     self._keys_only = keys_only
     self._compile = compile
-    self._cursor = cursor
+    if cursor is not None:
+      self.with_cursor(cursor)
+    else:
+      self._cursor = None
 
   def is_keys_only(self):
     """Returns whether this query is keys only.
@@ -1592,6 +1598,15 @@ class _BaseQuery(object):
         return [class_for_kind(e.kind()).from_entity(e) for e in raw]
 
   def cursor(self):
+    """Get a serialized cursor for an already executed query.
+
+    The returned cursor effectively lets a future invocation of a similar
+    query to begin fetching results immediately after the last returned
+    result from this query invocation.
+
+    Returns:
+      A base64-encoded serialized cursor.
+    """
     if not self._compile:
       raise AssertionError('No cursor available, this action does not support '
                            'cursors (try "fetch" instead)')
@@ -1600,22 +1615,50 @@ class _BaseQuery(object):
         return self._compiled_query
       if isinstance(self._compiled_query, Exception):
         raise self._compiled_query
-      return base64.urlsafe_b64encode(self._compiled_query.Encode())
+
+      pb = datastore_pb.CompiledQuery()
+      pb.set_keys_only(self._compiled_query.keys_only())
+      if (self._compiled_query.has_primaryscan() and
+          self._compiled_query.primaryscan().has_start_key()):
+        start_key = self._compiled_query.primaryscan().start_key()
+        start_inclusive = self._compiled_query.primaryscan().start_inclusive()
+        primary_scan = pb.mutable_primaryscan()
+        primary_scan.set_start_key(start_key)
+        primary_scan.set_start_inclusive(start_inclusive)
+
+      if self._compiled_query.has_offset():
+        pb.set_offset(self._compiled_query.offset())
+
+      return base64.urlsafe_b64encode(pb.Encode())
     except AttributeError:
       raise AssertionError('No cursor available, this query has not been '
                            'executed')
 
   def with_cursor(self, cursor):
+    """Set the start of this query to the given serialized cursor.
+
+    When executed, this query will start from the next result for a previous
+    invocation of a similar query.
+
+    Returns:
+      This Query instance, for chaining.
+    """
     try:
-      assert cursor, "Cursor cannot be empty"
-      cursor = datastore_pb.CompiledQuery(base64.urlsafe_b64decode(cursor))
-      assert cursor.IsInitialized()
-    except (AssertionError, TypeError), e:
+      if not cursor:
+        raise datastore_errors.BadValueError("Cursor cannot be empty")
+      if not isinstance(cursor, basestring):
+        raise BadValueError(
+            'Cursor must be a str or unicode instance, not a %s'
+            % type(cursor).__name__)
+      decoded = base64.urlsafe_b64decode(cursor)
+      cursor = datastore_pb.CompiledQuery(decoded)
+    except (ValueError, TypeError), e:
       raise datastore_errors.BadValueError(
         'Invalid cursor %s. Details: %s' % (cursor, e))
     except Exception, e:
       if e.__class__.__name__ == 'ProtocolBufferDecodeError':
-        raise datastore_errors.BadValueError('Invalid cursor %s.' % cursor)
+        raise datastore_errors.BadValueError('Invalid cursor %s. '
+                                             'Details: %s' % (cursor, e))
       else:
         raise
     self._cursor = cursor

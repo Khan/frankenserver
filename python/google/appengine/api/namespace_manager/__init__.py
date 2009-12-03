@@ -30,7 +30,7 @@ ENV_DEFAULT_NAMESPACE = 'HTTP_X_APPENGINE_DEFAULT_NAMESPACE'
 ENV_CURRENT_NAMESPACE = '__INTERNAL_CURRENT_NAMESPACE'
 
 
-def set_request_namespace(namespace):
+def set_namespace(namespace):
   """Set the default namespace to use for future calls, for this request only.
 
   Args:
@@ -39,14 +39,20 @@ def set_request_namespace(namespace):
   """
   os.environ[ENV_CURRENT_NAMESPACE] = namespace
 
+def set_request_namespace(namespace):
+  """Deprecated. Use set_namespace(namespace)."""
+  return set_namespace(namespace)
 
-def get_request_namespace():
+def get_namespace():
   """Get the name of the current default namespace.
 
   The empty string indicates that the root namespace is the default.
   """
   return os.getenv(ENV_CURRENT_NAMESPACE, '')
 
+def get_request_namespace():
+  """Deprecated. Use get_namespace()."""
+  return get_namespace()
 
 def _enable_request_namespace():
   """Automatically enable namespace to default for domain.
@@ -70,6 +76,6 @@ def _add_name_space(request, namespace=None):
       default namespace.
   """
   if namespace is None:
-    request.set_name_space(get_request_namespace())
+    request.set_name_space(get_namespace())
   else:
     request.set_name_space(namespace)

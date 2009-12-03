@@ -246,7 +246,7 @@ def SetupIndexes(app_id, root_path):
       if indexes is None:
         indexes = []
 
-  requested_indexes = datastore_admin.IndexDefinitionsToProtos(app_id, indexes)
+  requested_indexes = datastore_index.IndexDefinitionsToProtos(app_id, indexes)
 
   existing_indexes = datastore_admin.GetIndices(app_id)
 

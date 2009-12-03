@@ -48,13 +48,20 @@ SCRIPT_EXCEPTIONS = {
   "dev_appserver.py" : "dev_appserver_main.py"
 }
 
+
+def fix_sys_path():
+  """Fix the sys.path to include our extra paths."""
+  sys.path = EXTRA_PATHS + sys.path
+
+
 def run_file(file_path, globals_, script_dir=SCRIPT_DIR):
   """Execute the file at the specified path with the passed-in globals."""
-  sys.path = EXTRA_PATHS + sys.path
+  fix_sys_path()
   script_name = os.path.basename(file_path)
   script_name = SCRIPT_EXCEPTIONS.get(script_name, script_name)
   script_path = os.path.join(script_dir, script_name)
   execfile(script_path, globals_)
+
 
 if __name__ == '__main__':
   run_file(__file__, globals())

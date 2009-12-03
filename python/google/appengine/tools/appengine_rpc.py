@@ -366,7 +366,8 @@ class AbstractRpcServer(object):
               self._Authenticate()
             elif re.match(r"https://www.google.com/a/[a-z0-9.-]+/ServiceLogin",
                           loc):
-              self.account_type = "HOSTED"
+              self.account_type = os.getenv("APPENGINE_RPC_HOSTED_LOGIN_TYPE",
+                                            "HOSTED")
               self._Authenticate()
             elif loc.startswith("http://%s/_ah/login" % (self.host,)):
               self._DevAppServerAuthenticate()

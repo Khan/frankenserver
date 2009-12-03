@@ -292,7 +292,7 @@ def ResolveAppIdNamespace(
     if app_id is None:
       app_id = os.environ.get('APPLICATION_ID', '')
     if namespace is None:
-      namespace = namespace_manager.get_request_namespace();
+      namespace = namespace_manager.get_namespace();
   else:
     if not app_id is None:
       raise datastore_errors.BadArgumentError(
@@ -638,13 +638,17 @@ class Key(object):
     Returns:
       string
     """
-    if self._str is None:
-      if (self.has_id_or_name()):
-        encoded = base64.urlsafe_b64encode(self.__reference.Encode())
-        self._str = encoded.replace('=', '')
-      else:
-        raise datastore_errors.BadKeyError(
-          'Cannot string encode an incomplete key!\n%s' % self.__reference)
+    try:
+      if self._str is not None:
+        return self._str
+    except AttributeError:
+      pass
+    if (self.has_id_or_name()):
+      encoded = base64.urlsafe_b64encode(self.__reference.Encode())
+      self._str = encoded.replace('=', '')
+    else:
+      raise datastore_errors.BadKeyError(
+        'Cannot string encode an incomplete key!\n%s' % self.__reference)
     return self._str
 
 
@@ -1224,6 +1228,7 @@ _PROPERTY_TYPES = frozenset([
 ])
 
 _RAW_PROPERTY_TYPES = (Blob, Text)
+_RAW_PROPERTY_MEANINGS = (entity_pb.Property.BLOB, entity_pb.Property.TEXT)
 
 def ValidatePropertyInteger(name, value):
   """Raises an exception if the supplied integer is invalid.

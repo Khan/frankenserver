@@ -128,7 +128,7 @@ class KindPropertyNameStat(BaseKindStatistic):
   """Statistics on (kind, property_name) tuples in the app's datastore.
 
   There is an instance of the KindPropertyNameStat for every
-  (kind, property_type) tuple in the application's datastore.
+  (kind, property_name) tuple in the application's datastore.
   """
   STORED_KIND_NAME = '__Stat_PropertyName_Kind__'
 

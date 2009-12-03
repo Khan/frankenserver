@@ -40,6 +40,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
   INVALID_ETA  =   12
   INVALID_REQUEST =   13
   UNKNOWN_TASK =   14
+  TOMBSTONED_QUEUE =   15
   DATASTORE_ERROR = 10000
 
   _ErrorCode_NAMES = {
@@ -58,6 +59,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
     12: "INVALID_ETA",
     13: "INVALID_REQUEST",
     14: "UNKNOWN_TASK",
+    15: "TOMBSTONED_QUEUE",
     10000: "DATASTORE_ERROR",
   }
 
@@ -2079,6 +2081,177 @@ class TaskQueueFetchQueueStatsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class TaskQueuePurgeQueueRequest(ProtocolBuffer.ProtocolMessage):
+  has_app_id_ = 0
+  app_id_ = ""
+  has_queue_name_ = 0
+  queue_name_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def app_id(self): return self.app_id_
+
+  def set_app_id(self, x):
+    self.has_app_id_ = 1
+    self.app_id_ = x
+
+  def clear_app_id(self):
+    if self.has_app_id_:
+      self.has_app_id_ = 0
+      self.app_id_ = ""
+
+  def has_app_id(self): return self.has_app_id_
+
+  def queue_name(self): return self.queue_name_
+
+  def set_queue_name(self, x):
+    self.has_queue_name_ = 1
+    self.queue_name_ = x
+
+  def clear_queue_name(self):
+    if self.has_queue_name_:
+      self.has_queue_name_ = 0
+      self.queue_name_ = ""
+
+  def has_queue_name(self): return self.has_queue_name_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_app_id()): self.set_app_id(x.app_id())
+    if (x.has_queue_name()): self.set_queue_name(x.queue_name())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_app_id_ != x.has_app_id_: return 0
+    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
+    if self.has_queue_name_ != x.has_queue_name_: return 0
+    if self.has_queue_name_ and self.queue_name_ != x.queue_name_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_app_id_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: app_id not set.')
+    if (not self.has_queue_name_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: queue_name not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.app_id_))
+    n += self.lengthString(len(self.queue_name_))
+    return n + 2
+
+  def Clear(self):
+    self.clear_app_id()
+    self.clear_queue_name()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.app_id_)
+    out.putVarInt32(18)
+    out.putPrefixedString(self.queue_name_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_app_id(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_queue_name(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
+    if self.has_queue_name_: res+=prefix+("queue_name: %s\n" % self.DebugFormatString(self.queue_name_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kapp_id = 1
+  kqueue_name = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app_id",
+    2: "queue_name",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class TaskQueuePurgeQueueResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 0
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
 class TaskQueueDeleteQueueRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -2587,6 +2760,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
   body_size_ = 0
   has_body_ = 0
   body_ = ""
+  has_creation_time_usec_ = 0
+  creation_time_usec_ = 0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -2699,6 +2874,19 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
 
   def has_body(self): return self.has_body_
 
+  def creation_time_usec(self): return self.creation_time_usec_
+
+  def set_creation_time_usec(self, x):
+    self.has_creation_time_usec_ = 1
+    self.creation_time_usec_ = x
+
+  def clear_creation_time_usec(self):
+    if self.has_creation_time_usec_:
+      self.has_creation_time_usec_ = 0
+      self.creation_time_usec_ = 0
+
+  def has_creation_time_usec(self): return self.has_creation_time_usec_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -2710,6 +2898,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_body_size()): self.set_body_size(x.body_size())
     if (x.has_body()): self.set_body(x.body())
+    if (x.has_creation_time_usec()): self.set_creation_time_usec(x.creation_time_usec())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2730,6 +2919,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if self.has_body_size_ and self.body_size_ != x.body_size_: return 0
     if self.has_body_ != x.has_body_: return 0
     if self.has_body_ and self.body_ != x.body_: return 0
+    if self.has_creation_time_usec_ != x.has_creation_time_usec_: return 0
+    if self.has_creation_time_usec_ and self.creation_time_usec_ != x.creation_time_usec_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2752,6 +2943,10 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: method not set.')
     for p in self.header_:
       if not p.IsInitialized(debug_strs): initialized=0
+    if (not self.has_creation_time_usec_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: creation_time_usec not set.')
     return initialized
 
   def ByteSize(self):
@@ -2765,7 +2960,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_body_size_): n += 1 + self.lengthVarInt64(self.body_size_)
     if (self.has_body_): n += 1 + self.lengthString(len(self.body_))
-    return n + 4
+    n += self.lengthVarInt64(self.creation_time_usec_)
+    return n + 5
 
   def Clear(self):
     self.clear_task_name()
@@ -2776,6 +2972,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     self.clear_header()
     self.clear_body_size()
     self.clear_body()
+    self.clear_creation_time_usec()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -2799,6 +2996,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_body_):
       out.putVarInt32(90)
       out.putPrefixedString(self.body_)
+    out.putVarInt32(96)
+    out.putVarInt64(self.creation_time_usec_)
 
   def TryMerge(self, d):
     while 1:
@@ -2828,6 +3027,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       if tt == 90:
         self.set_body(d.getPrefixedString())
         continue
+      if tt == 96:
+        self.set_creation_time_usec(d.getVarInt64())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -2849,6 +3051,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_body_size_: res+=prefix+("body_size: %s\n" % self.DebugFormatInt32(self.body_size_))
     if self.has_body_: res+=prefix+("body: %s\n" % self.DebugFormatString(self.body_))
+    if self.has_creation_time_usec_: res+=prefix+("creation_time_usec: %s\n" % self.DebugFormatInt64(self.creation_time_usec_))
     return res
 
 class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
@@ -2943,6 +3146,7 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
   kTaskHeadervalue = 9
   kTaskbody_size = 10
   kTaskbody = 11
+  kTaskcreation_time_usec = 12
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -2957,7 +3161,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     9: "value",
     10: "body_size",
     11: "body",
-  }, 11)
+    12: "creation_time_usec",
+  }, 12)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2972,9 +3177,10 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     9: ProtocolBuffer.Encoder.STRING,
     10: ProtocolBuffer.Encoder.NUMERIC,
     11: ProtocolBuffer.Encoder.STRING,
-  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
+    12: ProtocolBuffer.Encoder.NUMERIC,
+  }, 12, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['TaskQueueServiceError','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddResponse','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_Task']
+__all__ = ['TaskQueueServiceError','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddResponse','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueuePurgeQueueRequest','TaskQueuePurgeQueueResponse','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_Task']

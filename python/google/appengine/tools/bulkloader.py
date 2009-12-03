@@ -45,7 +45,8 @@ Usage:
     --email=<string>        The username to use. Will prompt if omitted.
     --exporter_opts=<string>
                             A string to pass to the Exporter.initialize method.
-    --filename=<path>       Path to the file to import. (Required)
+    --filename=<path>       Path to the file to import. (Required when
+                            importing or exporting, not mapping.)
     --has_header            Skip the first row of the input.
     --http_limit=<int>      The maximum numer of HTTP requests per second to
                             send to the server. (Default: 8)
@@ -511,8 +512,7 @@ class CSVGenerator(object):
         yield record
     except csv.Error, e:
       if e.args and e.args[0].startswith('field larger than field limit'):
-        limit = e.args[1]
-        raise FieldSizeLimitError(limit)
+        raise FieldSizeLimitError(csv.field_size_limit())
       else:
         raise
 
@@ -692,7 +692,7 @@ class _WorkItem(adaptive_thread_pool.WorkItem):
         logger.exception('Retrying on non-fatal datastore error: %s', e)
       except urllib2.HTTPError, e:
         http_status = e.code
-        if http_status == 403 or (http_status >= 500 and http_status < 600):
+        if http_status >= 500 and http_status < 600:
           status = adaptive_thread_pool.WorkItem.RETRY
           logger.exception('Retrying on non-fatal HTTP error: %d %s',
                            http_status, e.msg)
@@ -917,6 +917,9 @@ class KeyRangeItem(_WorkItem):
     _WorkItem.__init__(self, progress_queue, key_range.key_start,
                        key_range.key_end, ExportStateName, state=state,
                        progress_key=progress_key)
+    assert KeyLEQ(key_range.key_start, key_range.key_end), (
+        '%s not less than %s' %
+        (repr(key_range.key_start), repr(key_range.key_end)))
     self.request_manager = request_manager
     self.kind = kind
     self.key_range = key_range
@@ -1059,9 +1062,11 @@ class MapperItem(KeyRangeItem):
 
   def _TransferItem(self, thread_pool, get_time=time.time):
     t = get_time()
-    download_result = self.request_manager.GetEntities(self)
-    transfer_time = get_time() - t
     mapper = self.request_manager.GetMapper()
+
+    download_result = self.request_manager.GetEntities(
+        self, keys_only=mapper.map_over_keys_only())
+    transfer_time = get_time() - t
     try:
       mapper.batch_apply(download_result.Entities())
     except MapperRetry:
@@ -1123,17 +1128,15 @@ class RequestManager(object):
     logger.debug('Configuring remote_api. url_path = %s, '
                  'servername = %s' % (url_path, host_port))
 
-    def CookieHttpRpcServer(*args, **kwargs):
-      kwargs['save_cookies'] = True
-      kwargs['account_type'] = 'HOSTED_OR_GOOGLE'
-      return appengine_rpc.HttpRpcServer(*args, **kwargs)
+    throttled_rpc_server_factory = (
+        remote_api_throttle.ThrottledHttpRpcServerFactory(self.throttle))
 
     remote_api_stub.ConfigureRemoteDatastore(
         app_id,
         url_path,
         self.AuthFunction,
         servername=host_port,
-        rpc_server_factory=CookieHttpRpcServer,
+        rpc_server_factory=throttled_rpc_server_factory,
         secure=self.secure)
     remote_api_throttle.ThrottleRemoteDatastore(self.throttle)
     logger.debug('Bulkloader using app_id: %s', os.environ['APPLICATION_ID'])
@@ -1251,26 +1254,30 @@ class RequestManager(object):
   def _QueryForPbs(self, query):
     """Perform the given query and return a list of entity_pb's."""
     try:
-      query_pb = query._ToPb(limit=self.batch_size)
+      query_pb = query._ToPb(limit=self.batch_size, count=self.batch_size)
       result_pb = datastore_pb.QueryResult()
       apiproxy_stub_map.MakeSyncCall('datastore_v3', 'RunQuery', query_pb,
                                      result_pb)
-      next_pb = datastore_pb.NextRequest()
-      next_pb.set_count(self.batch_size)
-      next_pb.mutable_cursor().CopyFrom(result_pb.cursor())
-      result_pb = datastore_pb.QueryResult()
-      apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Next', next_pb, result_pb)
+      if result_pb.result_size() == 0 and result_pb.more_results():
+        next_pb = datastore_pb.NextRequest()
+        next_pb.set_count(self.batch_size)
+        next_pb.mutable_cursor().CopyFrom(result_pb.cursor())
+        result_pb = datastore_pb.QueryResult()
+        apiproxy_stub_map.MakeSyncCall('datastore_v3', 'Next', next_pb,
+                                       result_pb)
+
       return result_pb.result_list()
     except apiproxy_errors.ApplicationError, e:
       raise datastore._ToDatastoreError(e)
 
-  def GetEntities(self, key_range_item, key_factory=datastore.Key):
+  def GetEntities(
+      self, key_range_item, key_factory=datastore.Key, keys_only=False):
     """Gets Entity records from a remote endpoint over HTTP.
 
     Args:
      key_range_item: Range of keys to get.
      key_factory: Used for dependency injection.
-
+     keys_only: bool, default False, only get keys values
     Returns:
       A DownloadResult instance.
 
@@ -1281,7 +1288,8 @@ class RequestManager(object):
     entities = []
 
     if self.parallel_download:
-      query = key_range_item.key_range.make_directed_datastore_query(self.kind)
+      query = key_range_item.key_range.make_directed_datastore_query(
+          self.kind, keys_only=keys_only)
       try:
         results = self._QueryForPbs(query)
       except datastore_errors.NeedIndexError:
@@ -1291,7 +1299,8 @@ class RequestManager(object):
 
     if not self.parallel_download:
       key_range_item.key_range.direction = key_range_module.KeyRange.ASC
-      query = key_range_item.key_range.make_ascending_datastore_query(self.kind)
+      query = key_range_item.key_range.make_ascending_datastore_query(
+          self.kind, keys_only=keys_only)
       results = self._QueryForPbs(query)
 
     size = len(results)
@@ -1718,7 +1727,8 @@ class ResultDatabase(_Database):
   in order to avoid duplication if an export is restarted.
   """
 
-  def __init__(self, db_filename, signature, commit_periodicity=1):
+  def __init__(self, db_filename, signature, commit_periodicity=1,
+               exporter=None):
     """Initialize a ResultDatabase object.
 
     Args:
@@ -1726,11 +1736,14 @@ class ResultDatabase(_Database):
       signature: A string identifying the important invocation options,
         used to make sure we are not using an old database.
       commit_periodicity: How many operations to perform between commits.
+      exporter: Exporter instance; if exporter.calculate_sort_key_from_entity
+        is true then exporter.sort_key_from_entity(entity) will be called.
     """
     self.complete = False
     create_table = ('create table result (\n'
                     'id BLOB primary key,\n'
-                    'value BLOB not null)')
+                    'value BLOB not null,\n'
+                    'sort_key BLOB)')
 
     _Database.__init__(self,
                        db_filename,
@@ -1744,6 +1757,10 @@ class ResultDatabase(_Database):
     else:
       self.existing_count = 0
     self.count = self.existing_count
+    if exporter and getattr(exporter, 'calculate_sort_key_from_entity', False):
+      self.sort_key_from_entity = exporter.sort_key_from_entity
+    else:
+      self.sort_key_from_entity = None
 
   def _StoreEntity(self, entity_id, entity):
     """Store an entity in the result database.
@@ -1755,7 +1772,6 @@ class ResultDatabase(_Database):
     Returns:
       True if this entities is not already present in the result database.
     """
-
     assert _RunningInThread(self.secondary_thread)
     assert isinstance(entity_id, datastore.Key), (
         'expected a datastore.Key, got a %s' % entity_id.__class__.__name__)
@@ -1772,10 +1788,14 @@ class ResultDatabase(_Database):
                                  (key_str,))
     else:
       self.count += 1
+    if self.sort_key_from_entity:
+      sort_key = self.sort_key_from_entity(datastore.Entity._FromPb(entity))
+    else:
+      sort_key = ''
     value = entity.Encode()
     self.insert_cursor.execute(
-        'insert into result (id, value) values (?, ?)',
-        (key_str, buffer(value)))
+        'insert into result (id, value, sort_key) values (?, ?, ?)',
+        (key_str, buffer(value), sort_key))
     return result
 
   def StoreEntities(self, keys, entities):
@@ -1812,7 +1832,7 @@ class ResultDatabase(_Database):
     cursor = conn.cursor()
 
     cursor.execute(
-        'select id, value from result order by id')
+        'select id, value from result order by sort_key, id')
 
     for unused_entity_id, entity in cursor:
       entity_proto = entity_pb.EntityProto(contents=entity)
@@ -2069,6 +2089,10 @@ class StubProgressDatabase(object):
 
   def ThreadComplete(self):
     """Finalize operations on the stub database (i.e. do nothing)."""
+    pass
+
+  def DeleteKey(self, unused_key):
+    """Delete the operations with a given key (but, do nothing.)"""
     pass
 
 
@@ -2667,6 +2691,7 @@ class Exporter(object):
   __exporters = {}
   kind = None
   __properties = None
+  calculate_sort_key_from_entity = False
 
   def __init__(self, kind, properties):
     """Constructor.
@@ -2737,7 +2762,9 @@ class Exporter(object):
       try:
         encoding.append(fn(entity[name]))
       except KeyError:
-        if default is None:
+        if name == '__key__':
+          encoding.append(fn(entity.key()))
+        elif default is None:
           raise MissingPropertyError(name)
         else:
           encoding.append(default)
@@ -2753,7 +2780,7 @@ class Exporter(object):
       A CSV string.
     """
     output = StringIO.StringIO()
-    writer = csv.writer(output, lineterminator='')
+    writer = csv.writer(output)
     writer.writerow(self.__ExtractProperties(entity))
     return output.getvalue()
 
@@ -2784,7 +2811,7 @@ class Exporter(object):
     CheckOutputFile(self.output_filename)
     output_file = open(self.output_filename, 'w')
     logger.debug('Export complete, writing to file')
-    output_file.writelines(self.__SerializeEntity(entity) + '\n'
+    output_file.writelines(self.__SerializeEntity(entity)
                            for entity in entity_generator)
 
   def initialize(self, filename, exporter_opts):
@@ -2803,6 +2830,19 @@ class Exporter(object):
   def finalize(self):
     """Performs finalization actions after the download completes."""
     pass
+
+  def sort_key_from_entity(entity):
+    """A value to alter sorting of entities in output_entities entity_generator.
+
+    Will only be called if calculate_sort_key_from_entity is true.
+    Args:
+      entity: A datastore.Entity.
+    Returns:
+      A value to store in the intermediate sqlite table. The table will later
+      be sorted by this value then by the datastore key, so the sort_key need
+      not be unique.
+    """
+    return ''
 
   @staticmethod
   def RegisteredExporters():
@@ -2884,6 +2924,16 @@ class Mapper(object):
   def batch_apply(self, entities):
     for entity in entities:
       self.apply(entity)
+
+  def map_over_keys_only(self):
+    """Return whether this mapper should iterate over only keys or not.
+
+    Override this method in subclasses to return True values.
+
+    Returns:
+      True or False
+    """
+    return False
 
   @staticmethod
   def RegisteredMappers():
@@ -3592,7 +3642,7 @@ def ProcessArguments(arg_dict,
   errors = []
 
   if batch_size is None:
-    if download or perform_map:
+    if download or perform_map or dump:
       arg_dict['batch_size'] = DEFAULT_DOWNLOAD_BATCH_SIZE
     else:
       arg_dict['batch_size'] = DEFAULT_BATCH_SIZE
@@ -3621,12 +3671,8 @@ def ProcessArguments(arg_dict,
   if not filename and not perform_map:
     errors.append(required % 'filename')
 
-  if kind is None:
-    if download or map:
-      errors.append('kind argument required for this operation')
-    elif not dump and not restore:
-      errors.append(
-          'kind argument required unless --dump or --restore is specified')
+  if not kind:
+    errors.append(required % 'kind')
 
   if not app_id:
     if url and url is not REQUIRED_OPTION:
@@ -3771,8 +3817,8 @@ def _PerformBulkload(arg_dict,
     finally:
       loader.finalize()
   elif not perform_map:
-    result_db = ResultDatabase(result_db_filename, signature)
     exporter = Exporter.RegisteredExporter(kind)
+    result_db = ResultDatabase(result_db_filename, signature, exporter=exporter)
     try:
       exporter.initialize(filename, exporter_opts)
 

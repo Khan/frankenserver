@@ -104,7 +104,8 @@
         <tr>
           <td class="name">Parent</td>
           <td class="value text">
-            <a href="?key={{parent_key}}&kind={{parent_kind}}">{{ parent_key }}</a>
+            {{ parent_key|escape }}<br />
+            <a href="?key={{parent_key}}&kind={{parent_kind}}">{{ parent_key_string }}</a>
           </td>
         </tr>
       {% endif %}

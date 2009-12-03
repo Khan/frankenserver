@@ -66,10 +66,16 @@ def MakeSyncCall(service, call, request, response):
     request: protocol buffer for the request
     response: protocol buffer for the response
 
+  Returns:
+    Response protocol buffer or None. Some implementations may return
+    a response protocol buffer instead of modifying 'response'.
+    Caller must use returned value in such cases. If 'response' is modified
+    then returns None.
+
   Raises:
     apiproxy_errors.Error or a subclass.
   """
-  apiproxy.MakeSyncCall(service, call, request, response)
+  return apiproxy.MakeSyncCall(service, call, request, response)
 
 
 class ListOfHooks(object):
@@ -252,6 +258,12 @@ class APIProxyStubMap(object):
       request: protocol buffer for the request
       response: protocol buffer for the response
 
+    Returns:
+      Response protocol buffer or None. Some implementations may return
+      a response protocol buffer instead of modifying 'response'.
+      Caller must use returned value in such cases. If 'response' is modified
+      then returns None.
+
     Raises:
       apiproxy_errors.Error or a subclass.
     """
@@ -272,12 +284,14 @@ class APIProxyStubMap(object):
     else:
       self.__precall_hooks.Call(service, call, request, response)
       try:
-        stub.MakeSyncCall(service, call, request, response)
+        returned_response = stub.MakeSyncCall(service, call, request, response)
       except Exception, err:
         self.__postcall_hooks.Call(service, call, request, response, None, err)
         raise
       else:
-        self.__postcall_hooks.Call(service, call, request, response)
+        self.__postcall_hooks.Call(service, call, request,
+                                   returned_response or response)
+        return returned_response
 
 
 class UserRPC(object):
@@ -456,11 +470,20 @@ class UserRPC(object):
     are called.
     """
     self.wait()
-    self.__rpc.CheckSuccess()
-    if not self.__postcall_hooks_called:
-      self.__postcall_hooks_called = True
-      apiproxy.GetPostCallHooks().Call(self.__service, self.__method,
-                                       self.request, self.response, self.__rpc)
+    try:
+      self.__rpc.CheckSuccess()
+    except Exception, err:
+      if not self.__postcall_hooks_called:
+        self.__postcall_hooks_called = True
+        apiproxy.GetPostCallHooks().Call(self.__service, self.__method,
+                                         self.request, self.response,
+                                         self.__rpc, err)
+      raise
+    else:
+      if not self.__postcall_hooks_called:
+        self.__postcall_hooks_called = True
+        apiproxy.GetPostCallHooks().Call(self.__service, self.__method,
+                                         self.request, self.response, self.__rpc)
 
   def get_result(self):
     """Get the result of the RPC, or possibly raise an exception.

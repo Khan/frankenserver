@@ -68,6 +68,9 @@ LOGIN_OPTIONAL = 'optional'
 LOGIN_REQUIRED = 'required'
 LOGIN_ADMIN = 'admin'
 
+AUTH_FAIL_ACTION_REDIRECT = 'redirect'
+AUTH_FAIL_ACTION_UNAUTHORIZED = 'unauthorized'
+
 SECURE_HTTP = 'never'
 SECURE_HTTPS = 'always'
 SECURE_HTTP_OR_HTTPS = 'optional'
@@ -88,6 +91,7 @@ DEFAULT_SKIP_FILES = (r'^(.*/)?('
                       r')$')
 
 LOGIN = 'login'
+AUTH_FAIL_ACTION = 'auth_fail_action'
 SECURE = 'secure'
 URL = 'url'
 STATIC_FILES = 'static_files'
@@ -105,6 +109,8 @@ HANDLERS = 'handlers'
 DEFAULT_EXPIRATION = 'default_expiration'
 SKIP_FILES = 'skip_files'
 SERVICES = 'inbound_services'
+DERIVED_FILE_TYPE = 'derived_file_type'
+JAVA_PRECOMPILED = 'java_precompiled'
 
 
 class URLMap(validation.Validated):
@@ -186,6 +192,10 @@ class URLMap(validation.Validated):
                                 LOGIN_ADMIN,
                                 default=LOGIN_OPTIONAL),
 
+      AUTH_FAIL_ACTION: validation.Options(AUTH_FAIL_ACTION_REDIRECT,
+                                           AUTH_FAIL_ACTION_UNAUTHORIZED,
+                                           default=AUTH_FAIL_ACTION_REDIRECT),
+
       SECURE: validation.Options(SECURE_HTTP,
                                  SECURE_HTTPS,
                                  SECURE_HTTP_OR_HTTPS,
@@ -210,7 +220,7 @@ class URLMap(validation.Validated):
       REQUIRE_MATCHING_FILE: validation.Optional(bool),
   }
 
-  COMMON_FIELDS = set([URL, LOGIN, SECURE])
+  COMMON_FIELDS = set([URL, LOGIN, AUTH_FAIL_ACTION, SECURE])
 
   ALLOWED_FIELDS = {
       HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION,
@@ -325,7 +335,9 @@ class AppInfoExternal(validation.Validated):
       SERVICES: validation.Optional(validation.Repeated(
           validation.Regex(_SERVICE_RE_STRING))),
       DEFAULT_EXPIRATION: validation.Optional(_EXPIRATION_REGEX),
-      SKIP_FILES: validation.RegexStr(default=DEFAULT_SKIP_FILES)
+      SKIP_FILES: validation.RegexStr(default=DEFAULT_SKIP_FILES),
+      DERIVED_FILE_TYPE: validation.Optional(validation.Repeated(
+          validation.Options(JAVA_PRECOMPILED)))
   }
 
   def CheckInitialized(self):

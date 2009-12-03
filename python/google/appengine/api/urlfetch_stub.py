@@ -117,11 +117,11 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       deadline = request.deadline()
 
     self._RetrieveURL(request.url(), payload, method,
-                      request.header_list(), response,
+                      request.header_list(), request, response,
                       follow_redirects=request.followredirects(),
                       deadline=deadline)
 
-  def _RetrieveURL(self, url, payload, method, headers, response,
+  def _RetrieveURL(self, url, payload, method, headers, request, response,
                    follow_redirects=True, deadline=_API_CALL_DEADLINE):
     """Retrieves a URL.
 
@@ -130,7 +130,8 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       payload: Request payload to send, if any; None if no payload.
       method: HTTP method to use (e.g., 'GET')
       headers: List of additional header objects to use for the request.
-      response: Response object
+      request: Request object from original request.
+      response: Response object to populate with the response data.
       follow_redirects: optional setting (defaulting to True) for whether or not
         we should transparently follow redirects (up to MAX_REDIRECTS)
       deadline: Number of seconds to wait for the urlfetch to finish.
@@ -247,6 +248,9 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
         if len(http_response_data) > MAX_RESPONSE_SIZE:
           response.set_contentwastruncated(True)
+
+        if request.url() != url:
+          response.set_finalurl(url)
 
         break
     else:

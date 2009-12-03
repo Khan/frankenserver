@@ -141,7 +141,7 @@
               {% endif %}
             </td>
             {% for attribute in entity.attributes %}
-              <td onclick="location.href='{{ entity.edit_uri|escape }}&amp;focus={{ attribute.name|urlencode }}'">{{ attribute.short_value|truncatewords:20|escape }}</td>
+              <td onclick="location.href='{{ entity.edit_uri|escape }}&amp;focus={{ attribute.name|urlencode }}'">{{ attribute.short_value|truncatewords:20|escape }}{{ attribute.additional_html|safe }}</td>
             {% endfor %}
           </tr>
         {% endfor %}

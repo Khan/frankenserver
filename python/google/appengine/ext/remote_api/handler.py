@@ -98,6 +98,8 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
     We handle RunQuery by executing a Query and a Next and returning the result
     of the Next request.
+
+    This method is DEPRECATED, but left in place for older clients.
     """
     runquery_response = datastore_pb.QueryResult()
     self.__call('datastore_v3', 'RunQuery', request, runquery_response)
@@ -188,6 +190,11 @@ SERVICE_PB_MAP = {
         'GetIndices': (api_base_pb.StringProto, datastore_pb.CompositeIndices),
         'AllocateIds':(datastore_pb.AllocateIdsRequest,
                        datastore_pb.AllocateIdsResponse),
+        'GetSchema': (datastore_pb.GetSchemaRequest, datastore_pb.Schema),
+        'RunQuery':   (datastore_pb.Query,
+                       datastore_pb.QueryResult),
+        'RunCompiledQuery':(datastore_pb.RunCompiledQueryRequest,
+                            datastore_pb.QueryResult),
     },
     'images': {
         'Transform': (images_service_pb.ImagesTransformRequest,

@@ -559,13 +559,10 @@ class Queue(object):
       raise InvalidTaskNameError('Task bound to a transaction cannot be named.')
 
     call_tuple = ('taskqueue', 'Add', request, response)
-    apiproxy_stub_map.apiproxy.GetPreCallHooks().Call(*call_tuple)
     try:
       apiproxy_stub_map.MakeSyncCall(*call_tuple)
     except apiproxy_errors.ApplicationError, e:
       self.__TranslateError(e)
-    else:
-      apiproxy_stub_map.apiproxy.GetPostCallHooks().Call(*call_tuple)
 
     if response.has_chosen_task_name():
       task._Task__name = response.chosen_task_name()

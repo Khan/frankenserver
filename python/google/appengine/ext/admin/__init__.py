@@ -668,15 +668,19 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
       for key in keys:
         if entity.has_key(key):
           raw_value = entity[key]
-          value = DataType.get(raw_value).format(raw_value)
-          short_value = DataType.get(raw_value).short_format(raw_value)
+          data_type = DataType.get(raw_value)
+          value = data_type.format(raw_value)
+          short_value = data_type.short_format(raw_value)
+          additional_html = data_type.additional_short_value_html(raw_value)
         else:
           value = ''
           short_value = ''
+          additional_html = ''
         attributes.append({
           'name': key,
           'value': value,
           'short_value': short_value,
+          'additional_html': additional_html,
         })
       entities.append({
         'key': str(entity.key()),
@@ -782,8 +786,19 @@ class DatastoreEditHandler(DatastoreRequestHandler):
   PATH = DatastoreQueryHandler.PATH + '/edit'
 
   def get(self):
-    kind = self.request.get('kind')
-    sample_entities = self.execute_query()[0]
+    entity_key = self.request.get('key')
+    if entity_key:
+      key_instance = datastore.Key(entity_key)
+      entity_key_name = key_instance.name()
+      entity_key_id = key_instance.id()
+      parent_key = key_instance.parent()
+      kind = key_instance.kind()
+      entity = datastore.Get(key_instance)
+      sample_entities = [entity]
+    else:
+      kind = self.request.get('kind')
+      sample_entities = self.execute_query()[0]
+
     if len(sample_entities) < 1:
       next_uri = self.request.get('next')
       kind_param = 'kind=%s' % kind
@@ -795,14 +810,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
       self.redirect(next_uri)
       return
 
-    entity_key = self.request.get('key')
-    if entity_key:
-      key_instance = datastore.Key(entity_key)
-      entity_key_name = key_instance.name()
-      entity_key_id = key_instance.id()
-      parent_key = key_instance.parent()
-      entity = datastore.Get(key_instance)
-    else:
+    if not entity_key:
       key_instance = None
       entity_key_name = None
       entity_key_id = None
@@ -811,8 +819,10 @@ class DatastoreEditHandler(DatastoreRequestHandler):
 
     if parent_key:
       parent_kind = parent_key.kind()
+      parent_key_string = PseudoBreadcrumbs(parent_key)
     else:
       parent_kind = None
+      parent_key_string = None
 
     fields = []
     key_values = self.get_key_values(sample_entities)
@@ -839,6 +849,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
       'next': self.request.get('next'),
       'parent_key': parent_key,
       'parent_kind': parent_kind,
+      'parent_key_string': parent_key_string,
     })
 
   def post(self):
@@ -916,6 +927,9 @@ class DataType(object):
 
   def input_field_size(self):
     return 30
+
+  def additional_short_value_html(self, unused_value):
+    return ''
 
 
 class StringType(DataType):
@@ -1096,6 +1110,7 @@ class UserType(DataType):
   def input_field_size(self):
     return 15
 
+
 class ReferenceType(DataType):
   def name(self):
     return 'Key'
@@ -1109,8 +1124,26 @@ class ReferenceType(DataType):
   def python_type(self):
     return datastore_types.Key
 
+  def input_field(self, name, value, sample_values):
+    if value is not None:
+      string_value = self.format(value)
+    else:
+      string_value = ''
+    html = '<input class="%s" name="%s" type="text" size="%d" value="%s"/>' % (cgi.escape(self.name()), cgi.escape(name), self.input_field_size(),
+            cgi.escape(string_value, True))
+    if value:
+      html += '<br><a href="?key=%s">%s</a>' % (cgi.escape(string_value, True),
+           cgi.escape(PseudoBreadcrumbs(value), True))
+    return html
+
   def input_field_size(self):
     return 85
+
+  def additional_short_value_html(self, value):
+    if not value:
+      return ''
+    return '<br><a href="./datastore/edit?key=%s">%s</a>' % (cgi.escape(str(value), True),
+         cgi.escape(PseudoBreadcrumbs(value), True))
 
 
 class EmailType(StringType):
@@ -1262,6 +1295,31 @@ def _ParseCronYaml():
     finally:
       fh.close()
   return None
+
+
+def PseudoBreadcrumbs(key):
+  """Return a string that looks like the breadcrumbs (for key properties).
+
+  Args:
+    key: A datastore_types.Key object.
+
+  Returns:
+    A string looking like breadcrumbs.
+  """
+  path = key.to_path()
+  parts = []
+  for i in range(0, len(path)//2):
+    kind = path[i*2]
+    if isinstance(kind, unicode):
+      kind = kind.encode('utf8')
+    value = path[i*2 + 1]
+    if isinstance(value, (int, long)):
+      parts.append('%s: id=%d' % (kind, value))
+    else:
+      if isinstance(value, unicode):
+        value = value.encode('utf8')
+      parts.append('%s: name=%s' % (kind, value))
+  return ' > '.join(parts)
 
 
 def main():

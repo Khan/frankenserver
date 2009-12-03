@@ -28,16 +28,6 @@ from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
-from google.appengine.datastore import entity_pb
-
-
-_DIRECTION_MAP = {
-    'asc':        entity_pb.Index_Property.ASCENDING,
-    'ascending':  entity_pb.Index_Property.ASCENDING,
-    'desc':       entity_pb.Index_Property.DESCENDING,
-    'descending': entity_pb.Index_Property.DESCENDING,
-    }
-
 
 def GetSchema(_app=None, properties=True, start_kind=None, end_kind=None):
   """Infers an app's schema from the entities in the datastore.
@@ -136,78 +126,4 @@ def _Call(call, req, resp):
     raise datastore._ToDatastoreError(err)
 
 
-def IndexDefinitionToProto(app_id, index_definition):
-  """Transform individual Index definition to protocol buffer.
 
-  Args:
-    app_id: Application id for new protocol buffer CompositeIndex.
-    index_definition: datastore_index.Index object to transform.
-
-  Returns:
-    New entity_pb.CompositeIndex with default values set and index
-    information filled in.
-  """
-  proto = entity_pb.CompositeIndex()
-
-  proto.set_app_id(app_id)
-  proto.set_id(0)
-  proto.set_state(entity_pb.CompositeIndex.WRITE_ONLY)
-
-  definition_proto = proto.mutable_definition()
-  definition_proto.set_entity_type(index_definition.kind)
-  definition_proto.set_ancestor(index_definition.ancestor)
-
-  if index_definition.properties is not None:
-    for prop in index_definition.properties:
-      prop_proto = definition_proto.add_property()
-      prop_proto.set_name(prop.name)
-      prop_proto.set_direction(_DIRECTION_MAP[prop.direction])
-
-  return proto
-
-
-def IndexDefinitionsToProtos(app_id, index_definitions):
-  """Transform multiple index definitions to composite index records
-
-  Args:
-    app_id: Application id for new protocol buffer CompositeIndex.
-    index_definition: A list of datastore_index.Index objects to transform.
-
-  Returns:
-    A list of tranformed entity_pb.Compositeindex entities with default values
-    set and index information filled in.
-  """
-  return [IndexDefinitionToProto(app_id, index)
-          for index in index_definitions]
-
-
-def ProtoToIndexDefinition(proto):
-  """Transform individual index protocol buffer to index definition.
-
-  Args:
-    proto: An instance of entity_pb.CompositeIndex to transform.
-
-  Returns:
-    A new instance of datastore_index.Index.
-  """
-  properties = []
-  proto_index = proto.definition()
-  for prop_proto in proto_index.property_list():
-    prop_definition = datastore_index.Property(name=prop_proto.name())
-    if prop_proto.direction() == entity_pb.Index_Property.DESCENDING:
-      prop_definition.direction = 'descending'
-    properties.append(prop_definition)
-
-  index = datastore_index.Index(kind=proto_index.entity_type(),
-                                properties=properties)
-  if proto_index.ancestor():
-    index.ancestor = True
-  return index
-
-def ProtosToIndexDefinitions(protos):
-  """Transform multiple index protocol buffers to index definitions.
-
-  Args:
-    A list of entity_pb.Index records.
-  """
-  return [ProtoToIndexDefinition(definition) for definition in protos]
