@@ -41,6 +41,7 @@ OTHER_ERROR       =  7
 OVER_QUOTA        =  8
 REQUEST_TOO_LARGE =  9
 CAPABILITY_DISABLED = 10
+FEATURE_DISABLED = 10
 
 _ExceptionsMap = {
   RPC_FAILED:
@@ -67,6 +68,9 @@ _ExceptionsMap = {
   REQUEST_TOO_LARGE:
   (apiproxy_errors.RequestTooLargeError,
   "The request to API call %s.%s() was too large."),
+
+
+
 
 
 
@@ -144,6 +148,9 @@ class RPC(apiproxy_rpc.RPC):
         self.__exception = apiproxy_errors.CapabilityDisabledError(
             "The API call %s.%s() is temporarily unavailable." % (
             self.package, self.call))
+    elif self.__result_dict['error'] == FEATURE_DISABLED:
+      self.__exception = apiproxy_errors.FeatureNotEnabledError(
+            self.__result_dict['error_detail'])
     elif self.__result_dict['error'] in _ExceptionsMap:
       exception_entry = _ExceptionsMap[self.__result_dict['error']]
       self.__exception = exception_entry[0](

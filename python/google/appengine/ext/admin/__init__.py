@@ -937,6 +937,8 @@ class StringType(DataType):
     return value
 
   def input_field(self, name, value, sample_values):
+    value = str(value)
+    sample_values = [str(s) for s in sample_values]
     multiline = False
     if value:
       multiline = len(value) > 255 or value.find('\n') >= 0
@@ -1247,6 +1249,18 @@ class NoneType(DataType):
   def format(self, value):
     return 'None'
 
+
+class BlobKeyType(StringType):
+  def name(self):
+    return 'BlobKey'
+
+  def parse(self, value):
+    return datastore_types.BlobKey(value)
+
+  def python_type(self):
+    return datastore_types.BlobKey
+
+
 _DATA_TYPES = {
   types.NoneType: NoneType(),
   types.StringType: StringType(),
@@ -1269,6 +1283,7 @@ _DATA_TYPES = {
   datastore_types.PhoneNumber: PhoneNumberType(),
   datastore_types.PostalAddress: PostalAddressType(),
   datastore_types.Rating: RatingType(),
+  datastore_types.BlobKey: BlobKeyType(),
 }
 
 _NAMED_DATA_TYPES = {}

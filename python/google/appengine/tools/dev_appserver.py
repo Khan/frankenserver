@@ -84,6 +84,7 @@ from google.pyglib import gexcept
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import appinfo
+from google.appengine.api import blobstore
 from google.appengine.api import croninfo
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_file_stub
@@ -92,6 +93,8 @@ from google.appengine.api import mail_stub
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api import yaml_errors
+from google.appengine.api.blobstore import blobstore_stub
+from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.labs.taskqueue import taskqueue_stub
 from google.appengine.api.memcache import memcache_stub
@@ -99,8 +102,10 @@ from google.appengine.api.xmpp import xmpp_service_stub
 
 from google.appengine import dist
 
+from google.appengine.tools import dev_appserver_blobstore
 from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
+from google.appengine.tools import dev_appserver_upload
 
 
 PYTHON_LIB_VAR = '$PYTHON_LIB'
@@ -216,14 +221,86 @@ def CopyStreamPart(source, destination, content_size):
   return bytes_copied
 
 
-class URLDispatcher(object):
-  """Base-class for handling HTTP requests."""
+class AppServerRequest(object):
+  """Encapsulates app-server request.
 
-  def Dispatch(self,
+  Object used to hold a full appserver request.  Used as a container that is
+  passed through the request forward chain and ultimately sent to the
+  URLDispatcher instances.
+
+  Attributes:
+    relative_url: String containing the URL accessed.
+    path: Local path of the resource that was matched; back-references will be
+      replaced by values matched in the relative_url. Path may be relative
+      or absolute, depending on the resource being served (e.g., static files
+      will have an absolute path; scripts will be relative).
+    headers: Instance of mimetools.Message with headers from the request.
+    infile: File-like object with input data from the request.
+    force_admin: Allow request admin-only URLs to proceed regardless of whether
+      user is logged in or is an admin.
+  """
+
+  ATTRIBUTES = ['relative_url',
+                'path',
+                'headers',
+                'infile',
+                'force_admin',
+               ]
+
+  def __init__(self,
                relative_url,
                path,
                headers,
                infile,
+               force_admin=False):
+    """Constructor.
+
+    Args:
+      relative_url: Mapped directly to attribute.
+      path: Mapped directly to attribute.
+      headers: Mapped directly to attribute.
+      infile: Mapped directly to attribute.
+      force_admin: Mapped directly to attribute.
+    """
+    self.relative_url = relative_url
+    self.path = path
+    self.headers = headers
+    self.infile = infile
+    self.force_admin = force_admin
+
+  def __eq__(self, other):
+    """Used mainly for testing.
+
+    Returns:
+      True if all fields of both requests are equal, else False.
+    """
+    if type(self) == type(other):
+      for attribute in self.ATTRIBUTES:
+        if getattr(self, attribute) != getattr(other, attribute):
+          return False
+    return True
+
+  def __repr__(self):
+    """String representation of request.
+
+    Used mainly for testing.
+
+    Returns:
+      String representation of AppServerRequest.  Strings of different
+      request objects that have the same values for all fields compare
+      as equal.
+    """
+    results = []
+    for attribute in self.ATTRUBUTES:
+      results.append('%s: %s' % (attributes, getattr(self, attributes)))
+    return '<AppServerRequest %s>' % ' '.join(results)
+
+
+class URLDispatcher(object):
+  """Base-class for handling HTTP requests."""
+
+  def Dispatch(self,
+               request,
                outfile,
                base_env_dict=None):
     """Dispatch and handle an HTTP request.
@@ -233,23 +310,14 @@ class URLDispatcher(object):
       SERVER_PROTOCOL, SERVER_PORT
 
     Args:
-      relative_url: String containing the URL accessed.
-      path: Local path of the resource that was matched; back-references will be
-        replaced by values matched in the relative_url. Path may be relative
-        or absolute, depending on the resource being served (e.g., static files
-        will have an absolute path; scripts will be relative).
-      headers: Instance of mimetools.Message with headers from the request.
-      infile: File-like object with input data from the request.
+      request: AppServerRequest instance.
       outfile: File-like object where output data should be written.
       base_env_dict: Dictionary of CGI environment parameters if available.
         Defaults to None.
 
     Returns:
       None if request handling is complete.
-      Tuple (path, headers, input_file) for an internal redirect:
-        path: Path of URL to redirect to.
-        headers: Headers to send to other dispatcher.
-        input_file: New input to send to new dispatcher.
+      A new AppServerRequest instance if internal redirect is required.
     """
     raise NotImplementedError
 
@@ -397,10 +465,7 @@ class MatcherDispatcher(URLDispatcher):
     self._login_redirect = login_redirect
 
   def Dispatch(self,
-               relative_url,
-               path,
-               headers,
-               infile,
+               request,
                outfile,
                base_env_dict=None):
     """Dispatches a request to the first matching dispatcher.
@@ -408,53 +473,52 @@ class MatcherDispatcher(URLDispatcher):
     Matchers are checked in the order they were supplied to the constructor.
     If no matcher matches, a 404 error will be written to the outfile. The
     path variable supplied to this method is ignored.
+
+    The value of request.path is ignored.
     """
-    cookies = ', '.join(headers.getheaders('cookie'))
+    cookies = ', '.join(request.headers.getheaders('cookie'))
     email_addr, admin, user_id = self._get_user_info(cookies)
 
     for matcher in self._url_matchers:
-      dispatcher, matched_path, requires_login, admin_only, auth_fail_action = matcher.Match(relative_url)
+      dispatcher, matched_path, requires_login, admin_only, auth_fail_action = matcher.Match(request.relative_url)
       if dispatcher is None:
         continue
 
       logging.debug('Matched "%s" to %s with path %s',
-                    relative_url, dispatcher, matched_path)
+                    request.relative_url, dispatcher, matched_path)
 
-      if (requires_login or admin_only) and not email_addr:
+      if ((requires_login or admin_only) and
+          not email_addr and
+          not request.force_admin):
         logging.debug('Login required, redirecting user')
         if auth_fail_action == appinfo.AUTH_FAIL_ACTION_REDIRECT:
           self._login_redirect(self._login_url,
                                base_env_dict['SERVER_NAME'],
                                base_env_dict['SERVER_PORT'],
-                               relative_url,
+                               request.relative_url,
                                outfile)
         elif auth_fail_action == appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED:
           outfile.write('Status: %d Not authorized\r\n'
                         '\r\n'
                         'Login required to view page.'
                         % (httplib.UNAUTHORIZED))
-      elif admin_only and not admin:
+      elif admin_only and not admin and not request.force_admin:
         outfile.write('Status: %d Not authorized\r\n'
                       '\r\n'
                       'Current logged in user %s is not '
                       'authorized to view this page.'
                       % (httplib.FORBIDDEN, email_addr))
       else:
-        forward = dispatcher.Dispatch(relative_url,
-                                      matched_path,
-                                      headers,
-                                      infile,
-                                      outfile,
-                                      base_env_dict=base_env_dict)
+        request.path = matched_path
+        forward_request = dispatcher.Dispatch(request,
+                                              outfile,
+                                              base_env_dict=base_env_dict)
 
-        if forward:
-          new_path, new_headers, new_input = forward
-          logging.info('Internal redirection to %s', new_path)
+        if forward_request:
+          logging.info('Internal redirection to %s',
+                       forward_request.relative_url)
           new_outfile = cStringIO.StringIO()
-          self.Dispatch(new_path,
-                        None,
-                        new_headers,
-                        new_input,
+          self.Dispatch(forward_request,
                         new_outfile,
                         dict(base_env_dict))
           new_outfile.seek(0)
@@ -466,7 +530,7 @@ class MatcherDispatcher(URLDispatcher):
                   '\r\n'
                   'Not found error: %s did not match any patterns '
                   'in application configuration.'
-                  % (httplib.NOT_FOUND, relative_url))
+                  % (httplib.NOT_FOUND, request.relative_url))
 
 
 
@@ -2282,19 +2346,16 @@ class CGIDispatcher(URLDispatcher):
     self._create_logging_handler = create_logging_handler
 
   def Dispatch(self,
-               relative_url,
-               path,
-               headers,
-               infile,
+               request,
                outfile,
                base_env_dict=None):
     """Dispatches the Python CGI."""
-    request_size = int(headers.get('content-length', 0))
+    request_size = int(request.headers.get('content-length', 0))
     if not CheckRequestSize(request_size, outfile):
       return
 
     memory_file = cStringIO.StringIO()
-    CopyStreamPart(infile, memory_file, request_size)
+    CopyStreamPart(request.infile, memory_file, request_size)
     memory_file.seek(0)
 
     handler = self._create_logging_handler()
@@ -2304,16 +2365,19 @@ class CGIDispatcher(URLDispatcher):
       env = {}
       if base_env_dict:
         env.update(base_env_dict)
-      cgi_path = self._path_adjuster.AdjustPath(path)
-      env.update(self._setup_env(cgi_path, relative_url, headers, memory_file))
+      cgi_path = self._path_adjuster.AdjustPath(request.path)
+      env.update(self._setup_env(cgi_path,
+                                 request.relative_url,
+                                 request.headers,
+                                 memory_file))
       self._exec_cgi(self._root_path,
-                     path,
+                     request.path,
                      cgi_path,
                      env,
                      memory_file,
                      outfile,
                      self._module_dict)
-      handler.AddDebuggingConsole(relative_url, env, outfile)
+      handler.AddDebuggingConsole(request.relative_url, env, outfile)
     finally:
       logging.root.level = before_level
       logging.getLogger().removeHandler(handler)
@@ -2573,17 +2637,14 @@ class FileDispatcher(URLDispatcher):
     self._read_data_file = read_data_file
 
   def Dispatch(self,
-               relative_url,
-               path,
-               headers,
-               infile,
+               request,
                outfile,
                base_env_dict=None):
     """Reads the file and returns the response status and data."""
-    full_path = self._path_adjuster.AdjustPath(path)
+    full_path = self._path_adjuster.AdjustPath(request.path)
     status, data = self._read_data_file(full_path)
-    content_type = self._static_file_config_matcher.GetMimeType(path)
-    expiration = self._static_file_config_matcher.GetExpiration(path)
+    content_type = self._static_file_config_matcher.GetMimeType(request.path)
+    expiration = self._static_file_config_matcher.GetExpiration(request.path)
 
     outfile.write('Status: %d\r\n' % status)
     outfile.write('Content-type: %s\r\n' % content_type)
@@ -2602,7 +2663,7 @@ class FileDispatcher(URLDispatcher):
 
 _IGNORE_RESPONSE_HEADERS = frozenset([
     'content-encoding', 'accept-encoding', 'transfer-encoding',
-    'server', 'date',
+    'server', 'date', blobstore.BLOB_KEY_HEADER
     ])
 
 
@@ -2782,11 +2843,14 @@ def CreateResponseRewritersChain():
   Returns:
     List of response rewriters.
   """
-  return [IgnoreHeadersRewriter,
-          ParseStatusRewriter,
-          CacheRewriter,
-          ContentLengthRewriter,
-         ]
+  rewriters = [dev_appserver_blobstore.DownloadRewriter,
+               IgnoreHeadersRewriter,
+               ParseStatusRewriter,
+               CacheRewriter,
+               ContentLengthRewriter,
+              ]
+  return rewriters
+
 
 
 def RewriteResponse(response_file, response_rewriters=None):
@@ -3047,10 +3111,11 @@ def CreateRequestHandler(root_path,
 
         request_file = open(request_file_name, 'rb')
         try:
-          dispatcher.Dispatch(self.path,
-                              None,
-                              self.headers,
-                              request_file,
+          app_server_request = AppServerRequest(self.path,
+                                                None,
+                                                self.headers,
+                                                request_file)
+          dispatcher.Dispatch(app_server_request,
                               outfile,
                               base_env_dict=env_dict)
         finally:
@@ -3142,7 +3207,7 @@ def CreateRequestHandler(root_path,
         msg = '%s:\n%s' % (title, str(e))
         logging.error(msg)
         self.send_response(httplib.INTERNAL_SERVER_ERROR, title)
-        self.wfile.write('Content-Type: text/html\n\n')
+        self.wfile.write('Content-Type: text/html\r\n\r\n')
         self.wfile.write('<pre>%s</pre>' % cgi.escape(msg))
       except:
         msg = 'Exception encountered handling request'
@@ -3414,6 +3479,7 @@ def SetupStubs(app_id, **config):
     root_path: Root path to the directory of the application which should
         contain the app.yaml, indexes.yaml, and queues.yaml files.
     login_url: Relative URL which should be used for handling user login/logout.
+    blobstore_path: Path to the directory to store Blobstore blobs in.
     datastore_path: Path to the file to store Datastore file stub data in.
     history_path: DEPRECATED, No-op.
     clear_datastore: If the datastore should be cleared on startup.
@@ -3430,6 +3496,7 @@ def SetupStubs(app_id, **config):
   """
   root_path = config.get('root_path', None)
   login_url = config['login_url']
+  blobstore_path = config['blobstore_path']
   datastore_path = config['datastore_path']
   clear_datastore = config['clear_datastore']
   require_indexes = config.get('require_indexes', False)
@@ -3514,13 +3581,20 @@ def SetupStubs(app_id, **config):
         'images',
         images_not_implemented_stub.ImagesNotImplementedServiceStub())
 
+  blob_storage = file_blob_storage.FileBlobStorage(blobstore_path, app_id)
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'blobstore',
+      blobstore_stub.BlobstoreServiceStub(blob_storage))
 
-def CreateImplicitMatcher(module_dict,
-                          root_path,
-                          login_url,
-                          create_path_adjuster=PathAdjuster,
-                          create_local_dispatcher=LocalCGIDispatcher,
-                          create_cgi_dispatcher=CGIDispatcher):
+
+def CreateImplicitMatcher(
+    module_dict,
+    root_path,
+    login_url,
+    create_path_adjuster=PathAdjuster,
+    create_local_dispatcher=LocalCGIDispatcher,
+    create_cgi_dispatcher=CGIDispatcher,
+    get_blob_storage=dev_appserver_blobstore.GetBlobStorage):
   """Creates a URLMatcher instance that handles internal URLs.
 
   Used to facilitate handling user login/logout, debugging, info about the
@@ -3533,6 +3607,7 @@ def CreateImplicitMatcher(module_dict,
     create_path_adjuster: Used for dependedency injection.
     create_local_dispatcher: Used for dependency injection.
     create_cgi_dispatcher: Used for dependedency injection.
+    get_blob_storage: Used for dependency injection.
 
   Returns:
     Instance of URLMatcher with appropriate dispatchers.
@@ -3557,6 +3632,16 @@ def CreateImplicitMatcher(module_dict,
                      False,
                      False,
                      appinfo.AUTH_FAIL_ACTION_REDIRECT)
+
+  upload_dispatcher = dev_appserver_blobstore.CreateUploadDispatcher(
+      get_blob_storage)
+
+  url_matcher.AddURL(dev_appserver_blobstore.UPLOAD_URL_PATTERN,
+                     upload_dispatcher,
+                     '',
+                     False,
+                     False,
+                     appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED)
 
   return url_matcher
 

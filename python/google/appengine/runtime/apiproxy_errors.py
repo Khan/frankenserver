@@ -65,6 +65,9 @@ class RequestTooLargeError(Error):
 class CapabilityDisabledError(Error):
   """Raised by APIProxy when API calls are temporarily disabled."""
 
+class FeatureNotEnabledError(Error):
+  """Raised by APIProxy when the app must enable a feature to use this call."""
+
 class InterruptedError(Error):
   """Raised by APIProxy.Wait() when the wait is interrupted by an uncaught
   exception from some callback, not necessarily associated with the RPC in

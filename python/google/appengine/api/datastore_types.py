@@ -109,6 +109,7 @@ def ValidateString(value,
   if len(value.encode('utf-8')) > max_len:
     raise exception('%s must be under %d bytes.' % (name, max_len))
 
+
 def ValidateInteger(value,
                    name='unused',
                    exception=datastore_errors.BadValueError,
@@ -138,6 +139,7 @@ def ValidateInteger(value,
     raise exception('%s must not be 0 (zero)' % name)
   if value < 0 and not negative_ok:
     raise exception('%s must not be negative.' % name)
+
 
 def ResolveAppId(app, name='_app'):
   """Validate app id, providing a default.
@@ -270,6 +272,7 @@ def parse_app_id_namespace(app_id_namespace):
   if parts[2]:
     return AppIdNamespace(parts[0], parts[2])
   return AppIdNamespace(parts[0], None)
+
 
 def ResolveAppIdNamespace(
     app_id=None, namespace=None, app_id_namespace=None):
@@ -1131,9 +1134,7 @@ class BlobKey(object):
 
   This object wraps a string that gets used internally by the Blobstore API
   to identify application blobs.  The BlobKey corresponds to the entity name
-  of the underlying BlobReference entity.  The structure of the key is:
-
-    _<blob-key>
+  of the underlying BlobReference entity.
 
   This class is exposed in the API in both google.appengine.ext.db and
   google.appengine.ext.blobstore.
@@ -1148,6 +1149,7 @@ class BlobKey(object):
     Args:
       blob_key:  Key name of BlobReference that this key belongs to.
     """
+    ValidateString(blob_key, 'blob-key')
     self.__blob_key = blob_key
 
   def __str__(self):
@@ -1163,10 +1165,7 @@ class BlobKey(object):
     Returns:
       string
     """
-    s = type(self).__module__
-    return '%s.%s(%r)' % (type(self).__module__,
-                       type(self).__name__,
-                       self.__blob_key)
+    return 'datastore_types.%s(%r)' % (type(self).__name__, self.__blob_key)
 
   def __cmp__(self, other):
     if type(other) is type(self):
@@ -1329,7 +1328,7 @@ _VALIDATE_PROPERTY_VALUES = {
   type(None): ValidatePropertyNothing,
   unicode: ValidatePropertyString,
   users.User: ValidatePropertyNothing,
-  BlobKey: ValidatePropertyString,
+  BlobKey: ValidatePropertyNothing,
 }
 
 assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES

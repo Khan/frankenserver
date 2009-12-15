@@ -31,6 +31,11 @@ except ImportError:
   import Image
 
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import blobstore
+from google.appengine.api import datastore
+from google.appengine.api import datastore_errors
+from google.appengine.api import datastore_types
 from google.appengine.api import images
 from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
@@ -55,7 +60,7 @@ def _ArgbToRgbaTuple(argb):
 class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
-  def __init__(self, service_name='images'):
+  def __init__(self, service_name="images"):
     """Preloads PIL to load all modules in the unhardened environment.
 
     Args:
@@ -93,7 +98,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
     for image in request.image_list():
-      sources.append(self._OpenImage(image.content()))
+      sources.append(self._OpenImageData(image))
 
     for options in request.options_list():
       if (options.anchor() < images.TOP_LEFT or
@@ -127,7 +132,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       request: ImagesHistogramRequest, contains the image.
       response: ImagesHistogramResponse, contains histogram of the image.
     """
-    image = self._OpenImage(request.image().content())
+    image = self._OpenImageData(request.image())
     img_format = image.format
     if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
       raise apiproxy_errors.ApplicationError(
@@ -158,7 +163,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       request: ImagesTransformRequest, contains image request info.
       response: ImagesTransformResponse, contains transformed image.
     """
-    original_image = self._OpenImage(request.image().content())
+    original_image = self._OpenImageData(request.image())
 
     new_image = self._ProcessTransforms(original_image,
                                         request.transform_list())
@@ -189,6 +194,36 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     return image_string.getvalue()
 
+  def _OpenImageData(self, image_data):
+    """Open image data from ImageData protocol buffer.
+
+    Args:
+      image_data: ImageData protocol buffer containing image data or blob
+        reference.
+
+    Returns:
+      Image containing the image data passed in or reference by blob-key.
+
+    Raises:
+      ApplicationError if both content and blob-key are provided.
+      NOTE: 'content' must always be set because it is a required field,
+      however, it must be the empty string when a blob-key is provided.
+    """
+    if image_data.content() and image_data.has_blob_key():
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.INVALID_BLOB_KEY)
+
+    if image_data.has_blob_key():
+      image = self._OpenBlob(image_data.blob_key())
+    else:
+      image = self._OpenImage(image_data.content())
+
+    img_format = image.format
+    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.NOT_IMAGE)
+    return image
+
   def _OpenImage(self, image):
     """Opens an image provided as a string.
 
@@ -208,16 +243,36 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     image = StringIO.StringIO(image)
     try:
-      image = Image.open(image)
+      return Image.open(image)
     except IOError:
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
 
-    img_format = image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+  def _OpenBlob(self, blob_key):
+    key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND, blob_key)
+    try:
+      datastore.Get(key)
+    except datastore_errors.Error:
+      logging.exception('Blob with key %r does not exist', blob_key)
       raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.NOT_IMAGE)
-    return image
+          images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR)
+
+    blobstore_stub = apiproxy_stub_map.apiproxy.GetStub("blobstore")
+
+    try:
+      blob_file = blobstore_stub.storage.OpenBlob(blob_key)
+    except IOError:
+      logging.exception('Could not get file for blob_key %r', blob_key)
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
+
+    try:
+      return Image.open(blob_file)
+    except IOError:
+      logging.exception('Could not open image %r for blob_key %r',
+                        blob_file, blob_key)
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
 
   def _ValidateCropArg(self, arg):
     """Check an argument for the Crop transform.
