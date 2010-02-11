@@ -49,8 +49,10 @@ try:
   from pytz import NonExistentTimeError
   from pytz import AmbiguousTimeError
 except ImportError:
+
   class NonExistentTimeError(Exception):
     pass
+
   class AmbiguousTimeError(Exception):
     pass
 
@@ -71,11 +73,12 @@ def GrocTimeSpecification(schedule):
 
   if parser.period_string:
     return IntervalTimeSpecification(parser.interval_mins,
-                                     parser.period_string)
+                                     parser.period_string,
+                                     parser.synchronized)
   else:
     return SpecificTimeSpecification(parser.ordinal_set, parser.weekday_set,
                                      parser.month_set,
-                                     None,
+                                     parser.monthday_set,
                                      parser.time_string)
 
 
@@ -115,18 +118,29 @@ class TimeSpecification(object):
 class IntervalTimeSpecification(TimeSpecification):
   """A time specification for a given interval.
 
-  An Interval type spec runs at the given fixed interval. It has two
+  An Interval type spec runs at the given fixed interval. It has three
   attributes:
-  period - the type of interval, either "hours" or "minutes"
+  period - the type of interval, either 'hours' or 'minutes'
   interval - the number of units of type period.
+  synchronized - whether to synchronize the times to be locked to a fixed
+      period (midnight).
   """
 
-  def __init__(self, interval, period):
+  def __init__(self, interval, period, synchronized=False):
     super(IntervalTimeSpecification, self).__init__()
     if interval < 1:
-      raise groc.GrocException("interval must be greater than zero")
+      raise groc.GrocException('interval must be greater than zero')
     self.interval = interval
     self.period = period
+    self.synchronized = synchronized
+    if self.period == HOURS:
+      self.seconds = self.interval * 3600
+    else:
+      self.seconds = self.interval * 60
+    if self.synchronized:
+      if (self.seconds > 86400) or ((86400 % self.seconds) != 0):
+        raise groc.GrocException('can only use synchronized for periods that'
+                                 ' divide evenly into 24 hours')
 
   def GetMatch(self, t):
     """Returns the next match after time 't'.
@@ -137,10 +151,13 @@ class IntervalTimeSpecification(TimeSpecification):
     Returns:
       a datetime object
     """
-    if self.period == HOURS:
-      return t + datetime.timedelta(hours=self.interval)
+    if not self.synchronized:
+      return t + datetime.timedelta(seconds=self.seconds)
     else:
-      return t + datetime.timedelta(minutes=self.interval)
+      daystart = t.replace(hour=0, minute=0, second=0, microsecond=0)
+      dayseconds = (t - daystart).seconds
+      delta = self.seconds - (dayseconds % self.seconds)
+      return t + datetime.timedelta(seconds=delta)
 
 
 class SpecificTimeSpecification(TimeSpecification):
@@ -148,7 +165,7 @@ class SpecificTimeSpecification(TimeSpecification):
 
   A Specific interval is more complex, but defines a certain time to run and
   the days that it should run. It has the following attributes:
-  time     - the time of day to run, as "HH:MM"
+  time     - the time of day to run, as 'HH:MM'
   ordinals - first, second, third &c, as a set of integers in 1..5
   months   - the months that this should run, as a set of integers in 1..12
   weekdays - the days of the week that this should run, as a set of integers,
@@ -159,10 +176,10 @@ class SpecificTimeSpecification(TimeSpecification):
 
   A specific time schedule can be quite complex. A schedule could look like
   this:
-  "1st,third sat,sun of jan,feb,mar 09:15"
+  '1st,third sat,sun of jan,feb,mar 09:15'
 
   In this case, ordinals would be {1,3}, weekdays {0,6}, months {1,2,3} and
-  time would be "09:15".
+  time would be '09:15'.
   """
 
   timezone = None
@@ -170,8 +187,8 @@ class SpecificTimeSpecification(TimeSpecification):
   def __init__(self, ordinals=None, weekdays=None, months=None, monthdays=None,
                timestr='00:00', timezone=None):
     super(SpecificTimeSpecification, self).__init__(self)
-    if weekdays is not None and monthdays is not None:
-      raise ValueError("can't supply both monthdays and weekdays")
+    if weekdays and monthdays:
+      raise ValueError('cannot supply both monthdays and weekdays')
     if ordinals is None:
       self.ordinals = set(range(1, 6))
     else:
@@ -187,22 +204,26 @@ class SpecificTimeSpecification(TimeSpecification):
     else:
       self.months = set(months)
 
-    if monthdays is None:
+    if not monthdays:
       self.monthdays = set()
     else:
+      if max(monthdays) > 31 or min(monthdays) < 1:
+        raise ValueError('invalid day of month')
       self.monthdays = set(monthdays)
     hourstr, minutestr = timestr.split(':')
     self.time = datetime.time(int(hourstr), int(minutestr))
     if timezone:
       if pytz is None:
-        raise ValueError("need pytz in order to specify a timezone")
+        raise ValueError('need pytz in order to specify a timezone')
       self.timezone = pytz.timezone(timezone)
 
   def _MatchingDays(self, year, month):
     """Returns matching days for the given year and month.
 
     For the given year and month, return the days that match this instance's
-    day specification, based on the ordinals and weekdays.
+    day specification, based on either (a) the ordinals and weekdays, or
+    (b) the explicitly specified monthdays.  If monthdays are specified,
+    dates that fall outside the range of the month will not be returned.
 
     Arguments:
       year: the year as an integer
@@ -211,8 +232,11 @@ class SpecificTimeSpecification(TimeSpecification):
     Returns:
       a list of matching days, as ints in range 1-31
     """
-    out_days = []
     start_day, last_day = calendar.monthrange(year, month)
+    if self.monthdays:
+      return sorted([day for day in self.monthdays if day <= last_day])
+
+    out_days = []
     start_day = (start_day + 1) % 7
     for ordinal in self.ordinals:
       for weekday in self.weekdays:
@@ -268,20 +292,15 @@ class SpecificTimeSpecification(TimeSpecification):
     while True:
       month, yearwraps = months.next()
       candidate_month = start_time.replace(day=1, month=month,
-                                     year=start_time.year + yearwraps)
+                                           year=start_time.year + yearwraps)
 
-      if self.monthdays:
-        _, last_day = calendar.monthrange(candidate_month.year,
-                                          candidate_month.month)
-        day_matches = sorted(x for x in self.monthdays if x <= last_day)
-      else:
-        day_matches = self._MatchingDays(candidate_month.year, month)
+      day_matches = self._MatchingDays(candidate_month.year, month)
 
       if ((candidate_month.year, candidate_month.month)
           == (start_time.year, start_time.month)):
         day_matches = [x for x in day_matches if x >= start_time.day]
         while (day_matches and day_matches[0] == start_time.day
-            and start_time.time() >= self.time):
+               and start_time.time() >= self.time):
           day_matches.pop(0)
       while day_matches:
         out = candidate_month.replace(day=day_matches[0], hour=self.time.hour,

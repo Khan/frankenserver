@@ -65,11 +65,19 @@ from google.appengine.runtime import apiproxy_errors
 from google.net.proto import ProtocolBuffer
 from google.appengine.datastore import entity_pb
 
+try:
+  __import__('google.appengine.api.labs.taskqueue.taskqueue_service_pb')
+  taskqueue_service_pb = sys.modules.get(
+      'google.appengine.api.labs.taskqueue.taskqueue_service_pb')
+except ImportError:
+  from google.appengine.api.taskqueue import taskqueue_service_pb
+
 warnings.filterwarnings('ignore', 'tempnam is a potential security risk')
 
 
 entity_pb.Reference.__hash__ = lambda self: hash(self.Encode())
 datastore_pb.Query.__hash__ = lambda self: hash(self.Encode())
+datastore_pb.Transaction.__hash__ = lambda self: hash(self.Encode())
 
 
 _MAXIMUM_RESULTS = 1000
@@ -85,6 +93,9 @@ _BATCH_SIZE = 20
 
 
 _MAX_ACTIONS_PER_TXN = 5
+
+
+_CURSOR_CONCAT_STR = '!CURSOR!'
 
 
 class _StoredEntity(object):
@@ -108,6 +119,7 @@ class _StoredEntity(object):
 
     self.native = datastore.Entity._FromPb(entity)
 
+
 class _Cursor(object):
   """A query cursor.
 
@@ -115,6 +127,7 @@ class _Cursor(object):
     cursor: the integer cursor
     count: the original total number of results
     keys_only: whether the query is keys_only
+    app: the app for which this cursor was created
 
   Class attributes:
     _next_cursor: the next cursor to allocate
@@ -125,102 +138,212 @@ class _Cursor(object):
   _next_cursor = 1
   _next_cursor_lock = threading.Lock()
 
-  def __init__(self, results, keys_only, limit=None):
+  def __init__(self, query, results, order_compare_entities):
     """Constructor.
 
     Args:
-      # the query results, in order, such that results[self.offset:] is
+      query: the query request proto
+      # the query results, in order, such that results[self.offset+1] is
       # the next result
-      results: list of entity_pb.EntityProto
-      keys_only: integer
-      limit: limit set on the original query used to track remaining results
+      results: list of datastore.Entity
+      order_compare_entities: a __cmp__ function for datastore.Entity that
+        follows sort order as specified by the query
     """
-    self.__results = results
-    self.count = len(results)
-    self.keys_only = keys_only
-    self._offset = 0
-    self._limit = limit
 
+    offset = 0
+    cursor_entity = None
+    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
+      (cursor_entity, inclusive) = self._DecodeCompiledCursor(
+          query, query.compiled_cursor())
+      offset += _Cursor._GetCursorOffset(results, cursor_entity, inclusive,
+                                         order_compare_entities)
+
+    if query.has_offset():
+      offset += query.offset()
+
+    if offset > 0:
+      self.__last_result = results[offset - 1]
+    else:
+      self.__last_result = cursor_entity
+
+    if query.has_limit():
+      self.__results = results[offset:offset + query.limit()]
+    else:
+      self.__results = results[offset:]
+
+    self.__query = query
+    self.__offset = 0
+
+    self.app = query.app()
+    self.keys_only = query.keys_only()
+    self.count = len(self.__results)
+    self.cursor = self._AcquireCursorID()
+
+  def _AcquireCursorID(self):
+    """Acquires the next cursor id in a thread safe manner.
+    """
     self._next_cursor_lock.acquire()
     try:
-      self.cursor = _Cursor._next_cursor
+      cursor_id = _Cursor._next_cursor
       _Cursor._next_cursor += 1
     finally:
       self._next_cursor_lock.release()
+    return cursor_id
 
-  def PopulateQueryResult(self, result, count, offset=None, compiled=False):
+  @staticmethod
+  def _GetCursorOffset(results, cursor_entity, inclusive, compare):
+    """Converts a cursor entity into a offset into the result set even if the
+    cursor_entity no longer exists.
+
+    Args:
+      cursor_entity: the decoded datastore.Entity from the compiled query
+      inclusive: boolean that specifies if to offset past the cursor_entity
+      compare: a function that takes two datastore.Entity and compares them
+    Returns:
+      the integer offset
+    """
+    lo = 0
+    hi = len(results)
+    if inclusive:
+      while lo < hi:
+        mid = (lo + hi) // 2
+        if compare(results[mid], cursor_entity) < 0:
+           lo = mid + 1
+        else:
+          hi = mid
+    else:
+      while lo < hi:
+        mid = (lo + hi) // 2
+        if compare(cursor_entity, results[mid]) < 0:
+          hi = mid
+        else:
+          lo = mid + 1
+    return lo
+
+  def _ValidateQuery(self, query, query_info):
+    """Ensure that the given query matches the query_info.
+
+    Args:
+      query: datastore_pb.Query instance we are chacking
+      query_info: datastore_pb.Query instance we want to match
+
+    Raises BadRequestError on failure.
+    """
+    error_msg = 'Cursor does not match query: %s'
+    exc = datastore_errors.BadRequestError
+    if query_info.filter_list() != query.filter_list():
+      raise exc(error_msg % 'filters do not match')
+    if query_info.order_list() != query.order_list():
+      raise exc(error_msg % 'orders do not match')
+
+    for attr in ('ancestor', 'kind', 'name_space', 'search_query'):
+      query_info_has_attr = getattr(query_info, 'has_%s' % attr)
+      query_info_attr = getattr(query_info, attr)
+      query_has_attr = getattr(query, 'has_%s' % attr)
+      query_attr = getattr(query, attr)
+      if query_info_has_attr():
+        if not query_has_attr() or query_info_attr() != query_attr():
+          raise exc(error_msg % ('%s does not match' % attr))
+      elif query_has_attr():
+        raise exc(error_msg % ('%s does not match' % attr))
+
+  def _MinimalQueryInfo(self, query):
+    """Extract the minimal set of information for query matching.
+
+    Args:
+      query: datastore_pb.Query instance from which to extract info.
+
+    Returns:
+      datastore_pb.Query instance suitable for matching against when
+      validating cursors.
+    """
+    query_info = datastore_pb.Query()
+    query_info.set_app(query.app())
+
+    for filter in query.filter_list():
+      query_info.filter_list().append(filter)
+    for order in query.order_list():
+      query_info.order_list().append(order)
+
+    if query.has_ancestor():
+      query_info.mutable_ancestor().CopyFrom(query.ancestor())
+
+    for attr in ('kind', 'name_space', 'search_query'):
+      query_has_attr = getattr(query, 'has_%s' % attr)
+      query_attr = getattr(query, attr)
+      query_info_set_attr = getattr(query_info, 'set_%s' % attr)
+      if query_has_attr():
+        query_info_set_attr(query_attr())
+
+    return query_info
+
+  def _DecodeCompiledCursor(self, query, compiled_cursor):
+    """Converts a compiled_cursor into a cursor_entity.
+
+    Returns:
+      (cursor_entity, inclusive): a datastore.Entity and if it should be
+      included in the result set.
+    """
+    assert len(compiled_cursor.position_list()) == 1
+
+    position = compiled_cursor.position(0)
+    entity_pb = datastore_pb.EntityProto()
+    (query_info_encoded, entity_encoded) = position.start_key().split(
+        _CURSOR_CONCAT_STR, 1)
+    query_info_pb = datastore_pb.Query()
+    query_info_pb.ParseFromString(query_info_encoded)
+    self._ValidateQuery(query, query_info_pb)
+
+    entity_pb.ParseFromString(entity_encoded)
+    return (datastore.Entity._FromPb(entity_pb, True),
+            position.start_inclusive())
+
+  def _EncodeCompiledCursor(self, query, compiled_cursor):
+    """Converts the current state of the cursor into a compiled_cursor
+
+    Args:
+      query: the datastore_pb.Query this cursor is related to
+      compiled_cursor: an empty datstore_pb.CompiledCursor
+    """
+    if self.__last_result:
+      position = compiled_cursor.add_position()
+      query_info = self._MinimalQueryInfo(query)
+      start_key = _CURSOR_CONCAT_STR.join((
+          query_info.Encode(),
+          self.__last_result.ToPb().Encode()))
+      position.set_start_key(str(start_key))
+      position.set_start_inclusive(False)
+    elif self.__query.has_compiled_cursor:
+      compiled_cursor.CopyFrom(self.__query.compiled_cursor())
+
+  def PopulateQueryResult(self, result, count, compile=False):
     """Populates a QueryResult with this cursor and the given number of results.
 
     Args:
       result: datastore_pb.QueryResult
-      count: integer
-      offset: integer, overrides the internal offset
-      compiled: boolean, whether we are compiling this query
+      count: integer of how many results to return
+      compile: boolean, whether we are compiling this query
     """
-    _offset = offset
-    if offset is None:
-      _offset = self._offset
     if count > _MAXIMUM_RESULTS:
       count = _MAXIMUM_RESULTS
 
+    result.mutable_cursor().set_app(self.app)
     result.mutable_cursor().set_cursor(self.cursor)
     result.set_keys_only(self.keys_only)
 
-    self.count = len(self.__results[_offset:_offset + count])
+    results = self.__results[self.__offset:self.__offset + count]
+    count = len(results)
+    if count:
+      self.__offset += count
+      self.__last_result = results[count - 1]
 
-    results_pbs = [r._ToPb() for r in self.__results[_offset:_offset + count]]
+    results_pbs = [r._ToPb() for r in results]
     result.result_list().extend(results_pbs)
 
-    if offset is None:
-      self._offset += self.count
+    result.set_more_results(self.__offset < self.count)
+    if compile:
+      self._EncodeCompiledCursor(self.__query, result.mutable_compiled_cursor())
 
-    if self._limit:
-      limit = max(0, self._limit - self._offset)
-      result.set_more_results(limit > 0)
-    else:
-      limit = None
-      result.set_more_results(len(self.__results[_offset + self.count:]) > 0)
-    if compiled:
-      compiled_query = _FakeCompiledQuery(cursor=self.cursor,
-                                          offset=_offset + self.count,
-                                          keys_only=self.keys_only,
-                                          limit=limit)
-      result.mutable_compiled_query().CopyFrom(compiled_query._ToPb())
-
-
-class _FakeCompiledQuery(object):
-  """A stand-in for a compiled query because we don't yet implement them.
-
-  For the moment this translates the concept of a database cursor as the stub
-  handles them internally (a result handle and an offset into it) into a
-  compiled query as would be returned by the actual datastore.
-  """
-
-  def __init__(self, cursor, offset, keys_only=False, limit=None):
-    """Constructor.
-
-    Args:
-      cursor: handle to internal result set.
-      offset: internal offset into the result set.
-      keys_only: the keys only status of the original query.
-      limit: if a limit was set on the original query this is the number of
-          remaining results up to that limit.
-    """
-    self.cursor = cursor
-    self.limit = limit
-    self.offset = offset
-    self.keys_only = keys_only
-
-  def _ToPb(self):
-    compiled_pb = datastore_pb.CompiledQuery()
-    compiled_pb.set_keys_only(self.keys_only)
-    if self.limit:
-      compiled_pb.set_limit(self.limit)
-
-    primaryscan = compiled_pb.mutable_primaryscan()
-    primaryscan.set_start_key(urllib.urlencode({'cursor': self.cursor,
-                                                'offset': self.offset}))
-    return compiled_pb
 
 class DatastoreFileStub(apiproxy_stub.APIProxyStub):
   """ Persistent stub for the Python datastore API.
@@ -305,7 +428,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
     self.__queries = {}
 
-    self.__transactions = {}
+    self.__transactions = set()
 
     self.__indexes = {}
     self.__require_indexes = require_indexes
@@ -330,7 +453,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     queries. """
     self.__entities = {}
     self.__queries = {}
-    self.__transactions = {}
+    self.__transactions = set()
     self.__query_history = {}
     self.__schema_cache = {}
 
@@ -354,6 +477,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     Raises:
       datastore_errors.BadRequestError: if this is not the stub for app_id.
     """
+    assert app_id
     if not self.__trusted and app_id != self.__app_id:
       raise datastore_errors.BadRequestError(
           'app %s cannot access app %s\'s data' % (self.__app_id, app_id))
@@ -376,6 +500,21 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         raise datastore_errors.BadRequestError(
           'each key path element should have id or name but not both: %r' % key)
 
+  def __ValidateTransaction(self, tx):
+    """Verify that this transaction exists and is valid.
+
+    Args:
+      tx: datastore_pb.Transaction
+
+    Raises:
+      datastore_errors.BadRequestError: if the tx is valid or doesn't exist.
+    """
+    assert isinstance(tx, datastore_pb.Transaction)
+    self.__ValidateAppId(tx.app())
+    if tx not in self.__transactions:
+      raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                             'Transaction %s not found' % tx)
+
   def _AppIdNamespaceKindForKey(self, key):
     """ Get (app, kind) tuple from given key.
 
@@ -389,7 +528,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       Tuple (app, kind), both are unicode strings.
     """
     last_path = key.path().element_list()[-1]
-    return key.app(), last_path.type()
+    return (datastore_types.EncodeAppIdNamespace(key.app(), key.name_space()),
+        last_path.type())
 
   def _StoreEntity(self, entity):
     """ Store the given entity.
@@ -541,6 +681,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
                 if pb.app() == self.__app_id)
 
   def _Dynamic_Put(self, put_request, put_response):
+    if put_request.has_transaction():
+      self.__ValidateTransaction(put_request.transaction())
+
     clones = []
     for entity in put_request.entity_list():
       self.__ValidateKey(entity.key())
@@ -548,7 +691,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       clone = entity_pb.EntityProto()
       clone.CopyFrom(entity)
 
-      for property in clone.property_list():
+      for property in clone.property_list() + clone.raw_property_list():
         if property.value().has_uservalue():
           uid = md5.new(property.value().uservalue().email().lower()).digest()
           uid = '1' + ''.join(['%02d' % ord(x) for x in uid])[:20]
@@ -592,6 +735,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_Get(self, get_request, get_response):
     if get_request.has_transaction():
+      self.__ValidateTransaction(get_request.transaction())
       entities = self.__tx_snapshot
     else:
       entities = self.__entities
@@ -611,6 +755,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
 
   def _Dynamic_Delete(self, delete_request, delete_response):
+    if delete_request.has_transaction():
+      self.__ValidateTransaction(delete_request.transaction())
+
     self.__entities_lock.acquire()
     try:
       for key in delete_request.key_list():
@@ -631,8 +778,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       self.__entities_lock.release()
 
 
-  def _Dynamic_RunQuery(self, query, query_result, count=None):
-    if not self.__tx_lock.acquire(False):
+  def _Dynamic_RunQuery(self, query, query_result):
+    if query.has_transaction():
+      self.__ValidateTransaction(query.transaction())
       if not query.has_ancestor():
         raise apiproxy_errors.ApplicationError(
           datastore_pb.Error.BAD_REQUEST,
@@ -640,10 +788,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       entities = self.__tx_snapshot
     else:
       entities = self.__entities
-      self.__tx_lock.release()
 
-    app_id_namespace = datastore_types.parse_app_id_namespace(query.app())
-    app_id = app_id_namespace.app_id()
+    app_id = query.app()
+    namespace = query.name_space()
     self.__ValidateAppId(app_id)
 
     if query.has_offset() and query.offset() > _MAX_QUERY_OFFSET:
@@ -693,14 +840,16 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
               "You must update the index.yaml file in your application root.")
 
     try:
-      query.set_app(app_id_namespace.to_encoded())
+      query.set_app(app_id)
+      datastore_types.SetNamespace(query, namespace)
+      encoded = datastore_types.EncodeAppIdNamespace(app_id, namespace)
       if query.has_kind():
-        results = entities[app_id_namespace.to_encoded(), query.kind()].values()
+        results = entities[encoded, query.kind()].values()
         results = [entity.native for entity in results]
       else:
         results = []
         for key in entities:
-          if key[0] == app_id_namespace.to_encoded():
+          if key[0] == encoded:
             results += [entity.native for entity in entities[key].values()]
     except KeyError:
       results = []
@@ -845,16 +994,6 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
     results.sort(order_compare_entities)
 
-    offset = 0
-    limit = None
-    if query.has_offset():
-      offset = query.offset()
-    if query.has_limit():
-      limit = query.limit()
-    if limit > _MAXIMUM_RESULTS:
-      limit = _MAXIMUM_RESULTS
-    results = results[offset:]
-
     clone = datastore_pb.Query()
     clone.CopyFrom(query)
     clone.clear_hint()
@@ -863,38 +1002,26 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     else:
       self.__query_history[clone] = 1
 
-    if query.has_start_key() and query.start_key():
-      start_key = dict(parse_qsl(query.start_key()))
-      cursor_handle = int(start_key.get('cursor'))
-      cursor_offset = start_key.get('offset', None)
-      if cursor_offset is not None:
-        cursor_offset = int(cursor_offset)
-      cursor_offset += offset
-      compiled = True
-      try:
-        cursor = self.__queries[cursor_handle]
-      except KeyError:
-        raise apiproxy_errors.ApplicationError(
-            datastore_pb.Error.BAD_REQUEST,
-            'Cursor %d not found' % cursor_handle)
+    cursor = _Cursor(query, results, order_compare_entities)
+    self.__queries[cursor.cursor] = cursor
+
+    if query.has_count():
+      count = query.count()
+    elif query.has_limit():
+      count = query.limit()
     else:
-      cursor = _Cursor(results, query.keys_only(), limit=limit)
-      self.__queries[cursor.cursor] = cursor
-      cursor_offset = None
-      compiled = query.compile()
+      count = _BATCH_SIZE
 
-    if count is None:
-      if query.has_count():
-        count = query.count()
-      elif query.has_limit():
-        count = query.limit()
-      else:
-        count = _BATCH_SIZE
+    cursor.PopulateQueryResult(query_result, count, compile=query.compile())
 
-    cursor.PopulateQueryResult(
-        query_result, count, cursor_offset, compiled=compiled)
+    if query.compile():
+      compiled_query = query_result.mutable_compiled_query()
+      compiled_query.set_keys_only(query.keys_only())
+      compiled_query.mutable_primaryscan().set_index_name(query.Encode())
 
   def _Dynamic_Next(self, next_request, query_result):
+    self.__ValidateAppId(next_request.cursor().app())
+
     cursor_handle = next_request.cursor().cursor()
 
     try:
@@ -903,30 +1030,32 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
           datastore_pb.Error.BAD_REQUEST, 'Cursor %d not found' % cursor_handle)
 
+    assert cursor.app == next_request.cursor().app()
+
     count = _BATCH_SIZE
     if next_request.has_count():
       count = next_request.count()
     cursor.PopulateQueryResult(query_result, count)
 
   def _Dynamic_Count(self, query, integer64proto):
-    self.__ValidateAppId(query.app())
     query_result = datastore_pb.QueryResult()
-    count = _MAXIMUM_RESULTS
-    if query.has_limit():
-      count = query.limit()
-    self._Dynamic_RunQuery(query, query_result, count=count)
+    self._Dynamic_RunQuery(query, query_result)
     cursor = query_result.cursor().cursor()
-    integer64proto.set_value(self.__queries[cursor].count)
+    integer64proto.set_value(min(self.__queries[cursor].count, _MAXIMUM_RESULTS))
     del self.__queries[cursor]
 
   def _Dynamic_BeginTransaction(self, request, transaction):
+    self.__ValidateAppId(request.app())
+
     self.__tx_handle_lock.acquire()
     handle = self.__next_tx_handle
     self.__next_tx_handle += 1
     self.__tx_handle_lock.release()
 
-    self.__transactions[handle] = None
+    transaction.set_app(request.app())
     transaction.set_handle(handle)
+    assert transaction not in self.__transactions
+    self.__transactions.add(transaction)
 
     self.__tx_lock.acquire()
     snapshot = [(app_kind, dict(entities))
@@ -935,24 +1064,20 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__tx_actions = []
 
   def _Dynamic_AddAction(self, request, void):
-    if not self.__transactions.has_key(request.transaction().handle()):
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST,
-          'Transaction handle %d not found' % request.transaction().handle())
+    self.__ValidateTransaction(request.transaction())
 
     if len(self.__tx_actions) >= _MAX_ACTIONS_PER_TXN:
       raise apiproxy_errors.ApplicationError(
           datastore_pb.Error.BAD_REQUEST,
           'Too many messages, maximum allowed %s' % _MAX_ACTIONS_PER_TXN)
 
-    request.clear_transaction()
-    self.__tx_actions.append(request)
+    clone = taskqueue_service_pb.TaskQueueAddRequest()
+    clone.CopyFrom(request)
+    clone.clear_transaction()
+    self.__tx_actions.append(clone)
 
   def _Dynamic_Commit(self, transaction, transaction_response):
-    if not self.__transactions.has_key(transaction.handle()):
-      raise apiproxy_errors.ApplicationError(
-        datastore_pb.Error.BAD_REQUEST,
-        'Transaction handle %d not found' % transaction.handle())
+    self.__ValidateTransaction(transaction)
 
     self.__tx_snapshot = {}
     try:
@@ -972,10 +1097,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       self.__tx_lock.release()
 
   def _Dynamic_Rollback(self, transaction, transaction_response):
-    if not self.__transactions.has_key(transaction.handle()):
-      raise apiproxy_errors.ApplicationError(
-        datastore_pb.Error.BAD_REQUEST,
-        'Transaction handle %d not found' % transaction.handle())
+    self.__ValidateTransaction(transaction)
 
     self.__entities = self.__tx_snapshot
     self.__tx_snapshot = {}

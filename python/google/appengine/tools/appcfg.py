@@ -50,6 +50,7 @@ import yaml
 from google.appengine.cron import groctimespecification
 from google.appengine.api import appinfo
 from google.appengine.api import croninfo
+from google.appengine.api import dosinfo
 from google.appengine.api import queueinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
@@ -582,6 +583,26 @@ class QueueEntryUpload(object):
                      app_id=self.config.application,
                      version=self.config.version,
                      payload=self.queue.ToYAML())
+
+
+class DosEntryUpload(object):
+  """Provides facilities to upload dos entries to the hosting service."""
+
+  def __init__(self, server, config, dos):
+    """Creates a new DosEntryUpload.
+
+    Args:
+      server: The RPC server to use. Should be an instance of a subclass of
+        AbstractRpcServer.
+      config: The AppInfoExternal object derived from the app.yaml file.
+      dos: The DosInfoExternal object loaded from the dos.yaml file.
+    """
+    self.server = server
+    self.config = config
+    self.dos = dos
+
+  def DoUpload(self):
+    """Uploads the dos entries."""
 
 
 class IndexOperation(object):
@@ -1396,18 +1417,14 @@ class AppVersionUpload(object):
       for path in paths:
         file_handle = openfunc(path)
         try:
-          if self.config.skip_files.match(path):
-            logging.info('Ignoring file \'%s\': File matches ignore regex.',
-                         path)
+          file_length = GetFileLength(file_handle)
+          if file_length > max_size:
+            logging.error('Ignoring file \'%s\': Too long '
+                          '(max %d bytes, file is %d bytes)',
+                          path, max_size, file_length)
           else:
-            file_length = GetFileLength(file_handle)
-            if file_length > max_size:
-              logging.error('Ignoring file \'%s\': Too long '
-                            '(max %d bytes, file is %d bytes)',
-                            path, max_size, file_length)
-            else:
-              logging.info('Processing file \'%s\'', path)
-              self.AddFile(path, file_handle)
+            logging.info('Processing file \'%s\'', path)
+            self.AddFile(path, file_handle)
         finally:
           file_handle.close()
         num_files += 1
@@ -1458,11 +1475,12 @@ class AppVersionUpload(object):
     logging.info('Done!')
 
 
-def FileIterator(base, separator=os.path.sep):
+def FileIterator(base, skip_files, separator=os.path.sep):
   """Walks a directory tree, returning all the files. Follows symlinks.
 
   Args:
     base: The base path to search for files under.
+    skip_files: A regular expression object for files/directories to skip.
     separator: Path separator used by the running system's platform.
 
   Yields:
@@ -1474,12 +1492,20 @@ def FileIterator(base, separator=os.path.sep):
     for entry in os.listdir(os.path.join(base, current_dir)):
       name = os.path.join(current_dir, entry)
       fullname = os.path.join(base, name)
+      if separator == '\\':
+        name = name.replace('\\', '/')
       if os.path.isfile(fullname):
-        if separator == '\\':
-          name = name.replace('\\', '/')
-        yield name
+        if skip_files.match(name):
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
+        else:
+          yield name
       elif os.path.isdir(fullname):
-        dirs.append(name)
+        if skip_files.match(name):
+          logging.info(
+              'Ignoring directory \'%s\': Directory matches ignore regex.',
+              name)
+        else:
+          dirs.append(name)
 
 
 def GetFileLength(fh):
@@ -1904,6 +1930,17 @@ class AppCfgApp(object):
     """
     return self._ParseYamlFile(basepath, 'queue', queueinfo.LoadSingleQueue)
 
+  def _ParseDosYaml(self, basepath):
+    """Parses the dos.yaml file.
+
+    Args:
+      basepath: the directory of the application.
+
+    Returns:
+      A DosInfoExternal object or None if the file does not exist.
+    """
+    return self._ParseYamlFile(basepath, 'dos', dosinfo.LoadSingleDos)
+
   def Help(self):
     """Prints help for a specific action.
 
@@ -1931,7 +1968,8 @@ class AppCfgApp(object):
     updatecheck.CheckForUpdates()
 
     appversion = AppVersionUpload(rpc_server, appyaml)
-    appversion.DoUpload(FileIterator(basepath), self.options.max_size,
+    appversion.DoUpload(FileIterator(basepath, appyaml.skip_files),
+                        self.options.max_size,
                         lambda path: open(os.path.join(basepath, path), 'rb'))
 
     index_defs = self._ParseIndexYaml(basepath)
@@ -1956,6 +1994,11 @@ class AppCfgApp(object):
     if queue_entries:
       queue_upload = QueueEntryUpload(rpc_server, appyaml, queue_entries)
       queue_upload.DoUpload()
+
+    dos_entries = self._ParseDosYaml(basepath)
+    if dos_entries:
+      dos_upload = DosEntryUpload(rpc_server, appyaml, dos_entries)
+      dos_upload.DoUpload()
 
   def _UpdateOptions(self, parser):
     """Adds update-specific options to 'parser'.
@@ -2036,6 +2079,20 @@ class AppCfgApp(object):
     if queue_entries:
       queue_upload = QueueEntryUpload(rpc_server, appyaml, queue_entries)
       queue_upload.DoUpload()
+
+  def UpdateDos(self):
+    """Updates any new or changed dos definitions."""
+    if len(self.args) != 1:
+      self.parser.error('Expected a single <directory> argument.')
+
+    basepath = self.args[0]
+    appyaml = self._ParseAppYaml(basepath)
+    rpc_server = self._GetRpcServer()
+
+    dos_entries = self._ParseDosYaml(basepath)
+    if dos_entries:
+      dos_upload = DosEntryUpload(rpc_server, appyaml, dos_entries)
+      dos_upload.DoUpload()
 
   def Rollback(self):
     """Does a rollback of any existing transaction for this app version."""
@@ -2468,6 +2525,15 @@ in production as well as restart any indexes that were not completed."""),
           long_desc="""
 The 'update_queue' command will update any new, removed or changed task queue
 definitions from the optional queue.yaml file."""),
+
+
+
+
+
+
+
+
+
 
       'vacuum_indexes': Action(
           function='VacuumIndexes',

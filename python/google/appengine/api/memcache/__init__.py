@@ -58,9 +58,6 @@ MemcacheFlushRequest = memcache_service_pb.MemcacheFlushRequest
 MemcacheStatsRequest = memcache_service_pb.MemcacheStatsRequest
 MemcacheStatsResponse = memcache_service_pb.MemcacheStatsResponse
 
-MemcacheGrabTailResponse = memcache_service_pb.MemcacheGrabTailResponse
-MemcacheGrabTailRequest = memcache_service_pb.MemcacheGrabTailRequest
-
 DELETE_NETWORK_FAILURE = 0
 DELETE_ITEM_MISSING = 1
 DELETE_SUCCESSFUL = 2
@@ -925,52 +922,6 @@ class Client(object):
       return response.new_value()
     return None
 
-  def grab_tail(self, item_count, namespace):
-    """Grab items from the tail of namespace's LRU cache.
-
-    Grab means atomically get and delete.
-
-    This method can be used to create queue systems with very high throughput
-    and low latency, but low reliability.
-
-    Args:
-      item_count: Number of items to retrieve off the tail of LRU cache.
-      namespace: a string specifying namespace to use in the request. Can't
-        be empty.
-
-    Returns:
-      A list of values that were present in memcache.
-
-    Raises:
-      ValueError: if namespace is empty.
-    """
-    if not isinstance(item_count, int):
-      raise TypeError('Item count must be an integer.')
-    if item_count < 0:
-      raise ValueError('Item count must not be negative.')
-    if item_count >= 0x80000000:
-      raise ValueError('Item count must be less than 2147483648.')
-    if not namespace:
-      raise ValueError('Namespace must not be empty.')
-    if not isinstance(namespace, str):
-      raise TypeError('Namespace must be a string.')
-
-    request = MemcacheGrabTailRequest()
-    namespace_manager._add_name_space(request, namespace)
-    response = MemcacheGrabTailResponse()
-    request.set_item_count(item_count)
-    try:
-      self._make_sync_call('memcache', 'GrabTail', request, response)
-    except apiproxy_errors.Error:
-      return []
-
-    return_value = []
-    for returned_item in response.item_list():
-      value = _decode_value(returned_item.value(), returned_item.flags(),
-                            self._do_unpickle)
-      return_value.append(value)
-    return return_value
-
   def offset_multi(self, mapping, key_prefix='',
                    namespace=None, initial_value=None):
     """Offsets multiple keys by a delta, incrementing and decrementing in batch.
@@ -1071,7 +1022,6 @@ def setup_client(client_obj):
   var_dict['decr'] = _CLIENT.decr
   var_dict['flush_all'] = _CLIENT.flush_all
   var_dict['get_stats'] = _CLIENT.get_stats
-  var_dict['grab_tail'] = _CLIENT.grab_tail
   var_dict['offset_multi'] = _CLIENT.offset_multi
 
 

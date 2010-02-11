@@ -648,7 +648,9 @@ class Model(object):
       key_name: Name for new model instance.
       _from_entity: Intentionally undocumented.
       kwds: Keyword arguments mapping to properties of model.  Also:
-        key: Key instance for this instance, overrides parent and key_name
+        key: Key instance for this instance, if provided makes parent and
+             key_name redundant (they do not need to be set but if they are
+             they must match the key).
     """
     key = kwds.get('key', None)
     if key is not None:
@@ -667,10 +669,12 @@ class Model(object):
       if _app is not None and key.app() != _app:
         raise BadKeyError('Expected Key app to be %s; received %s' %
                           (_app, key.app()))
-      if key_name is not None:
-        raise BadArgumentError('Cannot use key and key_name at the same time')
-      if parent is not None:
-        raise BadArgumentError('Cannot use key and parent at the same time')
+      if key_name and key_name != key.name():
+        raise BadArgumentError('Cannot use key and key_name at the same time'
+                               ' with different values')
+      if parent and parent != key.parent():
+        raise BadArgumentError('Cannot use key and parent at the same time'
+                               ' with different values')
       self._key = key
       self._key_name = None
       self._parent = None
@@ -780,7 +784,7 @@ class Model(object):
         pass
     return self._entity
 
-  def put(self):
+  def put(self, **kwargs):
     """Writes this model instance to the datastore.
 
     If this instance is new, we add an entity to the datastore.
@@ -793,8 +797,9 @@ class Model(object):
     Raises:
       TransactionFailedError if the data could not be committed.
     """
+    rpc = datastore.GetRpcFromKwargs(kwargs)
     self._populate_internal_entity()
-    return datastore.Put(self._entity)
+    return datastore.Put(self._entity, rpc=rpc)
 
   save = put
 
@@ -834,13 +839,14 @@ class Model(object):
     self._to_entity(entity)
     return entity
 
-  def delete(self):
+  def delete(self, **kwargs):
     """Deletes this entity from the datastore.
 
     Raises:
       TransactionFailedError if the data could not be committed.
     """
-    datastore.Delete(self.key())
+    rpc = datastore.GetRpcFromKwargs(kwargs)
+    datastore.Delete(self.key(), rpc=rpc)
     self._entity = None
 
 
@@ -922,7 +928,7 @@ class Model(object):
     return entity.ToXml()
 
   @classmethod
-  def get(cls, keys):
+  def get(cls, keys, **kwargs):
     """Fetch instance from the datastore of a specific Model type using key.
 
     We support Key objects and string keys (we convert them to Key objects
@@ -948,7 +954,8 @@ class Model(object):
       KindError if any of the retreived objects are not instances of the
       type associated with call to 'get'.
     """
-    results = get(keys)
+    rpc = datastore.GetRpcFromKwargs(kwargs)
+    results = get(keys, rpc=rpc)
     if results is None:
       return None
 
@@ -965,40 +972,42 @@ class Model(object):
     return results
 
   @classmethod
-  def get_by_key_name(cls, key_names, parent=None):
+  def get_by_key_name(cls, key_names, parent=None, **kwargs):
     """Get instance of Model class by its key's name.
 
     Args:
       key_names: A single key-name or a list of key-names.
       parent: Parent of instances to get.  Can be a model or key.
     """
+    rpc = datastore.GetRpcFromKwargs(kwargs)
     if isinstance(parent, Model):
       parent = parent.key()
     key_names, multiple = datastore.NormalizeAndTypeCheck(key_names, basestring)
     keys = [datastore.Key.from_path(cls.kind(), name, parent=parent)
             for name in key_names]
     if multiple:
-      return get(keys)
+      return get(keys, rpc=rpc)
     else:
-      return get(*keys)
+      return get(keys[0], rpc=rpc)
 
   @classmethod
-  def get_by_id(cls, ids, parent=None):
+  def get_by_id(cls, ids, parent=None, **kwargs):
     """Get instance of Model class by id.
 
     Args:
       key_names: A single id or a list of ids.
       parent: Parent of instances to get.  Can be a model or key.
     """
+    rpc = datastore.GetRpcFromKwargs(kwargs)
     if isinstance(parent, Model):
       parent = parent.key()
     ids, multiple = datastore.NormalizeAndTypeCheck(ids, (int, long))
     keys = [datastore.Key.from_path(cls.kind(), id, parent=parent)
             for id in ids]
     if multiple:
-      return get(keys)
+      return get(keys, rpc=rpc)
     else:
-      return get(*keys)
+      return get(keys[0], rpc=rpc)
 
   @classmethod
   def get_or_insert(cls, key_name, **kwds):
@@ -1128,13 +1137,13 @@ class Model(object):
                       (repr(cls), entity.kind()))
 
     entity_values = cls._load_entity_values(entity)
+    if entity.key().has_id_or_name():
+      entity_values['key'] = entity.key()
     instance = cls(None, _from_entity=True, **entity_values)
     if entity.is_saved():
       instance._entity = entity
       del instance._key_name
       del instance._key
-    elif entity.key().has_id_or_name():
-      instance._key = entity.key()
     return instance
 
   @classmethod
@@ -1161,7 +1170,20 @@ class Model(object):
     return cls.properties()
 
 
-def get(keys):
+def create_rpc(deadline=None, callback=None):
+  """Create an rpc for use in configuring datastore calls.
+
+  Args:
+    deadline: float, deadline for calls in seconds.
+    callback: callable, a callback triggered when this rpc completes,
+      accepts one argument: the returned rpc.
+
+  Returns:
+    A datastore.DatastoreRPC instance.
+  """
+  return datastore.CreateRPC(deadline=deadline, callback=callback)
+
+def get(keys, **kwargs):
   """Fetch the specific Model instance with the given key from the datastore.
 
   We support Key objects and string keys (we convert them to Key objects
@@ -1177,9 +1199,10 @@ def get(keys):
       keys was given: a list whose items are either a Model instance or
       None.
   """
+  rpc = datastore.GetRpcFromKwargs(kwargs)
   keys, multiple = datastore.NormalizeAndTypeCheckKeys(keys)
   try:
-    entities = datastore.Get(keys)
+    entities = datastore.Get(keys, rpc=rpc)
   except datastore_errors.EntityNotFoundError:
     assert not multiple
     return None
@@ -1197,7 +1220,7 @@ def get(keys):
   return models[0]
 
 
-def put(models):
+def put(models, **kwargs):
   """Store one or more Model instances.
 
   Args:
@@ -1209,9 +1232,10 @@ def put(models):
   Raises:
     TransactionFailedError if the data could not be committed.
   """
+  rpc = datastore.GetRpcFromKwargs(kwargs)
   models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
   entities = [model._populate_internal_entity() for model in models]
-  keys = datastore.Put(entities)
+  keys = datastore.Put(entities, rpc=rpc)
   if multiple:
     return keys
   assert len(keys) == 1
@@ -1220,7 +1244,7 @@ def put(models):
 save = put
 
 
-def delete(models):
+def delete(models, **kwargs):
   """Delete one or more Model instances.
 
   Args:
@@ -1229,6 +1253,7 @@ def delete(models):
   Raises:
     TransactionFailedError if the data could not be committed.
   """
+  rpc = datastore.GetRpcFromKwargs(kwargs)
   models_or_keys, multiple = datastore.NormalizeAndTypeCheck(
       models, (Model, Key, basestring))
   keys = []
@@ -1240,9 +1265,9 @@ def delete(models):
     else:
       key = model_or_key
     keys.append(key)
-  datastore.Delete(keys)
+  datastore.Delete(keys, rpc=rpc)
 
-def allocate_ids(model, size):
+def allocate_ids(model, size, **kwargs):
   """Allocates a range of IDs of size for the model_key defined by model
 
   Allocates a range of IDs in the datastore such that those IDs will not
@@ -1257,6 +1282,7 @@ def allocate_ids(model, size):
   Returns:
     (start, end) of the allocated range, inclusive.
   """
+  rpc = datastore.GetRpcFromKwargs(kwargs)
   models_or_keys, multiple = datastore.NormalizeAndTypeCheck(
       model, (Model, Key, basestring))
   keys = []
@@ -1268,7 +1294,7 @@ def allocate_ids(model, size):
     else:
       key = model_or_key
     keys.append(key)
-  return datastore.AllocateIds(keys, size)
+  return datastore.AllocateIds(keys, size, rpc=rpc)
 
 class Expando(Model):
   """Dynamically expandable model.
@@ -1348,7 +1374,7 @@ class Expando(Model):
     super(Expando, self).__init__(parent, key_name, _app, **kwds)
     self._dynamic_properties = {}
     for prop, value in kwds.iteritems():
-      if prop not in self.properties():
+      if prop not in self.properties() and prop != 'key':
         setattr(self, prop, value)
 
   def __setattr__(self, key, value):
@@ -1479,10 +1505,7 @@ class _BaseQuery(object):
     self._model_class = model_class
     self._keys_only = keys_only
     self._compile = compile
-    if cursor is not None:
-      self.with_cursor(cursor)
-    else:
-      self._cursor = None
+    self.with_cursor(cursor)
 
   def is_keys_only(self):
     """Returns whether this query is keys only.
@@ -1500,7 +1523,7 @@ class _BaseQuery(object):
     """
     raise NotImplementedError
 
-  def run(self):
+  def run(self, **kwargs):
     """Iterator for this query.
 
     If you know the number of results you need, consider fetch() instead,
@@ -1509,9 +1532,12 @@ class _BaseQuery(object):
     Returns:
       Iterator for this query.
     """
-    self._compile = False
+    rpc = datastore.GetRpcFromKwargs(kwargs)
     raw_query = self._get_query()
-    iterator = raw_query.Run()
+    iterator = raw_query.Run(rpc=rpc)
+
+    if self._compile:
+      self._last_raw_query = raw_query
 
     if self._keys_only:
       return iterator
@@ -1526,7 +1552,7 @@ class _BaseQuery(object):
     """
     return self.run()
 
-  def get(self):
+  def get(self, **kwargs):
     """Get first result from this.
 
     Beware: get() ignores the LIMIT clause on GQL queries.
@@ -1534,13 +1560,14 @@ class _BaseQuery(object):
     Returns:
       First result from running the query if there are any, else None.
     """
-    results = self.fetch(1)
+    rpc = datastore.GetRpcFromKwargs(kwargs)
+    results = self.fetch(1, rpc=rpc)
     try:
       return results[0]
     except IndexError:
       return None
 
-  def count(self, limit=None):
+  def count(self, limit=None, **kwargs):
     """Number of entities this query fetches.
 
     Beware: count() ignores the LIMIT clause on GQL queries.
@@ -1553,12 +1580,13 @@ class _BaseQuery(object):
     Returns:
       Number of entities this query fetches.
     """
-    self._compile = False
+    rpc = datastore.GetRpcFromKwargs(kwargs)
     raw_query = self._get_query()
-    result = raw_query.Count(limit=limit)
+    result = raw_query.Count(limit=limit, rpc=rpc)
+    self._last_raw_query = None
     return result
 
-  def fetch(self, limit, offset=0):
+  def fetch(self, limit, offset=0, **kwargs):
     """Return a list of items selected using SQL-like limit and offset.
 
     Whenever possible, use fetch() instead of iterating over the query
@@ -1574,6 +1602,8 @@ class _BaseQuery(object):
       A list of db.Model instances.  There may be fewer than 'limit'
       results if there aren't enough results to satisfy the request.
     """
+    rpc = datastore.GetRpcFromKwargs(kwargs)
+
     accepted = (int, long)
     if not (isinstance(limit, accepted) and isinstance(offset, accepted)):
       raise TypeError('Arguments to fetch() must be integers')
@@ -1581,13 +1611,12 @@ class _BaseQuery(object):
       raise ValueError('Arguments to fetch() must be >= 0')
     if limit == 0:
       return []
+
     raw_query = self._get_query()
-    raw = raw_query.Get(limit, offset)
+    raw = raw_query.Get(limit, offset, rpc=rpc)
+
     if self._compile:
-      try:
-        self._compiled_query = raw_query.GetCompiledQuery()
-      except AssertionError, e:
-        self._compiled_query = e
+      self._last_raw_query = raw_query
 
     if self._keys_only:
       return raw
@@ -1608,31 +1637,13 @@ class _BaseQuery(object):
       A base64-encoded serialized cursor.
     """
     if not self._compile:
-      raise AssertionError('No cursor available, this action does not support '
-                           'cursors (try "fetch" instead)')
+      raise AssertionError(
+          'Query must be created with compile=True to produce cursors')
     try:
-      if not self._compiled_query:
-        return self._compiled_query
-      if isinstance(self._compiled_query, Exception):
-        raise self._compiled_query
-
-      pb = datastore_pb.CompiledQuery()
-      pb.set_keys_only(self._compiled_query.keys_only())
-      if (self._compiled_query.has_primaryscan() and
-          self._compiled_query.primaryscan().has_start_key()):
-        start_key = self._compiled_query.primaryscan().start_key()
-        start_inclusive = self._compiled_query.primaryscan().start_inclusive()
-        primary_scan = pb.mutable_primaryscan()
-        primary_scan.set_start_key(start_key)
-        primary_scan.set_start_inclusive(start_inclusive)
-
-      if self._compiled_query.has_offset():
-        pb.set_offset(self._compiled_query.offset())
-
-      return base64.urlsafe_b64encode(pb.Encode())
+      return base64.urlsafe_b64encode(
+        self._last_raw_query.GetCompiledCursor().Encode())
     except AttributeError:
-      raise AssertionError('No cursor available, this query has not been '
-                           'executed')
+      raise AssertionError('No cursor available.')
 
   def with_cursor(self, cursor):
     """Set the start of this query to the given serialized cursor.
@@ -1643,24 +1654,27 @@ class _BaseQuery(object):
     Returns:
       This Query instance, for chaining.
     """
-    try:
-      if not cursor:
-        raise datastore_errors.BadValueError("Cursor cannot be empty")
-      if not isinstance(cursor, basestring):
-        raise BadValueError(
-            'Cursor must be a str or unicode instance, not a %s'
-            % type(cursor).__name__)
-      decoded = base64.urlsafe_b64decode(cursor)
-      cursor = datastore_pb.CompiledQuery(decoded)
-    except (ValueError, TypeError), e:
-      raise datastore_errors.BadValueError(
-        'Invalid cursor %s. Details: %s' % (cursor, e))
-    except Exception, e:
-      if e.__class__.__name__ == 'ProtocolBufferDecodeError':
-        raise datastore_errors.BadValueError('Invalid cursor %s. '
-                                             'Details: %s' % (cursor, e))
-      else:
-        raise
+    if not cursor:
+      cursor = None
+    elif not isinstance(cursor, basestring):
+      raise BadValueError(
+          'Cursor must be a str or unicode instance, not a %s'
+          % type(cursor).__name__)
+    else:
+      cursor = str(cursor)
+      try:
+        decoded = base64.urlsafe_b64decode(cursor)
+        cursor = datastore_pb.CompiledCursor(decoded)
+      except (ValueError, TypeError), e:
+        raise datastore_errors.BadValueError(
+          'Invalid cursor %s. Details: %s' % (cursor, e))
+      except Exception, e:
+        if e.__class__.__name__ == 'ProtocolBufferDecodeError':
+          raise datastore_errors.BadValueError('Invalid cursor %s. '
+                                               'Details: %s' % (cursor, e))
+        else:
+          raise
+
     self._cursor = cursor
     return self
 
@@ -1885,7 +1899,7 @@ class Query(_BaseQuery):
         raise BadQueryError('Cannot use "in" or "!=" in a disjunction.')
       for query_set in self.__query_sets:
         for value in values:
-          new_query_set = copy.copy(query_set)
+          new_query_set = copy.deepcopy(query_set)
           datastore._AddOrAppend(new_query_set, operation, value)
           new_query_sets.append(new_query_set)
     self.__query_sets = new_query_sets

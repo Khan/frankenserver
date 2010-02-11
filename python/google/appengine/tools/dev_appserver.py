@@ -845,6 +845,9 @@ SHARED_MODULE_PREFIXES = set([
     'sre_parse',
 
 
+    'email',
+
+
 
 
     'wsgiref',

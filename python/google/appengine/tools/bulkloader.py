@@ -111,6 +111,7 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.ext import db
 from google.appengine.ext import key_range as key_range_module
 from google.appengine.ext.db import polymodel
+from google.appengine.ext.db import stats
 from google.appengine.ext.remote_api import remote_api_stub
 from google.appengine.ext.remote_api import throttle as remote_api_throttle
 from google.appengine.runtime import apiproxy_errors
@@ -261,6 +262,10 @@ class KeyRangeError(Error):
   """An error during construction of a KeyRangeItem."""
 
 
+class KindStatError(Error):
+  """Unable to find kind stats for an all-kinds download."""
+
+
 class FieldSizeLimitError(Error):
   """The csv module tried to read a field larger than the size limit."""
 
@@ -310,13 +315,15 @@ def GetCSVGeneratorFactory(kind, csv_filename, batch_size, csv_has_header,
   loader._Loader__create_csv_reader = create_csv_reader
   record_generator = loader.generate_records(csv_filename)
 
-  def CreateGenerator(request_manager, progress_queue, progress_generator):
+  def CreateGenerator(request_manager, progress_queue, progress_generator,
+                      unused_kinds):
     """Initialize a UploadWorkItem generator.
 
     Args:
       request_manager: A RequestManager instance.
       progress_queue: A ProgressQueue instance to send progress information.
       progress_generator: A generator of progress information or None.
+      unused_kinds: The kinds being generated (ignored in this method).
 
     Returns:
       An UploadWorkItemGenerator instance.
@@ -445,7 +452,8 @@ class UploadWorkItemGenerator(object):
 
     state = None
     if self.progress_generator:
-      for progress_key, state, key_start, key_end in self.progress_generator:
+      for progress_key, kind, state, key_start, key_end in (
+          self.progress_generator):
         if key_start:
           try:
             self._AdvanceTo(key_start)
@@ -525,20 +533,23 @@ class KeyRangeItemGenerator(object):
   export.
   """
 
-  def __init__(self, request_manager, kind, progress_queue, progress_generator,
+  def __init__(self, request_manager, kinds, progress_queue, progress_generator,
                key_range_item_factory):
     """Initialize the KeyRangeItemGenerator.
 
     Args:
       request_manager: A RequestManager instance.
-      kind: The kind of entities being transferred.
+      kinds: The kind of entities being transferred, or a list of kinds.
       progress_queue: A queue used for tracking progress information.
       progress_generator: A generator of prior progress information, or None
         if there is no prior status.
       key_range_item_factory: A factory to produce KeyRangeItems.
     """
     self.request_manager = request_manager
-    self.kind = kind
+    if isinstance(kinds, basestring):
+      self.kinds = [kinds]
+    else:
+      self.kinds = kinds
     self.row_count = 0
     self.xfer_count = 0
     self.progress_queue = progress_queue
@@ -552,7 +563,8 @@ class KeyRangeItemGenerator(object):
       KeyRangeItem instances corresponding to undownloaded key ranges.
     """
     if self.progress_generator is not None:
-      for progress_key, state, key_start, key_end in self.progress_generator:
+      for progress_key, kind, state, key_start, key_end in (
+          self.progress_generator):
         if state is not None and state != STATE_GOT and key_start is not None:
           key_start = ParseKey(key_start)
           key_end = ParseKey(key_end)
@@ -562,18 +574,18 @@ class KeyRangeItemGenerator(object):
 
           result = self.key_range_item_factory(self.request_manager,
                                                self.progress_queue,
-                                               self.kind,
+                                               kind,
                                                key_range,
                                                progress_key=progress_key,
                                                state=STATE_READ)
           yield result
     else:
-      key_range = KeyRange()
-
-      yield self.key_range_item_factory(self.request_manager,
-                                        self.progress_queue,
-                                        self.kind,
-                                        key_range)
+      for kind in self.kinds:
+        key_range = KeyRange()
+        yield self.key_range_item_factory(self.request_manager,
+                                          self.progress_queue,
+                                          kind,
+                                          key_range)
 
 
 class DownloadResult(object):
@@ -637,6 +649,7 @@ class _WorkItem(adaptive_thread_pool.WorkItem):
     self.key_end = key_end
     self.error = None
     self.traceback = None
+    self.kind = None
 
   def _TransferItem(self, thread_pool):
     raise NotImplementedError()
@@ -792,7 +805,7 @@ class UploadWorkItem(_WorkItem):
     Args:
       request_manager: A RequestManager instance.
       progress_queue: A queue used for tracking progress information.
-      rows: A list of pairs of a line number and a list of column values
+      rows: A list of pairs of a line number and a list of column values.
       key_start: The (numeric) starting key, inclusive.
       key_end: The (numeric) ending key, inclusive.
       progress_key: If this UploadWorkItem represents state from a prior run,
@@ -903,7 +916,8 @@ class KeyRangeItem(_WorkItem):
                kind,
                key_range,
                progress_key=None,
-               state=STATE_READ):
+               state=STATE_READ,
+               first=False):
     """Initialize a KeyRangeItem object.
 
     Args:
@@ -913,6 +927,8 @@ class KeyRangeItem(_WorkItem):
       key_range: A KeyRange instance for this work item.
       progress_key: The key for this range within the progress database.
       state: The initial state of this range.
+      first: boolean, default False, whether this is the first WorkItem
+        of its kind.
     """
     _WorkItem.__init__(self, progress_queue, key_range.key_start,
                        key_range.key_end, ExportStateName, state=state,
@@ -927,9 +943,10 @@ class KeyRangeItem(_WorkItem):
     self.count = 0
     self.key_start = key_range.key_start
     self.key_end = key_range.key_end
+    self.first = first
 
   def __str__(self):
-    return str(self.key_range)
+    return "%s-%s" % (self.kind, self.key_range)
 
   def __repr__(self):
     return self.__str__()
@@ -1050,7 +1067,8 @@ class DownloadItem(KeyRangeItem):
   def _TransferItem(self, thread_pool, get_time=time.time):
     """Transfers the entities associated with an item."""
     t = get_time()
-    download_result = self.request_manager.GetEntities(self)
+    download_result = self.request_manager.GetEntities(
+        self, retry_parallel=self.first)
     transfer_time = get_time() - t
     self.Process(download_result, thread_pool,
                  self.request_manager.batch_size)
@@ -1062,10 +1080,10 @@ class MapperItem(KeyRangeItem):
 
   def _TransferItem(self, thread_pool, get_time=time.time):
     t = get_time()
-    mapper = self.request_manager.GetMapper()
+    mapper = self.request_manager.GetMapper(self.kind)
 
     download_result = self.request_manager.GetEntities(
-        self, keys_only=mapper.map_over_keys_only())
+        self, keys_only=mapper.map_over_keys_only(), retry_parallel=self.first)
     transfer_time = get_time() - t
     try:
       mapper.batch_apply(download_result.Entities())
@@ -1199,6 +1217,19 @@ class RequestManager(object):
       start, end = datastore.AllocateIds(model_key, high_id - end)
     assert end >= high_id
 
+  def GetSchemaKinds(self):
+    """Returns the list of kinds for this app."""
+    global_stat = stats.GlobalStat.all().get()
+    if not global_stat:
+      raise KindStatError()
+    timestamp = global_stat.timestamp
+    kind_stat = stats.KindStat.all().filter(
+        "timestamp =", timestamp).fetch(1000)
+    kind_list = [stat.kind_name for stat in kind_stat
+                 if stat.kind_name and not stat.kind_name.startswith('__')]
+    kind_set = set(kind_list)
+    return list(kind_set)
+
   def EncodeContent(self, rows, loader=None):
     """Encodes row data to the wire format.
 
@@ -1271,36 +1302,42 @@ class RequestManager(object):
       raise datastore._ToDatastoreError(e)
 
   def GetEntities(
-      self, key_range_item, key_factory=datastore.Key, keys_only=False):
+      self, key_range_item, key_factory=datastore.Key, keys_only=False,
+      retry_parallel=False):
     """Gets Entity records from a remote endpoint over HTTP.
 
     Args:
      key_range_item: Range of keys to get.
      key_factory: Used for dependency injection.
      keys_only: bool, default False, only get keys values
+     retry_parallel: bool, default False, to try a parallel download despite
+       past parallel download failures.
     Returns:
       A DownloadResult instance.
 
     Raises:
-      ConfigurationError: if no Exporter is defined for self.kind
+      ConfigurationError: if no Exporter is defined for key_range_item.kind
     """
     keys = []
     entities = []
+    kind = key_range_item.kind
+    if retry_parallel:
+      self.parallel_download = True
 
     if self.parallel_download:
       query = key_range_item.key_range.make_directed_datastore_query(
-          self.kind, keys_only=keys_only)
+          kind, keys_only=keys_only)
       try:
         results = self._QueryForPbs(query)
       except datastore_errors.NeedIndexError:
         logger.info('%s: No descending index on __key__, '
-                    'performing serial download', self.kind)
+                    'performing serial download', kind)
         self.parallel_download = False
 
     if not self.parallel_download:
       key_range_item.key_range.direction = key_range_module.KeyRange.ASC
       query = key_range_item.key_range.make_ascending_datastore_query(
-          self.kind, keys_only=keys_only)
+          kind, keys_only=keys_only)
       results = self._QueryForPbs(query)
 
     size = len(results)
@@ -1317,21 +1354,21 @@ class RequestManager(object):
     return DownloadResult(continued, key_range_item.key_range.direction,
                           keys, entities)
 
-  def GetMapper(self):
+  def GetMapper(self, kind):
     """Returns a mapper for the registered kind.
 
     Returns:
       A Mapper instance.
 
     Raises:
-      ConfigurationError: if no Mapper is defined for self.kind
+      ConfigurationError: if no Mapper is defined for kind
     """
     if not self.mapper:
       try:
-        self.mapper = Mapper.RegisteredMapper(self.kind)
+        self.mapper = Mapper.RegisteredMapper(kind)
       except KeyError:
-        logger.error('No Mapper defined for kind %s.' % self.kind)
-        raise ConfigurationError('No Mapper defined for kind %s.' % self.kind)
+        logger.error('No Mapper defined for kind %s.' % kind)
+        raise ConfigurationError('No Mapper defined for kind %s.' % kind)
     return self.mapper
 
 
@@ -1464,6 +1501,7 @@ class DataSourceThread(_ThreadBase):
 
   def __init__(self,
                request_manager,
+               kinds,
                thread_pool,
                progress_queue,
                workitem_generator_factory,
@@ -1472,6 +1510,7 @@ class DataSourceThread(_ThreadBase):
 
     Args:
       request_manager: A RequestManager instance.
+      kinds: The kinds of entities being transferred.
       thread_pool: An AdaptiveThreadPool instance.
       progress_queue: A queue used for tracking progress information.
       workitem_generator_factory: A factory that creates a WorkItem generator
@@ -1482,6 +1521,7 @@ class DataSourceThread(_ThreadBase):
     _ThreadBase.__init__(self)
 
     self.request_manager = request_manager
+    self.kinds = kinds
     self.thread_pool = thread_pool
     self.progress_queue = progress_queue
     self.workitem_generator_factory = workitem_generator_factory
@@ -1497,7 +1537,8 @@ class DataSourceThread(_ThreadBase):
 
     content_gen = self.workitem_generator_factory(self.request_manager,
                                                   self.progress_queue,
-                                                  progress_gen)
+                                                  progress_gen,
+                                                  self.kinds)
 
     self.xfer_count = 0
     self.read_count = 0
@@ -1868,6 +1909,7 @@ class _ProgressDatabase(_Database):
     create_table = ('create table progress (\n'
                     'id integer primary key autoincrement,\n'
                     'state integer not null,\n'
+                    'kind text not null,\n'
                     'key_start %s,\n'
                     'key_end %s)'
                     % (sql_type, sql_type))
@@ -1907,7 +1949,7 @@ class _ProgressDatabase(_Database):
 
     return row[0] != 0
 
-  def StoreKeys(self, key_start, key_end):
+  def StoreKeys(self, kind, key_start, key_end):
     """Record a new progress record, returning a key for later updates.
 
     The specified progress information will be persisted into the database.
@@ -1923,6 +1965,7 @@ class _ProgressDatabase(_Database):
     would imply an additional table read or two on each invocation).
 
     Args:
+      kind: The kind for the WorkItem
       key_start: The starting key of the WorkItem (inclusive)
       key_end: The end key of the WorkItem (inclusive)
 
@@ -1946,8 +1989,9 @@ class _ProgressDatabase(_Database):
         repr(key_start), repr(key_end))
 
     self.insert_cursor.execute(
-        'insert into progress (state, key_start, key_end) values (?, ?, ?)',
-        (STATE_READ, unicode(key_start), unicode(key_end)))
+        'insert into progress (state, kind, key_start, key_end)'
+        ' values (?, ?, ?, ?)',
+        (STATE_READ, unicode(kind), unicode(key_start), unicode(key_end)))
 
     progress_key = self.insert_cursor.lastrowid
 
@@ -1989,22 +2033,24 @@ class _ProgressDatabase(_Database):
   def GetProgressStatusGenerator(self):
     """Get a generator which yields progress information.
 
-    The returned generator will yield a series of 4-tuples that specify
-    progress information about a prior run of the uploader. The 4-tuples
+    The returned generator will yield a series of 5-tuples that specify
+    progress information about a prior run of the uploader. The 5-tuples
     have the following values:
 
       progress_key: The unique key to later update this record with new
                     progress information.
       state: The last state saved for this progress record.
+      kind: The datastore kind of the items for uploading.
       key_start: The starting key of the items for uploading (inclusive).
       key_end: The ending key of the items for uploading (inclusive).
 
     After all incompletely-transferred records are provided, then one
-    more 4-tuple will be generated:
+    more 5-tuple will be generated:
 
       None
       DATA_CONSUMED_TO_HERE: A unique string value indicating this record
                              is being provided.
+      None
       None
       key_end: An integer value specifying the last data source key that
                was handled by the previous run of the uploader.
@@ -2029,7 +2075,7 @@ class _ProgressDatabase(_Database):
     self.prior_key_end = key_end
 
     cursor.execute(
-        'select id, state, key_start, key_end from progress'
+        'select id, state, kind, key_start, key_end from progress'
         '  where state != ?'
         '  order by id',
         (STATE_SENT,))
@@ -2039,11 +2085,11 @@ class _ProgressDatabase(_Database):
     for row in rows:
       if row is None:
         break
-      progress_key, state, key_start, key_end = row
+      progress_key, kind, state, key_start, key_end = row
 
-      yield progress_key, state, key_start, key_end
+      yield progress_key, kind, state, key_start, key_end
 
-    yield None, DATA_CONSUMED_TO_HERE, None, key_end
+    yield None, DATA_CONSUMED_TO_HERE, None, None, key_end
 
 
 def ProgressDatabase(db_filename, signature):
@@ -2079,7 +2125,7 @@ class StubProgressDatabase(object):
     """Whether the stub database has progress information (it doesn't)."""
     return False
 
-  def StoreKeys(self, unused_key_start, unused_key_end):
+  def StoreKeys(self, unused_kind, unused_key_start, unused_key_end):
     """Pretend to store a key in the stub database."""
     return 'fake-key'
 
@@ -2148,7 +2194,9 @@ class _ProgressThreadBase(_ThreadBase):
         break
 
       if item.state == STATE_READ and item.progress_key is None:
-        item.progress_key = self.db.StoreKeys(item.key_start, item.key_end)
+        item.progress_key = self.db.StoreKeys(item.kind,
+                                              item.key_start,
+                                              item.key_end)
       else:
         assert item.progress_key is not None
         self.UpdateProgress(item)
@@ -2204,11 +2252,11 @@ class ExportProgressThread(_ProgressThreadBase):
   file at the end of the download.
   """
 
-  def __init__(self, kind, progress_queue, progress_db, result_db):
+  def __init__(self, exporter, progress_queue, progress_db, result_db):
     """Initialize the ExportProgressThread instance.
 
     Args:
-      kind: The kind of entities being stored in the database.
+      exporter: An Exporter instance for the download.
       progress_queue: A Queue used for tracking progress information.
       progress_db: The database for tracking progress information; should
         be an instance of ProgressDatabase.
@@ -2217,7 +2265,7 @@ class ExportProgressThread(_ProgressThreadBase):
     """
     _ProgressThreadBase.__init__(self, progress_queue, progress_db)
 
-    self.kind = kind
+    self.exporter = exporter
     self.existing_count = result_db.existing_count
     self.result_db = result_db
 
@@ -2227,8 +2275,7 @@ class ExportProgressThread(_ProgressThreadBase):
 
   def WorkFinished(self):
     """Write the contents of the result database."""
-    exporter = Exporter.RegisteredExporter(self.kind)
-    exporter.output_entities(self.result_db.AllEntities())
+    self.exporter.output_entities(self.result_db.AllEntities())
 
   def UpdateProgress(self, item):
     """Update the state of the given KeyRangeItem.
@@ -2248,19 +2295,18 @@ class ExportProgressThread(_ProgressThreadBase):
 class MapperProgressThread(_ProgressThreadBase):
   """A thread to record progress information for maps over the datastore."""
 
-  def __init__(self, kind, progress_queue, progress_db):
+  def __init__(self, mapper, progress_queue, progress_db):
     """Initialize the MapperProgressThread instance.
 
     Args:
-      kind: The kind of entities being stored in the database.
+      mapper: A Mapper object for this map run.
       progress_queue: A Queue used for tracking progress information.
       progress_db: The database for tracking progress information; should
         be an instance of ProgressDatabase.
     """
     _ProgressThreadBase.__init__(self, progress_queue, progress_db)
 
-    self.kind = kind
-    self.mapper = Mapper.RegisteredMapper(self.kind)
+    self.mapper = mapper
 
   def EntitiesTransferred(self):
     """Return the total number of unique entities transferred."""
@@ -2642,12 +2688,12 @@ class RestoreLoader(Loader):
       record = self.queue.get(block=True)
       if id(record) == id(RestoreThread._ENTITIES_DONE):
         break
-      yield record
+      entity_proto = entity_pb.EntityProto(contents=str(record))
+      fixed_entity_proto = self._translate_entity_proto(entity_proto)
+      yield datastore.Entity._FromPb(fixed_entity_proto)
 
   def create_entity(self, values, key_name=None, parent=None):
-    entity_proto = entity_pb.EntityProto(contents=str(values))
-    fixed_entity_proto = self._translate_entity_proto(entity_proto)
-    return datastore.Entity._FromPb(fixed_entity_proto)
+    return values
 
   def rewrite_reference_proto(self, reference_proto):
     """Transform the Reference protobuffer which underlies keys and references.
@@ -3080,7 +3126,9 @@ class BulkTransporterApp(object):
 
   def RunPostAuthentication(self):
     """Method that gets called after authentication."""
-    pass
+    if isinstance(self.kind, basestring):
+      return [self.kind]
+    return self.kind
 
   def Run(self):
     """Perform the work of the BulkTransporterApp.
@@ -3094,9 +3142,6 @@ class BulkTransporterApp(object):
     self.error = False
     thread_pool = self.thread_pool_factory(
         self.num_threads, queue_size=self.max_queue_size)
-
-    self.throttle.Register(threading.currentThread())
-    threading.currentThread().exit_flag = False
 
     progress_queue = self.progress_queue_factory(self.max_queue_size)
     self.request_manager = self.request_manager_factory(self.app_id,
@@ -3122,7 +3167,7 @@ class BulkTransporterApp(object):
       self.error = True
       raise AuthenticationError('Authentication failed')
 
-    self.RunPostAuthentication()
+    kinds = self.RunPostAuthentication()
 
     for thread in thread_pool.Threads():
       self.throttle.Register(thread)
@@ -3138,10 +3183,13 @@ class BulkTransporterApp(object):
 
     self.data_source_thread = (
         self.datasourcethread_factory(self.request_manager,
+                                      kinds,
                                       thread_pool,
                                       progress_queue,
                                       self.input_generator_factory,
                                       progress_generator_factory))
+
+    self.throttle.Register(self.data_source_thread)
 
     thread_local = threading.local()
     thread_local.shut_down = False
@@ -3228,6 +3276,7 @@ class BulkUploaderApp(BulkTransporterApp):
     for ancestor_path, kind_map in high_id_table.iteritems():
       for kind, high_id in kind_map.iteritems():
         self.request_manager.IncrementId(list(ancestor_path), kind, high_id)
+    return [self.kind]
 
   def ReportStatus(self):
     """Display a message reporting the final status of the transfer."""
@@ -3259,6 +3308,14 @@ class BulkDownloaderApp(BulkTransporterApp):
 
   def __init__(self, *args, **kwargs):
     BulkTransporterApp.__init__(self, *args, **kwargs)
+
+  def RunPostAuthentication(self):
+    if not self.kind:
+      return self.request_manager.GetSchemaKinds()
+    elif isinstance(self.kind, basestring):
+      return [self.kind]
+    else:
+      return self.kind
 
   def ReportStatus(self):
     """Display a message reporting the final status of the transfer."""
@@ -3672,7 +3729,11 @@ def ProcessArguments(arg_dict,
     errors.append(required % 'filename')
 
   if not kind:
-    errors.append(required % 'kind')
+    if download or perform_map:
+      errors.append('kind argument required for this operation')
+    elif not dump and not restore:
+      errors.append(
+          'kind argument required unless --dump or --restore is specified')
 
   if not app_id:
     if url and url is not REQUIRED_OPTION:
@@ -3755,6 +3816,18 @@ def _PerformBulkload(arg_dict,
   elif not perform_map:
     check_file(filename)
 
+
+  throttle_layout = ThrottleLayout(bandwidth_limit, http_limit, rps_limit)
+  logger.info('Throttling transfers:')
+  logger.info('Bandwidth: %s bytes/second', bandwidth_limit)
+  logger.info('HTTP connections: %s/second', http_limit)
+  logger.info('Entities inserted/fetched/modified: %s/second', rps_limit)
+
+  throttle = remote_api_throttle.Throttle(layout=throttle_layout)
+
+  throttle.Register(threading.currentThread())
+  threading.currentThread().exit_flag = False
+
   if dump:
     Exporter.RegisterExporter(DumpExporter(kind, result_db_filename))
   elif restore:
@@ -3764,13 +3837,6 @@ def _PerformBulkload(arg_dict,
 
   os.environ['APPLICATION_ID'] = app_id
 
-  throttle_layout = ThrottleLayout(bandwidth_limit, http_limit, rps_limit)
-  logger.info('Throttling transfers:')
-  logger.info('Bandwidth: %s bytes/second', bandwidth_limit)
-  logger.info('HTTP connections: %s/second', http_limit)
-  logger.info('Entities inserted/fetched/modified: %s/second', rps_limit)
-
-  throttle = remote_api_throttle.Throttle(layout=throttle_layout)
   signature = _MakeSignature(app_id=app_id,
                              url=url,
                              kind=kind,
@@ -3823,12 +3889,13 @@ def _PerformBulkload(arg_dict,
       exporter.initialize(filename, exporter_opts)
 
       def KeyRangeGeneratorFactory(request_manager, progress_queue,
-                                   progress_gen):
-        return KeyRangeItemGenerator(request_manager, kind, progress_queue,
+                                   progress_gen, kinds):
+        logger.info('Downloading kinds: %s', kinds)
+        return KeyRangeItemGenerator(request_manager, kinds, progress_queue,
                                      progress_gen, DownloadItem)
 
       def ExportProgressThreadFactory(progress_queue, progress_db):
-        return ExportProgressThread(kind,
+        return ExportProgressThread(exporter,
                                     progress_queue,
                                     progress_db,
                                     result_db)
@@ -3846,6 +3913,10 @@ def _PerformBulkload(arg_dict,
         return_code = app.Run()
       except AuthenticationError:
         logger.info('Authentication Failed')
+      except KindStatError:
+        logger.error('Unable to download kind stats for all-kinds download.')
+        logger.error('Kind stats are generated periodically by the appserver')
+        logger.error('Kind stats are not available on dev_appserver.')
     finally:
       exporter.finalize()
   elif not download:
@@ -3853,12 +3924,12 @@ def _PerformBulkload(arg_dict,
     try:
       mapper.initialize(mapper_opts)
       def KeyRangeGeneratorFactory(request_manager, progress_queue,
-                                   progress_gen):
-        return KeyRangeItemGenerator(request_manager, kind, progress_queue,
+                                   progress_gen, kinds):
+        return KeyRangeItemGenerator(request_manager, kinds, progress_queue,
                                      progress_gen, MapperItem)
 
       def MapperProgressThreadFactory(progress_queue, progress_db):
-        return MapperProgressThread(kind,
+        return MapperProgressThread(mapper,
                                     progress_queue,
                                     progress_db)
 

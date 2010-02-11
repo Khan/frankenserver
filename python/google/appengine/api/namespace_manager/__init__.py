@@ -34,10 +34,13 @@ def set_namespace(namespace):
   """Set the default namespace to use for future calls, for this request only.
 
   Args:
-    namespace: A string naming the new namespace to use. The empty
+    namespace: A string naming the new namespace to use. None
       string specifies the root namespace for this app.
   """
-  os.environ[ENV_CURRENT_NAMESPACE] = namespace
+  if namespace:
+    os.environ[ENV_CURRENT_NAMESPACE] = namespace
+  else:
+    os.environ.pop(ENV_CURRENT_NAMESPACE, None)
 
 def set_request_namespace(namespace):
   """Deprecated. Use set_namespace(namespace)."""
@@ -46,9 +49,9 @@ def set_request_namespace(namespace):
 def get_namespace():
   """Get the name of the current default namespace.
 
-  The empty string indicates that the root namespace is the default.
+  None indicates that the root namespace is the default.
   """
-  return os.getenv(ENV_CURRENT_NAMESPACE, '')
+  return os.getenv(ENV_CURRENT_NAMESPACE, None)
 
 def get_request_namespace():
   """Deprecated. Use get_namespace()."""
@@ -64,7 +67,7 @@ def _enable_request_namespace():
     if ENV_DEFAULT_NAMESPACE in os.environ:
       os.environ[ENV_CURRENT_NAMESPACE] = os.environ[ENV_DEFAULT_NAMESPACE]
     else:
-      os.environ[ENV_CURRENT_NAMESPACE] = ''
+      os.environ.pop(ENV_CURRENT_NAMESPACE, None)
 
 
 def _add_name_space(request, namespace=None):
@@ -75,7 +78,10 @@ def _add_name_space(request, namespace=None):
     namespace: The name of the namespace part. If None, use the
       default namespace.
   """
-  if namespace is None:
-    request.set_name_space(get_namespace())
+  _ns = namespace
+  if not _ns:
+    _ns = get_namespace()
+  if not _ns:
+    request.clear_name_space()
   else:
-    request.set_name_space(namespace)
+    request.set_name_space(_ns)

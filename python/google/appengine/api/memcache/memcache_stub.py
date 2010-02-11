@@ -25,6 +25,7 @@ import time
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import memcache
 from google.appengine.api.memcache import memcache_service_pb
+from google.appengine.runtime import apiproxy_errors
 
 MemcacheSetResponse = memcache_service_pb.MemcacheSetResponse
 MemcacheSetRequest = memcache_service_pb.MemcacheSetRequest
@@ -108,7 +109,7 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       service_name: Service name expected for all calls.
     """
     super(MemcacheServiceStub, self).__init__(service_name)
-    self._gettime = gettime
+    self._gettime = lambda: int(gettime())
     self._ResetStats()
 
     self._the_cache = {}
@@ -272,7 +273,11 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       response: A MemcacheIncrementResponse.
     """
     namespace = request.name_space()
-    response.set_new_value(self._internal_increment(namespace, request))
+    new_value = self._internal_increment(namespace, request)
+    if new_value is None:
+      raise apiproxy_errors.ApplicationError(
+          memcache_service_pb.MemcacheServiceError.UNSPECIFIED_ERROR)
+    response.set_new_value(new_value)
 
   def _Dynamic_BatchIncrement(self, request, response):
     """Implementation of MemcacheService::BatchIncrement().
@@ -322,41 +327,4 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     stats.set_bytes(total_bytes)
 
     stats.set_oldest_item_age(self._gettime() - self._cache_creation_time)
-
-  def _Dynamic_GrabTail(self, request, response):
-    """Implementation of MemcacheService::GrabTail().
-
-    Args:
-      request: A MemcacheGrabTailRequest.
-      response: A MemcacheGrabTailResponse.
-    """
-    if request.item_count() <= 0:
-      return
-
-    namespace = request.name_space()
-
-    if not namespace:
-      return
-
-    namespace_dict = self._the_cache.get(namespace, None)
-    if namespace_dict is None:
-      return
-
-    items = namespace_dict.items()
-    items.sort(None, lambda (key, entry): entry.created_time)
-
-    item_count = 0
-    for (key, entry) in items:
-      if entry.CheckExpired():
-        del namespace_dict[key]
-      elif not entry.CheckLocked():
-        del namespace_dict[key]
-        item = response.add_item()
-        item.set_value(entry.value)
-        item.set_flags(entry.flags)
-        item_count += 1
-        self._hits += 1
-        self._byte_hits += len(entry.value)
-        if item_count == request.item_count():
-          return
 

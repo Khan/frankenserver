@@ -566,8 +566,11 @@ class Throttler(object):
 
 def SleepHandler(*throttle_names):
   def SleepOnThrottles(self, request, response):
-    for throttle_name in throttle_names:
-      self._DatastoreThrottler__throttle.Sleep(throttle_name)
+    if throttle_names:
+      for throttle_name in throttle_names:
+        self._DatastoreThrottler__throttle.Sleep(throttle_name)
+    else:
+      self._DatastoreThrottler__throttle.Sleep()
   return SleepOnThrottles
 
 
@@ -580,9 +583,12 @@ class DatastoreThrottler(Throttler):
     """Add costs from the Cost protobuf."""
     self.__throttle.AddTransfer(INDEX_MODIFICATIONS, cost_proto.index_writes())
     self.__throttle.AddTransfer(ENTITIES_MODIFIED, cost_proto.entity_writes())
+    self.__throttle.AddTransfer(BANDWIDTH_UP, cost_proto.entity_write_bytes())
 
 
-  _Prehook_Put = SleepHandler(ENTITIES_MODIFIED, INDEX_MODIFICATIONS)
+  _Prehook_Put = SleepHandler(ENTITIES_MODIFIED,
+                              INDEX_MODIFICATIONS,
+                              BANDWIDTH_UP)
 
   def _Posthook_Put(self, request, response):
     self.AddCost(response.cost())

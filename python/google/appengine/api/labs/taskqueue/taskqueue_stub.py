@@ -60,6 +60,10 @@ BUILT_IN_HEADERS = set(['x-appengine-queuename',
                         'x-appengine-development-payload',
                         'content-length'])
 
+DEFAULT_QUEUE_NAME = 'default'
+
+CRON_QUEUE_NAME = '__cron'
+
 
 class _DummyTaskStore(object):
   """A class that encapsulates a sorted store of tasks.
@@ -122,6 +126,45 @@ class _DummyTaskStore(object):
     if self._sorted_by_eta:
       return self._sorted_by_eta[0][0]
     return None
+
+  def Add(self, request):
+    """Inserts a new task into the store.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueAddRequest.
+
+    Raises:
+      apiproxy_errors.ApplicationError: If a task with the same name is already
+      in the store.
+    """
+    pos = bisect.bisect_left(self._sorted_by_name, (request.task_name(),))
+    if (pos < len(self._sorted_by_name) and
+        self._sorted_by_name[pos][0] == request.task_name()):
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS)
+
+    now = datetime.datetime.utcnow()
+    now_sec = time.mktime(now.timetuple())
+    task = taskqueue_service_pb.TaskQueueQueryTasksResponse_Task()
+    task.set_task_name(request.task_name())
+    task.set_eta_usec(request.eta_usec())
+    task.set_creation_time_usec(now_sec * 1e6)
+    task.set_url(request.url())
+    task.set_method(request.method())
+    for keyvalue in task.header_list():
+      header = task.add_header()
+      header.set_key(keyvalue.key())
+      header.set_value(keyvalue.value())
+    if request.has_description():
+      task.set_description(request.description())
+    if request.has_body():
+      task.set_body(request.body())
+    if request.has_crontimetable():
+      task.mutable_crontimetable().set_schedule(
+          request.crontimetable().schedule())
+      task.mutable_crontimetable().set_timezone(
+          request.crontimetable().timezone())
+    self._InsertTask(task)
 
   def Delete(self, name):
     """Deletes a task from the store by name.
@@ -307,6 +350,9 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
         e.application_error = (e.application_error +
             taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR)
         raise e
+    elif request.has_app_id():
+      store = self.GetDummyTaskStore(request.app_id(), request.queue_name())
+      store.Add(request)
     else:
       tasks = self._taskqueues.setdefault(request.queue_name(), [])
       for task in tasks:
@@ -328,7 +374,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     Returns:
       True iff queue is valid.
     """
-    if queue_name == 'default':
+    if queue_name == DEFAULT_QUEUE_NAME or queue_name == CRON_QUEUE_NAME:
       return True
     queue_info = self.queue_yaml_parser(self._root_path)
     if queue_info and queue_info.queue:
@@ -356,7 +402,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     has_default = False
     if queue_info and queue_info.queue:
       for entry in queue_info.queue:
-        if entry.name == 'default':
+        if entry.name == DEFAULT_QUEUE_NAME:
           has_default = True
         queue = {}
         queues.append(queue)
@@ -378,11 +424,11 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     if not has_default:
       queue = {}
       queues.append(queue)
-      queue['name'] = 'default'
+      queue['name'] = DEFAULT_QUEUE_NAME
       queue['max_rate'] = DEFAULT_RATE
       queue['bucket_size'] = DEFAULT_BUCKET_SIZE
 
-      tasks = self._taskqueues.get('default', [])
+      tasks = self._taskqueues.get(DEFAULT_QUEUE_NAME, [])
       if tasks:
         queue['oldest_task'] = _FormatEta(tasks[0].eta_usec())
         queue['eta_delta'] = _EtaDelta(tasks[0].eta_usec())
@@ -556,7 +602,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     task_store_key = (app_id, queue_name)
     if task_store_key not in admin_console_dummy_tasks:
       store = _DummyTaskStore()
-      store.Populate(random.randint(10, 100))
+      if queue_name != CRON_QUEUE_NAME:
+        store.Populate(random.randint(10, 100))
       admin_console_dummy_tasks[task_store_key] = store
     else:
       store = admin_console_dummy_tasks[task_store_key]
@@ -588,8 +635,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     Deletes tasks from the dummy store. A 1/20 chance of a transient error.
 
     Args:
-      request: A taskqueue_service_pb.TaskQueueDeleteTasksRequest.
-      response: A taskqueue_service_pb.TaskQueueDeleteTasksResponse.
+      request: A taskqueue_service_pb.TaskQueueDeleteRequest.
+      response: A taskqueue_service_pb.TaskQueueDeleteResponse.
     """
     task_store_key = (request.app_id(), request.queue_name())
     if task_store_key not in admin_console_dummy_tasks:
@@ -635,7 +682,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME)
 
     queues = self._app_queues.get(request.app_id(), {})
-    if request.queue_name() != 'default' and request.queue_name() not in queues:
+    if (request.queue_name() != DEFAULT_QUEUE_NAME and
+        request.queue_name() not in queues):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
 

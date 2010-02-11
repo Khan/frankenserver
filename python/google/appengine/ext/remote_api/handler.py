@@ -121,8 +121,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     precondition list still exist and their hashes match, then performs a
     transaction of its own to make the updates.
     """
+    begin_request = datastore_pb.BeginTransactionRequest()
+    begin_request.set_app(os.environ['APPLICATION_ID'])
     tx = datastore_pb.Transaction()
-    self.__call('datastore_v3', 'BeginTransaction', api_base_pb.VoidProto(), tx)
+    self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
 
     preconditions = request.precondition_list()
     if preconditions:
@@ -169,8 +171,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       lastpart = entity.key().path().element_list()[-1]
       assert lastpart.id() == 0 and not lastpart.has_name()
 
+    begin_request = datastore_pb.BeginTransactionRequest()
+    begin_request.set_app(os.environ['APPLICATION_ID'])
     tx = datastore_pb.Transaction()
-    self.__call('datastore_v3', 'BeginTransaction', api_base_pb.VoidProto(), tx)
+    self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
 
     self.__call('datastore_v3', 'Put', request, response)
 

@@ -422,6 +422,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
 class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
   has_app_ = 0
   app_ = ""
+  has_name_space_ = 0
+  name_space_ = ""
 
   def __init__(self, contents=None):
     self.pathelement_ = []
@@ -439,6 +441,19 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
       self.app_ = ""
 
   def has_app(self): return self.has_app_
+
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
 
   def pathelement_size(self): return len(self.pathelement_)
   def pathelement_list(self): return self.pathelement_
@@ -460,12 +475,15 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_name_space()): self.set_name_space(x.name_space())
     for i in xrange(x.pathelement_size()): self.add_pathelement().CopyFrom(x.pathelement(i))
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     if len(self.pathelement_) != len(x.pathelement_): return 0
     for e1, e2 in zip(self.pathelement_, x.pathelement_):
       if e1 != e2: return 0
@@ -484,12 +502,14 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.app_))
+    if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     n += 2 * len(self.pathelement_)
     for i in xrange(len(self.pathelement_)): n += self.pathelement_[i].ByteSize()
     return n + 1
 
   def Clear(self):
     self.clear_app()
+    self.clear_name_space()
     self.clear_pathelement()
 
   def OutputUnchecked(self, out):
@@ -499,6 +519,9 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(115)
       self.pathelement_[i].OutputUnchecked(out)
       out.putVarInt32(116)
+    if (self.has_name_space_):
+      out.putVarInt32(162)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while 1:
@@ -510,6 +533,9 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
       if tt == 115:
         self.add_pathelement().TryMerge(d)
         continue
+      if tt == 162:
+        self.set_name_space(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -517,6 +543,7 @@ class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     cnt=0
     for e in self.pathelement_:
       elm=""
@@ -802,6 +829,7 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
   kUserValueobfuscated_gaiaid = 19
   kReferenceValueGroup = 12
   kReferenceValueapp = 13
+  kReferenceValuename_space = 20
   kReferenceValuePathElementGroup = 14
   kReferenceValuePathElementtype = 15
   kReferenceValuePathElementid = 16
@@ -828,7 +856,8 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
     17: "name",
     18: "gaiaid",
     19: "obfuscated_gaiaid",
-  }, 19)
+    20: "name_space",
+  }, 20)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -851,7 +880,8 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
     17: ProtocolBuffer.Encoder.STRING,
     18: ProtocolBuffer.Encoder.NUMERIC,
     19: ProtocolBuffer.Encoder.STRING,
-  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
+    20: ProtocolBuffer.Encoder.STRING,
+  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1337,6 +1367,8 @@ class Path(ProtocolBuffer.ProtocolMessage):
 class Reference(ProtocolBuffer.ProtocolMessage):
   has_app_ = 0
   app_ = ""
+  has_name_space_ = 0
+  name_space_ = ""
   has_path_ = 0
 
   def __init__(self, contents=None):
@@ -1356,6 +1388,19 @@ class Reference(ProtocolBuffer.ProtocolMessage):
 
   def has_app(self): return self.has_app_
 
+  def name_space(self): return self.name_space_
+
+  def set_name_space(self, x):
+    self.has_name_space_ = 1
+    self.name_space_ = x
+
+  def clear_name_space(self):
+    if self.has_name_space_:
+      self.has_name_space_ = 0
+      self.name_space_ = ""
+
+  def has_name_space(self): return self.has_name_space_
+
   def path(self): return self.path_
 
   def mutable_path(self): self.has_path_ = 1; return self.path_
@@ -1368,12 +1413,15 @@ class Reference(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_name_space()): self.set_name_space(x.name_space())
     if (x.has_path()): self.mutable_path().MergeFrom(x.path())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_name_space_ != x.has_name_space_: return 0
+    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     if self.has_path_ != x.has_path_: return 0
     if self.has_path_ and self.path_ != x.path_: return 0
     return 1
@@ -1394,11 +1442,13 @@ class Reference(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.app_))
+    if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     n += self.lengthString(self.path_.ByteSize())
     return n + 2
 
   def Clear(self):
     self.clear_app()
+    self.clear_name_space()
     self.clear_path()
 
   def OutputUnchecked(self, out):
@@ -1407,6 +1457,9 @@ class Reference(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(114)
     out.putVarInt32(self.path_.ByteSize())
     self.path_.OutputUnchecked(out)
+    if (self.has_name_space_):
+      out.putVarInt32(162)
+      out.putPrefixedString(self.name_space_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1420,6 +1473,9 @@ class Reference(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_path().TryMerge(tmp)
         continue
+      if tt == 162:
+        self.set_name_space(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1427,6 +1483,7 @@ class Reference(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     if self.has_path_:
       res+=prefix+"path <\n"
       res+=self.path_.__str__(prefix + "  ", printElemNumber)
@@ -1438,19 +1495,22 @@ class Reference(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kapp = 13
+  kname_space = 20
   kpath = 14
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     13: "app",
     14: "path",
-  }, 14)
+    20: "name_space",
+  }, 20)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     13: ProtocolBuffer.Encoder.STRING,
     14: ProtocolBuffer.Encoder.STRING,
-  }, 14, ProtocolBuffer.Encoder.MAX_TYPE)
+    20: ProtocolBuffer.Encoder.STRING,
+  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

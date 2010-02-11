@@ -22,7 +22,7 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
-from google.appengine.api.api_base_pb import VoidProto
+from google.appengine.api.api_base_pb import *
 class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
@@ -350,5 +350,183 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
-__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest']
+  def __init__(self, contents=None):
+    self.blob_key_ = []
+    if contents is not None: self.MergeFromString(contents)
+
+  def blob_key_size(self): return len(self.blob_key_)
+  def blob_key_list(self): return self.blob_key_
+
+  def blob_key(self, i):
+    return self.blob_key_[i]
+
+  def set_blob_key(self, i, x):
+    self.blob_key_[i] = x
+
+  def add_blob_key(self, x):
+    self.blob_key_.append(x)
+
+  def clear_blob_key(self):
+    self.blob_key_ = []
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.blob_key_) != len(x.blob_key_): return 0
+    for e1, e2 in zip(self.blob_key_, x.blob_key_):
+      if e1 != e2: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.blob_key_)
+    for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    return n + 0
+
+  def Clear(self):
+    self.clear_blob_key()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.blob_key_)):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.blob_key_[i])
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.add_blob_key(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.blob_key_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("blob_key%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kblob_key = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "blob_key",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    self.decoded_ = []
+    if contents is not None: self.MergeFromString(contents)
+
+  def decoded_size(self): return len(self.decoded_)
+  def decoded_list(self): return self.decoded_
+
+  def decoded(self, i):
+    return self.decoded_[i]
+
+  def set_decoded(self, i, x):
+    self.decoded_[i] = x
+
+  def add_decoded(self, x):
+    self.decoded_.append(x)
+
+  def clear_decoded(self):
+    self.decoded_ = []
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.decoded_size()): self.add_decoded(x.decoded(i))
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.decoded_) != len(x.decoded_): return 0
+    for e1, e2 in zip(self.decoded_, x.decoded_):
+      if e1 != e2: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.decoded_)
+    for i in xrange(len(self.decoded_)): n += self.lengthString(len(self.decoded_[i]))
+    return n + 0
+
+  def Clear(self):
+    self.clear_decoded()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.decoded_)):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.decoded_[i])
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.add_decoded(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.decoded_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("decoded%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kdecoded = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "decoded",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+
+__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','DecodeBlobKeyRequest','DecodeBlobKeyResponse']

@@ -3,6 +3,23 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.3.1
+================================
+  - Datastore Query Cursors
+      http://code.google.com/appengine/docs/python/datastore/queriesandindexes.html#Query_Cursors
+  - Transactional Task Creation
+  - Support for Custom Admin Console pages
+  - New "month" and "synchronized" syntax for Cron configuration
+      http://code.google.com/appengine/docs/java/config/cron.html
+  - Application Stats library now included in with SDK
+      http://code.google.com/appengine/docs/python/tools/appstats.html
+  - Bulk Loader supports bulk downloading all kinds simultaneously
+  - appcfg.py validates SSL certificates for HTTPS on Upload
+  - Support for ETags, If-matches, If-not-matches HTTP Headers, as well as 304
+    status codes now available on static files (not available on the
+    dev_appserver or Blobstore blobs)
+      http://code.google.com/p/googleappengine/issues/detail?id=575
+
 Version 1.3.0 - December 14, 2009
 ================================
   - Adds support for the new Blobstore API
@@ -31,7 +48,7 @@ Version 1.2.8 - October 28, 2009
   - Fixed issue in Bulk Loader with line breaks in data.
   - Fixed exception in Bulk Loader with certain data ranges.
       http://code.google.com/p/googleappengine/issues/detail?id=2085
-  - Added SERVER_SOFTWARE and DATACENTER environment variables to runtime.
+  - Added SERVER_SOFTWARE environment variable to runtime.
   - Over Quota HTTP status code changed from 403 to 503
       http://code.google.com/p/googleappengine/issues/detail?id=961
   - Task Queue now considers all HTTP 2xx status codes to represent success
@@ -55,17 +72,17 @@ Version 1.2.7 - October 14, 2009
 Version 1.2.6 - September 17, 2009
 ==================================
   - Added incoming email support.
-    http://code.google.com/p/googleappengine/issues/detail?id=165
+      http://code.google.com/p/googleappengine/issues/detail?id=165
   - Remote API now supports XMPP and task queues.
   - The default for all handlers is now secure: optional. Users can
     now access all pages via SSL unless explicitly disallowed.
   - Remote API now supports HTTPS.
-    http://code.google.com/p/googleappengine/issues/detail?id=1461
+      http://code.google.com/p/googleappengine/issues/detail?id=1461
   - Appcfg now uses https by default.
-    http://code.google.com/p/googleappengine/issues/detail?id=794
+      http://code.google.com/p/googleappengine/issues/detail?id=794
   - Appcfg.py now supports the --application and --version flags to
     override the values specified in app.yaml.
-    http://code.google.com/p/googleappengine/issues/detail?id=670
+      http://code.google.com/p/googleappengine/issues/detail?id=670
   - GQL now supports '= NULL' queries.
   - The db.Model constructor now supports explicitly setting a key
     (and thus an id) for a Model instance.
@@ -78,8 +95,8 @@ Version 1.2.5 - August 13, 2009
 ===============================
   - The Windows Python SDK now includes a GUI launcher, similar to the Mac SDK.
   - Added XMPP support.
-    http://code.google.com/appengine/docs/python/xmpp
-    http://code.google.com/p/googleappengine/issues/detail?id=231
+      http://code.google.com/appengine/docs/python/xmpp
+      http://code.google.com/p/googleappengine/issues/detail?id=231
   - Datastore now supports multiple writes to the same entity within a
     transaction.
   - Datastore entity key names can now start with a digit.

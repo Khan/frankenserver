@@ -30,6 +30,7 @@ import email
 from email import MIMEBase
 from email import MIMEMultipart
 from email import MIMEText
+from email import Parser
 import logging
 
 from google.appengine.api import api_base_pb
@@ -310,7 +311,7 @@ def _GetMimeType(file_name):
   if extension_index == -1:
     raise InvalidAttachmentTypeError(
         "File '%s' does not have an extension" % file_name)
-  extension = file_name[extension_index + 1:]
+  extension = file_name[extension_index + 1:].lower()
   mime_type = EXTENSION_MIME_MAP.get(extension, None)
   if mime_type is None:
     raise InvalidAttachmentTypeError(
@@ -837,7 +838,7 @@ class _EmailMessageBase(object):
           try:
             attachments = self.attachments
           except AttributeError:
-            self.attachments = (filename, payload)
+            self.attachments = [(filename, payload)]
           else:
             if isinstance(attachments[0], basestring):
               self.attachments = [attachments]
@@ -1164,3 +1165,6 @@ class InboundEmailMessage(EmailMessage):
         pass
 
     return mime_message
+
+
+Parser.Parser

@@ -210,11 +210,18 @@ def Normalize(filters, orders):
     (filter, orders) the reduced set of filters and orders
   """
 
+  eq_properties = set()
+  inequality_properties = set()
+
   for f in filters:
     if f.op() == datastore_pb.Query_Filter.IN and f.property_size() == 1:
-      f.set_op(datastore_pb.Query_Filter.EQUAL);
+      f.set_op(datastore_pb.Query_Filter.EQUAL)
+    if f.op() in EQUALITY_OPERATORS:
+      eq_properties.add(f.property(0).name())
+    elif f.op() in INEQUALITY_OPERATORS:
+      inequality_properties.add(f.property(0).name())
 
-  eq_properties = set([f.property(0).name() for f in filters if f.op() == datastore_pb.Query_Filter.EQUAL]);
+  eq_properties -= inequality_properties
 
   remove_set = eq_properties.copy()
   new_orders = []
@@ -409,10 +416,6 @@ def CompositeIndexForQuery(query):
       prop, dir = props[0]
       if prop in datastore_types._SPECIAL_PROPERTIES and dir is DESCENDING:
         required = True
-
-  unique_names = set(name for name, dir in props)
-  if len(props) > 1 and len(unique_names) == 1:
-    required = False
 
   return (required, kind, ancestor, tuple(props), len(eq_filters))
 

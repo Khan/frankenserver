@@ -27,10 +27,12 @@ import sys
 import urllib
 import urllib2
 
+from google.appengine.tools import dev_appserver_login
 
 https_handler = urllib2.HTTPSHandler
 uses_cert_verification = False
-certpath = os.path.join(os.path.dirname(__file__), "cacerts.txt")
+certpath = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..',
+    '..', 'lib', 'cacerts', 'cacerts.txt'))
 cert_file_available = os.path.exists(certpath)
 try:
   import https_wrapper
@@ -305,8 +307,8 @@ class AbstractRpcServer(object):
   def _DevAppServerAuthenticate(self):
     """Authenticates the user on the dev_appserver."""
     credentials = self.auth_function()
-    self.extra_headers["Cookie"] = ('dev_appserver_login="%s:True"; Path=/;'  %
-                                    (credentials[0],))
+    value = dev_appserver_login.CreateCookieData(credentials[0], True)
+    self.extra_headers["Cookie"] = ('dev_appserver_login="%s"; Path=/;' % value)
 
   def Send(self, request_path, payload="",
            content_type="application/octet-stream",
@@ -364,6 +366,11 @@ class AbstractRpcServer(object):
             logger.debug("Got 302 redirect. Location: %s" % loc)
             if loc.startswith("https://www.google.com/accounts/ServiceLogin"):
               self._Authenticate()
+            elif re.match(r"https://www.google.com/a/google.com/ServiceLogin",
+                          loc):
+              self.account_type = os.getenv("APPENGINE_RPC_HOSTED_LOGIN_TYPE",
+                                            "HOSTED_OR_GOOGLE")
+              self._Authenticate()
             elif re.match(r"https://www.google.com/a/[a-z0-9.-]+/ServiceLogin",
                           loc):
               self.account_type = os.getenv("APPENGINE_RPC_HOSTED_LOGIN_TYPE",
@@ -385,10 +392,11 @@ class HttpRpcServer(AbstractRpcServer):
   def _Authenticate(self):
     """Save the cookie jar after authentication."""
     if cert_file_available and not uses_cert_verification:
-      logger.warn("ssl module not found. Without this the identity of the "
-                  "remote host cannot be verified, and connections are NOT "
-                  "secure. To fix this, please install the ssl module from "
-                  "http://pypi.python.org/pypi/ssl")
+      logger.warn("""ssl module not found.
+Without the ssl module, the identity of the remote host cannot be verified, and
+connections may NOT be secure. To fix this, please install the ssl module from
+http://pypi.python.org/pypi/ssl .
+To learn more, see http://code.google.com/appengine/kb/general.html#rpcssl .""")
     super(HttpRpcServer, self)._Authenticate()
     if self.cookie_jar.filename is not None and self.save_cookies:
       logger.info("Saving authentication cookies to %s" %

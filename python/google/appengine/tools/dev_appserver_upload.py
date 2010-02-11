@@ -258,6 +258,9 @@ class UploadCGIHandler(object):
         variable = base.MIMEBase('text', 'plain')
         variable.set_payload(form_item.value)
       else:
+        if not form_item.filename:
+          continue
+
         disposition_parameters['filename'] = form_item.filename
 
         main_type, sub_type = _SplitMIMEType(form_item.type)

@@ -66,6 +66,21 @@ class RPC(object):
     self.stub = stub
     self.cpu_usage_mcycles = 0
 
+  def Clone(self):
+    """Make a shallow copy of this instances attributes, excluding methods.
+
+    This is usually used when an RPC has been specified with some configuration
+    options and is being used as a template for multiple RPCs outside of a
+    developer's easy control.
+    """
+    if self.state != RPC.IDLE:
+      raise AssertionError('Cannot clone a call already in progress')
+
+    clone = self.__class__()
+    for k, v in self.__dict__.iteritems():
+      setattr(clone, k, v)
+    return clone
+
   def MakeCall(self, package=None, call=None, request=None, response=None,
                callback=None, deadline=None):
     """Makes an asynchronous (i.e. non-blocking) API call within the
@@ -132,8 +147,8 @@ class RPC(object):
       try:
         self.stub.MakeSyncCall(self.package, self.call,
                                self.request, self.response)
-      except Exception, e:
-        self.__exception = e
+      except Exception:
+        _, self.__exception, self.__traceback = sys.exc_info()
     finally:
       self.__state = RPC.FINISHING
       self.__Callback()
@@ -145,6 +160,6 @@ class RPC(object):
       try:
         self.callback()
       except:
-        exc_class, self.__exception, self.__traceback = sys.exc_info()
+        _, self.__exception, self.__traceback = sys.exc_info()
         self.__exception._appengine_apiproxy_rpc = self
         raise
