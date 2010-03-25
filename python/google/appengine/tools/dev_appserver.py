@@ -939,6 +939,8 @@ class FakeFile(file):
   ALLOWED_DIRS = set([
       os.path.normcase(os.path.realpath(os.path.dirname(os.__file__))),
       os.path.normcase(os.path.abspath(os.path.dirname(os.__file__))),
+      os.path.normcase(os.path.dirname(os.path.realpath(os.__file__))),
+      os.path.normcase(os.path.dirname(os.path.abspath(os.__file__))),
   ])
 
   NOT_ALLOWED_DIRS = set([
@@ -1144,11 +1146,14 @@ class FakeFile(file):
                               normcase=normcase):
       relative_filename = logical_dirfakefile[len(FakeFile._root_path):]
 
-      if (not FakeFile._allow_skipped_files and
-          FakeFile._skip_files.match(relative_filename)):
-        logging.warning('Blocking access to skipped file "%s"',
-                        logical_filename)
-        return False
+      if not FakeFile._allow_skipped_files:
+        path = relative_filename
+        while path != os.path.dirname(path):
+          if FakeFile._skip_files.match(path):
+            logging.warning('Blocking access to skipped file "%s"',
+                            logical_filename)
+            return False
+          path = os.path.dirname(path)
 
       if FakeFile._static_file_config_matcher.IsStaticFile(relative_filename):
         logging.warning('Blocking access to static file "%s"',
@@ -3212,6 +3217,9 @@ def CreateRequestHandler(root_path,
         self.send_response(httplib.INTERNAL_SERVER_ERROR, title)
         self.wfile.write('Content-Type: text/html\r\n\r\n')
         self.wfile.write('<pre>%s</pre>' % cgi.escape(msg))
+      except KeyboardInterrupt, e:
+        logging.info('Server interrupted by user, terminating')
+        self.server.stop_serving_forever()
       except:
         msg = 'Exception encountered handling request'
         logging.exception(msg)
@@ -3740,6 +3748,7 @@ class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
     BaseHTTPServer.HTTPServer.__init__(self, server_address,
                                        request_handler_class)
     self._events = []
+    self._stopped = False
 
   def get_request(self, time_func=time.time, select_func=select.select):
     """Overrides the base get_request call.
@@ -3765,6 +3774,20 @@ class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
       if self._events and current_time >= self._events[0][0]:
         unused_eta, runnable = heapq.heappop(self._events)
         runnable()
+
+  def serve_forever(self):
+    """Handle one request at a time until told to stop."""
+    while not self._stopped:
+      self.handle_request()
+
+  def stop_serving_forever(self):
+    """Stop the serve_forever() loop.
+
+    Stop happens on the next handle_request() loop; it will not stop
+    immediately.  Since dev_appserver.py must run on py2.5 we can't
+    use newer features of SocketServer (e.g. shutdown(), added in py2.6).
+    """
+    self._stopped = True
 
   def AddEvent(self, eta, runnable):
     """Add a runnable event to be run at the specified time.

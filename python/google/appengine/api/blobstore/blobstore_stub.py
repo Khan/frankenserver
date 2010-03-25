@@ -34,6 +34,7 @@ from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api import users
+from google.appengine.api import blobstore
 from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.runtime import apiproxy_errors
 
@@ -232,7 +233,54 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       response: Not used but should be a VoidProto.
     """
     for blob_key in request.blob_key_list():
-      key = datastore_types.Key.from_path('__BlobInfo__', str(blob_key))
+      key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
+                                          str(blob_key))
 
       datastore.Delete(key)
       self.__storage.DeleteBlob(blob_key)
+
+  def _Dynamic_FetchData(self, request, response):
+    """Fetch a blob fragment from a blob by its blob-key.
+
+    Fetches a blob fragment using its blob-key.  Start index is inclusive,
+    end index is inclusive.  Valid requests for information outside of
+    the range of the blob return a partial string or empty string if entirely
+    out of range.
+
+    Args:
+      request: A fully initialized FetchDataRequest instance.
+      response: A FetchDataResponse instance.
+
+    Raises:
+      ApplicationError when application has the following errors:
+        INDEX_OUT_OF_RANGE: Index is negative or end > start.
+        BLOB_FETCH_SIZE_TOO_LARGE: Request blob fragment is larger than
+          MAX_BLOB_FRAGMENT_SIZE.
+        BLOB_NOT_FOUND: If invalid blob-key is provided or is not found.
+    """
+    start_index = request.start_index()
+    if start_index < 0:
+      raise apiproxy_errors.ApplicationError(
+          blobstore_service_pb.BlobstoreServiceError.DATA_INDEX_OUT_OF_RANGE)
+
+    end_index = request.end_index()
+    if end_index < start_index:
+      raise apiproxy_errors.ApplicationError(
+          blobstore_service_pb.BlobstoreServiceError.DATA_INDEX_OUT_OF_RANGE)
+
+    fetch_size = end_index - start_index + 1
+    if fetch_size > blobstore.MAX_BLOB_FETCH_SIZE:
+      raise apiproxy_errors.ApplicationError(
+          blobstore_service_pb.BlobstoreServiceError.BLOB_FETCH_SIZE_TOO_LARGE)
+
+    blob_key = request.blob_key()
+    blob_info_key = datastore.Key.from_path(blobstore.BLOB_INFO_KIND, blob_key)
+    try:
+      datastore.Get(blob_info_key)
+    except datastore_errors.EntityNotFoundError, err:
+      raise apiproxy_errors.ApplicationError(
+          blobstore_service_pb.BlobstoreServiceError.BLOB_NOT_FOUND)
+
+    blob_file = self.__storage.OpenBlob(blob_key)
+    blob_file.seek(start_index)
+    response.set_data(blob_file.read(fetch_size))

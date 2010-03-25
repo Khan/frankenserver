@@ -129,6 +129,9 @@ BlobKey = datastore_types.BlobKey
 READ_CAPABILITY = datastore.READ_CAPABILITY
 WRITE_CAPABILITY = datastore.WRITE_CAPABILITY
 
+STRONG_CONSISTENCY = datastore.STRONG_CONSISTENCY
+EVENTUAL_CONSISTENCY = datastore.EVENTUAL_CONSISTENCY
+
 _kind_map = {}
 
 
@@ -1170,18 +1173,21 @@ class Model(object):
     return cls.properties()
 
 
-def create_rpc(deadline=None, callback=None):
+def create_rpc(deadline=None, callback=None, read_policy=STRONG_CONSISTENCY):
   """Create an rpc for use in configuring datastore calls.
 
   Args:
     deadline: float, deadline for calls in seconds.
     callback: callable, a callback triggered when this rpc completes,
       accepts one argument: the returned rpc.
+    read_policy: flag, set to EVENTUAL_CONSISTENCY to enable eventually
+      consistent reads
 
   Returns:
     A datastore.DatastoreRPC instance.
   """
-  return datastore.CreateRPC(deadline=deadline, callback=callback)
+  return datastore.CreateRPC(
+      deadline=deadline, callback=callback, read_policy=read_policy)
 
 def get(keys, **kwargs):
   """Fetch the specific Model instance with the given key from the datastore.
@@ -1529,6 +1535,9 @@ class _BaseQuery(object):
     If you know the number of results you need, consider fetch() instead,
     or use a GQL query with a LIMIT clause. It's more efficient.
 
+    Args:
+      rpc: datastore.DatastoreRPC to use for this request.
+
     Returns:
       Iterator for this query.
     """
@@ -1597,6 +1606,7 @@ class _BaseQuery(object):
     Args:
       limit: Maximum number of results to return.
       offset: Optional number of results to skip first; default zero.
+      rpc: datastore.DatastoreRPC to use for this request.
 
     Returns:
       A list of db.Model instances.  There may be fewer than 'limit'
@@ -2081,16 +2091,35 @@ class GqlQuery(_BaseQuery):
     for name, arg in kwds.iteritems():
       self._kwds[name] = _normalize_query_parameter(arg)
 
-  def run(self):
-    """Override _BaseQuery.run() so the LIMIT clause is handled properly."""
-    query_run = self._proto_query.Run(*self._args, **self._kwds)
-    if self._keys_only:
-      return query_run
+  def run(self, **kwargs):
+    """Iterator for this query that handles the LIMIT clause property.
+
+    If the GQL query string contains a LIMIT clause, this function fetches
+    all results before returning an iterator. Otherwise results are retrieved
+    in batches by the iterator.
+
+    Args:
+      rpc: datastore.DatastoreRPC to use for this request.
+
+    Returns:
+      Iterator for this query.
+    """
+    if self._proto_query.limit() >= 0:
+      return iter(self.fetch(limit=self._proto_query.limit(),
+                             offset=self._proto_query.offset(),
+                             **kwargs))
     else:
-      return _QueryIterator(self._model_class, iter(query_run))
+      results = _BaseQuery.run(self, **kwargs)
+      try:
+        for _ in xrange(self._proto_query.offset()):
+          results.next()
+      except StopIteration:
+        pass
+
+      return results
 
   def _get_query(self):
-    return self._proto_query.Bind(self._args, self._kwds)
+    return self._proto_query.Bind(self._args, self._kwds, self._cursor)
 
 
 class UnindexedProperty(Property):

@@ -33,6 +33,7 @@ except ImportError:
   pytz = None
 
 from google.appengine.cron import groc
+from google.appengine.cron import groctimespecification
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
@@ -52,9 +53,8 @@ class GrocValidator(validation.Validator):
       raise validation.MissingAttribute('schedule must be specified')
     if not isinstance(value, basestring):
       raise TypeError('schedule must be a string, not \'%r\''%type(value))
-    schedule = groc.CreateParser(value)
     try:
-      schedule.timespec()
+      groctimespecification.GrocTimeSpecification(value)
     except groc.GrocException, e:
       raise validation.ValidationError('schedule \'%s\' failed to parse: %s'%(
           value, e.args[0]))

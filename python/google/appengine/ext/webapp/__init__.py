@@ -66,8 +66,11 @@ import sys
 import traceback
 import urlparse
 import webob
+import wsgiref.handlers
 import wsgiref.headers
 import wsgiref.util
+
+wsgiref.handlers.BaseHandler.os_environ = {}
 
 RE_FIND_GROUPS = re.compile('\(.*?\)')
 _CHARSET_RE = re.compile(r';\s*charset=([^;\s]*)', re.I)

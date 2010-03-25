@@ -24,10 +24,7 @@ application's datastore by offline processes run by the Google App Engine team.
 
 
 
-try:
-  from google.appengine.ext import db
-except ImportError:
-  from google.appengine.ext import db
+from google.appengine.ext import db
 
 
 class BaseStatistic(db.Model):

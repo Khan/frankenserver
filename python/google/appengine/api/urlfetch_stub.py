@@ -45,10 +45,6 @@ REDIRECT_STATUSES = frozenset([
   httplib.TEMPORARY_REDIRECT,
 ])
 
-PORTS_ALLOWED_IN_PRODUCTION = (
-    None, '80', '443', '4443', '8080', '8081', '8082', '8083', '8084', '8085',
-    '8086', '8087', '8088', '8089', '8188', '8444', '8990')
-
 _API_CALL_DEADLINE = 5.0
 
 
@@ -59,6 +55,21 @@ _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'via',
   'x-forwarded-for',
 ])
+
+
+def _IsAllowedPort(port):
+  if port is None:
+    return True
+  try:
+    port = int(port)
+  except ValueError, e:
+    return False
+  if ((port >= 80 and port <= 90) or
+      (port >= 440 and port <= 450) or
+      port >= 1024):
+    return True
+  return False
+
 
 class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of the urlfetch API to be used with apiproxy_stub_map."""
@@ -151,7 +162,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
 
       port = urllib.splitport(urllib.splituser(host)[1])[1]
 
-      if port not in PORTS_ALLOWED_IN_PRODUCTION:
+      if not _IsAllowedPort(port):
         logging.warning(
           'urlfetch received %s ; port %s is not allowed in production!' %
           (url, port))

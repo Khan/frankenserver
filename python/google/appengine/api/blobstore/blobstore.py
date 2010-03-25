@@ -39,15 +39,23 @@ from google.appengine.runtime import apiproxy_errors
 __all__ = ['BASE_CREATION_HEADER_FORMAT',
            'BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
-           'BlobKey',
-           'CreationFormatError',
            'UPLOAD_INFO_CREATION_HEADER',
+           'MAX_BLOB_FETCH_SIZE',
+           'BlobFetchSizeTooLargeError',
+           'BlobKey',
+           'BlobNotFoundError',
+           'CreationFormatError',
+           'DataIndexOutOfRangeError',
            'Error',
            'InternalError',
            'create_upload_url',
            'delete',
+           'fetch_data',
            'parse_creation',
           ]
+
+
+BlobKey = datastore_types.BlobKey
 
 
 BLOB_INFO_KIND = '__BlobInfo__'
@@ -57,6 +65,8 @@ BLOB_KEY_HEADER = 'X-AppEngine-BlobKey'
 UPLOAD_INFO_CREATION_HEADER = 'X-AppEngine-Upload-Creation'
 
 BASE_CREATION_HEADER_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+MAX_BLOB_FETCH_SIZE = (1 << 20) - (1 << 15)
 
 class Error(Exception):
   """Base blobstore error type."""
@@ -70,6 +80,18 @@ class CreationFormatError(Error):
   """Raised when attempting to parse bad creation date format."""
 
 
+class BlobNotFoundError(Error):
+  """Raised when attempting to access blob data for non-existant blob."""
+
+
+class DataIndexOutOfRangeError(Error):
+  """Raised when attempting to access indexes out of range in wrong order."""
+
+
+class BlobFetchSizeTooLargeError(Error):
+  """Raised when attempting to fetch too large a block from a blob."""
+
+
 def _ToBlobstoreError(error):
   """Translate an application error to a datastore Error, if possible.
 
@@ -79,6 +101,12 @@ def _ToBlobstoreError(error):
   error_map = {
       blobstore_service_pb.BlobstoreServiceError.INTERNAL_ERROR:
       InternalError,
+      blobstore_service_pb.BlobstoreServiceError.BLOB_NOT_FOUND:
+      BlobNotFoundError,
+      blobstore_service_pb.BlobstoreServiceError.DATA_INDEX_OUT_OF_RANGE:
+      DataIndexOutOfRangeError,
+      blobstore_service_pb.BlobstoreServiceError.BLOB_FETCH_SIZE_TOO_LARGE:
+      BlobFetchSizeTooLargeError,
       }
 
   if error.application_error in error_map:
@@ -170,4 +198,63 @@ def parse_creation(creation_string):
   return datetime.datetime(*timestamp[:6] + tuple([microsecond]))
 
 
-BlobKey = datastore_types.BlobKey
+def fetch_data(blob_key, start_index, end_index,
+               _make_sync_call=apiproxy_stub_map.MakeSyncCall):
+  """Fetch data for blob.
+
+  See docstring for ext.blobstore.fetch_data for more details.
+
+  Args:
+    blob: BlobKey, str or unicode representation of BlobKey of
+      blob to fetch data from.
+    start_index: Start index of blob data to fetch.  May not be negative.
+    end_index: End index (exclusive) of blob data to fetch.  Must be
+      >= start_index.
+
+  Returns:
+    str containing partial data of blob.  See docstring for
+    ext.blobstore.fetch_data for more details.
+
+  Raises:
+    See docstring for ext.blobstore.fetch_data for more details.
+  """
+  if not isinstance(start_index, (int, long)):
+    raise TypeError('start_index must be integer.')
+
+  if not isinstance(end_index, (int, long)):
+    raise TypeError('end_index must be integer.')
+
+  if isinstance(blob_key, BlobKey):
+    blob_key = str(blob_key).decode('utf-8')
+  elif isinstance(blob_key, str):
+    blob_key = blob_key.decode('utf-8')
+  elif not isinstance(blob_key, unicode):
+    raise TypeError('Blob-key must be str, unicode or BlobKey: %s' % blob_key)
+
+  if start_index < 0:
+    raise DataIndexOutOfRangeError(
+        'May not fetch blob at negative index.')
+
+  if end_index < start_index:
+    raise DataIndexOutOfRangeError(
+        'Start index %d > end index %d' % (start_index, end_index))
+
+  fetch_size = end_index - start_index + 1
+
+  if fetch_size > MAX_BLOB_FETCH_SIZE:
+    raise BlobFetchSizeTooLargeError(
+        'Blob fetch size is too large: %d' % fetch_size)
+
+  request = blobstore_service_pb.FetchDataRequest()
+  response = blobstore_service_pb.FetchDataResponse()
+
+  request.set_blob_key(blob_key)
+  request.set_start_index(start_index)
+  request.set_end_index(end_index)
+
+  try:
+    _make_sync_call('blobstore', 'FetchData', request, response)
+  except apiproxy_errors.ApplicationError, e:
+    raise _ToBlobstoreError(e)
+
+  return response.data()

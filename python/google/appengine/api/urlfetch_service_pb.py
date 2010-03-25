@@ -578,6 +578,12 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   externalbytesreceived_ = 0
   has_finalurl_ = 0
   finalurl_ = ""
+  has_apicpumilliseconds_ = 0
+  apicpumilliseconds_ = 0
+  has_apibytessent_ = 0
+  apibytessent_ = 0
+  has_apibytesreceived_ = 0
+  apibytesreceived_ = 0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -677,6 +683,45 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_finalurl(self): return self.has_finalurl_
 
+  def apicpumilliseconds(self): return self.apicpumilliseconds_
+
+  def set_apicpumilliseconds(self, x):
+    self.has_apicpumilliseconds_ = 1
+    self.apicpumilliseconds_ = x
+
+  def clear_apicpumilliseconds(self):
+    if self.has_apicpumilliseconds_:
+      self.has_apicpumilliseconds_ = 0
+      self.apicpumilliseconds_ = 0
+
+  def has_apicpumilliseconds(self): return self.has_apicpumilliseconds_
+
+  def apibytessent(self): return self.apibytessent_
+
+  def set_apibytessent(self, x):
+    self.has_apibytessent_ = 1
+    self.apibytessent_ = x
+
+  def clear_apibytessent(self):
+    if self.has_apibytessent_:
+      self.has_apibytessent_ = 0
+      self.apibytessent_ = 0
+
+  def has_apibytessent(self): return self.has_apibytessent_
+
+  def apibytesreceived(self): return self.apibytesreceived_
+
+  def set_apibytesreceived(self, x):
+    self.has_apibytesreceived_ = 1
+    self.apibytesreceived_ = x
+
+  def clear_apibytesreceived(self):
+    if self.has_apibytesreceived_:
+      self.has_apibytesreceived_ = 0
+      self.apibytesreceived_ = 0
+
+  def has_apibytesreceived(self): return self.has_apibytesreceived_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -687,6 +732,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_externalbytessent()): self.set_externalbytessent(x.externalbytessent())
     if (x.has_externalbytesreceived()): self.set_externalbytesreceived(x.externalbytesreceived())
     if (x.has_finalurl()): self.set_finalurl(x.finalurl())
+    if (x.has_apicpumilliseconds()): self.set_apicpumilliseconds(x.apicpumilliseconds())
+    if (x.has_apibytessent()): self.set_apibytessent(x.apibytessent())
+    if (x.has_apibytesreceived()): self.set_apibytesreceived(x.apibytesreceived())
 
   def Equals(self, x):
     if x is self: return 1
@@ -705,6 +753,12 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_externalbytesreceived_ and self.externalbytesreceived_ != x.externalbytesreceived_: return 0
     if self.has_finalurl_ != x.has_finalurl_: return 0
     if self.has_finalurl_ and self.finalurl_ != x.finalurl_: return 0
+    if self.has_apicpumilliseconds_ != x.has_apicpumilliseconds_: return 0
+    if self.has_apicpumilliseconds_ and self.apicpumilliseconds_ != x.apicpumilliseconds_: return 0
+    if self.has_apibytessent_ != x.has_apibytessent_: return 0
+    if self.has_apibytessent_ and self.apibytessent_ != x.apibytessent_: return 0
+    if self.has_apibytesreceived_ != x.has_apibytesreceived_: return 0
+    if self.has_apibytesreceived_ and self.apibytesreceived_ != x.apibytesreceived_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -727,6 +781,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_externalbytessent_): n += 1 + self.lengthVarInt64(self.externalbytessent_)
     if (self.has_externalbytesreceived_): n += 1 + self.lengthVarInt64(self.externalbytesreceived_)
     if (self.has_finalurl_): n += 1 + self.lengthString(len(self.finalurl_))
+    if (self.has_apicpumilliseconds_): n += 1 + self.lengthVarInt64(self.apicpumilliseconds_)
+    if (self.has_apibytessent_): n += 1 + self.lengthVarInt64(self.apibytessent_)
+    if (self.has_apibytesreceived_): n += 1 + self.lengthVarInt64(self.apibytesreceived_)
     return n + 1
 
   def Clear(self):
@@ -737,6 +794,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_externalbytessent()
     self.clear_externalbytesreceived()
     self.clear_finalurl()
+    self.clear_apicpumilliseconds()
+    self.clear_apibytessent()
+    self.clear_apibytesreceived()
 
   def OutputUnchecked(self, out):
     if (self.has_content_):
@@ -760,6 +820,15 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_finalurl_):
       out.putVarInt32(74)
       out.putPrefixedString(self.finalurl_)
+    if (self.has_apicpumilliseconds_):
+      out.putVarInt32(80)
+      out.putVarInt64(self.apicpumilliseconds_)
+    if (self.has_apibytessent_):
+      out.putVarInt32(88)
+      out.putVarInt64(self.apibytessent_)
+    if (self.has_apibytesreceived_):
+      out.putVarInt32(96)
+      out.putVarInt64(self.apibytesreceived_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -785,6 +854,15 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 74:
         self.set_finalurl(d.getPrefixedString())
         continue
+      if tt == 80:
+        self.set_apicpumilliseconds(d.getVarInt64())
+        continue
+      if tt == 88:
+        self.set_apibytessent(d.getVarInt64())
+        continue
+      if tt == 96:
+        self.set_apibytesreceived(d.getVarInt64())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -805,6 +883,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_externalbytessent_: res+=prefix+("ExternalBytesSent: %s\n" % self.DebugFormatInt64(self.externalbytessent_))
     if self.has_externalbytesreceived_: res+=prefix+("ExternalBytesReceived: %s\n" % self.DebugFormatInt64(self.externalbytesreceived_))
     if self.has_finalurl_: res+=prefix+("FinalUrl: %s\n" % self.DebugFormatString(self.finalurl_))
+    if self.has_apicpumilliseconds_: res+=prefix+("ApiCpuMilliseconds: %s\n" % self.DebugFormatInt64(self.apicpumilliseconds_))
+    if self.has_apibytessent_: res+=prefix+("ApiBytesSent: %s\n" % self.DebugFormatInt64(self.apibytessent_))
+    if self.has_apibytesreceived_: res+=prefix+("ApiBytesReceived: %s\n" % self.DebugFormatInt64(self.apibytesreceived_))
     return res
 
 
@@ -820,6 +901,9 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
   kExternalBytesSent = 7
   kExternalBytesReceived = 8
   kFinalUrl = 9
+  kApiCpuMilliseconds = 10
+  kApiBytesSent = 11
+  kApiBytesReceived = 12
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -832,7 +916,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     7: "ExternalBytesSent",
     8: "ExternalBytesReceived",
     9: "FinalUrl",
-  }, 9)
+    10: "ApiCpuMilliseconds",
+    11: "ApiBytesSent",
+    12: "ApiBytesReceived",
+  }, 12)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -845,7 +932,10 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.NUMERIC,
     9: ProtocolBuffer.Encoder.STRING,
-  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
+    10: ProtocolBuffer.Encoder.NUMERIC,
+    11: ProtocolBuffer.Encoder.NUMERIC,
+    12: ProtocolBuffer.Encoder.NUMERIC,
+  }, 12, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

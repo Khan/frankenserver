@@ -3822,6 +3822,7 @@ def _PerformBulkload(arg_dict,
   logger.info('Bandwidth: %s bytes/second', bandwidth_limit)
   logger.info('HTTP connections: %s/second', http_limit)
   logger.info('Entities inserted/fetched/modified: %s/second', rps_limit)
+  logger.info('Batch Size: %s', batch_size)
 
   throttle = remote_api_throttle.Throttle(layout=throttle_layout)
 

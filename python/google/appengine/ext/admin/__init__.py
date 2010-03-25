@@ -64,6 +64,14 @@ from google.appengine.ext.webapp import template
 _DEBUG = True
 
 
+def ustr(value):
+  """Like str(), but UTF-8-encodes Unicode instead of failing."""
+  try:
+    return str(value)
+  except UnicodeError:
+    return unicode(value).encode('UTF-8')
+
+
 class ImageHandler(webapp.RequestHandler):
   """Serves a static image.
 
@@ -874,7 +882,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
         data_type = DataType.get_by_name(data_type_name)
         if entity and entity.has_key(field_name):
           old_formatted_value = data_type.format(entity[field_name])
-          if old_formatted_value == form_value:
+          if old_formatted_value == ustr(form_value):
             continue
 
         if len(form_value) > 0:
@@ -912,7 +920,7 @@ class DataType(object):
     return _NAMED_DATA_TYPES[name]
 
   def format(self, value):
-    return str(value)
+    return ustr(value)
 
   def short_format(self, value):
     return self.format(value)
@@ -922,7 +930,8 @@ class DataType(object):
       string_value = self.format(value)
     else:
       string_value = ''
-    return '<input class="%s" name="%s" type="text" size="%d" value="%s"/>' % (cgi.escape(self.name()), cgi.escape(name), self.input_field_size(),
+    return '<input class="%s" name="%s" type="text" size="%d" value="%s"/>' % (cgi.escape(ustr(self.name())), cgi.escape(ustr(name)),
+            self.input_field_size(),
             cgi.escape(string_value, True))
 
   def input_field_size(self):
@@ -934,11 +943,11 @@ class DataType(object):
 
 class StringType(DataType):
   def format(self, value):
-    return value
+    return ustr(value)
 
   def input_field(self, name, value, sample_values):
-    value = str(value)
-    sample_values = [str(s) for s in sample_values]
+    value = ustr(value)
+    sample_values = [ustr(s) for s in sample_values]
     multiline = False
     if value:
       multiline = len(value) > 255 or value.find('\n') >= 0
@@ -973,7 +982,7 @@ class TextType(StringType):
     return 'Text'
 
   def input_field(self, name, value, sample_values):
-    return '<textarea name="%s" rows="5" cols="50">%s</textarea>' % (cgi.escape(name), cgi.escape(str(value)))
+    return '<textarea name="%s" rows="5" cols="50">%s</textarea>' % (cgi.escape(ustr(name)), cgi.escape(ustr(value)))
 
   def parse(self, value):
     return datastore_types.Text(value)
@@ -1006,7 +1015,8 @@ class TimeType(DataType):
     return 'datetime'
 
   def parse(self, value):
-    return datetime.datetime(*(time.strptime(value, TimeType._FORMAT)[0:6]))
+    return datetime.datetime(*(time.strptime(ustr(value),
+                                             TimeType._FORMAT)[0:6]))
 
   def python_type(self):
     return datetime.datetime
@@ -1017,8 +1027,8 @@ class ListType(DataType):
     value_file = cStringIO.StringIO()
     try:
       writer = csv.writer(value_file)
-      writer.writerow(value)
-      return value_file.getvalue()
+      writer.writerow(map(ustr, value))
+      return ustr(value_file.getvalue())
     finally:
       value_file.close()
 
@@ -1026,10 +1036,15 @@ class ListType(DataType):
     return 'list'
 
   def parse(self, value):
-    value_file = cStringIO.StringIO(value)
+    value_file = cStringIO.StringIO(ustr(value))
     try:
       reader = csv.reader(value_file)
-      return reader.next()
+      fields = []
+      for field in reader.next():
+        if isinstance(field, str):
+          field = field.decode('utf-8')
+        fields.append(field)
+      return fields
     finally:
       value_file.close()
 

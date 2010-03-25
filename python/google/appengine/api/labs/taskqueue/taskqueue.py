@@ -109,8 +109,20 @@ class PermissionDeniedError(Error):
   """The requested operation is not allowed for this app."""
 
 
+class DuplicateTaskNameError(Error):
+  """The add arguments contain tasks with identical names."""
+
+
+class TooManyTasksError(Error):
+  """Too many tasks were present in a single function call."""
+
+
 class DatastoreError(Error):
   """There was a datastore error while accessing the queue."""
+
+
+class BadTransactionState(Error):
+  """The state of the current transaction does not permit this operation."""
 
 
 MAX_QUEUE_NAME_LENGTH = 100
@@ -145,6 +157,37 @@ _QUEUE_NAME_PATTERN = r'^[a-zA-Z0-9-]{1,%s}$' % MAX_QUEUE_NAME_LENGTH
 
 _QUEUE_NAME_RE = re.compile(_QUEUE_NAME_PATTERN)
 
+_ERROR_MAPPING = {
+    taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE: UnknownQueueError,
+    taskqueue_service_pb.TaskQueueServiceError.TRANSIENT_ERROR:
+        TransientError,
+    taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERROR: InternalError,
+    taskqueue_service_pb.TaskQueueServiceError.TASK_TOO_LARGE:
+        TaskTooLargeError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_TASK_NAME:
+    InvalidTaskNameError,
+        taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME:
+    InvalidQueueNameError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_URL: InvalidUrlError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_RATE:
+        InvalidQueueError,
+    taskqueue_service_pb.TaskQueueServiceError.PERMISSION_DENIED:
+        PermissionDeniedError,
+    taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS:
+        TaskAlreadyExistsError,
+    taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_TASK:
+        TombstonedTaskError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_ETA: InvalidTaskError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_REQUEST: Error,
+    taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_TASK: Error,
+    taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_QUEUE: Error,
+    taskqueue_service_pb.TaskQueueServiceError.DUPLICATE_TASK_NAME:
+        DuplicateTaskNameError,
+
+    taskqueue_service_pb.TaskQueueServiceError.TOO_MANY_TASKS:
+        TooManyTasksError,
+
+}
 
 class _UTCTimeZone(datetime.tzinfo):
   """UTC timezone."""
@@ -509,65 +552,140 @@ class Queue(object):
     self.__url = '%s/%s' % (_DEFAULT_QUEUE_PATH, self.__name)
 
   def add(self, task, transactional=False):
-    """Adds a Task to this Queue.
+    """Adds a Task or list of Tasks to this Queue.
+
+    If a list of more than one Tasks is given, a raised exception does not
+    guarantee that no tasks were added to the queue (unless transactional is set
+    to True). To determine which tasks were successfully added when an exception
+    is raised, check the Task.was_enqueued property.
 
     Args:
-      task: The Task to add.
-      transactional: If false adds the task to a queue irrespectively to the
-        enclosing transaction success or failure. (optional)
+      task: A Task instance or a list of Task instances that will added to the
+        queue.
+      transactional: If False adds the Task(s) to a queue irrespectively to the
+        enclosing transaction success or failure. An exception is raised if True
+        and called outside of a transaction. (optional)
 
     Returns:
-      The Task that was supplied to this method.
+      The Task or list of tasks that was supplied to this method.
 
     Raises:
-      BadTaskStateError if the Task has already been added to a queue.
+      BadTaskStateError: if the Task(s) has already been added to a queue.
+      BadTransactionState: if the transactional argument is true but this call
+        is being made outside of the context of a transaction.
       Error-subclass on application errors.
+    """
+    try:
+      tasks = list(iter(task))
+    except TypeError:
+      tasks = [task]
+      multiple = False
+    else:
+      multiple = True
+
+    self.__AddTasks(tasks, transactional)
+
+    if multiple:
+      return tasks
+    else:
+      assert len(tasks) == 1
+      return tasks[0]
+
+  def __AddTasks(self, tasks, transactional):
+    """Internal implementation of .add() where tasks must be a list."""
+
+    request = taskqueue_service_pb.TaskQueueBulkAddRequest()
+    response = taskqueue_service_pb.TaskQueueBulkAddResponse()
+
+    task_names = set()
+    for task in tasks:
+      if task.name:
+        if task.name in task_names:
+          raise DuplicateTaskNameError(
+              'The task name %r is used more than once in the request' %
+              task.name)
+        task_names.add(task.name)
+
+      self.__FillAddRequest(task, request.add_add_request(), transactional)
+
+    try:
+      apiproxy_stub_map.MakeSyncCall('taskqueue', 'BulkAdd', request, response)
+    except apiproxy_errors.ApplicationError, e:
+      raise self.__TranslateError(e.application_error, e.error_detail)
+
+    assert response.taskresult_size() == len(tasks), (
+        'expected %d results from BulkAdd(), got %d' % (
+            len(tasks), response.taskresult_size()))
+
+    exception = None
+    for task, task_result in zip(tasks, response.taskresult_list()):
+      if task_result.result() == taskqueue_service_pb.TaskQueueServiceError.OK:
+        if task_result.has_chosen_task_name():
+          task._Task__name = task_result.chosen_task_name()
+        task._Task__enqueued = True
+      elif (task_result.result() ==
+            taskqueue_service_pb.TaskQueueServiceError.SKIPPED):
+        pass
+      elif exception is None:
+        exception = self.__TranslateError(task_result.result())
+
+    if exception is not None:
+      raise exception
+
+    return tasks
+
+  def __FillAddRequest(self, task, task_request, transactional):
+    """Populates a TaskQueueAddRequest with the data from a Task instance.
+
+    Args:
+      task: The Task instance to use as a source for the data to be added to
+        task_request.
+      task_request: The taskqueue_service_pb.TaskQueueAddRequest to populate.
+      transactional: If true then populates the task_request.transaction message
+        with information from the enclosing transaction (if any).
+
+    Raises:
+      BadTaskStateError: If the task was already added to a Queue.
+      BadTransactionState: If the transactional argument is True and there is no
+        enclosing transaction.
+      InvalidTaskNameError: If the transactional argument is True and the task
+        is named.
     """
     if task.was_enqueued:
       raise BadTaskStateError('Task has already been enqueued')
-
-    request = taskqueue_service_pb.TaskQueueAddRequest()
-    response = taskqueue_service_pb.TaskQueueAddResponse()
 
     adjusted_url = task.url
     if task.on_queue_url:
       adjusted_url = self.__url + task.url
 
 
-    request.set_queue_name(self.__name)
-    request.set_eta_usec(int(time.mktime(task.eta.utctimetuple())) * 10**6)
-    request.set_method(_METHOD_MAP.get(task.method))
-    request.set_url(adjusted_url)
+    task_request.set_queue_name(self.__name)
+    task_request.set_eta_usec(
+        int(time.mktime(task.eta.utctimetuple())) * 10**6)
+    task_request.set_method(_METHOD_MAP.get(task.method))
+    task_request.set_url(adjusted_url)
 
     if task.name:
-      request.set_task_name(task.name)
+      task_request.set_task_name(task.name)
     else:
-      request.set_task_name('')
+      task_request.set_task_name('')
 
     if task.payload:
-      request.set_body(task.payload)
+      task_request.set_body(task.payload)
     for key, value in _flatten_params(task.headers):
-      header = request.add_header()
+      header = task_request.add_header()
       header.set_key(key)
       header.set_value(value)
 
     if transactional:
       from google.appengine.api import datastore
-      datastore._MaybeSetupTransaction(request, [])
+      if not datastore._MaybeSetupTransaction(task_request, []):
+        raise BadTransactionState(
+            'Transactional adds are not allowed outside of transactions')
 
-    if request.has_transaction() and task.name:
-      raise InvalidTaskNameError('Task bound to a transaction cannot be named.')
-
-    call_tuple = ('taskqueue', 'Add', request, response)
-    try:
-      apiproxy_stub_map.MakeSyncCall(*call_tuple)
-    except apiproxy_errors.ApplicationError, e:
-      self.__TranslateError(e)
-
-    if response.has_chosen_task_name():
-      task._Task__name = response.chosen_task_name()
-    task._Task__enqueued = True
-    return task
+    if task_request.has_transaction() and task.name:
+      raise InvalidTaskNameError(
+          'Task bound to a transaction cannot be named.')
 
   @property
   def name(self):
@@ -575,70 +693,37 @@ class Queue(object):
     return self.__name
 
   @staticmethod
-  def __TranslateError(error):
+  def __TranslateError(error, detail=''):
     """Translates a TaskQueueServiceError into an exception.
 
     Args:
       error: Value from TaskQueueServiceError enum.
+      detail: A human-readable description of the error.
 
-    Raises:
+    Returns:
       The corresponding Exception sub-class for that error code.
     """
-    if (error.application_error ==
-        taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE):
-      raise UnknownQueueError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.TRANSIENT_ERROR):
-      raise TransientError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERROR):
-      raise InternalError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.TASK_TOO_LARGE):
-      raise TaskTooLargeError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INVALID_TASK_NAME):
-      raise InvalidTaskNameError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME):
-      raise InvalidQueueNameError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INVALID_URL):
-      raise InvalidUrlError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_RATE):
-      raise InvalidQueueError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.PERMISSION_DENIED):
-      raise PermissionDeniedError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS):
-      raise TaskAlreadyExistsError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_TASK):
-      raise TombstonedTaskError(error.error_detail)
-    elif (error.application_error ==
-          taskqueue_service_pb.TaskQueueServiceError.INVALID_ETA):
-      raise InvalidTaskError(error.error_detail)
-    elif ((error.application_error >=
-           taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR) and
-           isinstance(error.application_error, int)):
+    if (error >= taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR
+        and isinstance(error, int)):
       from google.appengine.api import datastore
-      error.application_error = (error.application_error -
-          taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR)
-      datastore_exception = datastore._ToDatastoreError(error)
+      datastore_exception = datastore._DatastoreExceptionFromErrorCodeAndDetail(
+          error - taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR,
+          detail)
 
       class JointException(datastore_exception.__class__, DatastoreError):
         """There was a datastore error while accessing the queue."""
         __msg = (u'taskqueue.DatastoreError caused by: %s %s' %
-                 (datastore_exception.__class__, error.error_detail))
+                 (datastore_exception.__class__, detail))
         def __str__(self):
           return JointException.__msg
 
-      raise JointException
+      return JointException()
     else:
-      raise Error('Application error %s: %s' %
-                  (error.application_error, error.error_detail))
+      exception_class = _ERROR_MAPPING.get(error, None)
+      if exception_class:
+        return exception_class(detail)
+      else:
+        return Error('Application error %s: %s' % (error, detail))
 
 
 def add(*args, **kwargs):

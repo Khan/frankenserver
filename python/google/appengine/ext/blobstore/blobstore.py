@@ -35,22 +35,30 @@ from google.appengine.ext import db
 
 __all__ = ['BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
+           'BlobFetchSizeTooLargeError',
            'BlobInfo',
            'BlobInfoParseError',
            'BlobKey',
+           'BlobNotFoundError',
            'BlobReferenceProperty',
            'CreationFormatError',
+           'DataIndexOutOfRangeError',
            'Error',
            'InternalError',
+           'MAX_BLOB_FETCH_SIZE',
            'UPLOAD_INFO_CREATION_HEADER',
            'create_upload_url',
            'delete',
+           'fetch_data',
            'get',
            'parse_blob_info']
 
 Error = blobstore.Error
 InternalError = blobstore.InternalError
+BlobFetchSizeTooLargeError = blobstore.BlobFetchSizeTooLargeError
+BlobNotFoundError = blobstore.BlobNotFoundError
 CreationFormatError = blobstore.CreationFormatError
+DataIndexOutOfRangeError = blobstore.DataIndexOutOfRangeError
 
 BlobKey = blobstore.BlobKey
 create_upload_url = blobstore.create_upload_url
@@ -63,6 +71,7 @@ class BlobInfoParseError(Error):
 
 BLOB_INFO_KIND = blobstore.BLOB_INFO_KIND
 BLOB_KEY_HEADER = blobstore.BLOB_KEY_HEADER
+MAX_BLOB_FETCH_SIZE = blobstore.MAX_BLOB_FETCH_SIZE
 UPLOAD_INFO_CREATION_HEADER = blobstore.UPLOAD_INFO_CREATION_HEADER
 
 
@@ -423,3 +432,37 @@ class BlobReferenceProperty(db.Property):
     elif isinstance(value, BlobKey):
       value = BlobInfo(value)
     return super(BlobReferenceProperty, self).validate(value)
+
+
+def fetch_data(blob, start_index, end_index):
+  """Fetch data for blob.
+
+  Fetches a fragment of a blob up to MAX_BLOB_FETCH_SIZE in length.  Attempting
+  to fetch a fragment that extends beyond the boundaries of the blob will return
+  the amount of data from start_index until the end of the blob, which will be
+  a smaller size than requested.  Requesting a fragment which is entirely
+  outside the boundaries of the blob will return empty string.  Attempting
+  to fetch a negative index will raise an exception.
+
+  Args:
+    blob: BlobInfo, BlobKey, str or unicode representation of BlobKey of
+      blob to fetch data from.
+    start_index: Start index of blob data to fetch.  May not be negative.
+    end_index: End index (exclusive) of blob data to fetch.  Must be
+      >= start_index.
+
+  Returns:
+    str containing partial data of blob.  If the indexes are legal but outside
+    the boundaries of the blob, will return empty string.
+
+  Raises:
+    TypeError if start_index or end_index are not indexes.  Also when blob
+      is not a string, BlobKey or BlobInfo.
+    DataIndexOutOfRangeError when start_index < 0 or end_index < start_index.
+    BlobFetchSizeTooLargeError when request blob fragment is larger than
+      MAX_BLOB_FETCH_SIZE.
+    BlobNotFoundError when blob does not exist.
+  """
+  if isinstance(blob, BlobInfo):
+    blob = blob.key()
+  return blobstore.fetch_data(blob, start_index, end_index)

@@ -85,6 +85,23 @@ TYPE_BOOL = 5
 CAPABILITY = capabilities.CapabilitySet('memcache')
 
 
+def _add_name_space(message, namespace=None):
+  """Populate the name_space field in a messagecol buffer.
+
+  Args:
+    message: A messagecol buffer supporting the set_name_space() operation.
+    namespace: The name of the namespace part. If None, use the
+      default namespace. The empty namespace (i.e. '') will clear
+      the name_space field.
+  """
+  if namespace is None:
+    namespace = namespace_manager.get_namespace()
+  if not namespace:
+    message.clear_name_space()
+  else:
+    message.set_name_space(namespace)
+
+
 def _key_string(key, key_prefix='', server_to_user_dict=None):
   """Utility function to handle different ways of requesting keys.
 
@@ -405,7 +422,7 @@ class Client(object):
     """
     request = MemcacheGetRequest()
     request.add_key(_key_string(key))
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheGetResponse()
     try:
       self._make_sync_call('memcache', 'Get', request, response)
@@ -441,7 +458,7 @@ class Client(object):
       the keys in the returned dictionary.
     """
     request = MemcacheGetRequest()
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheGetResponse()
     user_key = {}
     for key in keys:
@@ -486,7 +503,7 @@ class Client(object):
       raise ValueError('Delete timeout must be non-negative.')
 
     request = MemcacheDeleteRequest()
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheDeleteResponse()
 
     delete_item = request.add_item()
@@ -530,7 +547,7 @@ class Client(object):
       raise ValueError('Delete timeout must not be negative.')
 
     request = MemcacheDeleteRequest()
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheDeleteResponse()
 
     for key in keys:
@@ -641,7 +658,7 @@ class Client(object):
     item.set_flags(flags)
     item.set_set_policy(policy)
     item.set_expiration_time(int(math.ceil(time)))
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheSetResponse()
     try:
       self._make_sync_call('memcache', 'Set', request, response)
@@ -682,6 +699,7 @@ class Client(object):
       raise ValueError('Expiration must not be negative.')
 
     request = MemcacheSetRequest()
+    _add_name_space(request, namespace)
     user_key = {}
     server_keys = []
     for key, value in mapping.iteritems():
@@ -695,7 +713,6 @@ class Client(object):
       item.set_flags(flags)
       item.set_set_policy(policy)
       item.set_expiration_time(int(math.ceil(time)))
-    namespace_manager._add_name_space(request, namespace)
 
     response = MemcacheSetResponse()
     try:
@@ -902,7 +919,7 @@ class Client(object):
         pass
 
     request = MemcacheIncrementRequest()
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
     response = MemcacheIncrementResponse()
     request.set_key(_key_string(key))
     request.set_delta(delta)
@@ -950,7 +967,7 @@ class Client(object):
 
     request = MemcacheBatchIncrementRequest()
     response = MemcacheBatchIncrementResponse()
-    namespace_manager._add_name_space(request, namespace)
+    _add_name_space(request, namespace)
 
     for key, delta in mapping.iteritems():
       if not isinstance(delta, (int, long)):

@@ -29,12 +29,18 @@ class BlobstoreServiceError(ProtocolBuffer.ProtocolMessage):
   INTERNAL_ERROR =    1
   URL_TOO_LONG =    2
   PERMISSION_DENIED =    3
+  BLOB_NOT_FOUND =    4
+  DATA_INDEX_OUT_OF_RANGE =    5
+  BLOB_FETCH_SIZE_TOO_LARGE =    6
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INTERNAL_ERROR",
     2: "URL_TOO_LONG",
     3: "PERMISSION_DENIED",
+    4: "BLOB_NOT_FOUND",
+    5: "DATA_INDEX_OUT_OF_RANGE",
+    6: "BLOB_FETCH_SIZE_TOO_LARGE",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -350,6 +356,240 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class FetchDataRequest(ProtocolBuffer.ProtocolMessage):
+  has_blob_key_ = 0
+  blob_key_ = ""
+  has_start_index_ = 0
+  start_index_ = 0
+  has_end_index_ = 0
+  end_index_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def blob_key(self): return self.blob_key_
+
+  def set_blob_key(self, x):
+    self.has_blob_key_ = 1
+    self.blob_key_ = x
+
+  def clear_blob_key(self):
+    if self.has_blob_key_:
+      self.has_blob_key_ = 0
+      self.blob_key_ = ""
+
+  def has_blob_key(self): return self.has_blob_key_
+
+  def start_index(self): return self.start_index_
+
+  def set_start_index(self, x):
+    self.has_start_index_ = 1
+    self.start_index_ = x
+
+  def clear_start_index(self):
+    if self.has_start_index_:
+      self.has_start_index_ = 0
+      self.start_index_ = 0
+
+  def has_start_index(self): return self.has_start_index_
+
+  def end_index(self): return self.end_index_
+
+  def set_end_index(self, x):
+    self.has_end_index_ = 1
+    self.end_index_ = x
+
+  def clear_end_index(self):
+    if self.has_end_index_:
+      self.has_end_index_ = 0
+      self.end_index_ = 0
+
+  def has_end_index(self): return self.has_end_index_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+    if (x.has_start_index()): self.set_start_index(x.start_index())
+    if (x.has_end_index()): self.set_end_index(x.end_index())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_blob_key_ != x.has_blob_key_: return 0
+    if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    if self.has_start_index_ != x.has_start_index_: return 0
+    if self.has_start_index_ and self.start_index_ != x.start_index_: return 0
+    if self.has_end_index_ != x.has_end_index_: return 0
+    if self.has_end_index_ and self.end_index_ != x.end_index_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_blob_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: blob_key not set.')
+    if (not self.has_start_index_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: start_index not set.')
+    if (not self.has_end_index_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: end_index not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.blob_key_))
+    n += self.lengthVarInt64(self.start_index_)
+    n += self.lengthVarInt64(self.end_index_)
+    return n + 3
+
+  def Clear(self):
+    self.clear_blob_key()
+    self.clear_start_index()
+    self.clear_end_index()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.blob_key_)
+    out.putVarInt32(16)
+    out.putVarInt64(self.start_index_)
+    out.putVarInt32(24)
+    out.putVarInt64(self.end_index_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_blob_key(d.getPrefixedString())
+        continue
+      if tt == 16:
+        self.set_start_index(d.getVarInt64())
+        continue
+      if tt == 24:
+        self.set_end_index(d.getVarInt64())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    if self.has_start_index_: res+=prefix+("start_index: %s\n" % self.DebugFormatInt64(self.start_index_))
+    if self.has_end_index_: res+=prefix+("end_index: %s\n" % self.DebugFormatInt64(self.end_index_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kblob_key = 1
+  kstart_index = 2
+  kend_index = 3
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "blob_key",
+    2: "start_index",
+    3: "end_index",
+  }, 3)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class FetchDataResponse(ProtocolBuffer.ProtocolMessage):
+  has_data_ = 0
+  data_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def data(self): return self.data_
+
+  def set_data(self, x):
+    self.has_data_ = 1
+    self.data_ = x
+
+  def clear_data(self):
+    if self.has_data_:
+      self.has_data_ = 0
+      self.data_ = ""
+
+  def has_data(self): return self.has_data_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_data()): self.set_data(x.data())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_data_ != x.has_data_: return 0
+    if self.has_data_ and self.data_ != x.data_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_data_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: data not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.data_))
+    return n + 2
+
+  def Clear(self):
+    self.clear_data()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8002)
+    out.putPrefixedString(self.data_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8002:
+        self.set_data(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_data_: res+=prefix+("data: %s\n" % self.DebugFormatString(self.data_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kdata = 1000
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1000: "data",
+  }, 1000)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1000: ProtocolBuffer.Encoder.STRING,
+  }, 1000, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
 class DecodeBlobKeyRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -529,4 +769,4 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','DecodeBlobKeyRequest','DecodeBlobKeyResponse']
+__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','FetchDataRequest','FetchDataResponse','DecodeBlobKeyRequest','DecodeBlobKeyResponse']

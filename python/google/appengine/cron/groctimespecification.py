@@ -57,19 +57,25 @@ except ImportError:
     pass
 
 
-def GrocTimeSpecification(schedule):
+def GrocTimeSpecification(schedule, timezone=None):
   """Factory function.
 
   Turns a schedule specification into a TimeSpecification.
 
   Arguments:
     schedule: the schedule specification, as a string
-
+    timezone: the optional timezone as a string for this specification.
+        Defaults to 'UTC' - valid entries are things like 'Australia/Victoria'
+        or 'PST8PDT'.
   Returns:
     a TimeSpecification instance
   """
   parser = groc.CreateParser(schedule)
   parser.timespec()
+
+  if parser.getTokenStream().LT(1).getText():
+    raise groc.GrocException(
+        'Extra token %r' % parser.getTokenStream().LT(1).getText())
 
   if parser.period_string:
     return IntervalTimeSpecification(parser.interval_mins,
@@ -79,7 +85,8 @@ def GrocTimeSpecification(schedule):
     return SpecificTimeSpecification(parser.ordinal_set, parser.weekday_set,
                                      parser.month_set,
                                      parser.monthday_set,
-                                     parser.time_string)
+                                     parser.time_string,
+                                     timezone)
 
 
 class TimeSpecification(object):
@@ -304,8 +311,6 @@ class SpecificTimeSpecification(TimeSpecification):
           day_matches.pop(0)
       while day_matches:
         out = candidate_month.replace(day=day_matches[0], hour=self.time.hour,
-
-
                                       minute=self.time.minute, second=0,
                                       microsecond=0)
         if self.timezone and pytz is not None:

@@ -57,6 +57,27 @@ def _ArgbToRgbaTuple(argb):
           (unsigned_argb >> 24) & 0xFF)
 
 
+def _BackendPremultiplication(color):
+  """Apply premultiplication and unpremultiplication to match production.
+
+  Args:
+    color: color tuple as returned by _ArgbToRgbaTuple.
+
+  Returns:
+    RGBA tuple.
+  """
+  alpha = color[3]
+  rgb = color[0:3]
+  multiplied = [(x * (alpha + 1)) >> 8 for x in rgb]
+  if alpha:
+    alpha_inverse = 0xffffff / alpha
+    unmultiplied = [(x * alpha_inverse) >> 16 for x in multiplied]
+  else:
+    unmultiplied = [0] * 3
+
+  return tuple(unmultiplied + [alpha])
+
+
 class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
@@ -82,6 +103,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     width = request.canvas().width()
     height = request.canvas().height()
     color = _ArgbToRgbaTuple(request.canvas().color())
+    color = _BackendPremultiplication(color)
     canvas = Image.new("RGBA", (width, height), color)
     sources = []
     if (not request.canvas().width() or request.canvas().width() > 4000 or

@@ -1063,18 +1063,30 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__tx_snapshot = dict(snapshot)
     self.__tx_actions = []
 
-  def _Dynamic_AddAction(self, request, void):
-    self.__ValidateTransaction(request.transaction())
+  def _Dynamic_AddActions(self, request, _):
+    """Associates the creation of one or more tasks with a transaction.
 
-    if len(self.__tx_actions) >= _MAX_ACTIONS_PER_TXN:
+    Args:
+      request: A taskqueue_service_pb.TaskQueueBulkAddRequest containing the
+          tasks that should be created when the transaction is comitted.
+    """
+
+
+    if ((len(self.__tx_actions) + request.add_request_size()) >
+        _MAX_ACTIONS_PER_TXN):
       raise apiproxy_errors.ApplicationError(
           datastore_pb.Error.BAD_REQUEST,
           'Too many messages, maximum allowed %s' % _MAX_ACTIONS_PER_TXN)
 
-    clone = taskqueue_service_pb.TaskQueueAddRequest()
-    clone.CopyFrom(request)
-    clone.clear_transaction()
-    self.__tx_actions.append(clone)
+    new_actions = []
+    for add_request in request.add_request_list():
+      self.__ValidateTransaction(add_request.transaction())
+      clone = taskqueue_service_pb.TaskQueueAddRequest()
+      clone.CopyFrom(add_request)
+      clone.clear_transaction()
+      new_actions.append(clone)
+
+    self.__tx_actions.extend(new_actions)
 
   def _Dynamic_Commit(self, transaction, transaction_response):
     self.__ValidateTransaction(transaction)
@@ -1108,15 +1120,18 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     app_str = req.app()
     self.__ValidateAppId(app_str)
 
+    namespace_str = req.name_space()
+    app_namespace_str = datastore_types.EncodeAppIdNamespace(app_str,
+                                                             namespace_str)
     kinds = []
 
-    for app, kind in self.__entities:
-      if (app != app_str or
+    for app_namespace, kind in self.__entities:
+      if (app_namespace != app_namespace_str or
           (req.has_start_kind() and kind < req.start_kind()) or
           (req.has_end_kind() and kind > req.end_kind())):
         continue
 
-      app_kind = (app, kind)
+      app_kind = (app_namespace_str, kind)
       if app_kind in self.__schema_cache:
         kinds.append(self.__schema_cache[app_kind])
         continue

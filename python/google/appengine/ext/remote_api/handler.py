@@ -229,6 +229,8 @@ SERVICE_PB_MAP = {
     'taskqueue': {
         'Add':       (taskqueue_service_pb.TaskQueueAddRequest,
                       taskqueue_service_pb.TaskQueueAddResponse),
+        'BulkAdd':   (taskqueue_service_pb.TaskQueueBulkAddRequest,
+                      taskqueue_service_pb.TaskQueueBulkAddResponse),
         'UpdateQueue':(taskqueue_service_pb.TaskQueueUpdateQueueRequest,
                        taskqueue_service_pb.TaskQueueUpdateQueueResponse),
         'FetchQueues':(taskqueue_service_pb.TaskQueueFetchQueuesRequest,

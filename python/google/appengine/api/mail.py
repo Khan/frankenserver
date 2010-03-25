@@ -64,6 +64,7 @@ EXTENSION_MIME_MAP = {
     'bmp': 'image/x-ms-bmp',
     'css': 'text/css',
     'csv': 'text/csv',
+    'doc': 'application/msword',
     'diff': 'text/plain',
     'flac': 'audio/flac',
     'gif': 'image/gif',
@@ -81,16 +82,23 @@ EXTENSION_MIME_MAP = {
     'mpe': 'video/mpeg',
     'mpeg': 'video/mpeg',
     'mpg': 'video/mpeg',
+    'odp': 'application/vnd.oasis.opendocument.presentation',
+    'ods': 'application/vnd.oasis.opendocument.spreadsheet',
+    'odt': 'application/vnd.oasis.opendocument.text',
     'oga': 'audio/ogg',
     'ogg': 'audio/ogg',
     'ogv': 'video/ogg',
     'pdf': 'application/pdf',
     'png': 'image/png',
     'pot': 'text/plain',
+    'pps': 'application/vnd.ms-powerpoint',
+    'ppt': 'application/vnd.ms-powerpoint',
     'qt': 'video/quicktime',
     'rmi': 'audio/mid',
     'rss': 'text/rss+xml',
     'snd': 'audio/basic',
+    'sxc': 'application/vnd.sun.xml.calc',
+    'sxw': 'application/vnd.sun.xml.writer',
     'text': 'text/plain',
     'tif': 'image/tiff',
     'tiff': 'image/tiff',
@@ -98,6 +106,7 @@ EXTENSION_MIME_MAP = {
     'vcf': 'text/directory',
     'wav': 'audio/x-wav',
     'wbmp': 'image/vnd.wap.wbmp',
+    'xls': 'application/vnd.ms-excel',
     }
 
 EXTENSION_WHITELIST = frozenset(EXTENSION_MIME_MAP.iterkeys())
@@ -831,7 +840,8 @@ class _EmailMessageBase(object):
           filename = mime_message.get_param('name')
 
         payload = EncodedPayload(payload,
-                                 mime_message.get_charset(),
+                                 (mime_message.get_content_charset() or
+                                  mime_message.get_charset()),
                                  mime_message['content-transfer-encoding'])
 
         if filename:
