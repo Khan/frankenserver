@@ -36,22 +36,20 @@ from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
-__all__ = ['BASE_CREATION_HEADER_FORMAT',
-           'BLOB_INFO_KIND',
+__all__ = ['BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
-           'UPLOAD_INFO_CREATION_HEADER',
+           'BLOB_RANGE_HEADER',
            'MAX_BLOB_FETCH_SIZE',
+           'UPLOAD_INFO_CREATION_HEADER',
            'BlobFetchSizeTooLargeError',
            'BlobKey',
            'BlobNotFoundError',
-           'CreationFormatError',
            'DataIndexOutOfRangeError',
            'Error',
            'InternalError',
            'create_upload_url',
            'delete',
            'fetch_data',
-           'parse_creation',
           ]
 
 
@@ -62,11 +60,12 @@ BLOB_INFO_KIND = '__BlobInfo__'
 
 BLOB_KEY_HEADER = 'X-AppEngine-BlobKey'
 
-UPLOAD_INFO_CREATION_HEADER = 'X-AppEngine-Upload-Creation'
-
-BASE_CREATION_HEADER_FORMAT = '%Y-%m-%d %H:%M:%S'
+BLOB_RANGE_HEADER = 'X-AppEngine-BlobRange'
 
 MAX_BLOB_FETCH_SIZE = (1 << 20) - (1 << 15)
+
+UPLOAD_INFO_CREATION_HEADER = 'X-AppEngine-Upload-Creation'
+_BASE_CREATION_HEADER_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 class Error(Exception):
   """Base blobstore error type."""
@@ -74,10 +73,6 @@ class Error(Exception):
 
 class InternalError(Error):
   """Raised when an internal error occurs within API."""
-
-
-class CreationFormatError(Error):
-  """Raised when attempting to parse bad creation date format."""
 
 
 class BlobNotFoundError(Error):
@@ -90,6 +85,10 @@ class DataIndexOutOfRangeError(Error):
 
 class BlobFetchSizeTooLargeError(Error):
   """Raised when attempting to fetch too large a block from a blob."""
+
+
+class _CreationFormatError(Error):
+  """Raised when attempting to parse bad creation date format."""
 
 
 def _ToBlobstoreError(error):
@@ -113,6 +112,68 @@ def _ToBlobstoreError(error):
     return error_map[error.application_error](error.error_detail)
   else:
     return error
+
+
+def _format_creation(stamp):
+  """Format an upload creation timestamp with milliseconds.
+
+  This method is necessary to format a timestamp with microseconds on Python
+  versions before 2.6.
+
+  Cannot simply convert datetime objects to str because the microseconds are
+  stripped from the format when set to 0.  The upload creation date format will
+  always have microseconds padded out to 6 places.
+
+  Args:
+    stamp: datetime.datetime object to format.
+
+  Returns:
+    Formatted datetime as Python 2.6 format '%Y-%m-%d %H:%M:%S.%f'.
+  """
+  return '%s.%06d' % (stamp.strftime(_BASE_CREATION_HEADER_FORMAT),
+                      stamp.microsecond)
+
+
+def _parse_creation(creation_string, field_name):
+  """Parses upload creation string from header format.
+
+  Parse creation date of the format:
+
+    YYYY-mm-dd HH:MM:SS.ffffff
+
+    Y: Year
+    m: Month (01-12)
+    d: Day (01-31)
+    H: Hour (00-24)
+    M: Minute (00-59)
+    S: Second (00-59)
+    f: Microsecond
+
+  Args:
+    creation_string: String creation date format.
+
+  Returns:
+    datetime object parsed from creation_string.
+
+  Raises:
+    _CreationFormatError when the creation string is formatted incorrectly.
+  """
+  split_creation_string = creation_string.split('.', 1)
+  if len(split_creation_string) != 2:
+    raise _CreationFormatError(
+        'Could not parse creation %s in field %s.' % (creation_string,
+                                                      field_name))
+  timestamp_string, microsecond = split_creation_string
+
+  try:
+    timestamp = time.strptime(timestamp_string,
+                              _BASE_CREATION_HEADER_FORMAT)
+    microsecond = int(microsecond)
+  except ValueError:
+    raise _CreationFormatError('Could not parse creation %s in field %s.'
+                               % (creation_string, field_name))
+
+  return datetime.datetime(*timestamp[:6] + tuple([microsecond]))
 
 
 def create_upload_url(success_path,
@@ -153,49 +214,6 @@ def delete(blob_keys, _make_sync_call=apiproxy_stub_map.MakeSyncCall):
     _make_sync_call('blobstore', 'DeleteBlob', request, response)
   except apiproxy_errors.ApplicationError, e:
     raise _ToBlobstoreError(e)
-
-
-def parse_creation(creation_string):
-  """Parses creation string from header format.
-
-  Parse creation date of the format:
-
-    YYYY-mm-dd HH:MM:SS.ffffff
-
-    Y: Year
-    m: Month (01-12)
-    d: Day (01-31)
-    H: Hour (00-24)
-    M: Minute (00-59)
-    S: Second (00-59)
-    f: Microsecond
-
-  Args:
-    creation_string: String creation date format.
-
-  Returns:
-    datetime object parsed from creation_string.
-
-  Raises:
-    CreationFormatError when the creation string is formatted incorrectly.
-  """
-
-  def split(string, by, count):
-    result = string.split(by, count)
-    if len(result) != count + 1:
-      raise CreationFormatError(
-          'Could not parse creation %s.' % creation_string)
-    return result
-
-  timestamp_string, microsecond = split(creation_string, '.', 1)
-
-  try:
-    timestamp = time.strptime(timestamp_string, BASE_CREATION_HEADER_FORMAT)
-    microsecond = int(microsecond)
-  except ValueError:
-    raise CreationFormatError('Could not parse creation %s.' % creation_string)
-
-  return datetime.datetime(*timestamp[:6] + tuple([microsecond]))
 
 
 def fetch_data(blob_key, start_index, end_index,

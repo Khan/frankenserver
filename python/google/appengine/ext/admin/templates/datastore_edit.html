@@ -109,6 +109,17 @@
           </td>
         </tr>
       {% endif %}
+      {% if not key %}
+        {% if namespace %}
+          <tr>
+            <td class="name">
+              <span class="field_name">Namespace</span>
+              <span class="field_type">({{ namespace|escape }})</span>
+            </td>
+            <td class="value"><input type="text" name="namespace" value="{{ namespace|escape }}"/></td>
+          </tr>
+        {% endif %}
+      {% endif %}
       {% for field in fields %}
         <tr>
           <td class="name">

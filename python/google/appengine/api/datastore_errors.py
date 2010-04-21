@@ -99,7 +99,15 @@ class NeedIndexError(Error):
   """
 
 class Timeout(Error):
-  """The datastore operation timed out. This can happen when you attempt to
-  put, get, or delete too many entities or an entity with too many properties,
-  or if the datastore is overloaded or having trouble.
+  """The datastore operation timed out, or the data was temporarily
+  unavailable. This can happen when you attempt to put, get, or delete too
+  many entities or an entity with too many properties, or if the datastore is
+  overloaded or having trouble.
+  """
+
+class CommittedButStillApplying(Timeout):
+  """The write or transaction was committed, but some entities or index rows
+  may not have been fully updated. Those updates should automatically be
+  applied soon. You can roll them forward immediately by reading one of the
+  entities inside a transaction.
   """

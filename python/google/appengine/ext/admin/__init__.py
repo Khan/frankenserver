@@ -586,9 +586,12 @@ class DatastoreRequestHandler(BaseRequestHandler):
     set of results and 0 for the entity count.
     """
     kind = self.request.get('kind')
+    namespace = self.request.get('namespace')
+    if not namespace:
+      namespace = None
     if not kind:
       return ([], 0)
-    query = datastore.Query(kind)
+    query = datastore.Query(kind, _namespace=namespace)
 
     order = self.request.get('order')
     order_type = self.request.get('order_type')
@@ -732,6 +735,7 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
       'message': self.request.get('msg'),
       'pages': pages,
       'current_page': current_page,
+      'namespace': self.request.get('namespace'),
       'num': num,
       'next_start': -1,
       'prev_start': -1,
@@ -854,6 +858,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
       'key_id': entity_key_id,
       'fields': fields,
       'focus': self.request.get('focus'),
+      'namespace': self.request.get('namespace'),
       'next': self.request.get('next'),
       'parent_key': parent_key,
       'parent_kind': parent_kind,
@@ -870,7 +875,10 @@ class DatastoreEditHandler(DatastoreRequestHandler):
         return
       entity = datastore.Get(datastore.Key(entity_key))
     else:
-      entity = datastore.Entity(kind)
+      namespace = self.request.get('namespace')
+      if not namespace:
+        namespace = None
+      entity = datastore.Entity(kind, _namespace=namespace)
 
     args = self.request.arguments()
     for arg in args:
@@ -1299,6 +1307,7 @@ _DATA_TYPES = {
   datastore_types.PostalAddress: PostalAddressType(),
   datastore_types.Rating: RatingType(),
   datastore_types.BlobKey: BlobKeyType(),
+  datastore_types.ByteString: StringType(),
 }
 
 _NAMED_DATA_TYPES = {}

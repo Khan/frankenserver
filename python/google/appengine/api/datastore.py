@@ -760,8 +760,8 @@ class Entity(dict):
           value = datastore_types.FromPropertyPb(prop)
         except (AssertionError, AttributeError, TypeError, ValueError), e:
           raise datastore_errors.Error(
-            'Property %s is corrupt in the datastore. %s: %s' %
-            (e.__class__, prop.name(), e))
+            'Property %s is corrupt in the datastore:\n%s' %
+            (prop.name(), traceback.format_exc()))
 
         multiple = prop.multiple()
         if multiple:
@@ -771,7 +771,7 @@ class Entity(dict):
         cur_value = temporary_values.get(name)
         if cur_value is None:
           temporary_values[name] = value
-        elif not multiple:
+        elif not multiple or not isinstance(cur_value, list):
           raise datastore_errors.Error(
             'Property %s is corrupt in the datastore; it has multiple '
             'values, but is not marked as multiply valued.' % name)
@@ -2229,9 +2229,8 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
             _MakeSyncCall('datastore_v3', 'Rollback',
                           tx.handle, api_base_pb.VoidProto())
           except:
-            exc_info = sys.exc_info()
             logging.info('Exception sending Rollback:\n' +
-                         ''.join(traceback.format_exception(*exc_info)))
+                         traceback.format_exc())
 
         type, value, trace = original_exception
         if type is datastore_errors.Rollback:
@@ -2484,10 +2483,15 @@ def _DatastoreExceptionFromErrorCodeAndDetail(error, detail):
   exception_class = {
       datastore_pb.Error.BAD_REQUEST: datastore_errors.BadRequestError,
       datastore_pb.Error.CONCURRENT_TRANSACTION:
-      datastore_errors.TransactionFailedError,
+        datastore_errors.TransactionFailedError,
       datastore_pb.Error.INTERNAL_ERROR: datastore_errors.InternalError,
       datastore_pb.Error.NEED_INDEX: datastore_errors.NeedIndexError,
       datastore_pb.Error.TIMEOUT: datastore_errors.Timeout,
+      datastore_pb.Error.BIGTABLE_ERROR: datastore_errors.Timeout,
+      datastore_pb.Error.COMMITTED_BUT_STILL_APPLYING:
+        datastore_errors.CommittedButStillApplying,
+      datastore_pb.Error.CAPABILITY_DISABLED:
+        apiproxy_errors.CapabilityDisabledError,
   }.get(error, datastore_errors.Error)
 
   if detail is None:

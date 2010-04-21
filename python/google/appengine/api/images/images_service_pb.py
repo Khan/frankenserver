@@ -2016,5 +2016,173 @@ class ImagesHistogramResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
+  has_blob_key_ = 0
+  blob_key_ = ""
 
-__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','OutputSettings','ImagesTransformRequest','ImagesTransformResponse','CompositeImageOptions','ImagesCanvas','ImagesCompositeRequest','ImagesCompositeResponse','ImagesHistogramRequest','ImagesHistogram','ImagesHistogramResponse']
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def blob_key(self): return self.blob_key_
+
+  def set_blob_key(self, x):
+    self.has_blob_key_ = 1
+    self.blob_key_ = x
+
+  def clear_blob_key(self):
+    if self.has_blob_key_:
+      self.has_blob_key_ = 0
+      self.blob_key_ = ""
+
+  def has_blob_key(self): return self.has_blob_key_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_blob_key_ != x.has_blob_key_: return 0
+    if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_blob_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: blob_key not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.blob_key_))
+    return n + 1
+
+  def Clear(self):
+    self.clear_blob_key()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.blob_key_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_blob_key(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kblob_key = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "blob_key",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ImagesGetUrlBaseResponse(ProtocolBuffer.ProtocolMessage):
+  has_url_ = 0
+  url_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def url(self): return self.url_
+
+  def set_url(self, x):
+    self.has_url_ = 1
+    self.url_ = x
+
+  def clear_url(self):
+    if self.has_url_:
+      self.has_url_ = 0
+      self.url_ = ""
+
+  def has_url(self): return self.has_url_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_url()): self.set_url(x.url())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_url_ != x.has_url_: return 0
+    if self.has_url_ and self.url_ != x.url_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_url_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: url not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.url_))
+    return n + 1
+
+  def Clear(self):
+    self.clear_url()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.url_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_url(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_url_: res+=prefix+("url: %s\n" % self.DebugFormatString(self.url_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kurl = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "url",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+
+__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','OutputSettings','ImagesTransformRequest','ImagesTransformResponse','CompositeImageOptions','ImagesCanvas','ImagesCompositeRequest','ImagesCompositeResponse','ImagesHistogramRequest','ImagesHistogram','ImagesHistogramResponse','ImagesGetUrlBaseRequest','ImagesGetUrlBaseResponse']

@@ -176,9 +176,10 @@ def ResolveNamespace(namespace):
     BadArgumentError if the value is not a string.
   """
   if namespace is None:
-    namespace = namespace_manager.get_namespace();
-  ValidateString(
-    namespace, 'namespace', datastore_errors.BadArgumentError, empty_ok=True)
+    namespace = namespace_manager.get_namespace()
+  else:
+    namespace_manager.validate_namespace(
+        namespace, datastore_errors.BadArgumentError)
   return namespace
 
 
@@ -215,9 +216,9 @@ def PartitionString(value, separator):
     value: String to be partitioned
     separator: Separator string
   """
-  index = value.find(separator);
+  index = value.find(separator)
   if index == -1:
-    return (value, '', value[0:0]);
+    return (value, '', value[0:0])
   else:
     return (value[0:index], separator, value[index+len(separator):len(value)])
 

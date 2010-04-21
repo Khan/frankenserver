@@ -28,7 +28,7 @@ PKG_DIRECTORY, C_BUILTIN, PY_FROZEN = 5, 6, 7
 
 def get_magic():
   """Return the magic string used to recognize byte-compiled code files."""
-  return '\0\0\0\0'
+  return '\xb3\xf2\r\n'
 
 
 _PY_SOURCE_SUFFIX = ('.py', 'U', PY_SOURCE)

@@ -450,7 +450,8 @@ def ConfigureRemoteApi(app_id,
                        rtok=None,
                        secure=False,
                        services=None,
-                       default_auth_domain=None):
+                       default_auth_domain=None,
+                       save_cookies=False):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
@@ -474,6 +475,7 @@ def ConfigureRemoteApi(app_id,
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
     default_auth_domain: The authentication domain to use by default.
+    save_cookies: Forwarded to rpc_server_factory function.
 
   Raises:
     urllib2.HTTPError: if app_id is not provided and there is an error while
@@ -485,7 +487,8 @@ def ConfigureRemoteApi(app_id,
   if not servername:
     servername = '%s.appspot.com' % (app_id,)
   server = rpc_server_factory(servername, auth_func, GetUserAgent(),
-                              GetSourceName(), debug_data=False, secure=secure)
+                              GetSourceName(), save_cookies=save_cookies,
+                              debug_data=False, secure=secure)
   if not app_id:
     if not rtok:
       random.seed()

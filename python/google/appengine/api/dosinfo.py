@@ -40,12 +40,12 @@ SUBNET = 'subnet'
 class SubnetValidator(validation.Validator):
   """Checks that a subnet can be parsed and is a valid IPv4 or IPv6 subnet."""
 
-  def Validate(self, value):
+  def Validate(self, value, key=None):
     """Validates a subnet."""
     if value is None:
       raise validation.MissingAttribute('subnet must be specified')
     try:
-      ipaddr.IP(value)
+      ipaddr.IPNetwork(value)
     except ValueError:
       raise validation.ValidationError('%s is not a valid IPv4 or IPv6 subnet' %
                                        value)

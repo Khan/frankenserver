@@ -552,6 +552,10 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   email_ = ""
   has_user_id_ = 0
   user_id_ = ""
+  has_auth_domain_ = 0
+  auth_domain_ = ""
+  has_user_organization_ = 0
+  user_organization_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -582,11 +586,39 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_user_id(self): return self.has_user_id_
 
+  def auth_domain(self): return self.auth_domain_
+
+  def set_auth_domain(self, x):
+    self.has_auth_domain_ = 1
+    self.auth_domain_ = x
+
+  def clear_auth_domain(self):
+    if self.has_auth_domain_:
+      self.has_auth_domain_ = 0
+      self.auth_domain_ = ""
+
+  def has_auth_domain(self): return self.has_auth_domain_
+
+  def user_organization(self): return self.user_organization_
+
+  def set_user_organization(self, x):
+    self.has_user_organization_ = 1
+    self.user_organization_ = x
+
+  def clear_user_organization(self):
+    if self.has_user_organization_:
+      self.has_user_organization_ = 0
+      self.user_organization_ = ""
+
+  def has_user_organization(self): return self.has_user_organization_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_email()): self.set_email(x.email())
     if (x.has_user_id()): self.set_user_id(x.user_id())
+    if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
+    if (x.has_user_organization()): self.set_user_organization(x.user_organization())
 
   def Equals(self, x):
     if x is self: return 1
@@ -594,29 +626,52 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_email_ and self.email_ != x.email_: return 0
     if self.has_user_id_ != x.has_user_id_: return 0
     if self.has_user_id_ and self.user_id_ != x.user_id_: return 0
+    if self.has_auth_domain_ != x.has_auth_domain_: return 0
+    if self.has_auth_domain_ and self.auth_domain_ != x.auth_domain_: return 0
+    if self.has_user_organization_ != x.has_user_organization_: return 0
+    if self.has_user_organization_ and self.user_organization_ != x.user_organization_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (not self.has_email_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: email not set.')
+    if (not self.has_user_id_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: user_id not set.')
+    if (not self.has_auth_domain_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: auth_domain not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    if (self.has_email_): n += 1 + self.lengthString(len(self.email_))
-    if (self.has_user_id_): n += 1 + self.lengthString(len(self.user_id_))
-    return n + 0
+    n += self.lengthString(len(self.email_))
+    n += self.lengthString(len(self.user_id_))
+    n += self.lengthString(len(self.auth_domain_))
+    if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
+    return n + 3
 
   def Clear(self):
     self.clear_email()
     self.clear_user_id()
+    self.clear_auth_domain()
+    self.clear_user_organization()
 
   def OutputUnchecked(self, out):
-    if (self.has_email_):
-      out.putVarInt32(10)
-      out.putPrefixedString(self.email_)
-    if (self.has_user_id_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.user_id_)
+    out.putVarInt32(10)
+    out.putPrefixedString(self.email_)
+    out.putVarInt32(18)
+    out.putPrefixedString(self.user_id_)
+    out.putVarInt32(26)
+    out.putPrefixedString(self.auth_domain_)
+    if (self.has_user_organization_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.user_organization_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -627,6 +682,12 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 18:
         self.set_user_id(d.getPrefixedString())
         continue
+      if tt == 26:
+        self.set_auth_domain(d.getPrefixedString())
+        continue
+      if tt == 34:
+        self.set_user_organization(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -635,6 +696,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_email_: res+=prefix+("email: %s\n" % self.DebugFormatString(self.email_))
     if self.has_user_id_: res+=prefix+("user_id: %s\n" % self.DebugFormatString(self.user_id_))
+    if self.has_auth_domain_: res+=prefix+("auth_domain: %s\n" % self.DebugFormatString(self.auth_domain_))
+    if self.has_user_organization_: res+=prefix+("user_organization: %s\n" % self.DebugFormatString(self.user_organization_))
     return res
 
 
@@ -643,18 +706,24 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
 
   kemail = 1
   kuser_id = 2
+  kauth_domain = 3
+  kuser_organization = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "email",
     2: "user_id",
-  }, 2)
+    3: "auth_domain",
+    4: "user_organization",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -745,20 +814,23 @@ class CheckOAuthSignatureResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (not self.has_oauth_consumer_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: oauth_consumer_key not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    if (self.has_oauth_consumer_key_): n += 1 + self.lengthString(len(self.oauth_consumer_key_))
-    return n + 0
+    n += self.lengthString(len(self.oauth_consumer_key_))
+    return n + 1
 
   def Clear(self):
     self.clear_oauth_consumer_key()
 
   def OutputUnchecked(self, out):
-    if (self.has_oauth_consumer_key_):
-      out.putVarInt32(10)
-      out.putPrefixedString(self.oauth_consumer_key_)
+    out.putVarInt32(10)
+    out.putPrefixedString(self.oauth_consumer_key_)
 
   def TryMerge(self, d):
     while d.avail() > 0:

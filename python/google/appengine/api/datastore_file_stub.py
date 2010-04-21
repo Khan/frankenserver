@@ -162,7 +162,7 @@ class _Cursor(object):
       offset += query.offset()
 
     if offset > 0:
-      self.__last_result = results[offset - 1]
+      self.__last_result = results[min(len(results), offset) - 1]
     else:
       self.__last_result = cursor_entity
 
@@ -208,7 +208,7 @@ class _Cursor(object):
       while lo < hi:
         mid = (lo + hi) // 2
         if compare(results[mid], cursor_entity) < 0:
-           lo = mid + 1
+          lo = mid + 1
         else:
           hi = mid
     else:
@@ -313,8 +313,6 @@ class _Cursor(object):
           self.__last_result.ToPb().Encode()))
       position.set_start_key(str(start_key))
       position.set_start_inclusive(False)
-    elif self.__query.has_compiled_cursor:
-      compiled_cursor.CopyFrom(self.__query.compiled_cursor())
 
   def PopulateQueryResult(self, result, count, compile=False):
     """Populates a QueryResult with this cursor and the given number of results.
@@ -342,7 +340,8 @@ class _Cursor(object):
 
     result.set_more_results(self.__offset < self.count)
     if compile:
-      self._EncodeCompiledCursor(self.__query, result.mutable_compiled_cursor())
+      self._EncodeCompiledCursor(
+          self.__query, result.mutable_compiled_cursor())
 
 
 class DatastoreFileStub(apiproxy_stub.APIProxyStub):

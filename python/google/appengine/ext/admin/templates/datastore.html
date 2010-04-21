@@ -83,6 +83,12 @@
   {% if kinds or in_production %}
   <form action="{{ request.path }}" method="get">
     <div id="datastore_search">
+      {% if namespace %}
+      <div class="field">
+        <span class="name">Namespace</span>
+        <input name="namespace" type="text" size="20" value="{{ namespace|escape }}"/>
+      </div>
+      {% endif %}
       <span class="field">
         <span class="name">Entity Kind:</span>
         <span class="value">
@@ -99,7 +105,7 @@
       </span>
       <span class="buttons">
         <input type="submit" value="List Entities"/>
-        <input type="button" id="create_button"  onclick="location.href='{{ datastore_edit_path }}?kind=' + encodeURIComponent(document.getElementById('kind_input').value) + '&amp;next={{ request.uri|urlencode }}'" value="Create New Entity"/>
+        <input type="button" id="create_button"  onclick="location.href='{{ datastore_edit_path }}?namespace={{ namespace|escape }}&amp;kind=' + encodeURIComponent(document.getElementById('kind_input').value) + '&amp;next={{ request.uri|urlencode }}'" value="Create New Entity"/>
       </span>
     </div>
   </form>

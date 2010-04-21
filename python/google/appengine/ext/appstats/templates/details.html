@@ -163,7 +163,6 @@
 {% endblock %}
 
 {% block tailstuff %}
-<script src="static/gantt.js"></script>
 <script>
 var rpcZippyMaker = new ae.Stats.MakeZippys('ae-table-rpc',
     'ae-rpc-expand-all');
@@ -184,9 +183,7 @@ var detailsTabs_ = new ae.Stats.Details.Tabs(['timeline', 'rpcstats',
     'cgienv', 'syspath']);
 </script>
 <script>
-
 function timelineClickHandler(zippyIndex, hash) {
-
   rpcZippyMaker.getExpandCollapse().setExpanded(false);
   rpcZippys[zippyIndex].setExpanded(true);
 
@@ -197,11 +194,19 @@ function timelineClickHandler(zippyIndex, hash) {
 function renderChart() {
   var chart = new Gantt();
   {% for t in record.individual_stats_list %}
-  chart.add_bar('{{t.service_call_name|escape}}', {{t.start_offset_milliseconds}}, {{t.duration_milliseconds}}, {{t.api_milliseconds}}, '{{t.duration_milliseconds}}ms{% if t.api_milliseconds %} ({{t.api_milliseconds}}ms api){% endif %}',
-    'javascript:timelineClickHandler(\'{{forloop.counter0}}\');');{% endfor %}
+    chart.add_bar('{{t.service_call_name|escape}}',
+        {{t.start_offset_milliseconds}}, {{t.duration_milliseconds}},
+        {{t.api_milliseconds}},
+        '{{t.duration_milliseconds}}ms{% if t.api_milliseconds %} ({{t.api_milliseconds}}ms api){% endif %}',
+        'javascript:timelineClickHandler(\'{{forloop.counter0}}\');');
+  {% endfor %}
 
-  chart.add_bar('<b>RPC Total</b>', 0, {{real_total}}, {{api_total}}, '{{real_total}}ms{% if api_total %} ({{api_total}}ms api){% endif %}', '');
-  chart.add_bar('<b>Grand Total</b>', 0, {{record.duration_milliseconds}}, {{charged_total}}, '{{record.duration_milliseconds}}ms{% if charged_total %} ({{charged_total}}ms cpu+api){% endif %}', '');
+  chart.add_bar('<b>RPC Total</b>', 0, {{real_total}}, {{api_total}},
+      '{{real_total}}ms{% if api_total %} ({{api_total}}ms api){% endif %}',
+      '');
+  chart.add_bar('<b>Grand Total</b>', 0, {{record.duration_milliseconds}},
+      {{charged_total}},
+      '{{record.duration_milliseconds}}ms{% if charged_total %} ({{charged_total}}ms cpu+api){% endif %}', '');
   document.getElementById('ae-rpc-chart').innerHTML = chart.draw();
 }
 renderChart();

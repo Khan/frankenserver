@@ -3,6 +3,18 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.3.3
+=================================
+- A new experimental feature allows you to set dev_appserver datastore file
+  stub to use sqlite. To enable, set the flag --use_sqlite=true.
+- It is now possible to implement properties on db.Expando.
+- Fixed a datastore issue where an error was thrown when setting a query offset
+  to more than the number of results throws an error.
+    http://code.google.com/p/googleappengine/issues/detail?id=2875
+- Fixed issue not allowing ByteString type to be viewed in the Development
+  Console datastore viewer.
+    http://code.google.com/p/googleappengine/issues/detail?id=1176
+
 Version 1.3.2
 =================================
 - New API to read the contents of uploaded Blobs (fetch_data)

@@ -193,7 +193,7 @@ class SpecificTimeSpecification(TimeSpecification):
 
   def __init__(self, ordinals=None, weekdays=None, months=None, monthdays=None,
                timestr='00:00', timezone=None):
-    super(SpecificTimeSpecification, self).__init__(self)
+    super(SpecificTimeSpecification, self).__init__()
     if weekdays and monthdays:
       raise ValueError('cannot supply both monthdays and weekdays')
     if ordinals is None:

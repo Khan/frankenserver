@@ -55,6 +55,3 @@ class ResponseTooLargeError(Error):
 class InvalidMethodError(Error):
   """Raised when an invalid value for 'method' is provided"""
 
-
-class InvalidMethodError(Error):
-  """Raised when an invalid value for 'method' is provided"""

@@ -218,7 +218,7 @@ class Validated(object):
     """
 
     if key in self.ATTRIBUTES:
-      value = self.GetAttribute(key)(value)
+      value = self.GetAttribute(key)(value, key)
       object.__setattr__(self, key, value)
     else:
       raise ValidationError('Class \'%s\' does not have attribute \'%s\''
@@ -358,15 +358,16 @@ class Validator(object):
     """
     self.default = default
 
-  def __call__(self, value):
+  def __call__(self, value, key='???'):
     """Main interface to validator is call mechanism."""
-    return self.Validate(value)
+    return self.Validate(value, key)
 
-  def Validate(self, value):
+  def Validate(self, value, key='???'):
     """Override this method to customize sub-class behavior.
 
     Args:
       value: Value to validate.
+      key: Name of the field being validated.
 
     Returns:
       Value if value is valid, or a valid representation of value.
@@ -425,11 +426,12 @@ class Type(Validator):
     self.expected_type = expected_type
     self.convert = convert
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Validate that value is correct type.
 
     Args:
       value: Value to validate.
+      key: Name of the field being validated.
 
     Returns:
       None if value is None, value if value is of correct type, converted
@@ -444,12 +446,11 @@ class Type(Validator):
         try:
           return self.expected_type(value)
         except ValueError, e:
-          raise ValidationError('Type conversion failed for value \'%s\'.'
-                                % value,
-                                e)
+          raise ValidationError('Type conversion failed for value \'%s\' '
+                                'key %s.' % (value, key), e)
         except TypeError, e:
-          raise ValidationError('Expected value of type %s, but got \'%s\'.'
-                                % (self.expected_type, value))
+          raise ValidationError('Expected value of type %s for key %s, but got '
+                                '\'%s\'.' % (self.expected_type, key, value))
       else:
         raise MissingAttribute('Missing value is required.')
     else:
@@ -534,7 +535,7 @@ class Options(Validator):
     super(Options, self).__init__(default)
     self.options = alias_map
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Validate options.
 
     Returns:
@@ -547,8 +548,8 @@ class Options(Validator):
       raise ValidationError('Value for options field must not be None.')
     value = str(value)
     if value not in self.options:
-      raise ValidationError('Value \'%s\' not in %s.'
-                            % (value, self.options))
+      raise ValidationError('Value \'%s\' for key %s not in %s.'
+                            % (value, key, self.options))
     return self.options[value]
 
 
@@ -583,7 +584,7 @@ class Optional(Validator):
     self.expected_type = self.validator.expected_type
     self.default = default
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Optionally require a value.
 
     Normal validators do not accept None.  This will accept none on
@@ -591,13 +592,20 @@ class Optional(Validator):
 
     Args:
       value: Value to be validated as optional.
+      key: Name of the field being validated.
 
     Returns:
       None if value is None, else results of contained validation.
     """
     if value is None:
       return None
-    return self.validator(value)
+    return self.validator(value, key)
+
+  def ToValue(self, value):
+    """Convert 'value' to a simplified collection or basic type."""
+    if value is None:
+      return None
+    return self.validator.ToValue(value)
 
 
 class Regex(Validator):
@@ -647,11 +655,12 @@ class Regex(Validator):
 
     self.expected_type = string_type
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Does validation of a string against a regular expression.
 
     Args:
       value: String to match against regular expression.
+      key: Name of the field being validated.
 
     Raises:
       ValidationError when value does not match regular expression or
@@ -663,8 +672,8 @@ class Regex(Validator):
       cast_value = TYPE_UNICODE(value)
 
     if self.re.match(cast_value) is None:
-      raise ValidationError('Value \'%s\' does not match expression \'%s\''
-                            % (value, self.re.pattern))
+      raise ValidationError('Value \'%s\' for key %s does not match expression '
+                            '\'%s\'' % (value, key, self.re.pattern))
     return cast_value
 
 
@@ -680,17 +689,19 @@ class _RegexStrValue(object):
   is a list of strings, the strings are joined in to a single 'or' expression.
   """
 
-  def __init__(self, attribute, value):
+  def __init__(self, attribute, value, key):
     """Initialize recompilable regex value.
 
     Args:
       attribute: Attribute validator associated with this regex value.
       value: Initial underlying python value for regex string.  Either a single
         regex string or a list of regex strings.
+      key: Name of the field.
     """
     self.__attribute = attribute
     self.__value = value
     self.__regex = None
+    self.__key = key
 
   def __AsString(self, value):
     """Convert a value to appropriate string.
@@ -741,7 +752,8 @@ class _RegexStrValue(object):
     try:
       return re.compile(regex)
     except re.error, e:
-      raise ValidationError('Value \'%s\' does not compile: %s' % (regex, e), e)
+      raise ValidationError('Value \'%s\' for key %s does not compile: %s' %
+                            (regex, self.__key, e), e)
 
   @property
   def regex(self):
@@ -790,7 +802,7 @@ class RegexStr(Validator):
       AttributeDefinitionError if string_type is not a kind of string.
     """
     if default is not None:
-      default = _RegexStrValue(self, default)
+      default = _RegexStrValue(self, default, None)
       re.compile(str(default))
     super(RegexStr, self).__init__(default)
     if (not issubclass(string_type, basestring) or
@@ -800,7 +812,7 @@ class RegexStr(Validator):
 
     self.expected_type = string_type
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Validates that the string compiles as a regular expression.
 
     Because the regular expression might have been expressed as a multiline
@@ -808,6 +820,7 @@ class RegexStr(Validator):
 
     Args:
       value: String to compile as a regular expression.
+      key: Name of the field being validated.
 
     Raises:
       ValueError when value does not compile as a regular expression.  TypeError
@@ -815,7 +828,7 @@ class RegexStr(Validator):
     """
     if isinstance(value, _RegexStrValue):
       return value
-    value = _RegexStrValue(self, value)
+    value = _RegexStrValue(self, value, key)
     value.Validate()
     return value
 
@@ -862,22 +875,24 @@ class Range(Validator):
     self.expected_type = range_type
     self._type_validator = Type(range_type)
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Validate that value is within range.
 
     Validates against range-type then checks the range.
 
     Args:
       value: Value to validate.
+      key: Name of the field being validated.
 
     Raises:
       ValidationError when value is out of range.  ValidationError when value
       is notd of the same range type.
     """
-    cast_value = self._type_validator.Validate(value)
+    cast_value = self._type_validator.Validate(value, key)
     if cast_value < self.minimum or cast_value > self.maximum:
-      raise ValidationError('Value \'%s\' is out of range %s - %s'
+      raise ValidationError('Value \'%s\' for %s is out of range %s - %s'
                             % (str(value),
+                               key,
                                str(self.minimum),
                                str(self.maximum)))
     return cast_value
@@ -902,27 +917,29 @@ class Repeated(Validator):
     self.constructor = constructor
     self.expected_type = list
 
-  def Validate(self, value):
+  def Validate(self, value, key):
     """Do validation of sequence.
 
     Value must be a list and all elements must be of type 'constructor'.
 
     Args:
       value: Value to validate.
+      key: Name of the field being validated.
 
     Raises:
       ValidationError if value is None, not a list or one of its elements is the
       wrong type.
     """
     if not isinstance(value, list):
-      raise ValidationError('Repeated fields must be sequence, '
-                            'but found \'%s\'.' % value)
+      raise ValidationError('Repeated fields for %s must be sequence, '
+                            'but found \'%s\'.' % (key, value))
 
     for item in value:
       if isinstance(self.constructor, Validator):
-        item = self.constructor.Validate(item)
+        item = self.constructor.Validate(item, key)
       elif not isinstance(item, self.constructor):
-        raise ValidationError('Repeated items must be %s, but found \'%s\'.'
-                              % (str(self.constructor), str(item)))
+        raise ValidationError('Repeated items for %s must be %s, but found '
+                              '\'%s\'.' %
+                              (key, str(self.constructor), str(item)))
 
     return value

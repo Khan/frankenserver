@@ -109,6 +109,7 @@ BadKeyError = datastore_errors.BadKeyError
 InternalError = datastore_errors.InternalError
 NeedIndexError = datastore_errors.NeedIndexError
 Timeout = datastore_errors.Timeout
+CommittedButStillApplying = datastore_errors.CommittedButStillApplying
 
 ValidationError = BadValueError
 
@@ -339,6 +340,33 @@ def _initialize_properties(model_class, name, bases, dct):
 
   model_class._unindexed_properties = frozenset(
     name for name, prop in model_class._properties.items() if not prop.indexed)
+
+
+def _coerce_to_key(value):
+  """Returns the value's key.
+
+  Args:
+    value: a Model or Key instance or string encoded key or None
+
+  Returns:
+    The corresponding key, or None if value is None.
+  """
+  if value is None:
+    return None
+
+  value, multiple = datastore.NormalizeAndTypeCheck(
+    value, (Model, Key, basestring))
+
+  if len(value) > 1:
+    raise datastore_errors.BadArgumentError('Expected only one model or key')
+  value = value[0]
+
+  if isinstance(value, Model):
+    return value.key()
+  elif isinstance(value, basestring):
+    return Key(value)
+  else:
+    return value
 
 
 class PropertiedClass(type):
@@ -850,6 +878,9 @@ class Model(object):
     """
     rpc = datastore.GetRpcFromKwargs(kwargs)
     datastore.Delete(self.key(), rpc=rpc)
+    self._key = self.key()
+    self._key_name = None
+    self._parent_key = None
     self._entity = None
 
 
@@ -982,9 +1013,12 @@ class Model(object):
       key_names: A single key-name or a list of key-names.
       parent: Parent of instances to get.  Can be a model or key.
     """
+    try:
+      parent = _coerce_to_key(parent)
+    except BadKeyError, e:
+      raise BadArgumentError(str(e))
+
     rpc = datastore.GetRpcFromKwargs(kwargs)
-    if isinstance(parent, Model):
-      parent = parent.key()
     key_names, multiple = datastore.NormalizeAndTypeCheck(key_names, basestring)
     keys = [datastore.Key.from_path(cls.kind(), name, parent=parent)
             for name in key_names]
@@ -1260,21 +1294,16 @@ def delete(models, **kwargs):
     TransactionFailedError if the data could not be committed.
   """
   rpc = datastore.GetRpcFromKwargs(kwargs)
-  models_or_keys, multiple = datastore.NormalizeAndTypeCheck(
-      models, (Model, Key, basestring))
-  keys = []
-  for model_or_key in models_or_keys:
-    if isinstance(model_or_key, Model):
-      key = model_or_key = model_or_key.key()
-    elif isinstance(model_or_key, basestring):
-      key = model_or_key = Key(model_or_key)
-    else:
-      key = model_or_key
-    keys.append(key)
+
+  if not isinstance(models, (list, tuple)):
+    models = [models]
+  keys = [_coerce_to_key(v) for v in models]
+
   datastore.Delete(keys, rpc=rpc)
 
+
 def allocate_ids(model, size, **kwargs):
-  """Allocates a range of IDs of size for the model_key defined by model
+  """Allocates a range of IDs of size for the model_key defined by model.
 
   Allocates a range of IDs in the datastore such that those IDs will not
   be automatically assigned to new entities. You can only allocate IDs
@@ -1282,25 +1311,15 @@ def allocate_ids(model, size, **kwargs):
   datastore_errors.Error.
 
   Args:
-    model: Model instance, Key or string to serve as a model specifying the
-      ID sequence in which to allocate IDs.
+    model: Model instance, Key or string to serve as a template specifying the
+      ID sequence in which to allocate IDs. Returned ids should only be used
+      in entities with the same parent (if any) and kind as this key.
 
   Returns:
     (start, end) of the allocated range, inclusive.
   """
-  rpc = datastore.GetRpcFromKwargs(kwargs)
-  models_or_keys, multiple = datastore.NormalizeAndTypeCheck(
-      model, (Model, Key, basestring))
-  keys = []
-  for model_or_key in models_or_keys:
-    if isinstance(model_or_key, Model):
-      key = model_or_key = model_or_key.key()
-    elif isinstance(model_or_key, basestring):
-      key = model_or_key = Key(model_or_key)
-    else:
-      key = model_or_key
-    keys.append(key)
-  return datastore.AllocateIds(keys, size, rpc=rpc)
+  return datastore.AllocateIds(_coerce_to_key(model), size, **kwargs)
+
 
 class Expando(Model):
   """Dynamically expandable model.
@@ -1398,7 +1417,11 @@ class Expando(Model):
       ValueError on attempt to assign empty list.
     """
     check_reserved_word(key)
-    if key[:1] != '_' and key not in self.properties():
+    if (key[:1] != '_' and
+
+
+
+        not hasattr(getattr(type(self), key, None), '__set__')):
       if value == []:
         raise ValueError('Cannot store empty list to dynamic property %s' %
                          key)
@@ -1410,6 +1433,31 @@ class Expando(Model):
       self._dynamic_properties[key] = value
     else:
       super(Expando, self).__setattr__(key, value)
+
+  def __getattribute__(self, key):
+    """Get attribute from expando.
+
+    Must be overridden to allow dynamic properties to obscure class attributes.
+    Since all attributes are stored in self._dynamic_properties, the normal
+    __getattribute__ does not attempt to access it until __setattr__ is called.
+    By then, the static attribute being overwritten has already been located
+    and returned from the call.
+
+    This method short circuits the usual __getattribute__ call when finding a
+    dynamic property and returns it to the user via __getattr__.  __getattr__
+    is called to preserve backward compatibility with older Expando models
+    that may have overridden the original __getattr__.
+
+    NOTE: Access to properties defined by Python descriptors are not obscured
+    because setting those attributes are done through the descriptor and does
+    not place those attributes in self._dynamic_properties.
+    """
+    if not key.startswith('_'):
+      dynamic_properties = self._dynamic_properties
+      if dynamic_properties is not None and key in dynamic_properties:
+        return self.__getattr__(key)
+
+    return super(Expando, self).__getattribute__(key)
 
   def __getattr__(self, key):
     """If no explicit attribute defined, retrieve value from entity.
@@ -1424,8 +1472,9 @@ class Expando(Model):
       AttributeError when there is no attribute for key on object or
         contained entity.
     """
-    if self._dynamic_properties and key in self._dynamic_properties:
-      return self._dynamic_properties[key]
+    _dynamic_properties = self._dynamic_properties
+    if _dynamic_properties is not None and key in _dynamic_properties:
+      return _dynamic_properties[key]
     else:
       return getattr(super(Expando, self), key)
 

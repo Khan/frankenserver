@@ -23,6 +23,7 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
 from google.appengine.datastore.datastore_v3_pb import *
+from google.net.proto.message_set import MessageSet
 class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
@@ -44,6 +45,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
   DUPLICATE_TASK_NAME =   16
   SKIPPED      =   17
   TOO_MANY_TASKS =   18
+  INVALID_PAYLOAD =   19
   DATASTORE_ERROR = 10000
 
   _ErrorCode_NAMES = {
@@ -66,6 +68,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
     16: "DUPLICATE_TASK_NAME",
     17: "SKIPPED",
     18: "TOO_MANY_TASKS",
+    19: "INVALID_PAYLOAD",
     10000: "DATASTORE_ERROR",
   }
 
@@ -358,6 +361,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   crontimetable_ = None
   has_description_ = 0
   description_ = ""
+  has_payload_ = 0
+  payload_ = None
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -520,6 +525,24 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_description(self): return self.has_description_
 
+  def payload(self):
+    if self.payload_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.payload_ is None: self.payload_ = MessageSet()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.payload_
+
+  def mutable_payload(self): self.has_payload_ = 1; return self.payload()
+
+  def clear_payload(self):
+    if self.has_payload_:
+      self.has_payload_ = 0;
+      if self.payload_ is not None: self.payload_.Clear()
+
+  def has_payload(self): return self.has_payload_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -534,6 +557,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_app_id()): self.set_app_id(x.app_id())
     if (x.has_crontimetable()): self.mutable_crontimetable().MergeFrom(x.crontimetable())
     if (x.has_description()): self.set_description(x.description())
+    if (x.has_payload()): self.mutable_payload().MergeFrom(x.payload())
 
   def Equals(self, x):
     if x is self: return 1
@@ -560,6 +584,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_crontimetable_ and self.crontimetable_ != x.crontimetable_: return 0
     if self.has_description_ != x.has_description_: return 0
     if self.has_description_ and self.description_ != x.description_: return 0
+    if self.has_payload_ != x.has_payload_: return 0
+    if self.has_payload_ and self.payload_ != x.payload_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -576,14 +602,11 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: eta_usec not set.')
-    if (not self.has_url_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: url not set.')
     for p in self.header_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_crontimetable_ and not self.crontimetable_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_payload_ and not self.payload_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -592,7 +615,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.task_name_))
     n += self.lengthVarInt64(self.eta_usec_)
     if (self.has_method_): n += 1 + self.lengthVarInt64(self.method_)
-    n += self.lengthString(len(self.url_))
+    if (self.has_url_): n += 1 + self.lengthString(len(self.url_))
     n += 2 * len(self.header_)
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_body_): n += 1 + self.lengthString(len(self.body_))
@@ -600,7 +623,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     if (self.has_crontimetable_): n += 2 + self.crontimetable_.ByteSize()
     if (self.has_description_): n += 1 + self.lengthString(len(self.description_))
-    return n + 4
+    if (self.has_payload_): n += 2 + self.lengthString(self.payload_.ByteSize())
+    return n + 3
 
   def Clear(self):
     self.clear_queue_name()
@@ -614,6 +638,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_app_id()
     self.clear_crontimetable()
     self.clear_description()
+    self.clear_payload()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -622,8 +647,9 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     out.putPrefixedString(self.task_name_)
     out.putVarInt32(24)
     out.putVarInt64(self.eta_usec_)
-    out.putVarInt32(34)
-    out.putPrefixedString(self.url_)
+    if (self.has_url_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.url_)
     if (self.has_method_):
       out.putVarInt32(40)
       out.putVarInt32(self.method_)
@@ -648,6 +674,10 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_description_):
       out.putVarInt32(122)
       out.putPrefixedString(self.description_)
+    if (self.has_payload_):
+      out.putVarInt32(130)
+      out.putVarInt32(self.payload_.ByteSize())
+      self.payload_.OutputUnchecked(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -688,6 +718,12 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 122:
         self.set_description(d.getPrefixedString())
         continue
+      if tt == 130:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_payload().TryMerge(tmp)
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -718,6 +754,10 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       res+=self.crontimetable_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
     if self.has_description_: res+=prefix+("description: %s\n" % self.DebugFormatString(self.description_))
+    if self.has_payload_:
+      res+=prefix+"payload <\n"
+      res+=self.payload_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -739,6 +779,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   kCronTimetableschedule = 13
   kCronTimetabletimezone = 14
   kdescription = 15
+  kpayload = 16
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -757,7 +798,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     13: "schedule",
     14: "timezone",
     15: "description",
-  }, 15)
+    16: "payload",
+  }, 16)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -776,7 +818,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     13: ProtocolBuffer.Encoder.STRING,
     14: ProtocolBuffer.Encoder.STRING,
     15: ProtocolBuffer.Encoder.STRING,
-  }, 15, ProtocolBuffer.Encoder.MAX_TYPE)
+    16: ProtocolBuffer.Encoder.STRING,
+  }, 16, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -3521,6 +3564,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
   runlog_ = None
   has_description_ = 0
   description_ = ""
+  has_payload_ = 0
+  payload_ = None
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -3696,6 +3741,24 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
 
   def has_description(self): return self.has_description_
 
+  def payload(self):
+    if self.payload_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.payload_ is None: self.payload_ = MessageSet()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.payload_
+
+  def mutable_payload(self): self.has_payload_ = 1; return self.payload()
+
+  def clear_payload(self):
+    if self.has_payload_:
+      self.has_payload_ = 0;
+      if self.payload_ is not None: self.payload_.Clear()
+
+  def has_payload(self): return self.has_payload_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3711,6 +3774,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (x.has_crontimetable()): self.mutable_crontimetable().MergeFrom(x.crontimetable())
     if (x.has_runlog()): self.mutable_runlog().MergeFrom(x.runlog())
     if (x.has_description()): self.set_description(x.description())
+    if (x.has_payload()): self.mutable_payload().MergeFrom(x.payload())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3739,6 +3803,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if self.has_runlog_ and self.runlog_ != x.runlog_: return 0
     if self.has_description_ != x.has_description_: return 0
     if self.has_description_ and self.description_ != x.description_: return 0
+    if self.has_payload_ != x.has_payload_: return 0
+    if self.has_payload_ and self.payload_ != x.payload_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3751,10 +3817,6 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: eta_usec not set.')
-    if (not self.has_url_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: url not set.')
     if (not self.has_method_):
       initialized = 0
       if debug_strs is not None:
@@ -3767,13 +3829,14 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: creation_time_usec not set.')
     if (self.has_crontimetable_ and not self.crontimetable_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_runlog_ and not self.runlog_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_payload_ and not self.payload_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.task_name_))
     n += self.lengthVarInt64(self.eta_usec_)
-    n += self.lengthString(len(self.url_))
+    if (self.has_url_): n += 1 + self.lengthString(len(self.url_))
     n += self.lengthVarInt64(self.method_)
     if (self.has_retry_count_): n += 1 + self.lengthVarInt64(self.retry_count_)
     n += 2 * len(self.header_)
@@ -3784,7 +3847,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_crontimetable_): n += 2 + self.crontimetable_.ByteSize()
     if (self.has_runlog_): n += 4 + self.runlog_.ByteSize()
     if (self.has_description_): n += 2 + self.lengthString(len(self.description_))
-    return n + 5
+    if (self.has_payload_): n += 2 + self.lengthString(self.payload_.ByteSize())
+    return n + 4
 
   def Clear(self):
     self.clear_task_name()
@@ -3799,14 +3863,16 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     self.clear_crontimetable()
     self.clear_runlog()
     self.clear_description()
+    self.clear_payload()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
     out.putPrefixedString(self.task_name_)
     out.putVarInt32(24)
     out.putVarInt64(self.eta_usec_)
-    out.putVarInt32(34)
-    out.putPrefixedString(self.url_)
+    if (self.has_url_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.url_)
     out.putVarInt32(40)
     out.putVarInt32(self.method_)
     if (self.has_retry_count_):
@@ -3835,6 +3901,10 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_description_):
       out.putVarInt32(170)
       out.putPrefixedString(self.description_)
+    if (self.has_payload_):
+      out.putVarInt32(178)
+      out.putVarInt32(self.payload_.ByteSize())
+      self.payload_.OutputUnchecked(out)
 
   def TryMerge(self, d):
     while 1:
@@ -3876,6 +3946,12 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       if tt == 170:
         self.set_description(d.getPrefixedString())
         continue
+      if tt == 178:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_payload().TryMerge(tmp)
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -3907,6 +3983,10 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       res+=self.runlog_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
     if self.has_description_: res+=prefix+("description: %s\n" % self.DebugFormatString(self.description_))
+    if self.has_payload_:
+      res+=prefix+"payload <\n"
+      res+=self.payload_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
@@ -4011,6 +4091,7 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
   kTaskRunLogelapsed_usec = 19
   kTaskRunLogresponse_code = 20
   kTaskdescription = 21
+  kTaskpayload = 22
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -4035,7 +4116,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     19: "elapsed_usec",
     20: "response_code",
     21: "description",
-  }, 21)
+    22: "payload",
+  }, 22)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4060,7 +4142,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     19: ProtocolBuffer.Encoder.NUMERIC,
     20: ProtocolBuffer.Encoder.NUMERIC,
     21: ProtocolBuffer.Encoder.STRING,
-  }, 21, ProtocolBuffer.Encoder.MAX_TYPE)
+    22: ProtocolBuffer.Encoder.STRING,
+  }, 22, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

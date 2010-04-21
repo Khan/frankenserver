@@ -27,21 +27,21 @@ class representing a blob-key.
 import cgi
 import email
 
-from google.appengine.api import blobstore
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
+from google.appengine.api.blobstore import blobstore
 from google.appengine.ext import db
 
 __all__ = ['BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
+           'BLOB_RANGE_HEADER',
            'BlobFetchSizeTooLargeError',
            'BlobInfo',
            'BlobInfoParseError',
            'BlobKey',
            'BlobNotFoundError',
            'BlobReferenceProperty',
-           'CreationFormatError',
            'DataIndexOutOfRangeError',
            'Error',
            'InternalError',
@@ -57,7 +57,7 @@ Error = blobstore.Error
 InternalError = blobstore.InternalError
 BlobFetchSizeTooLargeError = blobstore.BlobFetchSizeTooLargeError
 BlobNotFoundError = blobstore.BlobNotFoundError
-CreationFormatError = blobstore.CreationFormatError
+_CreationFormatError = blobstore._CreationFormatError
 DataIndexOutOfRangeError = blobstore.DataIndexOutOfRangeError
 
 BlobKey = blobstore.BlobKey
@@ -71,9 +71,9 @@ class BlobInfoParseError(Error):
 
 BLOB_INFO_KIND = blobstore.BLOB_INFO_KIND
 BLOB_KEY_HEADER = blobstore.BLOB_KEY_HEADER
+BLOB_RANGE_HEADER = blobstore.BLOB_RANGE_HEADER
 MAX_BLOB_FETCH_SIZE = blobstore.MAX_BLOB_FETCH_SIZE
 UPLOAD_INFO_CREATION_HEADER = blobstore.UPLOAD_INFO_CREATION_HEADER
-
 
 class _GqlQuery(db.GqlQuery):
   """GqlQuery class that explicitly sets model-class.
@@ -370,10 +370,9 @@ def parse_blob_info(field_storage):
         '%s is not a valid value for %s size.' % (size, field_name))
 
   try:
-    creation = blobstore.parse_creation(creation_string)
-  except CreationFormatError, e:
-    raise BlobInfoParseError('Could not parse creation for %s: %s' % (
-        field_name, str(e)))
+    creation = blobstore._parse_creation(creation_string, field_name)
+  except blobstore._CreationFormatError, err:
+    raise BlobInfoParseError(str(err))
 
   return BlobInfo(blob_key,
                   {'content_type': content_type,

@@ -47,7 +47,7 @@ _DESCRIPTION_REGEX = r'^.{0,499}$'
 class GrocValidator(validation.Validator):
   """Checks that a schedule is in valid groc format."""
 
-  def Validate(self, value):
+  def Validate(self, value, key=None):
     """Validates a schedule."""
     if value is None:
       raise validation.MissingAttribute('schedule must be specified')
@@ -64,7 +64,7 @@ class GrocValidator(validation.Validator):
 class TimezoneValidator(validation.Validator):
   """Checks that a timezone can be correctly parsed and is known."""
 
-  def Validate(self, value):
+  def Validate(self, value, key=None):
     """Validates a timezone."""
     if value is None:
       return

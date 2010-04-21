@@ -32,6 +32,8 @@ Options:
   --blobstore_path=PATH      Path to use for storing Blobstore file stub data.
   --datastore_path=PATH      Path to use for storing Datastore file stub data.
                              (Default %(datastore_path)s)
+  --use_sqlite               Use the new, SQLite based datastore stub.
+                             (Default false)
   --history_path=PATH        Path to use for storing Datastore history.
                              (Default %(history_path)s)
   --require_indexes          Disallows queries that require composite indexes
@@ -94,6 +96,7 @@ ARG_AUTH_DOMAIN = 'auth_domain'
 ARG_CLEAR_DATASTORE = 'clear_datastore'
 ARG_BLOBSTORE_PATH = 'blobstore_path'
 ARG_DATASTORE_PATH = 'datastore_path'
+ARG_USE_SQLITE = 'use_sqlite'
 ARG_DEBUG_IMPORTS = 'debug_imports'
 ARG_ENABLE_SENDMAIL = 'enable_sendmail'
 ARG_SHOW_MAIL_BODY = 'show_mail_body'
@@ -126,6 +129,7 @@ DEFAULT_ARGS = {
                                    'dev_appserver.blobstore'),
   ARG_DATASTORE_PATH: os.path.join(tempfile.gettempdir(),
                                    'dev_appserver.datastore'),
+  ARG_USE_SQLITE: False,
   ARG_HISTORY_PATH: os.path.join(tempfile.gettempdir(),
                                  'dev_appserver.datastore.history'),
   ARG_LOGIN_URL: '/_ah/login',
@@ -189,6 +193,7 @@ def ParseArguments(argv):
         'clear_datastore',
         'blobstore_path=',
         'datastore_path=',
+        'use_sqlite',
         'debug',
         'debug_imports',
         'enable_sendmail',
@@ -233,6 +238,9 @@ def ParseArguments(argv):
 
     if option == '--datastore_path':
       option_dict[ARG_DATASTORE_PATH] = os.path.abspath(value)
+
+    if option == '--use_sqlite':
+      option_dict[ARG_USE_SQLITE] = True
 
     if option == '--history_path':
       option_dict[ARG_HISTORY_PATH] = os.path.abspath(value)

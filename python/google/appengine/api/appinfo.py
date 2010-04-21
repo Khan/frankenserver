@@ -56,7 +56,19 @@ APP_ID_MAX_LEN = 100
 MAJOR_VERSION_ID_MAX_LEN = 100
 MAX_URL_MAPS = 100
 
-APPLICATION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % APP_ID_MAX_LEN
+PARTITION_SEPARATOR = '~'
+
+DOMAIN_SEPARATOR = ':'
+
+PARTITION_RE_STRING = (r'[a-z\d\-]{1,%d}\%s' %
+                       (APP_ID_MAX_LEN, PARTITION_SEPARATOR))
+DOMAIN_RE_STRING = (r'(?!\-)[a-z\d\-\.]{1,%d}%s' %
+                    (APP_ID_MAX_LEN, DOMAIN_SEPARATOR))
+DISPLAY_APP_ID_RE_STRING = (r'(?!-)[a-z\d\-]{1,%d}' % (APP_ID_MAX_LEN))
+APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
+                         (PARTITION_RE_STRING,
+                          DOMAIN_RE_STRING,
+                          DISPLAY_APP_ID_RE_STRING))
 VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
 
 RUNTIME_RE_STRING = r'[a-z]{1,30}'

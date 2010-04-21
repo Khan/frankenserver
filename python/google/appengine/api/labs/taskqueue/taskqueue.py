@@ -30,6 +30,7 @@ base path. A default queue is also provided for simple usage.
 
 
 import datetime
+import os
 import re
 import time
 import urllib
@@ -189,6 +190,11 @@ _ERROR_MAPPING = {
 
 }
 
+_PRESERVE_ENVIRONMENT_HEADERS = (
+    ('X-AppEngine-Default-Namespace', 'HTTP_X_APPENGINE_DEFAULT_NAMESPACE'),
+    ('X-AppEngine-Current-Namespace', 'HTTP_X_APPENGINE_CURRENT_NAMESPACE'))
+
+
 class _UTCTimeZone(datetime.tzinfo):
   """UTC timezone."""
 
@@ -326,6 +332,11 @@ class Task(object):
     self.__method = kwargs.get('method', 'POST').upper()
     self.__payload = None
     params = kwargs.get('params', {})
+
+    for header_name, environ_name in _PRESERVE_ENVIRONMENT_HEADERS:
+      value = os.environ.get(environ_name)
+      if value is not None:
+        self.__headers.setdefault(header_name, value)
 
     if query and params:
       raise InvalidTaskError('Query string and parameters both present; '

@@ -2352,194 +2352,6 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
-class QueryExplanation(ProtocolBuffer.ProtocolMessage):
-  has_native_ancestor_ = 0
-  native_ancestor_ = 0
-  has_native_offset_ = 0
-  native_offset_ = 0
-  has_native_limit_ = 0
-  native_limit_ = 0
-
-  def __init__(self, contents=None):
-    self.native_index_ = []
-    if contents is not None: self.MergeFromString(contents)
-
-  def native_ancestor(self): return self.native_ancestor_
-
-  def set_native_ancestor(self, x):
-    self.has_native_ancestor_ = 1
-    self.native_ancestor_ = x
-
-  def clear_native_ancestor(self):
-    if self.has_native_ancestor_:
-      self.has_native_ancestor_ = 0
-      self.native_ancestor_ = 0
-
-  def has_native_ancestor(self): return self.has_native_ancestor_
-
-  def native_index_size(self): return len(self.native_index_)
-  def native_index_list(self): return self.native_index_
-
-  def native_index(self, i):
-    return self.native_index_[i]
-
-  def mutable_native_index(self, i):
-    return self.native_index_[i]
-
-  def add_native_index(self):
-    x = Index()
-    self.native_index_.append(x)
-    return x
-
-  def clear_native_index(self):
-    self.native_index_ = []
-  def native_offset(self): return self.native_offset_
-
-  def set_native_offset(self, x):
-    self.has_native_offset_ = 1
-    self.native_offset_ = x
-
-  def clear_native_offset(self):
-    if self.has_native_offset_:
-      self.has_native_offset_ = 0
-      self.native_offset_ = 0
-
-  def has_native_offset(self): return self.has_native_offset_
-
-  def native_limit(self): return self.native_limit_
-
-  def set_native_limit(self, x):
-    self.has_native_limit_ = 1
-    self.native_limit_ = x
-
-  def clear_native_limit(self):
-    if self.has_native_limit_:
-      self.has_native_limit_ = 0
-      self.native_limit_ = 0
-
-  def has_native_limit(self): return self.has_native_limit_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_native_ancestor()): self.set_native_ancestor(x.native_ancestor())
-    for i in xrange(x.native_index_size()): self.add_native_index().CopyFrom(x.native_index(i))
-    if (x.has_native_offset()): self.set_native_offset(x.native_offset())
-    if (x.has_native_limit()): self.set_native_limit(x.native_limit())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_native_ancestor_ != x.has_native_ancestor_: return 0
-    if self.has_native_ancestor_ and self.native_ancestor_ != x.native_ancestor_: return 0
-    if len(self.native_index_) != len(x.native_index_): return 0
-    for e1, e2 in zip(self.native_index_, x.native_index_):
-      if e1 != e2: return 0
-    if self.has_native_offset_ != x.has_native_offset_: return 0
-    if self.has_native_offset_ and self.native_offset_ != x.native_offset_: return 0
-    if self.has_native_limit_ != x.has_native_limit_: return 0
-    if self.has_native_limit_ and self.native_limit_ != x.native_limit_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    for p in self.native_index_:
-      if not p.IsInitialized(debug_strs): initialized=0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    if (self.has_native_ancestor_): n += 2
-    n += 1 * len(self.native_index_)
-    for i in xrange(len(self.native_index_)): n += self.lengthString(self.native_index_[i].ByteSize())
-    if (self.has_native_offset_): n += 1 + self.lengthVarInt64(self.native_offset_)
-    if (self.has_native_limit_): n += 1 + self.lengthVarInt64(self.native_limit_)
-    return n + 0
-
-  def Clear(self):
-    self.clear_native_ancestor()
-    self.clear_native_index()
-    self.clear_native_offset()
-    self.clear_native_limit()
-
-  def OutputUnchecked(self, out):
-    if (self.has_native_ancestor_):
-      out.putVarInt32(8)
-      out.putBoolean(self.native_ancestor_)
-    for i in xrange(len(self.native_index_)):
-      out.putVarInt32(18)
-      out.putVarInt32(self.native_index_[i].ByteSize())
-      self.native_index_[i].OutputUnchecked(out)
-    if (self.has_native_offset_):
-      out.putVarInt32(24)
-      out.putVarInt32(self.native_offset_)
-    if (self.has_native_limit_):
-      out.putVarInt32(32)
-      out.putVarInt32(self.native_limit_)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 8:
-        self.set_native_ancestor(d.getBoolean())
-        continue
-      if tt == 18:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.add_native_index().TryMerge(tmp)
-        continue
-      if tt == 24:
-        self.set_native_offset(d.getVarInt32())
-        continue
-      if tt == 32:
-        self.set_native_limit(d.getVarInt32())
-        continue
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_native_ancestor_: res+=prefix+("native_ancestor: %s\n" % self.DebugFormatBool(self.native_ancestor_))
-    cnt=0
-    for e in self.native_index_:
-      elm=""
-      if printElemNumber: elm="(%d)" % cnt
-      res+=prefix+("native_index%s <\n" % elm)
-      res+=e.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-      cnt+=1
-    if self.has_native_offset_: res+=prefix+("native_offset: %s\n" % self.DebugFormatInt32(self.native_offset_))
-    if self.has_native_limit_: res+=prefix+("native_limit: %s\n" % self.DebugFormatInt32(self.native_limit_))
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  knative_ancestor = 1
-  knative_index = 2
-  knative_offset = 3
-  knative_limit = 4
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "native_ancestor",
-    2: "native_index",
-    3: "native_offset",
-    4: "native_limit",
-  }, 4)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.NUMERIC,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.NUMERIC,
-    4: ProtocolBuffer.Encoder.NUMERIC,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
 class Cursor(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   cursor_ = 0
@@ -2661,6 +2473,9 @@ class Error(ProtocolBuffer.ProtocolMessage):
   NEED_INDEX   =    4
   TIMEOUT      =    5
   PERMISSION_DENIED =    6
+  BIGTABLE_ERROR =    7
+  COMMITTED_BUT_STILL_APPLYING =    8
+  CAPABILITY_DISABLED =    9
 
   _ErrorCode_NAMES = {
     1: "BAD_REQUEST",
@@ -2669,6 +2484,9 @@ class Error(ProtocolBuffer.ProtocolMessage):
     4: "NEED_INDEX",
     5: "TIMEOUT",
     6: "PERMISSION_DENIED",
+    7: "BIGTABLE_ERROR",
+    8: "COMMITTED_BUT_STILL_APPLYING",
+    9: "CAPABILITY_DISABLED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -5343,4 +5161,4 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_Position','RunCompiledQueryRequest','QueryExplanation','Cursor','Error','Cost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','GetSchemaRequest','Schema','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']
+__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','GetSchemaRequest','Schema','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']

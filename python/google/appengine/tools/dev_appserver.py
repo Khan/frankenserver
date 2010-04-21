@@ -99,6 +99,7 @@ from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.labs.taskqueue import taskqueue_stub
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.xmpp import xmpp_service_stub
+from google.appengine.datastore import datastore_sqlite_stub
 
 from google.appengine import dist
 
@@ -680,6 +681,12 @@ def SetupEnvironment(cgi_path,
   env['USER_ID'] = user_id
   if admin:
     env['USER_IS_ADMIN'] = '1'
+  if env['AUTH_DOMAIN'] == '*':
+    auth_domain = 'gmail.com'
+    parts = email_addr.split('@')
+    if len(parts) == 2 and parts[1]:
+      auth_domain = parts[1]
+    env['AUTH_DOMAIN'] = auth_domain
 
   for key in headers:
     if key in _IGNORE_REQUEST_HEADERS:
@@ -3492,6 +3499,7 @@ def SetupStubs(app_id, **config):
     login_url: Relative URL which should be used for handling user login/logout.
     blobstore_path: Path to the directory to store Blobstore blobs in.
     datastore_path: Path to the file to store Datastore file stub data in.
+    use_sqlite: Use the SQLite stub for the datastore.
     history_path: DEPRECATED, No-op.
     clear_datastore: If the datastore should be cleared on startup.
     smtp_host: SMTP host used for sending test mail.
@@ -3510,6 +3518,7 @@ def SetupStubs(app_id, **config):
   blobstore_path = config['blobstore_path']
   datastore_path = config['datastore_path']
   clear_datastore = config['clear_datastore']
+  use_sqlite = config.get('use_sqlite', False)
   require_indexes = config.get('require_indexes', False)
   smtp_host = config.get('smtp_host', None)
   smtp_port = config.get('smtp_port', 25)
@@ -3533,9 +3542,14 @@ def SetupStubs(app_id, **config):
 
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
 
-  datastore = datastore_file_stub.DatastoreFileStub(
-      app_id, datastore_path, require_indexes=require_indexes,
-      trusted=trusted)
+  if use_sqlite:
+    datastore = datastore_sqlite_stub.DatastoreSqliteStub(
+        app_id, datastore_path, require_indexes=require_indexes,
+        trusted=trusted)
+  else:
+    datastore = datastore_file_stub.DatastoreFileStub(
+        app_id, datastore_path, require_indexes=require_indexes,
+        trusted=trusted)
   apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore)
 
   fixed_login_url = '%s?%s=%%s' % (login_url,

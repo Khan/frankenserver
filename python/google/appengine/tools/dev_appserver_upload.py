@@ -33,9 +33,9 @@ import md5
 import random
 import time
 
-from google.appengine.api import blobstore
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
+from google.appengine.api.blobstore import blobstore
 
 
 try:
@@ -59,24 +59,6 @@ class Error(Exception):
 
 class InvalidMIMETypeFormatError(Error):
   """MIME type was formatted incorrectly."""
-
-
-def _FormatDateTime(stamp):
-  """Format a timestamp with milliseconds.
-
-  This method is necessary to format a timestamp with microseconds on Python
-  versions before 2.6.
-
-  DO NOT USE OUTSIDE THIS MODULE.
-
-  Args:
-    stamp: datetime.datetime object to format.
-
-  Returns:
-    Formatted datetime as Python 2.6 format '%Y-%m-%d %H:%M:%S.%f'.
-  """
-  return '%s.%06d' % (stamp.strftime(blobstore.BASE_CREATION_HEADER_FORMAT),
-                      stamp.microsecond)
 
 
 def GenerateBlobKey(time_func=time.time, random_func=random.random):
@@ -281,8 +263,8 @@ class UploadCGIHandler(object):
                                  **form_item.type_options)
         headers = dict(form_item.headers)
         headers['Content-Length'] = str(content_length)
-        headers[blobstore.UPLOAD_INFO_CREATION_HEADER] = _FormatDateTime(
-            creation)
+        headers[blobstore.UPLOAD_INFO_CREATION_HEADER] = (
+            blobstore._format_creation(creation))
         for key, value in headers.iteritems():
           external.add_header(key, value)
 

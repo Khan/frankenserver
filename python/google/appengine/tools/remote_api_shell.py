@@ -75,7 +75,8 @@ def main(argv):
     path = DEFAULT_PATH
 
   remote_api_stub.ConfigureRemoteApi(appid, path, auth_func,
-                                     servername=options.server)
+                                     servername=options.server,
+                                     save_cookies=True)
   remote_api_stub.MaybeInvokeAuthentication()
 
   os.environ['SERVER_SOFTWARE'] = 'Development (remote_api_shell)/1.0'

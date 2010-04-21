@@ -476,7 +476,8 @@ class WSGIApplication(object):
     """Initializes this application with the given URL mapping.
 
     Args:
-      url_mapping: list of (URI, RequestHandler) pairs (e.g., [('/', ReqHan)])
+      url_mapping: list of (URI regular expression, RequestHandler) pairs
+                   (e.g., [('/', ReqHan)])
       debug: if true, we send Python stack traces to the browser on errors
     """
     self._init_url_mappings(url_mapping)
@@ -544,7 +545,12 @@ class WSGIApplication(object):
 
     for regexp, handler in handler_tuples:
 
-      handler_map[handler.__name__] = handler
+      try:
+        handler_name = handler.__name__
+      except AttributeError:
+        pass
+      else:
+        handler_map[handler_name] = handler
 
       if not regexp.startswith('^'):
         regexp = '^' + regexp

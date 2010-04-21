@@ -41,6 +41,19 @@ queue:
 If this queue had been idle for a while before some jobs were submitted to it,
 the first 10 jobs submitted would be run immediately, then subsequent ones
 would be run once every 40s or so. The limit of 2000 per day would still apply.
+
+An app's queues are also subject to storage quota limits for their stored tasks,
+i.e. those tasks that have been added to queues but not yet executed. This quota
+is part of their total storage quota (including datastore and blobstore quota).
+We allow an app to override the default portion of this quota available for
+taskqueue storage (100M) with a top level field "total_storage_quota".
+
+taskqueue_storage_limit: 1.2G
+
+If no suffix is specified, the number is interpreted as bytes. Supported
+suffices are B (bytes), K (kilobytes), M (megabytes), G (gigabytes) and
+T (terabytes). If taskqueue_storage_quota exceeds the total storage quota
+available to an app, it is clamped.
 """
 
 
@@ -52,12 +65,16 @@ from google.appengine.api import yaml_object
 
 _NAME_REGEX = r'^[A-Za-z0-9-]{0,499}$'
 _RATE_REGEX = r'^(0|[0-9]+(\.[0-9]*)?/[smhd])'
+_TOTAL_STORAGE_LIMIT_REGEX = r'^([0-9]+(\.[0-9]*)?[BKMGT]?)'
 
 QUEUE = 'queue'
 
 NAME = 'name'
 RATE = 'rate'
 BUCKET_SIZE = 'bucket_size'
+TOTAL_STORAGE_LIMIT = 'total_storage_limit'
+
+BYTE_SUFFIXES = 'BKMGT'
 
 
 class MalformedQueueConfiguration(Exception):
@@ -76,7 +93,8 @@ class QueueEntry(validation.Validated):
 class QueueInfoExternal(validation.Validated):
   """QueueInfoExternal describes all queue entries for an application."""
   ATTRIBUTES = {
-      QUEUE: validation.Optional(validation.Repeated(QueueEntry))
+      TOTAL_STORAGE_LIMIT: validation.Optional(_TOTAL_STORAGE_LIMIT_REGEX),
+      QUEUE: validation.Optional(validation.Repeated(QueueEntry)),
   }
 
 
@@ -141,3 +159,34 @@ def ParseRate(rate):
     return number/(60 * 60)
   if unit == 'd':
     return number/(24 * 60 * 60)
+
+def ParseTotalStorageLimit(limit):
+  """Parses a string representing the storage bytes limit.
+
+  Optional limit suffixes are:
+      B (bytes), K (kilobytes), M (megabytes), G (gigabytes), T (terabytes)
+
+  Args:
+    limit: The storage bytes limit string.
+
+  Returns:
+    An int representing the storage limit in bytes.
+
+  Raises:
+    MalformedQueueConfiguration: if the limit argument isn't a valid python
+    double followed by an optional suffix.
+  """
+  try:
+    if limit[-1] in BYTE_SUFFIXES:
+      number = float(limit[0:-1])
+      for c in BYTE_SUFFIXES:
+        if limit[-1] != c:
+          number = number * 1024
+        else:
+          return int(number)
+    else:
+      return int(limit)
+  except ValueError:
+    raise MalformedQueueConfiguration('Total Storage Limit "%s" is invalid.' %
+                                      limit)
+
