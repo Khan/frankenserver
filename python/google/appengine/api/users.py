@@ -18,13 +18,13 @@
 """Python datastore class User to be used as a datastore data type.
 
 Classes defined here:
-  User: object representing a user.
+  User: object representing a user. A user could be a Google Accounts user
+        or a federated user.
   Error: base exception type
   UserNotFoundError: UserService exception
   RedirectTooLongError: UserService exception
   NotAllowedError: UserService exception
 """
-
 
 
 
@@ -63,39 +63,49 @@ class User(object):
   A nickname is a human-readable string which uniquely identifies a Google
   user, akin to a username. It will be an email address for some users, but
   not all.
+
+  A user could be a Google Accounts user or a federated login user.
+
+  federated_identity and federated_provider are only avaliable for
+  federated users.
   """
 
 
   __user_id = None
 
-  def __init__(self, email=None, _auth_domain=None, _user_id=None):
+  def __init__(self, email=None, _auth_domain=None,
+               _user_id=None, federated_identity=None, federated_provider=None):
     """Constructor.
 
     Args:
       email: An optional string of the user's email address. It defaults to
           the current user's email address.
+      federated_identity: federated identity of user. It defaults to the current
+          user's federated identity.
+      federated_provider: federated provider url of user.
 
     Raises:
-      UserNotFoundError: Raised if the user is not logged in and the email
-          argument is empty.
+      UserNotFoundError: Raised if the user is not logged in and both email
+          and federated identity are empty.
     """
     if _auth_domain is None:
       _auth_domain = os.environ.get('AUTH_DOMAIN')
-    else:
-      assert email is not None
-
     assert _auth_domain
 
-    if email is None:
-      assert 'USER_EMAIL' in os.environ
-      email = os.environ['USER_EMAIL']
-      if _user_id is None and 'USER_ID' in os.environ:
-        _user_id = os.environ['USER_ID']
+    if email is None and federated_identity is None:
+      email = os.environ.get('USER_EMAIL', email)
+      _user_id = os.environ.get('USER_ID', _user_id)
+      federated_identity = os.environ.get('FEDERATED_IDENTITY',
+                                          federated_identity)
+      federated_provider = os.environ.get('FEDERATED_PROVIDER',
+                                          federated_provider)
 
-    if not email:
+    if not email and not federated_identity:
       raise UserNotFoundError
 
     self.__email = email
+    self.__federated_identity = federated_identity
+    self.__federated_provider = federated_provider
     self.__auth_domain = _auth_domain
     self.__user_id = _user_id or None
 
@@ -104,12 +114,15 @@ class User(object):
 
     The nickname will be a unique, human readable identifier for this user
     with respect to this application. It will be an email address for some
-    users, but not all.
+    users, part of the email address for some users, and the federated identity
+    for federated users who have not asserted an email address.
     """
     if (self.__email and self.__auth_domain and
         self.__email.endswith('@' + self.__auth_domain)):
       suffix_len = len(self.__auth_domain) + 1
       return self.__email[:-suffix_len]
+    elif self.__federated_identity:
+      return self.__federated_identity
     else:
       return self.__email
 
@@ -128,6 +141,14 @@ class User(object):
     """Return this user's auth domain."""
     return self.__auth_domain
 
+  def federated_identity(self):
+    """Return this user's federated identity, None if not a federated user."""
+    return self.__federated_identity
+
+  def federated_provider(self):
+    """Return this user's federated provider, None if not a federated user."""
+    return self.__federated_provider
+
   def __unicode__(self):
     return unicode(self.nickname())
 
@@ -135,38 +156,56 @@ class User(object):
     return str(self.nickname())
 
   def __repr__(self):
+    values = []
+    if self.__email:
+      values.append("email='%s'" % self.__email)
+    if self.__federated_identity:
+      values.append("federated_identity='%s'" % self.__federated_identity)
     if self.__user_id:
-      return "users.User(email='%s',_user_id='%s')" % (self.email(),
-                                                       self.user_id())
-    else:
-      return "users.User(email='%s')" % self.email()
+      values.append("_user_id='%s'" % self.__user_id)
+    return 'users.User(%s)' % ','.join(values)
 
   def __hash__(self):
-    return hash((self.__email, self.__auth_domain))
+    if self.__federated_identity:
+      return hash((self.__federated_identity, self.__auth_domain))
+    else:
+      return hash((self.__email, self.__auth_domain))
 
   def __cmp__(self, other):
     if not isinstance(other, User):
       return NotImplemented
-    return cmp((self.__email, self.__auth_domain),
-               (other.__email, other.__auth_domain))
+    if self.__federated_identity:
+      return cmp((self.__federated_identity, self.__auth_domain),
+                 (other.__federated_identity, other.__auth_domain))
+    else:
+      return cmp((self.__email, self.__auth_domain),
+                 (other.__email, other.__auth_domain))
 
 
-def create_login_url(dest_url, _auth_domain=None):
-  """Computes the login URL for this request and specified destination URL.
+def create_login_url(dest_url=None, _auth_domain=None,
+                     federated_identity=None):
+  """Computes the login URL for redirection.
 
   Args:
     dest_url: String that is the desired final destination URL for the user
               once login is complete. If 'dest_url' does not have a host
               specified, we will use the host from the current request.
+    federated_identity: federated_identity is used to trigger OpenId Login
+                        flow, an empty value will trigger Google OpenID Login
+                        by default.
 
   Returns:
-    string
+       Login URL as a string. If federated_identity is set, this will be
+       a federated login using the specified identity. If not, this
+       will use Google Accounts.
   """
   req = user_service_pb.CreateLoginURLRequest()
   resp = user_service_pb.CreateLoginURLResponse()
   req.set_destination_url(dest_url)
   if _auth_domain:
     req.set_auth_domain(_auth_domain)
+  if federated_identity:
+    req.set_federated_identity(federated_identity)
 
   try:
     apiproxy_stub_map.MakeSyncCall('user', 'CreateLoginURL', req, resp)
@@ -185,7 +224,8 @@ CreateLoginURL = create_login_url
 
 
 def create_logout_url(dest_url, _auth_domain=None):
-  """Computes the logout URL for this request and specified destination URL.
+  """Computes the logout URL for this request and specified destination URL,
+     for both federated login App and Google Accounts App.
 
   Args:
     dest_url: String that is the desired final destination URL for the user
@@ -193,7 +233,7 @@ def create_logout_url(dest_url, _auth_domain=None):
               specified, we will use the host from the current request.
 
   Returns:
-    string
+    Logout URL as a string
   """
   req = user_service_pb.CreateLogoutURLRequest()
   resp = user_service_pb.CreateLogoutURLResponse()

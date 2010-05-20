@@ -54,8 +54,11 @@ Options:
                              Address to which this server should bind. (Default
                              localhost).
   --port=PORT, -p PORT       Port for the server to run on. (Default 8080)
+  --blobstore_path=PATH      Path to use for storing Blobstore file stub data.
   --datastore_path=PATH      Path to use for storing Datastore file stub data.
                              (Default /tmp/dev_appserver.datastore)
+  --use_sqlite               Use the new, SQLite based datastore stub.
+                             (Default false)
   --history_path=PATH        Path to use for storing Datastore history.
                              (Default /tmp/dev_appserver.datastore.history)
   --require_indexes          Disallows queries that require composite indexes
@@ -79,8 +82,16 @@ Options:
   --debug_imports            Enables debug logging for module imports, showing
                              search paths used for finding modules and any
                              errors encountered during the import process.
+  --allow_skipped_files      Allow access to files matched by app.yaml's
+                             skipped_files (default False)
   --disable_static_caching   Never allow the browser to cache static files.
                              (Default enable if expiration set in app.yaml)
+  --disable_task_running     When supplied, tasks will not be automatically
+                             run after submission and must be run manually
+                             in the local admin console.
+  --task_retry_seconds       How long to wait in seconds before retrying a
+                             task after it fails during execution.
+                             (Default '30')
 
 
 

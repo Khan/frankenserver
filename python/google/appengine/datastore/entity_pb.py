@@ -249,6 +249,10 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
   gaiaid_ = 0
   has_obfuscated_gaiaid_ = 0
   obfuscated_gaiaid_ = ""
+  has_federated_identity_ = 0
+  federated_identity_ = ""
+  has_federated_provider_ = 0
+  federated_provider_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -318,6 +322,32 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
 
   def has_obfuscated_gaiaid(self): return self.has_obfuscated_gaiaid_
 
+  def federated_identity(self): return self.federated_identity_
+
+  def set_federated_identity(self, x):
+    self.has_federated_identity_ = 1
+    self.federated_identity_ = x
+
+  def clear_federated_identity(self):
+    if self.has_federated_identity_:
+      self.has_federated_identity_ = 0
+      self.federated_identity_ = ""
+
+  def has_federated_identity(self): return self.has_federated_identity_
+
+  def federated_provider(self): return self.federated_provider_
+
+  def set_federated_provider(self, x):
+    self.has_federated_provider_ = 1
+    self.federated_provider_ = x
+
+  def clear_federated_provider(self):
+    if self.has_federated_provider_:
+      self.has_federated_provider_ = 0
+      self.federated_provider_ = ""
+
+  def has_federated_provider(self): return self.has_federated_provider_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -326,6 +356,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if (x.has_nickname()): self.set_nickname(x.nickname())
     if (x.has_gaiaid()): self.set_gaiaid(x.gaiaid())
     if (x.has_obfuscated_gaiaid()): self.set_obfuscated_gaiaid(x.obfuscated_gaiaid())
+    if (x.has_federated_identity()): self.set_federated_identity(x.federated_identity())
+    if (x.has_federated_provider()): self.set_federated_provider(x.federated_provider())
 
   def Equals(self, x):
     if x is self: return 1
@@ -339,6 +371,10 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if self.has_gaiaid_ and self.gaiaid_ != x.gaiaid_: return 0
     if self.has_obfuscated_gaiaid_ != x.has_obfuscated_gaiaid_: return 0
     if self.has_obfuscated_gaiaid_ and self.obfuscated_gaiaid_ != x.obfuscated_gaiaid_: return 0
+    if self.has_federated_identity_ != x.has_federated_identity_: return 0
+    if self.has_federated_identity_ and self.federated_identity_ != x.federated_identity_: return 0
+    if self.has_federated_provider_ != x.has_federated_provider_: return 0
+    if self.has_federated_provider_ and self.federated_provider_ != x.federated_provider_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -364,6 +400,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_nickname_): n += 1 + self.lengthString(len(self.nickname_))
     n += self.lengthVarInt64(self.gaiaid_)
     if (self.has_obfuscated_gaiaid_): n += 2 + self.lengthString(len(self.obfuscated_gaiaid_))
+    if (self.has_federated_identity_): n += 2 + self.lengthString(len(self.federated_identity_))
+    if (self.has_federated_provider_): n += 2 + self.lengthString(len(self.federated_provider_))
     return n + 4
 
   def Clear(self):
@@ -372,6 +410,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     self.clear_nickname()
     self.clear_gaiaid()
     self.clear_obfuscated_gaiaid()
+    self.clear_federated_identity()
+    self.clear_federated_provider()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(74)
@@ -386,6 +426,12 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_obfuscated_gaiaid_):
       out.putVarInt32(154)
       out.putPrefixedString(self.obfuscated_gaiaid_)
+    if (self.has_federated_identity_):
+      out.putVarInt32(170)
+      out.putPrefixedString(self.federated_identity_)
+    if (self.has_federated_provider_):
+      out.putVarInt32(178)
+      out.putPrefixedString(self.federated_provider_)
 
   def TryMerge(self, d):
     while 1:
@@ -406,6 +452,12 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
       if tt == 154:
         self.set_obfuscated_gaiaid(d.getPrefixedString())
         continue
+      if tt == 170:
+        self.set_federated_identity(d.getPrefixedString())
+        continue
+      if tt == 178:
+        self.set_federated_provider(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -417,6 +469,8 @@ class PropertyValue_UserValue(ProtocolBuffer.ProtocolMessage):
     if self.has_nickname_: res+=prefix+("nickname: %s\n" % self.DebugFormatString(self.nickname_))
     if self.has_gaiaid_: res+=prefix+("gaiaid: %s\n" % self.DebugFormatInt64(self.gaiaid_))
     if self.has_obfuscated_gaiaid_: res+=prefix+("obfuscated_gaiaid: %s\n" % self.DebugFormatString(self.obfuscated_gaiaid_))
+    if self.has_federated_identity_: res+=prefix+("federated_identity: %s\n" % self.DebugFormatString(self.federated_identity_))
+    if self.has_federated_provider_: res+=prefix+("federated_provider: %s\n" % self.DebugFormatString(self.federated_provider_))
     return res
 
 class PropertyValue_ReferenceValue(ProtocolBuffer.ProtocolMessage):
@@ -827,6 +881,8 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
   kUserValuenickname = 11
   kUserValuegaiaid = 18
   kUserValueobfuscated_gaiaid = 19
+  kUserValuefederated_identity = 21
+  kUserValuefederated_provider = 22
   kReferenceValueGroup = 12
   kReferenceValueapp = 13
   kReferenceValuename_space = 20
@@ -857,7 +913,9 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
     18: "gaiaid",
     19: "obfuscated_gaiaid",
     20: "name_space",
-  }, 20)
+    21: "federated_identity",
+    22: "federated_provider",
+  }, 22)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -881,7 +939,9 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
     18: ProtocolBuffer.Encoder.NUMERIC,
     19: ProtocolBuffer.Encoder.STRING,
     20: ProtocolBuffer.Encoder.STRING,
-  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
+    21: ProtocolBuffer.Encoder.STRING,
+    22: ProtocolBuffer.Encoder.STRING,
+  }, 22, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -1525,6 +1585,10 @@ class User(ProtocolBuffer.ProtocolMessage):
   gaiaid_ = 0
   has_obfuscated_gaiaid_ = 0
   obfuscated_gaiaid_ = ""
+  has_federated_identity_ = 0
+  federated_identity_ = ""
+  has_federated_provider_ = 0
+  federated_provider_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1594,6 +1658,32 @@ class User(ProtocolBuffer.ProtocolMessage):
 
   def has_obfuscated_gaiaid(self): return self.has_obfuscated_gaiaid_
 
+  def federated_identity(self): return self.federated_identity_
+
+  def set_federated_identity(self, x):
+    self.has_federated_identity_ = 1
+    self.federated_identity_ = x
+
+  def clear_federated_identity(self):
+    if self.has_federated_identity_:
+      self.has_federated_identity_ = 0
+      self.federated_identity_ = ""
+
+  def has_federated_identity(self): return self.has_federated_identity_
+
+  def federated_provider(self): return self.federated_provider_
+
+  def set_federated_provider(self, x):
+    self.has_federated_provider_ = 1
+    self.federated_provider_ = x
+
+  def clear_federated_provider(self):
+    if self.has_federated_provider_:
+      self.has_federated_provider_ = 0
+      self.federated_provider_ = ""
+
+  def has_federated_provider(self): return self.has_federated_provider_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1602,6 +1692,8 @@ class User(ProtocolBuffer.ProtocolMessage):
     if (x.has_nickname()): self.set_nickname(x.nickname())
     if (x.has_gaiaid()): self.set_gaiaid(x.gaiaid())
     if (x.has_obfuscated_gaiaid()): self.set_obfuscated_gaiaid(x.obfuscated_gaiaid())
+    if (x.has_federated_identity()): self.set_federated_identity(x.federated_identity())
+    if (x.has_federated_provider()): self.set_federated_provider(x.federated_provider())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1615,6 +1707,10 @@ class User(ProtocolBuffer.ProtocolMessage):
     if self.has_gaiaid_ and self.gaiaid_ != x.gaiaid_: return 0
     if self.has_obfuscated_gaiaid_ != x.has_obfuscated_gaiaid_: return 0
     if self.has_obfuscated_gaiaid_ and self.obfuscated_gaiaid_ != x.obfuscated_gaiaid_: return 0
+    if self.has_federated_identity_ != x.has_federated_identity_: return 0
+    if self.has_federated_identity_ and self.federated_identity_ != x.federated_identity_: return 0
+    if self.has_federated_provider_ != x.has_federated_provider_: return 0
+    if self.has_federated_provider_ and self.federated_provider_ != x.federated_provider_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1640,6 +1736,8 @@ class User(ProtocolBuffer.ProtocolMessage):
     if (self.has_nickname_): n += 1 + self.lengthString(len(self.nickname_))
     n += self.lengthVarInt64(self.gaiaid_)
     if (self.has_obfuscated_gaiaid_): n += 1 + self.lengthString(len(self.obfuscated_gaiaid_))
+    if (self.has_federated_identity_): n += 1 + self.lengthString(len(self.federated_identity_))
+    if (self.has_federated_provider_): n += 1 + self.lengthString(len(self.federated_provider_))
     return n + 3
 
   def Clear(self):
@@ -1648,6 +1746,8 @@ class User(ProtocolBuffer.ProtocolMessage):
     self.clear_nickname()
     self.clear_gaiaid()
     self.clear_obfuscated_gaiaid()
+    self.clear_federated_identity()
+    self.clear_federated_provider()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1662,6 +1762,12 @@ class User(ProtocolBuffer.ProtocolMessage):
     if (self.has_obfuscated_gaiaid_):
       out.putVarInt32(42)
       out.putPrefixedString(self.obfuscated_gaiaid_)
+    if (self.has_federated_identity_):
+      out.putVarInt32(50)
+      out.putPrefixedString(self.federated_identity_)
+    if (self.has_federated_provider_):
+      out.putVarInt32(58)
+      out.putPrefixedString(self.federated_provider_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1681,6 +1787,12 @@ class User(ProtocolBuffer.ProtocolMessage):
       if tt == 42:
         self.set_obfuscated_gaiaid(d.getPrefixedString())
         continue
+      if tt == 50:
+        self.set_federated_identity(d.getPrefixedString())
+        continue
+      if tt == 58:
+        self.set_federated_provider(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1692,6 +1804,8 @@ class User(ProtocolBuffer.ProtocolMessage):
     if self.has_nickname_: res+=prefix+("nickname: %s\n" % self.DebugFormatString(self.nickname_))
     if self.has_gaiaid_: res+=prefix+("gaiaid: %s\n" % self.DebugFormatInt64(self.gaiaid_))
     if self.has_obfuscated_gaiaid_: res+=prefix+("obfuscated_gaiaid: %s\n" % self.DebugFormatString(self.obfuscated_gaiaid_))
+    if self.has_federated_identity_: res+=prefix+("federated_identity: %s\n" % self.DebugFormatString(self.federated_identity_))
+    if self.has_federated_provider_: res+=prefix+("federated_provider: %s\n" % self.DebugFormatString(self.federated_provider_))
     return res
 
 
@@ -1703,6 +1817,8 @@ class User(ProtocolBuffer.ProtocolMessage):
   knickname = 3
   kgaiaid = 4
   kobfuscated_gaiaid = 5
+  kfederated_identity = 6
+  kfederated_provider = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1711,7 +1827,9 @@ class User(ProtocolBuffer.ProtocolMessage):
     3: "nickname",
     4: "gaiaid",
     5: "obfuscated_gaiaid",
-  }, 5)
+    6: "federated_identity",
+    7: "federated_provider",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1720,7 +1838,9 @@ class User(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.STRING,
+    7: ProtocolBuffer.Encoder.STRING,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

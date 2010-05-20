@@ -28,6 +28,11 @@ from google.appengine.api import user_service_pb
 _DEFAULT_LOGIN_URL = 'https://www.google.com/accounts/Login?continue=%s'
 _DEFAULT_LOGOUT_URL = 'https://www.google.com/accounts/Logout?continue=%s'
 
+_OAUTH_CONSUMER_KEY = 'example.com'
+_OAUTH_EMAIL = 'example@example.com'
+_OAUTH_USER_ID = '0'
+_OAUTH_AUTH_DOMAIN = 'gmail.com'
+
 
 class UserServiceStub(apiproxy_stub.APIProxyStub):
   """Trivial implementation of the UserService."""
@@ -61,8 +66,8 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     """Trivial implementation of UserService.CreateLoginURL().
 
     Args:
-      request: the URL to redirect to after login; a base.StringProto
-      response: the login URL; a base.StringProto
+      request: a CreateLoginURLRequest
+      response: a CreateLoginURLResponse
     """
     self.__num_requests += 1
     response.set_login_url(
@@ -73,13 +78,35 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     """Trivial implementation of UserService.CreateLogoutURL().
 
     Args:
-      request: the URL to redirect to after logout; a base.StringProto
-      response: the logout URL; a base.StringProto
+      request: a CreateLogoutURLRequest
+      response: a CreateLogoutURLResponse
     """
     self.__num_requests += 1
     response.set_logout_url(
         self._logout_url %
         urllib.quote(self._AddHostToContinueURL(request.destination_url())))
+
+  def _Dynamic_GetOAuthUser(self, unused_request, response):
+    """Trivial implementation of UserService.GetOAuthUser().
+
+    Args:
+      unused_request: a GetOAuthUserRequest
+      response: a GetOAuthUserResponse
+    """
+    self.__num_requests += 1
+    response.set_email(_OAUTH_EMAIL)
+    response.set_user_id(_OAUTH_USER_ID)
+    response.set_auth_domain(_OAUTH_AUTH_DOMAIN)
+
+  def _Dynamic_CheckOAuthSignature(self, unused_request, response):
+    """Trivial implementation of UserService.CheckOAuthSignature().
+
+    Args:
+      unused_request: a CheckOAuthSignatureRequest
+      response: a CheckOAuthSignatureResponse
+    """
+    self.__num_requests += 1
+    response.set_oauth_consumer_key(_OAUTH_CONSUMER_KEY)
 
   def _AddHostToContinueURL(self, continue_url):
     """Adds the request host to the continue url if no host is specified.

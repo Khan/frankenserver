@@ -1134,7 +1134,7 @@ class UploadBatcher(object):
                         'Content-Transfer-Encoding: 8bit',
                         '',
                         payload,
-                        ])
+                       ])
       parts.append(part)
     parts.insert(0,
                  'MIME-Version: 1.0\n'
@@ -1891,7 +1891,7 @@ class AppCfgApp(object):
       email = self.options.email
       if email is None:
         email = 'test@example.com'
-        logging.info('Using debug user %s.  Override with --email' % email)
+        logging.info('Using debug user %s.  Override with --email', email)
       server = self.rpc_server_class(
           self.options.server,
           lambda: (email, 'password'),
@@ -2322,7 +2322,7 @@ class AppCfgApp(object):
 
   def _CheckRequiredLoadOptions(self):
     """Checks that upload/download options are present."""
-    for option in ['filename', 'kind', 'config_file']:
+    for option in ['filename',]:
       if getattr(self.options, option) is None:
         self.parser.error('Option \'%s\' is required.' % option)
     if not self.options.url:
@@ -2369,18 +2369,20 @@ class AppCfgApp(object):
 
   def _SetupLoad(self):
     """Performs common verification and set up for upload and download."""
-    if len(self.args) != 1:
-      self.parser.error('Expected <directory> argument.')
+    if len(self.args) != 1 and not self.options.url:
+      self.parser.error('Expected either --url or a single <directory> '
+                        'argument.')
 
-    basepath = self.args[0]
-    appyaml = self._ParseAppYaml(basepath)
+    if len(self.args) == 1:
+      basepath = self.args[0]
+      appyaml = self._ParseAppYaml(basepath)
 
-    self.options.app_id = appyaml.application
+      self.options.app_id = appyaml.application
 
-    if not self.options.url:
-      url = self.InferRemoteApiUrl(appyaml)
-      if url is not None:
-        self.options.url = url
+      if not self.options.url:
+        url = self.InferRemoteApiUrl(appyaml)
+        if url is not None:
+          self.options.url = url
 
     self._CheckRequiredLoadOptions()
 
@@ -2422,6 +2424,8 @@ class AppCfgApp(object):
                      'dry_run',
                      'dump',
                      'restore',
+                     'namespace',
+                     'create_config',
                      )])
 
   def PerformDownload(self, run_fn=None):
@@ -2437,11 +2441,12 @@ class AppCfgApp(object):
     StatusUpdate('Downloading data records.')
 
     args = self._MakeLoaderArgs()
-    args['download'] = True
+    args['download'] = bool(args['config_file'])
     args['has_header'] = False
     args['map'] = False
-    args['dump'] = False
+    args['dump'] = not args['config_file']
     args['restore'] = False
+    args['create_config'] = False
 
     run_fn(args)
 
@@ -2461,7 +2466,30 @@ class AppCfgApp(object):
     args['download'] = False
     args['map'] = False
     args['dump'] = False
+    args['restore'] = not args['config_file']
+    args['create_config'] = False
+
+    run_fn(args)
+
+  def CreateBulkloadConfig(self, run_fn=None):
+    """Create a bulkloader config via the bulkloader wizard.
+
+    Args:
+      run_fn: Function to invoke the bulkloader, used for testing.
+    """
+    if run_fn is None:
+      run_fn = self.RunBulkloader
+    self._SetupLoad()
+
+    StatusUpdate('Creating bulkloader configuration.')
+
+    args = self._MakeLoaderArgs()
+    args['download'] = False
+    args['has_header'] = False
+    args['map'] = False
+    args['dump'] = False
     args['restore'] = False
+    args['create_config'] = True
 
     run_fn(args)
 
@@ -2475,12 +2503,9 @@ class AppCfgApp(object):
                       action='store',
                       help='The name of the file containing the input data.'
                       ' (Required)')
-    parser.add_option('--config_file', type='string', dest='config_file',
-                      action='store',
-                      help='Name of the configuration file. (Required)')
     parser.add_option('--kind', type='string', dest='kind',
                       action='store',
-                      help='The kind of the entities to store. (Required)')
+                      help='The kind of the entities to store.')
     parser.add_option('--url', type='string', dest='url',
                       action='store',
                       help='The location of the remote_api endpoint.')
@@ -2526,6 +2551,9 @@ class AppCfgApp(object):
                       ' skipped')
     parser.add_option('--loader_opts', type='string', dest='loader_opts',
                       help='A string to pass to the Loader.initialize method.')
+    parser.add_option('--config_file', type='string', dest='config_file',
+                      action='store',
+                      help='Name of the configuration file.')
 
   def _PerformDownloadOptions(self, parser):
     """Adds 'download_data' specific options to the 'parser' passed in.
@@ -2541,6 +2569,17 @@ class AppCfgApp(object):
                       dest='result_db_filename',
                       action='store',
                       help='Database to write entities to for download.')
+    parser.add_option('--config_file', type='string', dest='config_file',
+                      action='store',
+                      help='Name of the configuration file.')
+
+  def _CreateBulkloadConfigOptions(self, parser):
+    """Adds 'download_data' specific options to the 'parser' passed in.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    self._PerformLoadOptions(parser)
 
   class Action(object):
     """Contains information about a command line action.
@@ -2687,6 +2726,15 @@ uploads them into your application's datastore."""),
           long_desc="""
 The 'download_data' command downloads datastore entities and writes them to
 file as CSV or developer defined format."""),
+
+      'create_bulkloader_config': Action(
+          function='CreateBulkloadConfig',
+          usage='%prog [options] create_bulkload_config <directory>',
+          options=_CreateBulkloadConfigOptions,
+          short_desc='Create a bulkloader.yaml from a running application.',
+          long_desc="""
+The 'create_bulkloader_config' command creates a bulkloader.yaml configuration
+template for use with upload_data or download_data."""),
 
 
 

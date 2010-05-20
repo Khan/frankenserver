@@ -102,6 +102,8 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
   destination_url_ = ""
   has_auth_domain_ = 0
   auth_domain_ = ""
+  has_federated_identity_ = 0
+  federated_identity_ = "google.com"
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -132,11 +134,25 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_auth_domain(self): return self.has_auth_domain_
 
+  def federated_identity(self): return self.federated_identity_
+
+  def set_federated_identity(self, x):
+    self.has_federated_identity_ = 1
+    self.federated_identity_ = x
+
+  def clear_federated_identity(self):
+    if self.has_federated_identity_:
+      self.has_federated_identity_ = 0
+      self.federated_identity_ = "google.com"
+
+  def has_federated_identity(self): return self.has_federated_identity_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_destination_url()): self.set_destination_url(x.destination_url())
     if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
+    if (x.has_federated_identity()): self.set_federated_identity(x.federated_identity())
 
   def Equals(self, x):
     if x is self: return 1
@@ -144,6 +160,8 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_destination_url_ and self.destination_url_ != x.destination_url_: return 0
     if self.has_auth_domain_ != x.has_auth_domain_: return 0
     if self.has_auth_domain_ and self.auth_domain_ != x.auth_domain_: return 0
+    if self.has_federated_identity_ != x.has_federated_identity_: return 0
+    if self.has_federated_identity_ and self.federated_identity_ != x.federated_identity_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -158,11 +176,13 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.destination_url_))
     if (self.has_auth_domain_): n += 1 + self.lengthString(len(self.auth_domain_))
+    if (self.has_federated_identity_): n += 1 + self.lengthString(len(self.federated_identity_))
     return n + 1
 
   def Clear(self):
     self.clear_destination_url()
     self.clear_auth_domain()
+    self.clear_federated_identity()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -170,6 +190,9 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_auth_domain_):
       out.putVarInt32(18)
       out.putPrefixedString(self.auth_domain_)
+    if (self.has_federated_identity_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.federated_identity_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -180,6 +203,9 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 18:
         self.set_auth_domain(d.getPrefixedString())
         continue
+      if tt == 26:
+        self.set_federated_identity(d.getPrefixedString())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -188,6 +214,7 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_destination_url_: res+=prefix+("destination_url: %s\n" % self.DebugFormatString(self.destination_url_))
     if self.has_auth_domain_: res+=prefix+("auth_domain: %s\n" % self.DebugFormatString(self.auth_domain_))
+    if self.has_federated_identity_: res+=prefix+("federated_identity: %s\n" % self.DebugFormatString(self.federated_identity_))
     return res
 
 
@@ -196,18 +223,21 @@ class CreateLoginURLRequest(ProtocolBuffer.ProtocolMessage):
 
   kdestination_url = 1
   kauth_domain = 2
+  kfederated_identity = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "destination_url",
     2: "auth_domain",
-  }, 2)
+    3: "federated_identity",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -556,6 +586,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   auth_domain_ = ""
   has_user_organization_ = 0
   user_organization_ = ""
+  has_is_admin_ = 0
+  is_admin_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -612,6 +644,19 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_user_organization(self): return self.has_user_organization_
 
+  def is_admin(self): return self.is_admin_
+
+  def set_is_admin(self, x):
+    self.has_is_admin_ = 1
+    self.is_admin_ = x
+
+  def clear_is_admin(self):
+    if self.has_is_admin_:
+      self.has_is_admin_ = 0
+      self.is_admin_ = 0
+
+  def has_is_admin(self): return self.has_is_admin_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -619,6 +664,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_user_id()): self.set_user_id(x.user_id())
     if (x.has_auth_domain()): self.set_auth_domain(x.auth_domain())
     if (x.has_user_organization()): self.set_user_organization(x.user_organization())
+    if (x.has_is_admin()): self.set_is_admin(x.is_admin())
 
   def Equals(self, x):
     if x is self: return 1
@@ -630,6 +676,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_auth_domain_ and self.auth_domain_ != x.auth_domain_: return 0
     if self.has_user_organization_ != x.has_user_organization_: return 0
     if self.has_user_organization_ and self.user_organization_ != x.user_organization_: return 0
+    if self.has_is_admin_ != x.has_is_admin_: return 0
+    if self.has_is_admin_ and self.is_admin_ != x.is_admin_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -654,6 +702,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.user_id_))
     n += self.lengthString(len(self.auth_domain_))
     if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
+    if (self.has_is_admin_): n += 2
     return n + 3
 
   def Clear(self):
@@ -661,6 +710,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_user_id()
     self.clear_auth_domain()
     self.clear_user_organization()
+    self.clear_is_admin()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -672,6 +722,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_user_organization_):
       out.putVarInt32(34)
       out.putPrefixedString(self.user_organization_)
+    if (self.has_is_admin_):
+      out.putVarInt32(40)
+      out.putBoolean(self.is_admin_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -688,6 +741,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_user_organization(d.getPrefixedString())
         continue
+      if tt == 40:
+        self.set_is_admin(d.getBoolean())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -698,6 +754,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_user_id_: res+=prefix+("user_id: %s\n" % self.DebugFormatString(self.user_id_))
     if self.has_auth_domain_: res+=prefix+("auth_domain: %s\n" % self.DebugFormatString(self.auth_domain_))
     if self.has_user_organization_: res+=prefix+("user_organization: %s\n" % self.DebugFormatString(self.user_organization_))
+    if self.has_is_admin_: res+=prefix+("is_admin: %s\n" % self.DebugFormatBool(self.is_admin_))
     return res
 
 
@@ -708,6 +765,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   kuser_id = 2
   kauth_domain = 3
   kuser_organization = 4
+  kis_admin = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -715,7 +773,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     2: "user_id",
     3: "auth_domain",
     4: "user_organization",
-  }, 4)
+    5: "is_admin",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -723,7 +782,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

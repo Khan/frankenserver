@@ -17,8 +17,8 @@
 
 """Stub version of the Task Queue API.
 
-This stub only stores tasks; it doesn't actually run them. It also validates
-the tasks by checking their queue name against the queue.yaml.
+This stub stores tasks and runs them via dev_appserver's AddEvent capability.
+It also validates the tasks by checking their queue name against the queue.yaml.
 
 As well as implementing Task Queue API functions, the stub exposes various other
 functions that are used by the dev_appserver's admin console to display the
@@ -28,6 +28,7 @@ application's queues and tasks.
 
 
 
+import StringIO
 import base64
 import bisect
 import datetime
@@ -300,14 +301,18 @@ def _EtaDelta(eta_usec):
 class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
   """Python only task queue service stub.
 
-  This stub does not attempt to automatically execute tasks.  Instead, it
-  stores them for display on a console.  The user may manually execute the
-  tasks from the console.
+  This stub executes tasks when enabled by using the dev_appserver's AddEvent
+  capability. When task running is disabled this stub will store tasks for
+  display on a console, where the user may manually execute the tasks.
   """
 
   queue_yaml_parser = _ParseQueueYaml
 
-  def __init__(self, service_name='taskqueue', root_path=None):
+  def __init__(self,
+               service_name='taskqueue',
+               root_path=None,
+               auto_task_running=False,
+               task_retry_seconds=30):
     """Constructor.
 
     Args:
@@ -315,11 +320,19 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       root_path: Root path to the directory of the application which may contain
         a queue.yaml file. If None, then it's assumed no queue.yaml file is
         available.
+      auto_task_running: When True, the dev_appserver should automatically
+        run tasks after they are enqueued.
+      task_retry_seconds: How long to wait between task executions after a
+        task fails.
     """
     super(TaskQueueServiceStub, self).__init__(service_name)
     self._taskqueues = {}
     self._next_task_id = 1
     self._root_path = root_path
+
+    self._add_event = None
+    self._auto_task_running = auto_task_running
+    self._task_retry_seconds = task_retry_seconds
 
     self._app_queues = {}
 
@@ -480,6 +493,13 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
             taskqueue_service_pb.TaskQueueServiceError.TASK_ALREADY_EXISTS)
       else:
         existing_tasks.append(add_request)
+
+      if self._add_event and self._auto_task_running:
+        self._add_event(
+            add_request.eta_usec() / 1000000.0,
+            lambda: self._RunTask(
+                add_request.queue_name(), add_request.task_name()))
+
     existing_tasks.sort(_CompareTasksByEta)
 
   def _IsValidQueue(self, queue_name):
@@ -502,6 +522,67 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
         if entry.name == queue_name:
           return True
     return False
+
+  def _RunTask(self, queue_name, task_name):
+    """Returns a fake request for running a task in the dev_appserver.
+
+    Args:
+      queue_name: The queue the task is in.
+      task_name: The name of the task to run.
+
+    Returns:
+      None if this task no longer exists or tuple (connection, addrinfo) of
+      a fake connection and address information used to run this task. The
+      task will be deleted after it runs or re-enqueued in the future on
+      failure.
+    """
+    task_list = self.GetTasks(queue_name)
+    for task in task_list:
+      if task['name'] == task_name:
+        break
+    else:
+      return None
+
+    class FakeConnection(object):
+      def __init__(self, input_buffer):
+        self.rfile = StringIO.StringIO(input_buffer)
+        self.wfile = StringIO.StringIO()
+        self.wfile_close = self.wfile.close
+        self.wfile.close = self.connection_done
+
+      def connection_done(myself):
+        result = myself.wfile.getvalue()
+        myself.wfile_close()
+        first_line, rest = result.split('\n', 1)
+        version, code, rest = first_line.split(' ', 2)
+        if 200 <= int(code) <= 299:
+          self.DeleteTask(queue_name, task_name)
+          return
+
+        logging.warning('Task named "%s" on queue "%s" failed with code %s; '
+                        'will retry in %d seconds',
+                        task_name, queue_name, code, self._task_retry_seconds)
+        self._add_event(
+            time.time() + self._task_retry_seconds,
+            lambda: self._RunTask(queue_name, task_name))
+
+      def close(self):
+        pass
+
+      def makefile(self, mode, buffsize):
+        if mode.startswith('w'):
+          return self.wfile
+        else:
+          return self.rfile
+
+    payload = StringIO.StringIO()
+    payload.write('%s %s HTTP/1.1\r\n' % (task['method'], task['url']))
+    for key, value in task['headers']:
+      payload.write('%s: %s\r\n' % (key, value))
+    payload.write('\r\n')
+    payload.write(task['body'])
+
+    return FakeConnection(payload.getvalue()), ('0.1.0.2', 80)
 
   def GetQueues(self):
     """Gets all the applications's queues.

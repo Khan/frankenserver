@@ -61,6 +61,12 @@ Options:
                              skipped_files (default False)
   --disable_static_caching   Never allow the browser to cache static files.
                              (Default enable if expiration set in app.yaml)
+  --disable_task_running     When supplied, tasks will not be automatically
+                             run after submission and must be run manually
+                             in the local admin console.
+  --task_retry_seconds       How long to wait in seconds before retrying a
+                             task after it fails during execution.
+                             (Default '%(task_retry_seconds)s')
 """
 
 
@@ -112,6 +118,8 @@ ARG_SMTP_PORT = 'smtp_port'
 ARG_SMTP_USER = 'smtp_user'
 ARG_STATIC_CACHING = 'static_caching'
 ARG_TEMPLATE_DIR = 'template_dir'
+ARG_DISABLE_TASK_RUNNING = 'disable_task_running'
+ARG_TASK_RETRY_SECONDS = 'task_retry_seconds'
 ARG_TRUSTED = 'trusted'
 
 SDK_PATH = os.path.dirname(
@@ -148,6 +156,8 @@ DEFAULT_ARGS = {
   ARG_ADMIN_CONSOLE_HOST: None,
   ARG_ALLOW_SKIPPED_FILES: False,
   ARG_STATIC_CACHING: True,
+  ARG_DISABLE_TASK_RUNNING: False,
+  ARG_TASK_RETRY_SECONDS: 30,
   ARG_TRUSTED: False,
 }
 
@@ -207,6 +217,8 @@ def ParseArguments(argv):
         'smtp_password=',
         'smtp_port=',
         'smtp_user=',
+        'disable_task_running',
+        'task_retry_seconds=',
         'template_dir=',
         'trusted',
       ])
@@ -295,6 +307,18 @@ def ParseArguments(argv):
 
     if option == '--disable_static_caching':
       option_dict[ARG_STATIC_CACHING] = False
+
+    if option == '--disable_task_running':
+      option_dict[ARG_DISABLE_TASK_RUNNING] = True
+
+    if option == '--task_retry_seconds':
+      try:
+        option_dict[ARG_TASK_RETRY_SECONDS] = int(value)
+        if option_dict[ARG_TASK_RETRY_SECONDS] < 0:
+          raise ValueError
+      except ValueError:
+        print >>sys.stderr, 'Invalid value supplied for task_retry_seconds'
+        PrintUsageExit(1)
 
     if option == '--trusted':
       option_dict[ARG_TRUSTED] = True

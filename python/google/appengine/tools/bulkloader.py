@@ -31,8 +31,11 @@ Usage:
     --batch_size=<int>      Number of Entity objects to include in each post to
                             the URL endpoint. The more data per row/Entity, the
                             smaller the batch size should be. (Default 10)
-    --config_file=<path>    File containing Model and Loader definitions.
-                            (Required unless --dump or --restore are used)
+    --config_file=<path>    File containing Model and Loader definitions or
+                            bulkloader.yaml transforms. (Required unless --dump,
+                            --restore, or --create_config are used.)
+    --create_config         Write a bulkloader.yaml configuration file to
+                            --filename based on the server side datastore state.
     --db_filename=<path>    Specific progress database to write to, or to
                             resume from. If not supplied, then a new database
                             will be started, named:
@@ -107,9 +110,11 @@ from google.appengine.datastore import entity_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
+from google.appengine.api.namespace_manager import namespace_manager
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext import db
 from google.appengine.ext import key_range as key_range_module
+from google.appengine.ext.bulkload import bulkloader_config
 from google.appengine.ext.db import polymodel
 from google.appengine.ext.db import stats
 from google.appengine.ext.remote_api import remote_api_stub
@@ -264,6 +269,10 @@ class KeyRangeError(Error):
 
 class KindStatError(Error):
   """Unable to find kind stats for an all-kinds download."""
+
+
+class NameSpaceError(Error):
+  """Invalid namespace requested."""
 
 
 class FieldSizeLimitError(Error):
@@ -946,7 +955,7 @@ class KeyRangeItem(_WorkItem):
     self.first = first
 
   def __str__(self):
-    return "%s-%s" % (self.kind, self.key_range)
+    return '%s-%s' % (self.kind, self.key_range)
 
   def __repr__(self):
     return self.__str__()
@@ -1265,6 +1274,8 @@ class RequestManager(object):
         else:
           return entity
 
+      if not entity:
+        continue
       if isinstance(entity, list):
         entities.extend(map(ToEntity, entity))
       elif entity:
@@ -2877,7 +2888,7 @@ class Exporter(object):
     """Performs finalization actions after the download completes."""
     pass
 
-  def sort_key_from_entity(entity):
+  def sort_key_from_entity(self, entity):
     """A value to alter sorting of entities in output_entities entity_generator.
 
     Will only be called if calculate_sort_key_from_entity is true.
@@ -3378,36 +3389,17 @@ def PrintUsageExit(code):
 
 REQUIRED_OPTION = object()
 
-
-FLAG_SPEC = ['debug',
-             'help',
-             'url=',
-             'filename=',
-             'batch_size=',
-             'kind=',
-             'num_threads=',
-             'bandwidth_limit=',
-             'rps_limit=',
-             'http_limit=',
-             'db_filename=',
-             'app_id=',
-             'config_file=',
-             'has_header',
-             'csv_has_header',
-             'auth_domain=',
-             'result_db_filename=',
-             'download',
-             'loader_opts=',
-             'exporter_opts=',
-             'log_file=',
-             'mapper_opts=',
-             'email=',
-             'passin',
-             'map',
-             'dry_run',
-             'dump',
-             'restore',
-             ]
+BOOL_ARGS = ('create_config', 'debug', 'download', 'dry_run', 'dump',
+             'has_header', 'map', 'passin', 'restore')
+INT_ARGS = ('bandwidth_limit', 'batch_size', 'http_limit', 'num_threads',
+            'rps_limit')
+FILENAME_ARGS = ('config_file', 'db_filename', 'filename', 'log_file',
+                 'result_db_filename')
+STRING_ARGS = ('app_id', 'auth_domain', 'email', 'exporter_opts', 'kind',
+               'loader_opts', 'mapper_opts', 'namespace', 'url')
+FLAG_SPEC = (['--csv_has_header', '--help'] +
+             list(BOOL_ARGS) +
+             [arg + '=' for arg in INT_ARGS + FILENAME_ARGS + STRING_ARGS])
 
 
 def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
@@ -3440,87 +3432,48 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
   arg_dict['rps_limit'] = DEFAULT_RPS_LIMIT
   arg_dict['http_limit'] = DEFAULT_REQUEST_LIMIT
 
-  arg_dict['db_filename'] = None
   arg_dict['app_id'] = ''
   arg_dict['auth_domain'] = 'gmail.com'
-  arg_dict['has_header'] = False
-  arg_dict['result_db_filename'] = None
-  arg_dict['download'] = False
-  arg_dict['loader_opts'] = None
-  arg_dict['exporter_opts'] = None
+  arg_dict['create_config'] = False
+  arg_dict['db_filename'] = None
   arg_dict['debug'] = False
-  arg_dict['log_file'] = None
-  arg_dict['email'] = None
-  arg_dict['passin'] = False
-  arg_dict['mapper_opts'] = None
-  arg_dict['map'] = False
+  arg_dict['download'] = False
   arg_dict['dry_run'] = False
   arg_dict['dump'] = False
+  arg_dict['email'] = None
+  arg_dict['exporter_opts'] = None
+  arg_dict['has_header'] = False
+  arg_dict['loader_opts'] = None
+  arg_dict['log_file'] = None
+  arg_dict['map'] = False
+  arg_dict['mapper_opts'] = None
+  arg_dict['namespace'] = ''
+  arg_dict['passin'] = False
   arg_dict['restore'] = False
+  arg_dict['result_db_filename'] = None
 
   def ExpandFilename(filename):
     """Expand shell variables and ~usernames in filename."""
     return os.path.expandvars(os.path.expanduser(filename))
 
   for option, value in opts:
-    if option == '--debug':
-      arg_dict['debug'] = True
-    elif option in ('-h', '--help'):
+    if option in ('-h', '--help'):
       PrintUsageExit(0)
-    elif option == '--url':
-      arg_dict['url'] = value
-    elif option == '--filename':
-      arg_dict['filename'] = ExpandFilename(value)
-    elif option == '--batch_size':
-      arg_dict['batch_size'] = int(value)
-    elif option == '--kind':
-      arg_dict['kind'] = value
-    elif option == '--num_threads':
-      arg_dict['num_threads'] = int(value)
-    elif option == '--bandwidth_limit':
-      arg_dict['bandwidth_limit'] = int(value)
-    elif option == '--rps_limit':
-      arg_dict['rps_limit'] = int(value)
-    elif option == '--http_limit':
-      arg_dict['http_limit'] = int(value)
-    elif option == '--db_filename':
-      arg_dict['db_filename'] = ExpandFilename(value)
-    elif option == '--app_id':
-      arg_dict['app_id'] = value
-    elif option == '--config_file':
-      arg_dict['config_file'] = ExpandFilename(value)
-    elif option == '--auth_domain':
-      arg_dict['auth_domain'] = value
-    elif option == '--has_header':
-      arg_dict['has_header'] = True
-    elif option == '--csv_has_header':
+    if not option.startswith('--'):
+      continue
+    option = option[2:]
+    if option == 'csv_has_header':
       print >>sys.stderr, ('--csv_has_header is deprecated, please use '
                            '--has_header.')
       arg_dict['has_header'] = True
-    elif option == '--result_db_filename':
-      arg_dict['result_db_filename'] = ExpandFilename(value)
-    elif option == '--download':
-      arg_dict['download'] = True
-    elif option == '--loader_opts':
-      arg_dict['loader_opts'] = value
-    elif option == '--exporter_opts':
-      arg_dict['exporter_opts'] = value
-    elif option == '--log_file':
-      arg_dict['log_file'] = ExpandFilename(value)
-    elif option == '--email':
-      arg_dict['email'] = value
-    elif option == '--passin':
-      arg_dict['passin'] = True
-    elif option == '--map':
-      arg_dict['map'] = True
-    elif option == '--mapper_opts':
-      arg_dict['mapper_opts'] = value
-    elif option == '--dry_run':
-      arg_dict['dry_run'] = True
-    elif option == '--dump':
-      arg_dict['dump'] = True
-    elif option == '--restore':
-      arg_dict['restore'] = True
+    elif option in BOOL_ARGS:
+      arg_dict[option] = True
+    elif option in INT_ARGS:
+      arg_dict[option] = int(value)
+    elif option in FILENAME_ARGS:
+      arg_dict[option] = ExpandFilename(value)
+    elif option in STRING_ARGS:
+      arg_dict[option] = value
 
   return ProcessArguments(arg_dict, die_fn=die_fn)
 
@@ -3559,8 +3512,25 @@ def CheckOutputFile(filename):
         '%s: not writable' % os.path.dirname(full_path))
 
 
+def LoadYamlConfig(config_file_name):
+  """Loads a config file and registers any Loader classes present.
+
+  Used for a the second generation Yaml configuration file.
+
+  Args:
+    config_file_name: The name of the configuration file.
+  """
+  (loaders, exporters) = bulkloader_config.load_config(config_file_name)
+  for cls in loaders:
+    Loader.RegisterLoader(cls())
+  for cls in exporters:
+    Exporter.RegisterExporter(cls())
+
+
 def LoadConfig(config_file_name, exit_fn=sys.exit):
   """Loads a config file and registers any Loader classes present.
+
+  Used for a legacy Python configuration file.
 
   Args:
     config_file_name: The name of the configuration file.
@@ -3686,6 +3656,7 @@ def ProcessArguments(arg_dict,
   url = GetArgument(arg_dict, 'url', die_fn)
   dump = GetArgument(arg_dict, 'dump', die_fn)
   restore = GetArgument(arg_dict, 'restore', die_fn)
+  create_config = GetArgument(arg_dict, 'create_config', die_fn)
   filename = GetArgument(arg_dict, 'filename', die_fn)
   batch_size = GetArgument(arg_dict, 'batch_size', die_fn)
   kind = GetArgument(arg_dict, 'kind', die_fn)
@@ -3695,11 +3666,12 @@ def ProcessArguments(arg_dict,
   download = GetArgument(arg_dict, 'download', die_fn)
   log_file = GetArgument(arg_dict, 'log_file', die_fn)
   perform_map = GetArgument(arg_dict, 'map', die_fn)
+  namespace = GetArgument(arg_dict, 'namespace', die_fn)
 
   errors = []
 
   if batch_size is None:
-    if download or perform_map or dump:
+    if download or perform_map or dump or create_config:
       arg_dict['batch_size'] = DEFAULT_DOWNLOAD_BATCH_SIZE
     else:
       arg_dict['batch_size'] = DEFAULT_BATCH_SIZE
@@ -3719,8 +3691,9 @@ def ProcessArguments(arg_dict,
 
   required = '%s argument required'
 
-  if config_file is None and not dump and not restore:
-    errors.append('One of --config_file, --dump, or --restore is required')
+  if config_file is None and not dump and not restore and not create_config:
+    errors.append('One of --config_file, --dump, --restore, or --create_config '
+                  'is required')
 
   if url is REQUIRED_OPTION:
     errors.append(required % 'url')
@@ -3731,9 +3704,16 @@ def ProcessArguments(arg_dict,
   if not kind:
     if download or perform_map:
       errors.append('kind argument required for this operation')
-    elif not dump and not restore:
+    elif not dump and not restore and not create_config:
       errors.append(
-          'kind argument required unless --dump or --restore is specified')
+          'kind argument required unless --dump, --restore or --create_config '
+          'specified')
+
+  if namespace:
+    try:
+      namespace_manager.validate_namespace(namespace)
+    except namespace_manager.BadValueError, msg:
+      errors.append('namespace parameter %s' % msg)
 
   if not app_id:
     if url and url is not REQUIRED_OPTION:
@@ -3746,6 +3726,15 @@ def ProcessArguments(arg_dict,
         arg_dict['app_id'] = host_port.split('.')[0]
       else:
         errors.append('app_id argument required for non appspot.com domains')
+
+  POSSIBLE_COMMANDS = ('create_config', 'download', 'dump', 'map', 'restore')
+  commands = []
+  for command in POSSIBLE_COMMANDS:
+    if arg_dict[command]:
+      commands.append(command)
+  if len(commands) > 1:
+    errors.append('%s are mutually exclusive.' % ' and '.join(commands))
+
 
   if errors:
     print >>sys.stderr, '\n'.join(errors)
@@ -3800,22 +3789,22 @@ def _PerformBulkload(arg_dict,
   perform_map = arg_dict['map']
   dump = arg_dict['dump']
   restore = arg_dict['restore']
+  create_config = arg_dict['create_config']
+  namespace = arg_dict['namespace']
 
+  if namespace:
+    namespace_manager.set_namespace(namespace)
   os.environ['AUTH_DOMAIN'] = auth_domain
 
   kind = ParseKind(kind)
 
-  if not dump and not restore:
+  if not dump and not restore and not create_config:
     check_file(config_file)
 
-  if download and perform_map:
-    logger.error('--download and --map are mutually exclusive.')
-
-  if download or dump:
+  if download or dump or create_config:
     check_output_file(filename)
   elif not perform_map:
     check_file(filename)
-
 
   throttle_layout = ThrottleLayout(bandwidth_limit, http_limit, rps_limit)
   logger.info('Throttling transfers:')
@@ -3833,6 +3822,17 @@ def _PerformBulkload(arg_dict,
     Exporter.RegisterExporter(DumpExporter(kind, result_db_filename))
   elif restore:
     Loader.RegisterLoader(RestoreLoader(kind, app_id))
+  elif create_config:
+    kind = '__Stat_PropertyType_PropertyName_Kind__'
+    arg_dict['kind'] = kind
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    if os.path.basename(root_dir) == 'tools':
+      root_dir = os.path.dirname(os.path.dirname(os.path.dirname(root_dir)))
+    LoadYamlConfig(os.path.join(root_dir, 'google', 'appengine', 'ext',
+                                'bulkload', 'bulkloader_wizard.yaml'))
+  elif (config_file and
+        (config_file.endswith('.yaml') or config_file.endswith('.yml'))):
+    LoadYamlConfig(config_file)
   else:
     LoadConfig(config_file)
 
@@ -3849,19 +3849,20 @@ def _PerformBulkload(arg_dict,
                              dump=dump,
                              restore=restore)
 
-
   max_queue_size = max(DEFAULT_QUEUE_SIZE, 3 * num_threads + 5)
+
+  upload = not (download or dump or restore or perform_map or create_config)
 
   if db_filename == 'skip':
     progress_db = StubProgressDatabase()
-  elif not download and not perform_map and not dump:
+  elif upload or restore:
     progress_db = ProgressDatabase(db_filename, signature)
   else:
     progress_db = ExportProgressDatabase(db_filename, signature)
 
   return_code = 1
 
-  if not download and not perform_map and not dump:
+  if upload or restore:
     loader = Loader.RegisteredLoader(kind)
     try:
       loader.initialize(filename, loader_opts)
@@ -3883,7 +3884,7 @@ def _PerformBulkload(arg_dict,
         logger.info('Authentication Failed')
     finally:
       loader.finalize()
-  elif not perform_map:
+  elif download or dump or create_config:
     exporter = Exporter.RegisteredExporter(kind)
     result_db = ResultDatabase(result_db_filename, signature, exporter=exporter)
     try:
@@ -3920,10 +3921,11 @@ def _PerformBulkload(arg_dict,
         logger.error('Kind stats are not available on dev_appserver.')
     finally:
       exporter.finalize()
-  elif not download:
+  elif perform_map:
     mapper = Mapper.RegisteredMapper(kind)
     try:
       mapper.initialize(mapper_opts)
+
       def KeyRangeGeneratorFactory(request_manager, progress_queue,
                                    progress_gen, kinds):
         return KeyRangeItemGenerator(request_manager, kinds, progress_queue,

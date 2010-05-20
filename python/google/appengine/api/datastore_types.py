@@ -118,9 +118,9 @@ def ValidateInteger(value,
                    negative_ok=False):
   """Raises an exception if value is not a valid integer.
 
-  An integer is valid if it's not negative or empty and is an integer.
-  The exception type can be specified with the exception argument;
-  it defaults to BadValueError.
+  An integer is valid if it's not negative or empty and is an integer
+  (either int or long).  The exception type raised can be specified
+  with the exception argument; it defaults to BadValueError.
 
   Args:
     value: the value to validate.
@@ -132,7 +132,7 @@ def ValidateInteger(value,
   """
   if value is None and empty_ok:
     return
-  if not isinstance(value, int):
+  if not isinstance(value, (int, long)):
     raise exception('%s should be an integer; received %s (a %s).' %
                     (name, value, typename(value)))
   if not value and not zero_ok:
@@ -1374,6 +1374,14 @@ def PackUser(name, value, pbvalue):
     pbvalue.mutable_uservalue().set_obfuscated_gaiaid(
         value.user_id().encode('utf-8'))
 
+  if value.federated_identity() is not None:
+    pbvalue.mutable_uservalue().set_federated_identity(
+        value.federated_identity().encode('utf-8'))
+
+  if value.federated_provider() is not None:
+    pbvalue.mutable_uservalue().set_federated_provider(
+        value.federated_provider().encode('utf-8'))
+
 
 def PackKey(name, value, pbvalue):
   """Packs a reference property into a entity_pb.PropertyValue.
@@ -1577,9 +1585,16 @@ def FromPropertyPb(pb):
     auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
     obfuscated_gaiaid = pbval.uservalue().obfuscated_gaiaid().decode('utf-8')
     obfuscated_gaiaid = unicode(obfuscated_gaiaid)
+
+    federated_identity = None
+    if pbval.uservalue().has_federated_identity():
+      federated_identity = unicode(
+          pbval.uservalue().federated_identity().decode('utf-8'))
+
     value = users.User(email=email,
                        _auth_domain=auth_domain,
-                       _user_id=obfuscated_gaiaid)
+                       _user_id=obfuscated_gaiaid,
+                       federated_identity=federated_identity)
   else:
     value = None
 
@@ -1703,4 +1718,3 @@ def PropertyValueFromString(type_,
   elif type_ == type(None):
     return None
   return type_(value_string)
-

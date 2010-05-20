@@ -106,6 +106,7 @@ from google.appengine import dist
 from google.appengine.tools import dev_appserver_blobstore
 from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
+from google.appengine.tools import dev_appserver_oauth
 from google.appengine.tools import dev_appserver_upload
 
 
@@ -143,6 +144,9 @@ API_VERSION = '1'
 
 SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
                                               'site-packages'))
+
+DEVEL_PAYLOAD_HEADER = 'HTTP_X_APPENGINE_DEVELOPMENT_PAYLOAD'
+DEVEL_PAYLOAD_RAW_HEADER = 'X-AppEngine-Development-Payload'
 
 
 
@@ -268,6 +272,8 @@ class AppServerRequest(object):
     self.headers = headers
     self.infile = infile
     self.force_admin = force_admin
+    if DEVEL_PAYLOAD_RAW_HEADER in self.headers:
+      self.force_admin = True
 
   def __eq__(self, other):
     """Used mainly for testing.
@@ -694,9 +700,8 @@ def SetupEnvironment(cgi_path,
     adjusted_name = key.replace('-', '_').upper()
     env['HTTP_' + adjusted_name] = ', '.join(headers.getheaders(key))
 
-  PAYLOAD_HEADER = 'HTTP_X_APPENGINE_DEVELOPMENT_PAYLOAD'
-  if PAYLOAD_HEADER in env:
-    del env[PAYLOAD_HEADER]
+  if DEVEL_PAYLOAD_HEADER in env:
+    del env[DEVEL_PAYLOAD_HEADER]
     new_data = base64.standard_b64decode(infile.getvalue())
     infile.seek(0)
     infile.truncate()
@@ -3509,6 +3514,10 @@ def SetupStubs(app_id, **config):
     enable_sendmail: Whether to use sendmail as an alternative to SMTP.
     show_mail_body: Whether to log the body of emails.
     remove: Used for dependency injection.
+    disable_task_running: True if tasks should not automatically run after
+      they are enqueued.
+    task_retry_seconds: How long to wait after an auto-running task before it
+      is tried again.
     trusted: True if this app can access data belonging to other apps.  This
       behavior is different from the real app server and should be left False
       except for advanced uses of dev_appserver.
@@ -3527,6 +3536,8 @@ def SetupStubs(app_id, **config):
   enable_sendmail = config.get('enable_sendmail', False)
   show_mail_body = config.get('show_mail_body', False)
   remove = config.get('remove', os.remove)
+  disable_task_running = config.get('disable_task_running', False)
+  task_retry_seconds = config.get('task_retry_seconds', 30)
   trusted = config.get('trusted', False)
 
   os.environ['APPLICATION_ID'] = app_id
@@ -3585,7 +3596,10 @@ def SetupStubs(app_id, **config):
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'taskqueue',
-      taskqueue_stub.TaskQueueServiceStub(root_path=root_path))
+      taskqueue_stub.TaskQueueServiceStub(
+          root_path=root_path,
+          auto_task_running=(not disable_task_running),
+          task_retry_seconds=task_retry_seconds))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'xmpp',
@@ -3663,6 +3677,15 @@ def CreateImplicitMatcher(
 
   url_matcher.AddURL(dev_appserver_blobstore.UPLOAD_URL_PATTERN,
                      upload_dispatcher,
+                     '',
+                     False,
+                     False,
+                     appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED)
+
+  oauth_dispatcher = dev_appserver_oauth.CreateOAuthDispatcher()
+
+  url_matcher.AddURL(dev_appserver_oauth.OAUTH_URL_PATTERN,
+                     oauth_dispatcher,
                      '',
                      False,
                      False,
@@ -3746,7 +3769,14 @@ def CreateServer(root_path,
 
   if absolute_root_path not in python_path_list:
     python_path_list.insert(0, absolute_root_path)
-  return HTTPServerWithScheduler((serve_address, port), handler_class)
+
+  server = HTTPServerWithScheduler((serve_address, port), handler_class)
+
+  queue_stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+  if queue_stub:
+    queue_stub._add_event = server.AddEvent
+
+  return server
 
 
 class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
@@ -3787,7 +3817,9 @@ class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
       current_time = time_func()
       if self._events and current_time >= self._events[0][0]:
         unused_eta, runnable = heapq.heappop(self._events)
-        runnable()
+        request_tuple = runnable()
+        if request_tuple:
+          return request_tuple
 
   def serve_forever(self):
     """Handle one request at a time until told to stop."""
