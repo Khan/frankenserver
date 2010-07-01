@@ -336,6 +336,10 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
     self._app_queues = {}
 
+  class _QueueDetails(taskqueue_service_pb.TaskQueueUpdateQueueRequest):
+    def __init__(self, paused=None):
+      self.paused = paused
+
   def _ChooseTaskName(self):
     """Returns a string containing a unique task name."""
     self._next_task_id += 1
@@ -553,8 +557,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       def connection_done(myself):
         result = myself.wfile.getvalue()
         myself.wfile_close()
-        first_line, rest = result.split('\n', 1)
-        version, code, rest = first_line.split(' ', 2)
+        first_line, rest = (result.split('\n', 1) + ['', ''])[:2]
+        version, code, rest = (first_line.split(' ', 2) + ['', '500', ''])[:3]
         if 200 <= int(code) <= 299:
           self.DeleteTask(queue_name, task_name)
           return
@@ -741,8 +745,9 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_QUEUE)
 
-    defensive_copy = taskqueue_service_pb.TaskQueueUpdateQueueRequest()
+    defensive_copy = self._QueueDetails()
     defensive_copy.CopyFrom(request)
+
     queues[request.queue_name()] = defensive_copy
 
   def _Dynamic_FetchQueues(self, request, response):
@@ -769,6 +774,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
           queue.bucket_refill_per_second())
       response_queue.set_bucket_capacity(queue.bucket_capacity())
       response_queue.set_user_specified_rate(queue.user_specified_rate())
+      response_queue.set_paused(queue.paused)
 
   def _Dynamic_FetchQueueStats(self, request, response):
     """Local 'random' implementation of the TaskQueueService.FetchQueueStats.
@@ -885,6 +891,28 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
     queues[request.queue_name()] = None
 
+  def _Dynamic_PauseQueue(self, request, response):
+    """Local pause implementation of TaskQueueService.PauseQueue.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueuePauseQueueRequest.
+      response: A taskqueue_service_pb.TaskQueuePauseQueueResponse.
+    """
+    if not request.queue_name():
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_QUEUE_NAME)
+
+    queues = self._app_queues.get(request.app_id(), {})
+    if request.queue_name() != DEFAULT_QUEUE_NAME:
+      if request.queue_name() not in queues:
+        raise apiproxy_errors.ApplicationError(
+            taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
+      elif queues[request.queue_name()] is None:
+        raise apiproxy_errors.ApplicationError(
+            taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_QUEUE)
+
+    queues[request.queue_name()].paused = request.pause()
+
   def _Dynamic_PurgeQueue(self, request, response):
     """Local purge implementation of TaskQueueService.PurgeQueue.
 
@@ -910,3 +938,17 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       store.Delete(task.task_name())
 
     self.FlushQueue(request.queue_name())
+
+  def _Dynamic_UpdateStorageLimit(self, request, response):
+    """Local implementation of TaskQueueService.UpdateStorageLimit.
+    Args:
+      request: A taskqueue_service_pb.TaskQueueUpdateStorageLimitRequest.
+      response: A taskqueue_service_pb.TaskQueueUpdateStorageLimitResponse.
+    """
+    if request.limit() < 0 or request.limit() > 1000 * (1024 ** 4):
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_REQUEST)
+
+    response.set_new_limit(request.limit())
+
+

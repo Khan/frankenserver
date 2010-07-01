@@ -41,6 +41,7 @@ class KeyRangeError(Error):
 class SimplejsonUnavailableError(Error):
   """Error while using json functionality whith unavailable simplejson."""
 
+
 class KeyRange(object):
   """Represents a range of keys in the datastore.
 
@@ -85,7 +86,7 @@ class KeyRange(object):
       right_side = ']'
     else:
       right_side = '('
-    return '%s%s%s-%s%s' % (self.direction, left_side, repr(self.key_start),
+    return '%s%s%s to %s%s' % (self.direction, left_side, repr(self.key_start),
                             repr(self.key_end), right_side)
 
   def __repr__(self):
@@ -164,11 +165,12 @@ class KeyRange(object):
     else:
       raise KeyRangeError('KeyRange direction unexpected: %s', self.direction)
 
-  def make_directed_query(self, kind_class):
+  def make_directed_query(self, kind_class, keys_only=False):
     """Construct a query for this key range, including the scan direction.
 
     Args:
       kind_class: A kind implementation class.
+      keys_only: bool, default False, use keys_only on Query?
 
     Returns:
       A db.Query instance.
@@ -177,7 +179,7 @@ class KeyRange(object):
       KeyRangeError: if self.direction is not in (KeyRange.ASC, KeyRange.DESC).
     """
     direction = self.__get_direction('', '-')
-    query = db.Query(kind_class)
+    query = db.Query(kind_class, keys_only)
     query.order('%s__key__' % direction)
 
     query = self.filter_query(query)
@@ -204,16 +206,17 @@ class KeyRange(object):
     query = self.filter_datastore_query(query)
     return query
 
-  def make_ascending_query(self, kind_class):
+  def make_ascending_query(self, kind_class, keys_only=False):
     """Construct a query for this key range without setting the scan direction.
 
     Args:
       kind_class: A kind implementation class.
+      keys_only: bool, default False, query only for keys.
 
     Returns:
       A db.Query instance.
     """
-    query = db.Query(kind_class)
+    query = db.Query(kind_class, keys_only)
     query.order('__key__')
 
     query = self.filter_query(query)
@@ -475,6 +478,70 @@ class KeyRange(object):
       assert (isinstance(id_or_name1, (int, long)) and
               isinstance(id_or_name2, basestring))
       return unichr(0)
+
+  @staticmethod
+  def guess_end_key(kind,
+                    key_start,
+                    probe_count=10,
+                    split_rate=5):
+    """Guess the end of a key range with a binary search of probe queries.
+
+    When the 'key_start' parameter has a key hierarchy, this function will
+    only determine the key range for keys in a similar hierarchy. That means
+    if the keys are in the form:
+
+      kind=Foo, name=bar/kind=Stuff, name=meep
+
+    only this range will be probed:
+
+      kind=Foo, name=*/kind=Stuff, name=*
+
+    That means other entities of kind 'Stuff' that are children of another
+    parent entity kind will be skipped:
+
+      kind=Other, name=cookie/kind=Stuff, name=meep
+
+    Args:
+      key_start: The starting key of the search range. In most cases this
+        should be id = 0 or name = '\0'.
+      kind: String name of the entity kind.
+      probe_count: Optional, how many probe queries to run.
+      split_rate: Exponential rate to use for splitting the range on the
+        way down from the full key space. For smaller ranges this should
+        be higher so more of the keyspace is skipped on initial descent.
+
+    Returns:
+      datastore.Key that is guaranteed to be as high or higher than the
+      highest key existing for this Kind. Doing a query between 'key_start' and
+      this returned Key (inclusive) will contain all entities of this Kind.
+    """
+    full_path = key_start.to_path()
+    for index, piece in enumerate(full_path):
+      if index % 2 == 0:
+        continue
+      elif isinstance(piece, basestring):
+        full_path[index] = u'\xffff'
+      else:
+        full_path[index] = 2**32
+
+    key_end = datastore.Key.from_path(*full_path)
+    split_key = key_end
+
+    for i in xrange(probe_count):
+      for j in xrange(split_rate):
+        split_key = KeyRange.split_keys(key_start, split_key, 1)
+      results = datastore.Query(
+          kind,
+          {'__key__ >': split_key},
+          keys_only=True).Get(1)
+      if results:
+        split_rate = 1
+        key_start = split_key
+        split_key = key_end
+      else:
+        key_end = split_key
+
+    return key_end
 
   def to_json(self):
     """Serialize KeyRange to json.

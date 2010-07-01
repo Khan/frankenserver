@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-"""Sample AppStats Configuration.
+"""Sample Appstats Configuration.
 
 There are four sections:
 
@@ -34,7 +34,7 @@ import re
 # 0) WSGI middleware declaration.
 
 # Only use this if you're not Django; with Django, it's easier to add
-#   'google.appengine.ext.appstats.recording.AppStatsDjangoMiddleware',
+#   'google.appengine.ext.appstats.recording.AppstatsDjangoMiddleware',
 # to your Django settings.py file.
 
 # # def webapp_add_wsgi_middleware(app):

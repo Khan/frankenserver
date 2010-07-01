@@ -25,6 +25,7 @@ configuration files.
 
 
 
+import logging
 import re
 
 from google.appengine.api import appinfo_errors
@@ -407,6 +408,18 @@ class AppInfoExternal(validation.Validated):
         if handler.secure == SECURE_DEFAULT:
           handler.secure = SECURE_HTTP_OR_HTTPS
 
+  def WarnReservedURLs(self):
+    """Generates a warning for reserved URLs.
+
+    See:
+    http://code.google.com/appengine/docs/python/config/appconfig.html#Reserved_URLs
+    """
+    if self.handlers:
+      for handler in self.handlers:
+        if handler.url == '/form':
+          logging.warning(
+              'The URL path "/form" is reserved and will not be matched.')
+
 
 def LoadSingleAppInfo(app_info):
   """Load a single AppInfo object where one and only one is expected.
@@ -435,7 +448,10 @@ def LoadSingleAppInfo(app_info):
     raise appinfo_errors.EmptyConfigurationFile()
   if len(app_infos) > 1:
     raise appinfo_errors.MultipleConfigurationFile()
+
   app_infos[0].FixSecureDefaults()
+  app_infos[0].WarnReservedURLs()
+
   return app_infos[0]
 
 

@@ -71,6 +71,8 @@ Usage:
                             transfer to the server. (Default: 20)
     --url=<string>          URL endpoint to post to for importing data.
                             (Required)
+    --namespace=<string>    Use specified namespace instead of the default one
+                            for all datastore operations.
 
 The exit status will be 0 on success, non-zero on import failure.
 

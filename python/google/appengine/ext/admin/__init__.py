@@ -725,25 +725,26 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
       kinds = self.get_kinds()
 
     values = {
-      'request': self.request,
-      'in_production': in_production,
-      'kinds': kinds,
-      'kind': self.request.get('kind'),
-      'order': self.request.get('order'),
-      'headers': headers,
-      'entities': entities,
-      'message': self.request.get('msg'),
-      'pages': pages,
-      'current_page': current_page,
-      'namespace': self.request.get('namespace'),
-      'num': num,
-      'next_start': -1,
-      'prev_start': -1,
-      'start': start,
-      'total': total,
-      'start_base_url': self.filter_url(['kind', 'order', 'order_type',
-                                         'num']),
-      'order_base_url': self.filter_url(['kind', 'num']),
+        'request': self.request,
+        'in_production': in_production,
+        'kinds': kinds,
+        'kind': self.request.get('kind'),
+        'order': self.request.get('order'),
+        'headers': headers,
+        'entities': entities,
+        'message': self.request.get('msg'),
+        'pages': pages,
+        'current_page': current_page,
+        'namespace': self.request.get('namespace'),
+        'show_namespace': self.request.get('namespace', None) is not None,
+        'num': num,
+        'next_start': -1,
+        'prev_start': -1,
+        'start': start,
+        'total': total,
+        'start_base_url': self.filter_url(['kind', 'order', 'order_type',
+                                           'namespace', 'num']),
+        'order_base_url': self.filter_url(['kind', 'namespace', 'num']),
     }
     if current_page > 1:
       values['prev_start'] = int((current_page - 2) * num)
@@ -813,6 +814,11 @@ class DatastoreEditHandler(DatastoreRequestHandler):
 
     if len(sample_entities) < 1:
       next_uri = self.request.get('next')
+      next_uri += '&msg=%s' % urllib.quote_plus(
+          "The kind %s doesn't exist in the %s namespace" % (
+              kind,
+              self.request.get('namespace', '<Empty>')))
+
       kind_param = 'kind=%s' % kind
       if not kind_param in next_uri:
         if '?' in next_uri:
@@ -954,6 +960,7 @@ class StringType(DataType):
     return ustr(value)
 
   def input_field(self, name, value, sample_values):
+    name = ustr(name)
     value = ustr(value)
     sample_values = [ustr(s) for s in sample_values]
     multiline = False

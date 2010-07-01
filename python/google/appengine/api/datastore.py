@@ -94,7 +94,7 @@ def NormalizeAndTypeCheck(arg, types):
   """Normalizes and type checks the given argument.
 
   Args:
-    arg: an instance, tuple, list, iterator, or generator of the given type(s)
+    arg: an instance or iterable of the given type(s)
     types: allowed type or tuple of types
 
   Returns:
@@ -113,20 +113,27 @@ def NormalizeAndTypeCheck(arg, types):
   assert list not in types and tuple not in types
 
   if isinstance(arg, types):
-    return ([arg], False)
+    return [arg], False
   else:
-    try:
-      for val in arg:
-        if not isinstance(val, types):
-          raise datastore_errors.BadArgumentError(
-              'Expected one of %s; received %s (a %s).' %
-              (types, val, typename(val)))
-    except TypeError:
+    if isinstance(arg, basestring):
       raise datastore_errors.BadArgumentError(
-          'Expected an instance or sequence of %s; received %s (a %s).' %
+          'Expected an instance or iterable of %s; received %s (a %s).' %
           (types, arg, typename(arg)))
 
-    return (list(arg), True)
+    try:
+      arg_list = list(arg)
+    except TypeError:
+      raise datastore_errors.BadArgumentError(
+          'Expected an instance or iterable of %s; received %s (a %s).' %
+          (types, arg, typename(arg)))
+
+    for val in arg_list:
+      if not isinstance(val, types):
+        raise datastore_errors.BadArgumentError(
+            'Expected one of %s; received %s (a %s).' %
+            (types, val, typename(val)))
+
+    return arg_list, True
 
 
 def NormalizeAndTypeCheckKeys(keys):
@@ -894,6 +901,7 @@ class Query(dict):
   __compile = None
 
   __cursor = None
+  __end_cursor = None
 
   __filter_order = None
   __filter_counter = 0
@@ -902,7 +910,8 @@ class Query(dict):
   __inequality_count = 0
 
   def __init__(self, kind=None, filters={}, _app=None, keys_only=False,
-               compile=True, cursor=None, namespace=None, **kwds):
+               compile=True, cursor=None, namespace=None, end_cursor=None,
+               **kwds):
     """Constructor.
 
     Raises BadArgumentError if kind is not a string. Raises BadValueError or
@@ -942,6 +951,7 @@ class Query(dict):
     self.__keys_only = keys_only
     self.__compile = compile
     self.__cursor = cursor
+    self.__end_cursor = end_cursor
 
   def Order(self, *orderings):
     """Specify how the query results should be sorted.
@@ -1493,8 +1503,9 @@ class Query(dict):
       order.set_direction(direction)
 
     if self.__cursor:
-      pb.mutable_compiled_cursor().CopyFrom(self.__cursor);
-
+      pb.mutable_compiled_cursor().CopyFrom(self.__cursor)
+    if self.__end_cursor:
+      pb.mutable_end_compiled_cursor().CopyFrom(self.__end_cursor)
     return pb
 
 

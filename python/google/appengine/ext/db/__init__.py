@@ -683,6 +683,11 @@ class Model(object):
              key_name redundant (they do not need to be set but if they are
              they must match the key).
     """
+    namespace = None
+    if isinstance(_app, tuple):
+      if len(_app) != 2:
+        raise BadArgumentError('_app must have 2 values if type is tuple.')
+      _app, namespace = _app
     key = kwds.get('key', None)
     if key is not None:
       if isinstance(key, (tuple, list)):
@@ -700,6 +705,9 @@ class Model(object):
       if _app is not None and key.app() != _app:
         raise BadKeyError('Expected Key app to be %s; received %s' %
                           (_app, key.app()))
+      if namespace is not None and key.namespace() != namespace:
+        raise BadKeyError('Expected Key namespace to be %s; received %s' %
+                          (namespace, key.namespace()))
       if key_name and key_name != key.name():
         raise BadArgumentError('Cannot use key and key_name at the same time'
                                ' with different values')
@@ -737,6 +745,12 @@ class Model(object):
       self._key_name = key_name
       self._key = None
 
+    if self._parent_key is not None:
+      if namespace is not None and self._parent_key.namespace() != namespace:
+        raise BadArgumentError(
+            'Expected parent namespace to be %r; received %r' %
+            (namespace, self._parent_key.namespace()))
+
     self._entity = None
     if _app is not None and isinstance(_app, Key):
       raise BadArgumentError('_app should be a string; received Key(\'%s\'):\n'
@@ -744,6 +758,7 @@ class Model(object):
                              'a positional parameter in SDK 1.2.6.  Please '
                              'only pass \'key\' as a keyword parameter.' % _app)
     self._app = _app
+    self._namespace = namespace
 
     for prop in self.properties().values():
       if prop.name in kwds:
@@ -776,7 +791,8 @@ class Model(object):
       return self._key
     elif self._key_name:
       parent = self._parent_key or (self._parent and self._parent.key())
-      self._key = Key.from_path(self.kind(), self._key_name, parent=parent)
+      self._key = Key.from_path(self.kind(), self._key_name, parent=parent,
+                                _app=self._app, namespace=self._namespace)
       return self._key
     else:
       raise NotSavedError()
@@ -849,7 +865,7 @@ class Model(object):
     if self.is_saved():
       entity = self._entity
     else:
-      kwds = {'_app': self._app,
+      kwds = {'_app': self._app, 'namespace': self._namespace,
               'unindexed_properties': self._unindexed_properties}
       if self._key is not None:
         if self._key.id():
@@ -1288,15 +1304,20 @@ def delete(models, **kwargs):
   """Delete one or more Model instances.
 
   Args:
-    models_or_keys: Model instance or list of Model instances.
+    models: Model instance, key, key string or iterable thereof.
 
   Raises:
     TransactionFailedError if the data could not be committed.
   """
   rpc = datastore.GetRpcFromKwargs(kwargs)
 
-  if not isinstance(models, (list, tuple)):
+  if isinstance(models, (basestring, Model, Key)):
     models = [models]
+  else:
+    try:
+      models = iter(models)
+    except TypeError:
+      models = [models]
   keys = [_coerce_to_key(v) for v in models]
 
   datastore.Delete(keys, rpc=rpc)
@@ -1398,9 +1419,13 @@ class Expando(Model):
     """
     super(Expando, self).__init__(parent, key_name, _app, **kwds)
     self._dynamic_properties = {}
+    storage_names = set(prop.name for prop in self.properties().values())
     for prop, value in kwds.iteritems():
-      if prop not in self.properties() and prop != 'key':
-        setattr(self, prop, value)
+      if prop not in storage_names and prop != 'key':
+        if not (hasattr(getattr(type(self), prop, None), '__set__')):
+          setattr(self, prop, value)
+        else:
+          check_reserved_word(prop)
 
   def __setattr__(self, key, value):
     """Dynamically set field values that are not defined.
@@ -1520,7 +1545,7 @@ class Expando(Model):
       entity[key] = value
 
     all_properties = set(self._dynamic_properties.iterkeys())
-    all_properties.update(self.properties().iterkeys())
+    all_properties.update(prop.name for prop in self.properties().itervalues())
     for key in entity.keys():
       if key not in all_properties:
         del entity[key]
@@ -1543,12 +1568,59 @@ class Expando(Model):
     return entity_values
 
 
+def websafe_encode_cursor(compiled_cursor):
+  """Get a serialized cursor given a compiled cursor object.
+
+  Args:
+    compiled_cursor: The datastore_pb.CompiledCursor cursor to serialize.
+
+  Returns:
+    A base64-encoded serialized cursor.
+  """
+  return base64.urlsafe_b64encode(compiled_cursor.Encode())
+
+
+def websafe_decode_cursor(cursor):
+  """Gets a datastore_pb.CompiledCursor given its serialized form.
+
+  Args:
+    cursor: A serialized cursor as returned by websafe_encode_cursor.
+
+  Returns:
+    A datastore_pb.CompiledCursor.
+
+  Raises:
+    BadValueError: if the cursor argument is not a string type of does not
+      represent a serialized cursor.
+  """
+  if not isinstance(cursor, basestring):
+    raise BadValueError(
+        'Cursor must be a str or unicode instance, not a %s'
+        % type(cursor).__name__)
+  else:
+    cursor = str(cursor)
+    try:
+      decoded = base64.urlsafe_b64decode(cursor)
+      cursor = datastore_pb.CompiledCursor(decoded)
+    except (ValueError, TypeError), e:
+      raise datastore_errors.BadValueError(
+          'Invalid cursor %s. Details: %s' % (cursor, e))
+    except Exception, e:
+      if e.__class__.__name__ == 'ProtocolBufferDecodeError':
+        raise datastore_errors.BadValueError('Invalid cursor %s. '
+                                             'Details: %s' % (cursor, e))
+      else:
+        raise
+
+  return cursor
+
+
 class _BaseQuery(object):
   """Base class for both Query and GqlQuery."""
   _compile = False
 
   def __init__(self, model_class=None, keys_only=False, compile=True,
-               cursor=None):
+               cursor=None, namespace=None):
     """Constructor.
 
     Args:
@@ -1556,10 +1628,12 @@ class _BaseQuery(object):
       keys_only: Whether the query should return full entities or only keys.
       compile: Whether the query should also return a compiled query.
       cursor: A compiled query from which to resume.
+      namespace: The namespace to query.
     """
     self._model_class = model_class
     self._keys_only = keys_only
     self._compile = compile
+    self._namespace = namespace
     self.with_cursor(cursor)
 
   def is_keys_only(self):
@@ -1699,42 +1773,64 @@ class _BaseQuery(object):
       raise AssertionError(
           'Query must be created with compile=True to produce cursors')
     try:
-      return base64.urlsafe_b64encode(
-        self._last_raw_query.GetCompiledCursor().Encode())
+      return websafe_encode_cursor(
+          self._last_raw_query.GetCompiledCursor())
     except AttributeError:
       raise AssertionError('No cursor available.')
 
-  def with_cursor(self, cursor):
-    """Set the start of this query to the given serialized cursor.
+  def with_cursor(self, start_cursor=None, end_cursor=None):
+    """Set the start and end of this query using serialized cursors.
 
-    When executed, this query will start from the next result for a previous
-    invocation of a similar query.
+    Conceptually cursors point to the position between the last result returned
+    and the next result so running a query with each of the following cursors
+    combinations will return all results in four chunks with no duplicate
+    results:
+
+      query.with_cursor(end_cursor=cursor1)
+      query.with_cursors(cursor1, cursor2)
+      query.with_cursors(cursor2, cursor3)
+      query.with_cursors(start_cursor=cursor3)
+
+    For example if the cursors pointed to:
+      cursor:    1   2   3
+      result: a b c d e f g h
+
+    The results returned by these queries would be [a, b], [c, d], [e, f],
+    [g, h] respectively.
+
+    Cursors are pinned to the position just after the previous result (last
+    result, exclusive), so if results are inserted or deleted between the time
+    the cursor was made and these queries are executed, the cursors stay pinned
+    to these positions. For example:
+
+      delete(b, f, g, h)
+      put(a1, b1, c1, d1)
+      cursor:     1(b)      2(d)   3(f)
+      result: a a1 b1 c c1 d d1 e
+
+    The results returned by these queries would now be: [a, a1], [b1, c, c1, d],
+    [d1, e], [] respectively.
+
+    Args:
+      start_cursor: The cursor position at which to start or None
+      end_cursor: The cursor position at which to end or None
 
     Returns:
       This Query instance, for chaining.
-    """
-    if not cursor:
-      cursor = None
-    elif not isinstance(cursor, basestring):
-      raise BadValueError(
-          'Cursor must be a str or unicode instance, not a %s'
-          % type(cursor).__name__)
-    else:
-      cursor = str(cursor)
-      try:
-        decoded = base64.urlsafe_b64decode(cursor)
-        cursor = datastore_pb.CompiledCursor(decoded)
-      except (ValueError, TypeError), e:
-        raise datastore_errors.BadValueError(
-          'Invalid cursor %s. Details: %s' % (cursor, e))
-      except Exception, e:
-        if e.__class__.__name__ == 'ProtocolBufferDecodeError':
-          raise datastore_errors.BadValueError('Invalid cursor %s. '
-                                               'Details: %s' % (cursor, e))
-        else:
-          raise
 
-    self._cursor = cursor
+    Raises:
+      BadValueError when cursor is not valid.
+    """
+    if start_cursor is None:
+      self._cursor = None
+    else:
+      self._cursor = websafe_decode_cursor(start_cursor)
+
+    if end_cursor is None:
+      self._end_cursor = None
+    else:
+      self._end_cursor = websafe_decode_cursor(end_cursor)
+
     return self
 
   def __getitem__(self, arg):
@@ -1880,15 +1976,18 @@ class Query(_BaseQuery):
        print story.title
   """
 
-  def __init__(self, model_class=None, keys_only=False, cursor=None):
+  def __init__(self, model_class=None, keys_only=False, cursor=None,
+               namespace=None):
     """Constructs a query over instances of the given Model.
 
     Args:
       model_class: Model class to build query for.
       keys_only: Whether the query should return full entities or only keys.
       cursor: A compiled query from which to resume.
+      namespace: The namespace to use for this query.
     """
-    super(Query, self).__init__(model_class, keys_only, cursor=cursor)
+    super(Query, self).__init__(model_class, keys_only, cursor=cursor,
+                                namespace=namespace)
     self.__query_sets = [{}]
     self.__orderings = []
     self.__ancestor = None
@@ -1906,7 +2005,9 @@ class Query(_BaseQuery):
                            query_set,
                            keys_only=self._keys_only,
                            compile=self._compile,
-                           cursor=self._cursor)
+                           cursor=self._cursor,
+                           end_cursor=self._end_cursor,
+                           namespace=self._namespace)
       query.Order(*self.__orderings)
       if self.__ancestor is not None:
         query.Ancestor(self.__ancestor)
@@ -2102,8 +2203,13 @@ class GqlQuery(_BaseQuery):
     """
     from google.appengine.ext import gql
     app = kwds.pop('_app', None)
+    namespace = None
+    if isinstance(app, tuple):
+      if len(app) != 2:
+        raise BadArgumentError('_app must have 2 values if type is tuple.')
+      app, namespace = app
 
-    self._proto_query = gql.GQL(query_string, _app=app)
+    self._proto_query = gql.GQL(query_string, _app=app, namespace=namespace)
     if self._proto_query._entity is not None:
       model_class = class_for_kind(self._proto_query._entity)
     else:
@@ -2168,7 +2274,8 @@ class GqlQuery(_BaseQuery):
       return results
 
   def _get_query(self):
-    return self._proto_query.Bind(self._args, self._kwds, self._cursor)
+    return self._proto_query.Bind(self._args, self._kwds,
+                                  self._cursor, self._end_cursor)
 
 
 class UnindexedProperty(Property):
@@ -3145,6 +3252,75 @@ class _ReverseReferenceProperty(Property):
   def __set__(self, model_instance, value):
     """Not possible to set a new collection."""
     raise BadValueError('Virtual property is read-only')
+
+
+class ComputedProperty(Property):
+  """Property used for creating properties derived from other values.
+
+  Certain attributes should never be set by users but automatically
+  calculated at run-time from other values of the same entity.  These
+  values are implemented as persistent properties because they provide
+  useful search keys.
+
+  A computed property behaves the same as normal properties except that
+  you may not set values on them.  Attempting to do so raises
+  db.DerivedPropertyError which db.Model knows to ignore during entity
+  loading time.  Whenever getattr is used for the property
+  the value is recaclulated.  This happens when the model calls
+  get_value_for_datastore on the property.
+
+  Example:
+
+    import string
+
+    class Person(Model):
+
+      name = StringProperty(required=True)
+
+      @db.ComputedProperty
+      def lower_case_name(self):
+        return self.name.lower()
+
+    # Find all people regardless of case used in name.
+    Person.gql('WHERE lower_case_name=:1' % name_to_search_for.lower())
+  """
+
+  def __init__(self, value_function, indexed=True):
+    """Constructor.
+
+    Args:
+      value_function: Callable f(model_instance) -> value used to derive
+        persistent property value for storage in datastore.
+      indexed: Whether or not the attribute should be indexed.
+    """
+    super(ComputedProperty, self).__init__(indexed=indexed)
+    self.__value_function = value_function
+
+  def __set__(self, *args):
+    """Disallow setting this value.
+
+    Raises:
+      DerivedPropertyError when developer attempts to set attribute manually.
+      Model knows to ignore this exception when getting from datastore.
+    """
+    raise DerivedPropertyError(
+        'Computed property %s cannot be set.' % self.name)
+
+  def __get__(self, model_instance, model_class):
+    """Derive property value.
+
+    Args:
+      model_instance: Instance to derive property for in bound method case,
+        else None.
+      model_class: Model class associated with this property descriptor.
+
+    Returns:
+      Result of calling self.__value_funcion as provided by property
+      constructor.
+    """
+    if model_instance is None:
+      return self
+    return self.__value_function(model_instance)
 
 
 run_in_transaction = datastore.RunInTransaction

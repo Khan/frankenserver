@@ -3,6 +3,30 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.3.5
+=================================
+- Developers can enable Python pre-compilation to decrease start up time for
+  new application instances. This can be enabled by including the
+  derived_file_type in your app.yaml.
+- Ability to configure the Task Queue storage limit with the
+  total_storage_limit field in the queue.yaml file.
+- Task Queues now support up to 50 qps per queue, up from 50 qps per app.
+- Developers can programmatically access Blobs with BlobReader, a file-like
+  interface for reading blobs.
+- Bulkloader transform helpers for lists and hierarchical keys were added.
+- remote_api_shell commands can be sent over HTTPS or HTTP.
+- Admin Console logs now include information on request time latency.
+- Db.delete will now accept an iterable, in addition to a list of models or
+  keys.
+- The datastore now supports end cursors.
+- Fixed an issue properly handling a query with an offset that returns no
+  results.
+- Fixed an issue that improperly allowed quad-dotted netmasks as subnet prefixes
+  for the DoS API.
+- Fixed an issue via user submitted patch in the SDK dataviewer displaying
+  multiline StringProperties.
+    http://code.google.com/p/googleappengine/issues/detail?id=502
+
 Version 1.3.4
 =================================
 - New bulkloader configuration syntax and wizard for easier import/export with

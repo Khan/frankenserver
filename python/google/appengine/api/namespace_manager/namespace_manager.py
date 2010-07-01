@@ -81,13 +81,10 @@ class BadValueError(Exception):
 def validate_namespace(value, exception=BadValueError):
   """Raises an exception if value is not a valid Namespace string.
 
-  A Namespace string must be of a string class and
-  may only contain lower case alphabetic characters or digits or '-'
-  but must additionally not start or end with a '-'.
-  ([0-9A-Za-z._-]{0,100})
+  A namespace must match the regular expression ([0-9A-Za-z._-]{0,100}).
 
   Args:
-    value: the value to validate.
+    value: string, the value to validate.
     exception: exception type to raise.
   """
   if not isinstance(value, basestring):

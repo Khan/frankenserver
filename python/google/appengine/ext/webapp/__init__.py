@@ -557,6 +557,9 @@ class WSGIApplication(object):
       if not regexp.endswith('$'):
         regexp += '$'
 
+      if regexp == '^/form$':
+        logging.warning('The URL "/form" is reserved and will not be matched.')
+
       compiled = re.compile(regexp)
       url_mapping.append((compiled, handler))
 

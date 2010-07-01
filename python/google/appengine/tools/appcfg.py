@@ -562,7 +562,7 @@ class CronEntryUpload(object):
   def DoUpload(self):
     """Uploads the cron entries."""
     StatusUpdate('Uploading cron entries.')
-    self.server.Send('/api/datastore/cron/update',
+    self.server.Send('/api/cron/update',
                      app_id=self.config.application,
                      version=self.config.version,
                      payload=self.cron.ToYAML())
@@ -778,7 +778,7 @@ class LogsRequester(object):
 
   def __init__(self, server, config, output_file,
                num_days, append, severity, end, vhost, include_vhost,
-               time_func=time.time):
+               include_all=None, time_func=time.time):
     """Constructor.
 
     Args:
@@ -792,6 +792,8 @@ class LogsRequester(object):
       end: date object representing last day of logs to return.
       vhost: The virtual host of log messages to get. None for all hosts.
       include_vhost: If true, the virtual host is included in log messages.
+      include_all: If true, we add to the log message everything we know
+        about the request.
       time_func: Method that return a timestamp representing now (for testing).
     """
     self.server = server
@@ -802,6 +804,7 @@ class LogsRequester(object):
     self.severity = severity
     self.vhost = vhost
     self.include_vhost = include_vhost
+    self.include_all = include_all
     self.version_id = self.config.version + '.1'
     self.sentinel = None
     self.write_mode = 'w'
@@ -887,6 +890,8 @@ class LogsRequester(object):
       kwds['vhost'] = str(self.vhost)
     if self.include_vhost is not None:
       kwds['include_vhost'] = str(self.include_vhost)
+    if self.include_all is not None:
+      kwds['include_all'] = str(self.include_all)
     response = self.server.Send('/api/request_logs', payload=None, **kwds)
     response = response.replace('\r', '\0')
     lines = response.splitlines()
@@ -2230,7 +2235,8 @@ class AppCfgApp(object):
                                    self.options.severity,
                                    end_date,
                                    self.options.vhost,
-                                   self.options.include_vhost)
+                                   self.options.include_vhost,
+                                   self.options.include_all)
     logs_requester.DownloadLogs()
 
   def _ParseEndDate(self, date, time_func=time.time):
@@ -2276,6 +2282,9 @@ class AppCfgApp(object):
     parser.add_option('--include_vhost', dest='include_vhost',
                       action='store_true', default=False,
                       help='Include virtual host in log messages.')
+    parser.add_option('--include_all', dest='include_all',
+                      action='store_true', default=None,
+                      help='Include everything in log messages.')
     parser.add_option('--end_date', dest='end_date',
                       action='store', default='',
                       help='End date (as YYYY-MM-DD) of period for log data. '

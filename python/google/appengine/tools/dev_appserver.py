@@ -96,6 +96,7 @@ from google.appengine.api import yaml_errors
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.api.capabilities import capability_stub
+from google.appengine.api.channel import channel_service_stub
 from google.appengine.api.labs.taskqueue import taskqueue_stub
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.xmpp import xmpp_service_stub
@@ -104,6 +105,7 @@ from google.appengine.datastore import datastore_sqlite_stub
 from google.appengine import dist
 
 from google.appengine.tools import dev_appserver_blobstore
+from google.appengine.tools import dev_appserver_channel
 from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
 from google.appengine.tools import dev_appserver_oauth
@@ -3605,6 +3607,11 @@ def SetupStubs(app_id, **config):
       'xmpp',
       xmpp_service_stub.XmppServiceStub())
 
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'channel',
+      channel_service_stub.ChannelServiceStub())
+
+
 
 
   try:
@@ -3690,6 +3697,24 @@ def CreateImplicitMatcher(
                      False,
                      False,
                      appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED)
+
+  channel_dispatcher = dev_appserver_channel.CreateChannelDispatcher(
+      apiproxy_stub_map.apiproxy.GetStub('channel'))
+
+  url_matcher.AddURL('/_ah/channel/dev(?:/.*)?',
+                     channel_dispatcher,
+                     '',
+                     False,
+                     False,
+                     appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED)
+
+  url_matcher.AddURL('/_ah/channel/jsapi',
+                     channel_dispatcher,
+                     '',
+                     False,
+                     False,
+                     appinfo.AUTH_FAIL_ACTION_UNAUTHORIZED)
+
 
   return url_matcher
 

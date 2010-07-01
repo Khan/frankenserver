@@ -122,9 +122,10 @@ class DatastoreError(Error):
   """There was a datastore error while accessing the queue."""
 
 
-class BadTransactionState(Error):
+class BadTransactionStateError(Error):
   """The state of the current transaction does not permit this operation."""
 
+BadTransactionState = BadTransactionStateError
 
 MAX_QUEUE_NAME_LENGTH = 100
 
@@ -582,8 +583,8 @@ class Queue(object):
 
     Raises:
       BadTaskStateError: if the Task(s) has already been added to a queue.
-      BadTransactionState: if the transactional argument is true but this call
-        is being made outside of the context of a transaction.
+      BadTransactionStateError: if the transactional argument is true but this
+        call is being made outside of the context of a transaction.
       Error-subclass on application errors.
     """
     try:
@@ -657,8 +658,8 @@ class Queue(object):
 
     Raises:
       BadTaskStateError: If the task was already added to a Queue.
-      BadTransactionState: If the transactional argument is True and there is no
-        enclosing transaction.
+      BadTransactionStateError: If the transactional argument is True and there
+        is no enclosing transaction.
       InvalidTaskNameError: If the transactional argument is True and the task
         is named.
     """
@@ -691,7 +692,7 @@ class Queue(object):
     if transactional:
       from google.appengine.api import datastore
       if not datastore._MaybeSetupTransaction(task_request, []):
-        raise BadTransactionState(
+        raise BadTransactionStateError(
             'Transactional adds are not allowed outside of transactions')
 
     if task_request.has_transaction() and task.name:

@@ -161,15 +161,27 @@ class _Cursor(object):
     if query.has_offset():
       offset += query.offset()
 
-    if offset > 0:
+    if offset > 0 and results:
       self.__last_result = results[min(len(results), offset) - 1]
     else:
       self.__last_result = cursor_entity
 
+    last_index = None
+    if query.has_end_compiled_cursor():
+      (cursor_entity, inclusive) = self._DecodeCompiledCursor(
+          query, query.end_compiled_cursor())
+      last_index = _Cursor._GetCursorOffset(results,
+                                            cursor_entity,
+                                            inclusive,
+                                            order_compare_entities)
+
     if query.has_limit():
-      self.__results = results[offset:offset + query.limit()]
-    else:
-      self.__results = results[offset:]
+      if last_index is None:
+        last_index = query.limit() + offset
+      else:
+        last_index = min(last_index, query.limit() + offset)
+
+    self.__results = results[offset:last_index]
 
     self.__query = query
     self.__offset = 0

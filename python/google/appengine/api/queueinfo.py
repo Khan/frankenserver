@@ -46,13 +46,13 @@ An app's queues are also subject to storage quota limits for their stored tasks,
 i.e. those tasks that have been added to queues but not yet executed. This quota
 is part of their total storage quota (including datastore and blobstore quota).
 We allow an app to override the default portion of this quota available for
-taskqueue storage (100M) with a top level field "total_storage_quota".
+taskqueue storage (100M) with a top level field "total_storage_limit".
 
-taskqueue_storage_limit: 1.2G
+total_storage_limit: 1.2G
 
 If no suffix is specified, the number is interpreted as bytes. Supported
 suffices are B (bytes), K (kilobytes), M (megabytes), G (gigabytes) and
-T (terabytes). If taskqueue_storage_quota exceeds the total storage quota
+T (terabytes). If total_storage_limit exceeds the total disk storage
 available to an app, it is clamped.
 """
 
@@ -176,6 +176,9 @@ def ParseTotalStorageLimit(limit):
     MalformedQueueConfiguration: if the limit argument isn't a valid python
     double followed by an optional suffix.
   """
+  limit = limit.strip()
+  if not limit:
+    raise MalformedQueueConfiguration('Total Storage Limit must not be empty.')
   try:
     if limit[-1] in BYTE_SUFFIXES:
       number = float(limit[0:-1])

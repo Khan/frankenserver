@@ -220,7 +220,13 @@ class QueryCursor(object):
       self.__cursor = None
       return None, None
     path, data, position_parts = str(row[0]), row[1], row[2:]
-    self.__position = ''.join(str(x) for x in position_parts)
+    position = ''.join(str(x) for x in position_parts)
+    if (self.__query.has_end_compiled_cursor() and position >
+        self.__query.end_compiled_cursor().position(0).start_key()):
+      self.__cursor = None
+      return None, None
+
+    self.__position = position
     return path, data
 
   def _Next(self):
@@ -255,7 +261,14 @@ class QueryCursor(object):
     Args:
       cc: The compiled cursor to resume from.
     """
+
     target_position = cc.position(0).start_key()
+    if (self.__query.has_end_compiled_cursor() and target_position >=
+        self.__query.end_compiled_cursor().position(0).start_key()):
+      self.__position = target_position
+      self.__cursor = None
+      return
+
     while self.__position <= target_position and self.__cursor:
       self.__next_result = self._GetResult()
 
