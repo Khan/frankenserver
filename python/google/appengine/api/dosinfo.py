@@ -22,9 +22,9 @@ Library for parsing dos.yaml files and working with these in memory.
 
 
 
+import re
 import google
 import ipaddr
-import re
 
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
@@ -41,7 +41,7 @@ SUBNET = 'subnet'
 class SubnetValidator(validation.Validator):
   """Checks that a subnet can be parsed and is a valid IPv4 or IPv6 subnet."""
 
-  def Validate(self, value, key=None):
+  def Validate(self, value, unused_key=None):
     """Validates a subnet."""
     if value is None:
       raise validation.MissingAttribute('subnet must be specified')
@@ -68,7 +68,7 @@ class MalformedDosConfiguration(Exception):
 
 
 class BlacklistEntry(validation.Validated):
-  """A blacklist entry descibes a blocked IP address or subnet."""
+  """A blacklist entry describes a blocked IP address or subnet."""
   ATTRIBUTES = {
       DESCRIPTION: validation.Optional(_DESCRIPTION_REGEX),
       SUBNET: SubnetValidator(),
@@ -76,6 +76,7 @@ class BlacklistEntry(validation.Validated):
 
 
 class DosInfoExternal(validation.Validated):
+  """Describes the format of a dos.yaml file."""
   ATTRIBUTES = {
       BLACKLIST: validation.Optional(validation.Repeated(BlacklistEntry)),
   }
@@ -85,26 +86,27 @@ def LoadSingleDos(dos_info):
   """Load a dos.yaml file or string and return a DosInfoExternal object.
 
   Args:
-    dos_info: The contents of a dos.yaml file, as a string.
+    dos_info: The contents of a dos.yaml file as a string, or an open file
+      object.
 
   Returns:
     A DosInfoExternal instance which represents the contents of the parsed yaml
     file.
 
   Raises:
-    MalformedDosConfiguration if the yaml file contains multiple blacklist
+    MalformedDosConfiguration: The yaml file contains multiple blacklist
       sections.
-    yaml_errors.EventError if any errors occured while parsing the yaml file.
+    yaml_errors.EventError: An error occured while parsing the yaml file.
   """
   builder = yaml_object.ObjectBuilder(DosInfoExternal)
   handler = yaml_builder.BuilderHandler(builder)
   listener = yaml_listener.EventListener(handler)
   listener.Parse(dos_info)
 
-  dos_info = handler.GetResults()
-  if len(dos_info) < 1:
+  parsed_yaml = handler.GetResults()
+  if not parsed_yaml:
     return DosInfoExternal()
-  if len(dos_info) > 1:
+  if len(parsed_yaml) > 1:
     raise MalformedDosConfiguration('Multiple blacklist: sections '
                                     'in configuration.')
-  return dos_info[0]
+  return parsed_yaml[0]

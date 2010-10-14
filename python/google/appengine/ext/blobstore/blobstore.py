@@ -99,8 +99,8 @@ class _GqlQuery(db.GqlQuery):
     """
     from google.appengine.ext import gql
     app = kwds.pop('_app', None)
-    self._proto_query = gql.GQL(query_string, _app=app)
-    super(db.GqlQuery, self).__init__(model_class)
+    self._proto_query = gql.GQL(query_string, _app=app, namespace='')
+    super(db.GqlQuery, self).__init__(model_class, namespace='')
     self.bind(*args, **kwds)
 
 
@@ -195,7 +195,8 @@ class BlobInfo(object):
     """
     if self.__entity is None:
       self.__entity = datastore.Get(
-          datastore_types.Key.from_path(self.kind(), str(self.__key)))
+          datastore_types.Key.from_path(
+              self.kind(), str(self.__key), namespace=''))
     try:
       return self.__entity[name]
     except KeyError:
@@ -213,6 +214,16 @@ class BlobInfo(object):
   def delete(self):
     """Permanently delete blob from Blobstore."""
     delete(self.key())
+
+  def open(self, *args, **kwargs):
+    """Returns a BlobReader for this blob.
+
+    Args:
+      *args, **kwargs: Passed to BlobReader constructor.
+    Returns:
+      A BlobReader instance.
+    """
+    return BlobReader(self, *args, **kwargs)
 
   @classmethod
   def get(cls, blob_keys):
@@ -250,7 +261,7 @@ class BlobInfo(object):
     Returns:
       A db.Query object querying over BlobInfo's datastore kind.
     """
-    return db.Query(cls)
+    return db.Query(model_class=cls, namespace='')
 
   @classmethod
   def __factory_for_kind(cls, kind):
@@ -315,7 +326,7 @@ class BlobInfo(object):
             'Expected str or BlobKey; received %s (a %s)' % (
                 key,
                 datastore.typename(key)))
-      keys[index] = datastore.Key.from_path(cls.kind(), str(key))
+      keys[index] = datastore.Key.from_path(cls.kind(), str(key), namespace='')
 
     if multiple:
       return keys
@@ -476,21 +487,25 @@ class BlobReader(object):
   SEEK_CUR = 1
   SEEK_END = 2
 
-  def __init__(self, blob_key, buffer_size=131072, position=0):
+  def __init__(self, blob, buffer_size=131072, position=0):
     """Constructor.
 
     Args:
-      blob_key: The blob key or string blob key to read from.
+      blob: The blob key, blob info, or string blob key to read from.
       buffer_size: The minimum size to fetch chunks of data from blobstore.
       position: The initial position in the file.
     """
-    self.__blob_key = blob_key
+    if hasattr(blob, 'key'):
+      self.__blob_key = blob.key()
+      self.__blob_info = blob
+    else:
+      self.__blob_key = blob
+      self.__blob_info = None
     self.__buffer_size = buffer_size
     self.__buffer = ""
     self.__position = position
     self.__buffer_position = 0
     self.__eof = False
-    self.__blob_info = None
 
   def __iter__(self):
     """Returns a file iterator for this BlobReader."""

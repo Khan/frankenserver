@@ -29,6 +29,7 @@ base path. A default queue is also provided for simple usage.
 
 
 
+import calendar
 import datetime
 import os
 import re
@@ -39,6 +40,7 @@ import urlparse
 import taskqueue_service_pb
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import namespace_manager
 from google.appengine.api import urlfetch
 from google.appengine.runtime import apiproxy_errors
 
@@ -192,8 +194,7 @@ _ERROR_MAPPING = {
 }
 
 _PRESERVE_ENVIRONMENT_HEADERS = (
-    ('X-AppEngine-Default-Namespace', 'HTTP_X_APPENGINE_DEFAULT_NAMESPACE'),
-    ('X-AppEngine-Current-Namespace', 'HTTP_X_APPENGINE_CURRENT_NAMESPACE'))
+    ('X-AppEngine-Default-Namespace', 'HTTP_X_APPENGINE_DEFAULT_NAMESPACE'),)
 
 
 class _UTCTimeZone(datetime.tzinfo):
@@ -282,6 +283,8 @@ class Task(object):
   __CONSTRUCTOR_KWARGS = frozenset([
       'countdown', 'eta', 'headers', 'method', 'name', 'params', 'url'])
 
+  __eta_posix = None
+
   def __init__(self, payload=None, **kwargs):
     """Initializer.
 
@@ -294,7 +297,8 @@ class Task(object):
       countdown: Time in seconds into the future that this Task should execute.
         Defaults to zero.
       eta: Absolute time when the Task should execute. May not be specified
-        if 'countdown' is also supplied.
+        if 'countdown' is also supplied. This may be timezone-aware or
+        timezone-naive.
       headers: Dictionary of headers to pass to the webhook. Values in the
         dictionary may be iterable to indicate repeated header fields.
       method: Method to use when accessing the webhook. Defaults to 'POST'.
@@ -339,6 +343,8 @@ class Task(object):
       if value is not None:
         self.__headers.setdefault(header_name, value)
 
+    self.__headers.setdefault('X-AppEngine-Current-Namespace',
+                              namespace_manager.get_namespace())
     if query and params:
       raise InvalidTaskError('Query string and parameters both present; '
                              'only one of these may be supplied')
@@ -370,8 +376,9 @@ class Task(object):
       raise InvalidTaskError('Invalid method: %s' % self.__method)
 
     self.__headers_list = _flatten_params(self.__headers)
-    self.__eta = Task.__determine_eta(
+    self.__eta_posix = Task.__determine_eta_posix(
         kwargs.get('eta'), kwargs.get('countdown'))
+    self.__eta = None
     self.__enqueued = False
 
     if self.size > MAX_TASK_SIZE_BYTES:
@@ -412,19 +419,20 @@ class Task(object):
     return (default_url, relative_url, query)
 
   @staticmethod
-  def __determine_eta(eta=None, countdown=None, now=datetime.datetime.now):
+  def __determine_eta_posix(eta=None, countdown=None, current_time=time.time):
     """Determines the ETA for a task.
 
     If 'eta' and 'countdown' are both None, the current time will be used.
     Otherwise, only one of them may be specified.
 
     Args:
-      eta: A datetime.datetime specifying the absolute ETA or None
+      eta: A datetime.datetime specifying the absolute ETA or None;
+        this may be timezone-aware or timezone-naive.
       countdown: Count in seconds into the future from the present time that
         the ETA should be assigned to.
 
     Returns:
-      A datetime in the UTC timezone containing the ETA.
+      A float giving a POSIX timestamp containing the ETA.
 
     Raises:
       InvalidTaskError if the parameters are invalid.
@@ -434,19 +442,21 @@ class Task(object):
     elif eta is not None:
       if not isinstance(eta, datetime.datetime):
         raise InvalidTaskError('ETA must be a datetime.datetime instance')
+      elif eta.tzinfo is None:
+        return time.mktime(eta.timetuple()) + eta.microsecond*1e-6
+      else:
+        return calendar.timegm(eta.utctimetuple()) + eta.microsecond*1e-6
     elif countdown is not None:
       try:
         countdown = float(countdown)
       except ValueError:
         raise InvalidTaskError('Countdown must be a number')
+      except OverflowError:
+        raise InvalidTaskError('Countdown out of range')
       else:
-        eta = now() + datetime.timedelta(seconds=countdown)
+        return current_time() + countdown
     else:
-      eta = now()
-
-    if eta.tzinfo is None:
-      eta = eta.replace(tzinfo=_UTC)
-    return eta.astimezone(_UTC)
+      return current_time()
 
   @staticmethod
   def __encode_params(params):
@@ -489,8 +499,17 @@ class Task(object):
     return self.__default_url
 
   @property
+  def eta_posix(self):
+    """Returns a POSIX timestamp giving when this Task will execute."""
+    if self.__eta_posix is None and self.__eta is not None:
+      self.__eta_posix = Task.__determine_eta_posix(self.__eta)
+    return self.__eta_posix
+
+  @property
   def eta(self):
-    """Returns an datetime corresponding to when this Task will execute."""
+    """Returns a datetime when this Task will execute."""
+    if self.__eta is None and self.__eta_posix is not None:
+      self.__eta = datetime.datetime.fromtimestamp(self.__eta_posix, _UTC)
     return self.__eta
 
   @property
@@ -562,6 +581,8 @@ class Queue(object):
           (_QUEUE_NAME_PATTERN, name))
     self.__name = name
     self.__url = '%s/%s' % (_DEFAULT_QUEUE_PATH, self.__name)
+
+    self._app = None
 
   def add(self, task, transactional=False):
     """Adds a Task or list of Tasks to this Queue.
@@ -672,8 +693,7 @@ class Queue(object):
 
 
     task_request.set_queue_name(self.__name)
-    task_request.set_eta_usec(
-        int(time.mktime(task.eta.utctimetuple())) * 10**6)
+    task_request.set_eta_usec(long(task.eta_posix * 1e6))
     task_request.set_method(_METHOD_MAP.get(task.method))
     task_request.set_url(adjusted_url)
 
@@ -688,6 +708,9 @@ class Queue(object):
       header = task_request.add_header()
       header.set_key(key)
       header.set_value(value)
+
+    if self._app:
+      task_request.set_app_id(self._app)
 
     if transactional:
       from google.appengine.api import datastore
@@ -739,13 +762,49 @@ class Queue(object):
 
 
 def add(*args, **kwargs):
-  """Convenience method will create a Task and add it to the default queue.
+  """Convenience method will create a Task and add it to a queue.
+
+  All parameters are optional.
 
   Args:
-    *args, **kwargs: Passed to the Task constructor.
+    name: Name to give the Task; if not specified, a name will be
+      auto-generated when added to a queue and assigned to this object. Must
+      match the _TASK_NAME_PATTERN regular expression.
+    queue_name: Name of this queue. If not supplied, defaults to
+      the default queue.
+    url: Relative URL where the webhook that should handle this task is
+      located for this application. May have a query string unless this is
+      a POST method.
+    method: Method to use when accessing the webhook. Defaults to 'POST'.
+    headers: Dictionary of headers to pass to the webhook. Values in the
+      dictionary may be iterable to indicate repeated header fields.
+    payload: The payload data for this Task that will be delivered to the
+      webhook as the HTTP request body. This is only allowed for POST and PUT
+      methods.
+    params: Dictionary of parameters to use for this Task. For POST requests
+      these params will be encoded as 'application/x-www-form-urlencoded' and
+      set to the payload. For all other methods, the parameters will be
+      converted to a query string. May not be specified if the URL already
+      contains a query string.
+    transactional: If False adds the Task(s) to a queue irrespectively to the
+      enclosing transaction success or failure. An exception is raised if True
+      and called outside of a transaction. (optional)
+    countdown: Time in seconds into the future that this Task should execute.
+      Defaults to zero.
+    eta: Absolute time when the Task should execute. May not be specified
+      if 'countdown' is also supplied. This may be timezone-aware or
+      timezone-naive.
 
   Returns:
     The Task that was added to the queue.
+
+  Raises:
+      InvalidTaskError if any of the parameters are invalid;
+      InvalidTaskNameError if the task name is invalid; InvalidUrlError if
+      the task URL is invalid or too long; TaskTooLargeError if the task with
+      its payload is too large.
   """
   transactional = kwargs.pop('transactional', False)
-  return Task(*args, **kwargs).add(transactional=transactional)
+  queue_name = kwargs.pop('queue_name', _DEFAULT_QUEUE)
+  return Task(*args, **kwargs).add(
+      queue_name=queue_name, transactional=transactional)

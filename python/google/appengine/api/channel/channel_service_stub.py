@@ -35,7 +35,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
   Instead it queues messages internally.
   """
 
-  def __init__(self, log=logging.info, service_name='channel'):
+  def __init__(self, log=logging.debug, service_name='channel'):
     """Initializer.
 
     Args:

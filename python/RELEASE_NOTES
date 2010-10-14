@@ -3,6 +3,74 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.3.8
+==================================
+- Builtin app.yaml handlers are available for common application functions,
+  such as appstats.
+    http://code.google.com/appengine/docs/python/config/appconfig.html#Builtin_Handlers
+- The Admin Console now provides an experimental tool to delete all entities in
+  the datastore or all entities of a given type. This is available only if
+  enabled using the datastore_admin builtin. Deleting entities will count
+  against application quota.
+    http://code.google.com/appengine/docs/python/datastore/creatinggettinganddeletingdata.html#Deleting_Entities_in_Bulk
+- You can run task queue tasks immediately from the Admin Console.
+- You can now specify the quality of JPEG images via the Image API's
+  execute_transforms function. Available in production only.
+- Support for login of multiple Google accounts within an app, and longer login
+  sessions. For more information see:
+    http://www.google.com/support/accounts/bin/answer.py?answer=181599
+- In queue.yaml, the maximum allowed bucket size is now 100.
+- Precompilation is now enabled by default. To disable, use the
+  --no_precompilation flag when updating your app.
+- BlobInfo now has an open() method that returns a BlobReader.
+- BlobReader now accepts a BlobInfo.
+- Removed limits on zigzag merge-join queries. Therefore the error "The built-in
+  indices are not efficient enough for this query and your data. Please add a
+  composite index for this query." will no longer be thrown in most cases,
+  enabling more types of queries without indexes.
+- Fixed an issue with task queue tasks not running on the dev_appserver when
+  using Python 2.6.
+- Fixed an issue on the dev_appserver where auto task running wasn't working for
+  BulkAdd.
+- Fixed an issue reserving App Ids by owners of similarly-named mails accounts
+  containing periods, multiple cases, and googlemail.com address.
+    http://code.google.com/p/googleappengine/issues/detail?id=1196
+- Fixed an issue on the development server where PNGs were being returned as
+  JPEGs.
+    http://code.google.com/p/googleappengine/issues/detail?id=3661
+
+Version 1.3.7
+===============================
+- Fix an issue where namespace_manager.google_apps_namespace() was not included
+  in the 1.3.6 release.
+
+Version 1.3.6
+=================================
+- Multitenancy is now supported in the datastore, allowing better
+  compartmentalization of user data.
+- Automatic image thumbnailing is now available in the Images API using
+  get_serving_url().
+- Users can now serve custom static error pages for over_quota, dos_api_denial
+  and default cases.
+- Results of datastore count() queries and offsets for all datastore queries
+  are no longer capped at 1000.
+- Added a pause queue button to the task queue details page in the Admin
+  Console.
+- Historical graphs have been added to all of the dashboard graphs in the Admin
+  Console.
+- Content-range headers are supported on Blobstore downloads.
+- Remote API now supports the Blobstore API.
+- New method to allocate datastore ids in a given range: db.allocate_id_range().
+- New db method is_in_transaction() determines if a transaction is still open.
+- Increased several rate limited quotas for free applications.
+- Fixed an issue in db.py where unindexed property lists for user-specified
+  property names were ignored.
+- Fixed an issue where the task queue uses local time instead of UTC time to
+  compute job ETA.
+    http://code.google.com/p/googleappengine/issues/detail?id=2508
+- Fixed an issue in the SDK with datastore cursors being too large.
+    http://code.google.com/p/googleappengine/issues/detail?id=3152
+
 Version 1.3.5
 =================================
 - Developers can enable Python pre-compilation to decrease start up time for

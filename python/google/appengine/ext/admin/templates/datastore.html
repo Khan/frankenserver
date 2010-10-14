@@ -80,8 +80,8 @@
   </div>
   {% endif %}
 
-  {% if kinds or in_production %}
   <form action="{{ request.path }}" method="get">
+  {% if kinds or in_production %}
     <div id="datastore_search">
       <table>
         <tr>
@@ -122,18 +122,39 @@
             </span>
           </td>
         </tr>
+        {% if not show_namespace %}
+        <tr>
+          <td colspan="3">
+            <a id="select_namespace"
+              href="/_ah/admin/datastore?namespace=&kind={{ kind|escape }}">Select different namespace</a>
+          </td>
+        </tr>
+        {% endif %}
       </table>
     </div>
-  </form>
-  {% else %}
-  <div id="datastore_empty">
-    {% if namespace %}
-      Datastore has no entities in namespace &quot;{{ namespace|escape }}&quot;.
     {% else %}
-      Datastore is empty. You need to add data programatically before you can use this tool to view and edit it.
-    {% endif %}
-  </div>
+    <div id="datastore_empty">
+      {% if namespace %}
+        Datastore has no entities in namespace
+        &quot;{{ namespace|escape }}&quot;.
+      {% else %}
+        Datastore has no entities in the Empty namespace. You need to
+        add data programatically before you can use this tool to view
+        and edit it.
+      {% endif %}
+      <br>
+      {% if show_namespace %}
+      <span class="value">
+        <input id="namespace_input" name="namespace" type="text" size="20" value="{{ namespace|escape }}"/>
+        <input type="submit" value="Change Namespace"/>
+      </span>
+      {% else %}
+      <a id="select_namespace"
+        href="/_ah/admin/datastore?namespace=">Select different namespace</a>
+      {% endif %}
+    </div>
   {% endif %}
+  </form>
 
   {% if entities %}
     <form action="{{ datastore_batch_edit_path }}" method="post">
@@ -188,8 +209,12 @@
   {% else %}
     {% if kind and kinds %}
     <p id="no_kind" style="font-size: medium">
-      Datastore contains no entities of kind &quot;{{ kind|escape }}&quot; in
-      your datastore.
+      Datastore contains no entities of kind &quot;{{ kind|escape }}&quot; in the
+      {% if namespace %}
+        namespace &quot;{{ namespace|escape }}&quot;.
+      {% else %}
+        Empty namespace.
+      {% endif %}
     </p>
     {% endif %}
   {% endif %}

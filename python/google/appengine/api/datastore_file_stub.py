@@ -37,18 +37,12 @@ per-transaction, so they should only be used by one tx at a time.
 
 import datetime
 import logging
-import md5
 import os
 import struct
 import sys
 import tempfile
 import threading
-import urllib
 import warnings
-try:
-  from urlparse import parse_qsl
-except ImportError:
-  from cgi import parse_qsl
 
 import cPickle as pickle
 
@@ -61,6 +55,7 @@ from google.appengine.api import datastore_types
 from google.appengine.api import users
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_index
+from google.appengine.datastore import datastore_stub_util
 from google.appengine.runtime import apiproxy_errors
 from google.net.proto import ProtocolBuffer
 from google.appengine.datastore import entity_pb
@@ -71,9 +66,6 @@ try:
       'google.appengine.api.labs.taskqueue.taskqueue_service_pb')
 except ImportError:
   from google.appengine.api.taskqueue import taskqueue_service_pb
-
-warnings.filterwarnings('ignore', 'tempnam is a potential security risk')
-
 
 entity_pb.Reference.__hash__ = lambda self: hash(self.Encode())
 datastore_pb.Query.__hash__ = lambda self: hash(self.Encode())
@@ -132,8 +124,6 @@ class _Cursor(object):
   Class attributes:
     _next_cursor: the next cursor to allocate
     _next_cursor_lock: protects _next_cursor
-    _offset: the internal index for where we are in the results
-    _limit: the limit on the original query, used to track remaining results
   """
   _next_cursor = 1
   _next_cursor_lock = threading.Lock()
@@ -150,39 +140,37 @@ class _Cursor(object):
         follows sort order as specified by the query
     """
 
-    offset = 0
-    cursor_entity = None
     if query.has_compiled_cursor() and query.compiled_cursor().position_list():
-      (cursor_entity, inclusive) = self._DecodeCompiledCursor(
+      (self.__last_result, inclusive) = self._DecodeCompiledCursor(
           query, query.compiled_cursor())
-      offset += _Cursor._GetCursorOffset(results, cursor_entity, inclusive,
-                                         order_compare_entities)
-
-    if query.has_offset():
-      offset += query.offset()
-
-    if offset > 0 and results:
-      self.__last_result = results[min(len(results), offset) - 1]
+      start_cursor_position = _Cursor._GetCursorOffset(results,
+                                                       self.__last_result,
+                                                       inclusive,
+                                                       order_compare_entities)
     else:
-      self.__last_result = cursor_entity
+      self.__last_result = None
+      start_cursor_position = 0
 
-    last_index = None
     if query.has_end_compiled_cursor():
-      (cursor_entity, inclusive) = self._DecodeCompiledCursor(
+      (end_cursor_entity, inclusive) = self._DecodeCompiledCursor(
           query, query.end_compiled_cursor())
-      last_index = _Cursor._GetCursorOffset(results,
-                                            cursor_entity,
-                                            inclusive,
-                                            order_compare_entities)
+      end_cursor_position = _Cursor._GetCursorOffset(results,
+                                                     end_cursor_entity,
+                                                     inclusive,
+                                                     order_compare_entities)
+    else:
+      end_cursor_position = len(results)
+
+    results = results[start_cursor_position:end_cursor_position]
 
     if query.has_limit():
-      if last_index is None:
-        last_index = query.limit() + offset
-      else:
-        last_index = min(last_index, query.limit() + offset)
+      limit = query.limit()
+      if query.offset():
+        limit += query.offset()
+      if limit > 0 and limit < len(results):
+        results = results[:limit]
 
-    self.__results = results[offset:last_index]
-
+    self.__results = results
     self.__query = query
     self.__offset = 0
 
@@ -289,6 +277,27 @@ class _Cursor(object):
 
     return query_info
 
+  def _MinimalEntityInfo(self, entity_proto, query):
+    """Extract the minimal set of information that preserves entity order.
+
+    Args:
+      entity_proto: datastore_pb.EntityProto instance from which to extract
+      information
+      query: datastore_pb.Query instance for which ordering must be preserved.
+
+    Returns:
+      datastore_pb.EntityProto instance suitable for matching against a list of
+      results when finding cursor positions.
+    """
+    entity_info = datastore_pb.EntityProto();
+    order_names = [o.property() for o in query.order_list()]
+    entity_info.mutable_key().MergeFrom(entity_proto.key())
+    entity_info.mutable_entity_group().MergeFrom(entity_proto.entity_group())
+    for prop in entity_proto.property_list():
+      if prop.name() in order_names:
+        entity_info.add_property().MergeFrom(prop)
+    return entity_info;
+
   def _DecodeCompiledCursor(self, query, compiled_cursor):
     """Converts a compiled_cursor into a cursor_entity.
 
@@ -317,43 +326,211 @@ class _Cursor(object):
       query: the datastore_pb.Query this cursor is related to
       compiled_cursor: an empty datstore_pb.CompiledCursor
     """
-    if self.__last_result:
+    if self.__last_result is not None:
       position = compiled_cursor.add_position()
       query_info = self._MinimalQueryInfo(query)
+      entity_info = self._MinimalEntityInfo(self.__last_result.ToPb(), query)
       start_key = _CURSOR_CONCAT_STR.join((
           query_info.Encode(),
-          self.__last_result.ToPb().Encode()))
+          entity_info.Encode()))
       position.set_start_key(str(start_key))
       position.set_start_inclusive(False)
 
-  def PopulateQueryResult(self, result, count, compile=False):
+  def PopulateQueryResult(self, result, count, offset, compile=False):
     """Populates a QueryResult with this cursor and the given number of results.
 
     Args:
       result: datastore_pb.QueryResult
       count: integer of how many results to return
+      offset: integer of how many results to skip
       compile: boolean, whether we are compiling this query
     """
-    if count > _MAXIMUM_RESULTS:
-      count = _MAXIMUM_RESULTS
+    offset = min(offset, self.count - self.__offset)
+    limited_offset = min(offset, _MAX_QUERY_OFFSET)
+    if limited_offset:
+      self.__offset += limited_offset
+      result.set_skipped_results(limited_offset)
+
+    if offset == limited_offset and count:
+      if count > _MAXIMUM_RESULTS:
+        count = _MAXIMUM_RESULTS
+      results = self.__results[self.__offset:self.__offset + count]
+      count = len(results)
+      self.__offset += count
+      result.result_list().extend(r._ToPb() for r in results)
+
+    if self.__offset:
+      self.__last_result = self.__results[self.__offset - 1]
 
     result.mutable_cursor().set_app(self.app)
     result.mutable_cursor().set_cursor(self.cursor)
     result.set_keys_only(self.keys_only)
-
-    results = self.__results[self.__offset:self.__offset + count]
-    count = len(results)
-    if count:
-      self.__offset += count
-      self.__last_result = results[count - 1]
-
-    results_pbs = [r._ToPb() for r in results]
-    result.result_list().extend(results_pbs)
-
     result.set_more_results(self.__offset < self.count)
     if compile:
       self._EncodeCompiledCursor(
           self.__query, result.mutable_compiled_cursor())
+
+
+class KindPseudoKind(object):
+  """Pseudo-kind for schema queries.
+
+  Provides a Query method to perform the actual query.
+
+  Public properties:
+    name: the pseudo-kind name
+  """
+  name = '__kind__'
+
+  def __init__(self, filestub):
+    """Constructor.
+
+    Initializes a __kind__ pseudo-kind definition.
+
+    Args:
+      filestub: the DatastoreFileStub instance being served by this
+          pseudo-kind.
+    """
+    self.filestub = filestub
+
+  def Query(self, entities, query, filters, orders):
+    """Perform a query on this pseudo-kind.
+
+    Args:
+      entities: all the app's entities
+      query: the original datastore_pb.Query
+      filters: the filters from query
+      orders: the orders from query
+
+    Returns:
+      (results, remaining_filters, remaining_orders)
+      results is a list of datastore.Entity
+      remaining_filters and remaining_orders are the filters and orders that
+      should be applied in memory
+    """
+    start_kind, start_inclusive, end_kind, end_inclusive = (
+        datastore_stub_util.ParseKindQuery(query, filters, orders))
+    keys_only = query.keys_only()
+    app_str = query.app()
+    namespace_str = query.name_space()
+    keys_only = query.keys_only()
+    app_namespace_str = datastore_types.EncodeAppIdNamespace(app_str,
+                                                             namespace_str)
+    kinds = []
+    if keys_only:
+      usekey = '__kind__keys'
+    else:
+      usekey = '__kind__'
+
+    for app_namespace, kind in entities:
+      if app_namespace != app_namespace_str: continue
+      if start_kind is not None:
+        if start_inclusive and kind < start_kind: continue
+        if not start_inclusive and kind <= start_kind: continue
+      if end_kind is not None:
+        if end_inclusive and kind > end_kind: continue
+        if not end_inclusive and kind >= end_kind: continue
+
+      app_kind = (app_namespace_str, kind)
+
+      kind_e = self.filestub._GetSchemaCache(app_kind, usekey)
+      if not kind_e:
+        kind_e = datastore.Entity(self.name, name=kind)
+
+        if not keys_only:
+          props = {}
+
+          for entity in entities[app_kind].values():
+            for prop in entity.protobuf.property_list():
+              prop_name = prop.name()
+              if prop_name not in props:
+                props[prop_name] = set()
+              cls = entity.native[prop_name].__class__
+              tag = self.filestub._PROPERTY_TYPE_TAGS.get(cls)
+              props[prop_name].add(tag)
+
+          properties = []
+          types = []
+          for name in sorted(props):
+            for tag in sorted(props[name]):
+              properties.append(name)
+              types.append(tag)
+          if properties:
+            kind_e['property'] = properties
+          if types:
+            kind_e['representation'] = types
+
+          self.filestub._SetSchemaCache(app_kind, usekey, kind_e)
+
+      kinds.append(kind_e)
+
+    return (kinds, [], [])
+
+
+class NamespacePseudoKind(object):
+  """Pseudo-kind for namespace queries.
+
+  Provides a Query method to perform the actual query.
+
+  Public properties:
+    name: the pseudo-kind name
+  """
+  name = '__namespace__'
+
+  def __init__(self, filestub):
+    """Constructor.
+
+    Initializes a __namespace__ pseudo-kind definition.
+
+    Args:
+      filestub: the DatastoreFileStub instance being served by this
+          pseudo-kind.
+    """
+    self.filestub = filestub
+
+  def Query(self, entities, query, filters, orders):
+    """Perform a query on this pseudo-kind.
+
+    Args:
+      entities: all the app's entities
+      query: the original datastore_pb.Query
+      filters: the filters from query
+      orders: the orders from query
+
+    Returns:
+      (results, remaining_filters, remaining_orders)
+      results is a list of datastore.Entity
+      remaining_filters and remaining_orders are the filters and orders that
+      should be applied in memory
+    """
+    start_namespace, start_inclusive, end_namespace, end_inclusive = (
+        datastore_stub_util.ParseNamespaceQuery(query, filters, orders))
+    app_str = query.app()
+
+    namespaces = set()
+
+    for app_namespace, kind in entities:
+      (app_id, namespace) = datastore_types.DecodeAppIdNamespace(app_namespace)
+      if app_id != app_str: continue
+
+      if start_namespace is not None:
+        if start_inclusive and namespace < start_namespace: continue
+        if not start_inclusive and namespace <= start_namespace: continue
+      if end_namespace is not None:
+        if end_inclusive and namespace > end_namespace: continue
+        if not end_inclusive and namespace >= end_namespace: continue
+
+      namespaces.add(namespace)
+
+    namespace_entities = []
+    for namespace in namespaces:
+      if namespace:
+        namespace_e = datastore.Entity(self.name, name=namespace)
+      else:
+        namespace_e = datastore.Entity(self.name,
+                                       id=datastore_types._EMPTY_NAMESPACE_ID)
+      namespace_entities.append(namespace_e)
+
+    return (namespace_entities, [], [])
 
 
 class DatastoreFileStub(apiproxy_stub.APIProxyStub):
@@ -457,7 +634,14 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__file_lock = threading.Lock()
     self.__indexes_lock = threading.Lock()
 
+    self.__pseudo_kinds = {}
+    self._RegisterPseudoKind(KindPseudoKind(self))
+    self._RegisterPseudoKind(NamespacePseudoKind(self))
+
     self.Read()
+
+  def _RegisterPseudoKind(self, kind):
+    self.__pseudo_kinds[kind.name] = kind
 
   def Clear(self):
     """ Clears the datastore by deleting all currently stored entities and
@@ -648,8 +832,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     if not filename or filename == '/dev/null' or not obj:
       return
 
-    tmpfile = openfile(os.tempnam(os.path.dirname(filename)), 'wb')
-
+    descriptor, tmp_filename = tempfile.mkstemp(dir=os.path.dirname(filename))
+    tmpfile = openfile(tmp_filename, 'wb')
     pickler = pickle.Pickler(tmpfile, protocol=1)
     pickler.fast = True
     pickler.dump(obj)
@@ -659,13 +843,13 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     self.__file_lock.acquire()
     try:
       try:
-        os.rename(tmpfile.name, filename)
+        os.rename(tmp_filename, filename)
       except OSError:
         try:
           os.remove(filename)
         except:
           pass
-        os.rename(tmpfile.name, filename)
+        os.rename(tmp_filename, filename)
     finally:
       self.__file_lock.release()
 
@@ -691,6 +875,17 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     return dict((pb, times) for pb, times in self.__query_history.items()
                 if pb.app() == self.__app_id)
 
+  def _GetSchemaCache(self, kind, usekey):
+    if kind in self.__schema_cache and usekey in self.__schema_cache[kind]:
+      return self.__schema_cache[kind][usekey]
+    else:
+      return None
+
+  def _SetSchemaCache(self, kind, usekey, value):
+    if kind not in self.__schema_cache:
+      self.__schema_cache[kind] = {}
+    self.__schema_cache[kind][usekey] = value
+
   def _Dynamic_Put(self, put_request, put_response):
     if put_request.has_transaction():
       self.__ValidateTransaction(put_request.transaction())
@@ -703,11 +898,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       clone.CopyFrom(entity)
 
       for property in clone.property_list() + clone.raw_property_list():
-        if property.value().has_uservalue():
-          uid = md5.new(property.value().uservalue().email().lower()).digest()
-          uid = '1' + ''.join(['%02d' % ord(x) for x in uid])[:20]
-          property.mutable_value().mutable_uservalue().set_obfuscated_gaiaid(
-              uid)
+        datastore_stub_util.FillUser(property)
 
       clones.append(clone)
 
@@ -743,6 +934,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
     put_response.key_list().extend([c.key() for c in clones])
 
+  def _Dynamic_Touch(self, get_request, get_response):
+    pass
 
   def _Dynamic_Get(self, get_request, get_response):
     if get_request.has_transaction():
@@ -792,10 +985,6 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_RunQuery(self, query, query_result):
     if query.has_transaction():
       self.__ValidateTransaction(query.transaction())
-      if not query.has_ancestor():
-        raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST,
-          'Only ancestor queries are allowed inside transactions.')
       entities = self.__tx_snapshot
     else:
       entities = self.__entities
@@ -804,23 +993,17 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     namespace = query.name_space()
     self.__ValidateAppId(app_id)
 
-    if query.has_offset() and query.offset() > _MAX_QUERY_OFFSET:
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST, 'Too big query offset.')
-
-    num_components = len(query.filter_list()) + len(query.order_list())
-    if query.has_ancestor():
-      num_components += 1
-    if num_components > _MAX_QUERY_COMPONENTS:
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST,
-          ('query is too large. may not have more than %s filters'
-           ' + sort orders ancestor total' % _MAX_QUERY_COMPONENTS))
-
     (filters, orders) = datastore_index.Normalize(query.filter_list(),
                                                   query.order_list())
+    datastore_stub_util.ValidateQuery(query, filters, orders,
+        _MAX_QUERY_COMPONENTS)
+    datastore_stub_util.FillUsersInQuery(filters)
 
-    if self.__require_indexes:
+    pseudo_kind = None
+    if query.has_kind() and query.kind() in self.__pseudo_kinds:
+      pseudo_kind = self.__pseudo_kinds[query.kind()]
+
+    if not pseudo_kind and self.__require_indexes:
       required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
       if required:
         required_key = kind, ancestor, props
@@ -854,7 +1037,10 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       query.set_app(app_id)
       datastore_types.SetNamespace(query, namespace)
       encoded = datastore_types.EncodeAppIdNamespace(app_id, namespace)
-      if query.has_kind():
+      if pseudo_kind:
+        (results, filters, orders) = pseudo_kind.Query(entities, query,
+                                                       filters, orders)
+      elif query.has_kind():
         results = entities[encoded, query.kind()].values()
         results = [entity.native for entity in results]
       else:
@@ -1008,6 +1194,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     clone = datastore_pb.Query()
     clone.CopyFrom(query)
     clone.clear_hint()
+    clone.clear_limit()
+    clone.clear_offset()
     if clone in self.__query_history:
       self.__query_history[clone] += 1
     else:
@@ -1023,7 +1211,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     else:
       count = _BATCH_SIZE
 
-    cursor.PopulateQueryResult(query_result, count, compile=query.compile())
+    cursor.PopulateQueryResult(query_result, count,
+                               query.offset(), compile=query.compile())
 
     if query.compile():
       compiled_query = query_result.mutable_compiled_query()
@@ -1046,7 +1235,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
     count = _BATCH_SIZE
     if next_request.has_count():
       count = next_request.count()
-    cursor.PopulateQueryResult(query_result, count)
+    cursor.PopulateQueryResult(query_result,
+                               count, next_request.offset(),
+                               next_request.compile())
 
   def _Dynamic_Count(self, query, integer64proto):
     query_result = datastore_pb.QueryResult()
@@ -1143,8 +1334,9 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         continue
 
       app_kind = (app_namespace_str, kind)
-      if app_kind in self.__schema_cache:
-        kinds.append(self.__schema_cache[app_kind])
+      kind_pb = self._GetSchemaCache(app_kind, "GetSchema")
+      if kind_pb:
+        kinds.append(kind_pb)
         continue
 
       kind_pb = entity_pb.EntityProto()
@@ -1192,7 +1384,7 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
         prop_pb.mutable_value().CopyFrom(value_pb)
 
       kinds.append(kind_pb)
-      self.__schema_cache[app_kind] = kind_pb
+      self._SetSchemaCache(app_kind, "GetSchema", kind_pb)
 
     for kind_pb in kinds:
       kind = schema.add_kind()
@@ -1204,17 +1396,22 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_AllocateIds(self, allocate_ids_request, allocate_ids_response):
     model_key = allocate_ids_request.model_key()
-    size = allocate_ids_request.size()
 
     self.__ValidateAppId(model_key.app())
 
+    if allocate_ids_request.has_size() and allocate_ids_request.has_max():
+      raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                             'Both size and max cannot be set.')
     try:
       self.__id_lock.acquire()
       start = self.__next_id
-      self.__next_id += size
+      if allocate_ids_request.has_size():
+        self.__next_id += allocate_ids_request.size()
+      elif allocate_ids_request.has_max():
+        self.__next_id = max(self.__next_id, allocate_ids_request.max() + 1)
       end = self.__next_id - 1
     finally:
-     self.__id_lock.release()
+      self.__id_lock.release()
 
     allocate_ids_response.set_start(start)
     allocate_ids_response.set_end(end)
@@ -1259,7 +1456,8 @@ class DatastoreFileStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                              "Index doesn't exist.")
     elif (index.state() != stored_index.state() and
-          index.state() not in self._INDEX_STATE_TRANSITIONS[stored_index.state()]):
+          index.state() not in self._INDEX_STATE_TRANSITIONS[
+              stored_index.state()]):
       raise apiproxy_errors.ApplicationError(
         datastore_pb.Error.BAD_REQUEST,
         "cannot move index state from %s to %s" %

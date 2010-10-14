@@ -1173,6 +1173,8 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
   end_key_ = ""
   has_end_inclusive_ = 0
   end_inclusive_ = 0
+  has_end_unapplied_log_timestamp_us_ = 0
+  end_unapplied_log_timestamp_us_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1242,6 +1244,19 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
 
   def has_end_inclusive(self): return self.has_end_inclusive_
 
+  def end_unapplied_log_timestamp_us(self): return self.end_unapplied_log_timestamp_us_
+
+  def set_end_unapplied_log_timestamp_us(self, x):
+    self.has_end_unapplied_log_timestamp_us_ = 1
+    self.end_unapplied_log_timestamp_us_ = x
+
+  def clear_end_unapplied_log_timestamp_us(self):
+    if self.has_end_unapplied_log_timestamp_us_:
+      self.has_end_unapplied_log_timestamp_us_ = 0
+      self.end_unapplied_log_timestamp_us_ = 0
+
+  def has_end_unapplied_log_timestamp_us(self): return self.has_end_unapplied_log_timestamp_us_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1250,6 +1265,7 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     if (x.has_start_inclusive()): self.set_start_inclusive(x.start_inclusive())
     if (x.has_end_key()): self.set_end_key(x.end_key())
     if (x.has_end_inclusive()): self.set_end_inclusive(x.end_inclusive())
+    if (x.has_end_unapplied_log_timestamp_us()): self.set_end_unapplied_log_timestamp_us(x.end_unapplied_log_timestamp_us())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1263,6 +1279,8 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     if self.has_end_key_ and self.end_key_ != x.end_key_: return 0
     if self.has_end_inclusive_ != x.has_end_inclusive_: return 0
     if self.has_end_inclusive_ and self.end_inclusive_ != x.end_inclusive_: return 0
+    if self.has_end_unapplied_log_timestamp_us_ != x.has_end_unapplied_log_timestamp_us_: return 0
+    if self.has_end_unapplied_log_timestamp_us_ and self.end_unapplied_log_timestamp_us_ != x.end_unapplied_log_timestamp_us_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1276,6 +1294,7 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_inclusive_): n += 2
     if (self.has_end_key_): n += 1 + self.lengthString(len(self.end_key_))
     if (self.has_end_inclusive_): n += 2
+    if (self.has_end_unapplied_log_timestamp_us_): n += 2 + self.lengthVarInt64(self.end_unapplied_log_timestamp_us_)
     return n + 0
 
   def Clear(self):
@@ -1284,6 +1303,7 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     self.clear_start_inclusive()
     self.clear_end_key()
     self.clear_end_inclusive()
+    self.clear_end_unapplied_log_timestamp_us()
 
   def OutputUnchecked(self, out):
     if (self.has_index_name_):
@@ -1301,6 +1321,9 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     if (self.has_end_inclusive_):
       out.putVarInt32(48)
       out.putBoolean(self.end_inclusive_)
+    if (self.has_end_unapplied_log_timestamp_us_):
+      out.putVarInt32(152)
+      out.putVarInt64(self.end_unapplied_log_timestamp_us_)
 
   def TryMerge(self, d):
     while 1:
@@ -1321,6 +1344,9 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
       if tt == 48:
         self.set_end_inclusive(d.getBoolean())
         continue
+      if tt == 152:
+        self.set_end_unapplied_log_timestamp_us(d.getVarInt64())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -1332,6 +1358,7 @@ class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
     if self.has_start_inclusive_: res+=prefix+("start_inclusive: %s\n" % self.DebugFormatBool(self.start_inclusive_))
     if self.has_end_key_: res+=prefix+("end_key: %s\n" % self.DebugFormatString(self.end_key_))
     if self.has_end_inclusive_: res+=prefix+("end_inclusive: %s\n" % self.DebugFormatBool(self.end_inclusive_))
+    if self.has_end_unapplied_log_timestamp_us_: res+=prefix+("end_unapplied_log_timestamp_us: %s\n" % self.DebugFormatInt64(self.end_unapplied_log_timestamp_us_))
     return res
 
 class CompiledQuery_MergeJoinScan(ProtocolBuffer.ProtocolMessage):
@@ -1439,10 +1466,6 @@ class CompiledQuery_MergeJoinScan(ProtocolBuffer.ProtocolMessage):
 class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
   has_distinct_ = 0
   distinct_ = 0
-  has_offset_ = 0
-  offset_ = 0
-  has_limit_ = 0
-  limit_ = 0
   has_kind_ = 0
   kind_ = ""
   has_ancestor_ = 0
@@ -1464,32 +1487,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
       self.distinct_ = 0
 
   def has_distinct(self): return self.has_distinct_
-
-  def offset(self): return self.offset_
-
-  def set_offset(self, x):
-    self.has_offset_ = 1
-    self.offset_ = x
-
-  def clear_offset(self):
-    if self.has_offset_:
-      self.has_offset_ = 0
-      self.offset_ = 0
-
-  def has_offset(self): return self.has_offset_
-
-  def limit(self): return self.limit_
-
-  def set_limit(self, x):
-    self.has_limit_ = 1
-    self.limit_ = x
-
-  def clear_limit(self):
-    if self.has_limit_:
-      self.has_limit_ = 0
-      self.limit_ = 0
-
-  def has_limit(self): return self.has_limit_
 
   def kind(self): return self.kind_
 
@@ -1526,8 +1523,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_distinct()): self.set_distinct(x.distinct())
-    if (x.has_offset()): self.set_offset(x.offset())
-    if (x.has_limit()): self.set_limit(x.limit())
     if (x.has_kind()): self.set_kind(x.kind())
     if (x.has_ancestor()): self.mutable_ancestor().MergeFrom(x.ancestor())
 
@@ -1535,10 +1530,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_distinct_ != x.has_distinct_: return 0
     if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
-    if self.has_offset_ != x.has_offset_: return 0
-    if self.has_offset_ and self.offset_ != x.offset_: return 0
-    if self.has_limit_ != x.has_limit_: return 0
-    if self.has_limit_ and self.limit_ != x.limit_: return 0
     if self.has_kind_ != x.has_kind_: return 0
     if self.has_kind_ and self.kind_ != x.kind_: return 0
     if self.has_ancestor_ != x.has_ancestor_: return 0
@@ -1553,16 +1544,12 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_distinct_): n += 2
-    if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
-    if (self.has_limit_): n += 2 + self.lengthVarInt64(self.limit_)
     if (self.has_kind_): n += 2 + self.lengthString(len(self.kind_))
     if (self.has_ancestor_): n += 2 + self.lengthString(self.ancestor_.ByteSize())
     return n + 0
 
   def Clear(self):
     self.clear_distinct()
-    self.clear_offset()
-    self.clear_limit()
     self.clear_kind()
     self.clear_ancestor()
 
@@ -1570,12 +1557,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
     if (self.has_distinct_):
       out.putVarInt32(112)
       out.putBoolean(self.distinct_)
-    if (self.has_offset_):
-      out.putVarInt32(120)
-      out.putVarInt32(self.offset_)
-    if (self.has_limit_):
-      out.putVarInt32(128)
-      out.putVarInt32(self.limit_)
     if (self.has_kind_):
       out.putVarInt32(138)
       out.putPrefixedString(self.kind_)
@@ -1590,12 +1571,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
       if tt == 108: break
       if tt == 112:
         self.set_distinct(d.getBoolean())
-        continue
-      if tt == 120:
-        self.set_offset(d.getVarInt32())
-        continue
-      if tt == 128:
-        self.set_limit(d.getVarInt32())
         continue
       if tt == 138:
         self.set_kind(d.getPrefixedString())
@@ -1613,8 +1588,6 @@ class CompiledQuery_EntityFilter(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
-    if self.has_offset_: res+=prefix+("offset: %s\n" % self.DebugFormatInt32(self.offset_))
-    if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
     if self.has_kind_: res+=prefix+("kind: %s\n" % self.DebugFormatString(self.kind_))
     if self.has_ancestor_:
       res+=prefix+"ancestor <\n"
@@ -1860,6 +1833,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   kPrimaryScanstart_inclusive = 4
   kPrimaryScanend_key = 5
   kPrimaryScanend_inclusive = 6
+  kPrimaryScanend_unapplied_log_timestamp_us = 19
   kMergeJoinScanGroup = 7
   kMergeJoinScanindex_name = 8
   kMergeJoinScanprefix_value = 9
@@ -1868,8 +1842,6 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   kkeys_only = 12
   kEntityFilterGroup = 13
   kEntityFilterdistinct = 14
-  kEntityFilteroffset = 15
-  kEntityFilterlimit = 16
   kEntityFilterkind = 17
   kEntityFilterancestor = 18
 
@@ -1889,11 +1861,10 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     12: "keys_only",
     13: "EntityFilter",
     14: "distinct",
-    15: "offset",
-    16: "limit",
     17: "kind",
     18: "ancestor",
-  }, 18)
+    19: "end_unapplied_log_timestamp_us",
+  }, 19)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1911,11 +1882,10 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     12: ProtocolBuffer.Encoder.NUMERIC,
     13: ProtocolBuffer.Encoder.STARTGROUP,
     14: ProtocolBuffer.Encoder.NUMERIC,
-    15: ProtocolBuffer.Encoder.NUMERIC,
-    16: ProtocolBuffer.Encoder.NUMERIC,
     17: ProtocolBuffer.Encoder.STRING,
     18: ProtocolBuffer.Encoder.STRING,
-  }, 18, ProtocolBuffer.Encoder.MAX_TYPE)
+    19: ProtocolBuffer.Encoder.NUMERIC,
+  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -2519,6 +2489,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   BIGTABLE_ERROR =    7
   COMMITTED_BUT_STILL_APPLYING =    8
   CAPABILITY_DISABLED =    9
+  TRY_ALTERNATE_BACKEND =   10
 
   _ErrorCode_NAMES = {
     1: "BAD_REQUEST",
@@ -2530,6 +2501,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
     7: "BIGTABLE_ERROR",
     8: "COMMITTED_BUT_STILL_APPLYING",
     9: "CAPABILITY_DISABLED",
+    10: "TRY_ALTERNATE_BACKEND",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -4009,6 +3981,8 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   has_count_ = 0
   count_ = 0
+  has_offset_ = 0
+  offset_ = 0
   has_compile_ = 0
   compile_ = 0
 
@@ -4037,6 +4011,19 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_count(self): return self.has_count_
 
+  def offset(self): return self.offset_
+
+  def set_offset(self, x):
+    self.has_offset_ = 1
+    self.offset_ = x
+
+  def clear_offset(self):
+    if self.has_offset_:
+      self.has_offset_ = 0
+      self.offset_ = 0
+
+  def has_offset(self): return self.has_offset_
+
   def compile(self): return self.compile_
 
   def set_compile(self, x):
@@ -4055,6 +4042,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_cursor()): self.mutable_cursor().MergeFrom(x.cursor())
     if (x.has_count()): self.set_count(x.count())
+    if (x.has_offset()): self.set_offset(x.offset())
     if (x.has_compile()): self.set_compile(x.compile())
 
   def Equals(self, x):
@@ -4063,6 +4051,8 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_cursor_ and self.cursor_ != x.cursor_: return 0
     if self.has_count_ != x.has_count_: return 0
     if self.has_count_ and self.count_ != x.count_: return 0
+    if self.has_offset_ != x.has_offset_: return 0
+    if self.has_offset_ and self.offset_ != x.offset_: return 0
     if self.has_compile_ != x.has_compile_: return 0
     if self.has_compile_ and self.compile_ != x.compile_: return 0
     return 1
@@ -4080,12 +4070,14 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.cursor_.ByteSize())
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
+    if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_compile_): n += 2
     return n + 1
 
   def Clear(self):
     self.clear_cursor()
     self.clear_count()
+    self.clear_offset()
     self.clear_compile()
 
   def OutputUnchecked(self, out):
@@ -4098,6 +4090,9 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_compile_):
       out.putVarInt32(24)
       out.putBoolean(self.compile_)
+    if (self.has_offset_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.offset_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4114,6 +4109,9 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_compile(d.getBoolean())
         continue
+      if tt == 32:
+        self.set_offset(d.getVarInt32())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -4125,6 +4123,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
       res+=self.cursor_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt32(self.count_))
+    if self.has_offset_: res+=prefix+("offset: %s\n" % self.DebugFormatInt32(self.offset_))
     if self.has_compile_: res+=prefix+("compile: %s\n" % self.DebugFormatBool(self.compile_))
     return res
 
@@ -4134,6 +4133,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   kcursor = 1
   kcount = 2
+  koffset = 4
   kcompile = 3
 
   _TEXT = _BuildTagLookupTable({
@@ -4141,20 +4141,24 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     1: "cursor",
     2: "count",
     3: "compile",
-  }, 3)
+    4: "offset",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.NUMERIC,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class QueryResult(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   cursor_ = None
+  has_skipped_results_ = 0
+  skipped_results_ = 0
   has_more_results_ = 0
   more_results_ = 0
   has_keys_only_ = 0
@@ -4203,6 +4207,19 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def clear_result(self):
     self.result_ = []
+  def skipped_results(self): return self.skipped_results_
+
+  def set_skipped_results(self, x):
+    self.has_skipped_results_ = 1
+    self.skipped_results_ = x
+
+  def clear_skipped_results(self):
+    if self.has_skipped_results_:
+      self.has_skipped_results_ = 0
+      self.skipped_results_ = 0
+
+  def has_skipped_results(self): return self.has_skipped_results_
+
   def more_results(self): return self.more_results_
 
   def set_more_results(self, x):
@@ -4270,6 +4287,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_cursor()): self.mutable_cursor().MergeFrom(x.cursor())
     for i in xrange(x.result_size()): self.add_result().CopyFrom(x.result(i))
+    if (x.has_skipped_results()): self.set_skipped_results(x.skipped_results())
     if (x.has_more_results()): self.set_more_results(x.more_results())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_compiled_query()): self.mutable_compiled_query().MergeFrom(x.compiled_query())
@@ -4282,6 +4300,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if len(self.result_) != len(x.result_): return 0
     for e1, e2 in zip(self.result_, x.result_):
       if e1 != e2: return 0
+    if self.has_skipped_results_ != x.has_skipped_results_: return 0
+    if self.has_skipped_results_ and self.skipped_results_ != x.skipped_results_: return 0
     if self.has_more_results_ != x.has_more_results_: return 0
     if self.has_more_results_ and self.more_results_ != x.more_results_: return 0
     if self.has_keys_only_ != x.has_keys_only_: return 0
@@ -4310,6 +4330,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(self.cursor_.ByteSize())
     n += 1 * len(self.result_)
     for i in xrange(len(self.result_)): n += self.lengthString(self.result_[i].ByteSize())
+    if (self.has_skipped_results_): n += 1 + self.lengthVarInt64(self.skipped_results_)
     if (self.has_keys_only_): n += 2
     if (self.has_compiled_query_): n += 1 + self.lengthString(self.compiled_query_.ByteSize())
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSize())
@@ -4318,6 +4339,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   def Clear(self):
     self.clear_cursor()
     self.clear_result()
+    self.clear_skipped_results()
     self.clear_more_results()
     self.clear_keys_only()
     self.clear_compiled_query()
@@ -4345,6 +4367,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(50)
       out.putVarInt32(self.compiled_cursor_.ByteSize())
       self.compiled_cursor_.OutputUnchecked(out)
+    if (self.has_skipped_results_):
+      out.putVarInt32(56)
+      out.putVarInt32(self.skipped_results_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4379,6 +4404,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_compiled_cursor().TryMerge(tmp)
         continue
+      if tt == 56:
+        self.set_skipped_results(d.getVarInt32())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -4397,6 +4425,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_skipped_results_: res+=prefix+("skipped_results: %s\n" % self.DebugFormatInt32(self.skipped_results_))
     if self.has_more_results_: res+=prefix+("more_results: %s\n" % self.DebugFormatBool(self.more_results_))
     if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
     if self.has_compiled_query_:
@@ -4415,6 +4444,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   kcursor = 1
   kresult = 2
+  kskipped_results = 7
   kmore_results = 3
   kkeys_only = 4
   kcompiled_query = 5
@@ -4428,7 +4458,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     4: "keys_only",
     5: "compiled_query",
     6: "compiled_cursor",
-  }, 6)
+    7: "skipped_results",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4438,7 +4469,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.STRING,
-  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
+    7: ProtocolBuffer.Encoder.NUMERIC,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -5041,6 +5073,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
   has_model_key_ = 0
   has_size_ = 0
   size_ = 0
+  has_max_ = 0
+  max_ = 0
 
   def __init__(self, contents=None):
     self.model_key_ = Reference()
@@ -5067,11 +5101,25 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_size(self): return self.has_size_
 
+  def max(self): return self.max_
+
+  def set_max(self, x):
+    self.has_max_ = 1
+    self.max_ = x
+
+  def clear_max(self):
+    if self.has_max_:
+      self.has_max_ = 0
+      self.max_ = 0
+
+  def has_max(self): return self.has_max_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_model_key()): self.mutable_model_key().MergeFrom(x.model_key())
     if (x.has_size()): self.set_size(x.size())
+    if (x.has_max()): self.set_max(x.max())
 
   def Equals(self, x):
     if x is self: return 1
@@ -5079,6 +5127,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_model_key_ and self.model_key_ != x.model_key_: return 0
     if self.has_size_ != x.has_size_: return 0
     if self.has_size_ and self.size_ != x.size_: return 0
+    if self.has_max_ != x.has_max_: return 0
+    if self.has_max_ and self.max_ != x.max_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -5088,28 +5138,30 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       if debug_strs is not None:
         debug_strs.append('Required field: model_key not set.')
     elif not self.model_key_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_size_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: size not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
     n += self.lengthString(self.model_key_.ByteSize())
-    n += self.lengthVarInt64(self.size_)
-    return n + 2
+    if (self.has_size_): n += 1 + self.lengthVarInt64(self.size_)
+    if (self.has_max_): n += 1 + self.lengthVarInt64(self.max_)
+    return n + 1
 
   def Clear(self):
     self.clear_model_key()
     self.clear_size()
+    self.clear_max()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putVarInt32(self.model_key_.ByteSize())
     self.model_key_.OutputUnchecked(out)
-    out.putVarInt32(16)
-    out.putVarInt64(self.size_)
+    if (self.has_size_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.size_)
+    if (self.has_max_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.max_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5123,6 +5175,9 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 16:
         self.set_size(d.getVarInt64())
         continue
+      if tt == 24:
+        self.set_max(d.getVarInt64())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -5134,6 +5189,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       res+=self.model_key_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_size_: res+=prefix+("size: %s\n" % self.DebugFormatInt64(self.size_))
+    if self.has_max_: res+=prefix+("max: %s\n" % self.DebugFormatInt64(self.max_))
     return res
 
 
@@ -5142,18 +5198,21 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   kmodel_key = 1
   ksize = 2
+  kmax = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "model_key",
     2: "size",
-  }, 2)
+    3: "max",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""

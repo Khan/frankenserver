@@ -333,7 +333,9 @@ class GQL(object):
   def __CastKey(self, values):
     """Cast input values to Key() class using encoded string or tuple list."""
     if not len(values) % 2:
-      return datastore_types.Key.from_path(_app=self.__app, *values)
+      return datastore_types.Key.from_path(_app=self.__app,
+                                           namespace=self.__namespace,
+                                           *values)
     elif len(values) == 1 and isinstance(values[0], basestring):
       return datastore_types.Key(values[0])
     else:

@@ -31,6 +31,11 @@ import os
 import urlparse
 
 
+CHANNEL_POLL_PATTERN = '/_ah/channel/dev(?:/.*)?'
+
+CHANNEL_JSAPI_PATTERN = '/_ah/channel/jsapi'
+
+
 def CreateChannelDispatcher(channel_service_stub):
   """Function to create channel dispatcher.
 

@@ -258,9 +258,7 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     if request.direction() == MemcacheIncrementRequest.DECREMENT:
       delta = -delta
 
-    new_value = old_value + delta
-    if not (0 <= new_value < 2**64):
-      new_value = 0
+    new_value = max(old_value + delta, 0) % (2**64)
 
     entry.value = str(new_value)
     return new_value
@@ -327,4 +325,3 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
     stats.set_bytes(total_bytes)
 
     stats.set_oldest_item_age(self._gettime() - self._cache_creation_time)
-

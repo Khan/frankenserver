@@ -89,6 +89,8 @@ ARBITRARY_FAILOVER_MS = -1
 STRONG_CONSISTENCY = 0
 EVENTUAL_CONSISTENCY = 1
 
+_MAX_INT_32 = 2**31-1
+
 
 def NormalizeAndTypeCheck(arg, types):
   """Normalizes and type checks the given argument.
@@ -887,6 +889,7 @@ class Query(dict):
                '==': datastore_pb.Query_Filter.EQUAL,
                }
   INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>='])
+  UPPERBOUND_INEQUALITY_OPERATORS = frozenset(['<', '<='])
   FILTER_REGEX = re.compile(
     '^\s*([^\s]+)(\s+(%s)\s*)?$' % '|'.join(OPERATORS.keys()),
     re.IGNORECASE | re.UNICODE)
@@ -1163,9 +1166,32 @@ class Query(dict):
       prefetch_count: integer, number of results to return in the first query.
       next_count: number of results to return in subsequent next queries.
       rpc: datastore.RPC to use for this request.
+
+    Returns:
+      # an iterator that provides access to the query results
+      Iterator
     """
     rpc = GetRpcFromKwargs(kwargs)
-    request = self._ToPb(limit, offset, prefetch_count)
+    self.__last_iterator, self.__compiled_query = Query._RunInternal(
+        self._ToPb(limit, offset, prefetch_count),
+        next_count=next_count,
+        rpc=rpc)
+
+    return self.__last_iterator
+
+  @staticmethod
+  def _RunInternal(request, next_count=None, rpc=None):
+    """Runs the given request and wraps the result in an iterator.
+
+    Args:
+      request: datastore_pb.query, the request to run.
+      next_count: number of results to return in subsequent next queries.
+      rpc: datastore.RPC to use for this request.
+
+    Returns:
+      (Iterator, datastore_pb.CompiledQuery), the iterator and compiled query
+      that result from running the given request.
+    """
 
     if rpc:
       rpc_clone = rpc.clone()
@@ -1184,17 +1210,12 @@ class Query(dict):
         raise datastore_errors.NeedIndexError(
           str(exc) + '\nThis query needs this index:\n' + yaml)
 
-    if result.has_cursor() and not result.cursor().app():
-      result.mutable_cursor().set_app(self.__app)
-
+    iterator = Iterator(result, query_request_pb=request, batch_size=next_count,
+                        rpc=rpc_clone)
     if result.has_compiled_query():
-      self.__compiled_query = result.compiled_query()
+      return iterator, result.compiled_query()
     else:
-      self.__compiled_query = None
-
-    self.__last_iterator = Iterator(
-        result, query_request_pb=request, batch_size=next_count, rpc=rpc_clone)
-    return self.__last_iterator
+      return iterator, None
 
   def Get(self, limit, offset=0, **kwargs):
     """Fetches and returns a maximum number of results from the query.
@@ -1234,12 +1255,10 @@ class Query(dict):
       # a list of entities
       [Entity, ...]
     """
-    rpc = GetRpcFromKwargs(kwargs)
-
-    if not isinstance(limit, (int, long)) or limit <= 0:
+    if not isinstance(limit, (int, long)) or limit < 0:
       raise datastore_errors.BadArgumentError(
-        'Argument to Get named \'limit\' must be an int greater than 0; '
-        'received %s (a %s)' % (limit, typename(limit)))
+          'Argument to Get named \'limit\' must be an int greater than or '
+          'equal to 0; received %s (a %s)' % (limit, typename(limit)))
 
     if not isinstance(offset, (int, long)) or offset < 0:
       raise datastore_errors.BadArgumentError(
@@ -1249,35 +1268,28 @@ class Query(dict):
     return self._Run(
         limit=limit, offset=offset, prefetch_count=limit, **kwargs)._Get(limit)
 
-  def Count(self, limit=None, **kwargs):
+  def Count(self, limit=1000, **kwargs):
     """Returns the number of entities that this query matches. The returned
     count is cached; successive Count() calls will not re-scan the datastore
     unless the query is changed.
 
     Args:
-      limit, a number. If there are more results than this, stop short and
-      just return this number. Providing this argument makes the count
+      limit, a number or None. If there are more results than this, stop short
+      and just return this number. Providing this argument makes the count
       operation more efficient.
       rpc: datastore.RPC to use for this request.
 
     Returns:
       The number of results.
     """
-    rpc = GetRpcFromKwargs(kwargs)
-    if self.__cached_count:
-      return self.__cached_count
+    if not self.__cached_count:
+      if limit is None:
+        offset = _MAX_INT_32
+      else:
+        offset = limit
 
-    try:
-      req = self._ToPb(limit=limit)
-      req.clear_compile()
-      resp = _MakeSyncCall('datastore_v3', 'Count',
-                           req,
-                           api_base_pb.Integer64Proto(),
-                           rpc)
-    except apiproxy_errors.ApplicationError, err:
-      raise _ToDatastoreError(err)
-    else:
-      self.__cached_count = resp.value()
+      iterator = self._Run(limit=0, offset=offset, **kwargs)
+      self.__cached_count = iterator._SkippedResults()
 
     return self.__cached_count
 
@@ -1301,7 +1313,8 @@ class Query(dict):
 
     dict.__setitem__(self, filter, value)
 
-    if operator in self.INEQUALITY_OPERATORS:
+    if (operator in self.INEQUALITY_OPERATORS and
+        property != datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY):
       if self.__inequality_prop is None:
         self.__inequality_prop = property
       else:
@@ -1394,22 +1407,35 @@ class Query(dict):
       raise datastore_errors.BadValueError(
         'Filtering on %s properties is not supported.' % typename(values[0]))
 
-    if operator in self.INEQUALITY_OPERATORS:
+    if (operator in self.INEQUALITY_OPERATORS and
+        property != datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY):
       if self.__inequality_prop and property != self.__inequality_prop:
         raise datastore_errors.BadFilterError(
-          'Only one property per query may have inequality filters (%s).' %
-          ', '.join(self.INEQUALITY_OPERATORS))
+            'Only one property per query may have inequality filters (%s).' %
+            ', '.join(self.INEQUALITY_OPERATORS))
       elif len(self.__orderings) >= 1 and self.__orderings[0][0] != property:
         raise datastore_errors.BadFilterError(
-          'Inequality operators (%s) must be on the same property as the '
-          'first sort order, if any sort orders are supplied' %
-          ', '.join(self.INEQUALITY_OPERATORS))
+            'Inequality operators (%s) must be on the same property as the '
+            'first sort order, if any sort orders are supplied' %
+            ', '.join(self.INEQUALITY_OPERATORS))
 
     if (self.__kind is None and
-        property != datastore_types._KEY_SPECIAL_PROPERTY):
+        property != datastore_types._KEY_SPECIAL_PROPERTY and
+        property != datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY):
       raise datastore_errors.BadFilterError(
           'Only %s filters are allowed on kindless queries.' %
           datastore_types._KEY_SPECIAL_PROPERTY)
+
+    if property == datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY:
+      if self.__kind:
+        raise datastore_errors.BadFilterError(
+            'Only kindless queries can have %s filters.' %
+            datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY)
+      if not operator in self.UPPERBOUND_INEQUALITY_OPERATORS:
+        raise datastore_errors.BadFilterError(
+            'Only %s operators are supported with %s filters.' % (
+            self.UPPERBOUND_INEQUALITY_OPERATORS,
+            datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY))
 
     if property in datastore_types._SPECIAL_PROPERTIES:
       if property == datastore_types._KEY_SPECIAL_PROPERTY:
@@ -1444,7 +1470,7 @@ class Query(dict):
       include an ancestor.
     """
 
-    if not self.__ancestor and _CurrentTransactionKey():
+    if not self.__ancestor and IsInTransaction():
       raise datastore_errors.BadRequestError(
         'Only ancestor queries are allowed inside transactions.')
 
@@ -1509,40 +1535,62 @@ class Query(dict):
     return pb
 
 
-def AllocateIds(model_key, size, **kwargs):
-  """Allocates a range of IDs of size for the key defined by model_key
+def AllocateIds(model_key, size=None, **kwargs):
+  """Allocates a range of IDs of size or with max for the given key.
 
   Allocates a range of IDs in the datastore such that those IDs will not
   be automatically assigned to new entities. You can only allocate IDs
   for model keys from your app. If there is an error, raises a subclass of
   datastore_errors.Error.
 
+  Either size or max must be provided but not both. If size is provided then a
+  range of the given size is returned. If max is provided then the largest
+  range of ids that are safe to use with an upper bound of max is returned (can
+  be an empty range).
+
+  Max should only be provided if you have an existing numeric id range that you
+  want to reserve, e.g. bulk loading entities that already have IDs. If you
+  don't care about which IDs you receive, use size instead.
+
   Args:
     model_key: Key or string to serve as a model specifying the ID sequence
                in which to allocate IDs
     size: integer, number of IDs to allocate.
+    max: integer, upper bound of the range of IDs to allocate.
     rpc: datastore.RPC to use for this request.
 
   Returns:
     (start, end) of the allocated range, inclusive.
   """
+  max = kwargs.pop('max', None)
   rpc = GetRpcFromKwargs(kwargs)
-  keys, multiple = NormalizeAndTypeCheckKeys(model_key)
+  keys, _ = NormalizeAndTypeCheckKeys(model_key)
 
   if len(keys) > 1:
     raise datastore_errors.BadArgumentError(
         'Cannot allocate IDs for more than one model key at a time')
 
-  if size > _MAX_ID_BATCH_SIZE:
-    raise datastore_errors.BadArgumentError(
-        'Cannot allocate more than %s ids at a time' % _MAX_ID_BATCH_SIZE)
-  if size <= 0:
-    raise datastore_errors.BadArgumentError(
-        'Cannot allocate less than 1 id')
-
   req = datastore_pb.AllocateIdsRequest()
+  if size is not None:
+    if max is not None:
+      raise datastore_errors.BadArgumentError(
+          'Cannot allocate ids using both size and max')
+    if size > _MAX_ID_BATCH_SIZE:
+      raise datastore_errors.BadArgumentError(
+          'Cannot allocate more than %s ids at a time; received %s'
+          % (_MAX_ID_BATCH_SIZE, size))
+    if size <= 0:
+      raise datastore_errors.BadArgumentError(
+          'Cannot allocate less than 1 id; received %s' % size)
+    req.set_size(size)
+  if max:
+    if max < 0:
+      raise datastore_errors.BadArgumentError(
+          'Cannot allocate a range with a max less than 0 id; received %s' %
+          size)
+    req.set_max(max)
+
   req.mutable_model_key().CopyFrom(keys[0]._ToPb())
-  req.set_size(size)
 
   try:
     resp = _MakeSyncCall('datastore_v3', 'AllocateIds', req,
@@ -1911,10 +1959,16 @@ class Iterator(object):
     self.__keys_only = query_result_pb.keys_only()
     self.__batch_size = batch_size
     self.__rpc = rpc
+    self.__skipped_results = 0
 
     self.__results_since_prev = 0
     self.__prev_compiled_cursor = None
     self.__next_compiled_cursor = None
+
+    if query_request_pb:
+      self.__remaining_offset = query_request_pb.offset()
+    else:
+      self.__remaining_offset = 0
 
     if query_request_pb and query_result_pb.has_compiled_cursor():
       if query_request_pb.has_compiled_cursor():
@@ -1952,11 +2006,8 @@ class Iterator(object):
       [Entity or Key, ...]
     """
     entity_list = self._Next(count)
-    while len(entity_list) < count:
-      next_results = self._Next(count - len(entity_list))
-      if not next_results:
-        break
-      entity_list += next_results
+    while len(entity_list) < count and self.__more_results:
+      entity_list += self._Next(count - len(entity_list))
     return entity_list;
 
   def _Next(self, count=None):
@@ -1998,10 +2049,10 @@ class Iterator(object):
       # a list of entities or keys
       [Entity or Key, ...]
     """
-    if count is not None and (not isinstance(count, (int, long)) or count <= 0):
+    if count is not None and (not isinstance(count, (int, long)) or count < 0):
       raise datastore_errors.BadArgumentError(
-        'Argument to _Next must be an int greater than 0; received %s (a %s)' %
-        (count, typename(count)))
+        'Argument to _Next must be an int greater than or equal to 0; received '
+        '%s (a %s)' % (count, typename(count)))
 
     if self.__buffer:
       if count is None:
@@ -2021,6 +2072,8 @@ class Iterator(object):
       return []
 
     req = datastore_pb.NextRequest()
+    if self.__remaining_offset:
+      req.set_offset(self.__remaining_offset)
     if count is not None:
       req.set_count(count)
     if self.__next_compiled_cursor:
@@ -2036,7 +2089,10 @@ class Iterator(object):
     except apiproxy_errors.ApplicationError, err:
       raise _ToDatastoreError(err)
 
-    return self._ProcessQueryResult(result)
+    new_batch = self._ProcessQueryResult(result)
+    if not self.__has_advanced:
+      self.__more_results = False
+    return new_batch
 
   def _ProcessQueryResult(self, result):
     """Returns all results from datastore_pb.QueryResult and updates
@@ -2062,11 +2118,21 @@ class Iterator(object):
       self.__results_since_prev = 0
 
     self.__more_results = result.more_results()
+    if result.skipped_results():
+      self.__has_advanced = True
+      self.__skipped_results += result.skipped_results()
+      self.__remaining_offset -= result.skipped_results()
+    else:
+      self.__has_advanced = result.result_size() > 0
 
     if self.__keys_only:
       return [Key._FromPb(e.key()) for e in result.result_list()]
     else:
       return [Entity._FromPb(e) for e in result.result_list()]
+
+  def _SkippedResults(self):
+    self.__PrepBuffer()
+    return self.__skipped_results
 
   def GetCompiledCursor(self, query):
     if not self.__buffer:
@@ -2074,29 +2140,25 @@ class Iterator(object):
     elif not self.__results_since_prev:
       return self.__prev_compiled_cursor
     elif self.__prev_compiled_cursor:
-      request = query._ToPb(limit=1, offset=self.__results_since_prev, count=0)
-      request.mutable_compiled_cursor().CopyFrom(self.__prev_compiled_cursor)
-      rpc = self.__rpc
-      if rpc:
-        self.__rpc = rpc.clone()
-      try:
-        result = _MakeSyncCall('datastore_v3', 'RunQuery', request,
-                               datastore_pb.QueryResult(), rpc)
-      except apiproxy_errors.ApplicationError, err:
-        raise _ToDatastoreError(err)
-      return result.compiled_cursor()
+      return Query._RunInternal(query._ToPb(limit=0,
+                                            offset=self.__results_since_prev),
+                                rpc=self.__rpc)[0].GetCompiledCursor(query)
     else:
       return None
 
   def next(self):
-    if not self.__buffer:
-      self.__buffer = self._Next(self.__batch_size)
+    self.__PrepBuffer()
     try:
       result = self.__buffer.pop(0)
     except IndexError:
       raise StopIteration
     self.__results_since_prev += 1
     return result
+
+  def __PrepBuffer(self):
+    """Loads the next set of values into the local buffer if needed."""
+    while not self.__buffer and self.__more_results:
+      self.__buffer = self._Next(self.__batch_size)
 
   def __iter__(self): return self
 
@@ -2350,6 +2412,15 @@ def _MaybeSetupTransaction(request, keys):
     del tx_key
 
 
+def IsInTransaction():
+  """Determine whether already running in transaction.
+
+  Returns:
+    True if already running in transaction, else False.
+  """
+  return bool(_CurrentTransactionKey())
+
+
 def _DifferentEntityGroupError(a, b):
   """Raises a BadRequestError that says the given entity groups are different.
 
@@ -2439,6 +2510,8 @@ def _GetPropertyValue(entity, property):
     KeyError, if the entity does not have the given property.
   """
   if property in datastore_types._SPECIAL_PROPERTIES:
+    if property == datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY:
+      raise KeyError(property)
     assert property == datastore_types._KEY_SPECIAL_PROPERTY
     return entity.key()
   else:
@@ -2494,15 +2567,15 @@ def _DatastoreExceptionFromErrorCodeAndDetail(error, detail):
   exception_class = {
       datastore_pb.Error.BAD_REQUEST: datastore_errors.BadRequestError,
       datastore_pb.Error.CONCURRENT_TRANSACTION:
-        datastore_errors.TransactionFailedError,
+          datastore_errors.TransactionFailedError,
       datastore_pb.Error.INTERNAL_ERROR: datastore_errors.InternalError,
       datastore_pb.Error.NEED_INDEX: datastore_errors.NeedIndexError,
       datastore_pb.Error.TIMEOUT: datastore_errors.Timeout,
       datastore_pb.Error.BIGTABLE_ERROR: datastore_errors.Timeout,
       datastore_pb.Error.COMMITTED_BUT_STILL_APPLYING:
-        datastore_errors.CommittedButStillApplying,
+          datastore_errors.CommittedButStillApplying,
       datastore_pb.Error.CAPABILITY_DISABLED:
-        apiproxy_errors.CapabilityDisabledError,
+          apiproxy_errors.CapabilityDisabledError,
   }.get(error, datastore_errors.Error)
 
   if detail is None:

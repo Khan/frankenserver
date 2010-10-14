@@ -46,10 +46,10 @@ KEY_TYPE_ID = 'ID'
 
 
 def none_if_empty(fn):
-  """A wrapper for a value to return None if it's empty. Useful on import.
+  """A decorator which returns None if its input is empty else fn(x).
 
-  Can be used in config files (e.g. "transform.none_if_empty(int)" or
-  as a decorator.
+  Useful on import.  Can be used in config files
+  (e.g. "transform.none_if_empty(int)" or as a decorator.
 
   Args:
     fn: Single argument transform function.
@@ -59,7 +59,7 @@ def none_if_empty(fn):
   """
 
   def wrapper(value):
-    if value == '' or value is None:
+    if value == '' or value is None or value == []:
       return None
     return fn(value)
 
@@ -381,26 +381,52 @@ def export_date_time(format):
   return export_date_time_lambda
 
 
-def regexp_extract(pattern):
-  """Return first group in the value matching the pattern.
+def regexp_extract(pattern, method=re.match, group=1):
+  """Return first group in the value matching the pattern using re.match.
 
   Args:
     pattern: A regular expression to match on with at least one group.
+    method: The method to use for matching; normally re.match or re.search.
+    group: The group to use for extracting a value.
 
   Returns:
-    A single argument method which returns the first group matched,
-    or None if no match or no group was found.
+    A single argument method which returns the group_arg group matched,
+    or None if no match was found or the input was empty.
   """
 
   def regexp_extract_lambda(value):
     if not value:
       return None
-    matches = re.match(pattern, value)
+    matches = method(pattern, value)
     if not matches:
       return None
-    return matches.group(1)
+    return matches.group(group)
 
   return regexp_extract_lambda
+
+
+def regexp_to_list(pattern):
+  """Return function that returns a list of objects that match the regex.
+
+  Useful on import.  Uses the provided regex to split a string value into a list
+  of strings.  Wrapped by none_if_input_or_result_empty, so returns none if
+  there are no matches for the regex and none if the input is empty.
+
+  Args:
+    pattern: A regular expression pattern to match against the input string.
+
+  Returns:
+    None if the input was none or no matches were found, otherwise a list of
+    strings matching the input expression.
+  """
+  @none_if_empty
+  def regexp_to_list_lambda(value):
+    result = re.findall(pattern, value)
+    if result == []:
+      return None
+    return result
+
+  return regexp_to_list_lambda
 
 
 def regexp_bool(regexp, flags=0):

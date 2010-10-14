@@ -156,9 +156,6 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
 
     Raises:
       ValueError on invalid save_as parameter.
-      UnsupportedRangeFormatError: If the range format in the header is
-        valid, but not supported.
-      RangeFormatError: If the range format in the header is not valid.
     """
     if set(kwargs) - _SEND_BLOB_PARAMETERS:
       invalid_keywords = []
@@ -175,9 +172,6 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
 
     use_range = kwargs.get('use_range', self.__use_range_unset)
     use_range_set = use_range is not self.__use_range_unset
-
-    if use_range:
-      self.get_range()
 
     range_header = _check_ranges(start,
                                  end,

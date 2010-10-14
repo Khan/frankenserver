@@ -121,8 +121,16 @@ class RPC(apiproxy_rpc.RPC):
     return True
 
   def _MakeCallImpl(self):
-    assert isinstance(self.request, ProtocolBuffer.ProtocolMessage)
-    assert isinstance(self.response, ProtocolBuffer.ProtocolMessage)
+    assert isinstance(self.request, ProtocolBuffer.ProtocolMessage), 'not isinstance(%r, %r): sys.modules=%r, sys.path=%r' % (
+            self.request.__class__,
+            ProtocolBuffer.ProtocolMessage,
+            sys.modules,
+            sys.path)
+    assert isinstance(self.response, ProtocolBuffer.ProtocolMessage), 'not isinstance(%r, %r): sys.modules=%r, sys.path=%r' % (
+            self.response.__class__,
+            ProtocolBuffer.ProtocolMessage,
+            sys.modules,
+            sys.path)
 
     e = ProtocolBuffer.Encoder()
     self.request.Output(e)
