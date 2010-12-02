@@ -52,10 +52,7 @@ def CreateBlobImageDispatcher(images_stub):
   class BlobImageDispatcher(dev_appserver.URLDispatcher):
     """Dispatcher that handles image serving requests."""
 
-    _cropped_sizes = [32, 48, 64, 72, 80, 104, 136, 144, 150, 160]
-    _uncropped_sizes = [0, 32, 48, 64, 72, 80, 90, 94, 104, 110, 120, 128, 144,
-                        150, 160, 200, 220, 288, 320, 400, 512, 576, 640, 720,
-                        800, 912, 1024, 1152, 1280, 1440, 1600]
+    _size_limit = 1600
     _mime_type_map = {images_service_pb.OutputSettings.JPEG: 'image/jpeg',
                       images_service_pb.OutputSettings.PNG: 'image/png'}
 
@@ -94,7 +91,7 @@ def CreateBlobImageDispatcher(images_stub):
         elif width < height:
           crop_xform = images_service_pb.Transform()
           delta = (height - width) / (height * 2.0)
-          top_delta = max(0, delta - 0.25)
+          top_delta = max(0.0, delta - 0.25)
           bottom_delta = 1.0 - (2.0 * delta) + top_delta
           crop_xform.set_crop_top_y(top_delta)
           crop_xform.set_crop_bottom_y(bottom_delta)
@@ -133,11 +130,9 @@ def CreateBlobImageDispatcher(images_stub):
         if match.group(2):
           crop = True
 
-      if resize:
-        if crop and resize not in BlobImageDispatcher._cropped_sizes:
-          raise ValueError, 'Invalid crop size'
-        elif resize not in BlobImageDispatcher._uncropped_sizes:
-          raise ValueError, 'Invalid resize'
+      if resize and (resize > BlobImageDispatcher._size_limit or
+                     resize < 0):
+        raise ValueError, 'Invalid resize'
       return (resize, crop)
 
     def _ParseUrl(self, url):

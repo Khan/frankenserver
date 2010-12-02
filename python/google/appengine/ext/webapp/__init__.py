@@ -230,6 +230,10 @@ class Response(object):
       message = Response.http_status_message(code)
     self.__status = (code, message)
 
+  def has_error(self):
+    """Indicates whether the response was an error response."""
+    return self.__status[0] >= 400
+
   def clear(self):
     """Clears all data written to the output stream so that it is empty."""
     self.out.seek(0)

@@ -3,6 +3,71 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.4.0
+================================
+- The Always On feature allows applications to pay and keep 3 instances of their
+  application always running, which can significantly reduce application
+  latency.
+- Developers can now enable Warmup Requests. By specifying  a handler in an
+  app's app.yaml, App Engine will attempt to send a Warmup Request to initialize
+  new instances before a user interacts with it. This can reduce the latency an
+  end-user sees for initializing your application.
+- The Channel API is now available for all users.
+- Task Queue has been officially released, and is no longer an experimental
+  feature. The API import paths that use 'labs' have been deprecated. Task queue
+  storage will count towards an application's overall storage quota, and will
+  thus be charged for.
+- The deadline for Task Queue and Cron requests has been raised to 10 minutes.
+  Datastore and API deadlines within those requests remain unchanged.
+- For the Task Queue, developers can specify task retry_parameters in their
+  queue.yaml.
+- Apps that have enabled billing are allowed up to 100 queues with the Task
+  Queue API.
+- Metadata Queries on the datastore for datastore kinds, namespaces, and entity
+  properties are available.
+- URLFetch allowed response size has been increased, up to 32 MB. Request size
+  is still limited to 1 MB.
+- The request and response sizes for the Images API have been increased to
+  32 MB.
+- The total size of Memcache batch operations is increased to 32 MB. The 1 MB
+  limit on individual Memcache objects still applies.
+- The attachment size for outgoing emails has been increased from 1 MB to 10 MB.
+  The size limit for incoming emails is still 10 MB.
+- Size and quantity limits on datastore batch get/put/delete operations have
+  been removed. Individual entities are still limited to 1 MB, but your app may
+  batch as many entities together for get/put/delete calls as the overall
+  datastore deadline will allow for.
+- When iterating over query results, the datastore will now asynchronously
+  prefetch results, reducing latency in many cases by 10-15%.
+- The Admin Console Blacklist page lists the top blacklist rejected visitors.
+- The automatic image thumbnailing service supports arbitrary crop sizes up to
+  1600px.
+- Overall average instance latency in the Admin Console is now a weighted
+  average over QPS per instance.
+- The developer who uploaded an app version can download that version's code
+  using the appcfg.py download_app command. This feature can be disabled on
+  a per application basis in the admin console, under the 'Permissions' tab.
+  Once disabled, code download for the application CANNOT be re-enabled.
+- Fixed an issue where custom Admin Console pages did not work for Google
+  Apps for your Domain users.
+- In the Python runtime, an instance is killed and restarted when a request
+  handler hits DeadlineExceededError. This should fix an issue related to
+  intermittent SystemErrors using Django.
+    http://code.google.com/p/googleappengine/issues/detail?id=772
+- Allow Django initialization to be moved to appengine_config.py to avoid
+  Django version conflicts when mixing webapp.template with pure Django.
+    http://code.google.com/p/googleappengine/issues/detail?id=1758
+- Fixed an issue with OpenId over SSL.
+  http://code.google.com/p/googleappengine/issues/detail?id=3393
+- Fixed an issue on the dev_appserver where login/logout code didn't work using
+  Python 2.6.
+    http://code.google.com/p/googleappengine/issues/detail?id=3566
+- Fixed an issue in the dev_appserver where get_serving_url did not work
+  for transparent, cropped PNGs:
+    http://code.google.com/p/googleappengine/issues/detail?id=3887
+- Fixed an issue with the DatastoreFileStub.
+    http://code.google.com/p/googleappengine/issues/detail?id=3895
+
 Version 1.3.8
 ==================================
 - Builtin app.yaml handlers are available for common application functions,

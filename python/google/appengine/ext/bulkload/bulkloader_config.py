@@ -389,9 +389,12 @@ class GenericImporter(object):
     """
     if not self.increment_id:
       return
-    key = entity.key()
-    if not key:
+    if isinstance(entity, datastore.Entity):
+      if not entity.key():
+        return
+    elif not entity.has_key():
       return
+    key = entity.key()
     key_id = key.id()
     if not key_id:
       return

@@ -398,8 +398,10 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
 
     assert request.add_request_size(), 'taskqueue should prevent empty requests'
-
-    if not self._IsValidQueue(request.add_request(0).queue_name()):
+    app_id = None
+    if request.add_request(0).has_app_id():
+      app_id = request.add_request(0).app_id()
+    if not self._IsValidQueue(request.add_request(0).queue_name(), app_id):
       raise apiproxy_errors.ApplicationError(
           taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
 
@@ -510,7 +512,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
     existing_tasks.sort(_CompareTasksByEta)
 
-  def _IsValidQueue(self, queue_name):
+  def _IsValidQueue(self, queue_name, app_id):
     """Determines whether a queue is valid, i.e. tasks can be added to it.
 
     Valid queues are the 'default' queue, plus any queues in the queue.yaml
@@ -518,6 +520,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
 
     Args:
       queue_name: the name of the queue to validate.
+      app_id: the app_id. Can be None.
 
     Returns:
       True iff queue is valid.
@@ -531,6 +534,9 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       for entry in queue_info.queue:
         if entry.name == queue_name:
           return True
+    if app_id is not None:
+      queues = self._app_queues.get(app_id, {})
+      return queues.get(queue_name, None) is not None
     return False
 
   def _RunTask(self, queue_name, task_name):
@@ -972,6 +978,23 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       store.Delete(task.task_name())
 
     self.FlushQueue(request.queue_name())
+
+  def _Dynamic_DeleteGroup(self, request, response):
+    """Local delete implementation of TaskQueueService.DeleteGroup.
+
+    Args:
+      request: A taskqueue_service_pb.TaskQueueDeleteGroupRequest.
+      response: A taskqueue_service_pb.TaskQueueDeleteGroupResponse.
+    """
+    queues = self._app_queues.get(request.app_id(), {})
+
+    for queue in queues.iterkeys():
+      store = self.GetDummyTaskStore(request.app_id(), queue)
+      for task in store.Lookup(store.Count()):
+        store.Delete(task.task_name())
+      self.FlushQueue(queue)
+
+    self._app_queues[request.app_id()] = {}
 
   def _Dynamic_UpdateStorageLimit(self, request, response):
     """Local implementation of TaskQueueService.UpdateStorageLimit.

@@ -212,10 +212,6 @@ class FancyRequest(urllib2.Request):
   def set_proxy(self, host, type):
     saved_type = None
 
-    # The following is necessary to handle redirects to https connections
-    if self.get_type() == "http" and not self._tunnel_host:
-      self._tunnel_host = self.get_host()
-
     if self.get_type() == "https" and not self._tunnel_host:
       self._tunnel_host = self.get_host()
       saved_type = self.get_type()
@@ -370,6 +366,19 @@ class FancyRedirectHandler(urllib2.HTTPRedirectHandler):
     # Same thing as in our set_proxy implementation, but in this case
     # we"ve only got a Request to work with, so it was this or copy
     # everything over piecemeal.
+    #
+    # Note that we do not persist tunneling behavior from an http request
+    # to an https request, because an http request does not set _tunnel_host.
+    #
+    # Also note that in Python < 2.6, you will get an error in
+    # FancyHTTPSHandler.do_open() on an https urllib2.Request that uses an http
+    # proxy, since the proxy type will be set to http instead of https.
+    # (FancyRequest, and urllib2.Request in Python >= 2.6 set the proxy type to
+    # https.)  Such an urllib2.Request could result from this redirect
+    # if you are redirecting from an http request (since an an http request
+    # does not have _tunnel_host set, and thus you will not set the proxy
+    # in the code below), and if you have defined a proxy for https in, say,
+    # FancyProxyHandler, and that proxy has type http.
     if hasattr(req, "_tunnel_host") and isinstance(new_req, urllib2.Request):
       if new_req.get_type() == "https":
         if req._tunnel_host:
@@ -380,8 +389,10 @@ class FancyRedirectHandler(urllib2.HTTPRedirectHandler):
           # req is not proxied, so just make sure _tunnel_host is defined.
           new_req._tunnel_host = None
         new_req.type = "https"
-        new_req._key_file = req._key_file
-        new_req._cert_file = req._cert_file
-        new_req._ca_certs = req._ca_certs
+    if hasattr(req, "_key_file") and isinstance(new_req, urllib2.Request):
+      # Copy the auxiliary data in case this or any further redirect is https
+      new_req._key_file = req._key_file
+      new_req._cert_file = req._cert_file
+      new_req._ca_certs = req._ca_certs
 
     return new_req

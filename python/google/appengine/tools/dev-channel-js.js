@@ -6,6 +6,12 @@ goog.evalWorksForGlobals_ = null;
 goog.provide = function(name) {
   goog.exportPath_(name)
 };
+goog.setTestOnly = function(opt_message) {
+  if(!goog.DEBUG) {
+    opt_message = opt_message || "";
+    throw Error("Importing test-only code into non-debug environment" + opt_message ? ": " + opt_message : ".");
+  }
+};
 goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
   var parts = name.split("."), cur = opt_objectToExportTo || goog.global;
   !(parts[0] in cur) && cur.execScript && cur.execScript("var " + parts[0]);
@@ -28,8 +34,8 @@ goog.getObjectByName = function(name, opt_obj) {
   return cur
 };
 goog.globalize = function(obj, opt_global) {
-  var global = opt_global || goog.global;
-  for(var x in obj) {
+  var global = opt_global || goog.global, x;
+  for(x in obj) {
     global[x] = obj[x]
   }
 };
@@ -140,8 +146,8 @@ goog.cloneObject = function(obj) {
     if(obj.clone) {
       return obj.clone()
     }
-    var clone = type == "array" ? [] : {};
-    for(var key in obj) {
+    var clone = type == "array" ? [] : {}, key;
+    for(key in obj) {
       clone[key] = goog.cloneObject(obj[key])
     }
     return clone
@@ -217,8 +223,8 @@ goog.setCssNameMapping = function(mapping) {
   goog.cssNameMapping_ = mapping
 };
 goog.getMsg = function(str, opt_values) {
-  var values = opt_values || {};
-  for(var key in values) {
+  var values = opt_values || {}, key;
+  for(key in values) {
     var value = ("" + values[key]).replace(/\$/g, "$$$$");
     str = str.replace(RegExp("\\{\\$" + key + "\\}", "gi"), value)
   }
@@ -443,12 +449,12 @@ goog.string.unescapeEntities = function(str) {
   return str
 };
 goog.string.unescapeEntitiesUsingDom_ = function(str) {
-  var el = goog.global.document.createElement("a");
-  el.innerHTML = str;
-  el[goog.string.NORMALIZE_FN_] && el[goog.string.NORMALIZE_FN_]();
-  str = el.firstChild.nodeValue;
+  var el = goog.global.document.createElement("div");
+  el.innerHTML = "<pre>x" + str + "</pre>";
+  el.firstChild[goog.string.NORMALIZE_FN_] && el.firstChild[goog.string.NORMALIZE_FN_]();
+  str = el.firstChild.firstChild.nodeValue.slice(1);
   el.innerHTML = "";
-  return str
+  return goog.string.canonicalizeNewlines(str)
 };
 goog.string.unescapePureXmlEntities_ = function(str) {
   return str.replace(/&([^;]+);/g, function(s, entity) {
@@ -1163,8 +1169,8 @@ goog.object.forEach = function(obj, f, opt_obj) {
   }
 };
 goog.object.filter = function(obj, f, opt_obj) {
-  var res = {};
-  for(var key in obj) {
+  var res = {}, key;
+  for(key in obj) {
     if(f.call(opt_obj, obj[key], key, obj)) {
       res[key] = obj[key]
     }
@@ -1172,8 +1178,8 @@ goog.object.filter = function(obj, f, opt_obj) {
   return res
 };
 goog.object.map = function(obj, f, opt_obj) {
-  var res = {};
-  for(var key in obj) {
+  var res = {}, key;
+  for(key in obj) {
     res[key] = f.call(opt_obj, obj[key], key, obj)
   }
   return res
@@ -1195,8 +1201,8 @@ goog.object.every = function(obj, f, opt_obj) {
   return true
 };
 goog.object.getCount = function(obj) {
-  var rv = 0;
-  for(var key in obj) {
+  var rv = 0, key;
+  for(key in obj) {
     rv++
   }
   return rv
@@ -1215,15 +1221,15 @@ goog.object.contains = function(obj, val) {
   return goog.object.containsValue(obj, val)
 };
 goog.object.getValues = function(obj) {
-  var res = [], i = 0;
-  for(var key in obj) {
+  var res = [], i = 0, key;
+  for(key in obj) {
     res[i++] = obj[key]
   }
   return res
 };
 goog.object.getKeys = function(obj) {
-  var res = [], i = 0;
-  for(var key in obj) {
+  var res = [], i = 0, key;
+  for(key in obj) {
     res[i++] = key
   }
   return res
@@ -1287,15 +1293,15 @@ goog.object.setIfUndefined = function(obj, key, value) {
   return key in obj ? obj[key] : obj[key] = value
 };
 goog.object.clone = function(obj) {
-  var res = {};
-  for(var key in obj) {
+  var res = {}, key;
+  for(key in obj) {
     res[key] = obj[key]
   }
   return res
 };
 goog.object.transpose = function(obj) {
-  var transposed = {};
-  for(var key in obj) {
+  var transposed = {}, key;
+  for(key in obj) {
     transposed[obj[key]] = key
   }
   return transposed
@@ -1509,8 +1515,8 @@ goog.dom.classes.toggle = function(element, className) {
   var add = !goog.dom.classes.has(element, className);
   goog.dom.classes.enable(element, className, add);
   return add
-};goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", DD:"DD", DEL:"DEL", DFN:"DFN", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", FIELDSET:"FIELDSET", FONT:"FONT", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", H1:"H1", 
-H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", MAP:"MAP", MENU:"MENU", META:"META", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", P:"P", PARAM:"PARAM", PRE:"PRE", Q:"Q", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SELECT:"SELECT", SMALL:"SMALL", SPAN:"SPAN", STRIKE:"STRIKE", 
+};goog.dom.TagName = {A:"A", ABBR:"ABBR", ACRONYM:"ACRONYM", ADDRESS:"ADDRESS", APPLET:"APPLET", AREA:"AREA", B:"B", BASE:"BASE", BASEFONT:"BASEFONT", BDO:"BDO", BIG:"BIG", BLOCKQUOTE:"BLOCKQUOTE", BODY:"BODY", BR:"BR", BUTTON:"BUTTON", CANVAS:"CANVAS", CAPTION:"CAPTION", CENTER:"CENTER", CITE:"CITE", CODE:"CODE", COL:"COL", COLGROUP:"COLGROUP", DD:"DD", DEL:"DEL", DFN:"DFN", DIR:"DIR", DIV:"DIV", DL:"DL", DT:"DT", EM:"EM", FIELDSET:"FIELDSET", FONT:"FONT", FORM:"FORM", FRAME:"FRAME", FRAMESET:"FRAMESET", 
+H1:"H1", H2:"H2", H3:"H3", H4:"H4", H5:"H5", H6:"H6", HEAD:"HEAD", HR:"HR", HTML:"HTML", I:"I", IFRAME:"IFRAME", IMG:"IMG", INPUT:"INPUT", INS:"INS", ISINDEX:"ISINDEX", KBD:"KBD", LABEL:"LABEL", LEGEND:"LEGEND", LI:"LI", LINK:"LINK", MAP:"MAP", MENU:"MENU", META:"META", NOFRAMES:"NOFRAMES", NOSCRIPT:"NOSCRIPT", OBJECT:"OBJECT", OL:"OL", OPTGROUP:"OPTGROUP", OPTION:"OPTION", P:"P", PARAM:"PARAM", PRE:"PRE", Q:"Q", S:"S", SAMP:"SAMP", SCRIPT:"SCRIPT", SELECT:"SELECT", SMALL:"SMALL", SPAN:"SPAN", STRIKE:"STRIKE", 
 STRONG:"STRONG", STYLE:"STYLE", SUB:"SUB", SUP:"SUP", TABLE:"TABLE", TBODY:"TBODY", TD:"TD", TEXTAREA:"TEXTAREA", TFOOT:"TFOOT", TH:"TH", THEAD:"THEAD", TITLE:"TITLE", TR:"TR", TT:"TT", U:"U", UL:"UL", VAR:"VAR"};goog.dom.ASSUME_QUIRKS_MODE = false;
 goog.dom.ASSUME_STANDARDS_MODE = false;
 goog.dom.COMPAT_MODE_KNOWN_ = goog.dom.ASSUME_QUIRKS_MODE || goog.dom.ASSUME_STANDARDS_MODE;
@@ -2911,8 +2917,8 @@ goog.debug.expose = function(obj, opt_showFn) {
   if(obj == null) {
     return"NULL"
   }
-  var str = [];
-  for(var x in obj) {
+  var str = [], x;
+  for(x in obj) {
     if(!(!opt_showFn && goog.isFunction(obj[x]))) {
       var s = x + " = ";
       try {
@@ -3355,7 +3361,8 @@ goog.events.Event.stopPropagation = function(e) {
 };
 goog.events.Event.preventDefault = function(e) {
   e.preventDefault()
-};goog.events.BrowserEvent = function(opt_e, opt_currentTarget) {
+};goog.events.EventType = {CLICK:"click", DBLCLICK:"dblclick", MOUSEDOWN:"mousedown", MOUSEUP:"mouseup", MOUSEOVER:"mouseover", MOUSEOUT:"mouseout", MOUSEMOVE:"mousemove", SELECTSTART:"selectstart", KEYPRESS:"keypress", KEYDOWN:"keydown", KEYUP:"keyup", BLUR:"blur", FOCUS:"focus", DEACTIVATE:"deactivate", FOCUSIN:goog.userAgent.IE ? "focusin" : "DOMFocusIn", FOCUSOUT:goog.userAgent.IE ? "focusout" : "DOMFocusOut", CHANGE:"change", SELECT:"select", SUBMIT:"submit", INPUT:"input", PROPERTYCHANGE:"propertychange", 
+DRAGSTART:"dragstart", DRAGENTER:"dragenter", DRAGOVER:"dragover", DRAGLEAVE:"dragleave", DROP:"drop", TOUCHSTART:"touchstart", TOUCHMOVE:"touchmove", TOUCHEND:"touchend", TOUCHCANCEL:"touchcancel", CONTEXTMENU:"contextmenu", ERROR:"error", HELP:"help", LOAD:"load", LOSECAPTURE:"losecapture", READYSTATECHANGE:"readystatechange", RESIZE:"resize", SCROLL:"scroll", UNLOAD:"unload", HASHCHANGE:"hashchange", POPSTATE:"popstate"};goog.events.BrowserEvent = function(opt_e, opt_currentTarget) {
   opt_e && this.init(opt_e, opt_currentTarget)
 };
 goog.inherits(goog.events.BrowserEvent, goog.events.Event);
@@ -3392,10 +3399,10 @@ goog.events.BrowserEvent.prototype.init = function(e, opt_currentTarget) {
       }
     }
   }else {
-    if(type == "mouseover") {
+    if(type == goog.events.EventType.MOUSEOVER) {
       relatedTarget = e.fromElement
     }else {
-      if(type == "mouseout") {
+      if(type == goog.events.EventType.MOUSEOUT) {
         relatedTarget = e.toElement
       }
     }
@@ -3415,6 +3422,7 @@ goog.events.BrowserEvent.prototype.init = function(e, opt_currentTarget) {
   this.shiftKey = e.shiftKey;
   this.metaKey = e.metaKey;
   this.platformModifierKey = goog.userAgent.MAC ? e.metaKey : e.ctrlKey;
+  this.state = e.state;
   this.event_ = e;
   delete this.returnValue_;
   delete this.propagationStopped_
@@ -3855,14 +3863,12 @@ goog.events.hasListener = function(obj, opt_type, opt_capture) {
   return false
 };
 goog.events.expose = function(e) {
-  var str = [];
-  for(var key in e) {
+  var str = [], key;
+  for(key in e) {
     e[key] && e[key].id ? str.push(key + " = " + e[key] + " (" + e[key].id + ")") : str.push(key + " = " + e[key])
   }
   return str.join("\n")
 };
-goog.events.EventType = {CLICK:"click", DBLCLICK:"dblclick", MOUSEDOWN:"mousedown", MOUSEUP:"mouseup", MOUSEOVER:"mouseover", MOUSEOUT:"mouseout", MOUSEMOVE:"mousemove", SELECTSTART:"selectstart", KEYPRESS:"keypress", KEYDOWN:"keydown", KEYUP:"keyup", BLUR:"blur", FOCUS:"focus", DEACTIVATE:"deactivate", FOCUSIN:goog.userAgent.IE ? "focusin" : "DOMFocusIn", FOCUSOUT:goog.userAgent.IE ? "focusout" : "DOMFocusOut", CHANGE:"change", SELECT:"select", SUBMIT:"submit", INPUT:"input", PROPERTYCHANGE:"propertychange", 
-DRAGSTART:"dragstart", DRAGENTER:"dragenter", DRAGOVER:"dragover", DRAGLEAVE:"dragleave", DROP:"drop", CONTEXTMENU:"contextmenu", ERROR:"error", HELP:"help", LOAD:"load", LOSECAPTURE:"losecapture", READYSTATECHANGE:"readystatechange", RESIZE:"resize", SCROLL:"scroll", UNLOAD:"unload", HASHCHANGE:"hashchange", POPSTATE:"popstate"};
 goog.events.getOnString_ = function(type) {
   if(type in goog.events.onStringMap_) {
     return goog.events.onStringMap_[type]
@@ -4175,8 +4181,8 @@ goog.json.Serializer.prototype.serializeArray_ = function(arr, sb) {
 };
 goog.json.Serializer.prototype.serializeObject_ = function(obj, sb) {
   sb.push("{");
-  var sep = "";
-  for(var key in obj) {
+  var sep = "", key;
+  for(key in obj) {
     if(obj.hasOwnProperty(key)) {
       var value = obj[key];
       if(typeof value != "function") {
@@ -4555,7 +4561,7 @@ goog.net.XhrIo.prototype.dispatchErrors_ = function() {
   }
 };
 goog.net.XhrIo.prototype.abort = function(opt_failureCode) {
-  if(this.xhr_) {
+  if(this.xhr_ && this.active_) {
     this.logger_.fine(this.formatMsg_("Aborting"));
     this.active_ = false;
     this.inAbort_ = true;
@@ -4680,6 +4686,9 @@ goog.net.XhrIo.prototype.getResponseText = function() {
 };
 goog.net.XhrIo.prototype.getResponseHeader = function(key) {
   return this.xhr_ && this.isComplete() ? this.xhr_.getResponseHeader(key) : undefined
+};
+goog.net.XhrIo.prototype.getAllResponseHeaders = function() {
+  return this.xhr_ && this.isComplete() ? this.xhr_.getAllResponseHeaders() : ""
 };
 goog.net.XhrIo.prototype.formatMsg_ = function(msg) {
   return msg + " [" + this.lastMethod_ + " " + this.lastUri_ + " " + this.getStatus() + "]"

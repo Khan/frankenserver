@@ -32,27 +32,22 @@ from google.appengine.api import apiproxy_stub_map
 from google.appengine.api.channel import channel_service_pb
 from google.appengine.runtime import apiproxy_errors
 
-MAX_DURATION = 60 * 60 * 4
 
-MAX_SIMULTANEOUS_CONNECTIONS = 10
+MAXIMUM_CLIENT_ID_LENGTH = 64
+
+MAXIMUM_MESSAGE_LENGTH = 32767
 
 
 class Error(Exception):
   """Base error class for this module."""
 
 
-class InvalidChannelKeyError(Error):
-  """Error that indicates a bad channel id."""
+class InvalidChannelClientIdError(Error):
+  """Error that indicates a bad client id."""
 
-class InvalidChannelKeyError(Error):
-  """Error that indicates a bad channel key."""
 
 class InvalidMessageError(Error):
   """Error that indicates a message is malformed."""
-
-
-class ChannelTimeoutError(Error):
-  """Error that indicates the given channel has timed out."""
 
 
 def _ToChannelError(error):
@@ -67,11 +62,9 @@ def _ToChannelError(error):
   """
   error_map = {
       channel_service_pb.ChannelServiceError.INVALID_CHANNEL_KEY:
-      InvalidChannelKeyError,
+      InvalidChannelClientIdError,
       channel_service_pb.ChannelServiceError.BAD_MESSAGE:
       InvalidMessageError,
-      channel_service_pb.ChannelServiceError.CHANNEL_TIMEOUT:
-      ChannelTimeoutError
       }
 
   if error.application_error in error_map:
@@ -88,24 +81,52 @@ def _GetService():
     return 'xmpp'
 
 
-def create_channel(application_key):
+def _ValidateClientId(client_id):
+  """Valides a client id.
+
+  Args:
+    client_id: The client id provided by the application.
+
+  Returns:
+    If the client id is of type str, returns the original client id.
+    If the client id is of type unicode, returns the id encoded to utf-8.
+
+  Raises:
+    InvalidChannelClientIdError: if client id is not an instance of str or
+        unicode, or if the (utf-8 encoded) string is longer than 64 characters.
+  """
+  if isinstance(client_id, unicode):
+    client_id = client_id.encode('utf-8')
+  elif not isinstance(client_id, str):
+    raise InvalidChannelClientIdError
+
+  if len(client_id) > MAXIMUM_CLIENT_ID_LENGTH:
+    raise InvalidChannelClientIdError
+
+  return client_id
+
+
+def create_channel(client_id):
   """Create a channel.
 
   Args:
-    application_key: A key to identify this channel on the server side.
+    client_id: A string to identify this channel on the server side.
 
   Returns:
-    A string id that the client can use to connect to the channel.
+    A token that the client can use to connect to the channel.
 
   Raises:
-    InvalidChannelTimeoutError: if the specified timeout is invalid.
+    InvalidChannelClientIdError: if clientid is not an instance of str or
+        unicode, or if the (utf-8 encoded) string is longer than 64 characters.
     Other errors returned by _ToChannelError
   """
+
+  client_id = _ValidateClientId(client_id)
 
   request = channel_service_pb.CreateChannelRequest()
   response = channel_service_pb.CreateChannelResponse()
 
-  request.set_application_key(application_key)
+  request.set_application_key(client_id)
 
   try:
     apiproxy_stub_map.MakeSyncCall(_GetService(),
@@ -118,20 +139,33 @@ def create_channel(application_key):
   return response.client_id()
 
 
-def send_message(application_key, message):
+def send_message(client_id, message):
   """Send a message to a channel.
 
   Args:
-    application_key: The key passed to create_channel.
+    client_id: The client id passed to create_channel.
     message: A string representing the message to send.
 
   Raises:
+    InvalidChannelClientIdError: if client_id is not an instance of str or
+        unicode, or if the (utf-8 encoded) string is longer than 64 characters.
+    InvalidMessageError: if the message isn't a string or is too long.
     Errors returned by _ToChannelError
   """
+  client_id = _ValidateClientId(client_id)
+
+  if isinstance(message, unicode):
+    message = message.encode('utf-8')
+  elif not isinstance(message, str):
+    raise InvalidMessageError
+
+  if len(message) > MAXIMUM_MESSAGE_LENGTH:
+    raise InvalidMessageError
+
   request = channel_service_pb.SendMessageRequest()
   response = api_base_pb.VoidProto()
 
-  request.set_application_key(application_key)
+  request.set_application_key(client_id)
   request.set_message(message)
 
   try:

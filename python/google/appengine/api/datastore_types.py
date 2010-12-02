@@ -679,7 +679,7 @@ class Category(unicode):
   TERM = 'user-tag'
 
   def __init__(self, tag):
-    super(Category, self).__init__(self, tag)
+    super(Category, self).__init__()
     ValidateString(tag, 'tag')
 
   def ToXml(self):
@@ -701,7 +701,7 @@ class Link(unicode):
   Raises BadValueError if link is not a fully qualified, well-formed URL.
   """
   def __init__(self, link):
-    super(Link, self).__init__(self, link)
+    super(Link, self).__init__()
     ValidateString(link, 'link', max_len=_MAX_LINK_PROPERTY_LENGTH)
 
     scheme, domain, path, params, query, fragment = urlparse.urlparse(link)
@@ -724,7 +724,7 @@ class Email(unicode):
   Raises BadValueError if email is not a valid email address.
   """
   def __init__(self, email):
-    super(Email, self).__init__(self, email)
+    super(Email, self).__init__()
     ValidateString(email, 'email')
 
   def ToXml(self):
@@ -915,7 +915,7 @@ class PhoneNumber(unicode):
   Raises BadValueError if phone is not a string or subtype.
   """
   def __init__(self, phone):
-    super(PhoneNumber, self).__init__(self, phone)
+    super(PhoneNumber, self).__init__()
     ValidateString(phone, 'phone')
 
   def ToXml(self):
@@ -933,7 +933,7 @@ class PostalAddress(unicode):
   Raises BadValueError if address is not a string or subtype.
   """
   def __init__(self, address):
-    super(PostalAddress, self).__init__(self, address)
+    super(PostalAddress, self).__init__()
     ValidateString(address, 'address')
 
   def ToXml(self):
@@ -955,7 +955,7 @@ class Rating(long):
   MAX = 100
 
   def __init__(self, rating):
-    super(Rating, self).__init__(self, rating)
+    super(Rating, self).__init__()
     if isinstance(rating, float) or isinstance(rating, complex):
       raise datastore_errors.BadValueError(
         'Expected int or long; received %s (a %s).' %
@@ -1505,7 +1505,7 @@ def ToPropertyPb(name, values):
       same type.
 
   Returns:
-    A list of entity_pb.PropertyValue instances.
+    A list of entity_pb.Property instances.
   """
   encoded_name = name.encode('utf-8')
 

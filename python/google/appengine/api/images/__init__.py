@@ -897,6 +897,8 @@ def histogram(image_data):
   return image.histogram()
 
 
+IMG_SERVING_SIZES_LIMIT = 1600
+
 IMG_SERVING_SIZES = [
     32, 48, 64, 72, 80, 90, 94, 104, 110, 120, 128, 144,
     150, 160, 200, 220, 288, 320, 400, 512, 576, 640, 720,
@@ -927,20 +929,8 @@ def get_serving_url(blob_key,
 
   "http://lh3.ggpht.com/SomeCharactersGoesHere=s32-c"
 
-  Available sizes for resize are:
-  (e.g. "=sX" where X is one of the following values)
-
-  0, 32, 48, 64, 72, 80, 90, 94, 104, 110, 120, 128, 144,
-  150, 160, 200, 220, 288, 320, 400, 512, 576, 640, 720,
-  800, 912, 1024, 1152, 1280, 1440, 1600
-
-  Available sizes for crop are:
-  (e.g. "=sX-c" where X is one of the following values)
-
-  32, 48, 64, 72, 80, 104, 136, 144, 150, 160
-
-  These values are also available as IMG_SERVING_SIZES and
-  IMG_SERVING_CROP_SIZES integer lists.
+  Available sizes are any interger in the range [0, 1600] and is available as
+  IMG_SERVING_SIZES_LIMIT.
 
   Args:
     size: int, size of resulting images
@@ -960,10 +950,7 @@ def get_serving_url(blob_key,
   if crop and not size:
     raise BadRequestError("Size should be set for crop operation")
 
-  if size and crop and not size in IMG_SERVING_CROP_SIZES:
-    raise UnsupportedSizeError("Unsupported crop size")
-
-  if size and not crop and not size in IMG_SERVING_SIZES:
+  if size and (size > IMG_SERVING_SIZES_LIMIT or size < 0):
     raise UnsupportedSizeError("Unsupported size")
 
   request = images_service_pb.ImagesGetUrlBaseRequest()
@@ -999,4 +986,3 @@ def get_serving_url(blob_key,
     url += "-c"
 
   return url
-

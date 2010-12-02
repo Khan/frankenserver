@@ -117,6 +117,7 @@ class BaseRequestHandler(webapp.RequestHandler):
     base_path = self.base_path()
     values = {
       'application_name': self.request.environ['APPLICATION_ID'],
+      'sdk_version': self.request.environ.get('SDK_VERSION', 'Unknown'),
       'user': users.get_current_user(),
       'request': self.request,
       'home_path': base_path + DefaultPageHandler.PATH,
@@ -304,7 +305,7 @@ class QueuesPageHandler(BaseRequestHandler):
   def post(self):
     """Handle modifying actions and/or redirect to GET page."""
 
-    if self.request.get('action:flushqueue'):
+    if self.request.get('action:purgequeue'):
       self.stub.FlushQueue(self.request.get('queue'))
     self.redirect(self.request.path_url)
 

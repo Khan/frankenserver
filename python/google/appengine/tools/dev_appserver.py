@@ -60,11 +60,11 @@ import mimetools
 import mimetypes
 import os
 import pickle
-import pprint
 import random
 import select
 import shutil
 import tempfile
+import yaml
 
 import re
 import sre_compile
@@ -80,6 +80,8 @@ import urlparse
 import urllib
 
 import google
+google._DEV_APPSERVER = True
+
 from google.pyglib import gexcept
 
 from google.appengine.api import apiproxy_stub_map
@@ -98,7 +100,7 @@ from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.channel import channel_service_stub
-from google.appengine.api.labs.taskqueue import taskqueue_stub
+from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.matcher import matcher_stub
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.xmpp import xmpp_service_stub
@@ -146,6 +148,8 @@ MAX_REQUEST_SIZE = 10 * 1024 * 1024
 COPY_BLOCK_SIZE = 1 << 20
 
 API_VERSION = '1'
+
+VERSION_FILE = '../VERSION'
 
 SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
                                               'site-packages'))
@@ -868,6 +872,8 @@ SHARED_MODULE_PREFIXES = set([
 
 
     'wsgiref',
+
+    'MySQLdb',
 ])
 
 NOT_SHARED_MODULE_PREFIXES = set([
@@ -2309,7 +2315,7 @@ def ExecuteCGI(root_path,
 
     __builtin__.buffer = NotImplementedFakeClass
 
-    logging.debug('Executing CGI with env:\n%s', pprint.pformat(env))
+    logging.debug('Executing CGI with env:\n%s', repr(env))
     try:
       reset_modules = exec_script(handler_path, cgi_path, hook)
     except SystemExit, e:
@@ -3006,6 +3012,32 @@ class ModuleManager(object):
 
 
 
+def GetVersionObject(isfile=os.path.isfile, open_fn=open):
+  """Gets the version of the SDK by parsing the VERSION file.
+
+  Args:
+    isfile: used for testing.
+    open_fn: Used for testing.
+
+  Returns:
+    A Yaml object or None if the VERSION file does not exist.
+  """
+  version_filename = os.path.join(os.path.dirname(google.__file__),
+                                  VERSION_FILE)
+  if not isfile(version_filename):
+    logging.error('Could not find version file at %s', version_filename)
+    return None
+
+  version_fh = open_fn(version_filename, 'r')
+  try:
+    version = yaml.safe_load(version_fh)
+  finally:
+    version_fh.close()
+
+  return version
+
+
+
 def _ClearTemplateCache(module_dict=sys.modules):
   """Clear template cache in webapp.template module.
 
@@ -3198,6 +3230,8 @@ def CreateRequestHandler(root_path,
               "API versions cannot be switched dynamically: %r != %r",
               config.api_version, API_VERSION)
           sys.exit(1)
+        version = GetVersionObject()
+        env_dict['SDK_VERSION'] = version['release']
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
         env_dict['APPLICATION_ID'] = config.application
         dispatcher = MatcherDispatcher(login_url,
@@ -3609,6 +3643,7 @@ def SetupStubs(app_id, **config):
   apiproxy_stub_map.apiproxy.RegisterStub(
       'urlfetch',
       urlfetch_stub.URLFetchServiceStub())
+
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'mail',

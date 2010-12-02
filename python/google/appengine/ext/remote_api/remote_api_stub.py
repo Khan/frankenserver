@@ -370,6 +370,7 @@ class RemoteDatastoreStub(RemoteStub):
     finally:
       self.__local_tx_lock.release()
     transaction.set_handle(txid)
+    transaction.set_app(request.app())
 
   def _Dynamic_Commit(self, transaction, transaction_response):
     txid = transaction.handle()

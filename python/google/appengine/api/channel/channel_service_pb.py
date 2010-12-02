@@ -30,14 +30,12 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
   INTERNAL_ERROR =    1
   INVALID_CHANNEL_KEY =    2
   BAD_MESSAGE  =    3
-  CHANNEL_TIMEOUT =    4
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INTERNAL_ERROR",
     2: "INVALID_CHANNEL_KEY",
     3: "BAD_MESSAGE",
-    4: "CHANNEL_TIMEOUT",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

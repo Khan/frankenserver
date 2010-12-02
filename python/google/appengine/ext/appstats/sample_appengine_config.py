@@ -130,8 +130,9 @@ appstats_LOCK_TIMEOUT = 1
 appstats_TZOFFSET = 8*3600
 
 # URL path (sans host) leading to the stats UI.  Should match app.yaml.
+# If "builtins: - appstats: on" is used, the path should be /_ah/stats.
 
-appstats_stats_url = '/stats'
+appstats_stats_url = '/_ah/stats'
 
 # Fraction of requests to record.  Set this to a float between 0.0
 # and 1.0 to record that fraction of all requests.

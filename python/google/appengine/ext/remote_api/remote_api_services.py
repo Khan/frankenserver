@@ -29,12 +29,7 @@ from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.api.capabilities import capability_service_pb
 from google.appengine.api.images import images_service_pb
 from google.appengine.api.memcache import memcache_service_pb
-try:
-  __import__('google.appengine.api.labs.taskqueue.taskqueue_service_pb')
-  taskqueue_service_pb = sys.modules.get(
-      'google.appengine.api.labs.taskqueue.taskqueue_service_pb')
-except ImportError:
-  from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.api.xmpp import xmpp_service_pb
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext.remote_api import remote_api_pb
@@ -125,4 +120,3 @@ SERVICE_PB_MAP = {
                         xmpp_service_pb.XmppInviteResponse),
     },
 }
-

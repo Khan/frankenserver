@@ -78,7 +78,6 @@ preconfigured to return all matching comments:
 
 
 
-import base64
 import copy
 import datetime
 import logging
@@ -92,7 +91,7 @@ from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api import namespace_manager
 from google.appengine.api import users
-from google.appengine.datastore import datastore_pb
+from google.appengine.datastore import datastore_query
 
 Error = datastore_errors.Error
 BadValueError = datastore_errors.BadValueError
@@ -882,15 +881,18 @@ class Model(object):
     Otherwise, we update this instance, and the key will remain the
     same.
 
+    Args:
+      config: datastore_rpc.Configuration to use for this request.
+
     Returns:
       The key of the instance (either the existing key or a new key).
 
     Raises:
       TransactionFailedError if the data could not be committed.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
     self._populate_internal_entity()
-    return datastore.Put(self._entity, rpc=rpc)
+    return datastore.Put(self._entity, config=config)
 
   save = put
 
@@ -933,11 +935,14 @@ class Model(object):
   def delete(self, **kwargs):
     """Deletes this entity from the datastore.
 
+    Args:
+      config: datastore_rpc.Configuration to use for this request.
+
     Raises:
       TransactionFailedError if the data could not be committed.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
-    datastore.Delete(self.key(), rpc=rpc)
+    config = datastore._GetConfigFromKwargs(kwargs)
+    datastore.Delete(self.key(), config=config)
     self._key = self.key()
     self._key_name = None
     self._parent_key = None
@@ -1037,6 +1042,7 @@ class Model(object):
     Args:
       keys: Key within datastore entity collection to find; or string key;
         or list of Keys or string keys.
+      config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       If a single key was given: a Model instance associated with key
@@ -1048,8 +1054,8 @@ class Model(object):
       KindError if any of the retreived objects are not instances of the
       type associated with call to 'get'.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
-    results = get(keys, rpc=rpc)
+    config = datastore._GetConfigFromKwargs(kwargs)
+    results = get(keys, config=config)
     if results is None:
       return None
 
@@ -1072,20 +1078,21 @@ class Model(object):
     Args:
       key_names: A single key-name or a list of key-names.
       parent: Parent of instances to get.  Can be a model or key.
+      config: datastore_rpc.Configuration to use for this request.
     """
     try:
       parent = _coerce_to_key(parent)
     except BadKeyError, e:
       raise BadArgumentError(str(e))
 
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
     key_names, multiple = datastore.NormalizeAndTypeCheck(key_names, basestring)
     keys = [datastore.Key.from_path(cls.kind(), name, parent=parent)
             for name in key_names]
     if multiple:
-      return get(keys, rpc=rpc)
+      return get(keys, config=config)
     else:
-      return get(keys[0], rpc=rpc)
+      return get(keys[0], config=config)
 
   @classmethod
   def get_by_id(cls, ids, parent=None, **kwargs):
@@ -1094,17 +1101,18 @@ class Model(object):
     Args:
       key_names: A single id or a list of ids.
       parent: Parent of instances to get.  Can be a model or key.
+      config: datastore_rpc.Configuration to use for this request.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
     if isinstance(parent, Model):
       parent = parent.key()
     ids, multiple = datastore.NormalizeAndTypeCheck(ids, (int, long))
     keys = [datastore.Key.from_path(cls.kind(), id, parent=parent)
             for id in ids]
     if multiple:
-      return get(keys, rpc=rpc)
+      return get(keys, config=config)
     else:
-      return get(keys[0], rpc=rpc)
+      return get(keys[0], config=config)
 
   @classmethod
   def get_or_insert(cls, key_name, **kwds):
@@ -1270,6 +1278,11 @@ class Model(object):
 def create_rpc(deadline=None, callback=None, read_policy=STRONG_CONSISTENCY):
   """Create an rpc for use in configuring datastore calls.
 
+  NOTE: This functions exists for backwards compatibility.  Please use
+  create_config() instead.  NOTE: the latter uses 'on_completion',
+  which is a function taking an argument, wherease create_rpc uses
+  'callback' which is a function without arguments.
+
   Args:
     deadline: float, deadline for calls in seconds.
     callback: callable, a callback triggered when this rpc completes,
@@ -1283,6 +1296,7 @@ def create_rpc(deadline=None, callback=None, read_policy=STRONG_CONSISTENCY):
   return datastore.CreateRPC(
       deadline=deadline, callback=callback, read_policy=read_policy)
 
+
 def get(keys, **kwargs):
   """Fetch the specific Model instance with the given key from the datastore.
 
@@ -1292,6 +1306,7 @@ def get(keys, **kwargs):
   Args:
     keys: Key within datastore entity collection to find; or string key;
       or list of Keys or string keys.
+    config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       If a single key was given: a Model instance associated with key
@@ -1299,10 +1314,10 @@ def get(keys, **kwargs):
       keys was given: a list whose items are either a Model instance or
       None.
   """
-  rpc = datastore.GetRpcFromKwargs(kwargs)
+  config = datastore._GetConfigFromKwargs(kwargs)
   keys, multiple = datastore.NormalizeAndTypeCheckKeys(keys)
   try:
-    entities = datastore.Get(keys, rpc=rpc)
+    entities = datastore.Get(keys, config=config)
   except datastore_errors.EntityNotFoundError:
     assert not multiple
     return None
@@ -1325,6 +1340,7 @@ def put(models, **kwargs):
 
   Args:
     models: Model instance or list of Model instances.
+    config: datastore_rpc.Configuration to use for this request.
 
   Returns:
     A Key or a list of Keys (corresponding to the argument's plurality).
@@ -1332,10 +1348,10 @@ def put(models, **kwargs):
   Raises:
     TransactionFailedError if the data could not be committed.
   """
-  rpc = datastore.GetRpcFromKwargs(kwargs)
+  config = datastore._GetConfigFromKwargs(kwargs)
   models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
   entities = [model._populate_internal_entity() for model in models]
-  keys = datastore.Put(entities, rpc=rpc)
+  keys = datastore.Put(entities, config=config)
   if multiple:
     return keys
   assert len(keys) == 1
@@ -1349,11 +1365,12 @@ def delete(models, **kwargs):
 
   Args:
     models: Model instance, key, key string or iterable thereof.
+    config: datastore_rpc.Configuration to use for this request.
 
   Raises:
     TransactionFailedError if the data could not be committed.
   """
-  rpc = datastore.GetRpcFromKwargs(kwargs)
+  config = datastore._GetConfigFromKwargs(kwargs)
 
   if isinstance(models, (basestring, Model, Key)):
     models = [models]
@@ -1364,7 +1381,7 @@ def delete(models, **kwargs):
       models = [models]
   keys = [_coerce_to_key(v) for v in models]
 
-  datastore.Delete(keys, rpc=rpc)
+  datastore.Delete(keys, config=config)
 
 
 def allocate_ids(model, size, **kwargs):
@@ -1379,6 +1396,8 @@ def allocate_ids(model, size, **kwargs):
     model: Model instance, Key or string to serve as a template specifying the
       ID sequence in which to allocate IDs. Returned ids should only be used
       in entities with the same parent (if any) and kind as this key.
+    size: Number of IDs to allocate.
+    config: datastore_rpc.Configuration to use for this request.
 
   Returns:
     (start, end) of the allocated range, inclusive.
@@ -1408,9 +1427,9 @@ def allocate_id_range(model, start, end, **kwargs):
     model: Model instance, Key or string to serve as a template specifying the
       ID sequence in which to allocate IDs. Allocated ids should only be used
       in entities with the same parent (if any) and kind as this key.
-    start: first id of the range to allocate, inclusive
-    end: last id of the range to allocate, inclusive
-    rpc: datastore.RPC to use for this request.
+    start: first id of the range to allocate, inclusive.
+    end: last id of the range to allocate, inclusive.
+    config: datastore_rpc.Configuration to use for this request.
 
   Returns:
     One of (KEY_RANGE_EMPTY, KEY_RANGE_CONTENTION, KEY_RANGE_COLLISION). If not
@@ -1669,53 +1688,6 @@ class Expando(Model):
     return entity_values
 
 
-def websafe_encode_cursor(compiled_cursor):
-  """Get a serialized cursor given a compiled cursor object.
-
-  Args:
-    compiled_cursor: The datastore_pb.CompiledCursor cursor to serialize.
-
-  Returns:
-    A base64-encoded serialized cursor.
-  """
-  return base64.urlsafe_b64encode(compiled_cursor.Encode())
-
-
-def websafe_decode_cursor(cursor):
-  """Gets a datastore_pb.CompiledCursor given its serialized form.
-
-  Args:
-    cursor: A serialized cursor as returned by websafe_encode_cursor.
-
-  Returns:
-    A datastore_pb.CompiledCursor.
-
-  Raises:
-    BadValueError: if the cursor argument is not a string type of does not
-      represent a serialized cursor.
-  """
-  if not isinstance(cursor, basestring):
-    raise BadValueError(
-        'Cursor must be a str or unicode instance, not a %s'
-        % type(cursor).__name__)
-  else:
-    cursor = str(cursor)
-    try:
-      decoded = base64.urlsafe_b64decode(cursor)
-      cursor = datastore_pb.CompiledCursor(decoded)
-    except (ValueError, TypeError), e:
-      raise datastore_errors.BadValueError(
-          'Invalid cursor %s. Details: %s' % (cursor, e))
-    except Exception, e:
-      if e.__class__.__name__ == 'ProtocolBufferDecodeError':
-        raise datastore_errors.BadValueError('Invalid cursor %s. '
-                                             'Details: %s' % (cursor, e))
-      else:
-        raise
-
-  return cursor
-
-
 class _BaseQuery(object):
   """Base class for both Query and GqlQuery."""
   _compile = False
@@ -1760,14 +1732,14 @@ class _BaseQuery(object):
     or use a GQL query with a LIMIT clause. It's more efficient.
 
     Args:
-      rpc: datastore.DatastoreRPC to use for this request.
+      config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       Iterator for this query.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
     raw_query = self._get_query()
-    iterator = raw_query.Run(rpc=rpc)
+    iterator = raw_query.Run(config=config)
 
     if self._compile:
       self._last_raw_query = raw_query
@@ -1785,16 +1757,25 @@ class _BaseQuery(object):
     """
     return self.run()
 
+  def __getstate__(self):
+    state = self.__dict__.copy()
+    if '_last_raw_query' in state:
+      del state['_last_raw_query']
+    return state
+
   def get(self, **kwargs):
     """Get first result from this.
+
+    Args:
+      config: datastore_rpc.Configuration to use for this request.
 
     Beware: get() ignores the LIMIT clause on GQL queries.
 
     Returns:
       First result from running the query if there are any, else None.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
-    results = self.fetch(1, rpc=rpc)
+    config = datastore._GetConfigFromKwargs(kwargs)
+    results = self.fetch(1, config=config)
     try:
       return results[0]
     except IndexError:
@@ -1806,16 +1787,17 @@ class _BaseQuery(object):
     Beware: count() ignores the LIMIT clause on GQL queries.
 
     Args:
-      limit, a number. If there are more results than this, stop short and
-      just return this number. Providing this argument makes the count
-      operation more efficient.
+      limit: A number. If there are more results than this, stop short and
+        just return this number. Providing this argument makes the count
+        operation more efficient.
+      config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       Number of entities this query fetches.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
     raw_query = self._get_query()
-    result = raw_query.Count(limit=limit, rpc=rpc)
+    result = raw_query.Count(limit=limit, config=config)
     if self._compile:
       self._last_raw_query = raw_query
     return result
@@ -1831,13 +1813,13 @@ class _BaseQuery(object):
     Args:
       limit: Maximum number of results to return.
       offset: Optional number of results to skip first; default zero.
-      rpc: datastore.DatastoreRPC to use for this request.
+      config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       A list of db.Model instances.  There may be fewer than 'limit'
       results if there aren't enough results to satisfy the request.
     """
-    rpc = datastore.GetRpcFromKwargs(kwargs)
+    config = datastore._GetConfigFromKwargs(kwargs)
 
     accepted = (int, long)
     if not (isinstance(limit, accepted) and isinstance(offset, accepted)):
@@ -1846,7 +1828,7 @@ class _BaseQuery(object):
       raise ValueError('Arguments to fetch() must be >= 0')
 
     raw_query = self._get_query()
-    raw = raw_query.Get(limit, offset, rpc=rpc)
+    raw = raw_query.Get(limit, offset, config=config)
 
     if self._compile:
       self._last_raw_query = raw_query
@@ -2354,7 +2336,7 @@ class GqlQuery(_BaseQuery):
     in batches by the iterator.
 
     Args:
-      rpc: datastore.DatastoreRPC to use for this request.
+      config: datastore_rpc.Configuration to use for this request.
 
     Returns:
       Iterator for this query.
@@ -3428,5 +3410,9 @@ run_in_transaction_custom_retries = datastore.RunInTransactionCustomRetries
 
 RunInTransaction = run_in_transaction
 RunInTransactionCustomRetries = run_in_transaction_custom_retries
+websafe_encode_cursor = datastore_query.Cursor.to_websafe_string
+websafe_decode_cursor = datastore_query.Cursor.from_websafe_string
 
 is_in_transaction = datastore.IsInTransaction
+
+create_config = datastore.CreateConfig

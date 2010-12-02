@@ -34,6 +34,9 @@ MemcacheIncrementResponse = memcache_service_pb.MemcacheIncrementResponse
 MemcacheDeleteResponse = memcache_service_pb.MemcacheDeleteResponse
 
 
+MAX_REQUEST_SIZE = 32 << 20
+
+
 class CacheEntry(object):
   """An entry in the cache."""
 
@@ -108,7 +111,8 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       gettime: time.time()-like function used for testing.
       service_name: Service name expected for all calls.
     """
-    super(MemcacheServiceStub, self).__init__(service_name)
+    super(MemcacheServiceStub, self).__init__(service_name,
+                                              max_request_size=MAX_REQUEST_SIZE)
     self._gettime = lambda: int(gettime())
     self._ResetStats()
 

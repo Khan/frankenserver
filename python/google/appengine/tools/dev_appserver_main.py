@@ -71,6 +71,7 @@ Options:
 
 
 
+
 from google.appengine.tools import os_compat
 
 import getopt
@@ -118,6 +119,10 @@ ARG_SMTP_HOST = 'smtp_host'
 ARG_SMTP_PASSWORD = 'smtp_password'
 ARG_SMTP_PORT = 'smtp_port'
 ARG_SMTP_USER = 'smtp_user'
+ARG_MYSQL_HOST = 'mysql_host'
+ARG_MYSQL_PORT = 'mysql_port'
+ARG_MYSQL_USER = 'mysql_user'
+ARG_MYSQL_PASSWORD = 'mysql_password'
 ARG_STATIC_CACHING = 'static_caching'
 ARG_TEMPLATE_DIR = 'template_dir'
 ARG_DISABLE_TASK_RUNNING = 'disable_task_running'
@@ -153,6 +158,11 @@ DEFAULT_ARGS = {
   ARG_SMTP_PORT: 25,
   ARG_SMTP_USER: '',
   ARG_SMTP_PASSWORD: '',
+
+
+
+
+
   ARG_ENABLE_SENDMAIL: False,
   ARG_SHOW_MAIL_BODY: False,
   ARG_AUTH_DOMAIN: 'gmail.com',
@@ -216,6 +226,10 @@ def ParseArguments(argv):
         'show_mail_body',
         'help',
         'history_path=',
+        'mysql_host=',
+        'mysql_port=',
+        'mysql_user=',
+        'mysql_password=',
         'port=',
         'require_indexes',
         'smtp_host=',
@@ -274,17 +288,23 @@ def ParseArguments(argv):
     if option == '--require_indexes':
       option_dict[ARG_REQUIRE_INDEXES] = True
 
+    if option == '--mysql_host':
+      option_dict[ARG_MYSQL_HOST] = value
+
+    if option == '--mysql_port':
+      option_dict[ARG_MYSQL_PORT] = _ParsePort(value, '--mysql_port')
+
+    if option == '--mysql_user':
+      option_dict[ARG_MYSQL_USER] = value
+
+    if option == '--mysql_password':
+      option_dict[ARG_MYSQL_PASSWORD] = value
+
     if option == '--smtp_host':
       option_dict[ARG_SMTP_HOST] = value
 
     if option == '--smtp_port':
-      try:
-        option_dict[ARG_SMTP_PORT] = int(value)
-        if not (65535 > option_dict[ARG_SMTP_PORT] > 0):
-          raise ValueError
-      except ValueError:
-        print >>sys.stderr, 'Invalid value supplied for SMTP port'
-        PrintUsageExit(1)
+      option_dict[ARG_SMTP_PORT] = _ParsePort(value, '--smtp_port')
 
     if option == '--smtp_user':
       option_dict[ARG_SMTP_USER] = value
@@ -335,6 +355,28 @@ def ParseArguments(argv):
       option_dict[ARG_TRUSTED] = True
 
   return args, option_dict
+
+
+def _ParsePort(port, description):
+  """Parses a port number from a string.
+
+  Args:
+    port: string
+    description: string to use in error messages.
+
+  Returns: integer between 0 and 65535
+
+  Raises:
+    ValueError if port is not a valid port number.
+  """
+  try:
+    port = int(port)
+    if not (65535 > port > 0):
+      raise ValueError
+    return port
+  except ValueError:
+    print >>sys.stderr, 'Invalid value %s supplied for %s' % (port, description)
+    PrintUsageExit(1)
 
 
 def MakeRpcServer(option_dict):

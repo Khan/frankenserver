@@ -2961,15 +2961,15 @@ in the app.yaml file at the top level of that directory.  appcfg.py
 will follow symlinks and recursively upload all files to the server.
 Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
 
-
-
-
-
-
-
-
-
-
+      'download_app': Action(
+          function='DownloadApp',
+          usage='%prog [options] download_app -A app_id [ -V version ] '
+                '<out-dir>',
+          short_desc='Download a previously-uploaded app.',
+          long_desc="""
+Download a previously-uploaded app to the specified directory.  The app
+ID is specified by the \"-A\" option.  The optional version is specified
+by the \"-V\" option."""),
 
       'update_cron': Action(
           function='UpdateCron',

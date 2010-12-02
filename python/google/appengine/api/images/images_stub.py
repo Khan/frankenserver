@@ -41,6 +41,9 @@ from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+MAX_REQUEST_SIZE = 32 << 20
+
+
 def _ArgbToRgbaTuple(argb):
   """Convert from a single ARGB value to a tuple containing RGBA.
 
@@ -89,7 +92,8 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       host_prefix: the URL prefix (protocol://host:port) to preprend to
         image urls on a call to GetUrlBase.
     """
-    super(ImagesServiceStub, self).__init__(service_name)
+    super(ImagesServiceStub, self).__init__(service_name,
+                                            max_request_size=MAX_REQUEST_SIZE)
     self._host_prefix = host_prefix
     Image.init()
 

@@ -2389,6 +2389,8 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
   paused_ = 0
   has_retry_parameters_ = 0
   retry_parameters_ = None
+  has_max_concurrent_requests_ = 0
+  max_concurrent_requests_ = 0
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -2477,6 +2479,19 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
 
   def has_retry_parameters(self): return self.has_retry_parameters_
 
+  def max_concurrent_requests(self): return self.max_concurrent_requests_
+
+  def set_max_concurrent_requests(self, x):
+    self.has_max_concurrent_requests_ = 1
+    self.max_concurrent_requests_ = x
+
+  def clear_max_concurrent_requests(self):
+    if self.has_max_concurrent_requests_:
+      self.has_max_concurrent_requests_ = 0
+      self.max_concurrent_requests_ = 0
+
+  def has_max_concurrent_requests(self): return self.has_max_concurrent_requests_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -2486,6 +2501,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if (x.has_user_specified_rate()): self.set_user_specified_rate(x.user_specified_rate())
     if (x.has_paused()): self.set_paused(x.paused())
     if (x.has_retry_parameters()): self.mutable_retry_parameters().MergeFrom(x.retry_parameters())
+    if (x.has_max_concurrent_requests()): self.set_max_concurrent_requests(x.max_concurrent_requests())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2501,6 +2517,8 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if self.has_paused_ and self.paused_ != x.paused_: return 0
     if self.has_retry_parameters_ != x.has_retry_parameters_: return 0
     if self.has_retry_parameters_ and self.retry_parameters_ != x.retry_parameters_: return 0
+    if self.has_max_concurrent_requests_ != x.has_max_concurrent_requests_: return 0
+    if self.has_max_concurrent_requests_ and self.max_concurrent_requests_ != x.max_concurrent_requests_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2529,6 +2547,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.queue_name_))
     if (self.has_user_specified_rate_): n += 1 + self.lengthString(len(self.user_specified_rate_))
     if (self.has_retry_parameters_): n += 1 + self.lengthString(self.retry_parameters_.ByteSize())
+    if (self.has_max_concurrent_requests_): n += 1 + self.lengthVarInt64(self.max_concurrent_requests_)
     return n + 21
 
   def Clear(self):
@@ -2538,6 +2557,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     self.clear_user_specified_rate()
     self.clear_paused()
     self.clear_retry_parameters()
+    self.clear_max_concurrent_requests()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -2555,6 +2575,9 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(58)
       out.putVarInt32(self.retry_parameters_.ByteSize())
       self.retry_parameters_.OutputUnchecked(out)
+    if (self.has_max_concurrent_requests_):
+      out.putVarInt32(64)
+      out.putVarInt32(self.max_concurrent_requests_)
 
   def TryMerge(self, d):
     while 1:
@@ -2581,6 +2604,9 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_retry_parameters().TryMerge(tmp)
         continue
+      if tt == 64:
+        self.set_max_concurrent_requests(d.getVarInt32())
+        continue
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
       d.skipData(tt)
 
@@ -2596,6 +2622,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"retry_parameters <\n"
       res+=self.retry_parameters_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_max_concurrent_requests_: res+=prefix+("max_concurrent_requests: %s\n" % self.DebugFormatInt32(self.max_concurrent_requests_))
     return res
 
 class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
@@ -2686,6 +2713,7 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
   kQueueuser_specified_rate = 5
   kQueuepaused = 6
   kQueueretry_parameters = 7
+  kQueuemax_concurrent_requests = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -2696,7 +2724,8 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
     5: "user_specified_rate",
     6: "paused",
     7: "retry_parameters",
-  }, 7)
+    8: "max_concurrent_requests",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2707,7 +2736,8 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.STRING,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
@@ -3749,6 +3779,144 @@ class TaskQueueDeleteQueueRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 class TaskQueueDeleteQueueResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 0
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class TaskQueueDeleteGroupRequest(ProtocolBuffer.ProtocolMessage):
+  has_app_id_ = 0
+  app_id_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def app_id(self): return self.app_id_
+
+  def set_app_id(self, x):
+    self.has_app_id_ = 1
+    self.app_id_ = x
+
+  def clear_app_id(self):
+    if self.has_app_id_:
+      self.has_app_id_ = 0
+      self.app_id_ = ""
+
+  def has_app_id(self): return self.has_app_id_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_app_id()): self.set_app_id(x.app_id())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_app_id_ != x.has_app_id_: return 0
+    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_app_id_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: app_id not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.app_id_))
+    return n + 1
+
+  def Clear(self):
+    self.clear_app_id()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.app_id_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_app_id(d.getPrefixedString())
+        continue
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kapp_id = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app_id",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class TaskQueueDeleteGroupResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     pass
@@ -5226,4 +5394,4 @@ class TaskQueueUpdateStorageLimitResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['TaskQueueServiceError','TaskQueueRetryParameters','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddRequest_CronTimetable','TaskQueueAddResponse','TaskQueueBulkAddRequest','TaskQueueBulkAddResponse','TaskQueueBulkAddResponse_TaskResult','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueForceRunRequest','TaskQueueForceRunResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueuePauseQueueRequest','TaskQueuePauseQueueResponse','TaskQueuePurgeQueueRequest','TaskQueuePurgeQueueResponse','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_TaskCronTimetable','TaskQueueQueryTasksResponse_TaskRunLog','TaskQueueQueryTasksResponse_Task','TaskQueueUpdateStorageLimitRequest','TaskQueueUpdateStorageLimitResponse']
+__all__ = ['TaskQueueServiceError','TaskQueueRetryParameters','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddRequest_CronTimetable','TaskQueueAddResponse','TaskQueueBulkAddRequest','TaskQueueBulkAddResponse','TaskQueueBulkAddResponse_TaskResult','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueForceRunRequest','TaskQueueForceRunResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueuePauseQueueRequest','TaskQueuePauseQueueResponse','TaskQueuePurgeQueueRequest','TaskQueuePurgeQueueResponse','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueDeleteGroupRequest','TaskQueueDeleteGroupResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_TaskCronTimetable','TaskQueueQueryTasksResponse_TaskRunLog','TaskQueueQueryTasksResponse_Task','TaskQueueUpdateStorageLimitRequest','TaskQueueUpdateStorageLimitResponse']

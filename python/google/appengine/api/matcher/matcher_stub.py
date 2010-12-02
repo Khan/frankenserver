@@ -33,11 +33,7 @@ import cPickle as pickle
 
 from collections import deque
 from google.appengine.api import apiproxy_stub
-
-try:
-  from google.appengine.api.labs.taskqueue import taskqueue_service_pb
-except ImportError:
-  from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.taskqueue import taskqueue_service_pb
 
 
 class _TrueExpr(object):

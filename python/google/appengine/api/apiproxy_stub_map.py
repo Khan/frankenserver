@@ -369,6 +369,8 @@ class UserRPC(object):
     self.__rpc.callback = self.__internal_callback
     self.callback = callback
 
+    self.__class__.__local.may_interrupt_wait = False
+
   def __internal_callback(self):
     """This is the callback set on the low-level RPC object.
 
@@ -588,9 +590,9 @@ class UserRPC(object):
       cls.__local.may_interrupt_wait = True
       try:
         running.__rpc.Wait()
-      except apiproxy_errors.InterruptedError:
-        running.__rpc._RPC__exception = None
-        running.__rpc._RPC__traceback = None
+      except apiproxy_errors.InterruptedError, err:
+        err.rpc._RPC__exception = None
+        err.rpc._RPC__traceback = None
     finally:
       cls.__local.may_interrupt_wait = False
     finished, runnning = cls.__check_one(rpcs)
