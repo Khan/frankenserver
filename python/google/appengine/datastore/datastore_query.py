@@ -43,7 +43,6 @@ __all__ = ['Batch',
            'make_filter',
            ]
 
-
 import base64
 import pickle
 
@@ -53,6 +52,24 @@ from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_rpc
+
+
+class _BaseComponent(object):
+  """A base class for query components.
+
+  Currently just implements basic == and != functions.
+  """
+
+  def __eq__(self, other):
+    if self.__class__ is not other.__class__:
+      return NotImplemented
+    return self is other or self.__dict__ == other.__dict__
+
+  def __ne__(self, other):
+    equal = self.__eq__(other)
+    if equal is NotImplemented:
+      return equal
+    return not equal
 
 
 def make_filter(name, op, values):
@@ -84,7 +101,7 @@ def make_filter(name, op, values):
     return PropertyFilter(op, properties)
 
 
-class FilterPredicate(object):
+class FilterPredicate(_BaseComponent):
   """An abstract base class for all query filters.
 
   All sub-classes must be immutable as these are often stored without creating a
@@ -98,6 +115,18 @@ class FilterPredicate(object):
   def _to_pbs(self):
     """Internal only function to generate a list of filter pbs."""
     return [self._to_pb()]
+
+  def __eq__(self, other):
+    if self.__class__ is other.__class__:
+      return super(FilterPredicate, self).__eq__(other)
+
+    if other.__class__ is CompositeFilter:
+      return other._op == CompositeFilter.AND and [self] == other._filters
+
+    if (self.__class__ is CompositeFilter and
+        isinstance(other, FilterPredicate)):
+      return self._op == CompositeFilter.AND and self._filters == [other]
+    return NotImplemented
 
 
 class PropertyFilter(FilterPredicate):
@@ -178,13 +207,13 @@ class CompositeFilter(FilterPredicate):
           'filters argument should be a non-empty list (%r)' % (filters,))
 
     super(CompositeFilter, self).__init__()
-    self.__op = op
-    self.__filters = []
+    self._op = op
+    self._filters = []
     for filter in filters:
-      if isinstance(filter, CompositeFilter) and filter.__op == self.__op:
-        self.__filters.extend(filter.__filters)
+      if isinstance(filter, CompositeFilter) and filter._op == self._op:
+        self._filters.extend(filter._filters)
       elif isinstance(filter, FilterPredicate):
-        self.__filters.append(filter)
+        self._filters.append(filter)
       else:
         raise datastore_errors.BadArgumentError(
             'filters argument must be a list of FilterPredicates, found (%r)' %
@@ -192,10 +221,10 @@ class CompositeFilter(FilterPredicate):
 
   def _to_pbs(self):
     """Returns the internal only pb representation."""
-    return [filter._to_pb() for filter in self.__filters]
+    return [filter._to_pb() for filter in self._filters]
 
 
-class Order(object):
+class Order(_BaseComponent):
   """A base class that represents a sort order on a query.
 
   All sub-classes must be immutable as these are often stored without creating a
@@ -205,6 +234,18 @@ class Order(object):
   def _to_pb(self):
     """Internal only function to generate a filter pb."""
     raise NotImplementedError
+
+  def __eq__(self, other):
+    if self.__class__ is other.__class__:
+      return super(Order, self).__eq__(other)
+
+    if other.__class__ is CompositeOrder:
+      return [self] == other._orders
+
+    if (self.__class__ is CompositeOrder and
+        isinstance(other, Order)):
+      return self._orders == [other]
+    return NotImplemented
 
 
 class PropertyOrder(Order):
@@ -264,23 +305,23 @@ class CompositeOrder(Order):
       raise datastore_errors.BadArgumentError(
           'orders argument should be list (%r)' % (orders,))
 
-    self.__orders = []
+    self._orders = []
     for order in orders:
       if isinstance(order, CompositeOrder):
-        self.__orders.extend(order.__orders)
+        self._orders.extend(order._orders)
       elif isinstance(order, Order):
-        self.__orders.append(order)
+        self._orders.append(order)
       else:
         raise datastore_errors.BadArgumentError(
             'orders argument should only contain Order (%r)' % (order,))
 
   def size(self):
     """Returns the number of sub-orders the instance contains."""
-    return len(self.__orders)
+    return len(self._orders)
 
   def _to_pbs(self):
     """Returns an ordered list of internal only pb representations."""
-    return [order._to_pb() for order in self.__orders]
+    return [order._to_pb() for order in self._orders]
 
 
 class FetchOptions(datastore_rpc.Configuration):
@@ -442,7 +483,7 @@ class QueryOptions(FetchOptions):
     return value
 
 
-class Cursor(object):
+class Cursor(_BaseComponent):
   """An immutable class that represents a relative position in a query.
 
   The position denoted by a Cursor is relative to a result in a query even
@@ -573,7 +614,7 @@ class Cursor(object):
     return self.__compiled_cursor
 
 
-class Query(object):
+class Query(_BaseComponent):
   """An immutable class that represents a query signature.
 
   A query signature consists of a source of entities (specified as app,
@@ -695,41 +736,28 @@ class Query(object):
       for order in self.__order._to_pbs():
         pb.add_order().CopyFrom(order)
 
-    keys_only = query_options.keys_only
-    limit = query_options.limit
-    count = query_options.prefetch_size
-    if count is None:
-      count = query_options.batch_size
-
-    if isinstance(conn.config, QueryOptions):
-      if keys_only is None:
-        keys_only = conn.config.keys_only
-      if limit is None:
-        limit = conn.config.limit
-      if count is None:
-        count = conn.config.prefetch_size
-
-    produce_cursors = query_options.produce_cursors
-    if isinstance(conn.config, FetchOptions):
-      if produce_cursors is None:
-        produce_cursors = conn.config.produce_cursors
-      if count is None:
-        count = conn.config.batch_size
-
-    if keys_only:
+    if QueryOptions.keys_only(query_options, conn.config):
       pb.set_keys_only(True)
+
+    if QueryOptions.produce_cursors(query_options, conn.config):
+      pb.set_compile(True)
+
+    limit = QueryOptions.limit(query_options, conn.config)
     if limit is not None:
       pb.set_limit(limit)
+
+    count = QueryOptions.prefetch_size(query_options, conn.config)
+    if count is None:
+      count = QueryOptions.batch_size(query_options, conn.config)
     if count is not None:
       pb.set_count(count)
-    if produce_cursors:
-      pb.set_compile(True)
 
     if query_options.offset:
       pb.set_offset(query_options.offset)
 
     if query_options.start_cursor is not None:
       pb.mutable_compiled_cursor().CopyFrom(query_options.start_cursor._to_pb())
+
     if query_options.end_cursor is not None:
       pb.mutable_end_compiled_cursor().CopyFrom(
           query_options.end_cursor._to_pb())
@@ -753,7 +781,7 @@ class Batch(object):
   This class contains a batch of results returned from the datastore and
   relevant metadata. This metadata includes:
     query: The query that produced this batch
-    fetch_options: The FetchOptions used to run the query. This does not
+    query_options: The QueryOptions used to run the query. This does not
       contained any options passed to the .next_batch() call that created the
       current batch.
     start_cursor, end_cursor: These are the cursors that can be used
@@ -931,38 +959,22 @@ class Batch(object):
   def _to_pb(self, fetch_options=None):
     req = datastore_pb.NextRequest()
 
-    count = None
-    produce_cursors = None
+    if FetchOptions.produce_cursors(fetch_options,
+                                    self.__query_options,
+                                    self.__conn.config):
+      req.set_compile(True)
 
-    if fetch_options is not None:
-      if not isinstance(fetch_options, FetchOptions):
-        raise datastore_errors.BadArgumentError(
-            'fetch_options argument should be datastore_query.FetchOptions '
-            '(%r)' % (fetch_options,))
-      count = fetch_options.batch_size
-      produce_cursors = fetch_options.produce_cursors
-      if fetch_options.offset:
-        req.set_offset(fetch_options.offset)
+    count = FetchOptions.batch_size(fetch_options,
+                                    self.__query_options,
+                                    self.__conn.config)
+    if count is not None:
+      req.set_count(count)
 
-    if produce_cursors is None:
-      produce_cursors = self.__query_options.produce_cursors
-    if count is None:
-      count = self.__query_options.batch_size
-
-    if isinstance(self.__conn.config, FetchOptions):
-      if produce_cursors is None:
-        produce_cursors = self.__conn.config.produce_cursors
-      if count is None:
-        count = self.__conn.config.batch_size
+    if fetch_options is not None and fetch_options.offset:
+      req.set_offset(fetch_options.offset)
 
     req.mutable_cursor().CopyFrom(self.__datastore_cursor)
     self.__datastore_cursor = None
-
-    if count is not None:
-      req.set_count(count)
-    if produce_cursors:
-      req.set_compile(True)
-
     return req
 
   def _make_query_result_rpc_call(self, name, config, req):
@@ -994,10 +1006,12 @@ class Batch(object):
     try:
       self.__conn.check_rpc_success(rpc)
     except datastore_errors.NeedIndexError, exc:
-      yaml = datastore_index.IndexYamlForQuery(
-          *datastore_index.CompositeIndexForQuery(rpc.request)[1:-1])
-      raise datastore_errors.NeedIndexError(
-          str(exc) + '\nThis query needs this index:\n' + yaml)
+      if isinstance(rpc.request, datastore_pb.Query):
+        yaml = datastore_index.IndexYamlForQuery(
+            *datastore_index.CompositeIndexForQuery(rpc.request)[1:-1])
+        raise datastore_errors.NeedIndexError(
+            str(exc) + '\nThis query needs this index:\n' + yaml)
+      raise
 
     query_result = rpc.response
     self.__keys_only = query_result.keys_only()
@@ -1052,10 +1066,7 @@ class Batcher(object):
         Query.run_asyn(query_options).
     """
     self.__next_batch = first_async_batch
-    if query_options and query_options.offset:
-      self.__initial_offset = query_options.offset
-    else:
-      self.__initial_offset = 0
+    self.__initial_offset = QueryOptions.offset(query_options) or 0
     self.__skipped_results = 0
 
   def next(self):

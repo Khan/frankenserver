@@ -29,6 +29,7 @@ from google.appengine.api import queueinfo
 from google.appengine.api import user_service_stub
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.taskqueue import taskqueue_stub
+from google.appengine.ext.datastore_admin import utils
 from google.testing.pybase import googletest
 
 
@@ -63,11 +64,21 @@ class HandlerTestBase(googletest.TestCase):
     apiproxy_stub_map.apiproxy.RegisterStub("datastore_v3", self.datastore)
     apiproxy_stub_map.apiproxy.RegisterStub("user", self.user)
 
-  def assertTaskStarted(self, queue="default"):
+  def assertTaskStarted(self, queue="default",
+                        active_jobs=1):
     tasks = self.taskqueue.GetTasks(queue)
     self.assertEquals(1, len(tasks))
     self.assertEquals(tasks[0]["url"], self.MAPREDUCE_KICKOFF_URL)
 
+    operations = utils.DatastoreAdminOperation.all().fetch(100)
+    self.assertEquals(1, len(operations))
+
+    operation = operations[0]
+    self.assertEquals("Active", operation.status)
+    self.assertTrue(operation.description)
+    self.assertEquals(active_jobs, operation.active_jobs)
+
   def assertTaskNotStarted(self, queue="default"):
     tasks = self.taskqueue.GetTasks(queue)
     self.assertEquals(0, len(tasks))
+    self.assertEquals([], utils.DatastoreAdminOperation.all().fetch(100))

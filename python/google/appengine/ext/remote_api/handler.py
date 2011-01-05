@@ -17,20 +17,35 @@
 
 """A handler that exports various App Engine services over HTTP.
 
-You can export this handler in your app by adding it directly to app.yaml's
-list of handlers:
+You can export this handler in your app by adding it to the builtins section:
+
+builtins:
+- remote_api: on
+
+This will add remote_api serving to the path /_ah/remote_api.
+
+You can also add it to your handlers section, e.g.:
 
   handlers:
-  - url: /remote_api
+  - url: /remote_api(/.*)?
     script: $PYTHON_LIB/google/appengine/ext/remote_api/handler.py
-    login: admin
 
-Then, you can use remote_api_stub to remotely access services exported by this
+You can use remote_api_stub to remotely access services exported by this
 handler. See the documentation in remote_api_stub.py for details on how to do
 this.
 
-Using this handler without specifying "login: admin" would be extremely unwise.
-So unwise that the default handler insists on checking for itself.
+The handler supports several forms of authentication. By default, it
+checks that the user is an admin using the Users API, similar to specifying
+"login: admin" in the app.yaml file. It also supports a 'custom header' mode
+which can be used in certain scenarios.
+
+To configure the custom header mode, edit an appengine_config file (the same
+one you may use to configure appstats) to include a line like this:
+
+  remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = (
+    'HTTP_X_APPENGINE_INBOUND_APPID', ['otherappid'] )
+
+See the ConfigDefaults class below for the full set of options avaiable.
 """
 
 
@@ -49,12 +64,42 @@ import yaml
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import lib_config
 from google.appengine.api import users
 from google.appengine.datastore import datastore_pb
 from google.appengine.ext import webapp
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.ext.remote_api import remote_api_services
 from google.appengine.runtime import apiproxy_errors
+
+
+
+class ConfigDefaults(object):
+  """Configurable constants.
+
+  To override appstats configuration valuess, define values like this
+  in your appengine_config.py file (in the root of your app):
+
+    remoteapi_AUTHORIZE_REMOTE_APP = [ 'appid' ]
+
+  You may wish to base this file on sample_appengine_config.py.
+  """
+
+  # Allow other App Engine applications to use remote_api with special forms
+  # of authentication which appear in the environment. This is a pair,
+  # ( environment variable name, [ list of valid values ] ). Some examples:
+  # * Allow other applications to use remote_api:
+  #   remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = (
+  #       'HTTP_X_APPENGINE_INBOUND_APPID', ['otherappid'] )
+  # * Allow two specific users (who need not be admins):
+  #   remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = ('USER_ID',
+  #                                                  [ '1234', '1111' ] )
+  # Note that this an alternate to the normal users.is_current_user_admin
+  # check--either one may pass.
+  CUSTOM_ENVIRONMENT_AUTHENTICATION = ()
+
+
+config = lib_config.register('remoteapi', ConfigDefaults.__dict__)
 
 
 class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
@@ -180,13 +225,24 @@ class ApiCallHandler(webapp.RequestHandler):
   }
 
   def CheckIsAdmin(self):
-    if not users.is_current_user_admin():
+    user_is_authorized = False
+    if users.is_current_user_admin():
+      user_is_authorized = True
+    if not user_is_authorized and config.CUSTOM_ENVIRONMENT_AUTHENTICATION:
+      if len(config.CUSTOM_ENVIRONMENT_AUTHENTICATION) == 2:
+        var, values = config.CUSTOM_ENVIRONMENT_AUTHENTICATION
+        if os.getenv(var) in values:
+          user_is_authorized = True
+      else:
+        logging.warning('remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION is '
+                        'configured incorrectly.')
+    if not user_is_authorized:
       self.response.set_status(401)
       self.response.out.write(
           "You must be logged in as an administrator to access this.")
       self.response.headers['Content-Type'] = 'text/plain'
       return False
-    elif 'X-appcfg-api-version' not in self.request.headers:
+    if 'X-appcfg-api-version' not in self.request.headers:
       self.response.set_status(403)
       self.response.out.write("This request did not contain a necessary header")
       self.response.headers['Content-Type'] = 'text/plain'

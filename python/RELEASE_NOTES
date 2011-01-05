@@ -3,6 +3,26 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.4.1
+================================
+- During application creation, developers can choose between two Datastore
+  configurations: High Replication or Master/Slave.
+    http://code.google.com/appengine/docs/adminconsole/choosingadatastore.html
+- You can set your application's datastore to read-only mode in the Admin
+  Console. Any writes attempted while the app is set to read-only will throw a
+  CapabilityDisabledError. This feature can be helpful for migrating or copying
+  data between two applications.
+    http://code.google.com/appengine/docs/adminconsole/applicationsettings.html#Disable_Datastore_Writes
+- The Datastore Admin tool has been updated to allow copying of one app's
+  datastore to another. The destination app must have the Remote API enabled.
+    http://code.google.com/appengine/docs/adminconsole/datastoreadmin.html
+- The deadline for offline URL Fetch API requests for Python and Java have been
+  increased to a maximum of 10 minutes. The default deadline for offline
+  URL Fetch requests remains the same.
+- Fixed an issue where an AttributeError was occasionally thrown on a datastore
+  query.
+    http://code.google.com/p/googleappengine/issues/detail?id=4196
+
 Version 1.4.0
 ================================
 - The Always On feature allows applications to pay and keep 3 instances of their

@@ -170,87 +170,33 @@ class DeleteFunctionTest(googletest.TestCase):
   def testNormalDeleteWithoutActive(self):
     """Delete anything that is not a Mapreduce object."""
     entity = TestEntity('testentity', _app=APP_ID)
-    delete_handler.DeleteEntity(entity).next()
+    datastore.Put(entity)
+    delete_handler.DeleteEntity(entity.key()).next()
     self.assertTrue(self.mock_delete.called)
 
   def testNormalDeleteWithActive(self):
     """Delete anything that is not a Mapreduce object."""
     entity = TestEntity('testentity', _app=APP_ID)
     entity['active'] = True
-    delete_handler.DeleteEntity(entity).next()
+    datastore.Put(entity)
+    delete_handler.DeleteEntity(entity.key()).next()
     self.assertTrue(self.mock_delete.called)
 
   def testMapreduceActiveObject(self):
     """Do not delete active Mapreduce objects."""
-    entity = TestEntity('MapreduceState', _app=APP_ID)
+    entity = TestEntity(model.MapreduceState.kind(), _app=APP_ID)
     entity['active'] = True
+    datastore.Put(entity)
     self.assertRaises(StopIteration,
-                      delete_handler.DeleteEntity(entity).next)
+                      delete_handler.DeleteEntity(entity.key()).next)
 
   def testMapreduceInactiveObject(self):
     """Delete anything that is not a Mapreduce object."""
-    entity = TestEntity('MapreduceState', _app=APP_ID)
+    entity = TestEntity(model.MapreduceState.kind(), _app=APP_ID)
     entity['active'] = False
-    delete_handler.DeleteEntity(entity).next()
+    datastore.Put(entity)
+    delete_handler.DeleteEntity(entity.key()).next()
     self.assertTrue(self.mock_delete.called)
-
-
-class DeleteDoneHandlerTest(testutil.HandlerTestBase):
-  """Test delete_handler.ConfirmDeleteHandler."""
-
-  def setUp(self):
-    """Sets up the test harness."""
-    testutil.HandlerTestBase.setUp(self)
-    self.mapreduce_id = '123456789'
-    self.num_shards = 8
-    self.handler = delete_handler.DeleteDoneHandler()
-    self.handler.initialize(mock_webapp.MockRequest(),
-                            mock_webapp.MockResponse())
-
-    self.handler.request.path = '/_ah/datastore_admin/%s' % (
-        delete_handler.DeleteDoneHandler.SUFFIX)
-    self.handler.request.headers['Mapreduce-Id'] = self.mapreduce_id
-
-  def assertObjectsExist(self):
-    """Verify that objects were inserted."""
-    self.assertIsNotNone(
-        model.MapreduceState.get_by_key_name(self.mapreduce_id))
-    self.assertListEqual(
-        ['%s-%s' % (self.mapreduce_id, i) for i in range(0, self.num_shards)],
-        [m.key().name() for m in (
-            model.ShardState.find_by_mapreduce_id(self.mapreduce_id))])
-
-  def testSuccessfulJob(self):
-    """Verify that with appropriate request parameters form is constructed."""
-    model.MapreduceState.create_new(getkeyname=lambda: self.mapreduce_id).put()
-    for i in range(0, self.num_shards):
-      shard_state = model.ShardState.create_new(self.mapreduce_id, i)
-      shard_state.result_status = 'success'
-      shard_state.put()
-
-    self.assertObjectsExist()
-
-    self.handler.post()
-
-    self.assertIsNone(model.MapreduceState.get_by_key_name(self.mapreduce_id))
-    self.assertListEqual(
-        [],
-        model.ShardState.find_by_mapreduce_id(self.mapreduce_id))
-
-  def testFailedJob(self):
-    """Verify that with appropriate request parameters form is constructed."""
-    model.MapreduceState.create_new(getkeyname=lambda: self.mapreduce_id).put()
-    for i in range(0, self.num_shards):
-      shard_state = model.ShardState.create_new(self.mapreduce_id, i)
-      if i != 4:
-        shard_state.result_status = 'success'
-      shard_state.put()
-
-    self.assertObjectsExist()
-
-    self.handler.post()
-
-    self.assertObjectsExist()
 
 
 if __name__ == '__main__':

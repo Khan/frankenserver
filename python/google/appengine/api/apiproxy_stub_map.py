@@ -379,6 +379,7 @@ class UserRPC(object):
     interrupts the current wait_any() call by raising an exception.
     """
     self.__must_call_user_callback = True
+    self.__rpc.callback = None
     if self.__class__.__local.may_interrupt_wait and not self.__rpc.exception:
       raise apiproxy_errors.InterruptedError(None, self.__rpc)
 

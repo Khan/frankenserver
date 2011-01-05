@@ -120,7 +120,7 @@ class MapperWorkerCallbackHandler(base_handler.TaskQueueHandler):
                    shard_state.shard_number, shard_state.mapreduce_id)
       shard_state.active = False
       shard_state.result_status = model.ShardState.RESULT_ABORTED
-      shard_state.put()
+      shard_state.put(config=util.create_datastore_write_config(spec))
       model.MapreduceControl.abort(spec.mapreduce_id)
       return
 
@@ -421,9 +421,11 @@ class ControllerCallbackHandler(base_handler.TaskQueueHandler):
     poll_time = state.last_poll_time
     state.last_poll_time = datetime.datetime.utcfromtimestamp(self._time())
 
+    config = util.create_datastore_write_config(spec)
+
     if not state.active:
       def put_state(state):
-        state.put()
+        state.put(config=config)
         done_callback = spec.params.get(
             model.MapreduceSpec.PARAM_DONE_CALLBACK)
         if done_callback:
@@ -442,7 +444,7 @@ class ControllerCallbackHandler(base_handler.TaskQueueHandler):
       db.run_in_transaction(put_state, state)
       return
     else:
-      state.put()
+      state.put(config=config)
 
     processing_rate = int(spec.mapper.params.get(
         "processing_rate") or model._DEFAULT_PROCESSING_RATE_PER_SEC)
@@ -580,22 +582,30 @@ class KickOffJobHandler(base_handler.TaskQueueHandler):
     """Handles kick off request."""
     spec = model.MapreduceSpec.from_json_str(
         self._get_required_param("mapreduce_spec"))
+    app_id = self.request.get("app", None)
     queue_name = os.environ.get("HTTP_X_APPENGINE_QUEUENAME", "default")
     mapper_input_reader_class = spec.mapper.input_reader_class()
-    state = model.MapreduceState.get_by_job_id(spec.mapreduce_id)
+
+    state = model.MapreduceState.create_new(spec.mapreduce_id)
+    state.mapreduce_spec = spec
+    state.active = True
+    state.char_url = ""
+    state.sparkline_url = ""
+    if app_id:
+      state.app_id = app_id
 
     input_readers = mapper_input_reader_class.split_input(spec.mapper)
     if not input_readers:
       logging.warning("Found no mapper input data to process.")
       state.active = False
       state.active_shards = 0
-      state.put()
+      state.put(config=util.create_datastore_write_config(spec))
       return
 
-    spec.shard_count = len(input_readers)
-
+    spec.mapper.shard_count = len(input_readers)
+    state.active_shards = len(input_readers)
     state.mapreduce_spec = spec
-    state.put()
+    state.put(config=util.create_datastore_write_config(spec))
 
     KickOffJobHandler._schedule_shards(
         spec, input_readers, queue_name, self.base_path())
@@ -640,8 +650,9 @@ class KickOffJobHandler(base_handler.TaskQueueHandler):
     existing_shard_keys = set(shard.key() for shard in existing_shard_states
                               if shard is not None)
 
-    db.put(shard for shard in shard_states
-           if shard.key() not in existing_shard_keys)
+    db.put((shard for shard in shard_states
+            if shard.key() not in existing_shard_keys),
+           config=util.create_datastore_write_config(spec))
 
     for shard_number, input_reader in enumerate(input_readers):
       shard_id = model.ShardState.shard_id_from_number(
@@ -738,36 +749,42 @@ class StartJobHandler(base_handler.PostJsonHandler):
                  eta=None,
                  countdown=None,
                  hooks_class_name=None,
-                 _app=None):
+                 _app=None,
+                 transactional=False):
     mapper_spec.get_handler()
 
     mapper_input_reader_class = mapper_spec.input_reader_class()
     mapper_input_reader_class.validate(mapper_spec)
 
-    state = model.MapreduceState.create_new()
+    mapreduce_id = model.MapreduceState.new_mapreduce_id()
     mapreduce_spec = model.MapreduceSpec(
         name,
-        state.key().id_or_name(),
+        mapreduce_id,
         mapper_spec.to_json(),
         mapreduce_params,
         hooks_class_name)
-    state.mapreduce_spec = mapreduce_spec
-    state.active = True
-    state.active_shards = mapper_spec.shard_count
+
+    kickoff_params = {"mapreduce_spec": mapreduce_spec.to_json_str()}
     if _app:
-      state.app_id = _app
+      kickoff_params["app"] = _app
+    kickoff_worker_task = taskqueue.Task(
+        url=base_path + "/kickoffjob_callback",
+        params=kickoff_params,
+        eta=eta, countdown=countdown)
 
-    state.char_url = ""
-    state.sparkline_url = ""
+    hooks = mapreduce_spec.get_hooks()
+    config = util.create_datastore_write_config(mapreduce_spec)
 
-    def schedule_mapreduce(state, eta, countdown):
-      state.put()
-      kickoff_worker_task = taskqueue.Task(
-          url=base_path + "/kickoffjob_callback",
-          params={"mapreduce_spec": state.mapreduce_spec.to_json_str()},
-          eta=eta, countdown=countdown)
+    def start_mapreduce():
+      if not transactional:
+        state = model.MapreduceState.create_new(mapreduce_spec.mapreduce_id)
+        state.mapreduce_spec = mapreduce_spec
+        state.active = True
+        state.active_shards = mapper_spec.shard_count
+        if _app:
+          state.app_id = _app
+        state.put(config=config)
 
-      hooks = mapreduce_spec.get_hooks()
       if hooks is not None:
         try:
           hooks.enqueue_kickoff_task(kickoff_worker_task, queue_name)
@@ -775,13 +792,14 @@ class StartJobHandler(base_handler.PostJsonHandler):
           pass
         else:
           return
-
       kickoff_worker_task.add(queue_name, transactional=True)
 
-    db.run_in_transaction(
-        schedule_mapreduce, state, eta, countdown)
+    if transactional:
+      start_mapreduce()
+    else:
+      db.run_in_transaction(start_mapreduce)
 
-    return state.key().id_or_name()
+    return mapreduce_id
 
 
 class CleanUpJobHandler(base_handler.PostJsonHandler):

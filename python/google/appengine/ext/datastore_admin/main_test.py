@@ -18,19 +18,24 @@
 """Tests for google.appengine.ext.datastore_admin.main."""
 
 
+import google
+
 import datetime
+import mox
 import os
 import tempfile
 
-from google.testing.pybase import googletest
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
+from google.appengine.ext import db
 from google.appengine.ext.datastore_admin import delete_handler
 from google.appengine.ext.datastore_admin import main
 from google.appengine.ext.datastore_admin import testutil
 from google.appengine.ext.datastore_admin import utils
 from google.appengine.ext.db import stats
+from google.appengine.ext.db.metadata import Kind
 from google.appengine.ext.webapp import mock_webapp
+from google.testing.pybase import googletest
 
 
 class MainTest(googletest.TestCase):
@@ -132,48 +137,88 @@ class RouteActionHandlerTest(testutil.HandlerTestBase):
 
   def testKindsRendering(self):
     """Test list of kinds renders in list_actions with supplied list."""
-    get_schema_test_kinds = ['test1', 'test2']
-    self.handler.request.set('kind', get_schema_test_kinds)
+    entity_kinds = ['test1', 'test2']
+    for kind in entity_kinds:
+      datastore.Put(datastore.Entity(kind))
+
+    self.handler.request.set('kind', entity_kinds)
     self.handler.get()
     response = self.handler.response.out.getvalue()
     kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
-    self.assertListEqual(kind_list, get_schema_test_kinds)
+    self.assertListEqual(kind_list, entity_kinds)
 
   def testExcludeNotInList(self):
-    """Test kinds in datastore stats that are not in get schema list excluded.
+    """Test kinds in datastore stats that are not in __kind__ list excluded.
     """
+    entity_kinds = ['test1', 'test2']
     stat_test_kinds = ['test1', 'test2', 'test3']
-    get_schema_test_kinds = ['test1', 'test2']
+
+    for kind in entity_kinds:
+      datastore.Put(datastore.Entity(kind))
     self.CreateStatEntity(stats.GlobalStat.STORED_KIND_NAME)
     for kind in stat_test_kinds:
       self.CreateStatEntity(stats.KindStat.STORED_KIND_NAME, kind)
-    self.handler.request.set('kind', get_schema_test_kinds)
+
+    self.handler.request.set('kind', entity_kinds)
     self.handler.get()
     kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
-    self.assertListEqual(kind_list, get_schema_test_kinds)
+    self.assertListEqual(entity_kinds, kind_list)
 
   def testIncludeNotInStats(self):
-    """Test kinds in datastore stats that are not in get schema list excluded.
-    """
-    stat_test_kinds = ['test1', 'test2']
-    get_schema_test_kinds = ['test1', 'test2', 'test3']
+    """Test kinds which are not present in stats."""
+    entity_kinds = ['test1', 'test2']
+    stat_test_kinds = ['test1', 'test3']
+
+    for kind in entity_kinds:
+      datastore.Put(datastore.Entity(kind))
     self.CreateStatEntity(stats.GlobalStat.STORED_KIND_NAME)
     for kind in stat_test_kinds:
       self.CreateStatEntity(stats.KindStat.STORED_KIND_NAME, kind)
+
     self.handler.request.set('kind', ['test1', 'test2', 'test3'])
     self.handler.get()
     kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
-    self.assertListEqual(kind_list, get_schema_test_kinds)
+    self.assertListEqual(entity_kinds, kind_list)
 
   def testKindsRenderingFromStats(self):
-    """Test list of kinds renders in list_actions with no supplied list."""
-    stat_test_kinds = ['test1', 'test2', 'test3']
-    self.CreateStatEntity(stats.GlobalStat.STORED_KIND_NAME)
-    for kind in stat_test_kinds:
-      self.CreateStatEntity(stats.KindStat.STORED_KIND_NAME, kind)
-    self.handler.get()
-    kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
-    self.assertListEqual(kind_list, stat_test_kinds)
+    """Test list of kinds renders in list_actions with kinds timing out."""
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(Kind, 'all')
+
+    Kind.all().AndRaise(db.Timeout('Timeout'))
+    self.mox.ReplayAll()
+
+    try:
+      stat_test_kinds = ['test1', 'test2', 'test3']
+      self.CreateStatEntity(stats.GlobalStat.STORED_KIND_NAME)
+      for kind in stat_test_kinds:
+        self.CreateStatEntity(stats.KindStat.STORED_KIND_NAME, kind)
+      self.handler.get()
+      kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
+      self.assertListEqual(stat_test_kinds, kind_list)
+      self.mox.VerifyAll()
+    finally:
+      self.mox.UnsetStubs()
+
+  def testKindsRenderingFromStatsNoMetadata(self):
+    """Test list of kinds renders in list_actions with kinds returning []."""
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(self.handler, 'GetKinds')
+
+    self.handler.GetKinds().AndReturn([])
+    self.mox.ReplayAll()
+
+    try:
+      stat_test_kinds = ['test1', 'test2', 'test3']
+      self.CreateStatEntity(stats.GlobalStat.STORED_KIND_NAME)
+      for kind in stat_test_kinds:
+        self.CreateStatEntity(stats.KindStat.STORED_KIND_NAME, kind)
+      self.handler.get()
+      kind_list = [stat['kind_name'] for stat in self.params['kind_stats']]
+      self.assertListEqual(stat_test_kinds, kind_list)
+      self.mox.VerifyAll()
+    finally:
+      self.mox.UnsetStubs()
 
   def testInvalidActionRenders(self):
     """Test invalid action renders."""

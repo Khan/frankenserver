@@ -29,6 +29,7 @@ __all__ = ["MAX_ENTITY_COUNT", "MAX_POOL_SIZE", "Context", "MutationPool",
 
 from google.appengine.api import datastore
 from google.appengine.ext import db
+from google.appengine.ext.mapreduce import util
 
 MAX_POOL_SIZE = 900 * 1000
 
@@ -242,7 +243,8 @@ class Context(object):
     for pool in self._pools.values():
       pool.flush()
     if self.shard_state:
-      self.shard_state.put()
+      self.shard_state.put(
+          config=util.create_datastore_write_config(self.mapreduce_spec))
 
 
 

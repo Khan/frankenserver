@@ -24,6 +24,8 @@ There are four sections:
 2) Configuration constants.
 3) Configuration functions.
 
+Also a section at the end for the remote_api handler.
+
 """
 
 
@@ -210,3 +212,12 @@ def appstats_extract_key(request):
   if request.http_method() != 'GET':
     key = '%s %s' % (request.http_method(), key)
   return key
+
+
+# ########################################
+# Remote_API Authentication configuration.
+# # See google/appengine/ext/remote_api/handler.py for more information.
+# In most cases, you will not want to configure this.
+# # remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = (
+#     'HTTP_X_APPENGINE_INBOUND_APPID', ['a trusted appid here'])
+
