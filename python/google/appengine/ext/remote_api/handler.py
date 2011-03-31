@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 
+
+
+
 """A handler that exports various App Engine services over HTTP.
 
 You can export this handler in your app by adding it to the builtins section:
@@ -47,6 +50,10 @@ one you may use to configure appstats) to include a line like this:
 
 See the ConfigDefaults class below for the full set of options avaiable.
 """
+
+
+
+
 
 
 
@@ -94,6 +101,11 @@ class ConfigDefaults(object):
   # * Allow two specific users (who need not be admins):
   #   remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = ('USER_ID',
   #                                                  [ '1234', '1111' ] )
+
+
+
+
+
   # Note that this an alternate to the normal users.is_current_user_admin
   # check--either one may pass.
   CUSTOM_ENVIRONMENT_AUTHENTICATION = ()
@@ -138,8 +150,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     runquery_response = datastore_pb.QueryResult()
     self.__call('datastore_v3', 'RunQuery', request, runquery_response)
     if runquery_response.result_size() > 0:
+
       response.CopyFrom(runquery_response)
       return
+
 
     next_request = datastore_pb.NextRequest()
     next_request.mutable_cursor().CopyFrom(runquery_response.cursor())
@@ -155,10 +169,12 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     precondition list still exist and their hashes match, then performs a
     transaction of its own to make the updates.
     """
+
     begin_request = datastore_pb.BeginTransactionRequest()
     begin_request.set_app(os.environ['APPLICATION_ID'])
     tx = datastore_pb.Transaction()
     self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
+
 
     preconditions = request.precondition_list()
     if preconditions:
@@ -183,10 +199,12 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
                 datastore_pb.Error.CONCURRENT_TRANSACTION,
                 "Transaction precondition failed.")
 
+
     if request.has_puts():
       put_request = request.puts()
       put_request.mutable_transaction().CopyFrom(tx)
       self.__call('datastore_v3', 'Put', put_request, response)
+
 
     if request.has_deletes():
       delete_request = request.deletes()
@@ -194,10 +212,12 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       self.__call('datastore_v3', 'Delete', delete_request,
                  api_base_pb.VoidProto())
 
+
     self.__call('datastore_v3', 'Commit', tx, api_base_pb.VoidProto())
 
   def _Dynamic_GetIDs(self, request, response):
     """Fetch unique IDs for a set of paths."""
+
     for entity in request.entity_list():
       assert entity.property_size() == 0
       assert entity.raw_property_size() == 0
@@ -205,14 +225,18 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       lastpart = entity.key().path().element_list()[-1]
       assert lastpart.id() == 0 and not lastpart.has_name()
 
+
     begin_request = datastore_pb.BeginTransactionRequest()
     begin_request.set_app(os.environ['APPLICATION_ID'])
     tx = datastore_pb.Transaction()
     self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
 
+
     self.__call('datastore_v3', 'Put', request, response)
 
+
     self.__call('datastore_v3', 'Rollback', tx, api_base_pb.VoidProto())
+
 
 
 SERVICE_PB_MAP = remote_api_services.SERVICE_PB_MAP
@@ -273,14 +297,17 @@ class ApiCallHandler(webapp.RequestHandler):
     response = remote_api_pb.Response()
     try:
       request = remote_api_pb.Request()
+
+
+
       request.ParseFromString(self.request.body)
       response_data = self.ExecuteRequest(request)
-      response.mutable_response().set_contents(response_data.Encode())
+      response.set_response(response_data.Encode())
       self.response.set_status(200)
     except Exception, e:
       logging.exception('Exception while handling %s', request)
       self.response.set_status(200)
-      response.mutable_exception().set_contents(pickle.dumps(e))
+      response.set_exception(pickle.dumps(e))
       if isinstance(e, apiproxy_errors.ApplicationError):
         application_error = response.mutable_application_error()
         application_error.set_code(e.application_error)
@@ -297,7 +324,7 @@ class ApiCallHandler(webapp.RequestHandler):
       raise apiproxy_errors.CallNotFoundError()
 
     request_data = request_class()
-    request_data.ParseFromString(request.request().contents())
+    request_data.ParseFromString(request.request())
     response_data = response_class()
 
     if service in self.LOCAL_STUBS:

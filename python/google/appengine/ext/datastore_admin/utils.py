@@ -15,7 +15,12 @@
 # limitations under the License.
 #
 
+
+
+
 """Used render templates for datastore admin."""
+
+
 
 
 
@@ -28,6 +33,7 @@ import random
 from google.appengine.api import lib_config
 from google.appengine.api import memcache
 from google.appengine.api import users
+from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.db import metadata
@@ -55,8 +61,15 @@ class ConfigDefaults(object):
   CLEANUP_MAPREDUCE_STATE = True
 
 
+
 config = lib_config.register('datastore_admin', ConfigDefaults.__dict__)
+
+
+
+
 config.BASE_PATH
+
+
 from google.appengine.ext.webapp import template
 
 
@@ -309,6 +322,11 @@ def ParseKindsAndSizes(kinds):
   return sizes_known, size_total, len(kinds) - 2
 
 
+def _CreateDatastoreConfig():
+  """Create datastore config for use during datastore admin operations."""
+  return datastore_rpc.Configuration(force_writes=True)
+
+
 class MapreduceDoneHandler(webapp.RequestHandler):
   """Handler to delete data associated with successful MapReduce jobs."""
 
@@ -327,6 +345,7 @@ class MapreduceDoneHandler(webapp.RequestHandler):
         if not shard_state.result_status == 'success':
           job_success = False
 
+      db_config = _CreateDatastoreConfig()
       if job_success:
         operation = DatastoreAdminOperation.get(
             mapreduce_state.mapreduce_spec.params[
@@ -336,14 +355,16 @@ class MapreduceDoneHandler(webapp.RequestHandler):
           operation.completed_jobs += 1
           if not operation.active_jobs:
             operation.status = DatastoreAdminOperation.STATUS_COMPLETED
-          db.delete(DatastoreAdminOperationJob.all().ancestor(operation))
-          operation.put()
+          db.delete(DatastoreAdminOperationJob.all().ancestor(operation),
+                    config=db_config)
+          operation.put(config=db_config)
         db.run_in_transaction(tx)
 
         if config.CLEANUP_MAPREDUCE_STATE:
+
           keys.append(mapreduce_state.key())
           keys.append(model.MapreduceControl.get_key_by_job_id(mapreduce_id))
-          db.delete(keys)
+          db.delete(keys, config=db_config)
           logging.info('State for successful job %s was deleted.', mapreduce_id)
       else:
         logging.info('Job %s was not successful so no state was deleted.', (
@@ -356,6 +377,7 @@ class DatastoreAdminOperation(db.Model):
   """An entity to keep progress and status of datastore admin operation."""
   STATUS_ACTIVE = "Active"
   STATUS_COMPLETED = "Completed"
+
 
   PARAM_DATASTORE_ADMIN_OPERATION = 'datastore_admin_operation'
 
@@ -388,12 +410,15 @@ def StartOperation(description):
   Returns:
     an instance of DatastoreAdminOperation.
   """
+
+
+
   operation = DatastoreAdminOperation(
       description=description,
       status=DatastoreAdminOperation.STATUS_ACTIVE,
       id=db.allocate_ids(
           db.Key.from_path(DatastoreAdminOperation.kind(), 1), 1)[0])
-  operation.put()
+  operation.put(config=_CreateDatastoreConfig())
   return operation
 
 
@@ -431,7 +456,8 @@ def StartMap(operation,
 
   def tx():
     operation.active_jobs += 1
-    operation.put()
+    operation.put(config=_CreateDatastoreConfig())
+
 
     return control.start_map(
         job_name, handler_spec, reader_spec,
@@ -446,54 +472,6 @@ def StartMap(operation,
     return tx()
 
 
-def ProcessNamespace(namespace):
-  """Handler function for mapper over all namespaces.
-
-  Starts mapper jobs specified by parameters over all passed kinds.
-
-  Args:
-    namespace: namespace to process.
-
-  Returns:
-    Started mapper job ids. Mapper framework ignores function value. Returning
-    these for testing purposes only.
-  """
-  ctx = context.get()
-  mapreduce_spec = ctx.mapreduce_spec
-  params = mapreduce_spec.params
-  operation = DatastoreAdminOperation.get(
-      params[DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION])
-  mapper_params = params['mapper_params']
-
-  jobs = []
-  for kind in params['kinds']:
-    job_key_name = kind + "@" + namespace
-    mapper_params['entity_kind'] = kind
-    mapper_params['namespaces'] = namespace
-    job_name = params['job_name'] % {
-        'kind': kind,
-        'namespace': ' in namespace ' + namespace
-        }
-
-    def tx():
-      if db.get(db.Key.from_path(operation.kind(),
-                                 operation.key().id_or_name(),
-                                 DatastoreAdminOperationJob.kind(),
-                                 job_key_name)):
-        return None
-      DatastoreAdminOperationJob(key_name=job_key_name, parent=operation).put()
-      return StartMap(operation,
-                      job_name,
-                      params['handler_spec'],
-                      params['reader_spec'],
-                      mapper_params,
-                      start_transaction=False)
-    job = db.run_in_transaction(tx)
-    if job:
-      jobs.append(job)
-  return jobs
-
-
 def RunMapForKinds(operation,
                    kinds,
                    job_name_template,
@@ -501,10 +479,6 @@ def RunMapForKinds(operation,
                    reader_spec,
                    mapper_params):
   """Run mapper job for all entities in specified kinds.
-
-  If application uses namespaces in non-trivial way, starts a map job
-  over all namespaces, which will start individual namespace-specific
-  jobs. Otherwise starts mapper for each kind immediately.
 
   Args:
     operation: instance of DatastoreAdminOperation to record all jobs.
@@ -519,29 +493,9 @@ def RunMapForKinds(operation,
     Ids of all started mapper jobs as list of strings.
   """
   jobs = []
-  namespaces = metadata.Namespace.all().fetch(2)
-  if (len(namespaces) == 1 and
-      not metadata.Namespace.key_to_namespace(namespaces[0].key())):
-    for kind in kinds:
-      mapper_params['entity_kind'] = kind
-      job_name = job_name_template % {'kind': kind, 'namespace': ''}
-      jobs.append(StartMap(
-          operation, job_name, handler_spec, reader_spec, mapper_params))
-  else:
-    job_name = (job_name_template % {'kind': ', '.join(kinds),
-                                     'namespace': ''} +
-                ': discovering namespaces')
-
+  for kind in kinds:
+    mapper_params['entity_kind'] = kind
+    job_name = job_name_template % {'kind': kind, 'namespace': ''}
     jobs.append(StartMap(
-        operation,
-        job_name,
-        ProcessNamespace.__module__ + '.' + ProcessNamespace.__name__,
-        input_readers.NamespaceInputReader.__module__ + '.' +
-        input_readers.NamespaceInputReader.__name__,
-        {},
-        {'job_name': job_name_template,
-         'handler_spec': handler_spec,
-         'reader_spec': reader_spec,
-         'mapper_params': mapper_params,
-         'kinds': kinds}))
+        operation, job_name, handler_spec, reader_spec, mapper_params))
   return jobs

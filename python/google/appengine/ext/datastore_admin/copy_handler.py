@@ -15,6 +15,10 @@
 # limitations under the License.
 #
 
+
+
+
+
 """Handler for data copy operation.
 
 Generic datastore admin console transfers control to ConfirmCopyHandler
@@ -87,6 +91,8 @@ class ConfirmCopyHandler(webapp.RequestHandler):
     utils.RenderToResponse(handler, 'confirm_copy.html', template_params)
 
 
+
+
 class DoCopyHandler(webapp.RequestHandler):
   """Handler to deal with requests from the admin console to copy data."""
 
@@ -134,6 +140,8 @@ class DoCopyHandler(webapp.RequestHandler):
       parameters = [('xsrf_error', '1')]
     else:
       try:
+
+
         if extra_header:
           extra_headers = dict([extra_header.split(':', 1)])
         else:
@@ -157,6 +165,8 @@ class DoCopyHandler(webapp.RequestHandler):
             mapper_params)
 
         error = ''
+
+
       except Exception, e:
         logging.exception('Handling exception.')
         error = self._HandleException(e)
@@ -190,6 +200,7 @@ class AllocateMaxIdPool(object):
 
   def __init__(self, app_id):
     self.app_id = app_id
+
     self.key_path_to_max_id = {}
 
   def allocate_max_id(self, key):
@@ -200,13 +211,18 @@ class AllocateMaxIdPool(object):
     """
     path = key.to_path()
     if not isinstance(path[-1], (int, long)):
+
       return
     if len(path) == 2:
+
+
       max_id = path[-1]
       path_tuple = (path[0], 1)
       self.key_path_to_max_id[path_tuple] = max(
           max_id, self.key_path_to_max_id.get(path_tuple, 0))
     else:
+
+
       max_id = 0
       for path_element in path[2:]:
         if isinstance(path_element, (int, long)):
@@ -222,7 +238,7 @@ class AllocateMaxIdPool(object):
     self.key_path_to_max_id = {}
 
 
-class AllocateMaxId(object):
+class AllocateMaxId(operation.Operation):
   """Mapper operation to allocate max id."""
 
   def __init__(self, key, app_id):
@@ -236,6 +252,8 @@ class AllocateMaxId(object):
       pool = AllocateMaxIdPool(self.app_id)
       ctx.register_pool(self.pool_id, pool)
     pool.allocate_max_id(self.key)
+
+
 
 
 def FixKeys(entity_proto, app_id):
@@ -256,9 +274,12 @@ def FixKeys(entity_proto, app_id):
       if prop_value.has_referencevalue():
         FixKey(prop_value.mutable_referencevalue())
 
+
   FixKey(entity_proto.mutable_key())
+
   FixPropertyList(entity_proto.property_list())
   FixPropertyList(entity_proto.raw_property_list())
+
 
 
 def KindPathFromKey(key):
@@ -294,6 +315,7 @@ class CopyEntity(object):
       return
     params = get_mapper_params()
     if 'extra_header' in params and params['extra_header']:
+
       extra_headers = dict([params['extra_header'].split(':', 1)])
     else:
       extra_headers = {}
@@ -321,6 +343,7 @@ class CopyEntity(object):
     target_app = mapper_params['target_app']
 
     if isinstance(key, datastore.Entity):
+
       entity = key
       key = entity.key()
     else:

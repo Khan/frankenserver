@@ -15,6 +15,21 @@
 # limitations under the License.
 #
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """Utility functions for use with the mapreduce library."""
 
 
@@ -52,6 +67,8 @@ def for_name(fq_name, recursive=False):
     was not found in the module.
   """
 
+
+
   fq_name = str(fq_name)
   module_name = __name__
   short_name = fq_name
@@ -64,23 +81,37 @@ def for_name(fq_name, recursive=False):
     result = __import__(module_name, None, None, [short_name])
     return result.__dict__[short_name]
   except KeyError:
+
+
+
+
+
     if recursive:
       raise
     else:
       raise ImportError("Could not find '%s' on path '%s'" % (
                         short_name, module_name))
   except ImportError, e:
+    logging.debug("Could not import %s from %s. Will try recursively.",
+                  short_name, module_name, exc_info=True)
+
+
     try:
       module = for_name(module_name, recursive=True)
       if hasattr(module, short_name):
         return getattr(module, short_name)
       else:
+
         raise KeyError()
     except KeyError:
       raise ImportError("Could not find '%s' on path '%s'" % (
                         short_name, module_name))
     except ImportError:
+
+
       pass
+
+
     raise
 
 
@@ -141,4 +172,8 @@ def create_datastore_write_config(mapreduce_spec):
     operations in the mapreduce.
   """
   force_writes = parse_bool(mapreduce_spec.params.get("force_writes", "false"))
-  return datastore_rpc.Configuration(force_writes=force_writes)
+  if force_writes:
+    return datastore_rpc.Configuration(force_writes=force_writes)
+  else:
+
+    return datastore_rpc.Configuration()

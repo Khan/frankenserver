@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 
+
+
+
 """An apiproxy stub that calls a remote handler via HTTP.
 
 This is a special version of the remote_api_stub which sends all traffic
@@ -24,6 +27,10 @@ contains a remote app_id.
 It re-implements parts of the remote_api_stub so as to replace dependencies on
 the (SDK only) appengine_rpc with urlfetch.
 """
+
+
+
+
 
 
 
@@ -112,7 +119,7 @@ class DatastorePutStub(object):
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
-    request_pb.mutable_request().set_contents(request.Encode())
+    request_pb.set_request(request.Encode())
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()
@@ -122,6 +129,8 @@ class DatastorePutStub(object):
                                          follow_redirects=False,
                                          deadline=10)
     except Exception, e:
+
+
       logging.exception('Fetch failed to %s', self.remote_url)
       raise FetchFailed(e)
     if urlfetch_response.status_code != 200:
@@ -137,12 +146,12 @@ class DatastorePutStub(object):
       raise apiproxy_errors.ApplicationError(error_pb.code(),
                                              error_pb.detail())
     elif response_pb.has_exception():
-      raise pickle.loads(response_pb.exception().contents())
+      raise pickle.loads(response_pb.exception())
     elif response_pb.has_java_exception():
       raise UnknownJavaServerError('An unknown error has occured in the '
                                    'Java remote_api handler for this call.')
     else:
-      response.ParseFromString(response_pb.response().contents())
+      response.ParseFromString(response_pb.response())
 
   def _Dynamic_Put(self, request, response):
     """Handle a Put request and route remotely if it matches the target app.
@@ -154,15 +163,20 @@ class DatastorePutStub(object):
     Raises:
       RemoteTransactionsUnimplemented: Remote transactions are unimplemented.
     """
+
     if request.entity_list():
       entity = request.entity(0)
       if entity.has_key() and entity.key().app() == self.target_appid:
         if request.has_transaction():
+
+
           raise RemoteTransactionsUnimplemented()
         self._MakeRemoteSyncCall('datastore_v3', 'Put', request, response)
         return
 
+
     self.normal_stub.MakeSyncCall('datastore_v3', 'Put', request, response)
+
 
 
 
@@ -206,6 +220,8 @@ def get_remote_appid(remote_url, extra_headers=None):
     urlfetch_response = urlfetch.fetch(url, None, urlfetch.GET,
                                        extra_headers, follow_redirects=False)
   except Exception, e:
+
+
     logging.exception('Fetch failed to %s', remote_url)
     raise FetchFailed('Fetch to %s failed: %r' % (remote_url, e))
   if urlfetch_response.status_code != 200:
@@ -246,8 +262,11 @@ def configure_remote_put(remote_url, app_id, extra_headers=None):
   if not app_id or not remote_url:
     raise ConfigurationError('app_id and remote_url required')
 
+
+
   original_datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
   if isinstance(original_datastore_stub, DatastorePutStub):
+
     logging.info('Stub is already configured. Hopefully in a matching fashion.')
     return
   datastore_stub = DatastorePutStub(remote_url, app_id, extra_headers,

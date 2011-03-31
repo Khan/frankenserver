@@ -15,7 +15,12 @@
 # limitations under the License.
 #
 
+
+
+
 """Used to confirm and act on delete requests from the Admin Console."""
+
+
 
 
 
@@ -145,6 +150,8 @@ class DoDeleteHandler(webapp.RequestHandler):
             self.INPUT_READER,
             {})
         error = ''
+
+
       except Exception, e:
         error = self._HandleException(e)
 

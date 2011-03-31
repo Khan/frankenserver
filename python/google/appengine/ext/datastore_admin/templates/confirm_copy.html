@@ -54,18 +54,28 @@
       <div>
         <h4 style="padding:0;margin-top:1em;margin-bottom:0.46em;">WARNING</h4>
         {% if notreadonly_warning %}
-        <p>This application&rsquo;s data is writable. We can only guarantee a
-            consistent copy when the data being copied is read-only.</p>
+        <p>The source application is not in read-only mode.  The
+        destination application is only guaranteed to receive a complete copy of
+        the data if the source application is not writing any data while the
+        copy takes place.  To place the source application in read-only mode,
+        please follow the instructions at
+        http://code.google.com/appengine/docs/adminconsole/datastoreadmin.html#Set_the_Source_Application_to_Read-only_Mode .
+        </p>
         {% endif %}
+
         {% if high_replication_warning %}
-        <p>This application is using a High Replication datastore. Recent writes
-            that have not yet completed will not be included in this copy.</p>
+        <p>The source application is configured to use a High Replication
+        datastore.  Copying data from a High Replication datastore may miss
+        recently written entities and is not officially supported.</p>
         {% endif %}
       </div>
       {% endif %}
 
       {% if blob_warning %}
-      <p>Note: Blobs (binary data) will not be copied.</p>
+      <p>The source application has blob data.  BlobInfo records and
+      data will NOT be copied.  It is your responsibility to continue
+      serving blobs from the source application or manually copy blob
+      data.</p>
       {% endif %}
 
       <div><strong>Data from this application will overwrite data in the target

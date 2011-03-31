@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 
+
+
+
 """Main module for datastore admin receiver.
 
 To use, add this to app.yaml:
@@ -33,6 +36,10 @@ from google.appengine.ext.datastore_admin import utils
 from google.appengine.ext.db import stats
 from google.appengine.ext.db import metadata
 from google.appengine.ext.webapp import util
+
+
+
+
 
 GET_ACTIONS = {
     'Copy to Another App': copy_handler.ConfirmCopyHandler.Render,
@@ -69,11 +76,16 @@ def _GetDatastoreStats(kinds_list, use_stats_kinds=False):
 
   results = {}
   for kind_ent in kind_stats:
+
+
+
     if (not kind_ent.kind_name.startswith('__')
         and (use_stats_kinds or kind_ent.kind_name in kinds_list)):
       results[kind_ent.kind_name] = _PresentatableKindStats(kind_ent)
 
   utils.CacheStats(results.values())
+
+
 
   for kind_str in kinds_list or []:
     if kind_str not in results:
@@ -162,6 +174,11 @@ class RouteByActionHandler(webapp.RequestHandler):
 class StaticResourceHandler(webapp.RequestHandler):
   """Read static files from disk."""
 
+
+
+
+
+
   _BASE_FILE_PATH = os.path.dirname(__file__)
 
   _RESOURCE_MAP = {
@@ -183,6 +200,8 @@ class StaticResourceHandler(webapp.RequestHandler):
     self.response.headers['Cache-Control'] = 'public; max-age=300'
     self.response.headers['Content-Type'] = self._RESOURCE_MAP[relative_path]
     if relative_path == 'static/css/compiled.css':
+
+
       self.response.out.write(
           open(path).read().replace('url(/img/', 'url(../img/'))
     else:
