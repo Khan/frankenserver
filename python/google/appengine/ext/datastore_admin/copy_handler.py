@@ -33,6 +33,7 @@ This module also contains actual mapper code for copying data over.
 
 import logging
 import urllib
+import collections
 
 from google.appengine.api import datastore
 from google.appengine.api import capabilities
@@ -201,7 +202,7 @@ class AllocateMaxIdPool(object):
   def __init__(self, app_id):
     self.app_id = app_id
 
-    self.key_path_to_max_id = {}
+    self.ns_to_path_to_max_id = collections.defaultdict(dict)
 
   def allocate_max_id(self, key):
     """Record the key to allocate max id.
@@ -210,32 +211,38 @@ class AllocateMaxIdPool(object):
       key: Datastore key.
     """
     path = key.to_path()
-    if not isinstance(path[-1], (int, long)):
-
-      return
     if len(path) == 2:
 
 
-      max_id = path[-1]
-      path_tuple = (path[0], 1)
-      self.key_path_to_max_id[path_tuple] = max(
-          max_id, self.key_path_to_max_id.get(path_tuple, 0))
+      path_tuple = ('Foo', 1)
+      id = path[-1]
     else:
 
 
-      max_id = 0
+      path_tuple = (path[0], path[1], 'Foo', 1)
+
+
+      id = None
       for path_element in path[2:]:
         if isinstance(path_element, (int, long)):
-          max_id = max(max_id, path_element)
-      path_tuple = (path[0], path[1], 'Foo', 1)
-      self.key_path_to_max_id[path_tuple] = max(
-          max_id, self.key_path_to_max_id.get(path_tuple, 0))
+          id = max(id, path_element)
+
+    if not isinstance(id, (int, long)):
+
+      return
+
+
+    path_to_max_id = self.ns_to_path_to_max_id[key.namespace()]
+    path_to_max_id[path_tuple] = max(id, path_to_max_id.get(path_tuple, 0))
 
   def flush(self):
-    for path, maxid in self.key_path_to_max_id.items():
-      db.allocate_id_range(db.Key.from_path(_app=self.app_id, *list(path)),
-                           1, maxid)
-    self.key_path_to_max_id = {}
+    for namespace, path_to_max_id in self.ns_to_path_to_max_id.iteritems():
+      for path, max_id in path_to_max_id.iteritems():
+        datastore.AllocateIds(db.Key.from_path(namespace=namespace,
+                                               _app=self.app_id,
+                                               *list(path)),
+                              max=max_id)
+    self.ns_to_path_to_max_id = collections.defaultdict(dict)
 
 
 class AllocateMaxId(operation.Operation):

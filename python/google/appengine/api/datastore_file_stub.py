@@ -156,6 +156,7 @@ class KindPseudoKind(object):
 
     for app_namespace, kind in entities:
       if app_namespace != app_namespace_str: continue
+      kind = kind.decode('utf-8')
       if not kind_range.Contains(kind): continue
       kinds.append(datastore.Entity(self.name, name=kind))
 
@@ -213,6 +214,9 @@ class PropertyPseudoKind(object):
     for app_namespace, kind in entities:
       if app_namespace != app_namespace_str: continue
 
+      app_kind = (app_namespace_str, kind)
+      kind = kind.decode('utf-8')
+
 
 
       (start_cmp, end_cmp) = property_range.MapExtremes(
@@ -220,8 +224,6 @@ class PropertyPseudoKind(object):
       if not((start_cmp is None or start_cmp >= 0) and
              (end_cmp is None or end_cmp <= 0)):
         continue
-
-      app_kind = (app_namespace_str, kind)
 
 
       kind_properties = self.filestub._GetSchemaCache(app_kind, usekey)

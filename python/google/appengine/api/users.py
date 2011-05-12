@@ -88,7 +88,8 @@ class User(object):
   __federated_provider = None
 
   def __init__(self, email=None, _auth_domain=None,
-               _user_id=None, federated_identity=None, federated_provider=None):
+               _user_id=None, federated_identity=None, federated_provider=None,
+               _strict_mode=True):
     """Constructor.
 
     Args:
@@ -105,6 +106,10 @@ class User(object):
 
 
 
+
+
+
+
     if _auth_domain is None:
       _auth_domain = os.environ.get('AUTH_DOMAIN')
     assert _auth_domain
@@ -117,7 +122,14 @@ class User(object):
       federated_provider = os.environ.get('FEDERATED_PROVIDER',
                                           federated_provider)
 
-    if not email and not federated_identity:
+
+
+
+
+    if email is None:
+      email = ''
+
+    if not email and not federated_identity and _strict_mode:
 
 
       raise UserNotFoundError

@@ -29,6 +29,8 @@ datastore. This module makes using those stubs for testing easier.
 
 Here is a basic example:
 '''
+import unittest
+
 from google.appengine.ext import db
 from google.appengine.ext import testbed
 
@@ -113,33 +115,25 @@ except AttributeError:
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api.channel import channel_service_stub
-from google.appengine.api.images import images_stub
+try:
+  from google.appengine.api.images import images_stub
+except ImportError:
+  images_stub = None
+
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.xmpp import xmpp_service_stub
 
 
-__all__ = ['DEFAULT_APP_ID',
-           'DATASTORE_SERVICE_NAME',
-           'IMAGES_SERVICE_NAME',
-           'MAIL_SERVICE_NAME',
-           'MEMCACHE_SERVICE_NAME',
-           'TASKQUEUE_SERVICE_NAME',
-           'URLFETCH_SERVICE_NAME',
-           'USER_SERVICE_NAME',
-           'XMPP_SERVICE_NAME',
-           'CHANNEL_SERVICE_NAME'
-           'TestMixin',
-           'TestCase']
-
 
 DEFAULT_APP_ID = 'testbed-test'
 DEFAULT_AUTH_DOMAIN = 'gmail.com'
 DEFAULT_SERVER_NAME = 'testbed.example.com'
-DEFAULT_SERVER_SOFTWARE = 'testbed/1.2.3 (testbed)'
+DEFAULT_SERVER_SOFTWARE = 'Development/1.0 (testbed)'
 DEFAULT_SERVER_PORT = '80'
 
 
+CHANNEL_SERVICE_NAME = 'channel'
 DATASTORE_SERVICE_NAME = 'datastore_v3'
 IMAGES_SERVICE_NAME = 'images'
 MAIL_SERVICE_NAME = 'mail'
@@ -148,7 +142,29 @@ TASKQUEUE_SERVICE_NAME = 'taskqueue'
 URLFETCH_SERVICE_NAME = 'urlfetch'
 USER_SERVICE_NAME = 'user'
 XMPP_SERVICE_NAME = 'xmpp'
-CHANNEL_SERVICE_NAME = 'channel'
+
+
+SUPPORTED_SERVICES = [CHANNEL_SERVICE_NAME,
+                      DATASTORE_SERVICE_NAME,
+                      IMAGES_SERVICE_NAME,
+                      MAIL_SERVICE_NAME,
+                      MEMCACHE_SERVICE_NAME,
+                      TASKQUEUE_SERVICE_NAME,
+                      URLFETCH_SERVICE_NAME,
+                      USER_SERVICE_NAME,
+                      XMPP_SERVICE_NAME]
+
+
+class Error(Exception):
+  """Base testbed error type."""
+
+
+class NotActivatedError(Error):
+  """Raised if the used testbed instance is not activated."""
+
+
+class StubNotSupportedError(Error):
+  """Raised if an unsupported service stub is accessed."""
 
 
 class InMemoryDatastoreStub(datastore_file_stub.DatastoreFileStub):
@@ -169,6 +185,10 @@ class Testbed(object):
   In order to use a fake service stub or disable a real service,
   invoke the corresponding 'init_*_stub' methods of this class.
   """
+
+  def __init__(self):
+    self._activated = False
+    self._enabled_stubs = []
 
   def activate(self):
     """Activate the testbed.
@@ -191,34 +211,116 @@ class Testbed(object):
     internal_map = self._original_stub_map._APIProxyStubMap__stub_map
     self._test_stub_map._APIProxyStubMap__stub_map = dict(internal_map)
     apiproxy_stub_map.apiproxy = self._test_stub_map
+    self._activated = True
 
   def deactivate(self):
+    if not self._activated:
+      raise NotActivatedError('The testbed is not activated.')
     apiproxy_stub_map.apiproxy = self._original_stub_map
+    self._enabled_stubs = []
     os.environ = self._orig_env
+    self._activated = False
 
   def setup_env(self, app_id=DEFAULT_APP_ID,
                 auth_domain=DEFAULT_AUTH_DOMAIN,
                 server_software=DEFAULT_SERVER_SOFTWARE,
                 server_name=DEFAULT_SERVER_NAME,
-                server_port=DEFAULT_SERVER_PORT):
-    """Setup environment variables."""
-    os.environ['APPLICATION_ID'] = app_id
-    os.environ['AUTH_DOMAIN'] = auth_domain
-    os.environ['SERVER_SOFTWARE'] = server_software
-    os.environ['SERVER_NAME'] = server_name
-    os.environ['SERVER_PORT'] = server_port
+                server_port=DEFAULT_SERVER_PORT,
+                overwrite=False):
+    """Setup environment variables.
+
+    If an environment variable does not exist it will be created. By
+    default, existing values of the corresponding variables will be
+    kept.  If 'overwrite' is True, the passed in value will be
+    assigned.
+
+    Args:
+      app_id: The application ID.
+      auth_domain: The authentication domain.
+      server_software: The name of the server software.
+      server_name: The name of the server.
+      server_port: The port of the server.
+      overwrite: If True, overwrite existing environment variable value.
+    """
+    if overwrite or 'APPLICATION_ID' not in os.environ:
+      os.environ['APPLICATION_ID'] = app_id
+    if overwrite or 'AUTH_DOMAIN' not in os.environ:
+      os.environ['AUTH_DOMAIN'] = auth_domain
+    if overwrite or 'SERVER_SOFTWARE' not in os.environ:
+      os.environ['SERVER_SOFTWARE'] = server_software
+    if overwrite or 'SERVER_NAME' not in os.environ:
+      os.environ['SERVER_NAME'] = server_name
+    if overwrite or 'SERVER_PORT' not in os.environ:
+      os.environ['SERVER_PORT'] = server_port
 
   def _register_stub(self, service_name, stub):
+    """Register a service stub.
+
+    Args:
+      service_name: The name of the service the stub represents.
+      stub: The stub.
+
+    Raises:
+      NotActivatedError: The testbed is not activated.
+    """
+    if not self._activated:
+      raise NotActivatedError('The testbed is not activated.')
     if service_name in self._test_stub_map._APIProxyStubMap__stub_map:
       del self._test_stub_map._APIProxyStubMap__stub_map[service_name]
     self._test_stub_map.RegisterStub(service_name, stub)
+    self._enabled_stubs.append(service_name)
 
   def _disable_stub(self, service_name):
+    """Disable a service stub.
+
+    Args:
+      service_name: The name of the service to disable.
+
+    Raises:
+      NotActivatedError: The testbed is not activated.
+    """
+    if not self._activated:
+      raise NotActivatedError('The testbed is not activated.')
     if service_name in self._test_stub_map._APIProxyStubMap__stub_map:
       del self._test_stub_map._APIProxyStubMap__stub_map[service_name]
+    if service_name in self._enabled_stubs:
+      self._enabled_stubs.remove(service_name)
 
   def get_stub(self, service_name):
+    """Get the stub for a service.
+
+    Args:
+      service_name: The name of the service.
+
+    Returns:
+      The stub for 'service_name'.
+
+    Raises:
+      NotActivatedError: The testbed is not activated.
+      StubNotSupportedError: The service is not supported by testbed.
+      StubNotEnabledError: The service stub has not been enabled.
+    """
+    if not self._activated:
+      raise NotActivatedError('The testbed is not activated.')
+    if service_name not in SUPPORTED_SERVICES:
+      msg = 'The "%s" service is not supported by testbed' % service_name
+      raise StubNotSupportedError(msg)
+    if service_name not in self._enabled_stubs:
+      return None
     return self._test_stub_map.GetStub(service_name)
+
+  def init_channel_stub(self, enable=True):
+    """Enable the channel stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(CHANNEL_SERVICE_NAME)
+      return
+    stub = channel_service_stub.ChannelServiceStub()
+    self._register_stub(CHANNEL_SERVICE_NAME, stub)
 
   def init_datastore_v3_stub(self, enable=True, datastore_file=None,
                              **stub_kw_args):
@@ -264,6 +366,10 @@ class Testbed(object):
     if not enable:
       self._disable_stub(IMAGES_SERVICE_NAME)
       return
+    if images_stub is None:
+      msg = ('Could not initialize images API; you are likely '
+             'missing the Python "PIL" module.')
+      raise StubNotSupportedError(msg)
     stub = images_stub.ImagesServiceStub()
     self._register_stub(IMAGES_SERVICE_NAME, stub)
 
@@ -354,17 +460,3 @@ class Testbed(object):
       return
     stub = xmpp_service_stub.XmppServiceStub()
     self._register_stub(XMPP_SERVICE_NAME, stub)
-
-  def init_channel_stub(self, enable=True):
-    """Enable the channel stub.
-
-    Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-    """
-    self.setup_env(server_software='Devel')
-    if not enable:
-      self._disable_stub(CHANNEL_SERVICE_NAME)
-      return
-    stub = channel_service_stub.ChannelServiceStub()
-    self._register_stub(CHANNEL_SERVICE_NAME, stub)

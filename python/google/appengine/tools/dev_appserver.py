@@ -103,6 +103,7 @@ from google.appengine.api import blobstore
 from google.appengine.api import croninfo
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_file_stub
+from google.appengine.api import lib_config
 from google.appengine.api import mail
 from google.appengine.api import mail_stub
 from google.appengine.api import urlfetch_stub
@@ -114,10 +115,12 @@ from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.channel import channel_service_stub
 from google.appengine.api.files import file_service_stub
+from google.appengine.api.logservice import logservice_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.prospective_search import prospective_search_stub
 from google.appengine.api.memcache import memcache_stub
 
+from google.appengine.api.system import system_stub
 from google.appengine.api.xmpp import xmpp_service_stub
 from google.appengine.datastore import datastore_sqlite_stub
 
@@ -129,6 +132,7 @@ from google.appengine.tools import dev_appserver_blobimage
 from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
 from google.appengine.tools import dev_appserver_oauth
+from google.appengine.tools import dev_appserver_multiprocess as multiprocess
 from google.appengine.tools import dev_appserver_upload
 
 
@@ -136,6 +140,8 @@ from google.appengine.tools import dev_appserver_upload
 
 PYTHON_LIB_VAR = '$PYTHON_LIB'
 DEVEL_CONSOLE_PATH = PYTHON_LIB_VAR + '/google/appengine/ext/admin'
+REMOTE_API_PATH = (PYTHON_LIB_VAR +
+                   '/google/appengine/ext/remote_api/handler.py')
 
 
 FILE_MISSING_EXCEPTIONS = frozenset([errno.ENOENT, errno.ENOTDIR])
@@ -186,7 +192,7 @@ API_VERSION = '1'
 
 
 
-VERSION_FILE = '../VERSION'
+VERSION_FILE = '../../VERSION'
 
 
 SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
@@ -198,6 +204,8 @@ SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
 DEVEL_PAYLOAD_HEADER = 'HTTP_X_APPENGINE_DEVELOPMENT_PAYLOAD'
 DEVEL_PAYLOAD_RAW_HEADER = 'X-AppEngine-Development-Payload'
 
+CODING_COOKIE_RE = re.compile("coding[:=]\s*([-\w.]+)")
+DEFAULT_ENCODING = 'ascii'
 
 
 
@@ -882,6 +890,13 @@ def FakeUTime(path, times):
   raise OSError(errno.EPERM, "Operation not permitted", path)
 
 
+def FakeFileObject(fp, mode='rb', bufsize=-1, close=False):
+  """Assuming that the argument is a StringIO or file instance."""
+  if not hasattr(fp, 'fileno'):
+    fp.fileno = lambda: None
+  return fp
+
+
 def FakeGetHostByAddr(addr):
   """Fake version of socket.gethostbyaddr."""
   raise NotImplementedError()
@@ -918,6 +933,56 @@ def FakeGetPlatform():
     return 'macosx-'
   else:
     return distutils.util.get_platform()
+
+
+
+
+
+
+def NeedsMacOSXProxyFakes():
+  """Returns True if the MacOS X urllib fakes should be installed."""
+  return (sys.platform == 'darwin' and
+          (2, 6, 0) <= sys.version_info < (2, 6, 4))
+
+
+if NeedsMacOSXProxyFakes():
+  def _FakeProxyBypassHelper(fn,
+                             original_module_dict=sys.modules.copy(),
+                             original_uname=os.uname):
+    """Setups and restores the state for the Mac OS X urllib fakes."""
+    def Inner(*args, **kwargs):
+      current_uname = os.uname
+      current_meta_path = sys.meta_path[:]
+      current_modules = sys.modules.copy()
+
+      try:
+        sys.modules.clear()
+        sys.modules.update(original_module_dict)
+        sys.meta_path[:] = []
+        os.uname = original_uname
+
+        return fn(*args, **kwargs)
+      finally:
+        sys.modules.clear()
+        sys.modules.update(current_modules)
+        os.uname = current_uname
+        sys.meta_path[:] = current_meta_path
+    return Inner
+
+
+  @_FakeProxyBypassHelper
+  def FakeProxyBypassMacOSXSysconf(
+      host,
+      original_proxy_bypass_macosx_sysconf=urllib.proxy_bypass_macosx_sysconf):
+    """Fake for urllib.proxy_bypass_macosx_sysconf for Python 2.6.0 to 2.6.3."""
+    return original_proxy_bypass_macosx_sysconf(host)
+
+
+  @_FakeProxyBypassHelper
+  def FakeGetProxiesMacOSXSysconf(
+      original_getproxies_macosx_sysconf=urllib.getproxies_macosx_sysconf):
+    """Fake for urllib.getproxies_macosx_sysconf for Python 2.6.0 to 2.6.3."""
+    return original_getproxies_macosx_sysconf()
 
 
 def IsPathInSubdirectories(filename,
@@ -1683,82 +1748,86 @@ class HardenedModulesHook(object):
           'X_OK',
       ],
 
+
+      'signal': [
+      ],
+
       'socket': [
 
           '_GLOBAL_DEFAULT_TIMEOUT',
-          'AF_UNSPEC',
-          'AF_UNIX',
+
+
           'AF_INET',
-          'AF_INET6',
+
           'SOCK_STREAM',
           'SOCK_DGRAM',
-          'SOMAXCONN',
-          'MSG_PEEK',
-          'MSG_WAITALL',
-          'IPPROTO_IP',
-          'IPPROTO_ICMP',
-          'IPPROTO_TCP',
-          'IPPROTO_UDP',
-          'IPPORT_RESERVED',
-          'IPPORT_USERRESERVED',
-          'INADDR_ANY',
-          'INADDR_BROADCAST',
-          'INADDR_LOOPBACK',
-          'INADDR_NONE',
-          'AI_PASSIVE',
-          'AI_CANONNAME',
-          'AI_NUMERICHOST',
-          'AI_NUMERICSERV',
-          'AI_V4MAPPED',
-          'AI_ALL',
-          'AI_ADDRCONFIG',
-          'EAI_ADDRFAMILY',
-          'EAI_AGAIN',
-          'EAI_BADFLAGS',
-          'EAI_FAIL',
-          'EAI_FAMILY',
-          'EAI_MEMORY',
-          'EAI_NODATA',
-          'EAI_NONAME',
-          'EAI_SERVICE',
-          'EAI_SOCKTYPE',
-          'EAI_SYSTEM',
-          'EAI_BADHINTS',
-          'EAI_PROTOCOL',
-          'EAI_OVERFLOW',
-          'EAI_MAX',
-          'SHUT_RD',
-          'SHUT_WR',
-          'SHUT_RDWR',
-          'SOL_SOCKET',
-          'SOL_IP',
-          'SOL_TCP',
-          'SOL_UDP',
-          'SO_DEBUG',
-          'SO_REUSEADDR',
-          'SO_TYPE',
-          'SO_ERROR',
-          'SO_DONTROUTE',
-          'SO_BROADCAST',
-          'SO_SNDBUF',
-          'SO_RCVBUF',
-          'SO_KEEPALIVE',
-          'IP_TOS',
-          'IP_TTL',
-          'IP_HDRINCL',
-          'IP_OPTIONS',
-          'TCP_NODELAY',
-          'TCP_MAXSEG',
-          'TCP_CORK',
-          'TCP_KEEPIDLE',
-          'TCP_KEEPINTVL',
-          'TCP_KEEPCNT',
-          'TCP_SYNCNT',
-          'TCP_LINGER2',
-          'TCP_DEFER_ACCEPT',
-          'TCP_WINDOW_CLAMP',
-          'TCP_INFO',
-          'TCP_QUICKACK',
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
           'error',
@@ -1767,41 +1836,45 @@ class HardenedModulesHook(object):
           'timeout',
 
 
-          'getfqdn',
-          'gethostbyname',
-          'gethostbyname_ex',
-          'gethostbyaddr',
-          'gethostname',
-          'getprotobyname',
-          'getservbyname',
-          'getservbyport',
-          'ntohs',
-          'ntohl',
-          'htons',
-          'htonl',
-          'getaddrinfo',
-          'getnameinfo',
-          'inet_aton',
-          'inet_ntoa',
-          'getdefaulttimeout',
-          'setdefaulttimeout',
-          'inet_pton',
-          'inet_ntop',
-          'create_connection',
 
 
-          'socket',
-          '_closedsocket',
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          'ssl',
+
+
+
+
           '_fileobject',
-          '_socketobject',
+
       ],
 
       'select': [
 
-          'error',
 
 
-          'select',
+
+
+      ],
+
+      'ssl': [
       ],
   }
 
@@ -1834,11 +1907,19 @@ class HardenedModulesHook(object):
           'utime': FakeUTime,
       },
 
+      'signal': {
+
+          '__doc__': None,
+      },
+
       'socket': {
-          'gethostbyaddr': FakeGetHostByAddr,
-          'getprotobyname': FakeGetProtoByName,
-          'getservbyport': FakeGetServByPort,
-          'getnameinfo': FakeGetNameInfo,
+          '_fileobject': FakeFileObject,
+          'ssl': None,
+
+
+
+
+
 
 
 
@@ -1884,6 +1965,8 @@ class HardenedModulesHook(object):
     self._dummy_thread = dummy_thread_module
     self._pickle = pickle
     self._socket = socket_module
+
+    self._socket.buffer = buffer
     self._select = select_module
     self._indent_level = 0
 
@@ -1985,6 +2068,11 @@ class HardenedModulesHook(object):
 
     if module.__name__ in self._MODULE_OVERRIDES:
       module.__dict__.update(self._MODULE_OVERRIDES[module.__name__])
+
+    if module.__name__ == 'urllib' and NeedsMacOSXProxyFakes():
+      module.__dict__.update(
+          {'proxy_bypass_macosx_sysconf': FakeProxyBypassMacOSXSysconf,
+           'getproxies_macosx_sysconf': FakeGetProxiesMacOSXSysconf})
 
   @Trace
   def FindModuleRestricted(self,
@@ -2239,6 +2327,8 @@ class HardenedModulesHook(object):
       module.__dict__.update(self._socket.__dict__)
     elif submodule_fullname == 'select':
       module.__dict__.update(self._select.__dict__)
+    elif submodule_fullname == 'ssl':
+      pass
     elif self.StubModuleExists(submodule_fullname):
       module = self.ImportStubModule(submodule_fullname)
     else:
@@ -2399,6 +2489,18 @@ class HardenedModulesHook(object):
     source_code = source_code.replace('\r\n', '\n')
     if not source_code.endswith('\n'):
       source_code += '\n'
+
+
+
+
+    encoding = DEFAULT_ENCODING
+    for line in source_code.split('\n', 2)[:2]:
+      matches = CODING_COOKIE_RE.findall(line)
+      if matches:
+        encoding = matches[0].lower()
+
+
+    source_code.decode(encoding)
 
     return compile(source_code, full_path, 'exec')
 
@@ -2583,6 +2685,13 @@ def LoadTargetModule(handler_path,
       script_module.__file__ = full_path
       if search_path is not None:
         script_module.__path__ = search_path
+    except UnicodeDecodeError, e:
+
+
+
+      error = ('%s please see http://www.python.org/peps'
+               '/pep-0263.html for details (%s)' % (e, handler_path))
+      raise SyntaxError(error)
     except:
       exc_type, exc_value, exc_tb = sys.exc_info()
       import_error_message = str(exc_type)
@@ -2640,30 +2749,53 @@ def LoadTargetModule(handler_path,
 
   return module_fullname, script_module, module_code
 
-def CheckRequestSize(request_size, outfile):
-  """Check that request size is below the maximum size.
 
-  Checks to see if the request size small enough for small requests.  Will
-  write the correct error message to the response outfile if the request
-  is too large.
+def _WriteErrorToOutput(status, message, outfile):
+  """Writes an error status response to the response outfile.
 
   Args:
-    request_size: Calculated size of request.
+    status: The status to return, e.g. '411 Length Required'.
+    message: A human-readable error message.
+    outfile: Response outfile.
+  """
+  logging.error(message)
+  outfile.write('Status: %s\r\n\r\n%s' % (status, message))
+
+
+def GetRequestSize(request, env_dict, outfile):
+  """Gets the size (content length) of the given request.
+
+  On error, this method writes an error message to the response outfile and
+  returns None.  Errors include the request missing a required header and the
+  request being too large.
+
+  Args:
+    request: AppServerRequest instance.
+    env_dict: Environment dictionary.  May be None.
     outfile: Response outfile.
 
   Returns:
-    True if request size is ok, else False.
+    The calculated request size, or None on error.
   """
+  if 'content-length' in request.headers:
+    request_size = int(request.headers['content-length'])
+  elif env_dict and env_dict.get('REQUEST_METHOD', '') == 'POST':
+    _WriteErrorToOutput('%d Length required' % httplib.LENGTH_REQUIRED,
+                        'POST requests require a Content-length header.',
+                        outfile)
+    return None
+  else:
+    request_size = 0
+
   if request_size <= MAX_REQUEST_SIZE:
-    return True
+    return request_size
   else:
     msg = ('HTTP request was too large: %d.  The limit is: %d.'
            % (request_size, MAX_REQUEST_SIZE))
-    logging.error(msg)
-    outfile.write('Status: %d Request entity too large\r\n'
-                  '\r\n'
-                  '%s' % (httplib.REQUEST_ENTITY_TOO_LARGE, msg))
-    return False
+    _WriteErrorToOutput(
+        '%d Request entity too large' % httplib.REQUEST_ENTITY_TOO_LARGE,
+        msg, outfile)
+    return None
 
 
 def ExecuteOrImportScript(handler_path, cgi_path, import_hook):
@@ -2888,8 +3020,8 @@ class CGIDispatcher(URLDispatcher):
                outfile,
                base_env_dict=None):
     """Dispatches the Python CGI."""
-    request_size = int(request.headers.get('content-length', 0))
-    if not CheckRequestSize(request_size, outfile):
+    request_size = GetRequestSize(request, base_env_dict, outfile)
+    if request_size is None:
       return
 
 
@@ -3194,9 +3326,16 @@ class FileDispatcher(URLDispatcher):
     static_file = self._static_file_config_matcher.IsStaticFile(request.path)
     expiration = self._static_file_config_matcher.GetExpiration(request.path)
     current_etag = self.CreateEtag(data)
-    previous_etag = request.headers.get('if-none-match', None)
+    if_match_etag = request.headers.get('if-match', None)
+    if_none_match_etag = request.headers.get('if-none-match', '').split(',')
 
-    if previous_etag and previous_etag.strip('"') == current_etag:
+    if if_match_etag and not self._CheckETagMatches(if_match_etag.split(','),
+                                                    current_etag,
+                                                    False):
+      outfile.write('Status: %s\r\n' % httplib.PRECONDITION_FAILED)
+      outfile.write('ETag: "%s"\r\n' % current_etag)
+      outfile.write('\r\n')
+    elif self._CheckETagMatches(if_none_match_etag, current_etag, True):
       outfile.write('Status: %s\r\n' % httplib.NOT_MODIFIED)
       outfile.write('ETag: "%s"\r\n' % current_etag)
       outfile.write('\r\n')
@@ -3223,6 +3362,27 @@ class FileDispatcher(URLDispatcher):
     """Returns string of hash of file content, unique per URL."""
     data_crc = zlib.crc32(data)
     return base64.b64encode(str(data_crc))
+
+  @staticmethod
+  def _CheckETagMatches(supplied_etags, current_etag, allow_weak_match):
+    """Checks if there is an entity tag match.
+
+    Args:
+      supplied_etags: list of input etags
+      current_etag: the calculated etag for the entity
+      allow_weak_match: Allow for weak tag comparison.
+
+    Returns:
+      True if there is a match, False otherwise.
+    """
+
+    for tag in supplied_etags:
+      if allow_weak_match and tag.startswith('W/'):
+        tag = tag[2:]
+      tag_data = tag.strip('"')
+      if tag_data == '*' or tag_data == current_etag:
+        return True
+    return False
 
 
 
@@ -3568,6 +3728,7 @@ class ModuleManager(object):
 
   def ResetModules(self):
     """Clear modules so that when request is run they are reloaded."""
+    lib_config._default_registry.reset()
     self._modules.clear()
     self._modules.update(self._default_modules)
 
@@ -3595,7 +3756,7 @@ def GetVersionObject(isfile=os.path.isfile, open_fn=open):
   Returns:
     A Yaml object or None if the VERSION file does not exist.
   """
-  version_filename = os.path.join(os.path.dirname(google.__file__),
+  version_filename = os.path.join(os.path.dirname(google.appengine.__file__),
                                   VERSION_FILE)
   if not isfile(version_filename):
     logging.error('Could not find version file at %s', version_filename)
@@ -3732,7 +3893,8 @@ def CreateRequestHandler(root_path,
 
     def do_GET(self):
       """Handle GET requests."""
-      self._HandleRequest()
+      if self._HasNoBody('GET'):
+        self._HandleRequest()
 
     def do_POST(self):
       """Handles POST requests."""
@@ -3744,7 +3906,8 @@ def CreateRequestHandler(root_path,
 
     def do_HEAD(self):
       """Handle HEAD requests."""
-      self._HandleRequest()
+      if self._HasNoBody('HEAD'):
+        self._HandleRequest()
 
     def do_OPTIONS(self):
       """Handles OPTIONS requests."""
@@ -3756,7 +3919,29 @@ def CreateRequestHandler(root_path,
 
     def do_TRACE(self):
       """Handles TRACE requests."""
-      self._HandleRequest()
+      if self._HasNoBody('TRACE'):
+        self._HandleRequest()
+
+    def _HasNoBody(self, method):
+      """Check for request body in HTTP methods where no body is permitted.
+
+      If a request body is present a 400 (Invalid request) response is sent.
+
+      Args:
+        method: The request method.
+
+      Returns:
+        True if no request body is present, False otherwise.
+      """
+
+
+      content_length = int(self.headers.get('content-length', 0))
+      if content_length:
+        body = self.rfile.read(content_length)
+        logging.warning('Request body in %s is not permitted: %s', method, body)
+        self.send_response(httplib.BAD_REQUEST)
+        return False
+      return True
 
     def _Dispatch(self, dispatcher, socket_infile, outfile, env_dict):
       """Copy request data from socket and dispatch.
@@ -3846,12 +4031,22 @@ def CreateRequestHandler(root_path,
         env_dict['SDK_VERSION'] = version['release']
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
         env_dict['APPLICATION_ID'] = config.application
+
+
+        multiprocess.GlobalProcess().UpdateEnv(env_dict)
+
         dispatcher = MatcherDispatcher(login_url,
                                        [implicit_matcher, explicit_matcher])
 
         if require_indexes:
 
           dev_appserver_index.SetupIndexes(config.application, root_path)
+
+
+
+
+        if multiprocess.GlobalProcess().HandleRequest(self):
+          return
 
         outfile = cStringIO.StringIO()
         try:
@@ -3887,6 +4082,9 @@ def CreateRequestHandler(root_path,
                                MAX_RUNTIME_RESPONSE_SIZE))
             response.headers['content-length'] = str(len(new_response))
             response.body = cStringIO.StringIO(new_response)
+
+
+        multiprocess.GlobalProcess().RequestComplete(self, response)
 
       except yaml_errors.EventListenerError, e:
         title = 'Fatal error when loading application configuration'
@@ -3926,7 +4124,9 @@ def CreateRequestHandler(root_path,
 
 
 
-          if e.errno != errno.EPIPE:
+
+
+          if e.errno not in [errno.EPIPE, os_compat.WSAECONNABORTED]:
             raise e
         except socket.error, e:
           if len(e.args) >= 1 and e.args[0] != errno.EPIPE:
@@ -3945,7 +4145,7 @@ def CreateRequestHandler(root_path,
       """Redirect log messages through the logging module."""
 
 
-      if self.channel_poll_path_re.match(self.path):
+      if hasattr(self, 'path') and self.channel_poll_path_re.match(self.path):
         logging.debug(format, *args)
       else:
         logging.info(format, *args)
@@ -4135,6 +4335,7 @@ def LoadAppConfig(root_path,
 
       try:
         config = read_app_config(appinfo_path, appinfo_includes.Parse)
+        multiprocess.GlobalProcess().NewAppInfo(config)
 
         if static_caching:
           if config.default_expiration:
@@ -4285,17 +4486,56 @@ def SetupStubs(app_id, **config):
       except OSError, e:
         logging.warning('Removing file failed: %s', e)
 
-  apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
 
-  if use_sqlite:
-    datastore = datastore_sqlite_stub.DatastoreSqliteStub(
-        app_id, datastore_path, require_indexes=require_indexes,
-        trusted=trusted)
-  else:
-    datastore = datastore_file_stub.DatastoreFileStub(
-        app_id, datastore_path, require_indexes=require_indexes,
-        trusted=trusted)
-  apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore)
+  if not multiprocess.GlobalProcess().MaybeConfigureRemoteDataApis():
+    """Configures local versions of datastore, memcache, and taskqueue."""
+    apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
+
+    if use_sqlite:
+      datastore = datastore_sqlite_stub.DatastoreSqliteStub(
+          app_id, datastore_path, require_indexes=require_indexes,
+          trusted=trusted)
+    else:
+      datastore = datastore_file_stub.DatastoreFileStub(
+          app_id, datastore_path, require_indexes=require_indexes,
+          trusted=trusted)
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'datastore_v3', datastore)
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'memcache',
+        memcache_stub.MemcacheServiceStub())
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'taskqueue',
+        taskqueue_stub.TaskQueueServiceStub(
+            root_path=root_path,
+            auto_task_running=(not disable_task_running),
+            task_retry_seconds=task_retry_seconds))
+
+    if ((mysql_host and mysql_host != 'localhost') or mysql_port != 3306 or
+        mysql_user or mysql_password or mysql_socket):
+
+
+
+      from google.appengine import api
+      from google.appengine.api import rdbms_mysqldb
+      sys.modules['google.appengine.api.rdbms'] = rdbms_mysqldb
+      api.rdbms = rdbms_mysqldb
+
+      rdbms_mysqldb.SetConnectKwargs(host=mysql_host, port=mysql_port,
+                                     user=mysql_user, passwd=mysql_password,
+                                     unix_socket=mysql_socket)
+      rdbms_mysqldb.connect(database='')
+    else:
+
+      from google.appengine import api
+      from google.appengine.api import rdbms_sqlite
+      sys.modules['google.appengine.api.rdbms'] = rdbms_sqlite
+      api.rdbms = rdbms_sqlite
+
+      rdbms_sqlite.SetSqliteFile(rdbms_sqlite_path)
+      rdbms_sqlite.connect(database='')
 
   fixed_login_url = '%s?%s=%%s' % (login_url,
                                    dev_appserver_login.CONTINUE_PARAM)
@@ -4311,30 +4551,6 @@ def SetupStubs(app_id, **config):
       'urlfetch',
       urlfetch_stub.URLFetchServiceStub())
 
-  if ((mysql_host and mysql_host != 'localhost') or mysql_port != 3306 or
-      mysql_user or mysql_password or mysql_socket):
-
-
-
-    from google.appengine import api
-    from google.appengine.api import rdbms_mysqldb
-    sys.modules['google.appengine.api.rdbms'] = rdbms_mysqldb
-    api.rdbms = rdbms_mysqldb
-
-    rdbms_mysqldb.SetConnectKwargs(host=mysql_host, port=mysql_port,
-                                   user=mysql_user, passwd=mysql_password,
-                                   unix_socket=mysql_socket)
-    rdbms_mysqldb.connect(database='')
-  else:
-
-    from google.appengine import api
-    from google.appengine.api import rdbms_sqlite
-    sys.modules['google.appengine.api.rdbms'] = rdbms_sqlite
-    api.rdbms = rdbms_sqlite
-
-    rdbms_sqlite.SetSqliteFile(rdbms_sqlite_path)
-    rdbms_sqlite.connect(database='')
-
   apiproxy_stub_map.apiproxy.RegisterStub(
       'mail',
       mail_stub.MailServiceStub(smtp_host,
@@ -4345,19 +4561,8 @@ def SetupStubs(app_id, **config):
                                 show_mail_body=show_mail_body))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-      'memcache',
-      memcache_stub.MemcacheServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
       'capability_service',
       capability_stub.CapabilityServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'taskqueue',
-      taskqueue_stub.TaskQueueServiceStub(
-          root_path=root_path,
-          auto_task_running=(not disable_task_running),
-          task_retry_seconds=task_retry_seconds))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'xmpp',
@@ -4372,7 +4577,6 @@ def SetupStubs(app_id, **config):
       prospective_search_stub.ProspectiveSearchStub(
           prospective_search_path,
           apiproxy_stub_map.apiproxy.GetStub('taskqueue')))
-
 
 
 
@@ -4407,6 +4611,14 @@ def SetupStubs(app_id, **config):
       'file',
       file_service_stub.FileServiceStub(blob_storage))
 
+  system_service_stub = system_stub.SystemServiceStub()
+  multiprocess.GlobalProcess().UpdateSystemStub(system_service_stub)
+  apiproxy_stub_map.apiproxy.RegisterStub('system', system_service_stub)
+
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'logservice',
+      logservice_stub.LogServiceStub())
+
 
 def CreateImplicitMatcher(
     module_dict,
@@ -4435,6 +4647,17 @@ def CreateImplicitMatcher(
   """
   url_matcher = URLMatcher()
   path_adjuster = create_path_adjuster(root_path)
+
+
+  if multiprocess.GlobalProcess().IsApiServer():
+    remote_api_dispatcher = create_cgi_dispatcher(
+        module_dict, root_path, path_adjuster)
+    url_matcher.AddURL(multiprocess.PATH_DEV_API_SERVER,
+                       remote_api_dispatcher,
+                       REMOTE_API_PATH,
+                       False,
+                       False,
+                       appinfo.AUTH_FAIL_ACTION_REDIRECT)
 
 
 
@@ -4589,12 +4812,20 @@ def CreateServer(root_path,
 
     python_path_list.insert(0, absolute_root_path)
 
-  server = HTTPServerWithScheduler((serve_address, port), handler_class)
+  if multiprocess.Enabled():
+    server = HttpServerWithMultiProcess((serve_address, port), handler_class)
+  else:
+    server = HTTPServerWithScheduler((serve_address, port), handler_class)
 
 
   queue_stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
   if queue_stub:
     queue_stub._add_event = server.AddEvent
+
+  channel_stub = apiproxy_stub_map.apiproxy.GetStub('channel')
+  if channel_stub:
+    channel_stub._add_event = server.AddEvent
+    channel_stub._update_event = server.UpdateEvent
 
   return server
 
@@ -4651,7 +4882,7 @@ class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
 
 
       if self._events and current_time >= self._events[0][0]:
-        unused_eta, runnable = heapq.heappop(self._events)
+        runnable = heapq.heappop(self._events)[1]
         request_tuple = runnable()
         if request_tuple:
           return request_tuple
@@ -4671,11 +4902,54 @@ class HTTPServerWithScheduler(BaseHTTPServer.HTTPServer):
     """
     self._stopped = True
 
-  def AddEvent(self, eta, runnable):
+  def AddEvent(self, eta, runnable, service=None, event_id=None):
     """Add a runnable event to be run at the specified time.
 
     Args:
       eta: when to run the event, in seconds since epoch.
       runnable: a callable object.
+      service: the service that owns this event. Should be set if id is set.
+      event_id: optional id of the event. Used for UpdateEvent below.
     """
-    heapq.heappush(self._events, (eta, runnable))
+    heapq.heappush(self._events, (eta, runnable, service, event_id))
+
+  def UpdateEvent(self, service, event_id, eta):
+    """Update a runnable event in the heap with a new eta.
+    TODO(moishel): come up with something better than a linear scan to
+    update items. For the case this is used for now -- updating events to
+    "time out" channels -- this works fine because those events are always
+    soon (within seconds) and thus found quickly towards the front of the heap.
+    One could easily imagine a scenario where this is always called for events
+    that tend to be at the back of the heap, of course...
+
+    Args:
+      service: the service that owns this event.
+      event_id: the id of the event.
+      eta: the new eta of the event.
+    """
+    for id in xrange(len(self._events)):
+      item = self._events[id]
+      if item[2] == service and item[3] == event_id:
+        item = (eta, item[1], item[2], item[3])
+        del(self._events[id])
+        heapq.heappush(self._events, item)
+        break
+
+
+class HttpServerWithMultiProcess(HTTPServerWithScheduler):
+  """Class extending HTTPServerWithScheduler with multi-process handling."""
+
+  def __init__(self, server_address, request_handler_class):
+    """Constructor.
+
+    Args:
+      server_address: the bind address of the server.
+      request_handler_class: class used to handle requests.
+    """
+    HTTPServerWithScheduler.__init__(self, server_address,
+                                     request_handler_class)
+    multiprocess.GlobalProcess().SetHttpServer(self)
+
+  def process_request(self, request, client_address):
+    """Overrides the SocketServer process_request call."""
+    multiprocess.GlobalProcess().ProcessRequest(request, client_address)

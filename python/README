@@ -103,7 +103,11 @@ Options:
   --task_retry_seconds       How long to wait in seconds before retrying a
                              task after it fails during execution.
                              (Default '30')
-
+  --backends                 Run the dev_appserver with backends support
+                             (multiproces mode).
+  --multiprocess_min_port    Specifies the lowest port value to use when
+                             choosing ports in multiprocess mode.  If set to 0,
+                             select random ports.  (Default: 9000)
 
 
 USING THE SDK

@@ -401,40 +401,25 @@ def _Rpc2Config(rpc):
                                      config=_GetConnection().config)
 
 
-def Put(entities, **kwargs):
-  """Store one or more entities in the datastore.
+def PutAsync(entities, **kwargs):
+  """Asynchronously store one or more entities in the datastore.
 
-  The entities may be new or previously existing. For new entities, Put() will
-  fill in the app id and key assigned by the datastore.
-
-  If the argument is a single Entity, a single Key will be returned. If the
-  argument is a list of Entity, a list of Keys will be returned.
-
-  Args:
-    entities: Entity or list of Entities
-    config: Optional Configuration to use for this request.
-
-  Returns:
-    Key or list of Keys
-
-  Raises:
-    TransactionFailedError, if the Put could not be committed.
+  Identical to datastore.Put() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and get the results.
   """
+  extra_hook = kwargs.pop('extra_hook', None)
   config = _GetConfigFromKwargs(kwargs)
   if getattr(config, 'read_policy', None) == EVENTUAL_CONSISTENCY:
     raise datastore_errors.BadRequestError(
         'read_policy is only supported on read operations.')
   entities, multiple = NormalizeAndTypeCheck(entities, Entity)
 
-  if multiple and not entities:
-    return []
-
   for entity in entities:
     if not entity.kind() or not entity.app():
       raise datastore_errors.BadRequestError(
           'App and kind must not be empty, in entity: %s' % entity)
 
-  def extra_hook(keys):
+  def local_extra_hook(keys):
     num_keys = len(keys)
     num_entities = len(entities)
     if num_keys != num_entities:
@@ -448,11 +433,62 @@ def Put(entities, **kwargs):
         entity._Entity__key._Key__reference.CopyFrom(key._Key__reference)
 
     if multiple:
-      return keys
+      result = keys
     else:
-      return keys[0]
+      result = keys[0]
 
-  return _GetConnection().async_put(config, entities, extra_hook).get_result()
+    if extra_hook:
+      return extra_hook(result)
+    return result
+
+  return _GetConnection().async_put(config, entities, local_extra_hook)
+
+
+def Put(entities, **kwargs):
+  """Store one or more entities in the datastore.
+
+  The entities may be new or previously existing. For new entities, Put() will
+  fill in the app id and key assigned by the datastore.
+
+  If the argument is a single Entity, a single Key will be returned. If the
+  argument is a list of Entity, a list of Keys will be returned.
+
+  Args:
+    entities: Entity or list of Entities
+    config: Optional Configuration to use for this request, must be specified
+      as a keyword argument.
+
+  Returns:
+    Key or list of Keys
+
+  Raises:
+    TransactionFailedError, if the Put could not be committed.
+  """
+  return PutAsync(entities, **kwargs).get_result()
+
+
+def GetAsync(keys, **kwargs):
+  """Asynchronously retrieves one or more entities from the datastore.
+
+  Identical to datastore.Get() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and get the results.
+  """
+  extra_hook = kwargs.pop('extra_hook', None)
+  config = _GetConfigFromKwargs(kwargs)
+  keys, multiple = NormalizeAndTypeCheckKeys(keys)
+
+  def local_extra_hook(entities):
+    if multiple:
+      result = entities
+    else:
+      if entities[0] is None:
+        raise datastore_errors.EntityNotFoundError()
+      result = entities[0]
+    if extra_hook:
+      return extra_hook(result)
+    return result
+
+  return _GetConnection().async_get(config, keys, local_extra_hook)
 
 
 def Get(keys, **kwargs):
@@ -470,28 +506,29 @@ def Get(keys, **kwargs):
   that were found and None placeholders for keys that were not found.
 
   Args:
-    # the primary key(s) of the entity(ies) to retrieve
     keys: Key or string or list of Keys or strings
-    config: Optional Configuration to use for this request.
+    config: Optional Configuration to use for this request, must be specified
+      as a keyword argument.
 
   Returns:
     Entity or list of Entity objects
   """
+  return GetAsync(keys, **kwargs).get_result()
+
+
+def DeleteAsync(keys, **kwargs):
+  """Asynchronously deletes one or more entities from the datastore.
+
+  Identical to datastore.Delete() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call.
+  """
   config = _GetConfigFromKwargs(kwargs)
-  keys, multiple = NormalizeAndTypeCheckKeys(keys)
+  if getattr(config, 'read_policy', None) == EVENTUAL_CONSISTENCY:
+    raise datastore_errors.BadRequestError(
+        'read_policy is only supported on read operations.')
+  keys, _ = NormalizeAndTypeCheckKeys(keys)
 
-  if multiple and not keys:
-    return []
-
-  def extra_hook(entities):
-    if multiple:
-      return entities
-    else:
-      if entities[0] is None:
-        raise datastore_errors.EntityNotFoundError()
-      return entities[0]
-
-  return _GetConnection().async_get(config, keys, extra_hook).get_result()
+  return _GetConnection().async_delete(config, keys)
 
 
 def Delete(keys, **kwargs):
@@ -504,21 +541,13 @@ def Delete(keys, **kwargs):
   Args:
     # the primary key(s) of the entity(ies) to delete
     keys: Key or string or list of Keys or strings
-    config: Optional Configuration to use for this request.
+    config: Optional Configuration to use for this request, must be specified
+      as a keyword argument.
 
   Raises:
     TransactionFailedError, if the Delete could not be committed.
   """
-  config = _GetConfigFromKwargs(kwargs)
-  if getattr(config, 'read_policy', None) == EVENTUAL_CONSISTENCY:
-    raise datastore_errors.BadRequestError(
-        'read_policy is only supported on read operations.')
-  keys, multiple = NormalizeAndTypeCheckKeys(keys)
-
-  if multiple and not keys:
-    return
-
-  _GetConnection().async_delete(config, keys).get_result()
+  return DeleteAsync(keys, **kwargs).get_result()
 
 
 class Entity(dict):
@@ -1710,6 +1739,28 @@ class Query(dict):
   GetCompiledCursor = GetCursor
 
 
+def AllocateIdsAsync(model_key, size=None, **kwargs):
+  """Asynchronously allocates a range of IDs.
+
+  Identical to datastore.AllocateIds() except returns an asynchronous object.
+  Call get_result() on the return value to block on the call and get the
+  results.
+  """
+  max = kwargs.pop('max', None)
+  config = _GetConfigFromKwargs(kwargs)
+  if getattr(config, 'read_policy', None) == EVENTUAL_CONSISTENCY:
+    raise datastore_errors.BadRequestError(
+        'read_policy is only supported on read operations.')
+  keys, _ = NormalizeAndTypeCheckKeys(model_key)
+
+  if len(keys) > 1:
+    raise datastore_errors.BadArgumentError(
+        'Cannot allocate IDs for more than one model key at a time')
+
+  rpc = _GetConnection().async_allocate_ids(config, keys[0], size, max)
+  return rpc
+
+
 def AllocateIds(model_key, size=None, **kwargs):
   """Allocates a range of IDs of size or with max for the given key.
 
@@ -1737,19 +1788,7 @@ def AllocateIds(model_key, size=None, **kwargs):
   Returns:
     (start, end) of the allocated range, inclusive.
   """
-  max = kwargs.pop('max', None)
-  config = _GetConfigFromKwargs(kwargs)
-  if getattr(config, 'read_policy', None) == EVENTUAL_CONSISTENCY:
-    raise datastore_errors.BadRequestError(
-        'read_policy is only supported on read operations.')
-  keys, _ = NormalizeAndTypeCheckKeys(model_key)
-
-  if len(keys) > 1:
-    raise datastore_errors.BadArgumentError(
-        'Cannot allocate IDs for more than one model key at a time')
-
-  rpc = _GetConnection().async_allocate_ids(config, keys[0], size, max)
-  return rpc.get_result()
+  return AllocateIdsAsync(model_key, size, **kwargs).get_result()
 
 
 

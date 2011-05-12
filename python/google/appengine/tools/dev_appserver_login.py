@@ -33,10 +33,10 @@ supply no parameters.
 
 import cgi
 import Cookie
-import md5
 import os
 import sys
 import urllib
+import hashlib
 
 
 
@@ -93,7 +93,7 @@ def CreateCookieData(email, admin):
   if admin:
     admin_string = 'True'
   if email:
-    user_id_digest = md5.new(email.lower()).digest()
+    user_id_digest = hashlib.md5(email.lower()).digest()
     user_id = '1' + ''.join(['%02d' % ord(x) for x in user_id_digest])[:20]
   else:
     user_id = ''

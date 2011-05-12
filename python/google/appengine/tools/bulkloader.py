@@ -39,12 +39,13 @@ Usage:
     --auth_domain=<domain>  The auth domain to use for logging in and for
                             UserProperties. (Default: gmail.com)
     --bandwidth_limit=<int> The maximum number of bytes per second for the
-                            aggregate transfer of data to the server. Bursts
-                            may exceed this, but overall transfer rate is
-                            restricted to this rate. (Default 250000)
-    --batch_size=<int>      Number of Entity objects to include in each post to
-                            the URL endpoint. The more data per row/Entity, the
-                            smaller the batch size should be. (Default 10)
+                            aggregate transfer of data to/from the server.
+                            Bursts may exceed this, but overall transfer rate is
+                            restricted to this rate. (Default: 250000)
+    --batch_size=<int>      Number of Entity objects to include in each request
+                            to/from the URL endpoint. The more data per
+                            row/Entity, the smaller the batch size should be.
+                            (Default: downloads 100, uploads 10)
     --config_file=<path>    File containing Model and Loader definitions or
                             bulkloader.yaml transforms. (Required unless --dump,
                             --restore, or --create_config are used.)
@@ -62,7 +63,7 @@ Usage:
     --email=<string>        The username to use. Will prompt if omitted.
     --exporter_opts=<string>
                             A string to pass to the Exporter.initialize method.
-    --filename=<path>       Path to the file to import. (Required when
+    --filename=<path>       Path to the file to import/export. (Required when
                             importing or exporting, not mapping.)
     --has_header            Skip the first row of the input.
     --http_limit=<int>      The maximum numer of HTTP requests per second to
@@ -75,16 +76,16 @@ Usage:
                             bulkloader-log-TIMESTAMP.
     --map                   Map an action across datastore entities.
     --mapper_opts=<string>  A string to pass to the Mapper.Initialize method.
-    --num_threads=<int>     Number of threads to use for uploading entities
-                            (Default 10)
+    --num_threads=<int>     Number of threads to use for uploading/downloading
+                            entities (Default: 10)
     --passin                Read the login password from stdin.
     --restore               Restore from zero-configuration dump format.
     --result_db_filename=<path>
                             Result database to write to for downloads.
     --rps_limit=<int>       The maximum number of records per second to
-                            transfer to the server. (Default: 20)
-    --url=<string>          URL endpoint to post to for importing data.
-                            (Required)
+                            transfer to/from the server. (Default: 20)
+    --url=<string>          URL endpoint to post to for importing/exporting
+                            data.  (Required)
     --namespace=<string>    Use specified namespace instead of the default one
                             for all datastore operations.
 
@@ -518,7 +519,7 @@ class UploadWorkItemGenerator(object):
 
 
     if self.progress_generator:
-      for progress_key, kind, state, key_start, key_end in (
+      for progress_key, state, kind, key_start, key_end in (
           self.progress_generator):
         if key_start:
           try:
@@ -638,7 +639,7 @@ class KeyRangeItemGenerator(object):
       KeyRangeItem instances corresponding to undownloaded key ranges.
     """
     if self.progress_generator is not None:
-      for progress_key, kind, state, key_start, key_end in (
+      for progress_key, state, kind, key_start, key_end in (
           self.progress_generator):
         if state is not None and state != STATE_GOT and key_start is not None:
           key_start = ParseKey(key_start)
@@ -1203,6 +1204,36 @@ def IncrementId(high_id_key):
   assert end >= high_id_key.id()
 
 
+def _AuthFunction(host, email, passin, raw_input_fn, password_input_fn):
+  """Internal method shared between RequestManager and _GetRemoteAppId.
+
+  Args:
+    host: Hostname to present to the user.
+    email: Existing email address to use; if none, will prompt the user.
+    passin: Value of the --passin command line flag. If true, will get the
+      password using raw_input_fn insetad of password_input_fn.
+    raw_input_fn: Method to get a string, typically raw_input.
+    password_input_fn: Method to get a string, typically getpass.
+
+  Returns:
+    Pair, (email, password).
+  """
+  if not email:
+    print 'Please enter login credentials for %s' % host
+    email = raw_input_fn('Email: ')
+
+  if email:
+    password_prompt = 'Password for %s: ' % email
+    if passin:
+      password = raw_input_fn(password_prompt)
+    else:
+      password = password_input_fn(password_prompt)
+  else:
+    password = None
+
+  return email, password
+
+
 class RequestManager(object):
   """A class which wraps a connection to the server."""
 
@@ -1216,7 +1247,8 @@ class RequestManager(object):
                secure,
                email,
                passin,
-               dry_run=False):
+               dry_run=False,
+               server=None):
     """Initialize a RequestManager object.
 
     Args:
@@ -1229,6 +1261,7 @@ class RequestManager(object):
       secure: Use SSL when communicating with server.
       email: If not none, the username to log in with.
       passin: If True, the password will be read from standard in.
+      server: An existing AbstractRpcServer to reuse.
     """
     self.app_id = app_id
     self.host_port = host_port
@@ -1258,13 +1291,16 @@ class RequestManager(object):
     throttled_rpc_server_factory = (
         remote_api_throttle.ThrottledHttpRpcServerFactory(self.throttle))
 
-    remote_api_stub.ConfigureRemoteDatastore(
-        app_id,
-        url_path,
-        self.AuthFunction,
-        servername=host_port,
-        rpc_server_factory=throttled_rpc_server_factory,
-        secure=self.secure)
+    if server:
+      remote_api_stub.ConfigureRemoteApiFromServer(server, url_path, app_id)
+    else:
+      remote_api_stub.ConfigureRemoteApi(
+          app_id,
+          url_path,
+          self.AuthFunction,
+          servername=host_port,
+          rpc_server_factory=throttled_rpc_server_factory,
+          secure=self.secure)
 
     remote_api_throttle.ThrottleRemoteDatastore(self.throttle)
     logger.debug('Bulkloader using app_id: %s', os.environ['APPLICATION_ID'])
@@ -1294,24 +1330,9 @@ class RequestManager(object):
     Returns:
       A pair of the username and password.
     """
-    if self.email:
-      email = self.email
-    else:
-      print 'Please enter login credentials for %s' % (
-          self.host)
-      email = raw_input_fn('Email: ')
-
-    if email:
-      password_prompt = 'Password for %s: ' % email
-      if self.passin:
-        password = raw_input_fn(password_prompt)
-      else:
-        password = password_input_fn(password_prompt)
-    else:
-      password = None
-
     self.auth_called = True
-    return (email, password)
+    return _AuthFunction(self.host, self.email, self.passin,
+                         raw_input_fn, password_input_fn)
 
   def IncrementId(self, ancestor_path, kind, high_id):
     """Increment the unique id counter associated with ancestor_path and kind.
@@ -2226,7 +2247,7 @@ class _ProgressDatabase(_Database):
     The caller should begin uploading records which occur after key_end.
 
     Yields:
-      Four-tuples of (progress_key, state, key_start, key_end)
+      Five-tuples of (progress_key, state, kind, key_start, key_end)
     """
 
 
@@ -2262,9 +2283,9 @@ class _ProgressDatabase(_Database):
     for row in rows:
       if row is None:
         break
-      progress_key, kind, state, key_start, key_end = row
+      progress_key, state, kind, key_start, key_end = row
 
-      yield progress_key, kind, state, key_start, key_end
+      yield progress_key, state, kind, key_start, key_end
 
 
     yield None, DATA_CONSUMED_TO_HERE, None, None, key_end
@@ -3320,7 +3341,8 @@ class BulkTransporterApp(object):
                request_manager_factory=RequestManager,
                datasourcethread_factory=DataSourceThread,
                progress_queue_factory=Queue.Queue,
-               thread_pool_factory=adaptive_thread_pool.AdaptiveThreadPool):
+               thread_pool_factory=adaptive_thread_pool.AdaptiveThreadPool,
+               server=None):
     """Instantiate a BulkTransporterApp.
 
     Uploads or downloads data to or from application using HTTP requests.
@@ -3341,6 +3363,7 @@ class BulkTransporterApp(object):
       datasourcethread_factory: Used for dependency injection.
       progress_queue_factory: Used for dependency injection.
       thread_pool_factory: Used for dependency injection.
+      server: An existing AbstractRpcServer to reuse.
     """
     self.app_id = arg_dict['application']
     self.post_url = arg_dict['url']
@@ -3359,6 +3382,7 @@ class BulkTransporterApp(object):
     self.datasourcethread_factory = datasourcethread_factory
     self.progress_queue_factory = progress_queue_factory
     self.thread_pool_factory = thread_pool_factory
+    self.server = server
     (scheme,
      self.host_port, self.url_path,
      unused_query, unused_fragment) = urlparse.urlsplit(self.post_url)
@@ -3393,7 +3417,8 @@ class BulkTransporterApp(object):
                                                         self.secure,
                                                         self.email,
                                                         self.passin,
-                                                        self.dry_run)
+                                                        self.dry_run,
+                                                        self.server)
     try:
 
 
@@ -3557,7 +3582,7 @@ class BulkUploaderApp(BulkTransporterApp):
         remote_api_throttle.HTTPS_BANDWIDTH_UP)
     total_up += s_total_up
     total = total_up
-    logger.info('%d entites total, %d previously transferred',
+    logger.info('%d entities total, %d previously transferred',
                 self.data_source_thread.read_count,
                 self.data_source_thread.xfer_count)
     transfer_count = self.progress_thread.EntitiesTransferred()
@@ -3930,7 +3955,7 @@ def ProcessArguments(arg_dict,
   """
 
 
-  application = GetArgument(arg_dict, 'application', die_fn)
+  unused_application = GetArgument(arg_dict, 'application', die_fn)
   url = GetArgument(arg_dict, 'url', die_fn)
   dump = GetArgument(arg_dict, 'dump', die_fn)
   restore = GetArgument(arg_dict, 'restore', die_fn)
@@ -3994,19 +4019,6 @@ def ProcessArguments(arg_dict,
     except namespace_manager.BadValueError, msg:
       errors.append('namespace parameter %s' % msg)
 
-  if not application:
-    if url and url is not REQUIRED_OPTION:
-
-      (unused_scheme, host_port, unused_url_path,
-       unused_query, unused_fragment) = urlparse.urlsplit(url)
-      suffix_idx = host_port.find('.appspot.com')
-      if suffix_idx > -1:
-        arg_dict['application'] = host_port[:suffix_idx]
-      elif host_port.split(':')[0].endswith('google.com'):
-        arg_dict['application'] = host_port.split('.')[0]
-      else:
-        errors.append('application argument required for non appspot.com domains')
-
 
   POSSIBLE_COMMANDS = ('create_config', 'download', 'dump', 'map', 'restore')
   commands = []
@@ -4024,6 +4036,27 @@ def ProcessArguments(arg_dict,
     die_fn()
 
   return arg_dict
+
+
+def _GetRemoteAppId(url, throttle, email, passin,
+                    raw_input_fn=raw_input, password_input_fn=getpass.getpass):
+  """Get the App ID from the remote server."""
+  scheme, host_port, url_path, _, _ = urlparse.urlsplit(url)
+
+  secure = (scheme == 'https')
+
+  throttled_rpc_server_factory = (
+      remote_api_throttle.ThrottledHttpRpcServerFactory(throttle))
+
+  def AuthFunction():
+    return _AuthFunction(host_port, email, passin, raw_input_fn,
+                         password_input_fn)
+
+  app_id, server = remote_api_stub.GetRemoteAppId(
+      host_port, url_path, AuthFunction,
+      rpc_server_factory=throttled_rpc_server_factory, secure=secure)
+
+  return app_id, server
 
 
 def ParseKind(kind):
@@ -4074,6 +4107,7 @@ def _PerformBulkload(arg_dict,
   restore = arg_dict['restore']
   create_config = arg_dict['create_config']
   namespace = arg_dict['namespace']
+  dry_run = arg_dict['dry_run']
 
   if namespace:
     namespace_manager.set_namespace(namespace)
@@ -4104,6 +4138,16 @@ def _PerformBulkload(arg_dict,
 
   throttle.Register(threading.currentThread())
   threading.currentThread().exit_flag = False
+
+
+  server = None
+  if not app_id:
+    if dry_run:
+
+      raise ConfigurationError('Must sepcify application ID in dry run mode.')
+    (app_id, server) = _GetRemoteAppId(url, throttle, email, passin)
+
+    arg_dict['application'] = app_id
 
   if dump:
     Exporter.RegisterExporter(DumpExporter(kind, result_db_filename))
@@ -4171,7 +4215,8 @@ def _PerformBulkload(arg_dict,
                             max_queue_size,
                             RequestManager,
                             DataSourceThread,
-                            Queue.Queue)
+                            Queue.Queue,
+                            server=server)
       try:
         return_code = app.Run()
       except AuthenticationError:
@@ -4204,7 +4249,8 @@ def _PerformBulkload(arg_dict,
                               0,
                               RequestManager,
                               DataSourceThread,
-                              Queue.Queue)
+                              Queue.Queue,
+                              server=server)
       try:
         return_code = app.Run()
       except AuthenticationError:
@@ -4238,7 +4284,8 @@ def _PerformBulkload(arg_dict,
                           0,
                           RequestManager,
                           DataSourceThread,
-                          Queue.Queue)
+                          Queue.Queue,
+                          server=server)
       try:
         return_code = app.Run()
       except AuthenticationError:

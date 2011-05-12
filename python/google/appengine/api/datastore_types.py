@@ -1776,10 +1776,13 @@ def FromPropertyPb(pb):
       federated_identity = unicode(
           pbval.uservalue().federated_identity().decode('utf-8'))
 
+
+
     value = users.User(email=email,
                        _auth_domain=auth_domain,
                        _user_id=obfuscated_gaiaid,
-                       federated_identity=federated_identity)
+                       federated_identity=federated_identity,
+                       _strict_mode=False)
   else:
     value = None
 
@@ -1910,3 +1913,93 @@ def PropertyValueFromString(type_,
   elif type_ == type(None):
     return None
   return type_(value_string)
+
+
+def ReferenceToKeyValue(reference):
+  """Converts a entity_pb.Reference into a comparable hashable "key" value.
+
+  Args:
+    reference: The entity_pb.Reference from which to construct the key value.
+
+  Returns:
+    A comparable and hashable representation of the given reference that is
+    compatible with one derived from a reference property value.
+  """
+  if isinstance(reference, entity_pb.Reference):
+    element_list = reference.path().element_list()
+  elif isinstance(reference, entity_pb.PropertyValue_ReferenceValue):
+    element_list = reference.pathelement_list()
+  else:
+    raise datastore_errors.BadArgumentError(
+        "reference arg expected to be entity_pb.Reference (%r)" % (reference,))
+
+  result = [entity_pb.PropertyValue.kReferenceValueGroup,
+            reference.app(), reference.name_space()]
+  for element in element_list:
+    result.append(element.type())
+    if element.has_name():
+      result.append(element.name())
+    else:
+      result.append(element.id())
+  return tuple(result)
+
+
+def PropertyValueToKeyValue(prop_value):
+  """Converts a entity_pb.PropertyValue into a comparable hashable "key" value.
+
+  The values produces by this function mimic the native ording of the datastore
+  and uniquely identify the given PropertyValue.
+
+  Args:
+    prop_value: The entity_pb.PropertyValue from which to construct the
+      key value.
+
+  Returns:
+    A comparable and hashable representation of the given property value.
+  """
+  if not isinstance(prop_value, entity_pb.PropertyValue):
+    raise datastore_errors.BadArgumentError(
+        "prop_value arg expected to be entity_pb.PropertyValue (%r)" %
+        (prop_value,))
+
+
+
+  if prop_value.has_stringvalue():
+    return (entity_pb.PropertyValue.kstringValue, prop_value.stringvalue())
+  if prop_value.has_int64value():
+    return (entity_pb.PropertyValue.kint64Value, prop_value.int64value())
+  if prop_value.has_booleanvalue():
+    return (entity_pb.PropertyValue.kbooleanValue, prop_value.booleanvalue())
+  if prop_value.has_doublevalue():
+    return (entity_pb.PropertyValue.kdoubleValue, prop_value.doublevalue())
+  if prop_value.has_pointvalue():
+    return (entity_pb.PropertyValue.kPointValueGroup,
+            prop_value.pointvalue().x(), prop_value.pointvalue().y())
+  if prop_value.has_referencevalue():
+    return ReferenceToKeyValue(prop_value.referencevalue())
+  if prop_value.has_uservalue():
+    result = []
+    uservalue = prop_value.uservalue()
+    if uservalue.has_email():
+      result.append((entity_pb.PropertyValue.kUserValueemail,
+                     uservalue.email()))
+    if uservalue.has_auth_domain():
+      result.append((entity_pb.PropertyValue.kUserValueauth_domain,
+                     uservalue.auth_domain()))
+    if uservalue.has_nickname():
+      result.append((entity_pb.PropertyValue.kUserValue, uservalue.nickname()))
+    if uservalue.has_gaiaid():
+      result.append((entity_pb.PropertyValue.kUserValuegaiaid,
+                     uservalue.gaiaid()))
+    if uservalue.has_obfuscated_gaiaid():
+      result.append((entity_pb.PropertyValue.kUserValueobfuscated_gaiaid,
+                     uservalue.obfuscated_gaiaid()))
+    if uservalue.has_federated_identity():
+      result.append((entity_pb.PropertyValue.kUserValuefederated_identity,
+                     uservalue.federated_identity()))
+    if uservalue.has_federated_provider():
+      result.append((entity_pb.PropertyValue.kUserValuefederated_provider,
+                     uservalue.federated_provider()))
+    result.sort()
+    return (entity_pb.PropertyValue.kUserValueGroup, tuple(result))
+  return ()

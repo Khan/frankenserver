@@ -27,6 +27,9 @@ from google.storage.speckle.proto import client_pb2
 from google.storage.speckle.proto import sql_pb2
 from google.storage.speckle.python.api import rdbms
 
+__path__ = rdbms.__path__
+
+
 
 class ApiProxyConnection(rdbms.Connection):
   """ApiProxy specific Speckle connection."""
@@ -67,7 +70,7 @@ class ApiProxyConnection(rdbms.Connection):
       return sql_pb2.ExecResponse()
     elif stub_method == 'ExecOp':
       return sql_pb2.ExecOpResponse()
-    elif stub_method == 'Metadata':
+    elif stub_method == 'GetMetadata':
       return sql_pb2.MetadataResponse()
 
   def MakeRequest(self, stub_method, request):
@@ -111,6 +114,8 @@ apilevel = rdbms.apilevel
 threadsafety = rdbms.threadsafety
 paramstyle = rdbms.paramstyle
 
+
+version_info = rdbms.version_info
 
 
 

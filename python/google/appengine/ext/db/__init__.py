@@ -118,6 +118,7 @@ BadQueryError = datastore_errors.BadQueryError
 BadKeyError = datastore_errors.BadKeyError
 InternalError = datastore_errors.InternalError
 NeedIndexError = datastore_errors.NeedIndexError
+ReferencePropertyResolveError = datastore_errors.ReferencePropertyResolveError
 Timeout = datastore_errors.Timeout
 CommittedButStillApplying = datastore_errors.CommittedButStillApplying
 
@@ -746,6 +747,25 @@ class Model(object):
 
   __metaclass__ = PropertiedClass
 
+  def __new__(*args, **unused_kwds):
+    """Allow subclasses to call __new__() with arguments.
+
+    Do NOT list 'cls' as the first argument, or in the case when
+    the 'unused_kwds' dictionary contains the key 'cls', the function
+    will complain about multiple argument values for 'cls'.
+
+    Raises:
+      TypeError if there are no positional arguments.
+    """
+    if args:
+      cls = args[0]
+    else:
+      raise TypeError('object.__new__(): not enough arguments')
+
+
+
+    return super(Model, cls).__new__(cls)
+
   def __init__(self,
                parent=None,
                key_name=None,
@@ -888,7 +908,7 @@ class Model(object):
         value = prop.default_value()
       try:
         prop.__set__(self, value)
-      except DerivedPropertyError, e:
+      except DerivedPropertyError:
 
 
 
@@ -1400,6 +1420,35 @@ def create_rpc(deadline=None, callback=None, read_policy=STRONG_CONSISTENCY):
       deadline=deadline, callback=callback, read_policy=read_policy)
 
 
+def get_async(keys, **kwargs):
+  """Asynchronously fetch the specified Model instance(s) from the datastore.
+
+  Identical to db.get() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and get the results.
+  """
+  config = datastore._GetConfigFromKwargs(kwargs)
+  keys, multiple = datastore.NormalizeAndTypeCheckKeys(keys)
+  def extra_hook(entities):
+    if not multiple and not entities:
+      return None
+
+    models = []
+    for entity in entities:
+      if entity is None:
+        model = None
+      else:
+        cls1 = class_for_kind(entity.kind())
+        model = cls1.from_entity(entity)
+      models.append(model)
+
+    if multiple:
+      return models
+    assert len(models) == 1
+    return models[0]
+
+  return datastore.GetAsync(keys, config=config, extra_hook=extra_hook)
+
+
 
 def get(keys, **kwargs):
   """Fetch the specific Model instance with the given key from the datastore.
@@ -1410,7 +1459,8 @@ def get(keys, **kwargs):
   Args:
     keys: Key within datastore entity collection to find; or string key;
       or list of Keys or string keys.
-    config: datastore_rpc.Configuration to use for this request.
+    config: datastore_rpc.Configuration to use for this request, must be
+      specified as a keyword argument.
 
     Returns:
       If a single key was given: a Model instance associated with key
@@ -1418,25 +1468,26 @@ def get(keys, **kwargs):
       keys was given: a list whose items are either a Model instance or
       None.
   """
+  return get_async(keys, **kwargs).get_result()
+
+
+def put_async(models, **kwargs):
+  """Asynchronously store one or more Model instances.
+
+  Identical to db.put() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and get the results.
+  """
   config = datastore._GetConfigFromKwargs(kwargs)
-  keys, multiple = datastore.NormalizeAndTypeCheckKeys(keys)
-  try:
-    entities = datastore.Get(keys, config=config)
-  except datastore_errors.EntityNotFoundError:
-    assert not multiple
-    return None
-  models = []
-  for entity in entities:
-    if entity is None:
-      model = None
-    else:
-      cls1 = class_for_kind(entity.kind())
-      model = cls1.from_entity(entity)
-    models.append(model)
-  if multiple:
-    return models
-  assert len(models) == 1
-  return models[0]
+  models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
+  entities = [model._populate_internal_entity() for model in models]
+
+  def extra_hook(keys):
+    if multiple:
+      return keys
+    assert len(keys) == 1
+    return keys[0]
+
+  return datastore.PutAsync(entities, config=config, extra_hook=extra_hook)
 
 
 def put(models, **kwargs):
@@ -1444,7 +1495,8 @@ def put(models, **kwargs):
 
   Args:
     models: Model instance or list of Model instances.
-    config: datastore_rpc.Configuration to use for this request.
+    config: datastore_rpc.Configuration to use for this request, must be
+      specified as a keyword argument.
 
   Returns:
     A Key or a list of Keys (corresponding to the argument's plurality).
@@ -1452,29 +1504,19 @@ def put(models, **kwargs):
   Raises:
     TransactionFailedError if the data could not be committed.
   """
-  config = datastore._GetConfigFromKwargs(kwargs)
-  models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
-  entities = [model._populate_internal_entity() for model in models]
-  keys = datastore.Put(entities, config=config)
-  if multiple:
-    return keys
-  assert len(keys) == 1
-  return keys[0]
+  return put_async(models, **kwargs).get_result()
+
 
 
 
 save = put
 
 
-def delete(models, **kwargs):
-  """Delete one or more Model instances.
+def delete_async(models, **kwargs):
+  """Asynchronous version of delete one or more Model instances.
 
-  Args:
-    models: Model instance, key, key string or iterable thereof.
-    config: datastore_rpc.Configuration to use for this request.
-
-  Raises:
-    TransactionFailedError if the data could not be committed.
+  Identical to db.delete() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call.
   """
   config = datastore._GetConfigFromKwargs(kwargs)
 
@@ -1488,7 +1530,30 @@ def delete(models, **kwargs):
       models = [models]
   keys = [_coerce_to_key(v) for v in models]
 
-  datastore.Delete(keys, config=config)
+  return datastore.DeleteAsync(keys, config=config)
+
+
+def delete(models, **kwargs):
+  """Delete one or more Model instances.
+
+  Args:
+    models: Model instance, key, key string or iterable thereof.
+    config: datastore_rpc.Configuration to use for this request, must be
+      specified as a keyword argument.
+
+  Raises:
+    TransactionFailedError if the data could not be committed.
+  """
+  delete_async(models, **kwargs).get_result()
+
+
+def allocate_ids_async(model, size, **kwargs):
+  """Asynchronously allocates a range of IDs.
+
+  Identical to allocate_ids() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and return the result.
+  """
+  return datastore.AllocateIdsAsync(_coerce_to_key(model), size=size, **kwargs)
 
 
 def allocate_ids(model, size, **kwargs):
@@ -1509,7 +1574,7 @@ def allocate_ids(model, size, **kwargs):
   Returns:
     (start, end) of the allocated range, inclusive.
   """
-  return datastore.AllocateIds(_coerce_to_key(model), size=size, **kwargs)
+  return allocate_ids_async(model, size, **kwargs).get_result()
 
 
 def allocate_id_range(model, start, end, **kwargs):
@@ -1552,7 +1617,7 @@ def allocate_id_range(model, start, end, **kwargs):
     raise BadArgumentError('Range end %d cannot be less than start %d.' %
                            (end, start))
 
-  safe_start, safe_end = datastore.AllocateIds(key, max=end, **kwargs)
+  safe_start, _ = datastore.AllocateIds(key, max=end, **kwargs)
 
 
 
@@ -1564,10 +1629,13 @@ def allocate_id_range(model, start, end, **kwargs):
 
 
 
-  start_key = Key.from_path(key.kind(), start, parent=key.parent())
-  end_key = Key.from_path(key.kind(), end, parent=key.parent())
-  collision = (Query(keys_only=True).filter('__key__ >=', start_key)
-                                    .filter('__key__ <=', end_key).fetch(1))
+  start_key = Key.from_path(key.kind(), start, parent=key.parent(),
+                            _app=key.app(), namespace=key.namespace())
+  end_key = Key.from_path(key.kind(), end, parent=key.parent(),
+                          _app=key.app(), namespace=key.namespace())
+  collision = (Query(keys_only=True, namespace=key.namespace(), _app=key.app())
+                   .filter('__key__ >=', start_key)
+                   .filter('__key__ <=', end_key).fetch(1))
 
   if collision:
     return KEY_RANGE_COLLISION
@@ -1827,6 +1895,8 @@ class _BaseQuery(object):
       cursor: A compiled query from which to resume.
       namespace: The namespace to query.
     """
+
+
     self._model_class = model_class
     self._keys_only = keys_only
     self._compile = compile
@@ -2188,7 +2258,7 @@ class Query(_BaseQuery):
   """
 
   def __init__(self, model_class=None, keys_only=False, cursor=None,
-               namespace=None):
+               namespace=None, _app=None):
     """Constructs a query over instances of the given Model.
 
     Args:
@@ -2202,6 +2272,7 @@ class Query(_BaseQuery):
     self.__query_sets = [{}]
     self.__orderings = []
     self.__ancestor = None
+    self._app = _app
 
   def _get_query(self,
                  _query_class=datastore.Query,
@@ -2224,7 +2295,8 @@ class Query(_BaseQuery):
                            compile=self._compile,
                            cursor=self._cursor,
                            end_cursor=self._end_cursor,
-                           namespace=self._namespace)
+                           namespace=self._namespace,
+                           _app=self._app)
       query.Order(*self.__orderings)
       if self.__ancestor is not None:
         query.Ancestor(self.__ancestor)
@@ -3244,6 +3316,41 @@ class ListProperty(Property):
         super(ListProperty, self).get_value_for_datastore(model_instance))
     if self.validator:
       self.validator(value)
+
+
+
+
+
+
+
+
+
+    if self.item_type == datetime.date:
+      value = map(_date_to_datetime, value)
+    elif self.item_type == datetime.time:
+      value = map(_time_to_datetime, value)
+
+    return value
+
+  def make_value_from_datastore(self, value):
+    """Native representation of this property.
+
+    If this list is a list of datetime.date or datetime.time, we convert
+    the list of datetime.datetime retrieved from the entity into
+    datetime.date or datetime.time.
+
+    See base class method documentation for details.
+    """
+
+    if self.item_type == datetime.date:
+      for v in value:
+        assert isinstance(v, datetime.datetime)
+      value = map(lambda x: x.date(), value)
+    elif self.item_type == datetime.time:
+      for v in value:
+        assert isinstance(v, datetime.datetime)
+      value = map(lambda x: x.time(), value)
+
     return value
 
 
@@ -3364,6 +3471,9 @@ class ReferenceProperty(Property):
 
     Returns:
       ReferenceProperty to Model object if property is set, else None.
+
+    Raises:
+      ReferencePropertyResolveError: if the referenced model does not exist.
     """
     if model_instance is None:
       return self
@@ -3380,8 +3490,9 @@ class ReferenceProperty(Property):
       else:
         instance = get(reference_id)
         if instance is None:
-          raise Error('ReferenceProperty failed to be resolved: %s' %
-                      reference_id.to_path())
+          raise ReferencePropertyResolveError(
+              'ReferenceProperty failed to be resolved: %s' %
+              reference_id.to_path())
         setattr(model_instance, self.__resolved_attr_name(), instance)
         return instance
     else:

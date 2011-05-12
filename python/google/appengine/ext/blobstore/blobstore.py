@@ -183,7 +183,7 @@ class BlobInfo(object):
       self.__entity = _values
       self.__key = entity_or_blob_key
     else:
-      TypeError('Must provide Entity or BlobKey')
+      raise TypeError('Must provide Entity or BlobKey')
 
 
 

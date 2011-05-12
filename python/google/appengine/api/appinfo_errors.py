@@ -64,3 +64,9 @@ class MultipleBuiltinsSpecified(Error):
 
 class DuplicateBuiltinsSpecified(Error):
   """Raised when a builtin is specified more than once in the same file."""
+
+class BackendNotFound(Error):
+  """Raised when a Backend is required but not specified."""
+
+class DuplicateBackend(Error):
+  """Raised when a backend is found more than once in 'backends'."""

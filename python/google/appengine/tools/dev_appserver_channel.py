@@ -108,9 +108,11 @@ def CreateChannelDispatcher(channel_service_stub):
         command = param_dict['command'][0]
 
         if command == 'connect':
+          self._channel_service_stub.connect_channel(id)
           outfile.write('1')
-        elif (command == 'poll' and
-            self._channel_service_stub.has_channel_messages(id)):
-          outfile.write(self._channel_service_stub.pop_first_message(id))
+        elif command == 'poll':
+          self._channel_service_stub.connect_channel(id)
+          if self._channel_service_stub.has_channel_messages(id):
+            outfile.write(self._channel_service_stub.pop_first_message(id))
 
   return ChannelDispatcher(channel_service_stub)

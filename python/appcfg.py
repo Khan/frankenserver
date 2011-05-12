@@ -33,9 +33,6 @@ if version_tuple < (2, 4):
   sys.stderr.write('Error: Python %d.%d is not supported. Please use '
                    'version 2.5 or greater.\n' % version_tuple)
   sys.exit(1)
-if version_tuple == (2, 4):
-  sys.stderr.write('Warning: Python 2.4 is not supported; this program may '
-                   'break. Please use version 2.5 or greater.\n')
 
 DIR_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 SCRIPT_DIR = os.path.join(DIR_PATH, 'google', 'appengine', 'tools')
@@ -48,6 +45,7 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'django_0_96'),
   os.path.join(DIR_PATH, 'lib', 'fancy_urllib'),
   os.path.join(DIR_PATH, 'lib', 'ipaddr'),
+
   os.path.join(DIR_PATH, 'lib', 'webob'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
   os.path.join(DIR_PATH, 'lib', 'simplejson'),

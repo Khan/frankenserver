@@ -85,7 +85,12 @@ class JsonMixin(object):
     Returns:
       json representation as string.
     """
-    return simplejson.dumps(self.to_json(), sort_keys=True)
+    json = self.to_json()
+    try:
+      return simplejson.dumps(json, sort_keys=True)
+    except:
+      logging.exception("Could not serialize JSON: %r", json)
+      raise
 
   @classmethod
   def from_json_str(cls, json_str):

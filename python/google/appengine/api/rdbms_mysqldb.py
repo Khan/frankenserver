@@ -30,6 +30,15 @@ Also see the rdbms_sqlite and rdbms modules.
 
 
 import logging
+import os
+
+_POTENTIAL_SOCKET_LOCATIONS = (
+    '/tmp/mysql.sock',
+    '/var/run/mysqld/mysqld.sock',
+    '/var/lib/mysql/mysql.sock',
+    '/var/run/mysql/mysql.sock',
+    '/var/mysql/mysql.sock',
+    )
 
 
 _connect_kwargs = {}
@@ -39,6 +48,17 @@ def SetConnectKwargs(**kwargs):
 
   global _connect_kwargs
   _connect_kwargs = dict(kwargs)
+
+
+def FindUnixSocket():
+  """Find the Unix socket for MySQL by scanning some known locations.
+
+  Returns:
+    If found, the path to the Unix socket, otherwise, None.
+  """
+  for path in _POTENTIAL_SOCKET_LOCATIONS:
+    if os.path.exists(path):
+      return path
 
 
 try:
@@ -53,6 +73,16 @@ try:
     if database:
       merged_kwargs['db'] = database
     merged_kwargs.update(kwargs)
+    host = merged_kwargs.get('host')
+    if ((not host or host == 'localhost') and
+        not merged_kwargs.get('unix_socket')):
+      socket = FindUnixSocket()
+      if socket:
+        merged_kwargs['unix_socket'] = socket
+      else:
+        logging.warning(
+            'Unable to find MySQL socket file.  Use --mysql_socket to '
+            'specify its location manually.')
     logging.info('Connecting to MySQL with kwargs %r', merged_kwargs)
     return MySQLdb.connect(**merged_kwargs)
 
@@ -62,7 +92,7 @@ except ImportError:
 
 
   def connect(instance=None, database=None):
-     raise NotImplementedError(
+    raise NotImplementedError(
         'Unable to find the MySQLdb library. Please see the SDK '
         'documentation for installation instructions.')
 

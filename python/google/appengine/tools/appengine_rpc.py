@@ -92,6 +92,7 @@ class ClientLoginError(urllib2.HTTPError):
     urllib2.HTTPError.__init__(self, url, code, msg, headers, None)
     self.args = args
     self.reason = args["Error"]
+    self.info = args.get("Info")
 
   def read(self):
     return '%d %s: %s' % (self.code, self.msg, self.reason)
@@ -281,7 +282,13 @@ class AbstractRpcServer(object):
           return
       except ClientLoginError, e:
         if e.reason == "BadAuthentication":
-          print >>sys.stderr, "Invalid username or password."
+          if e.info == "InvalidSecondFactor":
+            print >>sys.stderr, ("Use an application-specific password instead "
+                                 "of your regular account password.")
+            print >>sys.stderr, ("See http://www.google.com/"
+                                 "support/accounts/bin/answer.py?answer=185833")
+          else:
+            print >>sys.stderr, "Invalid username or password."
           continue
         if e.reason == "CaptchaRequired":
           print >>sys.stderr, (

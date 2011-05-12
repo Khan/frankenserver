@@ -150,9 +150,8 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
         smtp.login(self._smtp_user, self._smtp_password)
 
 
-      tos = ', '.join([mime_message[to] for to in ['To', 'Cc', 'Bcc']
-                       if mime_message[to]])
-      smtp.sendmail(mime_message['From'], tos, str(mime_message))
+      tos = [mime_message[to] for to in ['To', 'Cc', 'Bcc'] if mime_message[to]]
+      smtp.sendmail(mime_message['From'], tos, mime_message.as_string())
     finally:
       smtp.quit()
 
@@ -184,7 +183,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
         logging.error('Unable to open pipe to sendmail')
         raise
       try:
-        child.stdin.write(str(mime_message))
+        child.stdin.write(mime_message.as_string())
         child.stdin.close()
       finally:
 

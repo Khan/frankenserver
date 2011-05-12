@@ -55,66 +55,59 @@ AUTOFLUSH_EVERY_BYTES = 1024
 
 AUTOFLUSH_EVERY_LINES = 20
 
-def Flush():
+def flush():
   """Flushes log lines that are currently buffered."""
   request = log_service_pb.FlushRequest()
   response = api_base_pb.VoidProto()
   apiproxy_stub_map.MakeSyncCall('logservice', 'Flush', request, response)
-  _Reset(True)
+  _reset(True)
 
-def SetStatus(status):
-  """Indicates the process status."""
-  request = log_service_pb.SetStatusRequest()
-  request.status = status
-  response = api_base_pb.VoidProto()
-  apiproxy_stub_map.MakeSyncCall('logservice', 'SetStatus', request, response)
-
-def FlushTime():
+def flush_time():
   """Returns last time that the log buffer was flushed."""
   return _flush_time
 
-def LogBufferContents():
+def log_buffer_contents():
   """Returns the contents of the logs buffer."""
   try:
-    return _LogBuffer().getvalue()
+    return _log_buffer().getvalue()
   except AttributeError:
 
 
     return ''
 
-def LogBufferBytes():
+def log_buffer_bytes():
   """Returns the size of the log buffer, in bytes."""
-  return len(LogBufferContents())
+  return len(log_buffer_contents())
 
-def LogBufferLines():
+def log_buffer_lines():
   """Returns the number of log lines currently buffered."""
   return _log_buffer_lines
 
-def AutoFlush(lines_emitted=0):
+def auto_flush(lines_emitted=0):
   """Invoked by app_logging.emit() to automatically flush logs."""
-  _CheckNewRequest()
+  _check_new_request()
   global _log_buffer_lines, _request_id
   _log_buffer_lines += lines_emitted
 
   if not AUTOFLUSH_ENABLED:
     return
 
-  if 'SERVER_ID' not in os.environ:
+  if 'BACKEND_ID' not in os.environ:
     return
 
-  log_buffer_age = time.time() - FlushTime()
+  log_buffer_age = time.time() - flush_time()
   if AUTOFLUSH_EVERY_SECONDS and log_buffer_age >= AUTOFLUSH_EVERY_SECONDS:
-    Flush()
-  elif AUTOFLUSH_EVERY_LINES and LogBufferLines() >= AUTOFLUSH_EVERY_LINES:
-    Flush()
-  elif AUTOFLUSH_EVERY_BYTES and LogBufferBytes() >= AUTOFLUSH_EVERY_BYTES:
-    Flush()
+    flush()
+  elif AUTOFLUSH_EVERY_LINES and log_buffer_lines() >= AUTOFLUSH_EVERY_LINES:
+    flush()
+  elif AUTOFLUSH_EVERY_BYTES and log_buffer_bytes() >= AUTOFLUSH_EVERY_BYTES:
+    flush()
 
-def _LogBuffer():
+def _log_buffer():
   """Returns the buffer used for log messages."""
   return sys.stderr
 
-def _CheckNewRequest():
+def _check_new_request():
   """Checks if a new request is being processed, and if so, clears state."""
   global _request_id
   current_request = None
@@ -124,14 +117,14 @@ def _CheckNewRequest():
     _request_id = current_request
 
 
-    _Reset()
+    _reset()
 
-def _Reset(truncate=False):
+def _reset(truncate=False):
   """Empties the contents of the log buffer and updates the flush time."""
   global _log_buffer_lines, _flush_time
-  if truncate and LogBufferBytes() > 0:
-    _LogBuffer().truncate(0)
+  if truncate and log_buffer_bytes() > 0:
+    _log_buffer().truncate(0)
   _log_buffer_lines = 0
   _flush_time = time.time()
 
-_Reset()
+_reset()

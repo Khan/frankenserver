@@ -74,7 +74,7 @@ class Property(validation.Validated):
   """
 
   ATTRIBUTES = {
-      'name': validation.TYPE_STR,
+      'name': validation.Type(str, convert=False),
       'direction': validation.Options(('asc', ('ascending',)),
                                       ('desc', ('descending',)),
                                       default='asc'),
@@ -93,8 +93,8 @@ class Index(validation.Validated):
   """
 
   ATTRIBUTES = {
-      'kind': validation.TYPE_STR,
-      'ancestor': validation.Type(bool, default=False),
+      'kind': validation.Type(str, convert=False),
+      'ancestor': validation.Type(bool, convert=False, default=False),
       'properties': validation.Optional(validation.Repeated(Property)),
       }
 

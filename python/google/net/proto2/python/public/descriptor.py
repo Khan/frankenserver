@@ -239,6 +239,24 @@ class Descriptor(_NestedDescriptorBase):
     self._serialized_start = serialized_start
     self._serialized_end = serialized_end
 
+  def EnumValueName(self, enum, value):
+    """Returns the string name of an enum value.
+
+    This is just a small helper method to simplify a common operation.
+
+    Args:
+      enum: string name of the Enum.
+      value: int, value of the enum.
+
+    Returns:
+      string name of the enum value.
+
+    Raises:
+      KeyError if either the Enum doesn't exist or the value is not a valid
+        value for the enum.
+    """
+    return self.enum_types_by_name[enum].values_by_number[value].name
+
   def CopyToProto(self, proto):
     """Copies this to a descriptor_pb2.DescriptorProto.
 

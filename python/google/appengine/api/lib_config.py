@@ -160,6 +160,20 @@ class LibConfigRegistry(object):
     else:
       self._module = sys.modules[self._modname]
 
+  def reset(self):
+    """Drops the imported config module.
+
+    If the config module has not been imported then this is a no-op.
+    """
+    if self._module is None:
+
+      return
+
+    self._module = None
+    for handle in self._registrations.itervalues():
+      handle._clear_cache()
+      handle._initialized = False
+
   def _pairs(self, prefix):
     """Generate (key, value) pairs from the config module matching prefix.
 

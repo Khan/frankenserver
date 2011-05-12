@@ -182,7 +182,10 @@ class IndexYamlUpdater(object):
       index_yaml_data = None
     else:
       try:
-        fh = open(index_yaml_file, 'r')
+
+
+
+        fh = open(index_yaml_file, 'rU')
       except IOError:
         index_yaml_data = None
       else:

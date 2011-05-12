@@ -64,6 +64,7 @@ is stored in memory before it is written.
 import cgi
 import StringIO
 import logging
+import os
 import re
 import sys
 import traceback
@@ -85,6 +86,11 @@ _CHARSET_RE = re.compile(r';\s*charset=([^;\s]*)', re.I)
 
 class Error(Exception):
   """Base of all exceptions in the webapp module."""
+  pass
+
+
+class CannotReversePattern(Error):
+  """Thrown when a url_pattern cannot be reversed."""
   pass
 
 
@@ -149,19 +155,22 @@ class Request(webob.Request):
     Returns:
       If allow_multiple is False (which it is by default), we return the first
       value with the given name given in the request. If it is True, we always
-      return an list.
+      return a list.
     """
     param_value = self.get_all(argument_name)
     if allow_multiple:
-
-      return param_value
+      logging.warning('allow_multiple is a deprecated param, please use the '
+                      'Request.get_all() method instead.')
+    if len(param_value) > 0:
+      if allow_multiple:
+        return param_value
+      return param_value[0]
     else:
-      if len(param_value) > 0:
-        return param_value[0]
-      else:
-        return default_value
+      if allow_multiple and not default_value:
+        return []
+      return default_value
 
-  def get_all(self, argument_name):
+  def get_all(self, argument_name, default_value=None):
     """Returns a list of query or POST arguments with the given name.
 
     We parse the query string and POST payload lazily, so this will be a
@@ -169,6 +178,9 @@ class Request(webob.Request):
 
     Args:
       argument_name: the name of the query or POST argument
+      default_value: the value to return if the given argument is not present,
+        None may not be used as a default, if it is then an empty list will be
+        returned instead.
 
     Returns:
       A (possibly empty) list of values.
@@ -176,7 +188,13 @@ class Request(webob.Request):
     if self.charset:
       argument_name = argument_name.encode(self.charset)
 
+    if default_value is None:
+      default_value = []
+
     param_value = self.params.getall(argument_name)
+
+    if param_value is None or len(param_value) == 0:
+      return default_value
 
     for i in xrange(len(param_value)):
       if isinstance(param_value[i], cgi.FieldStorage):
@@ -203,14 +221,18 @@ class Request(webob.Request):
     Returns:
       An int within the given range for the argument
     """
+    value = self.get(name, default)
+    if value is None:
+      return value
     try:
-      value = int(self.get(name, default))
+      value = int(value)
     except ValueError:
       value = default
-    if max_value != None:
-      value = min(value, max_value)
-    if min_value != None:
-      value = max(value, min_value)
+    if value is not None:
+      if max_value is not None:
+        value = min(value, max_value)
+      if min_value is not None:
+        value = max(value, min_value)
     return value
 
 
@@ -290,6 +312,20 @@ class Response(object):
         not self.headers.get('Expires')):
       self.headers['Expires'] = 'Fri, 01 Jan 1990 00:00:00 GMT'
     self.headers['Content-Length'] = str(len(body))
+
+
+    new_headers = []
+    for header, value in self.__wsgi_headers:
+      if not isinstance(value, basestring):
+        value = unicode(value)
+      if ('\n' in header or '\r' in header or
+          '\n' in value or '\r' in value):
+        logging.warning('Replacing newline in header: %s', repr((header,value)))
+        value = value.replace('\n','').replace('\r','')
+        header = header.replace('\n','').replace('\r','')
+      new_headers.append((header, value))
+    self.__wsgi_headers = new_headers
+
     write = start_response('%d %s' % self.__status, self.__wsgi_headers)
     write(body)
     self.out.close()
@@ -431,82 +467,6 @@ class RequestHandler(object):
       self.response.out.write('<pre>%s</pre>' % (cgi.escape(lines, quote=True)))
 
   @classmethod
-  def get_url(cls, *args, **kargs):
-    """Returns the url for the given handler.
-
-    The default implementation uses the patterns passed to the active
-    WSGIApplication and the django urlresolvers module to create a url.
-    However, it is different from urlresolvers.reverse() in the following ways:
-      - It does not try to resolve handlers via module loading
-      - It does not support named arguments
-      - It performs some post-prosessing on the url to remove some regex
-        operators that urlresolvers.reverse_helper() seems to miss.
-      - It will try to fill in the left-most missing arguments with the args
-        used in the active request.
-
-    Args:
-      args: Parameters for the url pattern's groups.
-      kwargs: Optionally contains 'implicit_args' that can either be a boolean
-              or a tuple. When it is True, it will use the arguments to the
-              active request as implicit arguments. When it is False (default),
-              it will not use any implicit arguments. When it is a tuple, it
-              will use the tuple as the implicit arguments.
-              the left-most args if some are missing from args.
-
-    Returns:
-      The url for this handler/args combination.
-
-    Raises:
-      NoUrlFoundError: No url pattern for this handler has the same
-        number of args that were passed in.
-    """
-
-
-    app = WSGIApplication.active_instance
-    pattern_map = app._pattern_map
-
-    implicit_args = kargs.get('implicit_args', ())
-    if implicit_args == True:
-      implicit_args = app.current_request_args
-
-
-
-    min_params = len(args)
-
-
-
-    urlresolvers = None
-
-    for pattern_tuple in pattern_map.get(cls, ()):
-      num_params_in_pattern = pattern_tuple[1]
-      if num_params_in_pattern < min_params:
-        continue
-
-
-      if urlresolvers is None:
-        from django.core import urlresolvers
-
-      try:
-
-        num_implicit_args = max(0, num_params_in_pattern - len(args))
-        merged_args = implicit_args[:num_implicit_args] + args
-
-
-        url = urlresolvers.reverse_helper(pattern_tuple[0], *merged_args)
-
-
-
-        url = url.replace('\\', '')
-        url = url.replace('?', '')
-        return url
-      except urlresolvers.NoReverseMatch:
-        continue
-
-    logging.warning('get_url failed for Handler name: %r, Args: %r',
-                    cls.__name__, args)
-    raise NoUrlFoundError
-
-  @classmethod
   def new_factory(cls, *args, **kwargs):
     """Create new request handler factory.
 
@@ -540,6 +500,112 @@ class RequestHandler(object):
       return cls(*args, **kwargs)
     new_instance.__name__ = cls.__name__ + 'Factory'
     return new_instance
+
+  @classmethod
+  def get_url(cls, *args, **kargs):
+    """Returns the url for the given handler.
+
+    The default implementation uses the patterns passed to the active
+    WSGIApplication to create a url. However, it is different from Django's
+    urlresolvers.reverse() in the following ways:
+      - It does not try to resolve handlers via module loading
+      - It does not support named arguments
+      - It performs some post-prosessing on the url to remove some regex
+        operators.
+      - It will try to fill in the left-most missing arguments with the args
+        used in the active request.
+
+    Args:
+      args: Parameters for the url pattern's groups.
+      kwargs: Optionally contains 'implicit_args' that can either be a boolean
+              or a tuple. When it is True, it will use the arguments to the
+              active request as implicit arguments. When it is False (default),
+              it will not use any implicit arguments. When it is a tuple, it
+              will use the tuple as the implicit arguments.
+              the left-most args if some are missing from args.
+
+    Returns:
+      The url for this handler/args combination.
+
+    Raises:
+      NoUrlFoundError: No url pattern for this handler has the same
+        number of args that were passed in.
+    """
+
+
+    app = WSGIApplication.active_instance
+    pattern_map = app._pattern_map
+
+    implicit_args = kargs.get('implicit_args', ())
+    if implicit_args == True:
+      implicit_args = app.current_request_args
+
+
+
+    min_params = len(args)
+
+    for pattern_tuple in pattern_map.get(cls, ()):
+      num_params_in_pattern = pattern_tuple[1]
+      if num_params_in_pattern < min_params:
+        continue
+
+      try:
+
+        num_implicit_args = max(0, num_params_in_pattern - len(args))
+        merged_args = implicit_args[:num_implicit_args] + args
+
+        url = _reverse_url_pattern(pattern_tuple[0], *merged_args)
+
+
+
+        url = url.replace('\\', '')
+        url = url.replace('?', '')
+        return url
+      except CannotReversePattern:
+        continue
+
+    logging.warning('get_url failed for Handler name: %r, Args: %r',
+                    cls.__name__, args)
+    raise NoUrlFoundError
+
+
+def _reverse_url_pattern(url_pattern, *args):
+  """Turns a regex that matches a url back into a url by replacing
+  the url pattern's groups with the given args. Removes '^' and '$'
+  from the result.
+
+  Args:
+    url_pattern: A pattern used to match a URL.
+    args: list of values corresponding to groups in url_pattern.
+
+  Returns:
+    A string with url_pattern's groups filled in values from args.
+
+  Raises:
+     CannotReversePattern if either there aren't enough args to fill
+     url_pattern's groups, or if any arg isn't matched by the regular
+     expression fragment in the corresponding group.
+  """
+
+  group_index = [0]
+
+  def expand_group(match):
+    group = match.group(1)
+    try:
+
+      value = str(args[group_index[0]])
+      group_index[0] += 1
+    except IndexError:
+      raise CannotReversePattern('Not enough arguments in url tag')
+
+    if not re.match(group + '$', value):
+      raise CannotReversePattern("Value %r doesn't match (%r)" % (value, group))
+    return value
+
+  result = re.sub(r'\(([^)]+)\)', expand_group, url_pattern.pattern)
+  result = result.replace('^', '')
+  result = result.replace('$', '')
+  return result
 
 
 class RedirectHandler(RequestHandler):
@@ -737,23 +803,16 @@ def _django_setup():
   webapp_django_version in that file.
 
   Finally, calling use_library('django', <version>) in that file
-  should also work, followed by code to configure Django settings:
+  should also work:
 
-    # The first two sections of this example are taken from
+    # Example taken from from
     # http://code.google.com/appengine/docs/python/tools/libraries.html#Django
 
     import os
     os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 
     from google.appengine.dist import use_library
-    use_library('django', '1.1')
-
-    # This last section is necessary to be able to switch between
-    # Django and webapp.template freely, regardless of which was
-    # imported first.
-
-    from django.conf import settings
-    settings._target = None
+    use_library('django', '1.2')
 
   If your application also imports Django directly it should ensure
   that the same code is executed before your app imports Django
@@ -804,16 +863,31 @@ def _django_setup():
 
   import django.conf
   try:
-    django.conf.settings.configure(
-      DEBUG=False,
-      TEMPLATE_DEBUG=False,
-      TEMPLATE_LOADERS=(
-        'django.template.loaders.filesystem.load_template_source',
-      ),
-    )
-  except (EnvironmentError, RuntimeError):
 
-    pass
+
+    getattr(django.conf.settings, 'FAKE_ATTR', None)
+  except (ImportError, EnvironmentError), e:
+
+
+
+    if os.getenv(django.conf.ENVIRONMENT_VARIABLE):
+
+
+      logging.warning(e)
+
+    try:
+      django.conf.settings.configure(
+        DEBUG=False,
+        TEMPLATE_DEBUG=False,
+        TEMPLATE_LOADERS=(
+          'django.template.loaders.filesystem.load_template_source',
+        ),
+      )
+    except (EnvironmentError, RuntimeError):
+
+
+
+      pass
 
 
 

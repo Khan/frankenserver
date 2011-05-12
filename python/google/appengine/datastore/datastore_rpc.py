@@ -1556,31 +1556,32 @@ class TransactionalConnection(BaseConnection):
       refers to a different top-level key than the the connection's
       entity group.
     """
+    base_entity_group_pb = self.__entity_group_pb
     for ref in key_pbs:
       entity_group_pb = ref
       if entity_group_pb.path().element_list()[1:]:
         entity_group_pb = self.__adapter.new_key_pb()
         entity_group_pb.CopyFrom(ref)
         del entity_group_pb.path().element_list()[1:]
-      if self.__entity_group_pb is None:
+      if base_entity_group_pb is None:
 
 
 
 
 
-        self.__entity_group_pb = entity_group_pb
+        base_entity_group_pb = entity_group_pb
       else:
         pb1 = entity_group_pb.path().element(0)
-        ok = (entity_group_pb == self.__entity_group_pb)
+        ok = (entity_group_pb == base_entity_group_pb)
         if ok:
 
 
 
 
-          ok = (entity_group_pb is self.__entity_group_pb or
+          ok = (entity_group_pb is base_entity_group_pb or
                 pb1.id() or pb1.name())
         if not ok:
-          pb0 = self.__entity_group_pb.path().element(0)
+          pb0 = base_entity_group_pb.path().element(0)
           def helper(pb):
             if pb.name():
               return 'name=%r' % pb.name()
@@ -1590,6 +1591,7 @@ class TransactionalConnection(BaseConnection):
               'Cannot operate on different entity groups in a transaction: '
               '(kind=%r, %s) and (kind=%r, %s).' %
               (pb0.type(), helper(pb0), pb1.type(), helper(pb1)))
+    self.__entity_group_pb = base_entity_group_pb
 
   def _update_entity_group(self, key_pbs):
     """Patch up the entity group if we wrote an entity with an incomplete key.
@@ -1600,6 +1602,10 @@ class TransactionalConnection(BaseConnection):
     Args:
       key_pbs: A list of entity_pb.Reference objects.
     """
+    if self.__entity_group_pb is None:
+      assert not key_pbs
+      return
+
     pb = self.__entity_group_pb.path().element(0)
     if pb.id() or pb.name():
       return

@@ -29,6 +29,7 @@ __all__ = [
            'ExclusiveLockFailedError',
            'ExistenceError',
            'FileNotOpenedError',
+           'FileTemporaryUnavailableError',
            'FinalizationError',
            'InvalidArgumentError',
            'InvalidFileNameError',
@@ -134,6 +135,10 @@ class ApiTemporaryUnavailableError(Error):
   """Files API is temporary unavailable. Request should be retried soon."""
 
 
+class FileTemporaryUnavailableError(Error):
+  """File is temporary unavailable. Request should be retried soon."""
+
+
 class InvalidParameterError(Error):
   """Parameter specified in Create() call is invalid."""
 
@@ -190,6 +195,9 @@ def _raise_app_error(e):
   elif (e.application_error ==
         file_service_pb.FileServiceErrors.PERMISSION_DENIED):
     raise PermissionDeniedError()
+  elif (e.application_error ==
+        file_service_pb.FileServiceErrors.FILE_TEMPORARILY_UNAVAILABLE):
+    raise FileTemporaryUnavailableError()
   elif (e.application_error ==
         file_service_pb.FileServiceErrors.INVALID_PARAMETER):
     raise InvalidParameterError()
@@ -470,7 +478,7 @@ class _File(object):
   def _make_rpc_call_with_retry(self, method, request, response):
     try:
       _make_call(method, request, response)
-    except ApiTemporaryUnavailableError:
+    except (ApiTemporaryUnavailableError, FileTemporaryUnavailableError):
 
       if method == 'Open':
         _make_call(method, request, response)
@@ -496,6 +504,13 @@ def open(filename, mode='r', content_type=RAW, exclusive_lock=False):
   Returns:
     File object.
   """
+  if not filename:
+    raise InvalidArgumentError('Filename is empty')
+  if not isinstance(filename, basestring):
+    raise InvalidArgumentError('Filename should be a string')
+  if content_type != RAW and content_type != ORDERED_KEY_VALUE:
+    raise InvalidArgumentError('Invalid content type')
+
   f = _File(filename,
             mode=mode,
             content_type=content_type,
@@ -510,6 +525,13 @@ def finalize(filename, content_type=RAW):
     filename: File name as string.
     content_type: File content type. Either RAW or ORDERED_KEY_VALUE.
   """
+  if not filename:
+    raise InvalidArgumentError('Filename is empty')
+  if not isinstance(filename, basestring):
+    raise InvalidArgumentError('Filename should be a string')
+  if content_type != RAW and content_type != ORDERED_KEY_VALUE:
+    raise InvalidArgumentError('Invalid content type')
+
   f = open(filename, 'a', exclusive_lock=True, content_type=content_type)
   f.close(finalize=True)
 
@@ -525,6 +547,13 @@ def _create(filesystem, content_type=RAW, filename=None, params=None):
     params: {string: string} dict of file parameters. Each filesystem
       interprets them differently.
   """
+  if not filesystem:
+    raise InvalidArgumentError('Filesystem is empty')
+  if not isinstance(filesystem, basestring):
+    raise InvalidArgumentError('Filesystem should be a string')
+  if content_type != RAW:
+    raise InvalidArgumentError('Invalid content type')
+
   request = file_service_pb.CreateRequest()
   response = file_service_pb.CreateResponse()
 
@@ -532,9 +561,13 @@ def _create(filesystem, content_type=RAW, filename=None, params=None):
   request.set_content_type(content_type)
 
   if filename:
+    if not isinstance(filename, basestring):
+      raise InvalidArgumentError('Filename should be a string')
     request.set_filename(filename)
 
   if params:
+    if not isinstance(params, dict):
+      raise InvalidArgumentError('Parameters should be a dictionary')
     for k,v in params.items():
       param = request.add_parameters()
       param.set_name(k)

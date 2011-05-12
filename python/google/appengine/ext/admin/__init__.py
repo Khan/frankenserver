@@ -59,6 +59,7 @@ else:
   HAVE_CRON = True
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import backends
 from google.appengine.api import datastore
 from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_types
@@ -140,6 +141,7 @@ class BaseRequestHandler(webapp.RequestHandler):
       'queues_path': base_path + QueuesPageHandler.PATH,
       'xmpp_path': base_path + XMPPPageHandler.PATH,
       'inboundmail_path': base_path + InboundMailPageHandler.PATH,
+      'backends_path': base_path + BackendsPageHandler.PATH,
     }
     if HAVE_CRON:
       values['cron_path'] = base_path + CronPageHandler.PATH
@@ -380,6 +382,89 @@ class TasksPageHandler(BaseRequestHandler):
     return
 
 
+class BackendsPageHandler(BaseRequestHandler):
+  """Shows information about an app's backends."""
+
+  PATH = '/backends'
+
+  def __init__(self):
+    self.stub = apiproxy_stub_map.apiproxy.GetStub('system')
+
+  def get(self):
+    """Shows template displaying the app's backends or a single backend."""
+    backend_name = self.request.get('backendName')
+    if backend_name:
+      return self.render_backend_page(backend_name)
+    else:
+      return self.render_backends_page()
+
+  def render_backends_page(self):
+    """Shows template displaying all the app's backends."""
+    if hasattr(self.stub, 'get_backend_info'):
+      backend_info = self.stub.get_backend_info() or []
+    else:
+
+      backend_info = []
+
+    backend_list = []
+    for backend in backend_info:
+      backend_list.append({
+          'name': backend.name,
+          'instances': backend.instances,
+          'instanceclass': backend.get_class() or 'B2',
+          'address': backends.get_hostname(backend.name),
+          'state': 'running',
+          'options': backend.options,
+      })
+
+    values = {
+      'request': self.request,
+      'backends': backend_list,
+      'backend_path': self.base_path() + self.PATH,
+    }
+    self.generate('backends.html', values)
+
+  def get_backend_entry(self, backend_name):
+    """Get the BackendEntry for a single backend."""
+    if not hasattr(self.stub, 'get_backend_info'):
+      return None
+
+    backend_entries = self.stub.get_backend_info() or []
+    for backend in backend_entries:
+      if backend.name == backend_name:
+        return backend
+    return None
+
+  def render_backend_page(self, backend_name):
+    """Shows template displaying a single backend."""
+    backend = self.get_backend_entry(backend_name)
+
+    instances = []
+    if backend:
+      for i in range(backend.instances):
+        instances.append({
+            'id': i,
+            'address': backends.get_hostname(backend_name, i),
+            'state': 'running',
+        })
+
+    values = {
+      'request': self.request,
+      'backend_name': backend_name,
+      'backend_path': self.base_path() + self.PATH,
+      'instances': instances,
+    }
+    self.generate('backend.html', values)
+
+  def post(self):
+    if self.request.get('action:startbackend'):
+      self.stub.start_backend(self.request.get('backend'))
+    if self.request.get('action:stopbackend'):
+      self.stub.stop_backend(self.request.get('backend'))
+    self.redirect(self.request.path_url)
+    return
+
+
 class MemcachePageHandler(BaseRequestHandler):
   """Shows stats about memcache and query form to get values."""
   PATH = '/memcache'
@@ -456,7 +541,7 @@ class MemcachePageHandler(BaseRequestHandler):
       value: String, will be converted according to type_.
 
     Returns:
-      Result of memcache.set(ket, converted_value).  True if value was set.
+      Result of memcache.set(key, converted_value).  True if value was set.
 
     Raises:
       ValueError: Value can't be converted according to type_.
@@ -1117,29 +1202,20 @@ class TimeType(DataType):
 
 class ListType(DataType):
   def format(self, value):
-    value_file = cStringIO.StringIO()
-    try:
-      writer = csv.writer(value_file)
-      writer.writerow(map(ustr, value))
-      return ustr(value_file.getvalue())
-    finally:
-      value_file.close()
+    return repr(value)
+
+  def short_format(self, value):
+    format = self.format(value)
+    if len(format) > 20:
+      return format[:20] + '...'
+    else:
+      return format
 
   def name(self):
     return 'list'
 
-  def parse(self, value):
-    value_file = cStringIO.StringIO(ustr(value))
-    try:
-      reader = csv.reader(value_file)
-      fields = []
-      for field in reader.next():
-        if isinstance(field, str):
-          field = field.decode('utf-8')
-        fields.append(field)
-      return fields
-    finally:
-      value_file.close()
+  def input_field(self, name, value, sample_values):
+    return cgi.escape(self.format(value))
 
   def python_type(self):
     return list
@@ -1464,6 +1540,7 @@ def main():
     ('.*' + TasksPageHandler.PATH, TasksPageHandler),
     ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
     ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
+    ('.*' + BackendsPageHandler.PATH, BackendsPageHandler),
     ('.*', DefaultPageHandler),
   ]
   if HAVE_CRON:

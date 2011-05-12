@@ -108,6 +108,10 @@ class NeedIndexError(Error):
   the Indexes page in the Admin Console and your index.yaml file.
   """
 
+class ReferencePropertyResolveError(Error):
+  """An error occurred while trying to resolve a ReferenceProperty."""
+
+
 class Timeout(Error):
   """The datastore operation timed out, or the data was temporarily
   unavailable. This can happen when you attempt to put, get, or delete too

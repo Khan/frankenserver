@@ -26,6 +26,8 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
 
 from google.appengine.api.api_base_pb import *
 import google.appengine.api.api_base_pb
+from google.appengine.api.files.shuffle_types_pb import *
+import google.appengine.api.files.shuffle_types_pb
 class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
 
 
@@ -56,6 +58,9 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
   FILE_ALREADY_EXISTS =  703
   UNSUPPORTED_FILE_SYSTEM =  704
   INVALID_PARAMETER =  705
+  SHUFFLER_INTERNAL_ERROR =  800
+  SHUFFLE_REQUEST_TOO_LARGE =  801
+  SHUFFLER_TEMPORARILY_UNAVAILABLE =  900
   MAX_ERROR_CODE = 9999
 
   _ErrorCode_NAMES = {
@@ -86,6 +91,9 @@ class FileServiceErrors(ProtocolBuffer.ProtocolMessage):
     703: "FILE_ALREADY_EXISTS",
     704: "UNSUPPORTED_FILE_SYSTEM",
     705: "INVALID_PARAMETER",
+    800: "SHUFFLER_INTERNAL_ERROR",
+    801: "SHUFFLE_REQUEST_TOO_LARGE",
+    900: "SHUFFLER_TEMPORARILY_UNAVAILABLE",
     9999: "MAX_ERROR_CODE",
   }
 
@@ -3284,5 +3292,539 @@ class ReadKeyValueResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class ShuffleRequest(ProtocolBuffer.ProtocolMessage):
+  has_shuffle_name_ = 0
+  shuffle_name_ = ""
+  has_output_ = 0
+  has_shuffle_size_bytes_ = 0
+  shuffle_size_bytes_ = 0
 
-__all__ = ['FileServiceErrors','FileContentType','CreateRequest_Parameter','CreateRequest','CreateResponse','OpenRequest','OpenResponse','CloseRequest','CloseResponse','FileStat','StatRequest','StatResponse','AppendRequest','AppendResponse','AppendKeyValueRequest','AppendKeyValueResponse','DeleteRequest','DeleteResponse','ReadRequest','ReadResponse','ReadKeyValueRequest','ReadKeyValueResponse_KeyValue','ReadKeyValueResponse']
+  def __init__(self, contents=None):
+    self.input_ = []
+    self.output_ = ShuffleOutputSpecification()
+    if contents is not None: self.MergeFromString(contents)
+
+  def shuffle_name(self): return self.shuffle_name_
+
+  def set_shuffle_name(self, x):
+    self.has_shuffle_name_ = 1
+    self.shuffle_name_ = x
+
+  def clear_shuffle_name(self):
+    if self.has_shuffle_name_:
+      self.has_shuffle_name_ = 0
+      self.shuffle_name_ = ""
+
+  def has_shuffle_name(self): return self.has_shuffle_name_
+
+  def input_size(self): return len(self.input_)
+  def input_list(self): return self.input_
+
+  def input(self, i):
+    return self.input_[i]
+
+  def mutable_input(self, i):
+    return self.input_[i]
+
+  def add_input(self):
+    x = ShuffleInputSpecification()
+    self.input_.append(x)
+    return x
+
+  def clear_input(self):
+    self.input_ = []
+  def output(self): return self.output_
+
+  def mutable_output(self): self.has_output_ = 1; return self.output_
+
+  def clear_output(self):self.has_output_ = 0; self.output_.Clear()
+
+  def has_output(self): return self.has_output_
+
+  def shuffle_size_bytes(self): return self.shuffle_size_bytes_
+
+  def set_shuffle_size_bytes(self, x):
+    self.has_shuffle_size_bytes_ = 1
+    self.shuffle_size_bytes_ = x
+
+  def clear_shuffle_size_bytes(self):
+    if self.has_shuffle_size_bytes_:
+      self.has_shuffle_size_bytes_ = 0
+      self.shuffle_size_bytes_ = 0
+
+  def has_shuffle_size_bytes(self): return self.has_shuffle_size_bytes_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_shuffle_name()): self.set_shuffle_name(x.shuffle_name())
+    for i in xrange(x.input_size()): self.add_input().CopyFrom(x.input(i))
+    if (x.has_output()): self.mutable_output().MergeFrom(x.output())
+    if (x.has_shuffle_size_bytes()): self.set_shuffle_size_bytes(x.shuffle_size_bytes())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_shuffle_name_ != x.has_shuffle_name_: return 0
+    if self.has_shuffle_name_ and self.shuffle_name_ != x.shuffle_name_: return 0
+    if len(self.input_) != len(x.input_): return 0
+    for e1, e2 in zip(self.input_, x.input_):
+      if e1 != e2: return 0
+    if self.has_output_ != x.has_output_: return 0
+    if self.has_output_ and self.output_ != x.output_: return 0
+    if self.has_shuffle_size_bytes_ != x.has_shuffle_size_bytes_: return 0
+    if self.has_shuffle_size_bytes_ and self.shuffle_size_bytes_ != x.shuffle_size_bytes_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_shuffle_name_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: shuffle_name not set.')
+    for p in self.input_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    if (not self.has_output_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: output not set.')
+    elif not self.output_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_shuffle_size_bytes_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: shuffle_size_bytes not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.shuffle_name_))
+    n += 1 * len(self.input_)
+    for i in xrange(len(self.input_)): n += self.lengthString(self.input_[i].ByteSize())
+    n += self.lengthString(self.output_.ByteSize())
+    n += self.lengthVarInt64(self.shuffle_size_bytes_)
+    return n + 3
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_shuffle_name_):
+      n += 1
+      n += self.lengthString(len(self.shuffle_name_))
+    n += 1 * len(self.input_)
+    for i in xrange(len(self.input_)): n += self.lengthString(self.input_[i].ByteSizePartial())
+    if (self.has_output_):
+      n += 1
+      n += self.lengthString(self.output_.ByteSizePartial())
+    if (self.has_shuffle_size_bytes_):
+      n += 1
+      n += self.lengthVarInt64(self.shuffle_size_bytes_)
+    return n
+
+  def Clear(self):
+    self.clear_shuffle_name()
+    self.clear_input()
+    self.clear_output()
+    self.clear_shuffle_size_bytes()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.shuffle_name_)
+    for i in xrange(len(self.input_)):
+      out.putVarInt32(18)
+      out.putVarInt32(self.input_[i].ByteSize())
+      self.input_[i].OutputUnchecked(out)
+    out.putVarInt32(26)
+    out.putVarInt32(self.output_.ByteSize())
+    self.output_.OutputUnchecked(out)
+    out.putVarInt32(32)
+    out.putVarInt64(self.shuffle_size_bytes_)
+
+  def OutputPartial(self, out):
+    if (self.has_shuffle_name_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.shuffle_name_)
+    for i in xrange(len(self.input_)):
+      out.putVarInt32(18)
+      out.putVarInt32(self.input_[i].ByteSizePartial())
+      self.input_[i].OutputPartial(out)
+    if (self.has_output_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.output_.ByteSizePartial())
+      self.output_.OutputPartial(out)
+    if (self.has_shuffle_size_bytes_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.shuffle_size_bytes_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_shuffle_name(d.getPrefixedString())
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_input().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_output().TryMerge(tmp)
+        continue
+      if tt == 32:
+        self.set_shuffle_size_bytes(d.getVarInt64())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_shuffle_name_: res+=prefix+("shuffle_name: %s\n" % self.DebugFormatString(self.shuffle_name_))
+    cnt=0
+    for e in self.input_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("input%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
+    if self.has_output_:
+      res+=prefix+"output <\n"
+      res+=self.output_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_shuffle_size_bytes_: res+=prefix+("shuffle_size_bytes: %s\n" % self.DebugFormatInt64(self.shuffle_size_bytes_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kshuffle_name = 1
+  kinput = 2
+  koutput = 3
+  kshuffle_size_bytes = 4
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "shuffle_name",
+    2: "input",
+    3: "output",
+    4: "shuffle_size_bytes",
+  }, 4)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class ShuffleResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    return n
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def OutputPartial(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class GetShuffleStatusRequest(ProtocolBuffer.ProtocolMessage):
+  has_shuffle_name_ = 0
+  shuffle_name_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def shuffle_name(self): return self.shuffle_name_
+
+  def set_shuffle_name(self, x):
+    self.has_shuffle_name_ = 1
+    self.shuffle_name_ = x
+
+  def clear_shuffle_name(self):
+    if self.has_shuffle_name_:
+      self.has_shuffle_name_ = 0
+      self.shuffle_name_ = ""
+
+  def has_shuffle_name(self): return self.has_shuffle_name_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_shuffle_name()): self.set_shuffle_name(x.shuffle_name())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_shuffle_name_ != x.has_shuffle_name_: return 0
+    if self.has_shuffle_name_ and self.shuffle_name_ != x.shuffle_name_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_shuffle_name_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: shuffle_name not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.shuffle_name_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_shuffle_name_):
+      n += 1
+      n += self.lengthString(len(self.shuffle_name_))
+    return n
+
+  def Clear(self):
+    self.clear_shuffle_name()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.shuffle_name_)
+
+  def OutputPartial(self, out):
+    if (self.has_shuffle_name_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.shuffle_name_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_shuffle_name(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_shuffle_name_: res+=prefix+("shuffle_name: %s\n" % self.DebugFormatString(self.shuffle_name_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kshuffle_name = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "shuffle_name",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+class GetShuffleStatusResponse(ProtocolBuffer.ProtocolMessage):
+  has_status_ = 0
+  has_description_ = 0
+  description_ = ""
+
+  def __init__(self, contents=None):
+    self.status_ = Status()
+    if contents is not None: self.MergeFromString(contents)
+
+  def status(self): return self.status_
+
+  def mutable_status(self): self.has_status_ = 1; return self.status_
+
+  def clear_status(self):self.has_status_ = 0; self.status_.Clear()
+
+  def has_status(self): return self.has_status_
+
+  def description(self): return self.description_
+
+  def set_description(self, x):
+    self.has_description_ = 1
+    self.description_ = x
+
+  def clear_description(self):
+    if self.has_description_:
+      self.has_description_ = 0
+      self.description_ = ""
+
+  def has_description(self): return self.has_description_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_status()): self.mutable_status().MergeFrom(x.status())
+    if (x.has_description()): self.set_description(x.description())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_status_ != x.has_status_: return 0
+    if self.has_status_ and self.status_ != x.status_: return 0
+    if self.has_description_ != x.has_description_: return 0
+    if self.has_description_ and self.description_ != x.description_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_status_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: status not set.')
+    elif not self.status_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.status_.ByteSize())
+    if (self.has_description_): n += 1 + self.lengthString(len(self.description_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_status_):
+      n += 1
+      n += self.lengthString(self.status_.ByteSizePartial())
+    if (self.has_description_): n += 1 + self.lengthString(len(self.description_))
+    return n
+
+  def Clear(self):
+    self.clear_status()
+    self.clear_description()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.status_.ByteSize())
+    self.status_.OutputUnchecked(out)
+    if (self.has_description_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.description_)
+
+  def OutputPartial(self, out):
+    if (self.has_status_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.status_.ByteSizePartial())
+      self.status_.OutputPartial(out)
+    if (self.has_description_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.description_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_status().TryMerge(tmp)
+        continue
+      if tt == 18:
+        self.set_description(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_status_:
+      res+=prefix+"status <\n"
+      res+=self.status_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_description_: res+=prefix+("description: %s\n" % self.DebugFormatString(self.description_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kstatus = 1
+  kdescription = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "status",
+    2: "description",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+
+__all__ = ['FileServiceErrors','FileContentType','CreateRequest_Parameter','CreateRequest','CreateResponse','OpenRequest','OpenResponse','CloseRequest','CloseResponse','FileStat','StatRequest','StatResponse','AppendRequest','AppendResponse','AppendKeyValueRequest','AppendKeyValueResponse','DeleteRequest','DeleteResponse','ReadRequest','ReadResponse','ReadKeyValueRequest','ReadKeyValueResponse_KeyValue','ReadKeyValueResponse','ShuffleRequest','ShuffleResponse','GetShuffleStatusRequest','GetShuffleStatusResponse']

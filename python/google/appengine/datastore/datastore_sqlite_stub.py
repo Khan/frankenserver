@@ -389,6 +389,14 @@ def MakeEntityForQuery(query, *path):
   return pseudo_pb
 
 
+def ToUtf8(s):
+  """Encoded s in utf-8 if it is an unicode string."""
+  if isinstance(s, unicode):
+    return s.encode('utf-8')
+  else:
+    return s
+
+
 class KindPseudoKind(object):
   """Pseudo-kind for __kind__ queries.
 
@@ -453,8 +461,7 @@ class KindPseudoKind(object):
 
       kinds = []
       for row in c.fetchall():
-        kind = row[0].encode('utf-8')
-        kinds.append(MakeEntityForQuery(query, self.name, kind))
+        kinds.append(MakeEntityForQuery(query, self.name, ToUtf8(row[0])))
 
       cursor = datastore_stub_util.ListCursor(
           query, kinds, datastore_stub_util.CompareEntityPbByKey)
@@ -548,18 +555,16 @@ class PropertyPseudoKind(object):
       property_pb = None
       for row in c.fetchall():
         if not (row[0] == kind and row[1] == name):
-          new_kind = row[0].encode('utf-8')
-          new_name = row[1].encode('utf-8')
 
-          if not property_range.Contains((new_kind, new_name)):
+          if not property_range.Contains((row[0], row[1])):
             continue
-          kind = new_kind
-          name = new_name
+          kind, name = row[:2]
 
           if property_pb:
             properties.append(property_pb)
-          property_pb = MakeEntityForQuery(query, KindPseudoKind.name, kind,
-                                           self.name, name)
+          property_pb = MakeEntityForQuery(query, KindPseudoKind.name,
+                                           ToUtf8(kind),
+                                           self.name, ToUtf8(name))
 
         if not keys_only:
 

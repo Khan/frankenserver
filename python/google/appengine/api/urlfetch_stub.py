@@ -87,6 +87,8 @@ _UNTRUSTED_REQUEST_HEADERS = frozenset([
   'x-forwarded-for',
 ])
 
+_MAX_URL_LENGTH = 2048
+
 
 def _CanValidateCerts():
   return (_successfully_imported_fancy_urllib and
@@ -148,7 +150,14 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       request: the fetch to perform, a URLFetchRequest
       response: the fetch response, a URLFetchResponse
     """
-    (protocol, host, path, parameters, query, fragment) = urlparse.urlparse(request.url())
+
+
+    if len(request.url()) >= _MAX_URL_LENGTH:
+      logging.error('URL is too long: %s...' % request.url()[:50])
+      raise apiproxy_errors.ApplicationError(
+          urlfetch_service_pb.URLFetchServiceError.INVALID_URL)
+
+    (protocol, host, path, query, fragment) = urlparse.urlsplit(request.url())
 
     payload = None
     if request.method() == urlfetch_service_pb.URLFetchRequest.GET:
@@ -226,8 +235,8 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     last_host = ''
 
     for redirect_number in xrange(MAX_REDIRECTS + 1):
-      parsed = urlparse.urlparse(url)
-      protocol, host, path, parameters, query, fragment = parsed
+      parsed = urlparse.urlsplit(url)
+      protocol, host, path, query, fragment = parsed
 
 
 
@@ -267,7 +276,9 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
           'Accept-Encoding': 'gzip',
       }
       if payload is not None:
-        adjusted_headers['Content-Length'] = len(payload)
+
+
+        adjusted_headers['Content-Length'] = str(len(payload))
       if method == 'POST' and payload:
         adjusted_headers['Content-Type'] = 'application/x-www-form-urlencoded'
 

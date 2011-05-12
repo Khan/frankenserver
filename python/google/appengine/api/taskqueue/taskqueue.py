@@ -59,6 +59,7 @@ __all__ = [
 
 
 import calendar
+import cgi
 import datetime
 import math
 import os
@@ -185,7 +186,7 @@ MAX_QUEUE_NAME_LENGTH = 100
 
 MAX_PULL_TASK_SIZE_BYTES = 2 ** 20
 
-MAX_PUSH_TASK_SIZE_BYTES = 10 * (2 ** 10)
+MAX_PUSH_TASK_SIZE_BYTES = 100 * (2 ** 10)
 
 MAX_TASK_NAME_LENGTH = 500
 
@@ -218,7 +219,7 @@ _NON_POST_HTTP_METHODS = frozenset(['GET', 'HEAD', 'PUT', 'DELETE'])
 
 _BODY_METHODS = frozenset(['POST', 'PUT', 'PULL'])
 
-_TASK_NAME_PATTERN = r'^[a-zA-Z0-9-]{1,%s}$' % MAX_TASK_NAME_LENGTH
+_TASK_NAME_PATTERN = r'^[a-zA-Z0-9_-]{1,%s}$' % MAX_TASK_NAME_LENGTH
 
 _TASK_NAME_RE = re.compile(_TASK_NAME_PATTERN)
 
@@ -459,10 +460,11 @@ class Task(object):
 
   __CONSTRUCTOR_KWARGS = frozenset([
       'countdown', 'eta', 'headers', 'method', 'name', 'params',
-      'retry_options', 'url'])
+      'retry_options', 'target', 'url'])
 
 
   __eta_posix = None
+  __target = None
 
 
   def __init__(self, payload=None, **kwargs):
@@ -501,12 +503,13 @@ class Task(object):
         time indicated by eta.
       retry_options: TaskRetryOptions used to control when the task will be
         retried if it fails.
+      target: The alternate version/server on which to execute this task.
 
     Raises:
-      InvalidTaskError if any of the parameters are invalid;
-      InvalidTaskNameError if the task name is invalid;
-      InvalidUrlError if the task URL is invalid or too long;
-      TaskTooLargeError if the task with its payload is too large.
+      InvalidTaskError: if any of the parameters are invalid;
+      InvalidTaskNameError: if the task name is invalid;
+      InvalidUrlError: if the task URL is invalid or too long;
+      TaskTooLargeError: if the task with its payload is too large.
     """
     args_diff = set(kwargs.iterkeys()) - self.__CONSTRUCTOR_KWARGS
     if args_diff:
@@ -578,6 +581,19 @@ class Task(object):
         self.__relative_url = '%s?%s' % (self.__relative_url, query)
     else:
       raise InvalidTaskError('Invalid method: %s' % self.__method)
+
+    host_suffix = '.%s' % os.environ.get('DEFAULT_VERSION_HOSTNAME', '')
+    self.__target = kwargs.get('target')
+    if self.__target is not None and 'Host' in self.__headers:
+      raise InvalidTaskError(
+          'A host header may not set when a target is specified.')
+    elif self.__target is not None:
+      self.__headers['Host'] = '%s%s' % (
+          self.__target, host_suffix)
+    elif 'Host' in self.__headers:
+      host = self.__headers['Host']
+      if host.endswith(host_suffix):
+        self.__target = host[:-len(host_suffix)]
 
     self.__headers_list = _flatten_params(self.__headers)
     self.__eta_posix = Task.__determine_eta_posix(
@@ -774,6 +790,11 @@ class Task(object):
     return self.__retry_count
 
   @property
+  def target(self):
+    """Returns the target for this Task."""
+    return self.__target
+
+  @property
   def was_enqueued(self):
     """Returns True if this Task has been enqueued.
 
@@ -789,6 +810,42 @@ class Task(object):
   def add(self, queue_name=_DEFAULT_QUEUE, transactional=False):
     """Adds this Task to a queue. See Queue.add."""
     return Queue(queue_name).add(self, transactional=transactional)
+
+  def extract_params(self):
+    """Returns the parameters for this task.
+
+    Returns:
+      A dictionary of strings mapping parameter names to their values as
+      strings. If the same name parameter has several values then the value will
+      be a list of strings. For POST and PULL requests then the parameters are
+      extracted from the task payload. For all other methods, the parameters are
+      extracted from the url query string. An empty dictionary is returned if
+      the task contains an empty payload or query string.
+
+    Raises:
+      ValueError: if the payload does not contain valid
+        'application/x-www-form-urlencoded' data (for POST and PULL) or the url
+        does not contain a valid query (all other methods).
+    """
+    if self.__method in ('PULL', 'POST'):
+
+      query = self.__payload
+    else:
+      query = urlparse.urlparse(self.__relative_url).query
+
+    p = {}
+    if not query:
+      return p
+
+    for key, value in cgi.parse_qsl(
+        query, keep_blank_values=True, strict_parsing=True):
+      p.setdefault(key, []).append(value)
+
+    for key, value in p.items():
+      if len(value) == 1:
+        p[key] = value[0]
+
+    return p
 
 
 class Queue(object):

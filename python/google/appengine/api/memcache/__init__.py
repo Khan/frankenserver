@@ -35,7 +35,7 @@ import cStringIO
 import math
 import pickle
 import types
-import sha
+import hashlib
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
@@ -159,7 +159,7 @@ def _key_string(key, key_prefix='', server_to_user_dict=None):
     server_key = server_key.encode('utf-8')
 
   if len(server_key) > MAX_KEY_SIZE:
-    server_key = sha.new(server_key).hexdigest()
+    server_key = hashlib.sha1(server_key).hexdigest()
 
   if server_to_user_dict is not None:
     if not isinstance(server_to_user_dict, dict):

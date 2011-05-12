@@ -36,6 +36,7 @@ import logging
 import re
 
 from google.appengine.api import appinfo_errors
+from google.appengine.api import backendinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
@@ -48,6 +49,7 @@ _FILES_REGEX = r'(?!\^).*(?!\$).'
 
 _DELTA_REGEX = r'([0-9]+)([DdHhMm]|[sS]?)'
 _EXPIRATION_REGEX = r'\s*(%s)(\s+%s)*\s*' % (_DELTA_REGEX, _DELTA_REGEX)
+_START_PATH = '/_ah/start'
 
 
 
@@ -89,10 +91,14 @@ APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
                          (PARTITION_RE_STRING,
                           DOMAIN_RE_STRING,
                           DISPLAY_APP_ID_RE_STRING))
+
+
+
+
 VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
 ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
-RUNTIME_RE_STRING = r'[a-z]{1,30}'
+RUNTIME_RE_STRING = r'[a-z][a-z0-9]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
 
@@ -141,6 +147,8 @@ EXPIRATION = 'expiration'
 
 APPLICATION = 'application'
 VERSION = 'version'
+MAJOR_VERSION = 'major_version'
+MINOR_VERSION = 'minor_version'
 RUNTIME = 'runtime'
 API_VERSION = 'api_version'
 BUILTINS = 'builtins'
@@ -154,7 +162,7 @@ JAVA_PRECOMPILED = 'java_precompiled'
 PYTHON_PRECOMPILED = 'python_precompiled'
 ADMIN_CONSOLE = 'admin_console'
 ERROR_HANDLERS = 'error_handlers'
-SERVERS = 'servers'
+BACKENDS = 'backends'
 THREADSAFE = 'threadsafe'
 
 
@@ -692,7 +700,7 @@ class AppInfoExternal(validation.Validated):
 
   Attributes:
     application: Unique identifier for application.
-    version: Application's major version number.
+    version: Application's major version.
     runtime: Runtime used by application.
     api_version: Which version of APIs to use.
     handlers: List of URL handlers.
@@ -710,7 +718,7 @@ class AppInfoExternal(validation.Validated):
 
 
       APPLICATION: APPLICATION_RE_STRING,
-      VERSION: VERSION_RE_STRING,
+      VERSION: validation.Optional(VERSION_RE_STRING),
       RUNTIME: RUNTIME_RE_STRING,
 
 
@@ -727,6 +735,8 @@ class AppInfoExternal(validation.Validated):
           validation.Options(JAVA_PRECOMPILED, PYTHON_PRECOMPILED))),
       ADMIN_CONSOLE: validation.Optional(AdminConsole),
       ERROR_HANDLERS: validation.Optional(validation.Repeated(ErrorHandlers)),
+      BACKENDS: validation.Optional(validation.Repeated(
+          backendinfo.BackendEntry)),
       THREADSAFE: validation.Optional(bool),
   }
 
@@ -749,10 +759,69 @@ class AppInfoExternal(validation.Validated):
       raise appinfo_errors.TooManyURLMappings(
           'Found more than %d URLMap entries in application configuration' %
           MAX_URL_MAPS)
-    if self.version.find(ALTERNATE_HOSTNAME_SEPARATOR) != -1:
+
+    if self.version and self.version.find(ALTERNATE_HOSTNAME_SEPARATOR) != -1:
       raise validation.ValidationError(
-          'App version "%s" cannot contain the string "%s"' % (
+          'Version "%s" cannot contain the string "%s"' % (
               self.version, ALTERNATE_HOSTNAME_SEPARATOR))
+
+
+  def ApplyBackendSettings(self, backend_name):
+    """Applies settings from the indicated backend to the AppInfoExternal.
+
+    Backend entries may contain directives that modify other parts of the
+    app.yaml, such as the 'start' directive, which adds a handler for the start
+    request.  This method performs those modifications.
+
+    Args:
+      backend_name: The name of a backend defined in 'backends'.
+
+    Raises:
+      BackendNotFound: If the indicated backend was not listed in 'backends'.
+    """
+    if backend_name is None:
+      return
+
+    if self.backends is None:
+      raise appinfo_errors.BackendNotFound
+
+    self.version = backend_name
+
+    match = None
+    for backend in self.backends:
+      if backend.name != backend_name:
+        continue
+      if match:
+        raise appinfo_errors.DuplicateBackend
+      else:
+        match = backend
+
+    if match is None:
+      raise appinfo_errors.BackendNotFound
+
+    if match.start is None:
+      return
+
+    start_handler = URLMap(url=_START_PATH, script=match.start)
+    self.handlers.insert(0, start_handler)
+
+
+def ValidateHandlers(handlers, is_include_file=False):
+  """Validates a list of handler (URLMap) objects.
+
+  Args:
+    handlers: A list of a handler (URLMap) objects.
+    is_include_file: If true, indicates the we are performing validation
+      for handlers in an AppInclude file, which may contain special directives.
+  """
+  if not handlers:
+    return
+
+  for handler in handlers:
+    handler.FixSecureDefaults()
+    handler.WarnReservedURLs()
+    if not is_include_file:
+      handler.ErrorOnPositionForAppInfo()
 
 
 def LoadSingleAppInfo(app_info):
@@ -784,15 +853,24 @@ def LoadSingleAppInfo(app_info):
     raise appinfo_errors.MultipleConfigurationFile()
 
   appyaml = app_infos[0]
-  if appyaml.handlers:
-    for handler in appyaml.handlers:
-      handler.FixSecureDefaults()
-      handler.WarnReservedURLs()
-      handler.ErrorOnPositionForAppInfo()
+  ValidateHandlers(appyaml.handlers)
   if appyaml.builtins:
     BuiltinHandler.Validate(appyaml.builtins)
 
   return appyaml
+
+
+class AppInfoSummary(validation.Validated):
+  """This class contains only basic summary information about an app.
+
+  It is used to pass back information about the newly created app to users
+  after a new version has been created.
+  """
+  ATTRIBUTES = {
+      APPLICATION: APPLICATION_RE_STRING,
+      MAJOR_VERSION: VERSION_RE_STRING,
+      MINOR_VERSION: validation.TYPE_LONG
+  }
 
 
 def LoadAppInclude(app_include):

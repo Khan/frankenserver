@@ -54,8 +54,16 @@ def create(mime_type='application/octet-stream',
     by File API open function. To read the file or obtain its blob key, finalize
     it and call get_blob_key function.
   """
+  if not mime_type:
+    raise files.InvalidArgumentError('Empty mime_type')
+  if not isinstance(mime_type, basestring):
+    raise files.InvalidArgumentError('Expected string for mime_type')
+
   params = {_MIME_TYPE_PARAMETER: mime_type}
   if _blobinfo_uploaded_filename:
+    if not isinstance(_blobinfo_uploaded_filename, basestring):
+      raise files.InvalidArgumentError(
+          'Expected string for _blobinfo_uploaded_filename')
     params[_BLOBINFO_UPLOADED_FILENAME_PARAMETER] = _blobinfo_uploaded_filename
   return files._create(_BLOBSTORE_FILESYSTEM, params=params)
 
@@ -75,6 +83,10 @@ def get_blob_key(create_file_name):
     google.appengine.api.files.InvalidFileNameError if the file name is not
     a valid nonfinalized blob file name.
   """
+  if not create_file_name:
+    raise files.InvalidArgumentError('Empty file name')
+  if not isinstance(create_file_name, basestring):
+    raise files.InvalidArgumentError('Expected string for file name')
   if not create_file_name.startswith(_BLOBSTORE_DIRECTORY):
     raise file.InvalidFileNameError(
         'Filename %s passed to get_blob_key doesn\'t have prefix %s' %

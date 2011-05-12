@@ -281,6 +281,9 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
 
   request = urlfetch_service_pb.URLFetchRequest()
   response = urlfetch_service_pb.URLFetchResponse()
+
+  if isinstance(url, unicode):
+    url = url.encode('UTF-8')
   request.set_url(url)
 
   if method == GET:

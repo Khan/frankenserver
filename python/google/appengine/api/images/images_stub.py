@@ -51,6 +51,9 @@ from google.appengine.runtime import apiproxy_errors
 MAX_REQUEST_SIZE = 32 << 20
 
 
+_EXIF_ORIENTATION_TAG = 274
+
+
 def _ArgbToRgbaTuple(argb):
   """Convert from a single ARGB value to a tuple containing RGBA.
 
@@ -159,9 +162,12 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       y_anchor = (options.anchor() / 3) * 0.5
       x_offset = int(options.x_offset() + x_anchor * (width - source.size[0]))
       y_offset = int(options.y_offset() + y_anchor * (height - source.size[1]))
-      alpha = options.opacity() * 255
-      mask = Image.new("L", source.size, alpha)
-      canvas.paste(source, (x_offset, y_offset), mask)
+      if source.mode == "RGBA":
+        canvas.paste(source, (x_offset, y_offset), source)
+      else:
+        alpha = options.opacity() * 255
+        mask = Image.new("L", source.size, alpha)
+        canvas.paste(source, (x_offset, y_offset), mask)
     response_value = self._EncodeImage(canvas, request.canvas().output())
     response.mutable_image().set_content(response_value)
 
@@ -178,7 +184,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     image = self._OpenImageData(request.image())
 
     img_format = image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF", "WEBP"):
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.NOT_IMAGE)
     image = image.convert("RGBA")
@@ -213,8 +219,15 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     """
     original_image = self._OpenImageData(request.image())
 
+    input_settings = request.input()
+    correct_orientation = (
+        input_settings.has_correct_exif_orientation() and
+        input_settings.correct_exif_orientation() ==
+        images_service_pb.InputSettings.CORRECT_ORIENTATION)
+
     new_image = self._ProcessTransforms(original_image,
-                                        request.transform_list())
+                                        request.transform_list(),
+                                        correct_orientation)
 
     response_value = self._EncodeImage(new_image, request.output())
     response.mutable_image().set_content(response_value)
@@ -241,6 +254,9 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     image_string = StringIO.StringIO()
 
     image_encoding = "PNG"
+
+    if (output_encoding.mime_type() == images_service_pb.OutputSettings.WEBP):
+      image_encoding = "WEBP"
 
     if (output_encoding.mime_type() == images_service_pb.OutputSettings.JPEG):
       image_encoding = "JPEG"
@@ -282,7 +298,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
 
     img_format = image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF"):
+    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF", "WEBP"):
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.NOT_IMAGE)
     return image
@@ -498,13 +514,50 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     return image.crop(box)
 
-  def _ProcessTransforms(self, image, transforms):
+  def _CorrectOrientation(self, image, orientation):
+    """Use PIL to correct the image orientation based on its EXIF.
+
+    See JEITA CP-3451 at http://www.exif.org/specifications.html,
+    Exif 2.2, page 18.
+
+    Args:
+      image: source PIL.Image.Image object.
+      orientation: integer in range (1,8) inclusive, corresponding the image
+        orientation from EXIF.
+
+    Returns:
+      PIL.Image.Image with transforms performed on it. If no correction was
+        done, it returns the input image.
+    """
+
+
+    if orientation == 2:
+      image = image.transpose(Image.FLIP_LEFT_RIGHT)
+    elif orientation == 3:
+      image = image.rotate(180)
+    elif orientation == 4:
+      image = image.transpose(Image.FLIP_TOP_BOTTOM)
+    elif orientation == 5:
+      image = image.transpose(Image.FLIP_TOP_BOTTOM)
+      image = image.rotate(270)
+    elif orientation == 6:
+      image = image.rotate(270)
+    elif orientation == 7:
+      image = image.transpose(Image.FLIP_LEFT_RIGHT)
+      image = image.rotate(270)
+    elif orientation == 8:
+      image = image.rotate(90)
+
+    return image
+
+  def _ProcessTransforms(self, image, transforms, correct_orientation):
     """Execute PIL operations based on transform values.
 
     Args:
       image: PIL.Image.Image instance, image to manipulate.
       trasnforms: list of ImagesTransformRequest.Transform objects.
-
+      correct_orientation: True to indicate that image orientation should be
+        corrected based on its EXIF.
     Returns:
       PIL.Image.Image with transforms performed on it.
 
@@ -516,7 +569,46 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     if len(transforms) > images.MAX_TRANSFORMS_PER_REQUEST:
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+
+    orientation = 1
+    if correct_orientation:
+
+
+      if hasattr(image, "_getexif"):
+
+
+
+
+
+        from PIL import TiffImagePlugin
+        exif = image._getexif()
+        if not exif or _EXIF_ORIENTATION_TAG not in exif:
+          correct_orientation = False
+        else:
+          orientation = exif[_EXIF_ORIENTATION_TAG]
+
+      width, height = new_image.size
+      if height > width:
+        orientation = 1
+
     for transform in transforms:
+
+
+
+
+
+
+
+      if (correct_orientation and
+          not (transform.has_crop_left_x() or
+               transform.has_crop_top_y() or
+               transform.has_crop_right_x() or
+               transform.has_crop_bottom_y()) and
+          not transform.has_horizontal_flip() and
+          not transform.has_vertical_flip()):
+        new_image = self._CorrectOrientation(new_image, orientation)
+        correct_orientation = False
+
       if transform.has_width() or transform.has_height():
 
         new_image = self._Resize(new_image, transform)
@@ -547,5 +639,14 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
                      "application is deployed.")
       else:
         logging.warn("Found no transformations found to perform.")
+
+      if correct_orientation:
+
+
+        new_image = self._CorrectOrientation(new_image, orientation)
+        correct_orientation = False
+
+
+
 
     return new_image

@@ -40,15 +40,29 @@ Classes defined in this module:
 import struct
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import datastore_types
 from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+BlobKey = datastore_types.BlobKey
+
 
 JPEG = images_service_pb.OutputSettings.JPEG
 PNG = images_service_pb.OutputSettings.PNG
+WEBP = images_service_pb.OutputSettings.WEBP
+BMP = -1
+GIF = -2
+ICO = -3
+TIFF = -4
 
-OUTPUT_ENCODING_TYPES = frozenset([JPEG, PNG])
+OUTPUT_ENCODING_TYPES = frozenset([JPEG, PNG, WEBP])
+
+UNCHANGED_ORIENTATION = images_service_pb.InputSettings.UNCHANGED_ORIENTATION
+CORRECT_ORIENTATION = images_service_pb.InputSettings.CORRECT_ORIENTATION
+
+ORIENTATION_CORRECTION_TYPE = frozenset([UNCHANGED_ORIENTATION,
+                                         CORRECT_ORIENTATION])
 
 TOP_LEFT = images_service_pb.CompositeImageOptions.TOP_LEFT
 TOP_CENTER = images_service_pb.CompositeImageOptions.TOP
@@ -118,7 +132,8 @@ class Image(object):
 
     Args:
       image_data: str, image data in string form.
-      blob_key: str, image data as a blobstore blob key.
+      blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
+        blob containing the image data.
 
     Raises:
       NotImageError if the given data is empty.
@@ -129,10 +144,12 @@ class Image(object):
       raise NotImageError("Can only take one image or blob key.")
 
     self._image_data = image_data
-    self._blob_key = blob_key
+    self._blob_key = _extract_blob_key(blob_key)
     self._transforms = []
     self._width = None
     self._height = None
+    self._format = None
+    self._correct_orientation = UNCHANGED_ORIENTATION
 
   def _check_transform_limits(self):
     """Ensure some simple limits on the number of transforms allowed.
@@ -157,17 +174,28 @@ class Image(object):
     size = len(self._image_data)
     if size >= 6 and self._image_data.startswith("GIF"):
       self._update_gif_dimensions()
+      self._format = GIF;
     elif size >= 8 and self._image_data.startswith("\x89PNG\x0D\x0A\x1A\x0A"):
       self._update_png_dimensions()
+      self._format = PNG
     elif size >= 2 and self._image_data.startswith("\xff\xD8"):
       self._update_jpeg_dimensions()
+      self._format = JPEG
     elif (size >= 8 and (self._image_data.startswith("II\x2a\x00") or
                          self._image_data.startswith("MM\x00\x2a"))):
       self._update_tiff_dimensions()
+      self._format = TIFF
     elif size >= 2 and self._image_data.startswith("BM"):
       self._update_bmp_dimensions()
+      self._format = BMP
     elif size >= 4 and self._image_data.startswith("\x00\x00\x01\x00"):
       self._update_ico_dimensions()
+      self._format = ICO
+    elif (size >= 16 and (self._image_data.startswith("RIFF", 0, 4) and
+                          self._image_data.startswith("WEBP", 8, 12) and
+                          self._image_data.startswith("VP8 ", 12, 16))):
+      self._update_webp_dimensions()
+      self._format = WEBP
     else:
       raise NotImageError("Unrecognized image format")
 
@@ -327,6 +355,71 @@ class Image(object):
         self._height = 256
     else:
       raise BadImageError("Corrupt ICO format")
+
+  def set_correct_orientation(self, correct_orientation):
+    """Set flag to correct image orientation based on image metadata.
+
+    EXIF metadata within the image may contain a parameter indicating its proper
+    orientation. This value can equal 1 through 8, inclusive. "1" means that the
+    image is in its "normal" orientation, i.e., it should be viewed as it is
+    stored. Normally, this "orientation" value has no effect on the behavior of
+    the transformations. However, calling this function with the value
+    CORRECT_ORIENTATION any orientation specified in the EXIF metadata will be
+    corrected during the first transformation.
+
+    NOTE: If CORRECT_ORIENTATION is specified but the image is already in
+    portrait orientation, i.e., "taller" than it is "wide," rotations of 90 or
+    270 degrees are ignored since this appears to indicate a correction which
+    has already been done by the camera or an image processing tool beforehand.
+
+    Regardless whether the correction was requested or not, the orientation
+    value in the transformed image is always cleared to indicate that no
+    additional corrections of the returned image's orientation is necessary.
+
+    Args:
+      correct_orientation: a value from ORIENTATION_CORRECTION_TYPE.
+
+    Raises:
+      BadRequestError if correct_orientation value is invalid.
+    """
+    if correct_orientation not in ORIENTATION_CORRECTION_TYPE:
+      raise BadRequestError("Orientation correction must be in %s" %
+                            ORIENTATION_CORRECTION_TYPE)
+    self._correct_orientation = correct_orientation
+
+
+  def _update_webp_dimensions(self):
+    """Updates the width and height fields of the webp image."""
+
+    size = len(self._image_data)
+
+
+
+    if size < 30:
+      raise BadImageError("Corrupt WEBP format")
+
+    bits = (ord(self._image_data[20]) | (ord(self._image_data[21])<<8) |
+            (ord(self._image_data[22]) << 16))
+
+    key_frame = ((bits & 1) == 0)
+
+    if not key_frame:
+      raise BadImageError("Corrupt WEBP format")
+
+    profile = (bits >> 1) & 7
+    show_frame = (bits >> 4) & 1
+
+    if profile > 3:
+      raise BadImageError("Corrupt WEBP format")
+
+    if show_frame == 0:
+      raise BadImageError("Corrupt WEBP format")
+
+    self._width, self._height = struct.unpack("<HH", self._image_data[26:30])
+
+    if self._height is None or self._width is None:
+      raise BadImageError("Corrupt WEBP format")
+
 
   def resize(self, width=0, height=0):
     """Resize the image maintaining the aspect ratio.
@@ -513,7 +606,7 @@ class Image(object):
     Args:
       output_encoding: A value from OUTPUT_ENCODING_TYPES.
       quality: A value between 1 and 100 to specify the quality of the
-        encoding.  This value is only used for JPEG quality control.
+        encoding.  This value is only used for JPEG & WEBP quality control.
 
     Returns:
       str, image data after the transformations have been performed on it.
@@ -535,14 +628,13 @@ class Image(object):
     if not self._transforms:
       raise BadRequestError("Must specify at least one transformation.")
 
-    if quality is not None:
-        if not isinstance(quality, (int, long)):
-          raise TypeError("Quality must be an integer.")
-        if quality > 100 or quality < 1:
-          raise BadRequestError("Quality must be between 1 and 100.")
+    self.CheckValidIntParameter(quality, 1, 100, "quality")
 
     request = images_service_pb.ImagesTransformRequest()
     response = images_service_pb.ImagesTransformResponse()
+
+    request.mutable_input().set_correct_exif_orientation(
+        self._correct_orientation)
 
     self._set_imagedata(request.mutable_image())
 
@@ -551,7 +643,7 @@ class Image(object):
 
     request.mutable_output().set_mime_type(output_encoding)
 
-    if ((output_encoding == JPEG) and
+    if ((output_encoding == JPEG or output_encoding == WEBP) and
         (quality is not None)):
       request.mutable_output().set_quality(quality)
 
@@ -588,6 +680,7 @@ class Image(object):
 
     self._width = None
     self._height = None
+    self._format = None
     return self._image_data
 
   @property
@@ -603,6 +696,13 @@ class Image(object):
     if self._height is None:
       self._update_dimensions()
     return self._height
+
+  @property
+  def format(self):
+    """Gets the format of the image."""
+    if self._format is None:
+      self._update_dimensions()
+    return self._format
 
   def histogram(self):
     """Calculates the histogram of the image.
@@ -649,8 +749,21 @@ class Image(object):
             histogram.green_list(),
             histogram.blue_list()]
 
+  @staticmethod
+  def CheckValidIntParameter(parameter, min_value, max_value, name):
+    """Checks that a parameters is an integer within the specified range."""
 
-def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None):
+    if parameter is not None:
+      if not isinstance(parameter, (int, long)):
+        raise TypeError("%s must be an integer." % name)
+      if parameter > max_value or parameter < min_value:
+        raise BadRequestError("%s must be between %s and %s."
+                              % name, str(min_value), str(max_value))
+
+
+def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
+           correct_orientation=UNCHANGED_ORIENTATION):
+
   """Resize a given image file maintaining the aspect ratio.
 
   If both width and height are specified, the more restricting of the two
@@ -664,6 +777,8 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None):
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     TypeError when width or height not either 'int' or 'long' types.
@@ -674,11 +789,13 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None):
   """
   image = Image(image_data)
   image.resize(width, height)
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
 
-def rotate(image_data, degrees, output_encoding=PNG, quality=None):
+def rotate(image_data, degrees, output_encoding=PNG, quality=None,
+           correct_orientation=UNCHANGED_ORIENTATION):
   """Rotate a given image a given number of degrees clockwise.
 
   Args:
@@ -687,6 +804,8 @@ def rotate(image_data, degrees, output_encoding=PNG, quality=None):
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     TypeError when degrees is not either 'int' or 'long' types.
@@ -696,11 +815,13 @@ def rotate(image_data, degrees, output_encoding=PNG, quality=None):
   """
   image = Image(image_data)
   image.rotate(degrees)
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
 
-def horizontal_flip(image_data, output_encoding=PNG, quality=None):
+def horizontal_flip(image_data, output_encoding=PNG, quality=None,
+                    correct_orientation=UNCHANGED_ORIENTATION):
   """Flip the image horizontally.
 
   Args:
@@ -708,6 +829,8 @@ def horizontal_flip(image_data, output_encoding=PNG, quality=None):
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     Error when something went wrong with the call.  See Image.ExecuteTransforms
@@ -715,11 +838,13 @@ def horizontal_flip(image_data, output_encoding=PNG, quality=None):
   """
   image = Image(image_data)
   image.horizontal_flip()
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
 
-def vertical_flip(image_data, output_encoding=PNG, quality=None):
+def vertical_flip(image_data, output_encoding=PNG, quality=None,
+                  correct_orientation=UNCHANGED_ORIENTATION):
   """Flip the image vertically.
 
   Args:
@@ -727,6 +852,8 @@ def vertical_flip(image_data, output_encoding=PNG, quality=None):
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     Error when something went wrong with the call.  See Image.ExecuteTransforms
@@ -734,12 +861,13 @@ def vertical_flip(image_data, output_encoding=PNG, quality=None):
   """
   image = Image(image_data)
   image.vertical_flip()
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
 
 def crop(image_data, left_x, top_y, right_x, bottom_y, output_encoding=PNG,
-         quality=None):
+         quality=None, correct_orientation=UNCHANGED_ORIENTATION):
   """Crop the given image.
 
   The four arguments are the scaling numbers to describe the bounding box
@@ -756,6 +884,8 @@ def crop(image_data, left_x, top_y, right_x, bottom_y, output_encoding=PNG,
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     TypeError if the args are not of type 'float'.
@@ -765,11 +895,13 @@ def crop(image_data, left_x, top_y, right_x, bottom_y, output_encoding=PNG,
   """
   image = Image(image_data)
   image.crop(left_x, top_y, right_x, bottom_y)
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
 
-def im_feeling_lucky(image_data, output_encoding=PNG, quality=None):
+def im_feeling_lucky(image_data, output_encoding=PNG, quality=None,
+                     correct_orientation=UNCHANGED_ORIENTATION):
   """Automatically adjust image levels.
 
   This is similar to the "I'm Feeling Lucky" button in Picasa.
@@ -779,6 +911,8 @@ def im_feeling_lucky(image_data, output_encoding=PNG, quality=None):
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
       encoding.  This value is only used for JPEG quality control.
+    correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
+      orientation correction should be performed during the transformation.
 
   Raises:
     Error when something went wrong with the call.  See Image.ExecuteTransforms
@@ -786,6 +920,7 @@ def im_feeling_lucky(image_data, output_encoding=PNG, quality=None):
   """
   image = Image(image_data)
   image.im_feeling_lucky()
+  image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
 
@@ -895,7 +1030,7 @@ def composite(inputs, width, height, color=0, output_encoding=PNG, quality=None)
   request.mutable_canvas().set_height(height)
   request.mutable_canvas().set_color(color)
 
-  if ((output_encoding == JPEG) and
+  if ((output_encoding == JPEG or output_encoding == WEBP) and
         (quality is not None)):
       request.mutable_canvas().mutable_output().set_quality(quality)
 
@@ -985,6 +1120,8 @@ def get_serving_url(blob_key,
   IMG_SERVING_SIZES_LIMIT.
 
   Args:
+    blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
+      blob to get URL of.
     size: int, size of resulting images
     crop: bool, True requests a cropped image, False a resized one.
 
@@ -1008,7 +1145,7 @@ def get_serving_url(blob_key,
   request = images_service_pb.ImagesGetUrlBaseRequest()
   response = images_service_pb.ImagesGetUrlBaseResponse()
 
-  request.set_blob_key(blob_key)
+  request.set_blob_key(_extract_blob_key(blob_key))
 
   try:
     apiproxy_stub_map.MakeSyncCall("images",
@@ -1038,3 +1175,23 @@ def get_serving_url(blob_key,
     url += "-c"
 
   return url
+
+
+def _extract_blob_key(blob):
+  """Extract a unicode blob key from a str, BlobKey, or BlobInfo.
+
+  Args:
+    blob: The str, unicode, BlobKey, or BlobInfo that contains the blob key.
+  """
+  if isinstance(blob, str):
+    return blob.decode('utf-8')
+  elif isinstance(blob, BlobKey):
+    return str(blob).decode('utf-8')
+  elif blob.__class__.__name__ == 'BlobInfo':
+
+
+
+    return str(blob.key()).decode('utf-8')
+
+
+  return blob

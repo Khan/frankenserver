@@ -97,7 +97,7 @@ class AppLogsHandler(logging.StreamHandler):
 
 
       self.flush()
-      logservice.AutoFlush(lines_emitted=1)
+      logservice.auto_flush(lines_emitted=1)
     except (KeyboardInterrupt, SystemExit):
       raise
     except:
@@ -108,7 +108,9 @@ class AppLogsHandler(logging.StreamHandler):
 
 
 
-    message = self.format(record).replace("\n", NEWLINE_REPLACEMENT)
+    message = self.format(record).replace("\r\n", NEWLINE_REPLACEMENT)
+    message = message.replace("\r", NEWLINE_REPLACEMENT)
+    message = message.replace("\n", NEWLINE_REPLACEMENT)
 
     return "LOG %d %d %s\n" % (self._AppLogsLevel(record.levelno),
                                long(record.created * 1000 * 1000),
