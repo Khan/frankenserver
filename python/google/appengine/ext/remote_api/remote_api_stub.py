@@ -34,7 +34,8 @@ import getpass
 def auth_func():
   return (raw_input('Username:'), getpass.getpass('Password:'))
 
-remote_api_stub.ConfigureRemoteApi('my-app', '/remote_api', auth_func)
+remote_api_stub.ConfigureRemoteApi(None, '/_ah/remote_api', auth_func,
+                                   'my-app.appspot.com')
 
 # Now you can access the remote datastore just as if your code was running on
 # App Engine!
@@ -488,6 +489,7 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
   if not remote_token:
     random.seed()
     remote_token = str(random.random())[2:]
+  remote_token = str(remote_token)
   urlargs = {'rtok': remote_token}
   response = server.Send(path, payload=None, **urlargs)
   if not response.startswith('{'):
@@ -496,7 +498,7 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
   app_info = yaml.load(response)
   if not app_info or 'rtok' not in app_info or 'app_id' not in app_info:
     raise ConfigurationError('Error parsing app_id lookup response')
-  if app_info['rtok'] != remote_token:
+  if str(app_info['rtok']) != remote_token:
     raise ConfigurationError('Token validation failed during app_id lookup. '
                              '(sent %s, got %s)' % (repr(remote_token),
                                                     repr(app_info['rtok'])))
@@ -595,8 +597,13 @@ def ConfigureRemoteApi(app_id,
   is None and a servername is provided, this function will send a request
   to the server to retrieve the app_id.
 
+  Note that if the app_id is specified, the internal appid must be used;
+  this may include a partition and a domain. It is often easier to let
+  remote_api_stub retreive the app_id automatically.
+
+
   Args:
-    app_id: The app_id of your app, as declared in app.yaml.
+    app_id: The app_id of your app, as declared in app.yaml, or None.
     path: The path to the remote_api handler for your app
       (for example, '/_ah/remote_api').
     auth_func: A function that takes no arguments and returns a

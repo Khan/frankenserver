@@ -220,8 +220,8 @@ def ResolveNamespace(namespace):
     namespace: The namespace argument value to be validated.
 
   Returns:
-    The value of namespace, or the substituted default.
-    Always a non-empty string or None.
+    The value of namespace, or the substituted default. The empty string is used
+    to denote the empty namespace.
 
   Raises:
     BadArgumentError if the value is not a string.
@@ -1959,7 +1959,7 @@ def PropertyValueToKeyValue(prop_value):
   """
   if not isinstance(prop_value, entity_pb.PropertyValue):
     raise datastore_errors.BadArgumentError(
-        "prop_value arg expected to be entity_pb.PropertyValue (%r)" %
+        'prop_value arg expected to be entity_pb.PropertyValue (%r)' %
         (prop_value,))
 
 
@@ -1987,7 +1987,8 @@ def PropertyValueToKeyValue(prop_value):
       result.append((entity_pb.PropertyValue.kUserValueauth_domain,
                      uservalue.auth_domain()))
     if uservalue.has_nickname():
-      result.append((entity_pb.PropertyValue.kUserValue, uservalue.nickname()))
+      result.append((entity_pb.PropertyValue.kUserValuenickname,
+                     uservalue.nickname()))
     if uservalue.has_gaiaid():
       result.append((entity_pb.PropertyValue.kUserValuegaiaid,
                      uservalue.gaiaid()))
@@ -2003,3 +2004,24 @@ def PropertyValueToKeyValue(prop_value):
     result.sort()
     return (entity_pb.PropertyValue.kUserValueGroup, tuple(result))
   return ()
+
+
+def GetPropertyValueTag(value_pb):
+  """Returns the tag constant associated with the given entity_pb.PropertyValue.
+  """
+  if value_pb.has_booleanvalue():
+    return entity_pb.PropertyValue.kbooleanValue
+  elif value_pb.has_doublevalue():
+    return entity_pb.PropertyValue.kdoubleValue
+  elif value_pb.has_int64value():
+    return entity_pb.PropertyValue.kint64Value
+  elif value_pb.has_pointvalue():
+    return entity_pb.PropertyValue.kPointValueGroup
+  elif value_pb.has_referencevalue():
+    return entity_pb.PropertyValue.kReferenceValueGroup
+  elif value_pb.has_stringvalue():
+    return entity_pb.PropertyValue.kstringValue
+  elif value_pb.has_uservalue():
+    return entity_pb.PropertyValue.kUserValueGroup
+  else:
+    return 0

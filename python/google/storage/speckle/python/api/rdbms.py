@@ -18,7 +18,7 @@
 
 
 
-"""Python DB-API (PEP 249) interface to Speckle.
+"""Python DB-API (PEP 249) interface to SQL Service.
 
 http://www.python.org/dev/peps/pep-0249/
 """
@@ -153,6 +153,8 @@ def _ConvertFormatToQmark(statement, args):
 
   Args:
     statement: A string, a SQL statement.
+    args: A sequence of arguments matching the statement's bind variables,
+        if any.
 
   Returns:
     The converted string.
@@ -191,6 +193,27 @@ class Cursor(object):
     self._CheckOpen()
     self._open = False
 
+  def _GetJdbcTypeForArg(self, arg):
+    """Get the JDBC type which corresponds to the given Python object type."""
+    arg_jdbc_type = _PYTHON_TYPE_TO_JDBC_TYPE.get(type(arg))
+    if arg_jdbc_type:
+      return arg_jdbc_type
+
+
+    for python_t, jdbc_t in _PYTHON_TYPE_TO_JDBC_TYPE.items():
+      if isinstance(arg, python_t):
+        return jdbc_t
+
+
+
+    try:
+      return self._GetJdbcTypeForArg(arg[0])
+    except TypeError:
+
+
+      raise TypeError('unknown type')
+
+
   def _EncodeVariable(self, arg):
     """Converts a variable to a type and value.
 
@@ -203,18 +226,9 @@ class Cursor(object):
     Raises:
       TypeError: The argument is not a recognized type.
     """
-    jdbc_type = _PYTHON_TYPE_TO_JDBC_TYPE.get(type(arg))
-    if jdbc_type is None:
-
-
-      try:
-        jdbc_type = _PYTHON_TYPE_TO_JDBC_TYPE[type(arg[0])]
-      except (TypeError, KeyError):
-
-
-        raise TypeError('unknown type')
-    value = self._conn.conversions[type(arg)](arg, self._conn.conversions)
-    return jdbc_type, value
+    arg_jdbc_type = self._GetJdbcTypeForArg(arg)
+    value = self._conn.encoders[type(arg)](arg, self._conn.encoders)
+    return arg_jdbc_type, value
 
   def _DecodeVariable(self, datatype, value):
     """Converts a type and value to a variable.
@@ -231,8 +245,7 @@ class Cursor(object):
       ValueError: The value could not be parsed.
     """
 
-
-    converter = self._conn.conversions.get(datatype)
+    converter = self._conn.converter.get(datatype)
     if converter is None:
       raise InterfaceError('unknown JDBC type %d' % datatype)
     return converter(value)
@@ -280,7 +293,7 @@ class Cursor(object):
       self._description = []
       for column in result.rows.columns:
         self._description.append(
-            (column.name, column.type, column.display_size, None,
+            (column.label, column.type, column.display_size, None,
              column.precision, column.scale, column.nullable))
     else:
       self._description = None
@@ -396,17 +409,19 @@ class Cursor(object):
     if not self._open:
       raise InternalError('cursor has been closed')
 
+  def __iter__(self):
+    return iter(self.fetchone, None)
+
 
 class Connection(object):
 
   def __init__(self, dsn, instance, database=None, user='root', password=None,
                deadline_seconds=30.0, conv=None):
-    """Creates a new Speckle connection.
+    """Creates a new SQL Service connection.
 
     Args:
-      dsn: A string, the Speckle BNS path or host:port.
-        TODO(mshields): Support something else for App Engine.
-      instance: A string, the Speckle instance name, often a username.
+      dsn: A string, the SQL Service job path or host:port.
+      instance: A string, the SQL Service instance name, often a username.
       database: A string, semantics defined by the backend.
       user: A string, database user name.
       password: A string, database password.
@@ -415,8 +430,11 @@ class Connection(object):
 
     Raises:
       OperationalError: Transport failure.
-      DatabaseError: Error from Speckle server.
+      DatabaseError: Error from SQL Service server.
     """
+
+
+
     self._dsn = dsn
     self._instance = instance
     self._database = database
@@ -424,11 +442,49 @@ class Connection(object):
     self._password = password
     self._deadline_seconds = deadline_seconds
     self._connection_id = None
-    self.conversions = conv or converters.conversions
+    self._idempotent_request_id = 0
+    if not conv:
+      conv = converters.conversions
+    self.converter = {}
+    self.encoders = {}
+    for key, value in conv.items():
+      if isinstance(key, int):
+        self.converter[key] = value
+      else:
+        self.encoders[key] = value
+
     self.OpenConnection()
 
   def OpenConnection(self):
-    raise InternalError('No transport defined. Try using rdbms_[transport]')
+    """Opens a connection to SQL Service."""
+    request = sql_pb2.OpenConnectionRequest()
+    prop = request.property.add()
+    prop.key = 'autoCommit'
+    prop.value = 'false'
+    if self._user:
+      prop = request.property.add()
+      prop.key = 'user'
+      prop.value = self._user
+    if self._password:
+      prop = request.property.add()
+      prop.key = 'password'
+      prop.value = self._password
+    if self._database:
+      prop = request.property.add()
+      prop.key = 'database'
+      prop.value = self._database
+
+    self.SetupClient()
+    response = self.MakeRequest('OpenConnection', request)
+    self._connection_id = response.connection_id
+
+  def SetupClient(self):
+    """Setup a transport client to communicate with rdbms.
+
+    This is a template method to provide subclasses with a hook to perform any
+    necessary client initialization while opening a connection to rdbms.
+    """
+    pass
 
   def close(self):
     """Makes the connection and all its cursors unusable.
@@ -493,6 +549,36 @@ class Connection(object):
     return Cursor(self)
 
   def MakeRequest(self, stub_method, request):
+    """Makes an ApiProxy request, and possibly raises an appropriate exception.
+
+    Args:
+      stub_method: A string, the name of the method to call.
+      request: A protobuf; 'instance' and 'connection_id' will be set
+        when available.
+
+    Returns:
+      A protobuf.
+
+    Raises:
+      DatabaseError: Error from SQL Service server.
+    """
+    if self._instance:
+      request.instance = self._instance
+    if self._connection_id is not None:
+      request.connection_id = self._connection_id
+    if stub_method in ('Exec', 'ExecOp', 'GetMetadata'):
+      self._idempotent_request_id += 1
+      request.request_id = self._idempotent_request_id
+
+    response = self.MakeRequestImpl(stub_method, request)
+
+    if (hasattr(response, 'sql_exception') and
+        response.HasField('sql_exception')):
+      raise DatabaseError('%d: %s' % (response.sql_exception.code,
+                                      response.sql_exception.message))
+    return response
+
+  def MakeRequestImpl(self, stub_method, request):
     raise InternalError('No transport defined. Try using rdbms_[transport]')
 
   def get_server_info(self):

@@ -54,6 +54,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
   INVALID_QUEUE_MODE =   21
   ACL_LOOKUP_ERROR =   22
   TRANSACTIONAL_REQUEST_TOO_LARGE =   23
+  INCORRECT_CREATOR_NAME =   24
   DATASTORE_ERROR = 10000
 
   _ErrorCode_NAMES = {
@@ -81,6 +82,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
     21: "INVALID_QUEUE_MODE",
     22: "ACL_LOOKUP_ERROR",
     23: "TRANSACTIONAL_REQUEST_TOO_LARGE",
+    24: "INCORRECT_CREATOR_NAME",
     10000: "DATASTORE_ERROR",
   }
 
@@ -3267,6 +3269,8 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
   mode_ = 0
   has_acl_ = 0
   acl_ = None
+  has_creator_name_ = 0
+  creator_name_ = "apphosting"
 
   def __init__(self, contents=None):
     self.header_override_ = []
@@ -3418,6 +3422,19 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
 
   def clear_header_override(self):
     self.header_override_ = []
+  def creator_name(self): return self.creator_name_
+
+  def set_creator_name(self, x):
+    self.has_creator_name_ = 1
+    self.creator_name_ = x
+
+  def clear_creator_name(self):
+    if self.has_creator_name_:
+      self.has_creator_name_ = 0
+      self.creator_name_ = "apphosting"
+
+  def has_creator_name(self): return self.has_creator_name_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3431,6 +3448,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if (x.has_mode()): self.set_mode(x.mode())
     if (x.has_acl()): self.mutable_acl().MergeFrom(x.acl())
     for i in xrange(x.header_override_size()): self.add_header_override().CopyFrom(x.header_override(i))
+    if (x.has_creator_name()): self.set_creator_name(x.creator_name())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3455,6 +3473,8 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if len(self.header_override_) != len(x.header_override_): return 0
     for e1, e2 in zip(self.header_override_, x.header_override_):
       if e1 != e2: return 0
+    if self.has_creator_name_ != x.has_creator_name_: return 0
+    if self.has_creator_name_ and self.creator_name_ != x.creator_name_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3491,6 +3511,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSize())
     n += 1 * len(self.header_override_)
     for i in xrange(len(self.header_override_)): n += self.lengthString(self.header_override_[i].ByteSize())
+    if (self.has_creator_name_): n += 1 + self.lengthString(len(self.creator_name_))
     return n + 21
 
   def ByteSizePartial(self):
@@ -3511,6 +3532,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSizePartial())
     n += 1 * len(self.header_override_)
     for i in xrange(len(self.header_override_)): n += self.lengthString(self.header_override_[i].ByteSizePartial())
+    if (self.has_creator_name_): n += 1 + self.lengthString(len(self.creator_name_))
     return n
 
   def Clear(self):
@@ -3524,6 +3546,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
     self.clear_mode()
     self.clear_acl()
     self.clear_header_override()
+    self.clear_creator_name()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -3555,6 +3578,9 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(90)
       out.putVarInt32(self.header_override_[i].ByteSize())
       self.header_override_[i].OutputUnchecked(out)
+    if (self.has_creator_name_):
+      out.putVarInt32(98)
+      out.putPrefixedString(self.creator_name_)
 
   def OutputPartial(self, out):
     if (self.has_queue_name_):
@@ -3590,6 +3616,9 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(90)
       out.putVarInt32(self.header_override_[i].ByteSizePartial())
       self.header_override_[i].OutputPartial(out)
+    if (self.has_creator_name_):
+      out.putVarInt32(98)
+      out.putPrefixedString(self.creator_name_)
 
   def TryMerge(self, d):
     while 1:
@@ -3634,6 +3663,9 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_header_override().TryMerge(tmp)
         continue
+      if tt == 98:
+        self.set_creator_name(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3665,6 +3697,7 @@ class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_creator_name_: res+=prefix+("creator_name: %s\n" % self.DebugFormatString(self.creator_name_))
     return res
 
 class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
@@ -3773,6 +3806,7 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
   kQueuemode = 9
   kQueueacl = 10
   kQueueheader_override = 11
+  kQueuecreator_name = 12
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3787,7 +3821,8 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
     9: "mode",
     10: "acl",
     11: "header_override",
-  }, 11)
+    12: "creator_name",
+  }, 12)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3802,7 +3837,8 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
     9: ProtocolBuffer.Encoder.NUMERIC,
     10: ProtocolBuffer.Encoder.STRING,
     11: ProtocolBuffer.Encoder.STRING,
-  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
+    12: ProtocolBuffer.Encoder.STRING,
+  }, 12, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

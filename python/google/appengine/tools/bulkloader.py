@@ -1248,7 +1248,8 @@ class RequestManager(object):
                email,
                passin,
                dry_run=False,
-               server=None):
+               server=None,
+               throttle_class=None):
     """Initialize a RequestManager object.
 
     Args:
@@ -1262,6 +1263,8 @@ class RequestManager(object):
       email: If not none, the username to log in with.
       passin: If True, the password will be read from standard in.
       server: An existing AbstractRpcServer to reuse.
+      throttle_class: A class to use instead of the default
+        ThrottledHttpRpcServer.
     """
     self.app_id = app_id
     self.host_port = host_port
@@ -1289,7 +1292,8 @@ class RequestManager(object):
                  'servername = %s' % (url_path, host_port))
 
     throttled_rpc_server_factory = (
-        remote_api_throttle.ThrottledHttpRpcServerFactory(self.throttle))
+        remote_api_throttle.ThrottledHttpRpcServerFactory(
+            self.throttle, throttle_class=throttle_class))
 
     if server:
       remote_api_stub.ConfigureRemoteApiFromServer(server, url_path, app_id)
@@ -3374,6 +3378,7 @@ class BulkTransporterApp(object):
     self.email = arg_dict['email']
     self.passin = arg_dict['passin']
     self.dry_run = arg_dict['dry_run']
+    self.throttle_class = arg_dict['throttle_class']
     self.throttle = throttle
     self.progress_db = progress_db
     self.progresstrackerthread_factory = progresstrackerthread_factory
@@ -3418,7 +3423,8 @@ class BulkTransporterApp(object):
                                                         self.email,
                                                         self.passin,
                                                         self.dry_run,
-                                                        self.server)
+                                                        self.server,
+                                                        self.throttle_class)
     try:
 
 
@@ -3737,6 +3743,7 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
   arg_dict['passin'] = False
   arg_dict['restore'] = False
   arg_dict['result_db_filename'] = None
+  arg_dict['throttle_class'] = None
 
   def ExpandFilename(filename):
     """Expand shell variables and ~usernames in filename."""
@@ -4162,8 +4169,10 @@ def _PerformBulkload(arg_dict,
     root_dir = os.path.dirname(os.path.abspath(__file__))
     if os.path.basename(root_dir) == 'tools':
       root_dir = os.path.dirname(os.path.dirname(os.path.dirname(root_dir)))
-    LoadYamlConfig(os.path.join(root_dir, 'google', 'appengine', 'ext',
-                                'bulkload', 'bulkloader_wizard.yaml'))
+
+    LoadYamlConfig(os.path.join(
+        root_dir, os.path.normpath(
+            'google/appengine/ext/bulkload/bulkloader_wizard.yaml')))
   elif (config_file and
         (config_file.endswith('.yaml') or config_file.endswith('.yml'))):
     LoadYamlConfig(config_file)

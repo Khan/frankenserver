@@ -2360,6 +2360,37 @@ def IsInTransaction():
   return isinstance(_GetConnection(), datastore_rpc.TransactionalConnection)
 
 
+datastore_rpc._positional(1)
+def Transactional(func=None, require_new=False,
+                  retries=DEFAULT_TRANSACTION_RETRIES):
+  """A decorator that makes sure a function is run in a transaction.
+
+  WARNING: Reading from the datastore while in a transaction will not see any
+  changes made in the same transaction. If the function being decorated relies
+  on seeing all changes made in the calling scoope, set require_new=True.
+
+  Args:
+    require_new: A bool that indicates the function requires its own transaction
+      and cannot share a transaction with the calling scope (nested transactions
+      are not currently supported by the datastore).
+    retries: An integer that indicates how many times the function should be
+      tried not including the inital attempt. This value is ignored if using
+      a transaction from the calling scope.
+
+  Returns:
+    A wrapper for the given function that creates a new transaction if needed.
+  """
+  if func is None:
+    return lambda function: Transactional(func=function,
+                                          require_new=require_new,
+                                          retries=retries)
+  def wrapper(*args, **kwds):
+    if not require_new and IsInTransaction():
+      return func(*args, **kwds)
+    return RunInTransactionCustomRetries(retries, func, *args, **kwds)
+  return wrapper
+
+
 def _GetCompleteKeyOrError(arg):
   """Expects an Entity or a Key, and returns the corresponding Key. Raises
   BadArgumentError or BadKeyError if arg is a different type or is incomplete.

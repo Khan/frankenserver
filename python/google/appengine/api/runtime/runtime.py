@@ -39,7 +39,6 @@ def cpu_usage():
     - total(): total mcycles consumed by this instance
     - rate1m(): average mcycles consumed per second over the last minute
     - rate10m(): average mcycles consumed per second over the last ten minutes
-    - rate1h(): average mcycles consumed per second over the last hour
 
   Functions for converting from mcycles to cpu-seconds are located in the quotas
   API.
@@ -55,7 +54,6 @@ def memory_usage():
     - current(): memory currently used by this instance
     - average1m(): average memory use, over the last minute
     - average10m(): average memory use, over the last ten minutes
-    - average1h(): average memory use, over the last hour
   """
   return _GetSystemStats().memory()
 

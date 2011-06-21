@@ -44,6 +44,8 @@ Options:
                              (Default false)
   --use_sqlite               Use the new, SQLite based datastore stub.
                              (Default false)
+  --high_replication         Use the high replication datastore consistency
+                             model. (Default false).
   --history_path=PATH        Path to use for storing Datastore history.
                              (Default %(history_path)s)
   --require_indexes          Disallows queries that require composite indexes
@@ -166,6 +168,7 @@ ARG_PROSPECTIVE_SEARCH_PATH = 'prospective_search_path'
 ARG_CLEAR_PROSPECTIVE_SEARCH = 'clear_prospective_search'
 ARG_SKIP_SDK_UPDATE_CHECK = 'skip_sdk_update_check'
 ARG_USE_SQLITE = 'use_sqlite'
+ARG_HIGH_REPLICATION = 'high_replication'
 ARG_DEBUG_IMPORTS = 'debug_imports'
 ARG_ENABLE_SENDMAIL = 'enable_sendmail'
 ARG_SHOW_MAIL_BODY = 'show_mail_body'
@@ -223,6 +226,7 @@ DEFAULT_ARGS = {
                                  'dev_appserver.prospective_search'),
   ARG_SKIP_SDK_UPDATE_CHECK: False,
   ARG_USE_SQLITE: False,
+  ARG_HIGH_REPLICATION: False,
   ARG_HISTORY_PATH: os.path.join(tempfile.gettempdir(),
                                  'dev_appserver.datastore.history'),
   ARG_LOGIN_URL: '/_ah/login',
@@ -299,6 +303,7 @@ def ParseArguments(argv):
         'datastore_path=',
         'skip_sdk_update_check',
         'use_sqlite',
+        'high_replication',
         'debug',
         'debug_imports',
         'enable_sendmail',
@@ -368,6 +373,9 @@ def ParseArguments(argv):
 
     if option == '--use_sqlite':
       option_dict[ARG_USE_SQLITE] = True
+
+    if option == '--high_replication':
+      option_dict[ARG_HIGH_REPLICATION] = True
 
     if option == '--history_path':
       option_dict[ARG_HISTORY_PATH] = os.path.abspath(value)

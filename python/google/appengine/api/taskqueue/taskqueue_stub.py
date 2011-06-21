@@ -80,7 +80,11 @@ MAX_ETA = datetime.timedelta(days=30)
 
 
 
-MAX_TASK_SIZE = 10 * 1024
+MAX_PULL_TASK_SIZE_BYTES = 2 ** 20
+
+MAX_PUSH_TASK_SIZE_BYTES = 100 * (2 ** 10)
+
+MAX_TASK_SIZE = MAX_PUSH_TASK_SIZE_BYTES
 
 
 
@@ -298,7 +302,7 @@ class _Group(object):
         mode = QUEUE_MODE.PULL
         if entry.rate is not None:
           logging.warning(
-              'Refill rate must not be specified for pull-based queue, '
+              'Refill rate must not be specified for pull-based queue. '
               'Please check queue.yaml file.')
       else:
         mode = QUEUE_MODE.PUSH
@@ -427,10 +431,15 @@ class _Group(object):
       return queue_name_response
 
 
-    if request.has_crontimetable() and self.app_id is None:
+    if request.has_crontimetable() and self._app_id is None:
       return taskqueue_service_pb.TaskQueueServiceError.PERMISSION_DENIED
 
-    if request.ByteSize() > MAX_TASK_SIZE:
+    if request.mode() == QUEUE_MODE.PULL:
+      max_task_size_bytes = MAX_PULL_TASK_SIZE_BYTES
+    else:
+      max_task_size_bytes = MAX_PUSH_TASK_SIZE_BYTES
+
+    if request.ByteSize() > max_task_size_bytes:
       return taskqueue_service_pb.TaskQueueServiceError.TASK_TOO_LARGE
 
     return taskqueue_service_pb.TaskQueueServiceError.OK
@@ -1599,8 +1608,9 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
       task_name: the name of the task to delete.
     """
     if self._GetGroup().HasQueue(queue_name):
-      self._GetGroup().GetQueue(queue_name).Delete(task_name)
-      self._GetGroup().GetQueue(queue_name).task_name_archive.discard(task_name)
+      queue = self._GetGroup().GetQueue(queue_name)
+      queue.Delete(task_name)
+      queue.task_name_archive.discard(task_name)
 
   def FlushQueue(self, queue_name):
     """Removes all tasks from a queue, without leaving tombstones.

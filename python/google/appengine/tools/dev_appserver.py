@@ -109,6 +109,7 @@ from google.appengine.api import mail_stub
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api import yaml_errors
+from google.appengine.api.app_identity import app_identity_stub
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
 
@@ -123,6 +124,7 @@ from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.system import system_stub
 from google.appengine.api.xmpp import xmpp_service_stub
 from google.appengine.datastore import datastore_sqlite_stub
+from google.appengine.datastore import datastore_stub_util
 
 from google.appengine import dist
 
@@ -223,6 +225,12 @@ class AppConfigNotFoundError(Error):
 
 class TemplatesNotLoadedError(Error):
   """Templates for the debugging console were not loaded."""
+
+
+class CompileError(Error):
+  """Application could not be compiled."""
+  def __init__(self, text):
+    self.text = text
 
 
 
@@ -1943,6 +1951,7 @@ class HardenedModulesHook(object):
 
   def __init__(self,
                module_dict,
+               app_code_path,
                imp_module=imp,
                os_module=os,
                dummy_thread_module=dummy_thread,
@@ -1954,6 +1963,7 @@ class HardenedModulesHook(object):
     Args:
       module_dict: Module dictionary to use for managing system modules.
         Should be sys.modules.
+      app_code_path: The absolute path to the application code on disk.
       imp_module, os_module, dummy_thread_module, pickle_module: References to
         modules that exist in the dev_appserver that must be used by this class
         in order to function, even if these modules have been unloaded from
@@ -1969,6 +1979,7 @@ class HardenedModulesHook(object):
     self._socket.buffer = buffer
     self._select = select_module
     self._indent_level = 0
+    self._app_code_path = app_code_path
 
   @Trace
   def find_module(self, fullname, path=None):
@@ -2337,6 +2348,23 @@ class HardenedModulesHook(object):
                                          source_file,
                                          pathname,
                                          description)
+
+
+
+
+    if (getattr(module, '__path__', None) is not None and
+        search_path != self._app_code_path):
+      try:
+        app_search_path = os.path.join(self._app_code_path,
+                                       *(submodule_fullname.split('.')[:-1]))
+        source_file, pathname, description = self.FindModuleRestricted(submodule,
+                                    submodule_fullname,
+                                    [app_search_path])
+
+
+        module.__path__.append(pathname)
+      except ImportError, e:
+        pass
 
 
 
@@ -2906,6 +2934,20 @@ def ExecuteCGI(root_path,
   """
 
 
+
+
+
+
+
+
+
+  if handler_path == '_go_app':
+    from google.appengine.ext.go import execute_go_cgi
+    return execute_go_cgi(root_path, handler_path, cgi_path,
+        env, infile, outfile)
+
+
+
   old_module_dict = sys.modules.copy()
   old_builtin = __builtin__.__dict__.copy()
   old_argv = sys.argv
@@ -2935,8 +2977,11 @@ def ExecuteCGI(root_path,
     else:
       os.chdir(root_path)
 
+    sdk_dir = os.path.dirname(os.path.dirname(google.__file__))
+    dist.fix_paths(root_path, sdk_dir)
 
-    hook = HardenedModulesHook(sys.modules)
+
+    hook = HardenedModulesHook(sys.modules, root_path)
     sys.meta_path = [hook]
     if hasattr(sys, 'path_importer_cache'):
       sys.path_importer_cache.clear()
@@ -4027,6 +4072,21 @@ def CreateRequestHandler(root_path,
               "API versions cannot be switched dynamically: %r != %r",
               config.api_version, API_VERSION)
           sys.exit(1)
+
+        (exclude, service_match) = ReservedPathFilter(
+            config.inbound_services).ExcludePath(self.path)
+        if exclude:
+          logging.warning(
+              'Request to %s excluded because %s is not enabled '
+              'in inbound_services in app.yaml' % (self.path, service_match))
+          self.send_response(httplib.NOT_FOUND)
+          return
+
+        if config.runtime == 'go':
+
+          from google.appengine.ext import go
+          go.APP_CONFIG = config
+
         version = GetVersionObject()
         env_dict['SDK_VERSION'] = version['release']
         env_dict['CURRENT_VERSION_ID'] = config.version + ".1"
@@ -4099,6 +4159,12 @@ def CreateRequestHandler(root_path,
 
         logging.info('Server interrupted by user, terminating')
         self.server.stop_serving_forever()
+      except CompileError, e:
+        msg = 'Compile error:\n' + e.text + '\n'
+        logging.error(msg)
+        self.send_response(httplib.INTERNAL_SERVER_ERROR, 'Compile error')
+        self.wfile.write('Content-Type: text/plain; charset=utf-8\r\n\r\n')
+        self.wfile.write(msg)
       except:
         msg = 'Exception encountered handling request'
         logging.exception(msg)
@@ -4367,6 +4433,33 @@ def LoadAppConfig(root_path,
   raise AppConfigNotFoundError
 
 
+class ReservedPathFilter():
+  """Checks a path against a set of inbound_services."""
+
+  reserved_paths = {
+      '/_ah/channel/connect': 'channel_presence',
+      '/_ah/channel/disconnect': 'channel_presence'
+      }
+
+  def __init__(self, inbound_services):
+    self.inbound_services = inbound_services
+
+  def ExcludePath(self, path):
+    """Check to see if this is a service url and matches inbound_services."""
+    skip = False
+    for reserved_path in self.reserved_paths.keys():
+      if path.startswith(reserved_path):
+        if (not self.inbound_services or
+            self.reserved_paths[reserved_path] not in self.inbound_services):
+          return (True, self.reserved_paths[reserved_path])
+
+    return (False, None)
+
+
+def CreateInboundServiceFilter(inbound_services):
+  return ReservedPathFilter(inbound_services)
+
+
 def ReadCronConfig(croninfo_path, parse_cron_config=croninfo.LoadSingleCron):
   """Reads cron.yaml file and returns a list of CronEntry instances.
 
@@ -4410,6 +4503,7 @@ def SetupStubs(app_id, **config):
     datastore_path: Path to the file to store Datastore file stub data in.
     prospective_search_path: Path to the file to store Prospective Search stub data in.
     use_sqlite: Use the SQLite stub for the datastore.
+    high_replication: Use the high replication consistency model
     history_path: DEPRECATED, No-op.
     clear_datastore: If the datastore should be cleared on startup.
     smtp_host: SMTP host used for sending test mail.
@@ -4445,6 +4539,7 @@ def SetupStubs(app_id, **config):
   prospective_search_path = config.get('prospective_search_path', '')
   clear_prospective_search = config.get('clear_prospective_search', False)
   use_sqlite = config.get('use_sqlite', False)
+  high_replication = config.get('high_replication', False)
   require_indexes = config.get('require_indexes', False)
   rdbms_sqlite_path = config.get('rdbms_sqlite_path', '')
   mysql_host = config.get('mysql_host', None)
@@ -4499,6 +4594,10 @@ def SetupStubs(app_id, **config):
       datastore = datastore_file_stub.DatastoreFileStub(
           app_id, datastore_path, require_indexes=require_indexes,
           trusted=trusted)
+
+    if high_replication:
+      datastore.SetConsistencyPolicy(
+          datastore_stub_util.TimeBasedHRConsistencyPolicy())
     apiproxy_stub_map.apiproxy.RegisterStub(
         'datastore_v3', datastore)
 
@@ -4578,6 +4677,9 @@ def SetupStubs(app_id, **config):
           prospective_search_path,
           apiproxy_stub_map.apiproxy.GetStub('taskqueue')))
 
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'app_identity_service',
+      app_identity_stub.AppIdentityServiceStub())
 
 
 

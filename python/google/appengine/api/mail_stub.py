@@ -35,6 +35,7 @@ from email import MIMEText
 import logging
 import mail
 import mimetypes
+import re
 import subprocess
 import smtplib
 
@@ -84,6 +85,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._smtp_password = password
     self._enable_sendmail = enable_sendmail
     self._show_mail_body = show_mail_body
+    self._cached_messages = []
 
   def _GenerateLog(self, method, message, log):
     """Generate a list of log messages representing sent mail.
@@ -130,6 +132,47 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       log('  Attachment:')
       log('    File name: %s' % attachment.filename())
       log('    Data length: %s' % len(attachment.data()))
+
+  def _CacheMessage(self, message):
+    """Cache a message that were sent for later inspection.
+
+    Args:
+      message: Message to cache.
+    """
+    self._cached_messages.append(message)
+
+
+  def get_sent_messages(self, to=None, sender=None, subject=None, body=None,
+                        html=None):
+    """Get a list of mail messages sent via the Mail API.
+
+    Args:
+      to: A regular expression that at least one recipient must match.
+      sender: A regular expression that the sender must match.
+      subject: A regular expression that the message subject must match.
+      body: A regular expression that the text body must match.
+      html: A regular expression that the HTML body must match.
+
+    Returns:
+      A list of matching mail.EmailMessage objects.
+    """
+    messages = self._cached_messages
+
+    def recipient_matches(recipient):
+      return re.search(to, recipient)
+
+    if to:
+      messages = [m for m in messages if filter(recipient_matches, m.to_list())]
+    if sender:
+      messages = [m for m in messages if re.search(sender, m.sender())]
+    if subject:
+      messages = [m for m in messages if re.search(subject, m.subject())]
+    if body:
+      messages = [m for m in messages if re.search(body, m.textbody())]
+    if html:
+      messages = [m for m in messages if re.search(html, m.htmlbody())]
+
+    return messages
 
   def _SendSMTP(self, mime_message, smtp_lib=smtplib.SMTP):
     """Send MIME message via SMTP.
@@ -213,6 +256,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       popen2: popen2 function to use for opening pipe to other process.
         Used for dependency injection.
     """
+    self._CacheMessage(request)
     self._GenerateLog('Send', request, log)
 
     if self._smtp_host and self._enable_sendmail:

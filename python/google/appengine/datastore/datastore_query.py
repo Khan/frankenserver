@@ -55,6 +55,8 @@ __all__ = ['Batch',
 
 import base64
 import pickle
+import heapq
+import collections
 
 from google.appengine.datastore import entity_pb
 from google.appengine.api import datastore_errors
@@ -313,6 +315,13 @@ class PropertyFilter(_SinglePropertyFilter):
     """Returns True if the filter predicate contains inequalities filters."""
     return self._filter.op() in self._INEQUALITY_OPERATORS_ENUM
 
+  @classmethod
+  def _from_pb(cls, filter_pb):
+
+    self = cls.__new__(cls)
+    self._filter = filter_pb
+    return self
+
   def _to_pb(self):
     """Returns the internal only pb representation."""
     return self._filter
@@ -551,8 +560,9 @@ class _PropertyExistsFilter(FilterPredicate):
   def _get_prop_names(self):
     return self._names
 
+  def _prune(self, _):
 
-  _prune = _apply
+    raise NotImplementedError
 
   def __getstate__(self):
     raise pickle.PicklingError(
@@ -647,10 +657,38 @@ class CompositeFilter(FilterPredicate):
     raise NotImplementedError
 
   def _prune(self, value_map):
+
+
+
     if self._op == self.AND:
+
+
+
+
+
+
+
+
+
+
+
+      matches = collections.defaultdict(set)
       for f in self._filters:
-        if not f._prune(value_map):
+        props = f._get_prop_names()
+        local_value_map = dict((k, v) for k, v in value_map.iteritems()
+                               if k in props)
+
+        if not f._prune(local_value_map):
           return False
+
+
+        for (prop, values) in local_value_map.iteritems():
+          matches[prop].update(values)
+
+
+      for prop, value_set in matches.iteritems():
+
+        value_map[prop] = sorted(value_set)
       return True
     raise NotImplementedError
 
@@ -753,6 +791,9 @@ class Order(_PropertyComponent):
     """
     names = self._get_prop_names()
     names.add(datastore_types._KEY_SPECIAL_PROPERTY)
+    if filter_predicate is not None:
+      names |= filter_predicate._get_prop_names()
+
     value_map = _make_key_value_map(entity, names)
     if filter_predicate is not None:
       filter_predicate._prune(value_map)
@@ -779,6 +820,9 @@ class Order(_PropertyComponent):
 
     """
     names = self._get_prop_names()
+    if filter_predicate is not None:
+      names |= filter_predicate._get_prop_names()
+
     lhs_value_map = _make_key_value_map(lhs, names)
     rhs_value_map = _make_key_value_map(rhs, names)
     if filter_predicate is not None:
@@ -880,6 +924,13 @@ class PropertyOrder(Order):
       return cmp(lhs_values[0], rhs_values[0])
     else:
       return cmp(rhs_values[-1], lhs_values[-1])
+
+  @classmethod
+  def _from_pb(cls, order_pb):
+
+    self = cls.__new__(cls)
+    self.__order = order_pb
+    return self
 
   def _to_pb(self):
     """Returns the internal only pb representation."""
@@ -1316,9 +1367,10 @@ class _QueryKeyFilter(_BaseComponent):
       self.__path = None
 
     super(_QueryKeyFilter, self).__init__()
-    self.__app = datastore_types.ResolveAppId(app)
-    self.__namespace = datastore_types.ResolveNamespace(namespace)
-    self.__kind = kind
+    self.__app = datastore_types.ResolveAppId(app).encode('utf-8')
+    self.__namespace = (
+        datastore_types.ResolveNamespace(namespace).encode('utf-8'))
+    self.__kind = kind and kind.encode('utf-8')
 
   def __call__(self, entity_or_reference):
     """Apply the filter.
@@ -1338,7 +1390,8 @@ class _QueryKeyFilter(_BaseComponent):
       raise datastore_errors.BadArgumentError(
           'entity_or_reference argument must be an entity_pb.EntityProto ' +
           'or entity_pb.Reference (%r)' % (entity_or_reference))
-    return (key.app() == self.__app and key.name_space() == self.__namespace and
+    return (key.app() == self.__app and
+            key.name_space() == self.__namespace and
             (not self.__kind or
              key.path().element_list()[-1].type() == self.__kind) and
             (not self.__path or
@@ -1347,10 +1400,10 @@ class _QueryKeyFilter(_BaseComponent):
   def _to_pb(self):
     pb = datastore_pb.Query()
 
-    pb.set_app(self.__app.encode('utf-8'))
+    pb.set_app(self.__app)
     datastore_types.SetNamespace(pb, self.__namespace)
     if self.__kind is not None:
-      pb.set_kind(self.__kind.encode('utf-8'))
+      pb.set_kind(self.__kind)
     if self.__path:
       ancestor = pb.mutable_ancestor()
       ancestor.set_app(pb.app())
@@ -1464,6 +1517,29 @@ class Query(_BaseQuery):
     req = self._to_pb(conn, query_options)
     return batch0._make_query_result_rpc_call('RunQuery', query_options, req)
 
+  @classmethod
+  def _from_pb(cls, query_pb):
+    filter_predicate = None
+    if query_pb.filter_size() > 0:
+      filter_predicate = CompositeFilter(
+          CompositeFilter.AND,
+          [PropertyFilter._from_pb(filter_pb)
+           for filter_pb in query_pb.filter_list()])
+
+    order = None
+    if query_pb.order_size() > 0:
+      order = CompositeOrder([PropertyOrder._from_pb(order_pb)
+                              for order_pb in query_pb.order_list()])
+
+    ancestor = query_pb.has_ancestor() and query_pb.ancestor() or None
+    kind = query_pb.has_kind() and query_pb.kind().decode('utf-8') or None
+    return Query(app=query_pb.app().decode('utf-8'),
+                 namespace=query_pb.name_space().decode('utf-8'),
+                 kind=kind,
+                 ancestor=ancestor,
+                 filter_predicate=filter_predicate,
+                 order=order)
+
   def _to_pb(self, conn, query_options):
     """Returns the internal only pb representation."""
     pb = self._key_filter._to_pb()
@@ -1564,20 +1640,24 @@ def apply_query(query, entities):
 
 
 
-  names = query._order._get_prop_names()
 
-  filter_predicate = _PropertyExistsFilter(names)
+
+  names = query._order._get_prop_names()
   if query._filter_predicate:
     names |= query._filter_predicate._get_prop_names()
-    filter_predicate = CompositeFilter(
-        CompositeFilter.AND, [query._filter_predicate, filter_predicate])
+
+
+  exists_filter = _PropertyExistsFilter(names)
 
   value_maps = []
   for entity in filtered_entities:
     value_map = _make_key_value_map(entity, names)
 
 
-    if filter_predicate._prune(value_map):
+
+    if exists_filter._apply(value_map) and (
+        not query._filter_predicate or
+        query._filter_predicate._prune(value_map)):
       value_map['__entity__'] = entity
       value_maps.append(value_map)
 

@@ -368,9 +368,8 @@ class Image(object):
     corrected during the first transformation.
 
     NOTE: If CORRECT_ORIENTATION is specified but the image is already in
-    portrait orientation, i.e., "taller" than it is "wide," rotations of 90 or
-    270 degrees are ignored since this appears to indicate a correction which
-    has already been done by the camera or an image processing tool beforehand.
+    portrait orientation, i.e., "taller" than it is "wide" no corrections will
+    be made, since it appears that the camera has already corrected it.
 
     Regardless whether the correction was requested or not, the orientation
     value in the transformed image is always cleared to indicate that no

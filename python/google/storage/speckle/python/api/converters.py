@@ -55,7 +55,6 @@ Decoder
 
 
 import datetime
-import time
 import types
 
 from google.storage.speckle.proto import jdbc_type

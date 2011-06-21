@@ -104,20 +104,16 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
 class SystemStat(ProtocolBuffer.ProtocolMessage):
   has_current_ = 0
   current_ = 0.0
-  has_total_ = 0
-  total_ = 0.0
   has_average1m_ = 0
   average1m_ = 0.0
   has_average10m_ = 0
   average10m_ = 0.0
-  has_average1h_ = 0
-  average1h_ = 0.0
+  has_total_ = 0
+  total_ = 0.0
   has_rate1m_ = 0
   rate1m_ = 0.0
   has_rate10m_ = 0
   rate10m_ = 0.0
-  has_rate1h_ = 0
-  rate1h_ = 0.0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -134,19 +130,6 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
       self.current_ = 0.0
 
   def has_current(self): return self.has_current_
-
-  def total(self): return self.total_
-
-  def set_total(self, x):
-    self.has_total_ = 1
-    self.total_ = x
-
-  def clear_total(self):
-    if self.has_total_:
-      self.has_total_ = 0
-      self.total_ = 0.0
-
-  def has_total(self): return self.has_total_
 
   def average1m(self): return self.average1m_
 
@@ -174,18 +157,18 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
 
   def has_average10m(self): return self.has_average10m_
 
-  def average1h(self): return self.average1h_
+  def total(self): return self.total_
 
-  def set_average1h(self, x):
-    self.has_average1h_ = 1
-    self.average1h_ = x
+  def set_total(self, x):
+    self.has_total_ = 1
+    self.total_ = x
 
-  def clear_average1h(self):
-    if self.has_average1h_:
-      self.has_average1h_ = 0
-      self.average1h_ = 0.0
+  def clear_total(self):
+    if self.has_total_:
+      self.has_total_ = 0
+      self.total_ = 0.0
 
-  def has_average1h(self): return self.has_average1h_
+  def has_total(self): return self.has_total_
 
   def rate1m(self): return self.rate1m_
 
@@ -213,49 +196,30 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
 
   def has_rate10m(self): return self.has_rate10m_
 
-  def rate1h(self): return self.rate1h_
-
-  def set_rate1h(self, x):
-    self.has_rate1h_ = 1
-    self.rate1h_ = x
-
-  def clear_rate1h(self):
-    if self.has_rate1h_:
-      self.has_rate1h_ = 0
-      self.rate1h_ = 0.0
-
-  def has_rate1h(self): return self.has_rate1h_
-
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_current()): self.set_current(x.current())
-    if (x.has_total()): self.set_total(x.total())
     if (x.has_average1m()): self.set_average1m(x.average1m())
     if (x.has_average10m()): self.set_average10m(x.average10m())
-    if (x.has_average1h()): self.set_average1h(x.average1h())
+    if (x.has_total()): self.set_total(x.total())
     if (x.has_rate1m()): self.set_rate1m(x.rate1m())
     if (x.has_rate10m()): self.set_rate10m(x.rate10m())
-    if (x.has_rate1h()): self.set_rate1h(x.rate1h())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_current_ != x.has_current_: return 0
     if self.has_current_ and self.current_ != x.current_: return 0
-    if self.has_total_ != x.has_total_: return 0
-    if self.has_total_ and self.total_ != x.total_: return 0
     if self.has_average1m_ != x.has_average1m_: return 0
     if self.has_average1m_ and self.average1m_ != x.average1m_: return 0
     if self.has_average10m_ != x.has_average10m_: return 0
     if self.has_average10m_ and self.average10m_ != x.average10m_: return 0
-    if self.has_average1h_ != x.has_average1h_: return 0
-    if self.has_average1h_ and self.average1h_ != x.average1h_: return 0
+    if self.has_total_ != x.has_total_: return 0
+    if self.has_total_ and self.total_ != x.total_: return 0
     if self.has_rate1m_ != x.has_rate1m_: return 0
     if self.has_rate1m_ and self.rate1m_ != x.rate1m_: return 0
     if self.has_rate10m_ != x.has_rate10m_: return 0
     if self.has_rate10m_ and self.rate10m_ != x.rate10m_: return 0
-    if self.has_rate1h_ != x.has_rate1h_: return 0
-    if self.has_rate1h_ and self.rate1h_ != x.rate1h_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -265,36 +229,30 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_current_): n += 9
-    if (self.has_total_): n += 9
     if (self.has_average1m_): n += 9
     if (self.has_average10m_): n += 9
-    if (self.has_average1h_): n += 9
+    if (self.has_total_): n += 9
     if (self.has_rate1m_): n += 9
     if (self.has_rate10m_): n += 9
-    if (self.has_rate1h_): n += 9
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_current_): n += 9
-    if (self.has_total_): n += 9
     if (self.has_average1m_): n += 9
     if (self.has_average10m_): n += 9
-    if (self.has_average1h_): n += 9
+    if (self.has_total_): n += 9
     if (self.has_rate1m_): n += 9
     if (self.has_rate10m_): n += 9
-    if (self.has_rate1h_): n += 9
     return n
 
   def Clear(self):
     self.clear_current()
-    self.clear_total()
     self.clear_average1m()
     self.clear_average10m()
-    self.clear_average1h()
+    self.clear_total()
     self.clear_rate1m()
     self.clear_rate10m()
-    self.clear_rate1h()
 
   def OutputUnchecked(self, out):
     if (self.has_current_):
@@ -309,18 +267,12 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     if (self.has_average10m_):
       out.putVarInt32(33)
       out.putDouble(self.average10m_)
-    if (self.has_average1h_):
-      out.putVarInt32(41)
-      out.putDouble(self.average1h_)
     if (self.has_rate1m_):
-      out.putVarInt32(49)
+      out.putVarInt32(41)
       out.putDouble(self.rate1m_)
     if (self.has_rate10m_):
-      out.putVarInt32(57)
+      out.putVarInt32(49)
       out.putDouble(self.rate10m_)
-    if (self.has_rate1h_):
-      out.putVarInt32(65)
-      out.putDouble(self.rate1h_)
 
   def OutputPartial(self, out):
     if (self.has_current_):
@@ -335,18 +287,12 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     if (self.has_average10m_):
       out.putVarInt32(33)
       out.putDouble(self.average10m_)
-    if (self.has_average1h_):
-      out.putVarInt32(41)
-      out.putDouble(self.average1h_)
     if (self.has_rate1m_):
-      out.putVarInt32(49)
+      out.putVarInt32(41)
       out.putDouble(self.rate1m_)
     if (self.has_rate10m_):
-      out.putVarInt32(57)
+      out.putVarInt32(49)
       out.putDouble(self.rate10m_)
-    if (self.has_rate1h_):
-      out.putVarInt32(65)
-      out.putDouble(self.rate1h_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -364,16 +310,10 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
         self.set_average10m(d.getDouble())
         continue
       if tt == 41:
-        self.set_average1h(d.getDouble())
-        continue
-      if tt == 49:
         self.set_rate1m(d.getDouble())
         continue
-      if tt == 57:
+      if tt == 49:
         self.set_rate10m(d.getDouble())
-        continue
-      if tt == 65:
-        self.set_rate1h(d.getDouble())
         continue
 
 
@@ -384,13 +324,11 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_current_: res+=prefix+("current: %s\n" % self.DebugFormat(self.current_))
-    if self.has_total_: res+=prefix+("total: %s\n" % self.DebugFormat(self.total_))
     if self.has_average1m_: res+=prefix+("average1m: %s\n" % self.DebugFormat(self.average1m_))
     if self.has_average10m_: res+=prefix+("average10m: %s\n" % self.DebugFormat(self.average10m_))
-    if self.has_average1h_: res+=prefix+("average1h: %s\n" % self.DebugFormat(self.average1h_))
+    if self.has_total_: res+=prefix+("total: %s\n" % self.DebugFormat(self.total_))
     if self.has_rate1m_: res+=prefix+("rate1m: %s\n" % self.DebugFormat(self.rate1m_))
     if self.has_rate10m_: res+=prefix+("rate10m: %s\n" % self.DebugFormat(self.rate10m_))
-    if self.has_rate1h_: res+=prefix+("rate1h: %s\n" % self.DebugFormat(self.rate1h_))
     return res
 
 
@@ -398,13 +336,11 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kcurrent = 1
-  ktotal = 2
   kaverage1m = 3
   kaverage10m = 4
-  kaverage1h = 5
-  krate1m = 6
-  krate10m = 7
-  krate1h = 8
+  ktotal = 2
+  krate1m = 5
+  krate10m = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -412,11 +348,9 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     2: "total",
     3: "average1m",
     4: "average10m",
-    5: "average1h",
-    6: "rate1m",
-    7: "rate10m",
-    8: "rate1h",
-  }, 8)
+    5: "rate1m",
+    6: "rate10m",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -426,9 +360,7 @@ class SystemStat(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.DOUBLE,
     5: ProtocolBuffer.Encoder.DOUBLE,
     6: ProtocolBuffer.Encoder.DOUBLE,
-    7: ProtocolBuffer.Encoder.DOUBLE,
-    8: ProtocolBuffer.Encoder.DOUBLE,
-  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

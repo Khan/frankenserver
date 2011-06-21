@@ -3,6 +3,31 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.5.1
+============================
+- ProtoRPC is a new experimental library that provides a simple method for
+  creating a well-defined and easy-to-use web-based RPC service.
+- The development server's datastore implementation now contains logic that
+  closely replicates the consistency guarantees of the High Replication
+  datastore. To use, run the dev_appserver with the flag --high_replication set
+  to True.
+- All user request have an X-AppEngine-Country header which contains the
+  ISO-3166-1 alpha-2 country code for the user, based on the IP address of the
+  client request.
+- The Channel API can now provide user presence, this can be configured by
+  adding channel_presence to the list of inbound services for your application.
+- The Images API now supports the WebP format. Due to limitations in PIL, the
+  SDK does not support the WebP format.
+- You can switch the timezone for App Engine logs in the Admin Console.
+  http://code.google.com/p/googleappengine/issues/detail?id=734
+- Fixed an issue in the SDK where leased tasks had the POST method. They now
+  have a PULL method.
+- Fixed an issue where the Channel API didn't work with non-default versions of
+  applications using the High Replication datastore.
+- When displaying corrupt data in the Admin Console dataviewer, a useful error
+  will be displayed, instead of a 500.
+  http://code.google.com/p/googleappengine/issues/detail?id=4945
+
 Version 1.5.0
 ==============================
 - Support for Backends which allow developers to create infrastructure

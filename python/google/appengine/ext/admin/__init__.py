@@ -175,7 +175,8 @@ class BaseRequestHandler(webapp.RequestHandler):
     for arg in args:
       value = self.request.get(arg)
       if value:
-        queries.append(arg + '=' + urllib.quote_plus(self.request.get(arg)))
+        queries.append(arg + '=' + urllib.quote_plus(
+            ustr(self.request.get(arg))))
     return self.request.path + '?' + '&'.join(queries)
 
   def in_production(self):
@@ -183,7 +184,9 @@ class BaseRequestHandler(webapp.RequestHandler):
 
     Returns a boolean.
     """
-    server_software = os.environ['SERVER_SOFTWARE']
+    server_software = os.getenv('SERVER_SOFTWARE')
+    if server_software is None:
+      return False
     return not server_software.startswith('Development')
 
 
@@ -680,7 +683,7 @@ class MemcachePageHandler(BaseRequestHandler):
 class DatastoreRequestHandler(BaseRequestHandler):
   """The base request handler for our datastore admin pages.
 
-  We provide utility functions for quering the datastore and infering the
+  We provide utility functions for querying the datastore and inferring the
   types of entity properties.
   """
 
@@ -693,13 +696,21 @@ class DatastoreRequestHandler(BaseRequestHandler):
     return self.request.get_range('num', min_value=1, max_value=100,
                                   default=10)
 
+
+
   def execute_query(self, start=0, num=0, no_order=False):
     """Parses the URL arguments and executes the query.
 
-    We return a tuple (list of entities, total entity count).
+    Args:
+      start: How many entities from the beginning of the result list should be
+        skipped from the query.
+      num: How many entities should be returned, if 0 (default) then a
+        reasonable default will be chosen.
 
-    If the appropriate URL arguments are not given, we return an empty
-    set of results and 0 for the entity count.
+    Returns:
+      A tuple (list of entities, total entity count).  If inappropriate URL
+      arguments are given, we return an empty set of results and 0 for the
+      entity count.
     """
     kind = self.request.get('kind')
     namespace = self.request.get('namespace')
@@ -772,7 +783,8 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
       A sorted list of kinds e.g. ['Book', 'Guest', Post'].
     """
     assert namespace is not None
-    schema = datastore_admin.GetSchema(namespace=namespace)
+    app_id = self.request.environ['APPLICATION_ID']
+    schema = datastore_admin.GetSchema(_app=app_id, namespace=namespace)
     kinds = []
     for entity_proto in schema:
       kinds.append(entity_proto.key().path().element_list()[-1].type())
@@ -799,7 +811,7 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
     for key in keys:
       sample_value = key_values[key][0]
       headers.append({
-        'name': key,
+        'name': ustr(key),
         'type': DataType.get(sample_value).name(),
       })
 
@@ -821,18 +833,18 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
           short_value = ''
           additional_html = ''
         attributes.append({
-          'name': key,
-          'value': value,
+          'name': ustr(key),
+          'value': ustr(value),
           'short_value': short_value,
-          'additional_html': additional_html,
+          'additional_html': ustr(additional_html),
         })
       entities.append({
-        'key': str(entity.key()),
-        'key_name': entity.key().name(),
+        'key': ustr(entity.key()),
+        'key_name': ustr(entity.key().name()),
         'key_id': entity.key().id(),
         'shortened_key': str(entity.key())[:8] + '...',
         'attributes': attributes,
-        'edit_uri': edit_path + '?key=' + str(entity.key()) + '&kind=' + urllib.quote(self.request.get('kind')) + '&next=' + urllib.quote(self.request.uri),
+        'edit_uri': edit_path + '?key=' + str(entity.key()) + '&kind=' + urllib.quote(ustr(self.request.get('kind'))) + '&next=' + urllib.quote(ustr(self.request.uri)),
       })
 
 
@@ -863,7 +875,7 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
         'request': self.request,
         'in_production': in_production,
         'kinds': kinds,
-        'kind': self.request.get('kind'),
+        'kind': ustr(self.request.get('kind')),
         'order': self.request.get('order'),
         'headers': headers,
         'entities': entities,
@@ -898,6 +910,7 @@ class DatastoreBatchEditHandler(DatastoreRequestHandler):
   PATH = DatastoreQueryHandler.PATH + '/batchedit'
 
   def post(self):
+    """Handle POST."""
     kind = self.request.get('kind')
 
 
@@ -918,8 +931,9 @@ class DatastoreBatchEditHandler(DatastoreRequestHandler):
         num_deleted = num_deleted + 1
       message = '%d entit%s deleted.' % (
         num_deleted, ('ies', 'y')[num_deleted == 1])
-      self.redirect(
-        '%s&msg=%s' % (self.request.get('next'), urllib.quote_plus(message)))
+      uri = self.request.get('next')
+      msg = urllib.quote_plus(message)
+      self.redirect('%s&msg=%s' % (uri, msg))
       return
 
 
@@ -943,6 +957,8 @@ class DatastoreEditHandler(DatastoreRequestHandler):
     if entity_key:
       key_instance = datastore.Key(entity_key)
       entity_key_name = key_instance.name()
+      if entity_key_name:
+        entity_key_name = ustr(entity_key_name)
       entity_key_id = key_instance.id()
       namespace = key_instance.namespace()
       parent_key = key_instance.parent()
@@ -955,6 +971,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
       sample_entities = self.execute_query()[0]
 
     if len(sample_entities) < 1:
+
 
 
 
@@ -1005,14 +1022,14 @@ class DatastoreEditHandler(DatastoreRequestHandler):
       else:
         value = None
       field = data_type.input_field(name, value, sample_values)
-      fields.append((key, data_type.name(), field))
+      fields.append((ustr(key), data_type.name(), field))
 
 
 
 
 
     self.generate('datastore_edit.html', {
-      'kind': kind,
+      'kind': ustr(kind),
       'key': entity_key,
       'key_name': entity_key_name,
       'key_id': entity_key_id,

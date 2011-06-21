@@ -460,7 +460,7 @@ class Task(object):
 
   __CONSTRUCTOR_KWARGS = frozenset([
       'countdown', 'eta', 'headers', 'method', 'name', 'params',
-      'retry_options', 'target', 'url'])
+      'retry_options', 'target', 'url', '_size_check'])
 
 
   __eta_posix = None
@@ -480,7 +480,7 @@ class Task(object):
         auto-generated when added to a queue and assigned to this object. Must
         match the _TASK_NAME_PATTERN regular expression.
       method: Method to use when accessing the webhook. Defaults to 'POST'. If
-        set to 'PULL', task will not be automatiacally delivered to the webhook,
+        set to 'PULL', task will not be automatically delivered to the webhook,
         instead it stays in the queue until leased.
       url: Relative URL where the webhook that should handle this task is
         located for this application. May have a query string unless this is
@@ -528,6 +528,10 @@ class Task(object):
     self.__method = kwargs.get('method', 'POST').upper()
     self.__payload = None
     self.__retry_count = 0
+    self.__queue_name = None
+
+
+    size_check = kwargs.get('_size_check', True)
     params = kwargs.get('params', {})
 
 
@@ -603,13 +607,14 @@ class Task(object):
     self.__enqueued = False
     self.__deleted = False
 
-    if self.__method == 'PULL':
-      max_task_size_bytes = MAX_PULL_TASK_SIZE_BYTES
-    else:
-      max_task_size_bytes = MAX_PUSH_TASK_SIZE_BYTES
-    if self.size > max_task_size_bytes:
-      raise TaskTooLargeError('Task size must be less than %d; found %d' %
-                              (max_task_size_bytes, self.size))
+    if size_check:
+      if self.__method == 'PULL':
+        max_task_size_bytes = MAX_PULL_TASK_SIZE_BYTES
+      else:
+        max_task_size_bytes = MAX_PUSH_TASK_SIZE_BYTES
+      if self.size > max_task_size_bytes:
+        raise TaskTooLargeError('Task size must be less than %d; found %d' %
+                                (max_task_size_bytes, self.size))
 
   @staticmethod
   def __determine_url(relative_url):
@@ -759,6 +764,14 @@ class Task(object):
     been added to a Queue.
     """
     return self.__name
+
+  @property
+  def queue_name(self):
+    """Returns the name of the queue this Task is associated with.
+
+    Will be None if this Task has not yet been added to a queue.
+    """
+    return self.__queue_name
 
   @property
   def payload(self):
@@ -970,6 +983,10 @@ class Queue(object):
     for task, result in zip(tasks, response.result_list()):
       if result == taskqueue_service_pb.TaskQueueServiceError.OK:
         task._Task__deleted = True
+      elif (
+          result == taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_TASK or
+          result == taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_TASK):
+        task._Task__deleted = False
       elif exception is None:
         exception = self.__TranslateError(result)
 
@@ -1046,12 +1063,13 @@ class Queue(object):
     for response_task in response.task_list():
       name = response_task.task_name()
       payload = response_task.body()
-      task = Task(payload=payload, name=name)
+      task = Task(payload=payload, name=name, _size_check=False, method='PULL')
 
 
 
       task._Task__eta_posix = response_task.eta_usec() * 1e-6
       task._Task__retry_count = response_task.retry_count()
+      task._Task__queue_name = self.__name
       tasks.append(task)
 
     return tasks
@@ -1171,6 +1189,7 @@ class Queue(object):
       if task_result.result() == taskqueue_service_pb.TaskQueueServiceError.OK:
         if task_result.has_chosen_task_name():
           task._Task__name = task_result.chosen_task_name()
+        task._Task__queue_name = self.__name
         task._Task__enqueued = True
       elif (task_result.result() ==
             taskqueue_service_pb.TaskQueueServiceError.SKIPPED):

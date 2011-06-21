@@ -361,7 +361,7 @@ def _get_fetch_result(rpc):
       raise ResponseTooLargeError(None)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED):
-      raise DownloadError(str(err))
+      raise DeadlineExceededError(str(err))
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.SSL_CERTIFICATE_ERROR):
       raise SSLCertificateError(str(err))

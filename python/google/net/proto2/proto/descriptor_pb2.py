@@ -23,6 +23,7 @@ from google.net.proto2.python.public import reflection
 
 
 
+
 DESCRIPTOR = descriptor.FileDescriptor(
   name='net/proto2/proto/descriptor.proto',
   package='proto2',

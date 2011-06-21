@@ -427,9 +427,12 @@ def CompositeIndexForQuery(query):
   props = []
 
 
+  seen = set()
   for f in eq_filters:
     prop = f.property(0)
-    props.append((prop.name(), ASCENDING))
+    if prop.name() not in seen:
+      seen.add(prop.name())
+      props.append((prop.name(), ASCENDING))
 
 
   props.sort()

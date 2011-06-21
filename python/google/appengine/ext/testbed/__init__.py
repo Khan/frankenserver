@@ -114,6 +114,8 @@ except AttributeError:
   mail_stub = None
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
+from google.appengine.api.blobstore import blobstore_stub
+from google.appengine.api.blobstore import dict_blob_storage
 from google.appengine.api.channel import channel_service_stub
 try:
   from google.appengine.api.images import images_stub
@@ -123,14 +125,26 @@ except ImportError:
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.xmpp import xmpp_service_stub
+from google.appengine.datastore import datastore_stub_util
 
 
+DEFAULT_ENVIRONMENT = {
+    'APPLICATION_ID': 'testbed-test',
+    'AUTH_DOMAIN': 'gmail.com',
+    'SERVER_NAME': 'testbed.example.com',
+    'SERVER_SOFTWARE': 'Development/1.0 (testbed)',
+    'SERVER_PORT': '80',
+    'USER_EMAIL': '',
+    'USER_ID': '',
+}
 
-DEFAULT_APP_ID = 'testbed-test'
-DEFAULT_AUTH_DOMAIN = 'gmail.com'
-DEFAULT_SERVER_NAME = 'testbed.example.com'
-DEFAULT_SERVER_SOFTWARE = 'Development/1.0 (testbed)'
-DEFAULT_SERVER_PORT = '80'
+# Deprecated legacy aliases for default environment variables. New code
+
+DEFAULT_APP_ID = DEFAULT_ENVIRONMENT['APPLICATION_ID']
+DEFAULT_AUTH_DOMAIN = DEFAULT_ENVIRONMENT['AUTH_DOMAIN']
+DEFAULT_SERVER_NAME = DEFAULT_ENVIRONMENT['SERVER_NAME']
+DEFAULT_SERVER_SOFTWARE = DEFAULT_ENVIRONMENT['SERVER_SOFTWARE']
+DEFAULT_SERVER_PORT = DEFAULT_ENVIRONMENT['SERVER_PORT']
 
 
 CHANNEL_SERVICE_NAME = 'channel'
@@ -142,6 +156,7 @@ TASKQUEUE_SERVICE_NAME = 'taskqueue'
 URLFETCH_SERVICE_NAME = 'urlfetch'
 USER_SERVICE_NAME = 'user'
 XMPP_SERVICE_NAME = 'xmpp'
+BLOBSTORE_SERVICE_NAME = 'blobstore'
 
 
 SUPPORTED_SERVICES = [CHANNEL_SERVICE_NAME,
@@ -152,7 +167,9 @@ SUPPORTED_SERVICES = [CHANNEL_SERVICE_NAME,
                       TASKQUEUE_SERVICE_NAME,
                       URLFETCH_SERVICE_NAME,
                       USER_SERVICE_NAME,
-                      XMPP_SERVICE_NAME]
+                      XMPP_SERVICE_NAME,
+                      BLOBSTORE_SERVICE_NAME,
+                      ]
 
 
 class Error(Exception):
@@ -168,10 +185,15 @@ class StubNotSupportedError(Error):
 
 
 class InMemoryDatastoreStub(datastore_file_stub.DatastoreFileStub):
-  """File-based Datastore stub which does not actually write files."""
+  """File-based Datastore stub which does not actually write files.
 
-  def _DatastoreFileStub__WriteDatastore(self):
-    """Override parent's method to no-op, so no writes are done."""
+  This class is now just a place holder for backwards compatibility as the
+  DatastoreFileStub now supports this directly.
+  """
+
+  def __init__(self, *args, **kwargs):
+    kwargs['save_changes'] = False
+    super(InMemoryDatastoreStub, self).__init__(*args, **kwargs)
 
 
 
@@ -221,37 +243,42 @@ class Testbed(object):
     os.environ = self._orig_env
     self._activated = False
 
-  def setup_env(self, app_id=DEFAULT_APP_ID,
-                auth_domain=DEFAULT_AUTH_DOMAIN,
-                server_software=DEFAULT_SERVER_SOFTWARE,
-                server_name=DEFAULT_SERVER_NAME,
-                server_port=DEFAULT_SERVER_PORT,
-                overwrite=False):
-    """Setup environment variables.
+  def setup_env(self, overwrite=False, **kwargs):
+    """Set up environment variables.
 
-    If an environment variable does not exist it will be created. By
-    default, existing values of the corresponding variables will be
-    kept.  If 'overwrite' is True, the passed in value will be
-    assigned.
+    Sets default and custom environment variables.  By default, all the items in
+    DEFAULT_ENVIRONMENT will be created without being specified.  To set a value
+    other than the default, or to pass a custom environment variable, pass a
+    corresponding keyword argument:
+
+    testbed_instance.setup_env()  # All defaults.
+    testbed_instance.setup_env(auth_domain='custom')  # All defaults, overriding
+                                                      # AUTH_DOMAIN.
+    testbed_instance.setup_env(custom='foo')  # All defaults, plus a custom
+                                              # os.environ['CUSTOM'] = 'foo'.
+
+    To overwrite values set by a previous invocation, pass overwrite=True.  This
+    will not result in an OVERWRITE entry in os.environ.
 
     Args:
-      app_id: The application ID.
-      auth_domain: The authentication domain.
-      server_software: The name of the server software.
-      server_name: The name of the server.
-      server_port: The port of the server.
-      overwrite: If True, overwrite existing environment variable value.
+      overwrite: boolean.  Whether to overwrite items with corresponding entries
+                 in os.environ.
+      **kwargs: environment variables to set.  The name of the argument will be
+                uppercased and used as a key in os.environ.
     """
-    if overwrite or 'APPLICATION_ID' not in os.environ:
-      os.environ['APPLICATION_ID'] = app_id
-    if overwrite or 'AUTH_DOMAIN' not in os.environ:
-      os.environ['AUTH_DOMAIN'] = auth_domain
-    if overwrite or 'SERVER_SOFTWARE' not in os.environ:
-      os.environ['SERVER_SOFTWARE'] = server_software
-    if overwrite or 'SERVER_NAME' not in os.environ:
-      os.environ['SERVER_NAME'] = server_name
-    if overwrite or 'SERVER_PORT' not in os.environ:
-      os.environ['SERVER_PORT'] = server_port
+    merged_kwargs = {}
+    for key, value in kwargs.iteritems():
+
+      if key == 'app_id':
+        key = 'APPLICATION_ID'
+      merged_kwargs[key.upper()] = value
+    if not overwrite:
+      for key, value in DEFAULT_ENVIRONMENT.iteritems():
+        if key not in merged_kwargs:
+          merged_kwargs[key] = value
+    for key, value in merged_kwargs.iteritems():
+      if overwrite or key not in os.environ:
+        os.environ[key] = value
 
   def _register_stub(self, service_name, stub):
     """Register a service stub.
@@ -328,9 +355,9 @@ class Testbed(object):
 
     The 'datastore_file' argument is the path to an existing datastore
     file or None (default) to use an in-memory datastore that is
-    initially empty. In either case, the datastore is _not_ saved to
-    disk, and any changes are gone after tearDown executes, so unit
-    tests cannot interfere with each other.
+    initially empty. In either case, the datastore is _not_ saved to disk, and
+    any changes are gone after tearDown executes, so unit tests cannot interfere
+    with each other (unless save_changes=True).
 
     Note that you can only access those entities of the datastore file
     which have the same application ID associated with them as the
@@ -342,15 +369,18 @@ class Testbed(object):
 
     Args:
       enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
+        service should be disabled.
       datastore_file: Filename of a dev_appserver datastore file.
       stub_kw_args: Keyword arguments passed on to the service stub.
     """
     if not enable:
       self._disable_stub(DATASTORE_SERVICE_NAME)
       return
-    stub = InMemoryDatastoreStub(os.environ['APPLICATION_ID'],
-                                 datastore_file, **stub_kw_args)
+    stub_kw_args.setdefault('save_changes', False)
+    stub = datastore_file_stub.DatastoreFileStub(
+        os.environ['APPLICATION_ID'],
+        datastore_file,
+        **stub_kw_args)
     self._register_stub(DATASTORE_SERVICE_NAME, stub)
 
   def init_images_stub(self, enable=True):
@@ -460,3 +490,18 @@ class Testbed(object):
       return
     stub = xmpp_service_stub.XmppServiceStub()
     self._register_stub(XMPP_SERVICE_NAME, stub)
+
+  def init_blobstore_stub(self, enable=True):
+    """Enable the blobstore stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(BLOBSTORE_SERVICE_NAME)
+      return
+
+    storage = dict_blob_storage.DictBlobStorage()
+    stub = blobstore_stub.BlobstoreServiceStub(storage)
+    self._register_stub(BLOBSTORE_SERVICE_NAME, stub)

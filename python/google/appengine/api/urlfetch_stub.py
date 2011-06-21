@@ -214,6 +214,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     Args:
       url: String containing the URL to access.
       payload: Request payload to send, if any; None if no payload.
+        If the payload is unicode, we assume it is utf-8.
       method: HTTP method to use (e.g., 'GET')
       headers: List of additional header objects to use for the request.
       request: Request object from original request.
@@ -230,9 +231,12 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       in cases where:
         - MAX_REDIRECTS is exceeded
         - The protocol of the redirected URL is bad or missing.
+        - The port is not in the allowable range of ports.
     """
     last_protocol = ''
     last_host = ''
+    if isinstance(payload, unicode):
+      payload = payload.encode('utf-8')
 
     for redirect_number in xrange(MAX_REDIRECTS + 1):
       parsed = urlparse.urlsplit(url)
@@ -247,9 +251,16 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       port = urllib.splitport(urllib.splituser(host)[1])[1]
 
       if not _IsAllowedPort(port):
-        logging.warning(
+        logging.error(
           'urlfetch received %s ; port %s is not allowed in production!' %
           (url, port))
+
+
+
+
+
+        raise apiproxy_errors.ApplicationError(
+          urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR)
 
       if protocol and not host:
 
@@ -293,7 +304,7 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
       if payload is not None:
         escaped_payload = payload.encode('string_escape')
       else:
-        escaped_payload = payload
+        escaped_payload = ''
       logging.debug('Making HTTP request: host = %s, '
                     'url = %s, payload = %s, headers = %s',
                     host, url, escaped_payload, adjusted_headers)
@@ -343,6 +354,9 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.SSL_CERTIFICATE_ERROR,
           str(e))
+      except socket.timeout, e:
+        raise apiproxy_errors.ApplicationError(
+          urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED, str(e))
       except (httplib.error, socket.error, IOError), e:
         raise apiproxy_errors.ApplicationError(
           urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR, str(e))

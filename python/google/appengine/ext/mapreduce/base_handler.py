@@ -38,6 +38,11 @@
 import logging
 import simplejson
 
+import google
+try:
+  from appengine_pipeline.src import pipeline
+except ImportError:
+  pipeline = None
 from google.appengine.ext import webapp
 from google.appengine.ext.mapreduce import errors
 
@@ -72,7 +77,12 @@ class TaskQueueHandler(BaseHandler):
       self.response.set_status(
           403, message="Task queue handler received non-task queue request")
       return
+    self._setup()
     self.handle()
+
+  def _setup(self):
+    """Called before handle method to set up handler."""
+    pass
 
   def handle(self):
     """To be implemented by subclasses."""
@@ -160,3 +170,23 @@ class GetJsonHandler(JsonHandler):
 
   def get(self):
     self._handle_wrapper()
+
+
+
+_DEFAULT_BASE_PATH = "/_ah/mapreduce"
+_DEFAULT_PIPELINE_BASE_PATH = _DEFAULT_BASE_PATH + "/pipeline"
+
+
+if pipeline:
+  class PipelineBase(pipeline.Pipeline):
+    """Base class for all pipelines within mapreduce framework.
+
+    Rewrites base path to use pipeline library bundled with mapreduce.
+    """
+
+    def start(self, **kwargs):
+      if "base_path" not in kwargs:
+        kwargs["base_path"] = _DEFAULT_PIPELINE_BASE_PATH
+      return pipeline.Pipeline.start(self, **kwargs)
+else:
+  PipelineBase = None

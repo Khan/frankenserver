@@ -44,11 +44,12 @@ __all__ = ['AbstractAdapter',
            'IdentityAdapter',
            'MultiRpc',
            'TransactionalConnection',
-           ]
+          ]
 
 
 
 
+import collections
 import logging
 import os
 
@@ -484,6 +485,24 @@ class Configuration(BaseConfiguration):
         'force_writes argument invalid (%r)' % (value,))
     return value
 
+  @ConfigOption
+  def max_entity_groups_per_rpc(value):
+    """The maximum number of entity groups that can be represented in one rpc.
+
+    For a non-transactional operation that involves more entity groups than the
+    maximum, the operation will be performed by executing multiple, asynchronous
+    rpcs to the datastore, each of which has no more entity groups represented
+    than the maximum.  So, if a put() operation has 8 entity groups and the
+    maximum is 3, we will send 3 rpcs, 2 with 3 entity groups and 1 with 2
+    entity groups.  This is a performance optimization - in many cases
+    multiple, small, concurrent rpcs will finish faster than a single large
+    rpc.  The optimal value for this property will be application-specific, so
+    experimentation is encouraged.
+    """
+    if not (isinstance(value, (int, long)) and value > 0):
+      raise datastore_errors.BadArgumentError(
+          'max_entity_groups_per_rpc should be a positive integer')
+    return value
 
   @ConfigOption
   def max_rpc_bytes(value):
@@ -626,7 +645,14 @@ class MultiRpc(object):
     checks all their success.  This makes debugging easier.
     """
 
-    self.check_success()
+
+
+
+
+
+
+
+
 
     if len(self.__rpcs) == 1:
       results = self.__rpcs[0].get_result()
@@ -1059,29 +1085,126 @@ class BaseConnection(object):
 
 
 
-  def __generate_pb_lists(self, values, value_to_pb, base_size, max_count,
-                          config):
-    """Internal helper: repeatedly yield a list of protobufs to fit a batch."""
+  def __extract_entity_group(self, value):
+    """Internal helper: extracts the entity group from a key or entity."""
+    if isinstance(value, entity_pb.EntityProto):
+      value = value.key()
+    return value.path().element(0)
+
+  def __group_indexed_pbs_by_entity_group(self, values, value_to_pb):
+    """Internal helper: group pbs by entity group.
+
+    Args:
+      values: The values to be grouped by entity group.
+      value_to_pb: A function that translates a value to a pb.
+
+    Returns:
+      A list where each element is a list of (pb, index) pairs.  Here index is
+      the location of the value from which pb was derived in the original list.
+    """
+    indexed_pbs_by_entity_group = collections.defaultdict(list)
+    for index, value in enumerate(values):
+      pb = value_to_pb(value)
+      eg = self.__extract_entity_group(pb)
+
+
+      uid = (eg.type(), eg.id() or eg.name() or ('new', id(eg)))
+      indexed_pbs_by_entity_group[uid].append((pb, index))
+    return indexed_pbs_by_entity_group.values()
+
+  def __create_result_index_pairs(self, indexes):
+    """Internal helper: build a function that ties an index with each result.
+
+    Args:
+      indexes: A list of integers.  A value x at location y in the list means
+        that the result at location y in the result list needs to be at location
+        x in the list of results returned to the user.
+    """
+
+    def create_result_index_pairs(results):
+      return zip(results, indexes)
+    return create_result_index_pairs
+
+  def __sort_result_index_pairs(self, extra_hook):
+    """Builds a function that sorts the indexed results.
+
+    Args:
+      extra_hook: A function that the returned function will apply to its result
+        before returning.
+
+    Returns:
+      A function that takes a list of results and reorders them to match the
+      order in which the input values associated with each results were
+      originally provided.
+    """
+
+    def sort_result_index_pairs(result_index_pairs):
+      results = [None] * len(result_index_pairs)
+      for result, index in result_index_pairs:
+        results[index] = result
+      if extra_hook is not None:
+        results = extra_hook(results)
+      return results
+    return sort_result_index_pairs
+
+  def __generate_pb_lists(self, indexed_pb_lists_by_eg, base_size, max_count,
+                          max_egs_per_rpc, config):
+    """Internal helper: repeatedly yield a list of 2 elements.
+
+    Args:
+      indexed_pb_lists_by_eg: A list of lists.  The inner lists consist of
+        objects that all belong to the same entity group.
+
+      base_size: An integer representing the base size of an rpc.  Used for
+        splitting operations across multiple RPCs due to size limitations.
+
+      max_count: An integer representing the maximum number of objects we can
+        send in an rpc.  Used for splitting operations across multiple RPCs.
+
+      max_egs_per_rpc: An integer representing the maximum number of entity
+        groups we can have represented in an rpc.  Can be None.
+
+      config: The config object to use.
+
+    Yields:
+      Repeatedly yields 2 element tuples.  The first element is a list of
+      protobufs to send in one batch.  The second element is a list containing
+      the original location of those protobufs (expressed as an index) in the
+      input.
+    """
     max_size = (Configuration.max_rpc_bytes(config, self.__config) or
                 self.MAX_RPC_BYTES)
     pbs = []
+    pb_indexes = []
     size = base_size
-    for value in values:
-      pb = value_to_pb(value)
-
-      incr_size = pb.lengthString(pb.ByteSize()) + 1
-
-
-
-
-      if (not isinstance(config, apiproxy_stub_map.UserRPC) and
-          (len(pbs) >= max_count or (pbs and size + incr_size > max_size))):
-        yield pbs
+    num_entity_groups = 0
+    for indexed_pbs in indexed_pb_lists_by_eg:
+      num_entity_groups += 1
+      if max_egs_per_rpc is not None and num_entity_groups > max_egs_per_rpc:
+        yield (pbs, pb_indexes)
         pbs = []
+        pb_indexes = []
         size = base_size
-      pbs.append(pb)
-      size += incr_size
-    yield pbs
+        num_entity_groups = 1
+      for indexed_pb in indexed_pbs:
+        (pb, index) = indexed_pb
+
+        incr_size = pb.lengthString(pb.ByteSize()) + 1
+
+
+
+
+        if (not isinstance(config, apiproxy_stub_map.UserRPC) and
+            (len(pbs) >= max_count or (pbs and size + incr_size > max_size))):
+          yield (pbs, pb_indexes)
+          pbs = []
+          pb_indexes = []
+          size = base_size
+          num_entity_groups = 1
+        pbs.append(pb)
+        pb_indexes.append(index)
+        size += incr_size
+    yield (pbs, pb_indexes)
 
   def _get_base_size(self, base_req):
     """Internal helper: return request size in bytes."""
@@ -1133,16 +1256,40 @@ class BaseConnection(object):
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_get_keys(config, self.__config) or
                  self.MAX_GET_KEYS)
+    if base_req.has_strong():
+      is_read_current = base_req.strong()
+    else:
+      is_read_current = (self.get_datastore_type() ==
+                         BaseConnection.HIGH_REPLICATION_DATASTORE)
+
+    indexed_keys_by_entity_group = self.__group_indexed_pbs_by_entity_group(
+        keys, self.__adapter.key_to_pb)
 
 
-    pbsgen = self.__generate_pb_lists(keys, self.__adapter.key_to_pb,
-                                      base_size, max_count, config)
+
+
+
+
+
+
+    if is_read_current and not base_req.has_transaction():
+      max_egs_per_rpc = (Configuration.max_entity_groups_per_rpc(
+          config, self.__config))
+    else:
+      max_egs_per_rpc = None
+
+
+    pbsgen = self.__generate_pb_lists(
+        indexed_keys_by_entity_group, base_size, max_count, max_egs_per_rpc,
+        config)
+
     rpcs = []
-    for pbs in pbsgen:
+    for pbs, indexes in pbsgen:
       req = datastore_pb.GetRequest()
       req.CopyFrom(base_req)
-      rpcs.append(make_get_call(req, pbs))
-    return MultiRpc(rpcs, extra_hook)
+      rpcs.append(make_get_call(req, pbs,
+                                self.__create_result_index_pairs(indexes)))
+    return MultiRpc(rpcs, self.__sort_result_index_pairs(extra_hook))
 
   def __get_hook(self, rpc):
     """Internal method used as get_result_hook for Get operation."""
@@ -1213,14 +1360,25 @@ class BaseConnection(object):
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_put_entities(config, self.__config) or
                  self.MAX_PUT_ENTITIES)
-    pbsgen = self.__generate_pb_lists(entities, self.__adapter.entity_to_pb,
-                                      base_size, max_count, config)
     rpcs = []
-    for pbs in pbsgen:
+    indexed_entities_by_entity_group = self.__group_indexed_pbs_by_entity_group(
+        entities, self.__adapter.entity_to_pb)
+    if not base_req.has_transaction():
+      max_egs_per_rpc = (Configuration.max_entity_groups_per_rpc(
+          config, self.__config))
+    else:
+      max_egs_per_rpc = None
+
+    pbsgen = self.__generate_pb_lists(
+        indexed_entities_by_entity_group, base_size, max_count, max_egs_per_rpc,
+        config)
+
+    for pbs, indexes in pbsgen:
       req = datastore_pb.PutRequest()
       req.CopyFrom(base_req)
-      rpcs.append(make_put_call(req, pbs))
-    return MultiRpc(rpcs, extra_hook)
+      rpcs.append(make_put_call(req, pbs,
+                                self.__create_result_index_pairs(indexes)))
+    return MultiRpc(rpcs, self.__sort_result_index_pairs(extra_hook))
 
   def __put_hook(self, rpc):
     """Internal method used as get_result_hook for Put operation."""
@@ -1281,10 +1439,21 @@ class BaseConnection(object):
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_delete_keys(config, self.__config) or
                  self.MAX_DELETE_KEYS)
-    pbsgen = self.__generate_pb_lists(keys, self.__adapter.key_to_pb,
-                                      base_size, max_count, config)
+    if not base_req.has_transaction():
+      max_egs_per_rpc = (Configuration.max_entity_groups_per_rpc(
+          config, self.__config))
+    else:
+      max_egs_per_rpc = None
+    indexed_keys_by_entity_group = self.__group_indexed_pbs_by_entity_group(
+        keys, self.__adapter.key_to_pb)
+
+
+
+    pbsgen = self.__generate_pb_lists(
+        indexed_keys_by_entity_group, base_size, max_count, max_egs_per_rpc,
+        config)
     rpcs = []
-    for pbs in pbsgen:
+    for pbs, _ in pbsgen:
       req = datastore_pb.DeleteRequest()
       req.CopyFrom(base_req)
       rpcs.append(make_delete_call(req, pbs))

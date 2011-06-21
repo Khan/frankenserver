@@ -27,10 +27,10 @@ except ImportError:
   _net_proto___parse__python = None
 import sys
 try:
-  __import__('google.net.rpc.python.rpc_internals')
-  __import__('google.net.rpc.python.pywraprpc')
-  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals')
-  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc')
+  __import__('google.net.rpc.python.rpc_internals_lite')
+  __import__('google.net.rpc.python.pywraprpc_lite')
+  rpc_internals = sys.modules.get('google.net.rpc.python.rpc_internals_lite')
+  pywraprpc = sys.modules.get('google.net.rpc.python.pywraprpc_lite')
   _client_stub_base_class = rpc_internals.StubbyRPCBaseStub
 except ImportError:
   _client_stub_base_class = object

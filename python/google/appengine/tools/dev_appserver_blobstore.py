@@ -56,6 +56,9 @@ UPLOAD_URL_PATH = '_ah/upload/'
 UPLOAD_URL_PATTERN = '/%s(.*)' % UPLOAD_URL_PATH
 
 
+AUTO_MIME_TYPE = 'application/vnd.google.appengine.auto'
+
+
 def GetBlobStorage():
   """Get blob-storage from api-proxy stub map.
 
@@ -235,7 +238,8 @@ def DownloadRewriter(response, request_headers):
       response.body = cStringIO.StringIO(blob_stream.read(content_length))
       response.headers['Content-Length'] = str(content_length)
 
-      if not response.headers.getheader('Content-Type'):
+      content_type = response.headers.getheader('Content-Type')
+      if not content_type or content_type == AUTO_MIME_TYPE:
         response.headers['Content-Type'] = blob_info['content_type']
       response.large_response = True
 

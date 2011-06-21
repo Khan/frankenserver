@@ -3734,4 +3734,7 @@ websafe_decode_cursor = datastore_query.Cursor.from_websafe_string
 is_in_transaction = datastore.IsInTransaction
 
 
+transactional = datastore.Transactional
+
+
 create_config = datastore.CreateConfig

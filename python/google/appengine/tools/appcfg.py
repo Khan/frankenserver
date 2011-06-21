@@ -106,6 +106,9 @@ verbosity = 1
 PREFIXED_BY_ADMIN_CONSOLE_RE = '^(?:admin-console)(.*)'
 
 
+SDK_PRODUCT = 'appcfg_py'
+
+
 
 _api_versions = os.environ.get('GOOGLE_TEST_API_VERSIONS', '1')
 _options = validation.Options(*_api_versions.split(','))
@@ -113,8 +116,8 @@ appinfo.AppInfoExternal.ATTRIBUTES[appinfo.API_VERSION] = _options
 del _api_versions, _options
 
 
-def StatusUpdate(msg):
-  """Print a status message to stderr.
+def PrintUpdate(msg):
+  """Print a message to stderr.
 
   If 'verbosity' is greater than 0, print the message.
 
@@ -123,6 +126,16 @@ def StatusUpdate(msg):
   """
   if verbosity > 0:
     print >>sys.stderr, msg
+
+
+def StatusUpdate(msg):
+  """Print a status message to stderr."""
+  PrintUpdate(msg)
+
+
+def ErrorUpdate(msg):
+  """Print an error message to stderr."""
+  PrintUpdate(msg)
 
 
 def GetMimeTypeIfStaticFile(config, filename):
@@ -1355,8 +1368,23 @@ class UploadBatcher(object):
     self.SendSingleFile(path, payload, mime_type)
 
 
+def _FormatHash(h):
+  """Return a string representation of a hash.
+
+  The hash is a sha1 hash. It is computed both for files that need to be
+  pushed to App Engine and for data payloads of requests made to App Engine.
+
+  Args:
+    h: The hash
+
+  Returns:
+    The string representation of the hash.
+  """
+  return '%s_%s_%s_%s_%s' % (h[0:8], h[8:16], h[16:24], h[24:32], h[32:40])
+
+
 def _Hash(content):
-  """Compute the hash of the content.
+  """Compute the sha1 hash of the content.
 
   Args:
     content: The data to hash as a string.
@@ -1365,7 +1393,29 @@ def _Hash(content):
     The string representation of the hash.
   """
   h = hashlib.sha1(content).hexdigest()
-  return '%s_%s_%s_%s_%s' % (h[0:8], h[8:16], h[16:24], h[24:32], h[32:40])
+  return _FormatHash(h)
+
+
+def _HashFromFileHandle(file_handle):
+  """Compute the hash of the content of the file pointed to by file_handle.
+
+  Args:
+    file_handle: File-like object which provides seek, read and tell.
+
+  Returns:
+    The string representation of the hash.
+  """
+
+
+
+
+
+
+
+  pos = file_handle.tell()
+  content_hash = _Hash(file_handle.read())
+  file_handle.seek(pos, 0)
+  return content_hash
 
 
 def EnsureDir(path):
@@ -1523,6 +1573,7 @@ class AppVersionUpload(object):
     in_transaction: True iff a transaction with the server has started.
       An AppVersionUpload can do only one transaction at a time.
     deployed: True iff the Deploy method has been called.
+    started: True iff the StartServing method has been called.
   """
 
   def __init__(self, rpcserver, config, version=None, backend=None,
@@ -1563,8 +1614,12 @@ class AppVersionUpload(object):
 
     self.files = {}
 
+
+    self.all_files = set()
+
     self.in_transaction = False
     self.deployed = False
+    self.started = False
     self.batching = True
     self.file_batcher = UploadBatcher('file', self.rpcserver, self.params)
     self.blob_batcher = UploadBatcher('blob', self.rpcserver, self.params)
@@ -1591,18 +1646,10 @@ class AppVersionUpload(object):
       logging.error(reason)
       return
 
-
-
-
-
-
-
-
-    pos = file_handle.tell()
-    content_hash = _Hash(file_handle.read())
-    file_handle.seek(pos, 0)
+    content_hash = _HashFromFileHandle(file_handle)
 
     self.files[path] = content_hash
+    self.all_files.add(path)
 
   def Describe(self):
     """Returns a string describing the object being updated."""
@@ -1731,15 +1778,23 @@ class AppVersionUpload(object):
   def Precompile(self):
     """Handle bytecode precompilation."""
 
-    StatusUpdate('Precompilation starting.')
+    StatusUpdate('Compilation starting.')
+
     files = []
+    if self.config.runtime == 'go':
+
+
+      for f in self.all_files:
+        if not self.config.nobuild_files.match(f):
+          files.append(f)
+
     while True:
       if files:
-        StatusUpdate('Precompilation: %d files left.' % len(files))
+        StatusUpdate('Compilation: %d files left.' % len(files))
       files = self.PrecompileBatch(files)
       if not files:
         break
-    StatusUpdate('Precompilation completed.')
+    StatusUpdate('Compilation completed.')
 
   def PrecompileBatch(self, files):
     """Precompile a batch of files.
@@ -1784,12 +1839,27 @@ class AppVersionUpload(object):
     try:
       app_summary = self.Deploy()
 
-      if not RetryWithBackoff(lambda: (self.IsReady(), None),
-                              PrintRetryMessage, 1, 2, 60, 20):
+
+      success, contents = RetryWithBackoff(lambda: (self.IsReady(), None),
+                                           PrintRetryMessage, 1, 2, 60, 20)
+      if not success:
 
         logging.warning('Version still not ready to serve, aborting.')
         raise Exception('Version not ready.')
-      self.StartServing()
+
+      result = self.StartServing()
+      if result == '':
+
+
+        self.in_transaction = False
+      else:
+        success, contents = RetryWithBackoff(lambda: (self.IsServing(), None),
+                                             PrintRetryMessage, 1, 1, 1, 60)
+        if not success:
+
+          logging.warning('Version still not serving, aborting.')
+          raise Exception('Version not ready.')
+        self.in_transaction = False
     except urllib2.HTTPError, e:
 
       if e.code != 404:
@@ -1847,12 +1917,33 @@ class AppVersionUpload(object):
 
     Raises:
       Exception: Deploy has not yet been called.
+
+    Returns:
+      The response body, as a string.
     """
-    assert self.deployed, 'Deploy() must be called before IsReady().'
+    assert self.deployed, 'Deploy() must be called before StartServing().'
 
     StatusUpdate('Deployment successful.')
-    self.Send('/api/appversion/startserving')
-    self.in_transaction = False
+    self.params['willcheckserving'] = '1'
+    result = self.Send('/api/appversion/startserving')
+    del self.params['willcheckserving']
+    self.started = True
+    return result
+
+  def IsServing(self):
+    """Check if the new app version is serving.
+
+    Raises:
+      Exception: Deploy has not yet been called.
+
+    Returns:
+      True if the deployed app version is serving.
+    """
+    assert self.started, 'StartServing() must be called before IsServing().'
+
+    StatusUpdate('Checking if updated app version is serving.')
+    result = self.Send('/api/appversion/isserving')
+    return result == '1'
 
   def Rollback(self):
     """Rolls back the transaction if one is in progress."""
@@ -1938,9 +2029,17 @@ class AppVersionUpload(object):
           self.Precompile()
         except urllib2.HTTPError, e:
 
-          StatusUpdate('Error %d: --- begin server output ---\n'
-                       '%s\n--- end server output ---' %
-                       (e.code, e.read().rstrip('\n')))
+          ErrorUpdate('Error %d: --- begin server output ---\n'
+                      '%s\n--- end server output ---' %
+                      (e.code, e.read().rstrip('\n')))
+          if e.code == 422 or self.config.runtime == 'go':
+
+
+
+
+
+
+            raise
           print >>self.error_fh, (
               'Precompilation failed. Your app can still serve but may '
               'have reduced startup performance. You can retry the update '
@@ -2055,7 +2154,7 @@ def GetUserAgent(get_version=GetVersionObject,
     else:
       release = version['release']
 
-    product_tokens.append('appcfg_py/%s' % release)
+    product_tokens.append('%s/%s' % (SDK_PRODUCT, release))
 
 
   product_tokens.append(get_platform())
@@ -2107,7 +2206,10 @@ class AppCfgApp(object):
                password_input_fn=getpass.getpass,
                out_fh=sys.stdout,
                error_fh=sys.stderr,
-               update_check_class=UpdateCheck):
+               update_check_class=UpdateCheck,
+               throttle_class=None,
+               opener=open,
+               file_iterator=FileIterator):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -2121,6 +2223,13 @@ class AppCfgApp(object):
       password_input_fn: Function used for getting user password.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
       update_check_class: UpdateCheck class (can be replaced for testing).
+      throttle_class: A class to use instead of ThrottledHttpRpcServer
+        (only used in the bulkloader).
+      opener: Function used for opening files.
+      file_iterator: Callable that takes (basepath, skip_files, file_separator)
+        and returns a generator that yields all filenames in the file tree
+        rooted at that path, skipping files that match the skip_files compiled
+        regular expression.
     """
     self.parser_class = parser_class
     self.argv = argv
@@ -2130,6 +2239,7 @@ class AppCfgApp(object):
     self.out_fh = out_fh
     self.error_fh = error_fh
     self.update_check_class = update_check_class
+    self.throttle_class = throttle_class
 
 
 
@@ -2146,7 +2256,7 @@ class AppCfgApp(object):
       self._PrintHelpAndExit()
 
     if not self.options.allow_any_runtime:
-      appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = 'python'
+      appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = 'python|go'
 
     action = self.args.pop(0)
 
@@ -2216,6 +2326,12 @@ class AppCfgApp(object):
 
     global verbosity
     verbosity = self.options.verbose
+
+
+
+
+    self.opener = opener
+    self.file_iterator = file_iterator
 
   def Run(self):
     """Executes the requested action.
@@ -2435,10 +2551,10 @@ class AppCfgApp(object):
       self.parser.error('Directory does not contain an app.yaml '
                         'configuration file.')
 
-    fh = open(appyaml_filename, 'r')
+    fh = self.opener(appyaml_filename, 'r')
     try:
       if includes:
-        appyaml = appinfo_includes.Parse(fh)
+        appyaml = appinfo_includes.Parse(fh, self.opener)
       else:
         appyaml = appinfo.LoadSingleAppInfo(fh)
     finally:
@@ -2472,7 +2588,7 @@ class AppCfgApp(object):
     """
     file_name = self._FindYaml(basepath, basename)
     if file_name is not None:
-      fh = open(file_name, 'r')
+      fh = self.opener(file_name, 'r')
       try:
         defns = parser(fh)
       finally:
@@ -2605,18 +2721,17 @@ class AppCfgApp(object):
       if appinfo.PYTHON_PRECOMPILED not in appyaml.derived_file_type:
         appyaml.derived_file_type.append(appinfo.PYTHON_PRECOMPILED)
 
-    updatecheck = self.update_check_class(rpcserver, appyaml)
-
     if self.options.skip_sdk_update_check:
       logging.info('Skipping update check')
     else:
+      updatecheck = self.update_check_class(rpcserver, appyaml)
       updatecheck.CheckForUpdates()
 
     appversion = AppVersionUpload(rpcserver, appyaml, self.options.version,
                                   backend, self.error_fh)
     return appversion.DoUpload(
-        FileIterator(basepath, appyaml.skip_files), self.options.max_size,
-        lambda path: open(os.path.join(basepath, path), 'rb'))
+        self.file_iterator(basepath, appyaml.skip_files), self.options.max_size,
+        lambda path: self.opener(os.path.join(basepath, path), 'rb'))
 
   def Update(self):
     """Updates and deploys a new appversion and global app configs."""
@@ -2644,9 +2759,9 @@ class AppCfgApp(object):
       try:
         index_upload.DoUpload()
       except urllib2.HTTPError, e:
-        StatusUpdate('Error %d: --- begin server output ---\n'
-                     '%s\n--- end server output ---' %
-                     (e.code, e.read().rstrip('\n')))
+        ErrorUpdate('Error %d: --- begin server output ---\n'
+                    '%s\n--- end server output ---' %
+                    (e.code, e.read().rstrip('\n')))
         print >> self.error_fh, (
             'Your app was updated, but there was an error updating your '
             'indexes. Please retry later with appcfg.py update_indexes.')
@@ -3149,6 +3264,7 @@ class AppCfgApp(object):
                      'create_config',
                      )])
     args['application'] = self.options.app_id
+    args['throttle_class'] = self.throttle_class
     return args
 
   def PerformDownload(self, run_fn=None):

@@ -40,6 +40,8 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
   handle_ = 0
   has_app_ = 0
   app_ = ""
+  has_mark_changes_ = 0
+  mark_changes_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -70,11 +72,25 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   def has_app(self): return self.has_app_
 
+  def mark_changes(self): return self.mark_changes_
+
+  def set_mark_changes(self, x):
+    self.has_mark_changes_ = 1
+    self.mark_changes_ = x
+
+  def clear_mark_changes(self):
+    if self.has_mark_changes_:
+      self.has_mark_changes_ = 0
+      self.mark_changes_ = 0
+
+  def has_mark_changes(self): return self.has_mark_changes_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_handle()): self.set_handle(x.handle())
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_mark_changes()): self.set_mark_changes(x.mark_changes())
 
   def Equals(self, x):
     if x is self: return 1
@@ -82,6 +98,8 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if self.has_handle_ and self.handle_ != x.handle_: return 0
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_mark_changes_ != x.has_mark_changes_: return 0
+    if self.has_mark_changes_ and self.mark_changes_ != x.mark_changes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -99,6 +117,7 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.app_))
+    if (self.has_mark_changes_): n += 2
     return n + 10
 
   def ByteSizePartial(self):
@@ -108,17 +127,22 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_):
       n += 1
       n += self.lengthString(len(self.app_))
+    if (self.has_mark_changes_): n += 2
     return n
 
   def Clear(self):
     self.clear_handle()
     self.clear_app()
+    self.clear_mark_changes()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(9)
     out.put64(self.handle_)
     out.putVarInt32(18)
     out.putPrefixedString(self.app_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(24)
+      out.putBoolean(self.mark_changes_)
 
   def OutputPartial(self, out):
     if (self.has_handle_):
@@ -127,6 +151,9 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_):
       out.putVarInt32(18)
       out.putPrefixedString(self.app_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(24)
+      out.putBoolean(self.mark_changes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -136,6 +163,9 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.set_app(d.getPrefixedString())
+        continue
+      if tt == 24:
+        self.set_mark_changes(d.getBoolean())
         continue
 
 
@@ -147,6 +177,7 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_handle_: res+=prefix+("handle: %s\n" % self.DebugFormatFixed64(self.handle_))
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_mark_changes_: res+=prefix+("mark_changes: %s\n" % self.DebugFormatBool(self.mark_changes_))
     return res
 
 
@@ -155,18 +186,21 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   khandle = 1
   kapp = 2
+  kmark_changes = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "handle",
     2: "app",
-  }, 2)
+    3: "mark_changes",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.DOUBLE,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -3375,6 +3409,113 @@ class Error(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+class Cost_CommitCost(ProtocolBuffer.ProtocolMessage):
+  has_requested_entity_puts_ = 0
+  requested_entity_puts_ = 0
+  has_requested_entity_deletes_ = 0
+  requested_entity_deletes_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def requested_entity_puts(self): return self.requested_entity_puts_
+
+  def set_requested_entity_puts(self, x):
+    self.has_requested_entity_puts_ = 1
+    self.requested_entity_puts_ = x
+
+  def clear_requested_entity_puts(self):
+    if self.has_requested_entity_puts_:
+      self.has_requested_entity_puts_ = 0
+      self.requested_entity_puts_ = 0
+
+  def has_requested_entity_puts(self): return self.has_requested_entity_puts_
+
+  def requested_entity_deletes(self): return self.requested_entity_deletes_
+
+  def set_requested_entity_deletes(self, x):
+    self.has_requested_entity_deletes_ = 1
+    self.requested_entity_deletes_ = x
+
+  def clear_requested_entity_deletes(self):
+    if self.has_requested_entity_deletes_:
+      self.has_requested_entity_deletes_ = 0
+      self.requested_entity_deletes_ = 0
+
+  def has_requested_entity_deletes(self): return self.has_requested_entity_deletes_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_requested_entity_puts()): self.set_requested_entity_puts(x.requested_entity_puts())
+    if (x.has_requested_entity_deletes()): self.set_requested_entity_deletes(x.requested_entity_deletes())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_requested_entity_puts_ != x.has_requested_entity_puts_: return 0
+    if self.has_requested_entity_puts_ and self.requested_entity_puts_ != x.requested_entity_puts_: return 0
+    if self.has_requested_entity_deletes_ != x.has_requested_entity_deletes_: return 0
+    if self.has_requested_entity_deletes_ and self.requested_entity_deletes_ != x.requested_entity_deletes_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_requested_entity_puts_): n += 1 + self.lengthVarInt64(self.requested_entity_puts_)
+    if (self.has_requested_entity_deletes_): n += 1 + self.lengthVarInt64(self.requested_entity_deletes_)
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_requested_entity_puts_): n += 1 + self.lengthVarInt64(self.requested_entity_puts_)
+    if (self.has_requested_entity_deletes_): n += 1 + self.lengthVarInt64(self.requested_entity_deletes_)
+    return n
+
+  def Clear(self):
+    self.clear_requested_entity_puts()
+    self.clear_requested_entity_deletes()
+
+  def OutputUnchecked(self, out):
+    if (self.has_requested_entity_puts_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.requested_entity_puts_)
+    if (self.has_requested_entity_deletes_):
+      out.putVarInt32(56)
+      out.putVarInt32(self.requested_entity_deletes_)
+
+  def OutputPartial(self, out):
+    if (self.has_requested_entity_puts_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.requested_entity_puts_)
+    if (self.has_requested_entity_deletes_):
+      out.putVarInt32(56)
+      out.putVarInt32(self.requested_entity_deletes_)
+
+  def TryMerge(self, d):
+    while 1:
+      tt = d.getVarInt32()
+      if tt == 44: break
+      if tt == 48:
+        self.set_requested_entity_puts(d.getVarInt32())
+        continue
+      if tt == 56:
+        self.set_requested_entity_deletes(d.getVarInt32())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_requested_entity_puts_: res+=prefix+("requested_entity_puts: %s\n" % self.DebugFormatInt32(self.requested_entity_puts_))
+    if self.has_requested_entity_deletes_: res+=prefix+("requested_entity_deletes: %s\n" % self.DebugFormatInt32(self.requested_entity_deletes_))
+    return res
+
 class Cost(ProtocolBuffer.ProtocolMessage):
   has_index_writes_ = 0
   index_writes_ = 0
@@ -3384,8 +3525,11 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   entity_writes_ = 0
   has_entity_write_bytes_ = 0
   entity_write_bytes_ = 0
+  has_commitcost_ = 0
+  commitcost_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def index_writes(self): return self.index_writes_
@@ -3440,6 +3584,25 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 
   def has_entity_write_bytes(self): return self.has_entity_write_bytes_
 
+  def commitcost(self):
+    if self.commitcost_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.commitcost_ is None: self.commitcost_ = Cost_CommitCost()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.commitcost_
+
+  def mutable_commitcost(self): self.has_commitcost_ = 1; return self.commitcost()
+
+  def clear_commitcost(self):
+
+    if self.has_commitcost_:
+      self.has_commitcost_ = 0;
+      if self.commitcost_ is not None: self.commitcost_.Clear()
+
+  def has_commitcost(self): return self.has_commitcost_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3447,6 +3610,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (x.has_index_write_bytes()): self.set_index_write_bytes(x.index_write_bytes())
     if (x.has_entity_writes()): self.set_entity_writes(x.entity_writes())
     if (x.has_entity_write_bytes()): self.set_entity_write_bytes(x.entity_write_bytes())
+    if (x.has_commitcost()): self.mutable_commitcost().MergeFrom(x.commitcost())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3458,10 +3622,13 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if self.has_entity_writes_ and self.entity_writes_ != x.entity_writes_: return 0
     if self.has_entity_write_bytes_ != x.has_entity_write_bytes_: return 0
     if self.has_entity_write_bytes_ and self.entity_write_bytes_ != x.entity_write_bytes_: return 0
+    if self.has_commitcost_ != x.has_commitcost_: return 0
+    if self.has_commitcost_ and self.commitcost_ != x.commitcost_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (self.has_commitcost_ and not self.commitcost_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -3470,6 +3637,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_write_bytes_): n += 1 + self.lengthVarInt64(self.index_write_bytes_)
     if (self.has_entity_writes_): n += 1 + self.lengthVarInt64(self.entity_writes_)
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
+    if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSize()
     return n
 
   def ByteSizePartial(self):
@@ -3478,6 +3646,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_write_bytes_): n += 1 + self.lengthVarInt64(self.index_write_bytes_)
     if (self.has_entity_writes_): n += 1 + self.lengthVarInt64(self.entity_writes_)
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
+    if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSizePartial()
     return n
 
   def Clear(self):
@@ -3485,6 +3654,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     self.clear_index_write_bytes()
     self.clear_entity_writes()
     self.clear_entity_write_bytes()
+    self.clear_commitcost()
 
   def OutputUnchecked(self, out):
     if (self.has_index_writes_):
@@ -3499,6 +3669,10 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_write_bytes_):
       out.putVarInt32(32)
       out.putVarInt32(self.entity_write_bytes_)
+    if (self.has_commitcost_):
+      out.putVarInt32(43)
+      self.commitcost_.OutputUnchecked(out)
+      out.putVarInt32(44)
 
   def OutputPartial(self, out):
     if (self.has_index_writes_):
@@ -3513,6 +3687,10 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_write_bytes_):
       out.putVarInt32(32)
       out.putVarInt32(self.entity_write_bytes_)
+    if (self.has_commitcost_):
+      out.putVarInt32(43)
+      self.commitcost_.OutputPartial(out)
+      out.putVarInt32(44)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3529,6 +3707,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       if tt == 32:
         self.set_entity_write_bytes(d.getVarInt32())
         continue
+      if tt == 43:
+        self.mutable_commitcost().TryMerge(d)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3541,6 +3722,10 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if self.has_index_write_bytes_: res+=prefix+("index_write_bytes: %s\n" % self.DebugFormatInt32(self.index_write_bytes_))
     if self.has_entity_writes_: res+=prefix+("entity_writes: %s\n" % self.DebugFormatInt32(self.entity_writes_))
     if self.has_entity_write_bytes_: res+=prefix+("entity_write_bytes: %s\n" % self.DebugFormatInt32(self.entity_write_bytes_))
+    if self.has_commitcost_:
+      res+=prefix+"CommitCost {\n"
+      res+=self.commitcost_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+"}\n"
     return res
 
 
@@ -3551,6 +3736,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   kindex_write_bytes = 2
   kentity_writes = 3
   kentity_write_bytes = 4
+  kCommitCostGroup = 5
+  kCommitCostrequested_entity_puts = 6
+  kCommitCostrequested_entity_deletes = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3558,7 +3746,10 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     2: "index_write_bytes",
     3: "entity_writes",
     4: "entity_write_bytes",
-  }, 4)
+    5: "CommitCost",
+    6: "requested_entity_puts",
+    7: "requested_entity_deletes",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3566,7 +3757,10 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STARTGROUP,
+    6: ProtocolBuffer.Encoder.NUMERIC,
+    7: ProtocolBuffer.Encoder.NUMERIC,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4014,6 +4208,8 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
   trusted_ = 0
   has_force_ = 0
   force_ = 0
+  has_mark_changes_ = 0
+  mark_changes_ = 0
 
   def __init__(self, contents=None):
     self.entity_ = []
@@ -4098,6 +4294,19 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_force(self): return self.has_force_
 
+  def mark_changes(self): return self.mark_changes_
+
+  def set_mark_changes(self, x):
+    self.has_mark_changes_ = 1
+    self.mark_changes_ = x
+
+  def clear_mark_changes(self):
+    if self.has_mark_changes_:
+      self.has_mark_changes_ = 0
+      self.mark_changes_ = 0
+
+  def has_mark_changes(self): return self.has_mark_changes_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -4106,6 +4315,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_trusted()): self.set_trusted(x.trusted())
     if (x.has_force()): self.set_force(x.force())
+    if (x.has_mark_changes()): self.set_mark_changes(x.mark_changes())
 
   def Equals(self, x):
     if x is self: return 1
@@ -4121,6 +4331,8 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_trusted_ and self.trusted_ != x.trusted_: return 0
     if self.has_force_ != x.has_force_: return 0
     if self.has_force_ and self.force_ != x.force_: return 0
+    if self.has_mark_changes_ != x.has_mark_changes_: return 0
+    if self.has_mark_changes_ and self.mark_changes_ != x.mark_changes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4141,6 +4353,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
+    if (self.has_mark_changes_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -4152,6 +4365,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSizePartial())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
+    if (self.has_mark_changes_): n += 2
     return n
 
   def Clear(self):
@@ -4160,6 +4374,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_composite_index()
     self.clear_trusted()
     self.clear_force()
+    self.clear_mark_changes()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.entity_)):
@@ -4180,6 +4395,9 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_force_):
       out.putVarInt32(56)
       out.putBoolean(self.force_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(64)
+      out.putBoolean(self.mark_changes_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.entity_)):
@@ -4200,6 +4418,9 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_force_):
       out.putVarInt32(56)
       out.putBoolean(self.force_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(64)
+      out.putBoolean(self.mark_changes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4227,6 +4448,9 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 56:
         self.set_force(d.getBoolean())
+        continue
+      if tt == 64:
+        self.set_mark_changes(d.getBoolean())
         continue
 
 
@@ -4258,6 +4482,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     if self.has_force_: res+=prefix+("force: %s\n" % self.DebugFormatBool(self.force_))
+    if self.has_mark_changes_: res+=prefix+("mark_changes: %s\n" % self.DebugFormatBool(self.mark_changes_))
     return res
 
 
@@ -4269,6 +4494,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
   kcomposite_index = 3
   ktrusted = 4
   kforce = 7
+  kmark_changes = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -4277,7 +4503,8 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     3: "composite_index",
     4: "trusted",
     7: "force",
-  }, 7)
+    8: "mark_changes",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4286,7 +4513,8 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.NUMERIC,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4737,6 +4965,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   trusted_ = 0
   has_force_ = 0
   force_ = 0
+  has_mark_changes_ = 0
+  mark_changes_ = 0
 
   def __init__(self, contents=None):
     self.key_ = []
@@ -4804,6 +5034,19 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_force(self): return self.has_force_
 
+  def mark_changes(self): return self.mark_changes_
+
+  def set_mark_changes(self, x):
+    self.has_mark_changes_ = 1
+    self.mark_changes_ = x
+
+  def clear_mark_changes(self):
+    if self.has_mark_changes_:
+      self.has_mark_changes_ = 0
+      self.mark_changes_ = 0
+
+  def has_mark_changes(self): return self.has_mark_changes_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -4811,6 +5054,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     if (x.has_trusted()): self.set_trusted(x.trusted())
     if (x.has_force()): self.set_force(x.force())
+    if (x.has_mark_changes()): self.set_mark_changes(x.mark_changes())
 
   def Equals(self, x):
     if x is self: return 1
@@ -4823,6 +5067,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_trusted_ and self.trusted_ != x.trusted_: return 0
     if self.has_force_ != x.has_force_: return 0
     if self.has_force_ and self.force_ != x.force_: return 0
+    if self.has_mark_changes_ != x.has_mark_changes_: return 0
+    if self.has_mark_changes_ and self.mark_changes_ != x.mark_changes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4839,6 +5085,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
+    if (self.has_mark_changes_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -4848,6 +5095,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
+    if (self.has_mark_changes_): n += 2
     return n
 
   def Clear(self):
@@ -4855,6 +5103,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_transaction()
     self.clear_trusted()
     self.clear_force()
+    self.clear_mark_changes()
 
   def OutputUnchecked(self, out):
     if (self.has_trusted_):
@@ -4871,6 +5120,9 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_force_):
       out.putVarInt32(56)
       out.putBoolean(self.force_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(64)
+      out.putBoolean(self.mark_changes_)
 
   def OutputPartial(self, out):
     if (self.has_trusted_):
@@ -4887,6 +5139,9 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_force_):
       out.putVarInt32(56)
       out.putBoolean(self.force_)
+    if (self.has_mark_changes_):
+      out.putVarInt32(64)
+      out.putBoolean(self.mark_changes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4908,6 +5163,9 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 56:
         self.set_force(d.getBoolean())
+        continue
+      if tt == 64:
+        self.set_mark_changes(d.getBoolean())
         continue
 
 
@@ -4931,6 +5189,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     if self.has_force_: res+=prefix+("force: %s\n" % self.DebugFormatBool(self.force_))
+    if self.has_mark_changes_: res+=prefix+("mark_changes: %s\n" % self.DebugFormatBool(self.mark_changes_))
     return res
 
 
@@ -4941,6 +5200,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   ktransaction = 5
   ktrusted = 4
   kforce = 7
+  kmark_changes = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -4948,7 +5208,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     5: "transaction",
     6: "key",
     7: "force",
-  }, 7)
+    8: "mark_changes",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4956,7 +5217,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.STRING,
     7: ProtocolBuffer.Encoder.NUMERIC,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -7180,4 +7442,4 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','GetSchemaRequest','Schema','GetNamespacesRequest','GetNamespacesResponse','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']
+__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','GetSchemaRequest','Schema','GetNamespacesRequest','GetNamespacesResponse','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']
