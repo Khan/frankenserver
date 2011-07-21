@@ -53,5 +53,4 @@ def connect(instance=None, database=None, **kwargs):
   if kwargs:
     logging.info('Ignoring extra kwargs to connect(): %r', kwargs)
 
-  logging.info('Connecting to instance %s, database %s' % (instance, database))
   return rdbms_apiproxy.connect('unused_address', instance, database=database)

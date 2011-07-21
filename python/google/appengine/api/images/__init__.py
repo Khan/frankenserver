@@ -39,6 +39,8 @@ Classes defined in this module:
 
 import struct
 
+import simplejson as json
+
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_types
 from google.appengine.api.images import images_service_pb
@@ -150,6 +152,7 @@ class Image(object):
     self._height = None
     self._format = None
     self._correct_orientation = UNCHANGED_ORIENTATION
+    self._original_metadata = None
 
   def _check_transform_limits(self):
     """Ensure some simple limits on the number of transforms allowed.
@@ -420,16 +423,27 @@ class Image(object):
       raise BadImageError("Corrupt WEBP format")
 
 
-  def resize(self, width=0, height=0):
+  def resize(self, width=0, height=0, crop_to_fit=False,
+             crop_offset_x=0.5, crop_offset_y=0.5):
     """Resize the image maintaining the aspect ratio.
 
     If both width and height are specified, the more restricting of the two
-    values will be used when resizing the photo.  The maximum dimension allowed
+    values will be used when resizing the image. The maximum dimension allowed
     for both width and height is 4000 pixels.
+    If both width and height are specified and crop_to_fit is True, the less
+    restricting of the two values will be used when resizing and the image will
+    be cropped to fit the specified size. In this case the center of cropping
+    can be adjusted  by crop_offset_x and crop_offset_y.
 
     Args:
       width: int, width (in pixels) to change the image width to.
       height: int, height (in pixels) to change the image height to.
+      crop_to_fit: If True and both width and height are specified, the image is
+        cropped after resize to fit the specified dimensions.
+      crop_offset_x: float value between 0.0 and 1.0, 0 is left and 1 is right,
+        default is 0.5, the center of image.
+      crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
+        default is 0.5, the center of image.
 
     Raises:
       TypeError when width or height is not either 'int' or 'long' types.
@@ -449,11 +463,24 @@ class Image(object):
     if width > 4000 or height > 4000:
       raise BadRequestError("Both width and height must be <= 4000.")
 
+    if not isinstance(crop_to_fit, bool):
+      raise TypeError("crop_to_fit must be boolean.")
+
+    if crop_to_fit and not (width and height):
+      raise BadRequestError("Both width and height must be > 0 when "
+                            "crop_to_fit is specified")
+
+    self._validate_crop_arg(crop_offset_x, "crop_offset_x")
+    self._validate_crop_arg(crop_offset_y, "crop_offset_y")
+
     self._check_transform_limits()
 
     transform = images_service_pb.Transform()
     transform.set_width(width)
     transform.set_height(height)
+    transform.set_crop_to_fit(crop_to_fit)
+    transform.set_crop_offset_x(crop_offset_x)
+    transform.set_crop_offset_y(crop_offset_y)
 
     self._transforms.append(transform)
 
@@ -587,6 +614,31 @@ class Image(object):
 
     self._transforms.append(transform)
 
+  def get_original_metadata(self):
+    """Metadata of the original image.
+
+    Returns a dictionary of metadata extracted from the original image during
+    execute_transform.
+    Note, that some of the EXIF fields are processed, e.g., fields with multiple
+    values returned as lists, rational types are returned as floats, GPS
+    coordinates already parsed to signed floats, etc.
+    ImageWidth and ImageLength fields are corrected if they did not correspond
+    to the actual dimensions of the original image.
+
+    Returns:
+      dict with string keys. If execute_transform was called with parse_metadata
+      being True, this dictionary contains information about various properties
+      of the original image, such as dimensions, color profile, and properties
+      from EXIF.
+      Even if parse_metadata was False or the images did not have any metadata,
+      the dictionary will contain a limited set of metadata, at least
+      'ImageWidth' and 'ImageLength', corresponding to the dimensions of the
+      original image.
+      It will return None, if it is called before a successful
+      execute_transfrom.
+    """
+    return self._original_metadata
+
   def _set_imagedata(self, imagedata):
     """Fills in an ImageData PB from this Image instance.
 
@@ -599,13 +651,17 @@ class Image(object):
     else:
       imagedata.set_content(self._image_data)
 
-  def execute_transforms(self, output_encoding=PNG, quality=None):
-    """Perform transformations on given image.
+  def execute_transforms(self, output_encoding=PNG, quality=None,
+                         parse_source_metadata=False):
+    """Perform transformations on a given image.
 
     Args:
       output_encoding: A value from OUTPUT_ENCODING_TYPES.
       quality: A value between 1 and 100 to specify the quality of the
         encoding.  This value is only used for JPEG & WEBP quality control.
+      parse_source_metadata: when True the metadata (EXIF) of the source image
+        is parsed before any transformations. The results can be retrieved
+        via Image.get_original_metadata.
 
     Returns:
       str, image data after the transformations have been performed on it.
@@ -632,8 +688,12 @@ class Image(object):
     request = images_service_pb.ImagesTransformRequest()
     response = images_service_pb.ImagesTransformResponse()
 
-    request.mutable_input().set_correct_exif_orientation(
+    input_settings = request.mutable_input()
+    input_settings.set_correct_exif_orientation(
         self._correct_orientation)
+
+    if parse_source_metadata:
+      input_settings.set_parse_metadata(True)
 
     self._set_imagedata(request.mutable_image())
 
@@ -676,10 +736,11 @@ class Image(object):
     self._image_data = response.image().content()
     self._blob_key = None
     self._transforms = []
-
     self._width = None
     self._height = None
     self._format = None
+    if response.source_metadata():
+      self._original_metadata = json.loads(response.source_metadata())
     return self._image_data
 
   @property
@@ -760,14 +821,24 @@ class Image(object):
                               % name, str(min_value), str(max_value))
 
 
-def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
-           correct_orientation=UNCHANGED_ORIENTATION):
 
+
+
+
+
+
+def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
+           correct_orientation=UNCHANGED_ORIENTATION,
+           crop_to_fit=False, crop_offset_x=0.5, crop_offset_y=0.5):
   """Resize a given image file maintaining the aspect ratio.
 
   If both width and height are specified, the more restricting of the two
-  values will be used when resizing the photo.  The maximum dimension allowed
+  values will be used when resizing the image. The maximum dimension allowed
   for both width and height is 4000 pixels.
+  If both width and height are specified and crop_to_fit is True, the less
+  restricting of the two values will be used when resizing and the image will be
+  cropped to fit the specified size. In this case the center of cropping can be
+  adjusted  by crop_offset_x and crop_offset_y.
 
   Args:
     image_data: str, source image data.
@@ -778,6 +849,12 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
       encoding.  This value is only used for JPEG quality control.
     correct_orientation: one of ORIENTATION_CORRECTION_TYPE, to indicate if
       orientation correction should be performed during the transformation.
+    crop_to_fit: If True and both width and height are specified, the image is
+      cropped after resize to fit the specified dimensions.
+    crop_offset_x: float value between 0.0 and 1.0, 0 is left and 1 is right,
+      default is 0.5, the center of image.
+    crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
+      default is 0.5, the center of image.
 
   Raises:
     TypeError when width or height not either 'int' or 'long' types.
@@ -787,7 +864,8 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
       for more details.
   """
   image = Image(image_data)
-  image.resize(width, height)
+  image.resize(width, height, crop_to_fit=crop_to_fit,
+               crop_offset_x=crop_offset_x, crop_offset_y=crop_offset_y)
   image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
@@ -940,10 +1018,10 @@ def composite(inputs, width, height, color=0, output_encoding=PNG, quality=None)
     width: canvas width in pixels.
     height: canvas height in pixels.
     color: canvas background color encoded as a 32 bit unsigned int where each
-    color channel is represented by one byte in order ARGB.
+      color channel is represented by one byte in order ARGB.
     output_encoding: a value from OUTPUT_ENCODING_TYPES.
     quality: A value between 1 and 100 to specify the quality of the
-      encoding.  This value is only used for JPEG quality control.
+      encoding. This value is only used for JPEG quality control.
 
   Returns:
       str, image data of the composited image.
@@ -1030,7 +1108,7 @@ def composite(inputs, width, height, color=0, output_encoding=PNG, quality=None)
   request.mutable_canvas().set_color(color)
 
   if ((output_encoding == JPEG or output_encoding == WEBP) and
-        (quality is not None)):
+      (quality is not None)):
       request.mutable_canvas().mutable_output().set_quality(quality)
 
   try:

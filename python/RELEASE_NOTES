@@ -3,6 +3,40 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.5.2
+=============================
+- You can now specify the minimum pending latency for instances and the maximum
+  number of idle instances for your application in the Admin Console.
+- The datastore now never requires an exploding index.
+    http://code.google.com/appengine/docs/python/datastore/queries.html#Big_Entities_and_Exploding_Indexes
+- The SDK will now never suggest indexes with the same property repeated, as
+  such indexes are likely to be exploding indexes.
+- The SDK now supports multiple concurrent transactions.
+- Datastore stats are now available on a per-namespace basis.
+- The queue details page in the Admin Console now contains request header
+  details, previous run information, and a task payload viewer.
+- You can modify the lease on a task leased from a pull queue using the
+  modify_task_lease() method.
+- Pull Task maximum size has been increased to 1MB.
+- You can now update the number of available backend instances without needing
+  to first stop the backend using the "backend configure" appcfg.py directive.
+- You can now set the "References" and "In-Reply-To" headers with the Mail API.
+    http://code.google.com/p/googleappengine/issues/detail?id=2802
+- The SDK "application" environment variable will now be prefixed with dev~.
+  The new preferred way of retrieving your app id is to use
+  appidentity.get_application_id(). The --default_partition flag can be used
+  for applications whose code relied on a specific environment variable.
+- In the Deferred API, defer() now accepts the _target parameter.
+- Added a to_dict() function to db.py which converts a model to a dictionary.
+- Added a get_original_metadata() method to the Images API to extract EXIF
+  information from images.
+    http://code.google.com/p/googleappengine/issues/detail?id=4133
+- Added an @transactional decorator to db.py for functions that should
+  always be run in a transaction.
+- Fixed an issue in the SDK where the Deferred API did not work when using
+  the --backends flag.
+    http://code.google.com/p/googleappengine/issues/detail?id=5072
+
 Version 1.5.1
 ============================
 - ProtoRPC is a new experimental library that provides a simple method for

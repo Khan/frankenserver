@@ -99,10 +99,8 @@ class DoCopyHandler(webapp.RequestHandler):
 
   SUFFIX = 'copy.do'
 
-  COPY_HANDLER = (
-      'google.appengine.ext.datastore_admin.copy_handler.CopyEntity.map')
-  INPUT_READER = (
-      'google.appengine.ext.mapreduce.input_readers.ConsistentKeyReader')
+  COPY_HANDLER = 'google.appengine.ext.datastore_admin.copy_handler.' + 'RemoteCopyEntity.map'
+  INPUT_READER = 'google.appengine.ext.mapreduce.input_readers.' + 'ConsistentKeyReader'
   MAPREDUCE_DETAIL = utils.config.MAPREDUCE_PATH + '/detail?mapreduce_id='
 
   def get(self):
@@ -308,6 +306,39 @@ def get_mapper_params():
 
 
 class CopyEntity(object):
+  """A class which contains a map handler to copy entities."""
+
+  def map(self, key):
+    """Copy data map handler.
+
+    Args:
+      key: Datastore entity key or entity itself to copy.
+
+    Yields:
+      A db operation to store the entity in the target app.
+      An operation which updates max used ID if necessary.
+      A counter operation incrementing the count for the entity kind.
+    """
+
+    mapper_params = get_mapper_params()
+    target_app = mapper_params['target_app']
+
+    if isinstance(key, datastore.Entity):
+
+      entity = key
+      key = entity.key()
+    else:
+      entity = datastore.Get(key)
+    entity_proto = entity._ToPb()
+    FixKeys(entity_proto, target_app)
+    target_entity = datastore.Entity._FromPb(entity_proto)
+
+    yield operation.db.Put(target_entity)
+    yield AllocateMaxId(key, target_app)
+    yield operation.counters.Increment(KindPathFromKey(key))
+
+
+class RemoteCopyEntity(CopyEntity):
   """A class which contains a map handler to copy entities remotely.
 
   The class manages the connection.
@@ -341,27 +372,14 @@ class CopyEntity(object):
 
     Yields:
       A db operation to store the entity in the target app.
+      An operation which updates max used ID if necessary.
       A counter operation incrementing the count for the entity kind.
     """
     if not self.remote_api_stub_initialized:
       self.setup_stub()
 
-    mapper_params = get_mapper_params()
-    target_app = mapper_params['target_app']
-
-    if isinstance(key, datastore.Entity):
-
-      entity = key
-      key = entity.key()
-    else:
-      entity = datastore.Get(key)
-    entity_proto = entity._ToPb()
-    FixKeys(entity_proto, target_app)
-    target_entity = datastore.Entity._FromPb(entity_proto)
-
-    yield operation.db.Put(target_entity)
-    yield AllocateMaxId(key, target_app)
-    yield operation.counters.Increment(KindPathFromKey(key))
+    for op in CopyEntity.map(self, key):
+      yield op
 
 
 def handlers_list(base_path):

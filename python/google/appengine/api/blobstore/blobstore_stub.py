@@ -309,3 +309,22 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     """
     for blob_key in request.blob_key_list():
       response.add_decoded(blob_key.decode('base64'))
+
+  def CreateBlob(self, blob_key, content):
+    """Create new blob and put in storage and Datastore.
+
+    This is useful in testing where you have access to the stub.
+
+    Args:
+      blob_key: String blob-key of new blob.
+      content: Content of new blob as a string.
+
+    Returns:
+      New Datastore entity without blob meta-data fields.
+    """
+    entity = datastore.Entity(blobstore.BLOB_INFO_KIND,
+                              name=blob_key, namespace='')
+    entity['size'] = len(content)
+    datastore.Put(entity)
+    self.storage.CreateBlob(blob_key, content)
+    return entity

@@ -195,6 +195,7 @@ OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
 
 SUPPORTED_LIBRARIES = {
     'django': ['1.2'],
+    'pycrypto': ['2.3'],
     'yaml': ['3.05'],
     'webob': ['0.9'],
 }
@@ -648,6 +649,12 @@ class BuiltinHandler(validation.Validated):
 
 class ApiConfigHandler(HandlerBase):
   """Class representing api_config handler directives in application info."""
+  ATTRIBUTES = HandlerBase.ATTRIBUTES
+  ATTRIBUTES.update({
+
+      URL: validation.Regex(_URL_REGEX),
+      HANDLER_SCRIPT: validation.Regex(_FILES_REGEX)
+  })
 
 
 class Library(validation.Validated):

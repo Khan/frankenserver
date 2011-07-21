@@ -136,7 +136,7 @@ def make_sign_blob_call(rpc, bytes_to_sign):
     bytes_to_sign: blob that needs to be signed.
 
   Returns:
-    A tuple that contains signature and signing key name.
+   A tuple that contains the signing key name and the signature.
 
   Raises:
     TypeError: when bytes_to_sign is not a str.
@@ -271,7 +271,7 @@ def sign_blob(bytes_to_sign, deadline=None):
       is a system-specific deadline (typically 5 seconds).
 
   Returns:
-    signature and signing key name.
+    Tuple, signing key name and signature.
   """
   rpc = create_rpc(deadline)
   make_sign_blob_call(rpc, bytes_to_sign)

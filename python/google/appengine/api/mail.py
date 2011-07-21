@@ -64,6 +64,9 @@ ERROR_MAP = {
 
     mail_service_pb.MailServiceError.INVALID_ATTACHMENT_TYPE:
       InvalidAttachmentTypeError,
+
+    mail_service_pb.MailServiceError.INVALID_HEADER_NAME:
+      InvalidHeaderNameError,
 }
 
 
@@ -134,6 +137,12 @@ EXTENSION_MIME_MAP = {
 EXTENSION_WHITELIST = frozenset(EXTENSION_MIME_MAP.iterkeys())
 
 
+HEADER_WHITELIST = frozenset([
+    'In-Reply-To',
+    'References',
+    ])
+
+
 def invalid_email_reason(email_address, field):
   """Determine reason why email is invalid.
 
@@ -192,6 +201,51 @@ def check_email_valid(email_address, field):
 
 
 CheckEmailValid = check_email_valid
+
+
+def is_ascii(string):
+  """Return whether a string is in ascii."""
+  return all(ord(c) < 128 for c in string)
+
+
+def invalid_headers_reason(headers):
+  """Determine reason why headers is invalid.
+
+  Args:
+    headers: headers value to check.
+
+  Returns:
+    String indicating invalid headers reason if there is one,
+    else None.
+  """
+  if headers is None:
+    return 'Headers dictionary was None.'
+  if not isinstance(headers, dict):
+    return 'Invalid type for headers. Should be a dictionary.'
+  for k, v in headers.iteritems():
+    if not isinstance(k, basestring):
+      return 'Header names should be strings.'
+    if not isinstance(v, basestring):
+      return 'Header values should be strings.'
+    if not is_ascii(k):
+      return 'Header name should be an ASCII string.'
+
+    if k.strip() not in HEADER_WHITELIST:
+      return 'Header "%s" is not allowed.' % k.strip()
+
+
+def check_headers_valid(headers):
+  """Check that headers is a valid dictionary for headers.
+
+  Args:
+    headers: the value to check for the headers.
+
+  Raises:
+    InvalidEmailError if headers is invalid.
+  """
+  reason = invalid_headers_reason(headers)
+  if reason is not None:
+    raise InvalidEmailError(reason)
 
 
 
@@ -1000,7 +1054,7 @@ class EmailMessage(_EmailMessageBase):
   """
 
   _API_CALL = 'Send'
-  PROPERTIES = set(_EmailMessageBase.PROPERTIES)
+  PROPERTIES = set(_EmailMessageBase.PROPERTIES | set(('headers',)))
 
   def check_initialized(self):
     """Provide additional checks to ensure recipients have been specified.
@@ -1032,6 +1086,10 @@ class EmailMessage(_EmailMessageBase):
       if hasattr(self, attribute):
         for address in _email_sequence(getattr(self, attribute)):
           adder(_to_str(address))
+    for name, value in getattr(self, 'headers', {}).iteritems():
+      header = message.add_header()
+      header.set_name(name)
+      header.set_value(_to_str(value))
     return message
 
   def __setattr__(self, attr, value):
@@ -1043,6 +1101,8 @@ class EmailMessage(_EmailMessageBase):
       else:
         for address in value:
           check_email_valid(address, attr)
+    elif attr == 'headers':
+      check_headers_valid(value)
 
     super(EmailMessage, self).__setattr__(attr, value)
 

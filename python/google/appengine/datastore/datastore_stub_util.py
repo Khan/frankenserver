@@ -241,7 +241,7 @@ def CheckReference(request_trusted, request_app_id, key):
   CheckAppId(request_trusted, request_app_id, key.app())
 
   for elem in key.path().element_list():
-    Check(elem.has_id() != elem.has_name(),
+    Check(not elem.has_id() or not elem.has_name(),
           'each key path element should have id or name but not both: %r' % key)
 
 

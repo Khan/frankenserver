@@ -131,10 +131,6 @@ def _make_key_value_map(entity, property_names):
           datastore_types.PropertyValueToKeyValue(prop.value()))
 
 
-  for value in value_map.itervalues():
-    value.sort()
-
-
   if datastore_types._KEY_SPECIAL_PROPERTY in value_map:
     value_map[datastore_types._KEY_SPECIAL_PROPERTY] = [
         datastore_types.ReferenceToKeyValue(entity.key())]
@@ -174,6 +170,9 @@ class FilterPredicate(_PropertyComponent):
     A filter matches a list of values if at least one value in the list
     matches the filter, for example:
       'prop: [1, 2]' matches both 'prop = 1' and 'prop = 2' but not 'prop = 3'
+
+    Note: the values are actually represented as tuples whose first item
+    encodes the type; see datastore_types.PropertyValueToKeyValue().
 
     Args:
       key_value_map: A dict mapping property names to a list of
@@ -904,9 +903,9 @@ class PropertyOrder(Order):
           'Missing value for property (%s)' % self.__order.property())
 
     if self.__order.direction() == self.ASCENDING:
-      return lhs_values[0]
+      return min(lhs_values)
     else:
-      return _ReverseOrder(lhs_values[-1])
+      return _ReverseOrder(max(lhs_values))
 
   def _cmp(self, lhs_value_map, rhs_value_map):
     lhs_values = lhs_value_map[self.__order.property()]
@@ -921,9 +920,9 @@ class PropertyOrder(Order):
           'RHS missing value for property (%s)' % self.__order.property())
 
     if self.__order.direction() == self.ASCENDING:
-      return cmp(lhs_values[0], rhs_values[0])
+      return cmp(min(lhs_values), min(rhs_values))
     else:
-      return cmp(rhs_values[-1], lhs_values[-1])
+      return cmp(max(rhs_values), max(lhs_values))
 
   @classmethod
   def _from_pb(cls, order_pb):

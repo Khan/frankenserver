@@ -26,7 +26,11 @@
 
 
 
+import datetime
 import logging
+import re
+import time
+import simplejson
 import StringIO
 
 try:
@@ -52,6 +56,25 @@ MAX_REQUEST_SIZE = 32 << 20
 
 
 _EXIF_ORIENTATION_TAG = 274
+
+
+_EXIF_DATETIMEORIGINAL_TAG = 36867
+
+
+_EXIF_TAGS = {
+    256: "ImageWidth",
+    257: "ImageLength",
+    271: "Make",
+    272: "Model",
+    _EXIF_ORIENTATION_TAG: "Orientation",
+    305: "Software",
+    306: "DateTime",
+    34855: "ISOSpeedRatings",
+    _EXIF_DATETIMEORIGINAL_TAG: "DateTimeOriginal",
+    36868: "DateTimeDigitized",
+    37383: "MeteringMode",
+    37385: "Flash",
+    41987: "WhiteBallance"}
 
 
 def _ArgbToRgbaTuple(argb):
@@ -225,12 +248,22 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         input_settings.correct_exif_orientation() ==
         images_service_pb.InputSettings.CORRECT_ORIENTATION)
 
+
+
+    source_metadata = self._ExtractMetadata(
+        original_image, input_settings.parse_metadata())
+    if input_settings.parse_metadata():
+      logging.info(
+          "Once the application is deployed, a more powerful metadata "
+          "extraction will be performed which might return many more fields.")
+
     new_image = self._ProcessTransforms(original_image,
                                         request.transform_list(),
                                         correct_orientation)
 
     response_value = self._EncodeImage(new_image, request.output())
     response.mutable_image().set_content(response_value)
+    response.set_source_metadata(source_metadata)
 
   def _Dynamic_GetUrlBase(self, request, response):
     """Trivial implementation of ImagesService::GetUrlBase.
@@ -382,17 +415,23 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
                               current_width,
                               current_height,
                               req_width,
-                              req_height):
+                              req_height,
+                              crop_to_fit):
     """Get new resize dimensions keeping the current aspect ratio.
 
     This uses the more restricting of the two requested values to determine
-    the new ratio.
+    the new ratio. See also crop_to_fit.
 
     Args:
       current_width: int, current width of the image.
       current_height: int, current height of the image.
-      req_width: int, requested new width of the image.
-      req_height: int, requested new height of the image.
+      req_width: int, requested new width of the image, 0 if unspecified.
+      req_height: int, requested new height of the image, 0 if unspecified.
+      crop_to_fit: bool, True if the less restricting dimension should be used.
+
+    Raises:
+      apiproxy_errors.ApplicationError: if crop_to_fit is True either req_width
+        or req_height is 0.
 
     Returns:
       tuple (width, height) which are both ints of the new ratio.
@@ -402,14 +441,24 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     width_ratio = float(req_width) / current_width
     height_ratio = float(req_height) / current_height
 
+    if crop_to_fit:
 
-
-    if req_width == 0 or (width_ratio > height_ratio and req_height != 0):
-
-      return int(height_ratio * current_width), req_height
+      if not req_width or not req_height:
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+      if width_ratio > height_ratio:
+        return req_width, int(width_ratio * current_height)
+      else:
+        return int(height_ratio * current_width), req_height
     else:
 
-      return req_width, int(width_ratio * current_height)
+
+      if req_width == 0 or (width_ratio > height_ratio and req_height != 0):
+
+        return int(height_ratio * current_width), req_height
+      else:
+
+        return req_width, int(width_ratio * current_height)
 
   def _Resize(self, image, transform):
     """Use PIL to resize the given image with the given transform.
@@ -439,13 +488,24 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         raise apiproxy_errors.ApplicationError(
             images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
 
+    crop_to_fit = transform.crop_to_fit()
+
     current_width, current_height = image.size
     new_width, new_height = self._CalculateNewDimensions(current_width,
                                                          current_height,
                                                          width,
-                                                         height)
+                                                         height,
+                                                         crop_to_fit)
+    new_image = image.resize((new_width, new_height), Image.ANTIALIAS)
+    if crop_to_fit and (new_width > width or new_height > height):
 
-    return image.resize((new_width, new_height), Image.ANTIALIAS)
+      left = int((new_width - width) * transform.crop_offset_x())
+      top = int((new_height - height) * transform.crop_offset_y())
+      right = left + width
+      bottom = top + height
+      new_image = new_image.crop((left, top, right, bottom))
+
+    return new_image
 
   def _Rotate(self, image, transform):
     """Use PIL to rotate the given image with the given transform.
@@ -514,6 +574,79 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     return image.crop(box)
 
+  @staticmethod
+  def _GetExifFromImage(image):
+    if hasattr(image, "_getexif"):
+
+
+
+
+
+      try:
+        from PIL import TiffImagePlugin
+        return image._getexif()
+      except ImportError:
+        # We have not managed to get this to work in the SDK with Python
+        # 2.5, so just catch the ImportError and pretend there is no
+        # EXIF information of interest.
+        logging.info('Sorry, TiffImagePlugin does not work in this environment')
+    return None
+
+  @staticmethod
+  def _ExtractMetadata(image, parse_metadata):
+    """Extract EXIF metadata from the image.
+
+    Note that this is a much simplified version of metadata extraction. After
+    deployment applications have access to a more powerful parser that can
+    parse hundreds of fields from images.
+
+    Args:
+      image: PIL Image object.
+      parse_metadata: bool, True if metadata parsing has been requested. If
+        False the result will contain image dimensions.
+    Returns:
+      str, JSON encoded values with various metadata fields.
+    """
+
+    def ExifTimeToUnixtime(exif_time):
+      """Convert time in EXIF to unix time.
+
+      Args:
+        exif_time: str, the time from the EXIF block formated by EXIF standard.
+          E.g., "2011:02:20 10:23:12", seconds are optional.
+
+      Returns:
+        Integer, the time in unix fromat: seconds since the epoch.
+      """
+      regexp = re.compile(r"^([0-9]{4}):([0-9]{1,2}):([0-9]{1,2})"
+                          " ([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2}))?")
+      match = regexp.match(exif_time)
+      if match is None: return None
+      try:
+        date = datetime.datetime(*map(int, filter(None, match.groups())))
+      except ValueError:
+        logging.info("Invalid date in EXIF: %s", exif_time)
+        return None
+      return int(time.mktime(date.timetuple()))
+
+    metadata_dict = (
+        parse_metadata and ImagesServiceStub._GetExifFromImage(image) or {})
+
+    metadata_dict[256], metadata_dict[257] = image.size
+
+
+
+    if _EXIF_DATETIMEORIGINAL_TAG in metadata_dict:
+      date_ms = ExifTimeToUnixtime(metadata_dict[_EXIF_DATETIMEORIGINAL_TAG])
+      if date_ms:
+        metadata_dict[_EXIF_DATETIMEORIGINAL_TAG] = date_ms
+      else:
+        del metadata_dict[_EXIF_DATETIMEORIGINAL_TAG]
+    metadata = dict([(_EXIF_TAGS[k], v)
+                for k, v in metadata_dict.iteritems()
+                if k in _EXIF_TAGS])
+    return simplejson.dumps(metadata)
+
   def _CorrectOrientation(self, image, orientation):
     """Use PIL to correct the image orientation based on its EXIF.
 
@@ -555,7 +688,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     Args:
       image: PIL.Image.Image instance, image to manipulate.
-      trasnforms: list of ImagesTransformRequest.Transform objects.
+      transforms: list of ImagesTransformRequest.Transform objects.
       correct_orientation: True to indicate that image orientation should be
         corrected based on its EXIF.
     Returns:
@@ -574,18 +707,11 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     if correct_orientation:
 
 
-      if hasattr(image, "_getexif"):
-
-
-
-
-
-        from PIL import TiffImagePlugin
-        exif = image._getexif()
-        if not exif or _EXIF_ORIENTATION_TAG not in exif:
-          correct_orientation = False
-        else:
-          orientation = exif[_EXIF_ORIENTATION_TAG]
+      exif = self._GetExifFromImage(image)
+      if not exif or _EXIF_ORIENTATION_TAG not in exif:
+        correct_orientation = False
+      else:
+        orientation = exif[_EXIF_ORIENTATION_TAG]
 
       width, height = new_image.size
       if height > width:
@@ -626,9 +752,9 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         new_image = new_image.transpose(Image.FLIP_TOP_BOTTOM)
 
       elif (transform.has_crop_left_x() or
-          transform.has_crop_top_y() or
-          transform.has_crop_right_x() or
-          transform.has_crop_bottom_y()):
+            transform.has_crop_top_y() or
+            transform.has_crop_right_x() or
+            transform.has_crop_bottom_y()):
 
         new_image = self._Crop(new_image, transform)
 

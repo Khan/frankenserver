@@ -44,6 +44,7 @@
 
 import asyncore
 import atexit
+import datetime
 import errno
 import getpass
 import logging
@@ -71,12 +72,14 @@ SOCKET_API = os.path.join(tempfile.gettempdir(), 'dev_appserver_%s_socket_api')
 HEALTH_CHECK_PATH = '/_appengine_delegate_health_check'
 INTERNAL_SERVER_ERROR = ('Status: 500 Internal Server Error\r\n' +
     'Content-Type: text/plain\r\n\r\nInternal Server Error')
+MAX_START_TIME = 1
 
 
 
 HEADER_MAP = {
     'APPLICATION_ID': 'X-AppEngine-Inbound-AppId',
     'CONTENT_TYPE': 'Content-Type',
+    'REMOTE_ADDR': 'X-AppEngine-Remote-Addr',
     'USER_EMAIL': 'X-AppEngine-Inbound-User-Email',
     'USER_ID': 'X-AppEngine-Inbound-User-Id',
     'USER_IS_ADMIN': 'X-AppEngine-Inbound-User-Is-Admin',
@@ -132,15 +135,18 @@ class DelegateClient(asyncore.dispatcher):
     self.close()
     self.closed = True
 
+  def handle_connect(self):
+    pass
+
   def handle_read(self):
     self.result += self.recv(8192)
-
-  def writable(self):
-    return len(self.buffer)
 
   def handle_write(self):
     sent = self.send(self.buffer)
     self.buffer = self.buffer[sent:]
+
+  def writable(self):
+    return len(self.buffer) > 0
 
 
 class DelegateServer(asyncore.dispatcher):
@@ -160,6 +166,9 @@ class DelegateServer(asyncore.dispatcher):
       return
     sock, addr = pair
     RemoteAPIHandler(sock)
+
+  def writable(self):
+    return False
 
 
 class RemoteAPIHandler(asyncore.dispatcher_with_send):
@@ -243,11 +252,11 @@ def find_go_files_mtime(basedir):
   return files, mtime
 
 
-def wait_until_go_app_ready():
+def wait_until_go_app_ready(pid):
 
-  t = 0.0625
-  while t < 10:
-    time.sleep(t)
+  deadline = (datetime.datetime.now() +
+              datetime.timedelta(seconds=MAX_START_TIME))
+  while datetime.datetime.now() < deadline:
     try:
       s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
       s.connect(SOCKET_HTTP)
@@ -255,7 +264,8 @@ def wait_until_go_app_ready():
       s.close()
       return
     except:
-      t *= 2
+      time.sleep(0.1)
+  os.kill(pid, signal.SIGTERM)
   raise Exception('unable to start ' + GO_APP_NAME)
 
 
@@ -304,11 +314,16 @@ class GoApp:
 
     if not self.proc or self.proc.poll() is not None:
       logging.info('running ' + GO_APP_NAME)
+
+      env = {
+          'PWD': self.root_path,
+          'TZ': 'UTC',
+      }
       self.proc = subprocess.Popen([app_name,
           '-addr_http', 'unix:' + SOCKET_HTTP,
           '-addr_api', 'unix:' + SOCKET_API],
-          cwd=self.root_path)
-      wait_until_go_app_ready()
+          cwd=self.root_path, env=env)
+      wait_until_go_app_ready(self.proc.pid)
 
   def build(self, go_files, app_name):
     logging.info('building ' + GO_APP_NAME)
@@ -325,7 +340,7 @@ class GoApp:
         '-work_dir', GAB_WORK_DIR] + go_files
     try:
       p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE)
+                           stderr=subprocess.PIPE, env={})
       gab_retcode = p.wait()
     except Exception, e:
       raise Exception('cannot call go-app-builder', e)
@@ -360,9 +375,12 @@ def execute_go_cgi(root_path, handler_path, cgi_path, env, infile, outfile):
       headers.append('%s: %s' % (HEADER_MAP[k], v))
     elif k.startswith('HTTP_'):
       hk = k[5:].replace("_", "-")
+      if hk.title() == 'Connection':
+        continue
       headers.append('%s: %s' % (hk, v))
 
   headers.append('Content-Length: %d' % len(content))
+  headers.append('Connection: close')
   http_req = (request_method + ' ' + request_uri + ' ' + server_protocol +
       '\r\n' + '\r\n'.join(headers) + '\r\n\r\n' + content)
 

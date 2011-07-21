@@ -1213,6 +1213,7 @@ class _SigningService_ClientBaseStub(_client_stub_base_class):
 
 
 class _SigningService_ClientStub(_SigningService_ClientBaseStub):
+  __slots__ = ('_params',)
   def __init__(self, rpc_stub_parameters, service_name):
     if service_name is None:
       service_name = 'SigningService'
@@ -1221,6 +1222,7 @@ class _SigningService_ClientStub(_SigningService_ClientBaseStub):
 
 
 class _SigningService_RPC2ClientStub(_SigningService_ClientBaseStub):
+  __slots__ = ()
   def __init__(self, server, channel, service_name):
     if service_name is None:
       service_name = 'SigningService'

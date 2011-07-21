@@ -66,11 +66,15 @@ def GetUserInfo(http_cookie, cookie_name=COOKIE_NAME):
     cookie_name: Name of the cookie that stores the user info.
 
   Returns:
-    Tuple (email, admin) where:
+    Tuple (email, admin, user_id) where:
       email: The user's email address, if any.
       admin: True if the user is an admin; False otherwise.
+      user_id: The user ID, if any.
   """
-  cookie = Cookie.SimpleCookie(http_cookie)
+  try:
+    cookie = Cookie.SimpleCookie(http_cookie)
+  except Cookie.CookieError:
+    return '', False, ''
 
   cookie_value = ''
   if cookie_name in cookie:

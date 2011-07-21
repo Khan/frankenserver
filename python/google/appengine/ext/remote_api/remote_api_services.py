@@ -26,6 +26,7 @@ This module is shared by both the remote_api_stub and the handler.
 import sys
 
 from google.appengine.api import api_base_pb
+from google.appengine.api.channel import channel_service_pb
 from google.appengine.api import mail_service_pb
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import user_service_pb
@@ -53,6 +54,12 @@ SERVICE_PB_MAP = {
         'IsEnabled': (capability_service_pb.IsEnabledRequest,
                       capability_service_pb.IsEnabledResponse),
     },
+    'channel': {
+        'CreateChannel': (channel_service_pb.CreateChannelRequest,
+                          channel_service_pb.CreateChannelResponse),
+        'SendChannelMessage': (channel_service_pb.SendMessageRequest,
+                               api_base_pb.VoidProto),
+    },
     'datastore_v3': {
         'Get':        (datastore_pb.GetRequest, datastore_pb.GetResponse),
         'Put':        (datastore_pb.PutRequest, datastore_pb.PutResponse),
@@ -61,7 +68,6 @@ SERVICE_PB_MAP = {
         'GetIndices': (api_base_pb.StringProto, datastore_pb.CompositeIndices),
         'AllocateIds':(datastore_pb.AllocateIdsRequest,
                        datastore_pb.AllocateIdsResponse),
-        'GetSchema': (datastore_pb.GetSchemaRequest, datastore_pb.Schema),
         'RunQuery':   (datastore_pb.Query,
                        datastore_pb.QueryResult),
         'RunCompiledQuery':(datastore_pb.RunCompiledQueryRequest,
@@ -130,24 +136,29 @@ SERVICE_PB_MAP = {
         'GetIDs':      (remote_api_pb.PutRequest, datastore_pb.PutResponse),
     },
     'taskqueue': {
-        'Add':       (taskqueue_service_pb.TaskQueueAddRequest,
-                      taskqueue_service_pb.TaskQueueAddResponse),
-        'BulkAdd':   (taskqueue_service_pb.TaskQueueBulkAddRequest,
-                      taskqueue_service_pb.TaskQueueBulkAddResponse),
-        'UpdateQueue':(taskqueue_service_pb.TaskQueueUpdateQueueRequest,
-                       taskqueue_service_pb.TaskQueueUpdateQueueResponse),
-        'FetchQueues':(taskqueue_service_pb.TaskQueueFetchQueuesRequest,
-                       taskqueue_service_pb.TaskQueueFetchQueuesResponse),
-        'FetchQueueStats':(
+        'Add': (taskqueue_service_pb.TaskQueueAddRequest,
+                taskqueue_service_pb.TaskQueueAddResponse),
+        'BulkAdd': (taskqueue_service_pb.TaskQueueBulkAddRequest,
+                    taskqueue_service_pb.TaskQueueBulkAddResponse),
+        'UpdateQueue': (taskqueue_service_pb.TaskQueueUpdateQueueRequest,
+                        taskqueue_service_pb.TaskQueueUpdateQueueResponse),
+        'FetchQueues': (taskqueue_service_pb.TaskQueueFetchQueuesRequest,
+                        taskqueue_service_pb.TaskQueueFetchQueuesResponse),
+        'FetchQueueStats': (
             taskqueue_service_pb.TaskQueueFetchQueueStatsRequest,
             taskqueue_service_pb.TaskQueueFetchQueueStatsResponse),
-        'Delete':      (taskqueue_service_pb.TaskQueueDeleteRequest,
-                        taskqueue_service_pb.TaskQueueDeleteResponse),
-        'PurgeQueue':  (taskqueue_service_pb.TaskQueuePurgeQueueRequest,
-                        taskqueue_service_pb.TaskQueuePurgeQueueResponse),
-        'QueryAndOwnTasks':(
+        'Delete': (taskqueue_service_pb.TaskQueueDeleteRequest,
+                   taskqueue_service_pb.TaskQueueDeleteResponse),
+        'PurgeQueue': (taskqueue_service_pb.TaskQueuePurgeQueueRequest,
+                       taskqueue_service_pb.TaskQueuePurgeQueueResponse),
+        'QueryTasks': (taskqueue_service_pb.TaskQueueQueryTasksRequest,
+                       taskqueue_service_pb.TaskQueueQueryTasksResponse),
+        'QueryAndOwnTasks': (
             taskqueue_service_pb.TaskQueueQueryAndOwnTasksRequest,
             taskqueue_service_pb.TaskQueueQueryAndOwnTasksResponse),
+        'ModifyTaskLease': (
+            taskqueue_service_pb.TaskQueueModifyTaskLeaseRequest,
+            taskqueue_service_pb.TaskQueueModifyTaskLeaseResponse),
     },
     'urlfetch': {
         'Fetch': (urlfetch_service_pb.URLFetchRequest,

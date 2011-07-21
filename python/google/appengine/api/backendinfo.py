@@ -37,9 +37,8 @@ from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
 from google.appengine.api import yaml_object
 
-MAJOR_VERSION_ID_MAX_LEN = 100
-VERSION_REGEX = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
-FILE_REGEX = r'(?!\^).*(?!\$).'
+NAME_REGEX = r'(?!-)[a-z\d\-]{1,100}'
+FILE_REGEX = r'(?!\^).*(?!\$).{1,256}'
 CLASS_REGEX =  r'^[bB](1|2|4|8)$'
 OPTIONS_REGEX = r'^[a-z, ]*$'
 STATE_REGEX = r'^(START|STOP|DISABLED)$'
@@ -89,7 +88,7 @@ representer.SafeRepresenter.add_representer(
 class BackendEntry(validation.Validated):
   """A backend entry describes a single backend."""
   ATTRIBUTES = {
-      NAME: VERSION_REGEX,
+      NAME: NAME_REGEX,
       CLASS: validation.Optional(CLASS_REGEX),
       INSTANCES: validation.Optional(validation.TYPE_INT),
       MAX_CONCURRENT_REQUESTS: validation.Optional(validation.TYPE_INT),
@@ -222,7 +221,7 @@ def LoadBackendInfo(backend_info):
   if len(backend_info) > 1:
     raise BadConfig("Only one 'backends' clause is allowed.")
 
-  backends = backend_info[0]
-  for backend in backends.backends:
+  info = backend_info[0]
+  for backend in info.backends:
     backend.Init()
-  return backends
+  return info

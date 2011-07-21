@@ -810,6 +810,7 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
 
 
 class _SqlService_ClientStub(_SqlService_ClientBaseStub):
+  __slots__ = ('_params',)
   def __init__(self, rpc_stub_parameters, service_name):
     if service_name is None:
       service_name = 'SqlService'
@@ -818,6 +819,7 @@ class _SqlService_ClientStub(_SqlService_ClientBaseStub):
 
 
 class _SqlService_RPC2ClientStub(_SqlService_ClientBaseStub):
+  __slots__ = ()
   def __init__(self, server, channel, service_name):
     if service_name is None:
       service_name = 'SqlService'

@@ -62,17 +62,26 @@ from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import backends
 from google.appengine.api import datastore
 from google.appengine.api import datastore_admin
-from google.appengine.api import datastore_types
 from google.appengine.api import datastore_errors
+from google.appengine.api import datastore_types
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
 from google.appengine.api import users
+from google.appengine.api.taskqueue import taskqueue_service_pb
+from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.ext import db
 from google.appengine.ext import webapp
+from google.appengine.ext.admin import datastore_stats_generator
+from google.appengine.ext.db import metadata
 from google.appengine.ext.webapp import template
 
 
 _DEBUG = True
+
+
+_UsecToSec = taskqueue_stub._UsecToSec
+_FormatEta = taskqueue_stub._FormatEta
+_EtaDelta = taskqueue_stub._EtaDelta
 
 
 def ustr(value):
@@ -127,22 +136,24 @@ class BaseRequestHandler(webapp.RequestHandler):
   def generate(self, template_name, template_values={}):
     base_path = self.base_path()
     values = {
-      'application_name': self.request.environ['APPLICATION_ID'],
-      'sdk_version': self.request.environ.get('SDK_VERSION', 'Unknown'),
-      'user': users.get_current_user(),
-      'request': self.request,
-      'home_path': base_path + DefaultPageHandler.PATH,
-      'datastore_path': base_path + DatastoreQueryHandler.PATH,
-      'datastore_edit_path': base_path + DatastoreEditHandler.PATH,
-      'datastore_batch_edit_path': base_path + DatastoreBatchEditHandler.PATH,
-      'interactive_path': base_path + InteractivePageHandler.PATH,
-      'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
-      'memcache_path': base_path + MemcachePageHandler.PATH,
-      'queues_path': base_path + QueuesPageHandler.PATH,
-      'xmpp_path': base_path + XMPPPageHandler.PATH,
-      'inboundmail_path': base_path + InboundMailPageHandler.PATH,
-      'backends_path': base_path + BackendsPageHandler.PATH,
-    }
+        'application_name': self.request.environ['APPLICATION_ID'],
+        'sdk_version': self.request.environ.get('SDK_VERSION', 'Unknown'),
+        'user': users.get_current_user(),
+        'request': self.request,
+        'home_path': base_path + DefaultPageHandler.PATH,
+        'datastore_path': base_path + DatastoreQueryHandler.PATH,
+        'datastore_edit_path': base_path + DatastoreEditHandler.PATH,
+        'datastore_batch_edit_path': base_path + DatastoreBatchEditHandler.PATH,
+        'datastore_stats_path': base_path + DatastoreStatsHandler.PATH,
+        'interactive_path': base_path + InteractivePageHandler.PATH,
+        'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
+        'memcache_path': base_path + MemcachePageHandler.PATH,
+        'queues_path': base_path + QueuesPageHandler.PATH,
+        'tasks_path': base_path + TasksPageHandler.PATH,
+        'xmpp_path': base_path + XMPPPageHandler.PATH,
+        'inboundmail_path': base_path + InboundMailPageHandler.PATH,
+        'backends_path': base_path + BackendsPageHandler.PATH,
+      }
     if HAVE_CRON:
       values['cron_path'] = base_path + CronPageHandler.PATH
 
@@ -309,28 +320,155 @@ class InboundMailPageHandler(BaseRequestHandler):
     self.generate('inboundmail.html', values)
 
 
+class TaskQueueHelper(object):
+  """Taskqueue rpc wrapper."""
+
+  def _make_sync_call(self, rpc_name, request):
+    """Make a synchronous taskqueue api call.
+
+    Args:
+      rpc_name: The name of the rpc to call.
+      request: The protocol buffer to be used as the request.
+
+    Returns:
+      The rpc response. This is an instance of the correct response protocol
+      buffer for the request 'rpc_name'.
+    """
+    response = getattr(taskqueue_service_pb, 'TaskQueue%sResponse' % rpc_name)()
+    apiproxy_stub_map.MakeSyncCall('taskqueue', rpc_name, request, response)
+    return response
+
+  def get_queues(self, now):
+    """Get a list of queue in the application.
+
+    Args:
+      now: The current time. A datetime.datetime object with a utc timezone.
+
+    Returns:
+      A list of queue dicts corrosponding to the tasks for this application.
+    """
+    request = taskqueue_service_pb.TaskQueueFetchQueuesRequest()
+    request.set_max_rows(1000)
+    response = self._make_sync_call('FetchQueues', request)
+
+    queue_stats_request = taskqueue_service_pb.TaskQueueFetchQueueStatsRequest()
+    queue_stats_request.set_max_num_tasks(0)
+
+    queues = []
+    for queue_proto in response.queue_list():
+      queue = {'name': queue_proto.queue_name(),
+               'rate': queue_proto.user_specified_rate(),
+               'bucket_size': queue_proto.bucket_capacity()}
+      queues.append(queue)
+      queue_stats_request.queue_name_list().append(queue_proto.queue_name())
+
+    queue_stats_response = self._make_sync_call(
+        'FetchQueueStats', queue_stats_request)
+    for queue, queue_stats in zip(queues,
+                                  queue_stats_response.queuestats_list()):
+      queue['tasks_in_queue'] = queue_stats.num_tasks()
+      if queue_stats.oldest_eta_usec() != -1:
+        queue['oldest_task'] = _FormatEta(queue_stats.oldest_eta_usec())
+        queue['eta_delta'] = _EtaDelta(queue_stats.oldest_eta_usec(), now)
+    return queues
+
+  def get_number_tasks_in_queue(self, queue_name):
+    """Returns the number of tasks in the named queue.
+
+    Args:
+      queue_name: The name of the queue.
+
+    Returns:
+      The number of tasks in the queue.
+    """
+    queue_stats_request = taskqueue_service_pb.TaskQueueFetchQueueStatsRequest()
+    queue_stats_request.set_max_num_tasks(0)
+    queue_stats_request.add_queue_name(queue_name)
+    queue_stats_response = self._make_sync_call(
+        'FetchQueueStats', queue_stats_request)
+
+    assert queue_stats_response.queuestats_size() == 1
+    return queue_stats_response.queuestats(0).num_tasks()
+
+  def get_tasks(self,
+                now,
+                queue_name,
+                start_eta_usec,
+                start_task_name,
+                num_tasks):
+    """Fetch the specified tasks from taskqueue.
+
+    Note: This only searchs by eta.
+
+    Args:
+      now: The current time. This is used to calculate the EtaFromNow. Must be a
+          datetime.datetime in the utc timezone.
+      queue_name: The queue to search for tasks.
+      start_eta_usec: The earliest eta to return.
+      start_task_name: For tasks with the same eta_usec, this is used as a tie
+          breaker.
+      num_tasks: The maximum number of tasks to return.
+
+    Returns:
+      A list of task dicts (as returned by
+          taskqueue_stub.QueryTasksResponseToDict).
+    """
+    request = taskqueue_service_pb.TaskQueueQueryTasksRequest()
+    request.set_queue_name(queue_name)
+    request.set_start_task_name(start_task_name)
+    request.set_start_eta_usec(start_eta_usec)
+    request.set_max_rows(num_tasks)
+
+    response = self._make_sync_call('QueryTasks', request)
+    tasks = []
+    for task in response.task_list():
+      tasks.append(taskqueue_stub.QueryTasksResponseToDict(
+          queue_name, task, now))
+    return tasks
+
+  def delete_task(self, queue_name, task_name):
+    """Delete the named task.
+
+    Args:
+      queue_name: The name of the queue.
+      task_name: The name of the task.
+    """
+    request = taskqueue_service_pb.TaskQueueDeleteRequest()
+    request.set_queue_name(queue_name)
+    request.task_name_list().append(task_name)
+
+    self._make_sync_call('Delete', request)
+
+  def purge_queue(self, queue_name):
+    """Purge the named queue.
+
+    Args:
+      queue_name: the name of the queue.
+    """
+    request = taskqueue_service_pb.TaskQueuePurgeQueueRequest()
+    request.set_queue_name(queue_name)
+    self._make_sync_call('PurgeQueue', request)
+
+
 class QueuesPageHandler(BaseRequestHandler):
   """Shows information about configured (and default) task queues."""
   PATH = '/queues'
 
   def __init__(self):
-    self.stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+    self.helper = TaskQueueHelper()
 
   def get(self):
     """Shows template displaying the configured task queues."""
-    values = {
-      'request': self.request,
-      'queues': self.stub.GetQueues(),
-    }
+    now = datetime.datetime.utcnow()
+    values = {'queues': self.helper.get_queues(now)}
     self.generate('queues.html', values)
 
   def post(self):
     """Handle modifying actions and/or redirect to GET page."""
+    queue_name = self.request.get('queue')
 
     if self.request.get('action:purgequeue'):
-
-
-      self.stub.FlushQueue(self.request.get('queue'))
+      self.helper.purge_queue(queue_name)
     self.redirect(self.request.path_url)
 
 
@@ -341,48 +479,146 @@ class TasksPageHandler(BaseRequestHandler):
 
   PAGE_SIZE = 20
 
+  MAX_TASKS_TO_FETCH = 1000
+  MIN_TASKS_TO_FETCH = 200
+
   def __init__(self):
-    self.stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
+    self.helper = TaskQueueHelper()
+    self.prev_page = None
+    self.next_page = None
+    self.this_page = None
+
+  def parse_arguments(self):
+    """Parse the arguments passed into the request and store them on self."""
+    self.queue_name = self.request.get('queue')
+    self.start_name = self.request.get('start_name', '')
+    self.start_eta = int(self.request.get('start_eta', '0'))
+    self.per_page = int(self.request.get('per_page', self.PAGE_SIZE))
+    self.page_no = int(self.request.get('page_no', '1'))
+    assert self.per_page > 0
+
+  def redirect_to_tasks(self, keep_offset=True):
+    """Perform a redirect to the tasks page.
+
+    Args:
+      keep_offset: If true, will keep the 'start_eta',
+        'start_name' and 'page_no' fields.
+    """
+    params = {'queue': self.queue_name, 'per_page': self.per_page}
+    if keep_offset:
+      params['start_name'] = self.start_name
+      params['start_eta'] = self.start_eta
+      params['page_no'] = self.page_no
+    self.redirect('%s?%s' % (self.request.path, urllib.urlencode(params)))
+
+  def _generate_page_params(self, page_dict):
+    """Generate the params for a page link."""
+    params = {
+        'queue': self.queue_name,
+        'start_eta': page_dict['start_eta'],
+        'start_name': page_dict['start_name'],
+        'per_page': self.per_page,
+        'page_no': page_dict['number']}
+    return urllib.urlencode(params)
+
+  def generate_page_dicts(self, start_tasks, end_tasks):
+    """Generate the page dicts from a list of tasks.
+
+    Args:
+      tasks: A list of task dicts, sorted by eta.
+
+    Returns:
+      A list of page dicts containing the following keys: 'start_name',
+      'start_eta', 'number', 'has_gap'.
+    """
+    page_map = {}
+
+    for i, task in enumerate(start_tasks[::self.per_page]):
+      page_no = i + 1
+      page_map[page_no] = {
+          'start_name': task['name'],
+          'start_eta': task['eta_usec'],
+          'number': page_no}
+
+    if page_map and (page_no < self.page_no - 1):
+      page_map[page_no]['has_gap'] = True
+
+
+    for i, task in enumerate(end_tasks[::self.per_page]):
+      page_no = self.page_no + i
+      page_map[page_no] = {
+          'start_name': task['name'],
+          'start_eta': task['eta_usec'],
+          'number': self.page_no + i}
+
+
+    page_map[1] = {'start_name': '', 'start_eta': 0, 'number': 1}
+
+    pages = sorted(page_map.values(), key=lambda page: page['number'])
+
+    for page in pages:
+      page['url'] = self._generate_page_params(page)
+
+
+    self.this_page = page_map[self.page_no]
+    if self.page_no - 1 in page_map:
+      self.prev_page = page_map[self.page_no - 1]
+    if self.page_no + 1 in page_map:
+      self.next_page = page_map[self.page_no + 1]
+
+    return pages
 
   def get(self):
     """Shows template displaying the queue's tasks."""
-    queue = self.request.get('queue')
-    start = int(self.request.get('start', 0))
-    all_tasks = self.stub.GetTasks(queue)
+    self.parse_arguments()
+    now = datetime.datetime.utcnow()
 
-    next_start = start + self.PAGE_SIZE
-    tasks = all_tasks[start:next_start]
-    current_page = int(start / self.PAGE_SIZE) + 1
-    pages = []
-    for number in xrange(int(math.ceil(len(all_tasks) /
-                                       float(self.PAGE_SIZE)))):
-      pages.append({
-        'number': number + 1,
-        'start': number * self.PAGE_SIZE
-      })
-    if not all_tasks[next_start:]:
-      next_start = -1
-    prev_start = start - self.PAGE_SIZE
-    if prev_start < 0:
-      prev_start = -1
+
+    tasks_to_fetch = min(self.MAX_TASKS_TO_FETCH,
+                         max(self.MIN_TASKS_TO_FETCH, self.per_page * 10))
+
+    tasks = self.helper.get_tasks(now, self.queue_name, self.start_eta,
+                                  self.start_name, tasks_to_fetch)
+
+    if self.start_eta or self.start_name:
+      if not tasks:
+
+
+        self.redirect_to_tasks(keep_offset=False)
+        return
+
+
+      first_tasks = self.helper.get_tasks(now, self.queue_name, 0, '',
+                                          tasks_to_fetch)
+    else:
+      first_tasks = []
+
+    pages = self.generate_page_dicts(first_tasks, tasks)
+    if len(tasks) == tasks_to_fetch:
+
+      pages[-1]['has_gap'] = True
+    tasks = tasks[:self.per_page]
 
     values = {
-      'request': self.request,
-      'queue_name': queue,
+      'queue': self.queue_name,
+      'per_page': self.per_page,
       'tasks': tasks,
-      'start_base_url': self.filter_url(['queue']),
-      'prev_start': prev_start,
-      'next_start': next_start,
+      'prev_page': self.prev_page,
+      'next_page': self.next_page,
+      'this_page': self.this_page,
       'pages': pages,
-      'current_page': current_page,
+      'page_no': self.page_no,
     }
     self.generate('tasks.html', values)
 
   def post(self):
+    self.parse_arguments()
+    self.task_name = self.request.get('task')
+
     if self.request.get('action:deletetask'):
-      self.stub.DeleteTask(self.request.get('queue'), self.request.get('task'))
-    self.redirect(self.request.path_url + '?queue=' + self.request.get('queue'))
-    return
+      self.helper.delete_task(self.queue_name, self.task_name)
+
+    self.redirect_to_tasks(keep_offset=True)
 
 
 class BackendsPageHandler(BaseRequestHandler):
@@ -772,24 +1008,19 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
   def get_kinds(self, namespace):
     """Get sorted list of kind names the datastore knows about.
 
-    This should only be called in the development environment as GetSchema is
-    expensive and no caching is done.
+    This should only be called in the development environment as metadata
+    queries are expensive and no caching is done.
 
     Args:
       namespace: The namespace to fetch the schema for e.g. 'google.com'. It
           is an error to pass in None.
 
     Returns:
-      A sorted list of kinds e.g. ['Book', 'Guest', Post'].
+      A sorted list of kinds e.g. ['Book', 'Guest', Post'] (encoded in utf-8).
     """
     assert namespace is not None
-    app_id = self.request.environ['APPLICATION_ID']
-    schema = datastore_admin.GetSchema(_app=app_id, namespace=namespace)
-    kinds = []
-    for entity_proto in schema:
-      kinds.append(entity_proto.key().path().element_list()[-1].type())
-    kinds.sort()
-    return kinds
+    q = metadata.Kind.all(namespace=namespace)
+    return [x.kind_name.encode('utf-8') for x in q.run()]
 
   def get(self):
     """Formats the results from execute_query() for datastore.html.
@@ -1086,6 +1317,39 @@ class DatastoreEditHandler(DatastoreRequestHandler):
     datastore.Put(entity)
 
     self.redirect(self.request.get('next'))
+
+
+class DatastoreStatsHandler(BaseRequestHandler):
+  """Allows computation of datastore stats."""
+
+  PATH = '/datastore_stats'
+
+  def get(self):
+    """Shows Datastore Stats generator button."""
+    values = {
+        'request': self.request,
+        'app_id': self.request.get('app_id', None),
+        'status': self.request.get('status', None),
+        'msg': self.request.get('msg', None)}
+    self.generate('datastore_stats.html', values)
+
+  def post(self):
+    """Handle actions and redirect to GET page."""
+    app_id = self.request.get('app_id', None)
+    if self.request.get('action:compute_stats'):
+      status = 'OK'
+      msg = self.generate_stats(_app=app_id)
+    else:
+      status = 'FAIL'
+      msg = 'No processing requested'
+
+    uri = self.request.path_url
+    self.redirect('%s?%s' % (uri, urllib.urlencode(dict(msg=msg, status=status))))
+
+  def generate_stats(self, _app=None):
+    """Generate datastore stats."""
+    processor = datastore_stats_generator.DatastoreStatsProcessor(_app)
+    return processor.Run().Report()
 
 
 
@@ -1546,20 +1810,21 @@ def PseudoBreadcrumbs(key):
 
 def main():
   handlers = [
-    ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
-    ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
-    ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
-    ('.*' + InteractivePageHandler.PATH, InteractivePageHandler),
-    ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
-    ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
-    ('.*' + ImageHandler.PATH, ImageHandler),
-    ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
-    ('.*' + TasksPageHandler.PATH, TasksPageHandler),
-    ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
-    ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
-    ('.*' + BackendsPageHandler.PATH, BackendsPageHandler),
-    ('.*', DefaultPageHandler),
-  ]
+      ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
+      ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
+      ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
+      ('.*' + DatastoreStatsHandler.PATH, DatastoreStatsHandler),
+      ('.*' + InteractivePageHandler.PATH, InteractivePageHandler),
+      ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
+      ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
+      ('.*' + ImageHandler.PATH, ImageHandler),
+      ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
+      ('.*' + TasksPageHandler.PATH, TasksPageHandler),
+      ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
+      ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
+      ('.*' + BackendsPageHandler.PATH, BackendsPageHandler),
+      ('.*', DefaultPageHandler),
+    ]
   if HAVE_CRON:
     handlers.insert(0, ('.*' + CronPageHandler.PATH, CronPageHandler))
   application = webapp.WSGIApplication(handlers, debug=_DEBUG)

@@ -114,9 +114,11 @@ from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
 
 from google.appengine.api.capabilities import capability_stub
+from google.appengine.api.conversion import conversion_stub
 from google.appengine.api.channel import channel_service_stub
 from google.appengine.api.files import file_service_stub
 from google.appengine.api.logservice import logservice_stub
+from google.appengine.api.search import simple_search_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.prospective_search import prospective_search_stub
 from google.appengine.api.memcache import memcache_stub
@@ -206,6 +208,9 @@ SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
 DEVEL_PAYLOAD_HEADER = 'HTTP_X_APPENGINE_DEVELOPMENT_PAYLOAD'
 DEVEL_PAYLOAD_RAW_HEADER = 'X-AppEngine-Development-Payload'
 
+DEVEL_FAKE_IS_ADMIN_HEADER = 'HTTP_X_APPENGINE_FAKE_IS_ADMIN'
+DEVEL_FAKE_IS_ADMIN_RAW_HEADER = 'X-AppEngine-Fake-Is-Admin'
+
 CODING_COOKIE_RE = re.compile("coding[:=]\s*([-\w.]+)")
 DEFAULT_ENCODING = 'ascii'
 
@@ -294,6 +299,20 @@ def CopyStreamPart(source, destination, content_size):
   return bytes_copied
 
 
+def AppIdWithDefaultPartition(app_id, default_partition):
+  """Add a partition to an application id if necessary."""
+  if not default_partition:
+    return app_id
+
+
+
+  if '~' in app_id:
+    return app_id
+
+  return default_partition + '~' + app_id
+
+
+
 
 class AppServerRequest(object):
   """Encapsulates app-server request.
@@ -341,7 +360,8 @@ class AppServerRequest(object):
     self.headers = headers
     self.infile = infile
     self.force_admin = force_admin
-    if DEVEL_PAYLOAD_RAW_HEADER in self.headers:
+    if (DEVEL_PAYLOAD_RAW_HEADER in self.headers or
+        DEVEL_FAKE_IS_ADMIN_RAW_HEADER in self.headers):
       self.force_admin = True
 
   def __eq__(self, other):
@@ -794,6 +814,11 @@ def SetupEnvironment(cgi_path,
     infile.write(new_data)
     infile.seek(0)
     env['CONTENT_LENGTH'] = str(len(new_data))
+
+
+
+  if DEVEL_FAKE_IS_ADMIN_HEADER in env:
+    del env[DEVEL_FAKE_IS_ADMIN_HEADER]
 
   return env
 
@@ -3837,7 +3862,8 @@ def _ClearTemplateCache(module_dict=sys.modules):
 def CreateRequestHandler(root_path,
                          login_url,
                          require_indexes=False,
-                         static_caching=True):
+                         static_caching=True,
+                         default_partition=None):
   """Creates a new BaseHTTPRequestHandler sub-class.
 
   This class will be used with the Python BaseHTTPServer module's HTTP server.
@@ -3852,6 +3878,7 @@ def CreateRequestHandler(root_path,
     login_url: Relative URL which should be used for handling user logins.
     require_indexes: True if index.yaml is read-only gospel; default False.
     static_caching: True if browser caching of static files should be allowed.
+    default_partition: Default partition to use in the application id.
 
   Returns:
     Sub-class of BaseHTTPRequestHandler.
@@ -4067,6 +4094,10 @@ def CreateRequestHandler(root_path,
         config, explicit_matcher = LoadAppConfig(root_path, self.module_dict,
                                                  cache=self.config_cache,
                                                  static_caching=static_caching)
+
+        config.application = AppIdWithDefaultPartition(config.application,
+                                                       default_partition)
+
         if config.api_version != API_VERSION:
           logging.error(
               "API versions cannot be switched dynamically: %r != %r",
@@ -4501,7 +4532,9 @@ def SetupStubs(app_id, **config):
     login_url: Relative URL which should be used for handling user login/logout.
     blobstore_path: Path to the directory to store Blobstore blobs in.
     datastore_path: Path to the file to store Datastore file stub data in.
-    prospective_search_path: Path to the file to store Prospective Search stub data in.
+    default_partition: Default partition for the appid.
+    prospective_search_path: Path to the file to store Prospective Search stub
+        data in.
     use_sqlite: Use the SQLite stub for the datastore.
     high_replication: Use the high replication consistency model
     history_path: DEPRECATED, No-op.
@@ -4559,6 +4592,13 @@ def SetupStubs(app_id, **config):
   trusted = config.get('trusted', False)
   serve_port = config.get('port', 8080)
   serve_address = config.get('address', 'localhost')
+  default_partition = config.get('default_partition')
+
+
+
+
+
+  app_id = AppIdWithDefaultPartition(app_id, default_partition)
 
   os.environ['APPLICATION_ID'] = app_id
 
@@ -4610,7 +4650,8 @@ def SetupStubs(app_id, **config):
         taskqueue_stub.TaskQueueServiceStub(
             root_path=root_path,
             auto_task_running=(not disable_task_running),
-            task_retry_seconds=task_retry_seconds))
+            task_retry_seconds=task_retry_seconds,
+            default_http_server='%s:%s' % (serve_address, serve_port)))
 
     if ((mysql_host and mysql_host != 'localhost') or mysql_port != 3306 or
         mysql_user or mysql_password or mysql_socket):
@@ -4681,6 +4722,9 @@ def SetupStubs(app_id, **config):
       'app_identity_service',
       app_identity_stub.AppIdentityServiceStub())
 
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'search',
+      simple_search_stub.SearchServiceStub())
 
 
 
@@ -4688,6 +4732,11 @@ def SetupStubs(app_id, **config):
 
 
 
+
+
+  apiproxy_stub_map.apiproxy.RegisterStub(
+      'conversion',
+      conversion_stub.ConversionServiceStub())
 
   try:
     from google.appengine.api.images import images_stub
@@ -4866,7 +4915,8 @@ def CreateServer(root_path,
                  allow_skipped_files=False,
                  static_caching=True,
                  python_path_list=sys.path,
-                 sdk_dir=os.path.dirname(os.path.dirname(google.__file__))):
+                 sdk_dir=os.path.dirname(os.path.dirname(google.__file__)),
+                 default_partition=None):
   """Creates an new HTTPServer for an application.
 
   The sdk_dir argument must be specified for the directory storing all code for
@@ -4887,6 +4937,7 @@ def CreateServer(root_path,
     static_caching: True if browser caching of static files should be allowed.
     python_path_list: Used for dependency injection.
     sdk_dir: Directory where the SDK is stored.
+    default_partition: Default partition to use for the appid.
 
   Returns:
     Instance of BaseHTTPServer.HTTPServer that's ready to start accepting.
@@ -4906,7 +4957,8 @@ def CreateServer(root_path,
   handler_class = CreateRequestHandler(absolute_root_path,
                                        login_url,
                                        require_indexes,
-                                       static_caching)
+                                       static_caching,
+                                       default_partition)
 
 
   if absolute_root_path not in python_path_list:
@@ -4920,9 +4972,11 @@ def CreateServer(root_path,
     server = HTTPServerWithScheduler((serve_address, port), handler_class)
 
 
+
   queue_stub = apiproxy_stub_map.apiproxy.GetStub('taskqueue')
-  if queue_stub:
-    queue_stub._add_event = server.AddEvent
+  if queue_stub and hasattr(queue_stub, 'StartBackgroundExecution'):
+      queue_stub.StartBackgroundExecution()
+
 
   channel_stub = apiproxy_stub_map.apiproxy.GetStub('channel')
   if channel_stub:

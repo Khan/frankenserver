@@ -36,6 +36,7 @@ import calendar
 import datetime
 import errno
 import getpass
+import hashlib
 import logging
 import mimetypes
 import optparse
@@ -51,21 +52,19 @@ import urllib2
 
 
 import google
-import hashlib
 import yaml
+
 from google.appengine.cron import groctimespecification
 from google.appengine.api import appinfo
-from google.appengine.api import appinfo_errors
 from google.appengine.api import appinfo_includes
+from google.appengine.api import backendinfo
 from google.appengine.api import croninfo
 from google.appengine.api import dosinfo
 from google.appengine.api import queueinfo
-from google.appengine.api import backendinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
-from google.appengine.ext import builtins
 from google.appengine.tools import appengine_rpc
 from google.appengine.tools import bulkloader
 
@@ -114,6 +113,10 @@ _api_versions = os.environ.get('GOOGLE_TEST_API_VERSIONS', '1')
 _options = validation.Options(*_api_versions.split(','))
 appinfo.AppInfoExternal.ATTRIBUTES[appinfo.API_VERSION] = _options
 del _api_versions, _options
+
+
+DAY = 24*3600
+SUNDAY = 6
 
 
 def PrintUpdate(msg):
@@ -1145,8 +1148,6 @@ def IsPacificDST(now):
   Returns:
     True if now falls within the range of DST, False otherwise.
   """
-  DAY = 24*3600
-  SUNDAY = 6
   pst = time.gmtime(now)
   year = pst[0]
   assert year >= 2007
@@ -1494,8 +1495,7 @@ def DoDownloadApp(rpcserver, out_dir, app_id, app_version):
     StatusUpdate('[%d/%d] %s' % (current_file_number, num_files, path))
 
     def TryGet():
-
-
+      """A request to /api/files/get which works with the RetryWithBackoff."""
       try:
         contents = rpcserver.Send('/api/files/get', app_id=app_id,
                                   version=full_version, id=file_id)
@@ -1508,7 +1508,7 @@ def DoDownloadApp(rpcserver, out_dir, app_id, app_version):
         else:
           raise
 
-    def PrintRetryMessage(exc, delay):
+    def PrintRetryMessage(_, delay):
       StatusUpdate('Server busy.  Will try again in %d seconds.' % delay)
 
     success, contents = RetryWithBackoff(TryGet, PrintRetryMessage)
@@ -1628,7 +1628,7 @@ class AppVersionUpload(object):
 
   def Send(self, url, payload=''):
     """Sends a request to the server, with common params."""
-    logging.info('Send: %s, params=%s' % (url, self.params))
+    logging.info('Send: %s, params=%s', url, self.params)
     return self.rpcserver.Send(url, payload=payload, **self.params)
 
   def AddFile(self, path, file_handle):
@@ -1687,7 +1687,7 @@ class AppVersionUpload(object):
 
 
 
-      (mime_type, error_code) = LookupErrorBlob(self.config, path)
+      (mime_type, unused_error_code) = LookupErrorBlob(self.config, path)
       if mime_type is not None:
 
 
@@ -1774,7 +1774,6 @@ class AppVersionUpload(object):
 
       self.file_batcher.AddToBatch(path, payload, None)
 
-
   def Precompile(self):
     """Handle bytecode precompilation."""
 
@@ -1785,7 +1784,7 @@ class AppVersionUpload(object):
 
 
       for f in self.all_files:
-        if not self.config.nobuild_files.match(f):
+        if f.endswith('.go') and not self.config.nobuild_files.match(f):
           files.append(f)
 
     while True:
@@ -1832,7 +1831,7 @@ class AppVersionUpload(object):
     if self.files:
       raise Exception('Not all required files have been uploaded.')
 
-    def PrintRetryMessage(none, delay):
+    def PrintRetryMessage(_, delay):
       StatusUpdate('Will check again in %s seconds.' % delay)
 
     app_summary = None
@@ -1840,21 +1839,21 @@ class AppVersionUpload(object):
       app_summary = self.Deploy()
 
 
-      success, contents = RetryWithBackoff(lambda: (self.IsReady(), None),
-                                           PrintRetryMessage, 1, 2, 60, 20)
+      success, unused_contents = RetryWithBackoff(
+          lambda: (self.IsReady(), None), PrintRetryMessage, 1, 2, 60, 20)
       if not success:
 
         logging.warning('Version still not ready to serve, aborting.')
         raise Exception('Version not ready.')
 
       result = self.StartServing()
-      if result == '':
+      if not result:
 
 
         self.in_transaction = False
       else:
-        success, contents = RetryWithBackoff(lambda: (self.IsServing(), None),
-                                             PrintRetryMessage, 1, 1, 1, 60)
+        success, unused_contents = RetryWithBackoff(
+            lambda: (self.IsServing(), None), PrintRetryMessage, 1, 1, 1, 60)
         if not success:
 
           logging.warning('Version still not serving, aborting.')
@@ -2044,7 +2043,6 @@ class AppVersionUpload(object):
               'Precompilation failed. Your app can still serve but may '
               'have reduced startup performance. You can retry the update '
               'later to retry the precompilation step.')
-          pass
 
 
       app_summary = self.Commit()
@@ -2069,13 +2067,15 @@ class AppVersionUpload(object):
     return app_summary
 
 
-def FileIterator(base, skip_files, separator=os.path.sep):
+def FileIterator(base, skip_files, runtime, separator=os.path.sep):
   """Walks a directory tree, returning all the files. Follows symlinks.
 
   Args:
     base: The base path to search for files under.
     skip_files: A regular expression object for files/directories to skip.
     separator: Path separator used by the running system's platform.
+    runtime: The name of the runtime e.g. "python". If "python27" then .pyc
+      files with matching .py files will be skipped.
 
   Yields:
     Paths of files found, relative to base.
@@ -2083,14 +2083,24 @@ def FileIterator(base, skip_files, separator=os.path.sep):
   dirs = ['']
   while dirs:
     current_dir = dirs.pop()
-    for entry in os.listdir(os.path.join(base, current_dir)):
+    entries = set(os.listdir(os.path.join(base, current_dir)))
+    for entry in sorted(entries):
       name = os.path.join(current_dir, entry)
       fullname = os.path.join(base, name)
 
 
 
+
       if separator == '\\':
         name = name.replace('\\', '/')
+
+      if runtime == 'python27' and not skip_files.match(name):
+        root, extension = os.path.splitext(entry)
+        if extension == '.pyc' and (root + '.py') in entries:
+          logging.warning('Ignoring file \'%s\': Cannot upload both '
+                          '<filename>.py and <filename>.pyc', name)
+          continue
+
       if os.path.isfile(fullname):
         if skip_files.match(name):
           logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
@@ -2209,7 +2219,8 @@ class AppCfgApp(object):
                update_check_class=UpdateCheck,
                throttle_class=None,
                opener=open,
-               file_iterator=FileIterator):
+               file_iterator=FileIterator,
+               time_func=time.time):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -2221,6 +2232,7 @@ class AppCfgApp(object):
       rpc_server_class: RPC server class to use for this application.
       raw_input_fn: Function used for getting user email.
       password_input_fn: Function used for getting user password.
+      out_fh: All normal output is printed to this file handle.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
       update_check_class: UpdateCheck class (can be replaced for testing).
       throttle_class: A class to use instead of ThrottledHttpRpcServer
@@ -2230,6 +2242,8 @@ class AppCfgApp(object):
         and returns a generator that yields all filenames in the file tree
         rooted at that path, skipping files that match the skip_files compiled
         regular expression.
+      time_func: Function which provides the current time (can be replaced for
+          testing).
     """
     self.parser_class = parser_class
     self.argv = argv
@@ -2240,6 +2254,7 @@ class AppCfgApp(object):
     self.error_fh = error_fh
     self.update_check_class = update_check_class
     self.throttle_class = throttle_class
+    self.time_func = time_func
 
 
 
@@ -2267,29 +2282,30 @@ class AppCfgApp(object):
       error_desc = action.error_desc
       if not error_desc:
         error_desc = "Expected a <directory> argument after '%s'." % (
-            actionname)
+            actionname.split(' ')[0])
       self.parser.error(error_desc)
 
 
 
 
     if action == BACKENDS_ACTION:
-      if len(self.args) < 2:
-        RaiseParseError(action, self.actions[BACKENDS_ACTION])
-
-      actions = ['update', 'list', 'start', 'stop', 'delete', 'rollback']
-
-
-      if self.args[0] in actions:
-        action = 'backends ' + self.args.pop(0)
-      elif self.args[1] in actions:
-        action = 'backends ' + self.args.pop(1)
-      else:
-        RaiseParseError(action, self.actions[BACKENDS_ACTION])
-
-
       if len(self.args) < 1:
         RaiseParseError(action, self.actions[BACKENDS_ACTION])
+
+      backend_action_first = BACKENDS_ACTION + ' ' + self.args[0]
+      if backend_action_first in self.actions:
+        self.args.pop(0)
+        action = backend_action_first
+
+      elif len(self.args) > 1:
+        backend_directory_first = BACKENDS_ACTION + ' ' + self.args[1]
+        if backend_directory_first in self.actions:
+          self.args.pop(1)
+          action = backend_directory_first
+
+
+      if len(self.args) < 1 or action == BACKENDS_ACTION:
+        RaiseParseError(action, self.actions[action])
 
     if action not in self.actions:
       self.parser.error("Unknown action: '%s'\n%s" %
@@ -2323,6 +2339,9 @@ class AppCfgApp(object):
       logging.getLogger().setLevel(logging.INFO)
     elif self.options.verbose == 3:
       logging.getLogger().setLevel(logging.DEBUG)
+
+
+
 
     global verbosity
     verbosity = self.options.verbose
@@ -2663,9 +2682,12 @@ class AppCfgApp(object):
     question.  Exits the program after printing the help message.
     """
     if not action:
+      if len(self.args) > 1:
+        self.args = [' '.join(self.args)]
+
       if len(self.args) != 1 or self.args[0] not in self.actions:
-        self.parser.error('Expected a single action argument. ' +
-                          'Must be one of:\n' +
+        self.parser.error('Expected a single action argument. '
+                          ' Must be one of:\n' +
                           self._GetActionDescriptions())
       action = self.args[0]
     action = self.actions[action]
@@ -2676,7 +2698,7 @@ class AppCfgApp(object):
     """Downloads the given app+version."""
     if len(self.args) != 1:
       self.parser.error('\"download_app\" expects one non-option argument, '
-          'found ' + str(len(self.args)) + '.')
+                        'found ' + str(len(self.args)) + '.')
 
     out_dir = self.args[0]
 
@@ -2692,7 +2714,7 @@ class AppCfgApp(object):
       if not os.path.isdir(out_dir):
         self.parser.error('Cannot download to path "%s": '
                           'there\'s a file in the way.' % out_dir)
-      elif len(os.listdir(out_dir)) > 0:
+      elif os.listdir(out_dir):
         self.parser.error('Cannot download to path "%s": directory already '
                           'exists and it isn\'t empty.' % out_dir)
 
@@ -2730,7 +2752,8 @@ class AppCfgApp(object):
     appversion = AppVersionUpload(rpcserver, appyaml, self.options.version,
                                   backend, self.error_fh)
     return appversion.DoUpload(
-        self.file_iterator(basepath, appyaml.skip_files), self.options.max_size,
+        self.file_iterator(basepath, appyaml.skip_files, appyaml.runtime),
+        self.options.max_size,
         lambda path: self.opener(os.path.join(basepath, path), 'rb'))
 
   def Update(self):
@@ -2742,7 +2765,7 @@ class AppCfgApp(object):
     rpcserver = self._GetRpcServer()
 
 
-    app_summary = self.UpdateVersion(rpcserver, self.basepath, appyaml)
+    self.UpdateVersion(rpcserver, self.basepath, appyaml)
 
 
     if self.options.backends:
@@ -2885,16 +2908,12 @@ class AppCfgApp(object):
       dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
       dos_upload.DoUpload()
 
-  def BackendsUpdate(self):
-    """Updates a backend."""
-    self.backend = None
-    if len(self.args) == 1:
-      self.backend = self.args[0]
-    elif len(self.args) > 1:
-      self.parser.error('Expected an optional <backend> argument.')
+  def BackendsAction(self):
+    """Placeholder; we never expect this action to be invoked."""
+    pass
 
-    appyaml = self._ParseAppYaml(self.basepath)
-    rpcserver = self._GetRpcServer()
+  def BackendsYamlCheck(self, appyaml, backend=None):
+    """Check the backends.yaml file is sane and which backends to update."""
 
 
     if appyaml.backends:
@@ -2914,21 +2933,35 @@ class AppCfgApp(object):
       else:
         backends.append(entry.name)
 
-    backends_to_update = backends
-    if self.backend:
-      if self.backend in backends:
-        backends_to_update = [self.backend]
+    backends_to_update = []
+
+    if backend:
+
+      if backend in backends:
+        backends_to_update = [backend]
       else:
         self.parser.error("Backend '%s' not found in backends.yaml." %
-                          self.backend)
+                          backend)
+    else:
 
+      backends_to_update = backends
+
+    return backends_to_update
+
+  def BackendsUpdate(self):
+    """Updates a backend."""
+    self.backend = None
+    if len(self.args) == 1:
+      self.backend = self.args[0]
+    elif len(self.args) > 1:
+      self.parser.error('Expected an optional <backend> argument.')
+
+    appyaml = self._ParseAppYaml(self.basepath)
+    rpcserver = self._GetRpcServer()
+
+    backends_to_update = self.BackendsYamlCheck(appyaml, self.backend)
     for backend in backends_to_update:
-      app_summary = self.UpdateVersion(
-          rpcserver, self.basepath, appyaml, backend)
-
-  def BackendsAction(self):
-    """Placeholder; we never expect this action to be invoked."""
-    pass
+      self.UpdateVersion(rpcserver, self.basepath, appyaml, backend)
 
   def BackendsList(self):
     """Lists all backends for an app."""
@@ -2987,6 +3020,21 @@ class AppCfgApp(object):
     response = rpcserver.Send('/api/backends/delete',
                               app_id=appyaml.application,
                               backend=backend)
+    print >> self.out_fh, response
+
+  def BackendsConfigure(self):
+    """Changes the configuration of an existing backend."""
+    if len(self.args) != 1:
+      self.parser.error('Expected a single <backend> argument.')
+
+    backend = self.args[0]
+    appyaml = self._ParseAppYaml(self.basepath)
+    backends_yaml = self._ParseBackendsYaml(self.basepath)
+    rpcserver = self._GetRpcServer()
+    response = rpcserver.Send('/api/backends/configure',
+                              app_id=appyaml.application,
+                              backend=backend,
+                              payload=backends_yaml.ToYAML())
     print >> self.out_fh, response
 
   def Rollback(self):
@@ -3049,7 +3097,8 @@ class AppCfgApp(object):
                                    end_date,
                                    self.options.vhost,
                                    self.options.include_vhost,
-                                   self.options.include_all)
+                                   self.options.include_all,
+                                   time_func=self.time_func)
     logs_requester.DownloadLogs()
 
   @staticmethod
@@ -3144,7 +3193,7 @@ class AppCfgApp(object):
 
   def _CheckRequiredLoadOptions(self):
     """Checks that upload/download options are present."""
-    for option in ['filename',]:
+    for option in ['filename']:
       if getattr(self.options, option) is None:
         self.parser.error('Option \'%s\' is required.' % option)
     if not self.options.url:
@@ -3431,8 +3480,8 @@ class AppCfgApp(object):
     self._PerformLoadOptions(parser)
     parser.add_option('--filename', type='string', dest='filename',
                       action='store',
-                      help='The name of the file where the generated template '
-                           'is to be written. (Required)')
+                      help='The name of the file where the generated template'
+                      ' is to be written. (Required)')
 
   class Action(object):
     """Contains information about a command line action.
@@ -3505,8 +3554,8 @@ Temporary or source control files (e.g. foo~, .svn/*) will be skipped."""),
 
       'download_app': Action(
           function='DownloadApp',
-          usage='%prog [options] download_app -A app_id [ -V version ] '
-                '<out-dir>',
+          usage='%prog [options] download_app -A app_id [ -V version ]'
+          ' <out-dir>',
           short_desc='Download a previously-uploaded app.',
           long_desc="""
 Download a previously-uploaded app to the specified directory.  The app
@@ -3551,7 +3600,7 @@ definitions from the optional dos.yaml file."""),
           usage='%prog [options] backends <directory> <action>',
           short_desc='Perform a backend action.',
           long_desc="""
-The 'backends' command will perform a backend action.""",
+The 'backends' command will perform a backends action.""",
           error_desc="""\
 Expected a <directory> and <action> argument."""),
 
@@ -3568,9 +3617,10 @@ The 'backends list' command will list all backends configured for the app."""),
           options=_UpdateOptions,
           short_desc='Update one or more backends.',
           long_desc="""
-The 'backends update' command will update one or more backends for the app.
-By default, all backends are updated.  If a <backend> argument is provided,
-only that backend will be updated."""),
+The 'backends update' command updates one or more backends.  This command
+updates backend configuration settings and deploys new code to the server.  Any
+existing instances will stop and be restarted.  Updates all backends, or a
+single backend if the <backend> argument is provided."""),
 
       'backends rollback': Action(
           function='BackendsRollback',
@@ -3600,7 +3650,17 @@ The 'backends start' command will put a backend into the STOP state."""),
           usage='%prog [options] backends <directory> delete <backend>',
           short_desc='Delete a backend.',
           long_desc="""
-The 'backend delete' command will delete a backend."""),
+The 'backends delete' command will delete a backend."""),
+
+      'backends configure': Action(
+          function='BackendsConfigure',
+          usage='%prog [options] backends <directory> configure <backend>',
+          short_desc='Reconfigure a backend without stopping it.',
+          long_desc="""
+The 'backends configure' command performs an online update of a backend, without
+stopping instances that are currently running.  No code or handlers are updated,
+only certain configuration settings specified in backends.yaml.  Valid settings
+are: instances, options: public, and options: failfast."""),
 
       'vacuum_indexes': Action(
           function='VacuumIndexes',

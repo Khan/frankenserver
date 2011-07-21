@@ -31,11 +31,11 @@ required and higher performance is desired.
 
 
 
+import cPickle
 import cStringIO
-import math
-import pickle
-import types
 import hashlib
+import math
+import types
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
@@ -291,9 +291,9 @@ class Client(object):
   """
 
   def __init__(self, servers=None, debug=0,
-               pickleProtocol=pickle.HIGHEST_PROTOCOL,
-               pickler=pickle.Pickler,
-               unpickler=pickle.Unpickler,
+               pickleProtocol=cPickle.HIGHEST_PROTOCOL,
+               pickler=cPickle.Pickler,
+               unpickler=cPickle.Unpickler,
                pload=None,
                pid=None,
                make_sync_call=apiproxy_stub_map.MakeSyncCall,
@@ -323,37 +323,35 @@ class Client(object):
 
 
 
-    self._pickle_data = cStringIO.StringIO()
-    self._pickler_instance = pickler(self._pickle_data,
-                                     protocol=pickleProtocol)
-    self._unpickler_instance = unpickler(self._pickle_data)
-    if pid is not None:
-      self._pickler_instance.persistent_id = pid
-    if pload is not None:
-      self._unpickler_instance.persistent_load = pload
-
-    def DoPickle(value):
-      self._pickle_data.truncate(0)
-      self._pickler_instance.clear_memo()
-      self._pickler_instance.dump(value)
-      return self._pickle_data.getvalue()
-    self._do_pickle = DoPickle
-
-    def DoUnpickle(value):
-      self._pickle_data.truncate(0)
-      self._pickle_data.write(value)
-      self._pickle_data.seek(0)
-      self._unpickler_instance.memo.clear()
-      return self._unpickler_instance.load()
-    self._do_unpickle = DoUnpickle
-
+    self._pickler_factory = pickler
+    self._unpickler_factory = unpickler
+    self._pickle_protocol = pickleProtocol
+    self._persistent_id = pid
+    self._persistent_load = pload
     self._make_sync_call = make_sync_call
-
     self._app_id = _app_id
     self._num_memcacheg_backends = _num_memcacheg_backends
     if _app_id and not _num_memcacheg_backends:
       raise ValueError('If you specify an _app_id, you must also '
                        'provide _num_memcacheg_backends')
+
+  def _do_pickle(self, value):
+    """Pickles a provided value."""
+    pickle_data = cStringIO.StringIO()
+    pickler = self._pickler_factory(pickle_data,
+                                    protocol=self._pickle_protocol)
+    if self._persistent_id is not None:
+      pickler.persistent_id = self._persistent_id
+    pickler.dump(value)
+    return pickle_data.getvalue()
+
+  def _do_unpickle(self, value):
+    """Unpickles a provided value."""
+    pickle_data = cStringIO.StringIO(value)
+    unpickler = self._unpickler_factory(pickle_data)
+    if self._persistent_load is not None:
+      unpickler.persistent_load = self._persistent_load
+    return unpickler.load()
 
   def _add_app_id(self, message):
     """Populate the app_id and num_memcacheg_backends fields in a message.
