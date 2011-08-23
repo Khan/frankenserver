@@ -44,9 +44,6 @@ def GetIndices(_app=None):
     list of entity_pb.CompositeIndex
   """
 
-
-
-
   req = api_base_pb.StringProto()
   req.set_value(datastore_types.ResolveAppId(_app))
   resp = datastore_pb.CompositeIndices()

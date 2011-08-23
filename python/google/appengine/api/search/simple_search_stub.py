@@ -29,21 +29,32 @@
 
 
 
+import bisect
+import copy
 import random
 import string
 import urllib
 
+from whoosh import analysis
+
 from google.appengine.datastore import document_pb
 from google.appengine.api import apiproxy_stub
-from google.appengine.api.search import search_api
+from google.appengine.api.search import query_parser
+from google.appengine.api.search import QueryParser
+from google.appengine.api.search import search
 from google.appengine.api.search import search_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 __all__ = ['IndexConsistencyError',
+           'Number',
+           'Posting',
+           'PostingList',
+           'Quote',
+           'RamInvertedIndex',
            'SearchServiceStub',
            'SimpleIndex',
-           'RamInvertedIndex',
-           'SimpleTokenizer'
+           'Token',
+           'WhooshTokenizer',
           ]
 
 
@@ -53,25 +64,217 @@ class IndexConsistencyError(Exception):
 
 def _Repr(class_instance, ordered_dictionary):
   """Generates an unambiguous representation for instance and ordered dict."""
-  return 'search_api.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
+  return 'search.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
       ["%s='%s'" % (key, value) for (key, value) in ordered_dictionary
        if value is not None and value != []]))
 
 
-class SimpleTokenizer(object):
-  """A simple tokenizer that breaks up string on white space characters."""
+class Token(object):
+  """Represents a token, usually a word, extracted from some document field."""
+
+  _CONSTRUCTOR_KWARGS = frozenset(['chars', 'position', 'field_name'])
+
+  def __init__(self, **kwargs):
+    """Initializer.
+
+    Args:
+      chars: The string representation of the token.
+      position: The position of the token in the sequence from the document
+        field.
+      field_name: The name of the field the token occured in.
+
+    Raises:
+      TypeError: If an unknown argument is passed.
+    """
+    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
+    if args_diff:
+      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
+
+    self._chars = kwargs.get('chars')
+    self._position = kwargs.get('position')
+    self._field_name = kwargs.get('field_name')
+
+  @property
+  def chars(self):
+    """Returns a list of fields of the document."""
+    if self._field_name:
+      return self._field_name + ':' + str(self._chars)
+    return str(self._chars)
+
+  @property
+  def position(self):
+    """Returns a list of fields of the document."""
+    return self._position
+
+  def RestrictField(self, field_name):
+    """Creates a copy of this Token and sets field_name."""
+    return Token(chars=self.chars, position=self.position,
+                 field_name=field_name)
+
+  def __repr__(self):
+    return _Repr(self, [('chars', self.chars), ('position', self.position)])
+
+  def __eq__(self, other):
+    return self.chars == other.chars
+
+  def __hash__(self):
+    return hash(self.chars)
+
+
+class Quote(Token):
+  """Represents a single or double quote in a document field or query."""
+
+  def __init__(self, **kwargs):
+    Token.__init__(self, **kwargs)
+
+
+class Number(Token):
+  """Represents a number in a document field or query."""
+
+  def __init__(self, **kwargs):
+    Token.__init__(self, **kwargs)
+
+
+class Posting(object):
+  """Represents a occurrences of some token at positions in a document."""
+
+  _CONSTRUCTOR_KWARGS = frozenset(['doc_id'])
+
+  def __init__(self, **kwargs):
+    """Initializer.
+
+    Args:
+      doc_id: The identifier of the document with token occurrences.
+
+    Raises:
+      TypeError: If an unknown argument is passed.
+    """
+    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
+    if args_diff:
+      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
+
+    self._doc_id = kwargs.get('doc_id')
+    self._positions = []
+
+  @property
+  def doc_id(self):
+    """Return id of the document that the token occurred in."""
+    return self._doc_id
+
+  def AddPosition(self, position):
+    """Adds the position in token sequence to occurrences for token."""
+    pos = bisect.bisect_left(self._positions, position)
+    if pos < len(self._positions) and self._positions[pos] == position:
+      return
+    self._positions.insert(pos, position)
+
+  def RemovePosition(self, position):
+    """Removes the position in token sequence from occurrences for token."""
+    pos = bisect.bisect_left(self._positions, position)
+    if pos < len(self._positions) and self._positions[pos] == position:
+      del self._positions[pos]
+
+  def __cmp__(self, other):
+    if not isinstance(other, Posting):
+      return -2
+    return cmp(self.doc_id, other.doc_id)
+
+  @property
+  def positions(self):
+    return self._positions
+
+  def __repr__(self):
+    return _Repr(self, [('doc_id', self.doc_id), ('positions', self.positions)])
+
+
+class WhooshTokenizer(object):
+  """A wrapper around whoosh tokenizer pipeline."""
 
   def __init__(self, split_restricts=True):
+    self._tokenizer = analysis.RegexTokenizer() | analysis.LowercaseFilter()
     self._split_restricts = split_restricts
 
-  def Tokenize(self, content):
+  def TokenizeText(self, text, token_position=0):
+    """Tokenizes the text into a sequence of Tokens."""
+    return self._TokenizeForType(field_type=document_pb.FieldValue.TEXT,
+                                value=text, token_position=token_position)
+
+  def TokenizeValue(self, field_value, token_position=0):
+    """Tokenizes a document_pb.FieldValue into a sequence of Tokens."""
+    return self._TokenizeForType(field_type=field_value.type(),
+                                value=field_value.string_value(),
+                                token_position=token_position)
+
+  def _TokenizeForType(self, field_type, value, token_position=0):
+    """Tokenizes value into a sequence of Tokens."""
+    if field_type is document_pb.FieldValue.NUMBER:
+      return [Token(chars=value, position=token_position)]
+
     tokens = []
-    for token in content.lower().split():
+    token_strings = []
+    if not self._split_restricts:
+      token_strings = value.lower().split()
+    else:
+      token_strings = [token.text for token in self._tokenizer(unicode(value))]
+    for token in token_strings:
       if ':' in token and self._split_restricts:
-        tokens.extend(token.split(':'))
+        for subtoken in token.split(':'):
+          tokens.append(Token(chars=subtoken, position=token_position))
+          token_position += 1
+      elif '"' in token:
+        for subtoken in token.split('"'):
+          if not subtoken:
+            tokens.append(Quote(chars='"', position=token_position))
+          else:
+            tokens.append(Token(chars=subtoken, position=token_position))
+          token_position += 1
       else:
-        tokens.append(token)
+        tokens.append(Token(chars=token, position=token_position))
+        token_position += 1
     return tokens
+
+
+class PostingList(object):
+  """Represents ordered positions of some token in document.
+
+  A PostingList consists of a document id and a sequence of positions
+  that the same token occurs in the document.
+  """
+
+  def __init__(self):
+    self._postings = []
+
+  def Add(self, doc_id, position):
+    """Adds the token position for the given doc_id."""
+    posting = Posting(doc_id=doc_id)
+    pos = bisect.bisect_left(self._postings, posting)
+    if pos < len(self._postings) and self._postings[
+        pos].doc_id == posting.doc_id:
+      posting = self._postings[pos]
+    else:
+      self._postings.insert(pos, posting)
+    posting.AddPosition(position)
+
+  def Remove(self, doc_id, position):
+    """Removes the token position for the given doc_id."""
+    posting = Posting(doc_id=doc_id)
+    pos = bisect.bisect_left(self._postings, posting)
+    if pos < len(self._postings) and self._postings[
+        pos].doc_id == posting.doc_id:
+      posting = self._postings[pos]
+      posting.RemovePosition(position)
+      if not posting.positions:
+        del self._postings[pos]
+
+  @property
+  def postings(self):
+    return self._postings
+
+  def __iter__(self):
+    return iter(self._postings)
+
+  def __repr__(self):
+    return _Repr(self, [('postings', self.postings)])
 
 
 class RamInvertedIndex(object):
@@ -83,48 +286,49 @@ class RamInvertedIndex(object):
 
   def AddDocument(self, document):
     """Adds a document into the index."""
-    doc_id = document.doc_id()
+    doc_id = document.id()
+    token_position = 0
     for field in document.field_list():
-      self._AddTokens(doc_id, field.name(), field.value().string_value())
+      self._AddTokens(doc_id, field.name(), field.value(),
+                      token_position)
 
   def RemoveDocument(self, document):
     """Removes a document from the index."""
-    doc_id = document.doc_id()
+    doc_id = document.id()
     for field in document.field_list():
-      self._RemoveTokens(doc_id, field.name(), field.value().string_value())
+      self._RemoveTokens(doc_id, field.name(), field.value())
 
-  def _AddTokens(self, doc_id, field_name, field_value):
+  def _AddTokens(self, doc_id, field_name, field_value, token_position):
     """Adds token occurrences for a given doc's field value."""
-    for token in self._tokenizer.Tokenize(field_value):
+    for token in self._tokenizer.TokenizeValue(field_value, token_position):
       self._AddToken(doc_id, token)
-      self._AddToken(doc_id, field_name + ':' + token)
+      self._AddToken(doc_id, token.RestrictField(field_name))
 
   def _RemoveTokens(self, doc_id, field_name, field_value):
     """Removes tokens occurrences for a given doc's field value."""
-    for token in self._tokenizer.Tokenize(field_value):
+    for token in self._tokenizer.TokenizeValue(field_value=field_value):
       self._RemoveToken(doc_id, token)
-      self._RemoveToken(doc_id, field_name + ':' + token)
+      self._RemoveToken(doc_id, token.RestrictField(field_name))
 
   def _AddToken(self, doc_id, token):
     """Adds a token occurrence for a document."""
-    doc_ids = self._inverted_index.get(token)
-    if doc_ids is None:
-      self._inverted_index[token] = doc_ids = set([])
-    doc_ids.add(doc_id)
+    postings = self._inverted_index.get(token)
+    if postings is None:
+      self._inverted_index[token] = postings = PostingList()
+    postings.Add(doc_id, token.position)
 
   def _RemoveToken(self, doc_id, token):
     """Removes a token occurrence for a document."""
     if token in self._inverted_index:
-      doc_ids = self._inverted_index[token]
-      if doc_id in doc_ids:
-        doc_ids.remove(doc_id)
-        if not doc_ids:
-          del self._inverted_index[token]
+      postings = self._inverted_index[token]
+      postings.Remove(doc_id, token.position)
+      if not postings.postings:
+        del self._inverted_index[token]
 
-  def GetDocsForToken(self, token):
-    """Returns all documents which contain the token."""
+  def GetPostingsForToken(self, token):
+    """Returns all document postings which for the token."""
     if token in self._inverted_index:
-      return self._inverted_index[token]
+      return self._inverted_index[token].postings
     return []
 
   def __repr__(self):
@@ -137,8 +341,8 @@ class SimpleIndex(object):
   def __init__(self, index_spec):
     self._index_spec = index_spec
     self._documents = {}
-    self._parser = SimpleTokenizer(split_restricts=False)
-    self._inverted_index = RamInvertedIndex(SimpleTokenizer())
+    self._parser = WhooshTokenizer(split_restricts=False)
+    self._inverted_index = RamInvertedIndex(WhooshTokenizer())
 
   @property
   def IndexSpec(self):
@@ -148,7 +352,7 @@ class SimpleIndex(object):
   def IndexDocuments(self, documents, response):
     """Indexes an iterable DocumentPb.Document."""
     for document in documents:
-      doc_id = document.doc_id()
+      doc_id = document.id()
       if doc_id in self._documents:
         old_document = self._documents[doc_id]
         self._inverted_index.RemoveDocument(old_document)
@@ -167,30 +371,124 @@ class SimpleIndex(object):
       delete_status = response.add_status()
       delete_status.set_status(search_service_pb.SearchServiceError.OK)
 
-  def _DocumentsForDocIds(self, doc_ids):
-    """Returns the documents for the given doc_ids."""
+  def _DocumentsForPostings(self, postings):
+    """Returns the documents for the given postings."""
     docs = []
-    for doc_id in doc_ids:
-      if doc_id in self._documents:
-        docs.append(self._documents[doc_id])
+    for posting in postings:
+      if posting.doc_id in self._documents:
+        docs.append(self._documents[posting.doc_id])
     return docs
+
+  def _FilterSpecialTokens(self, tokens):
+    """Returns a filted set of tokens not including special characters."""
+    return [token for token in tokens if not isinstance(token, Quote)]
+
+  def _PhraseOccurs(self, doc_id, phrase, position_posting, next_position=None):
+    """Checks phrase occurs for doc_id looking at next_position in phrase."""
+    if not phrase:
+      return True
+    token = phrase[0]
+    for posting in position_posting[token.position]:
+      if posting.doc_id == doc_id:
+        for position in posting.positions:
+          if next_position == None or position == next_position:
+            if self._PhraseOccurs(doc_id, phrase[1:], position_posting,
+                                  position + 1):
+              return True
+          if position > next_position:
+            return False
+    return False
+
+  def _RestrictPhrase(self, phrase, postings, position_posting):
+    """Restricts postings to those where phrase occurs."""
+    return [posting for posting in postings if
+            self._PhraseOccurs(posting.doc_id, phrase, position_posting)]
+
+  def _PostingsForToken(self, token):
+    """Returns the postings for the token."""
+    return self._inverted_index.GetPostingsForToken(token)
+
+  def _SplitPhrase(self, phrase):
+    """Returns the list of tokens for the phrase."""
+    phrase = phrase[1:len(phrase) - 1]
+    return self._parser.TokenizeText(phrase)
+
+  def _MakeToken(self, value):
+    """Makes a token from the given value."""
+    return self._parser.TokenizeText(value)[0]
+
+  def _AddFieldToTokens(self, field, tokens):
+    """Adds the field restriction to each Token in tokens."""
+    if field:
+      return [token.RestrictField(field) for token in tokens]
+    return tokens
+
+  def _EvaluatePhrase(self, node, field=None):
+    """Evaluates the phrase node returning matching postings."""
+    tokens = self._SplitPhrase(node.getText())
+    tokens = self._AddFieldToTokens(field, tokens)
+    position_posting = {}
+    token = tokens[0]
+    postings = self._PostingsForToken(token)
+    position_posting[token.position] = postings
+    if len(tokens) > 1:
+      for token in tokens[1:]:
+        next_postings = self._PostingsForToken(token)
+        position_posting[token.position] = next_postings
+        postings = [posting for posting in postings if posting in
+                    next_postings]
+        if not postings:
+          break
+    return self._RestrictPhrase(tokens, postings, position_posting)
+
+  def _PostingsForFieldToken(self, field, value):
+    """Returns postings for the value occurring in the given field."""
+    token = field + ':' + str(value)
+    token = self._MakeToken(token)
+    return self._PostingsForToken(token)
+
+  def _Evaluate(self, node):
+    """Translates the node in a parse tree into a query string fragment."""
+    if node.getType() is QueryParser.CONJUNCTION:
+      postings = self._Evaluate(node.children[0])
+      for child in node.children[1:]:
+        next_postings = self._Evaluate(child)
+        postings = [posting for posting in postings if posting in next_postings]
+        if not postings:
+          break
+      return postings
+    if node.getType() is QueryParser.DISJUNCTION:
+      postings = []
+      for child in node.children:
+        postings.extend(self._Evaluate(child))
+      return postings
+    if node.getType() is QueryParser.RESTRICTION:
+      field_name = node.children[0].getText()
+
+      child = node.children[1]
+      if child.getType() is QueryParser.PHRASE:
+        return self._EvaluatePhrase(node=child, field=field_name)
+      return self._PostingsForFieldToken(field_name, child.getText())
+    if node.getType() is QueryParser.PHRASE:
+      return self._EvaluatePhrase(node)
+    if (node.getType() is QueryParser.TEXT or
+        node.getType() is QueryParser.SELECTOR or
+        node.getType() is QueryParser.INT):
+      token = node.getText()
+      token = self._MakeToken(token)
+      return self._PostingsForToken(token)
+
+    return []
 
   def Search(self, search_request):
     """Searches the simple index for ."""
     query = urllib.unquote(search_request.query())
-    tokens = self._parser.Tokenize(query)
-    if not tokens:
-      return self._documents.values()
-    else:
-      token = tokens[0]
-      doc_ids = self._inverted_index.GetDocsForToken(token)
-      if len(tokens) > 1:
-        for token in tokens[1]:
-          next_doc_ids = self._inverted_index.GetDocsForToken(token)
-          doc_ids = [doc_id for doc_id in doc_ids if doc_id in next_doc_ids]
-          if not doc_ids:
-            break
-      return self._DocumentsForDocIds(doc_ids)
+    query = query.strip()
+    if not query:
+      return copy.copy(self._documents.values())
+    query_tree = query_parser.Parse(query)
+    postings = self._Evaluate(query_tree)
+    return self._DocumentsForPostings(postings)
 
   def __repr__(self):
     return _Repr(self, [('_index_spec', self._index_spec),
@@ -223,42 +521,18 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     status.set_status(search_service_pb.SearchServiceError.INVALID_REQUEST)
     status.set_error_detail('no index for %r' % index_spec)
 
-  def _GetOrCreateIndex(self, index_spec, create=True):
-    index = self.__indexes.get(index_spec.index_name())
+  def _GetIndex(self, index_spec, create=False):
+    index = self.__indexes.get(index_spec.name())
     if index is None:
       if create:
         index = SimpleIndex(index_spec)
-        self.__indexes[index_spec.index_name()] = index
+        self.__indexes[index_spec.name()] = index
       else:
         return None
     elif index.IndexSpec.consistency() != index_spec.consistency():
       raise IndexConsistencyError('Cannot creat index of same name with'
                                   ' different consistency mode')
     return index
-
-  def _GetIndex(self, index_spec):
-    return self._GetOrCreateIndex(index_spec=index_spec, create=False)
-
-  def _Dynamic_CreateIndex(self, request, response):
-    """A local implementation of SearchService.CreateIndex RPC.
-
-    Create an index based on a supplied IndexSpec.
-
-    Args:
-      request: A search_service_pb.CreateIndexRequest.
-      response: An search_service_pb.CreateIndexResponse.
-    """
-    index_spec = request.index_spec()
-    index = None
-    try:
-      index = self._GetOrCreateIndex(index_spec)
-    except IndexConsistencyError, exception:
-      self._InvalidRequest(response.mutable_status(), exception)
-      return
-    spec_pb = response.mutable_index_spec()
-    spec_pb.MergeFrom(index.IndexSpec)
-    response.mutable_status().set_status(
-        search_service_pb.SearchServiceError.OK)
 
   def _Dynamic_IndexDocument(self, request, response):
     """A local implementation of SearchService.IndexDocument RPC.
@@ -271,7 +545,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     """
     params = request.params()
     try:
-      index = self._GetOrCreateIndex(params.index_spec())
+      index = self._GetIndex(params.index_spec(), create=True)
       index.IndexDocuments(params.document_list(), response)
     except IndexConsistencyError, exception:
       self._InvalidRequest(response.add_status(), exception)
@@ -290,7 +564,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       if index is None:
         self._UnknownIndex(response.add_status(), index_spec)
         return
-      index.DeleteDocuments(params.document_id_list(), response)
+      index.DeleteDocuments(params.doc_id_list(), response)
     except IndexConsistencyError, exception:
       self._InvalidRequest(response.add_status(), exception)
 
@@ -310,10 +584,11 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
       for _ in xrange(random.randint(0, 2) * random.randint(5, 15)):
         new_index_spec = response.add_index_metadata().mutable_index_spec()
-        new_index_spec.set_index_name(
-            ''.join(random.choice(string.printable)
+        new_index_spec.set_name(
+            random.choice(list(search._ASCII_PRINTABLE - set('!'))) +
+            ''.join(random.choice(list(search._ASCII_PRINTABLE))
                     for _ in xrange(random.randint(
-                        1, search_api._MAXIMUM_INDEX_NAME_LENGTH))))
+                        0, search._MAXIMUM_INDEX_NAME_LENGTH))))
         new_index_spec.set_consistency(random.choice([
             search_service_pb.IndexSpec.GLOBAL,
             search_service_pb.IndexSpec.PER_DOCUMENT]))
@@ -326,15 +601,20 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     for index in self.__indexes.values():
       index_spec = index.IndexSpec
       new_index_spec = response.add_index_metadata().mutable_index_spec()
-      new_index_spec.set_index_name(index_spec.index_name())
+      new_index_spec.set_name(index_spec.name())
       new_index_spec.set_consistency(index_spec.consistency())
     response.mutable_status().set_status(
         search_service_pb.SearchServiceError.OK)
 
   def _RandomSearchResponse(self, request, response):
 
-    if random.random() < 0.1:
+    random.seed()
+    if random.random() < 0.03:
       raise apiproxy_errors.ResponseTooLargeError()
+    response.mutable_status().set_status(
+        random.choice([search_service_pb.SearchServiceError.OK] * 30 +
+                      [search_service_pb.SearchServiceError.TRANSIENT_ERROR] +
+                      [search_service_pb.SearchServiceError.INTERNAL_ERROR]))
 
     params = request.params()
     random.seed(params.query())
@@ -364,7 +644,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       result = response.add_result()
       doc = result.mutable_document()
       doc_id = RandomText(string.letters + string.digits, 8, 10)
-      doc.set_doc_id(doc_id)
+      doc.set_id(doc_id)
       random.seed(doc_id)
       for _ in params.sort_spec_list():
         result.add_score(random.random())
@@ -394,10 +674,6 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         value.set_type(document_pb.FieldValue.TEXT)
         value.set_string_value(RandomText(string.printable, 0, 100))
 
-    response.mutable_status().set_status(
-        random.choice([search_service_pb.SearchServiceError.OK] * 10 +
-                      [search_service_pb.SearchServiceError.TRANSIENT_ERROR] +
-                      [search_service_pb.SearchServiceError.INTERNAL_ERROR]))
     response.set_matched_count(matched_count)
 
   def _Dynamic_Search(self, request, response):

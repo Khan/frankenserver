@@ -50,7 +50,20 @@ def connect(instance=None, database=None, **kwargs):
 
   if 'db' in kwargs and not database:
     database = kwargs.pop('db')
+
+  user = None
+  if 'user' in kwargs:
+    user = kwargs.pop('user')
+
+  password = None
+  if 'password' in kwargs:
+    password = kwargs.pop('password')
+
   if kwargs:
     logging.info('Ignoring extra kwargs to connect(): %r', kwargs)
 
-  return rdbms_apiproxy.connect('unused_address', instance, database=database)
+  return rdbms_apiproxy.connect('unused_address',
+                                instance,
+                                database=database,
+                                user=user,
+                                password=password)

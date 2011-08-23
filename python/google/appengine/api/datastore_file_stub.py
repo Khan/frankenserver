@@ -47,6 +47,7 @@ import struct
 import sys
 import tempfile
 import threading
+import weakref
 
 
 
@@ -56,7 +57,6 @@ from google.appengine.api import apiproxy_stub
 from google.appengine.api import datastore
 from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_pb
-from google.appengine.datastore import datastore_query
 from google.appengine.datastore import datastore_stub_util
 from google.appengine.runtime import apiproxy_errors
 from google.net.proto import ProtocolBuffer
@@ -333,7 +333,8 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     datastore_stub_util.BaseDatastore.__init__(self, require_indexes,
                                                consistency_policy)
     apiproxy_stub.APIProxyStub.__init__(self, service_name)
-    datastore_stub_util.DatastoreStub.__init__(self, self, app_id, trusted)
+    datastore_stub_util.DatastoreStub.__init__(self, weakref.proxy(self),
+                                               app_id, trusted)
 
 
 
@@ -368,7 +369,7 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
 
     self._RegisterPseudoKind(KindPseudoKind())
-    self._RegisterPseudoKind(PropertyPseudoKind(self))
+    self._RegisterPseudoKind(PropertyPseudoKind(weakref.proxy(self)))
     self._RegisterPseudoKind(NamespacePseudoKind())
 
     self.Read()

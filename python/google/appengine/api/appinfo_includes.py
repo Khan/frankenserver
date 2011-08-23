@@ -65,6 +65,13 @@ def Parse(appinfo_file, open_fn=open):
     raise appinfo_errors.TooManyURLMappings(
         'Found more than %d URLMap entries in application configuration' %
         appinfo.MAX_URL_MAPS)
+  if appyaml.runtime == 'python27' and appyaml.threadsafe:
+    for handler in appyaml.handlers:
+      if (handler.script and (handler.script.endswith('.py') or
+                              '/' in handler.script)):
+        raise appinfo_errors.ThreadsafeWithCgiHandler(
+            'Threadsafe cannot be enabled with CGI handler: %s' %
+            handler.script)
 
   return appyaml
 

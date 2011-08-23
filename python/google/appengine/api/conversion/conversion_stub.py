@@ -31,7 +31,7 @@
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import conversion
-from google.appengine.api.conversion import conversion_service_pb2
+from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -59,48 +59,48 @@ def _validate_conversion_request(request):
   """
   if not request.IsInitialized():
     raise apiproxy_errors.ApplicationError(
-        conversion_service_pb2.ConversionServiceError.INVALID_REQUEST,
+        conversion_service_pb.ConversionServiceError.INVALID_REQUEST,
         "The conversion request is not initialized correctly")
 
-  if not request.conversion:
+  if not request.conversion_list():
     raise apiproxy_errors.ApplicationError(
-        conversion_service_pb2.ConversionServiceError.INVALID_REQUEST,
+        conversion_service_pb.ConversionServiceError.INVALID_REQUEST,
         "At least one conversion is required in the request")
 
-  if len(request.conversion) > conversion.CONVERSION_MAX_NUM_PER_REQUEST:
+  if request.conversion_size() > conversion.CONVERSION_MAX_NUM_PER_REQUEST:
     raise apiproxy_errors.ApplicationError(
-        conversion_service_pb2.ConversionServiceError.TOO_MANY_CONVERSIONS,
+        conversion_service_pb.ConversionServiceError.TOO_MANY_CONVERSIONS,
         "At most ten conversions are allowed in the request")
 
-  for x in range(0, len(request.conversion)):
-    if (request.conversion[x].ByteSize() >
+  for x in range(0, request.conversion_size()):
+    if (request.conversion(x).ByteSize() >
         conversion.CONVERSION_MAX_DOC_SIZE_BYTES):
       raise apiproxy_errors.ApplicationError(
-          conversion_service_pb2.ConversionServiceError.CONVERSION_TOO_LARGE,
+          conversion_service_pb.ConversionServiceError.CONVERSION_TOO_LARGE,
           "Each conversion should not be over 10MB")
 
-    if not request.conversion[x].input.asset:
+    if not request.conversion(x).input().asset_list():
       raise apiproxy_errors.ApplicationError(
-          conversion_service_pb2.ConversionServiceError.INVALID_REQUEST,
+          conversion_service_pb.ConversionServiceError.INVALID_REQUEST,
           "At least one asset is required in input document")
 
-    for y in range(0, len(request.conversion[x].input.asset)):
-      input_asset = request.conversion[x].input.asset[y]
-      if not input_asset.HasField("data"):
+    for y in range(0, request.conversion(x).input().asset_size()):
+      input_asset = request.conversion(x).input().asset(y)
+      if not input_asset.has_data():
         raise apiproxy_errors.ApplicationError(
-            conversion_service_pb2.ConversionServiceError.INVALID_REQUEST,
+            conversion_service_pb.ConversionServiceError.INVALID_REQUEST,
             "Asset data field must be set in input document")
-      if not input_asset.HasField("mime_type"):
+      if not input_asset.has_mime_type():
         raise apiproxy_errors.ApplicationError(
-            conversion_service_pb2.ConversionServiceError.INVALID_REQUEST,
+            conversion_service_pb.ConversionServiceError.INVALID_REQUEST,
             "Asset mime type field must be set in input document")
 
 
 
-    output_mime_type = request.conversion[x].output_mime_type
+    output_mime_type = request.conversion(x).output_mime_type()
     if output_mime_type not in CONVERTED_FILES_STUB:
       raise apiproxy_errors.ApplicationError(
-          conversion_service_pb2.ConversionServiceError.UNSUPPORTED_CONVERSION,
+          conversion_service_pb.ConversionServiceError.UNSUPPORTED_CONVERSION,
           "Output mime type %s is not supported" % output_mime_type)
 
 
@@ -123,13 +123,13 @@ class ConversionServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Convert(self, request, response):
     _validate_conversion_request(request)
 
-    for x in range(0, len(request.conversion)):
-      result = response.result.add()
-      result.error_code = conversion_service_pb2.ConversionServiceError.OK
-      output_mime_type = request.conversion[x].output_mime_type
-      output_asset = result.output.asset.add()
-      output_asset.mime_type = output_mime_type
-      output_asset.data = CONVERTED_FILES_STUB[output_mime_type]
-      first_input_asset = request.conversion[x].input.asset[0]
-      if first_input_asset.HasField("name"):
-        output_asset.name = first_input_asset.name
+    for x in range(0, request.conversion_size()):
+      result = response.add_result()
+      result.set_error_code(conversion_service_pb.ConversionServiceError.OK)
+      output_mime_type = request.conversion(x).output_mime_type()
+      output_asset = result.mutable_output().add_asset()
+      output_asset.set_mime_type(output_mime_type)
+      output_asset.set_data(CONVERTED_FILES_STUB[output_mime_type])
+      first_input_asset = request.conversion(x).input().asset(0)
+      if first_input_asset.has_name():
+        output_asset.set_name(first_input_asset.name())

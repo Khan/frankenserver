@@ -29,6 +29,7 @@
 
 
 import cgi
+import collections
 import csv
 import cStringIO
 import datetime
@@ -47,6 +48,7 @@ import types
 import urllib
 import urlparse
 import wsgiref.handlers
+
 
 
 
@@ -142,6 +144,7 @@ class BaseRequestHandler(webapp.RequestHandler):
         'request': self.request,
         'home_path': base_path + DefaultPageHandler.PATH,
         'datastore_path': base_path + DatastoreQueryHandler.PATH,
+        'datastore_indexes': base_path + DatastoreGetIndexesHandler.PATH,
         'datastore_edit_path': base_path + DatastoreEditHandler.PATH,
         'datastore_batch_edit_path': base_path + DatastoreBatchEditHandler.PATH,
         'datastore_stats_path': base_path + DatastoreStatsHandler.PATH,
@@ -914,6 +917,33 @@ class MemcachePageHandler(BaseRequestHandler):
     if next_param:
       next = '%s?%s' % (next, self._urlencode(next_param))
     self.redirect(next)
+
+
+class DatastoreGetIndexesHandler(BaseRequestHandler):
+  """Our main request handler that displays indexes"""
+
+  PATH = '/datastore_indexes'
+
+  def get(self):
+    indexes = collections.defaultdict(list)
+    for index, state in datastore.GetIndexes():
+      properties = []
+      for property_name, sort_direction in index.Properties():
+        properties.append({
+          'name': property_name,
+          'sort_symbol': ('&#x25b2;', '&#x25bc;')[sort_direction - 1],
+          'sort_direction': ('ASCENDING', 'DESCENDING')[sort_direction - 1]
+        })
+      kind = str(index.Kind())
+      kind_indexes = indexes[kind]
+      kind_indexes.append({
+        'id': str(index.Id()),
+        'status': ('BUILDING', 'SERVING', 'DELETING', 'ERROR')[state],
+        'has_ancestor': bool(index.HasAncestor()),
+        'properties': properties
+      })
+    self.generate('datastore_indexes.html',
+                  {'request': self.request, 'indexes': sorted(indexes.items())})
 
 
 class DatastoreRequestHandler(BaseRequestHandler):
@@ -1810,6 +1840,7 @@ def PseudoBreadcrumbs(key):
 
 def main():
   handlers = [
+      ('.*' + DatastoreGetIndexesHandler.PATH, DatastoreGetIndexesHandler),
       ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
       ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
       ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),

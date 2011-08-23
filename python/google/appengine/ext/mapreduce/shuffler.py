@@ -18,6 +18,18 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 """Mapreduce shuffler implementation."""
 
 from __future__ import with_statement
@@ -106,17 +118,16 @@ def _sort_records(records):
   l = len(records)
   proto_records = [None] * l
 
-
-  logging.info("parsing")
+  logging.debug("Parsing")
   for i in range(l):
     proto = file_service_pb.KeyValue()
     proto.ParseFromString(records[i])
     proto_records[i] = proto
 
-  logging.info("sorting")
+  logging.debug("Sorting")
   proto_records.sort(cmp=_compare_keys)
 
-  logging.info("writing")
+  logging.debug("Writing")
   blob_file_name = (ctx.mapreduce_spec.name + "-" +
                     ctx.mapreduce_id + "-output")
   output_path = files.blobstore.create(
@@ -125,8 +136,9 @@ def _sort_records(records):
     for proto in proto_records:
       pool.append(proto.Encode())
 
-  logging.info("finalizing")
+  logging.debug("Finalizing")
   files.finalize(output_path)
+  time.sleep(1)
   output_path = files.blobstore.get_file_name(
       files.blobstore.get_blob_key(output_path))
 

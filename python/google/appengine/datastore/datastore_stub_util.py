@@ -75,7 +75,9 @@ _PROPERTY_TYPE_NAMES = {
     }
 
 
+
 _SCATTER_PROPORTION = 32768
+
 
 def _GetScatterProperty(entity_proto):
   """Gets the scatter property for an object.
@@ -118,6 +120,7 @@ _SPECIAL_PROPERTY_MAP = {
     '__scatter__' : (False, True, _GetScatterProperty)
     }
 
+
 def GetInvisibleSpecialPropertyNames():
   """Gets the names of all non user-visible special properties."""
   invisible_names = []
@@ -126,6 +129,7 @@ def GetInvisibleSpecialPropertyNames():
     if not is_visible:
       invisible_names.append(name)
   return invisible_names
+
 
 def _PrepareSpecialProperties(entity_proto, is_load):
   """Computes special properties for loading or storing.
@@ -282,7 +286,7 @@ def CheckQuery(query, filters, orders, max_query_components):
     max_query_components: limit on query complexity
   """
 
-  key_prop_name = datastore_types._KEY_SPECIAL_PROPERTY
+  key_prop_name = datastore_types.KEY_SPECIAL_PROPERTY
   unapplied_log_timestamp_us_name = (
       datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY)
 
@@ -462,7 +466,7 @@ def ParseKeyFilteredQuery(filters, orders):
 
   remaining_filters = []
   key_range = ValueRange()
-  key_prop = datastore_types._KEY_SPECIAL_PROPERTY
+  key_prop = datastore_types.KEY_SPECIAL_PROPERTY
   for f in filters:
     op = f.op()
     if not (f.property_size() == 1 and
@@ -481,7 +485,7 @@ def ParseKeyFilteredQuery(filters, orders):
   remaining_orders = []
   for o in orders:
     if not (o.direction() == datastore_pb.Query_Order.ASCENDING and
-            o.property() == datastore_types._KEY_SPECIAL_PROPERTY):
+            o.property() == datastore_types.KEY_SPECIAL_PROPERTY):
       remaining_orders.append(o)
     else:
       break
@@ -610,6 +614,7 @@ def ParsePropertyQuery(query, filters, orders):
     query.clear_ancestor()
 
   return key_range
+
 
 def _PropertyKeyToString(key, default_property):
   """Extract property name from __property__ key.
@@ -1021,7 +1026,8 @@ class LiveTxn(object):
       Check(self._entity_group == entity_group,
             'Transactions cannot span entity groups')
     else:
-      Check(self._app == reference.app())
+      Check(self._app == reference.app(),
+            'Transactions cannot span applications')
       self._entity_group = entity_group
 
   def _CheckOrSetSnapshot(self, reference):
@@ -1443,7 +1449,7 @@ class BaseTransactionManager(object):
     transaction.set_handle(id(txn))
     return transaction
 
-  def GetTxn(self, transaction, request_trusted=False, request_app=None):
+  def GetTxn(self, transaction, request_trusted, request_app):
     """Gets the LiveTxn object associated with the given transaction.
 
     Args:
@@ -1471,6 +1477,19 @@ class BaseTransactionManager(object):
       self._consistency_policy._OnGroom(self._meta_data.itervalues())
     finally:
       self._meta_data_lock.release()
+
+  def Flush(self):
+    """Applies all outstanding transactions."""
+    for meta_data in self._meta_data.itervalues():
+      if not meta_data._apply_queue:
+        continue
+
+
+      meta_data._write_lock.acquire()
+      try:
+        meta_data.CatchUp()
+      finally:
+        meta_data._write_lock.release()
 
   def _GetMetaData(self, entity_group):
     """Safely gets the EntityGroupMetaData object for the given entity_group.
@@ -1763,6 +1782,12 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     self._require_indexes = require_indexes
     self._pseudo_kinds = {}
 
+  def __del__(self):
+
+
+    self.Flush()
+    self.Write()
+
   def Clear(self):
     """Clears out all stored values."""
 
@@ -1808,7 +1833,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
       Check(raw_query.kind() not in self._pseudo_kinds,
             'transactional queries on "%s" not allowed' % raw_query.kind())
-      txn = self.GetTxn(raw_query.transaction())
+      txn = self.GetTxn(raw_query.transaction(), trusted, calling_app)
       return txn.GetQueryCursor(raw_query, filters, orders)
 
     if raw_query.has_ancestor() and raw_query.kind() not in self._pseudo_kinds:
@@ -1862,7 +1887,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     if transaction:
 
       Check(len(grouped_keys) == 1, 'Transactions cannot span entity groups')
-      txn = self.GetTxn(transaction)
+      txn = self.GetTxn(transaction, trusted, calling_app)
 
       return [txn.Get(key) for key, _ in grouped_keys.values()[0]]
     else:
@@ -2019,42 +2044,27 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     Args:
       query: the datstore_pb.Query to check
     """
-
-
     if query.kind() in self._pseudo_kinds or not self._require_indexes:
       return
 
+    minimal_index = datastore_index.MinimalCompositeIndexForQuery(query,
+        (datastore_index.ProtoToIndexDefinition(index)
+        for index in self.GetIndexes(query.app())
+        if index.state() == datastore_pb.CompositeIndex.READ_WRITE))
+    if minimal_index is not None:
+      msg = ('This query requires a composite index that is not defined. '
+          'You must update the index.yaml file in your application root.')
+      if not minimal_index[0]:
 
-    required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
-
-    if not required:
-      return
-
-    indexes = self.GetIndexes(query.app())
-    eq_filters_set = set(props[:num_eq_filters])
-    remaining_filters = props[num_eq_filters:]
-    required_key = kind, ancestor, props
-    for index in indexes:
-      definition = datastore_index.ProtoToIndexDefinition(index)
-      index_key = datastore_index.IndexToKey(definition)
-      if required_key == index_key:
-        break
-      if num_eq_filters > 1 and (kind, ancestor) == index_key[:2]:
-
-        this_props = index_key[2]
-        this_eq_filters_set = set(this_props[:num_eq_filters])
-        this_remaining_filters = this_props[num_eq_filters:]
-        if (eq_filters_set == this_eq_filters_set and
-            remaining_filters == this_remaining_filters):
-          break
-    else:
-
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.NEED_INDEX,
-          "This query requires a composite index that is not defined. "
-          "You must update the index.yaml file in your application root.")
+        yaml = datastore_index.IndexYamlForQuery(*minimal_index[1:])
+        msg += '\nThe following index is the minimum index required:\n' + yaml
+      raise apiproxy_errors.ApplicationError(datastore_pb.Error.NEED_INDEX, msg)
 
 
+
+  def Write(self):
+    """Writes the datastore to disk."""
+    raise NotImplemented
 
   def _GetQueryCursor(self, query, filters, orders):
     """Runs the given datastore_pb.Query and returns a QueryCursor for it.
@@ -2214,7 +2224,7 @@ class DatastoreStub(object):
       return
 
     transaction = request.add_request_list()[0].transaction()
-    txn = self._datastore.GetTxn(transaction)
+    txn = self._datastore.GetTxn(transaction, self._trusted, self._app_id)
     new_actions = []
     for add_request in request.add_request_list():
 

@@ -102,6 +102,9 @@ APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
 VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
 ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
+
+BUILTIN_NAME_PREFIX = 'ah-builtin'
+
 RUNTIME_RE_STRING = r'[a-z][a-z0-9]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
@@ -195,9 +198,13 @@ OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
 
 SUPPORTED_LIBRARIES = {
     'django': ['1.2'],
+    'lxml': ['2.3'],
+    'numpy': ['1.5.1'],
+    'PIL': ['1.1.7'],
     'pycrypto': ['2.3'],
     'yaml': ['3.05'],
-    'webob': ['0.9'],
+    'webapp2': ['2.0.2'],
+    'webob': ['1.0.8'],
 }
 
 
@@ -822,11 +829,16 @@ class AppInfoExternal(validation.Validated):
       - Number of url mappers doesn't exceed MAX_URL_MAPS.
       - Major version does not contain the string -dot-.
       - If api_endpoints are defined, an api_config stanza must be defined.
+      - If the runtime is python27 and threadsafe is set, then no CGI handlers
+        can be used.
+      - That the version name doesn't start with BUILTIN_NAME_PREFIX
 
     Raises:
       MissingURLMapping: if no URLMap object is present in the object.
       TooManyURLMappings: if there are too many URLMap entries.
       MissingApiConfig: if api_endpoints exist without an api_config.
+      ThreadsafeWithCgiHandler: if the runtime is python27, threadsafe is set
+          and CGI handlers are specified.
     """
     super(AppInfoExternal, self).CheckInitialized()
     if not self.handlers and not self.builtins and not self.includes:
@@ -852,6 +864,11 @@ class AppInfoExternal(validation.Validated):
       raise validation.ValidationError(
           'Version "%s" cannot contain the string "%s"' % (
               self.version, ALTERNATE_HOSTNAME_SEPARATOR))
+    if self.version and self.version.startswith(BUILTIN_NAME_PREFIX):
+      raise validation.ValidationError(
+          ('Version "%s" cannot start with "%s" because it is a '
+           'reserved version name prefix.') % (self.version,
+                                               BUILTIN_NAME_PREFIX))
     if self.handlers:
       api_endpoints = [handler.url for handler in self.handlers
                        if handler.GetHandlerType() == HANDLER_API_ENDPOINT]
@@ -859,6 +876,13 @@ class AppInfoExternal(validation.Validated):
         raise appinfo_errors.MissingApiConfig(
             'An api_endpoint handler was specified, but the required '
             'api_config stanza was not configured.')
+      if self.threadsafe and self.runtime == 'python27':
+        for handler in self.handlers:
+          if (handler.script and (handler.script.endswith('.py') or
+                                  '/' in handler.script)):
+            raise appinfo_errors.ThreadsafeWithCgiHandler(
+                'Threadsafe cannot be enabled with CGI handler: %s' %
+                handler.script)
 
   def ApplyBackendSettings(self, backend_name):
     """Applies settings from the indicated backend to the AppInfoExternal.

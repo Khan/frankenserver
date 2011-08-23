@@ -3,6 +3,38 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.5.3
+=============================
+- We've removed the limit on the size of blob uploads using the Blobstore API.
+- You can now send emails with any attachment extension that is not included on
+  the email attachment extension blacklist.
+- Added a db.get_indexes() method to retrieve an application's indexes and
+  their corresponding states.
+- The dev_appserver has been updated to understand the reduced index
+  requirements of the 1.5.2 datastore query planner changes.
+- The Datastore Admin functionality can now be enabled directly in the Admin
+  Console.
+- Added cas(), the compare-and-set function, to the Memcache API.
+   http://code.google.com/p/googleappengine/issues/detail?id=2139
+- Added a set_default_fetch_deadline to the URLFetch API which sets the
+  URLFetch deadline globally.
+- Added app_identity api with methods to get the application id, default
+  hostname, and service accounts for asserting identity on outbound HTTP calls.
+    http://code.google.com/appengine/docs/python/appidentity/overview.html
+- Added an improved HRD migration tool that requires a read-only period relative
+  to your datastore write rate (as opposed to your datastore size, which is how
+  the current version behaves). The tool is not yet generally available.  If you
+  are interested in being an early adopter please fill out this form:
+  http://goo.gl/3jrXu
+- Fixed an issue in the Channel API where jsapi was not served with the correct
+  mime type.
+- Fixed an issue that broke use_library when the Python SDK was located in a
+  directory that contained the word 'django'.
+- Fixed an issue where blobs could not be uploaded using HTTPS.
+- Fixed an issue where GQL didn't allow querying for valid kind names
+  containing '.', '-', and ':' by supporting quoted identifiers.
+    http://code.google.com/p/googleappengine/issues/detail?id=2584
+
 Version 1.5.2
 =============================
 - You can now specify the minimum pending latency for instances and the maximum
@@ -96,7 +128,7 @@ Version 1.5.0
   code, unless code download is disabled for the application.
 - Added db.py support for making calls to the datastore asynchronously.
   Available functions are get_async(), put_async(), delete_async(),
-  allocate_ids_async(). Call get_result on the return value of asynchronous	
+  allocate_ids_async(). Call get_result on the return value of asynchronous
   datastore functions to block on the call.
 - Metadata queries can now get all namespaces, kinds, and properties in a given
   range.

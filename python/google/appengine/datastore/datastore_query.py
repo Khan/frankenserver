@@ -39,6 +39,7 @@ __all__ = ['Batch',
            'Batcher',
            'CompositeFilter',
            'CompositeOrder',
+           'CorrelationFilter',
            'Cursor',
            'FetchOptions',
            'FilterPredicate',
@@ -55,7 +56,6 @@ __all__ = ['Batch',
 
 import base64
 import pickle
-import heapq
 import collections
 
 from google.appengine.datastore import entity_pb
@@ -131,8 +131,8 @@ def _make_key_value_map(entity, property_names):
           datastore_types.PropertyValueToKeyValue(prop.value()))
 
 
-  if datastore_types._KEY_SPECIAL_PROPERTY in value_map:
-    value_map[datastore_types._KEY_SPECIAL_PROPERTY] = [
+  if datastore_types.KEY_SPECIAL_PROPERTY in value_map:
+    value_map[datastore_types.KEY_SPECIAL_PROPERTY] = [
         datastore_types.ReferenceToKeyValue(entity.key())]
 
   return value_map
@@ -194,7 +194,7 @@ class FilterPredicate(_PropertyComponent):
 
     Args:
       key_value_map: the comparable value map from which to remove
-        values.
+        values. Does not need to contain values for all filtered properties.
 
     Returns:
       A value that evaluates to False if every value in a single list was
@@ -241,10 +241,16 @@ class _SinglePropertyFilter(FilterPredicate):
     return False
 
   def _prune(self, value_map):
+
+
+
+
+    if self._get_prop_name() not in value_map:
+      return True
     values = [value for value in value_map[self._get_prop_name()]
               if self._apply_to_value(value)]
     value_map[self._get_prop_name()] = values
-    return values
+    return bool(values)
 
 
 class PropertyFilter(_SinglePropertyFilter):
@@ -257,6 +263,9 @@ class PropertyFilter(_SinglePropertyFilter):
       '>=': datastore_pb.Query_Filter.GREATER_THAN_OR_EQUAL,
       '=': datastore_pb.Query_Filter.EQUAL,
       }
+
+  _OPERATORS_INVERSE = dict((value, key)
+                            for key, value in _OPERATORS.iteritems())
 
   _OPERATORS_TO_PYTHON_OPERATOR = {
       datastore_pb.Query_Filter.LESS_THAN: '<',
@@ -298,6 +307,22 @@ class PropertyFilter(_SinglePropertyFilter):
     self._filter = datastore_pb.Query_Filter()
     self._filter.set_op(self._OPERATORS[op])
     self._filter.add_property().CopyFrom(value)
+
+  @property
+  def op(self):
+    raw_op = self._filter.op()
+    return self._OPERATORS_INVERSE.get(raw_op, str(raw_op))
+
+  @property
+  def value(self):
+
+    return self._filter.property(0)
+
+  def __repr__(self):
+    prop = self.value
+    name = prop.name()
+    value = datastore_types.FromPropertyPb(prop)
+    return '%s(%r, <%r, %r>)' % (self.__class__.__name__, self.op, name, value)
 
   def _get_prop_name(self):
     return self._filter.property(0).name()
@@ -568,6 +593,106 @@ class _PropertyExistsFilter(FilterPredicate):
         'Pickling of %r is unsupported.' % self)
 
 
+class CorrelationFilter(FilterPredicate):
+  """A filter that isolates correlated values and applies a sub-filter on them.
+
+  This filter assumes that every property used by the sub-filter should be
+  grouped before being passed to the sub-filter. The default grouping puts
+  each value in its own group. Consider:
+    e = {a: [1, 2], b: [2, 1, 3], c: 4}
+
+  A correlation filter with a sub-filter that operates on (a, b) will be tested
+  against the following 3 sets of values:
+    {a: 1, b: 2}
+    {a: 2, b: 1}
+    {b: 3}
+
+  In this case CorrelationFilter('a = 2 AND b = 2') won't match this entity but
+  CorrelationFilter('a = 2 AND b = 1') will. To apply an uncorrelated filter on
+  c, the filter must be applied in parallel to the correlation filter. For
+  example:
+    CompositeFilter(AND, [CorrelationFilter('a = 2 AND b = 1'), 'c = 3'])
+
+  If 'c = 3' was included in the correlation filter, c would be grouped as well.
+  This would result in the following values:
+    {a: 1, b: 2, c: 3}
+    {a: 2, b: 1}
+    {b: 3}
+
+  If any set of correlated values match the sub-filter then the entity matches
+  the correlation filter.
+  """
+
+  def __init__(self, subfilter):
+    """Constructor.
+
+    Args:
+      subfilter: A FilterPredicate to apply to the correlated values
+    """
+    self._subfilter = subfilter
+
+  @property
+  def subfilter(self):
+    return self._subfilter
+
+  def __repr__(self):
+    return '%s(%r)' % (self.__class__.__name__, self.subfilter)
+
+  def _apply(self, value_map):
+
+
+    base_map = dict((prop, []) for prop in self._get_prop_names())
+
+
+    value_maps = []
+    for prop in base_map:
+
+      grouped = self._group_values(prop, value_map[prop])
+
+      while len(value_maps) < len(grouped):
+        value_maps.append(base_map.copy())
+
+      for value, map in zip(grouped, value_maps):
+        map[prop] = value
+
+    return self._apply_correlated(value_maps)
+
+  def _apply_correlated(self, value_maps):
+    """Applies sub-filter to the correlated value maps.
+
+    The default implementation matches when any value_map in value_maps
+    matches the sub-filter.
+
+    Args:
+      value_maps: A list of correlated value_maps.
+    Returns:
+      True if any the entity matches the correlation filter.
+    """
+
+    for map in value_maps:
+      if self._subfilter._apply(map):
+        return True
+    return False
+
+  def _group_values(self, prop, values):
+    """A function that groups the given values.
+
+    Override this function to introduce custom grouping logic. The default
+    implementation assumes each value belongs in its own group.
+
+    Args:
+      prop: The name of the property who's values are being grouped.
+      values: A list of opaque values.
+
+   Returns:
+      A list of lists of grouped values.
+    """
+    return [[value] for value in values]
+
+  def _get_prop_names(self):
+    return self._subfilter._get_prop_names()
+
+
 class CompositeFilter(FilterPredicate):
   """An immutable filter predicate that combines other predicates.
 
@@ -596,22 +721,22 @@ class CompositeFilter(FilterPredicate):
     """
     if not op in self._OPERATORS:
       raise datastore_errors.BadArgumentError('unknown operator (%s)' % (op,))
-    if not filters or not isinstance(filters, list):
+    if not filters or not isinstance(filters, (list, tuple)):
       raise datastore_errors.BadArgumentError(
           'filters argument should be a non-empty list (%r)' % (filters,))
 
     super(CompositeFilter, self).__init__()
     self._op = op
-    self._filters = []
+    flattened = []
 
 
     for f in filters:
       if isinstance(f, CompositeFilter) and f._op == self._op:
 
 
-        self._filters.extend(f._filters)
+        flattened.extend(f._filters)
       elif isinstance(f, FilterPredicate):
-        self._filters.append(f)
+        flattened.append(f)
       else:
         raise datastore_errors.BadArgumentError(
             'filters argument must be a list of FilterPredicates, found (%r)' %
@@ -619,8 +744,8 @@ class CompositeFilter(FilterPredicate):
 
 
     if op == self.AND:
-      filters = self._filters
-      self._filters = []
+      filters = flattened
+      flattened = []
       ineq_map = {}
 
       for f in filters:
@@ -629,17 +754,35 @@ class CompositeFilter(FilterPredicate):
           name = f._get_prop_name()
           index = ineq_map.get(name)
           if index is not None:
-            range_filter = self._filters[index]
-            self._filters[index] = range_filter.intersect(f)
+            range_filter = flattened[index]
+            flattened[index] = range_filter.intersect(f)
           else:
             if isinstance(f, PropertyFilter):
               range_filter = _PropertyRangeFilter.from_property_filter(f)
             else:
               range_filter = f
-            ineq_map[name] = len(self._filters)
-            self._filters.append(range_filter)
+            ineq_map[name] = len(flattened)
+            flattened.append(range_filter)
         else:
-          self._filters.append(f)
+          flattened.append(f)
+
+    self._filters = tuple(flattened)
+
+  @property
+  def op(self):
+    return self._op
+
+  @property
+  def filters(self):
+    return self._filters
+
+  def __repr__(self):
+    op = self.op
+    if op == self.AND:
+      op = 'AND'
+    else:
+      op = str(op)
+    return '%s(%s, %r)' % (self.__class__.__name__, op, list(self.filters))
 
   def _get_prop_names(self):
     names = set()
@@ -722,7 +865,7 @@ class _IgnoreFilter(_SinglePropertyFilter):
     self._keys = key_value_set
 
   def _get_prop_name(self):
-    return datastore_types._KEY_SPECIAL_PROPERTY
+    return datastore_types.KEY_SPECIAL_PROPERTY
 
   def _apply_to_value(self, value):
     return value not in self._keys
@@ -751,6 +894,14 @@ class Order(_PropertyComponent):
   list.sort(). To provide a stable ordering a trailing key ascending order is
   always used.
   """
+
+  def reversed(self):
+    """Constructs an order representing the reverse of the current order.
+
+    Returns:
+      A new order representing the reverse direction.
+    """
+    raise NotImplementedError
 
   def _key(self, lhs_value_map):
     """Creates a key for the given value map."""
@@ -789,7 +940,7 @@ class Order(_PropertyComponent):
       the current order.
     """
     names = self._get_prop_names()
-    names.add(datastore_types._KEY_SPECIAL_PROPERTY)
+    names.add(datastore_types.KEY_SPECIAL_PROPERTY)
     if filter_predicate is not None:
       names |= filter_predicate._get_prop_names()
 
@@ -797,7 +948,7 @@ class Order(_PropertyComponent):
     if filter_predicate is not None:
       filter_predicate._prune(value_map)
     return (self._key(value_map),
-            value_map[datastore_types._KEY_SPECIAL_PROPERTY])
+            value_map[datastore_types.KEY_SPECIAL_PROPERTY])
 
   def cmp(self, lhs, rhs, filter_predicate=None):
     """Compares the given values taking into account any filters.
@@ -834,9 +985,9 @@ class Order(_PropertyComponent):
 
 
 
-    lhs_key = (lhs_value_map.get(datastore_types._KEY_SPECIAL_PROPERTY) or
+    lhs_key = (lhs_value_map.get(datastore_types.KEY_SPECIAL_PROPERTY) or
                datastore_types.ReferenceToKeyValue(lhs.key()))
-    rhs_key = (rhs_value_map.get(datastore_types._KEY_SPECIAL_PROPERTY) or
+    rhs_key = (rhs_value_map.get(datastore_types.KEY_SPECIAL_PROPERTY) or
                datastore_types.ReferenceToKeyValue(rhs.key()))
 
     return cmp(lhs_key, rhs_key)
@@ -892,6 +1043,31 @@ class PropertyOrder(Order):
     self.__order = datastore_pb.Query_Order()
     self.__order.set_property(prop.encode('utf-8'))
     self.__order.set_direction(direction)
+
+  @property
+  def prop(self):
+    return self.__order.property()
+
+  @property
+  def direction(self):
+    return self.__order.direction()
+
+  def __repr__(self):
+    name = self.prop
+    direction = self.direction
+    extra = ''
+    if direction == self.DESCENDING:
+      extra = ', DESCENDING'
+    name = repr(name).encode('utf-8')[1:-1]
+    return '%s(<%s>%s)' % (self.__class__.__name__, name, extra)
+
+  def reversed(self):
+    if self.__order.direction() == self.ASCENDING:
+      return PropertyOrder(self.__order.property().decode('utf-8'),
+                           self.DESCENDING)
+    else:
+      return PropertyOrder(self.__order.property().decode('utf-8'),
+                           self.ASCENDING)
 
   def _get_prop_names(self):
     return set([self.__order.property()])
@@ -956,20 +1132,31 @@ class CompositeOrder(Order):
     Args:
       orders: A list of Orders which are applied in order.
     """
-    if not isinstance(orders, list):
+    if not isinstance(orders, (list, tuple)):
       raise datastore_errors.BadArgumentError(
-          'orders argument should be list (%r)' % (orders,))
+          'orders argument should be list or tuple (%r)' % (orders,))
 
     super(CompositeOrder, self).__init__()
-    self._orders = []
+    flattened = []
     for order in orders:
       if isinstance(order, CompositeOrder):
-        self._orders.extend(order._orders)
+        flattened.extend(order._orders)
       elif isinstance(order, Order):
-        self._orders.append(order)
+        flattened.append(order)
       else:
         raise datastore_errors.BadArgumentError(
             'orders argument should only contain Order (%r)' % (order,))
+    self._orders = tuple(flattened)
+
+  @property
+  def orders(self):
+    return self._orders
+
+  def __repr__(self):
+    return '%s(%r)' % (self.__class__.__name__, list(self.orders))
+
+  def reversed(self):
+    return CompositeOrder([order.reversed() for order in self._orders])
 
   def _get_prop_names(self):
     names = set()
@@ -1207,6 +1394,24 @@ class Cursor(_BaseComponent):
     else:
       self.__compiled_cursor = datastore_pb.CompiledCursor()
 
+  def __repr__(self):
+    arg = self.to_websafe_string()
+    if arg:
+      arg = '<%s>' % arg
+    return '%s(%s)' % (self.__class__.__name__, arg)
+
+  def reversed(self):
+    """Creates a cursor for use in a query with a reversed sort order."""
+    for pos in self.__compiled_cursor.position_list():
+      if pos.has_start_key():
+        raise datastore_errors.BadRequestError('Cursor cannot be reversed.')
+
+    rev_pb = datastore_pb.CompiledCursor()
+    rev_pb.CopyFrom(self.__compiled_cursor)
+    for pos in rev_pb.position_list():
+      pos.set_start_inclusive(not pos.start_inclusive())
+    return Cursor(_cursor_pb=rev_pb)
+
   def to_bytes(self):
     """Serialize cursor as a byte string."""
     return self.__compiled_cursor.Encode()
@@ -1361,8 +1566,14 @@ class _QueryKeyFilter(_BaseComponent):
         raise datastore_errors.BadArgumentError(
             'ancestor argument should match namespace ("%r" != "%r")' %
             (ancestor.name_space(), namespace))
+
+      pb = entity_pb.Reference()
+      pb.CopyFrom(ancestor)
+      ancestor = pb
+      self.__ancestor = ancestor
       self.__path = ancestor.path().element_list()
     else:
+      self.__ancestor = None
       self.__path = None
 
     super(_QueryKeyFilter, self).__init__()
@@ -1370,6 +1581,23 @@ class _QueryKeyFilter(_BaseComponent):
     self.__namespace = (
         datastore_types.ResolveNamespace(namespace).encode('utf-8'))
     self.__kind = kind and kind.encode('utf-8')
+
+  @property
+  def app(self):
+    return self.__app
+
+  @property
+  def namespace(self):
+    return self.__namespace
+
+  @property
+  def kind(self):
+    return self.__kind
+
+  @property
+  def ancestor(self):
+
+    return self.__ancestor
 
   def __call__(self, entity_or_reference):
     """Apply the filter.
@@ -1403,12 +1631,9 @@ class _QueryKeyFilter(_BaseComponent):
     datastore_types.SetNamespace(pb, self.__namespace)
     if self.__kind is not None:
       pb.set_kind(self.__kind)
-    if self.__path:
+    if self.__ancestor:
       ancestor = pb.mutable_ancestor()
-      ancestor.set_app(pb.app())
-      datastore_types.SetNamespace(ancestor, self.__namespace)
-      for elm in self.__path:
-        ancestor.mutable_path().add_element().CopyFrom(elm)
+      ancestor.CopyFrom(self.__ancestor)
 
     return pb
 
@@ -1470,7 +1695,7 @@ class Query(_BaseQuery):
       namespace: Optional namespace to query, derived from the environment if
         not specified.
       kind: Optional kind to query.
-      ancestor: Optional ancestor to query.
+      ancestor: Optional ancestor to query, an entity_pb.Reference.
       filter_predicate: Optional FilterPredicate by which to restrict the query.
       order: Optional Order in which to return results.
 
@@ -1498,12 +1723,57 @@ class Query(_BaseQuery):
     self._order = order
     self._filter_predicate = filter_predicate
 
+  @property
+  def app(self):
+    return self._key_filter.app
+
+  @property
+  def namespace(self):
+    return self._key_filter.namespace
+
+  @property
+  def kind(self):
+    return self._key_filter.kind
+
+  @property
+  def ancestor(self):
+    return self._key_filter.ancestor
+
+  @property
+  def filter_predicate(self):
+    return self._filter_predicate
+
+  @property
+  def order(self):
+    return self._order
+
+  def __repr__(self):
+    args = []
+    args.append('app=%r' % self.app)
+    ns = self.namespace
+    if ns:
+      args.append('namespace=%r' % ns)
+    kind = self.kind
+    if kind is not None:
+      args.append('kind=%r' % kind)
+    ancestor = self.ancestor
+    if ancestor is not None:
+      websafe = base64.urlsafe_b64encode(ancestor.Encode())
+      args.append('ancestor=<%s>' % websafe)
+    filter_predicate = self.filter_predicate
+    if filter_predicate is not None:
+      args.append('filter_predicate=%r' % filter_predicate)
+    order = self.order
+    if order is not None:
+      args.append('order=%r' % order)
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(args))
+
   def run_async(self, conn, query_options=None):
     if not isinstance(conn, datastore_rpc.BaseConnection):
       raise datastore_errors.BadArgumentError(
           'conn should be a datastore_rpc.BaseConnection (%r)' % (conn,))
 
-    if not isinstance(query_options, QueryOptions):
+    if not QueryOptions.is_configuration(query_options):
 
 
       query_options = QueryOptions(config=query_options)
@@ -1711,7 +1981,7 @@ class _AugmentedQuery(_BaseQuery):
       raise datastore_errors.BadArgumentError(
           'conn should be a datastore_rpc.BaseConnection (%r)' % (conn,))
 
-    if not isinstance(query_options, QueryOptions):
+    if not QueryOptions.is_configuration(query_options):
 
 
       query_options = QueryOptions(config=query_options)
@@ -1992,9 +2262,7 @@ class Batch(object):
     fetch_options, next_batch = self._make_next_batch(fetch_options)
     req = self._to_pb(fetch_options)
 
-
-    config = datastore_rpc.Configuration.merge(self.__query_options,
-                                               fetch_options)
+    config = self.__query_options.merge(fetch_options)
     return next_batch._make_query_result_rpc_call(
         'Next', config, req)
 
@@ -2053,7 +2321,7 @@ class Batch(object):
         yaml = datastore_index.IndexYamlForQuery(
             *datastore_index.CompositeIndexForQuery(rpc.request)[1:-1])
         raise datastore_errors.NeedIndexError(
-            str(exc) + '\nThis query needs this index:\n' + yaml)
+            str(exc) + '\nThe suggested index for this query is:\n' + yaml)
       raise
     query_result = rpc.response
     if query_result.has_compiled_query():
@@ -2063,12 +2331,7 @@ class Batch(object):
     self.__end_cursor = Cursor._from_query_result(query_result)
     self._skipped_results = query_result.skipped_results()
 
-
-
-    if (query_result.more_results() and
-        (isinstance(rpc.request, datastore_pb.Query) or
-         query_result.skipped_results() or
-         query_result.result_size())):
+    if query_result.more_results():
       self.__datastore_cursor = query_result.cursor()
       self.__more_results = True
     else:

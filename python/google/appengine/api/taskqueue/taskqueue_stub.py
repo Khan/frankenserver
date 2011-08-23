@@ -45,6 +45,7 @@ __all__ = []
 import base64
 import bisect
 import calendar
+import cgi
 import datetime
 import httplib
 import logging
@@ -55,6 +56,7 @@ import threading
 import time
 
 import taskqueue_service_pb
+import taskqueue
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
@@ -857,6 +859,78 @@ class _Group(object):
     self._queues[request.queue_name()].ModifyTaskLease_Rpc(request, response)
 
 
+class Retry(object):
+  """Task retry caclulator class.
+
+  Determines if and when a task should next be run
+  """
+
+
+
+  _default_params = taskqueue_service_pb.TaskQueueRetryParameters()
+  _default_params.set_min_backoff_sec(0.001)
+  _default_params.set_max_backoff_sec(3600)
+  _default_params.set_max_doublings(100000)
+
+  def __init__(self, task, queue):
+    """Constructor.
+
+    Args:
+      task: A taskqueue_service_pb.TaskQueueQueryTasksResponse_Task instance.
+          May be None.
+      queue: A _Queue instance. May be None.
+    """
+    if task is not None and task.has_retry_parameters():
+      self._params = task.retry_parameters()
+    elif queue is not None and queue.retry_parameters is not None:
+      self._params = queue.retry_parameters
+    else:
+      self._params = self._default_params
+
+  def CanRetry(self, retry_count, age_usec):
+    """Computes whether a task can be retried.
+
+    Args:
+      retry_count: An integer specifying which retry this is.
+      age_usec: An integer specifying the microseconds since the first try.
+
+    Returns:
+     True if a task is eligible for retrying.
+    """
+    if self._params.has_retry_limit() and self._params.has_age_limit_sec():
+      return (self._params.retry_limit() >= retry_count or
+              self._params.age_limit_sec() >= _UsecToSec(age_usec))
+
+    if self._params.has_retry_limit():
+      return self._params.retry_limit() >= retry_count
+
+    if self._params.has_age_limit_sec():
+      return self._params.age_limit_sec() >= _UsecToSec(age_usec)
+
+    return True
+
+  def CalculateBackoffUsec(self, retry_count):
+    """Calculates time before the specified retry.
+
+    Args:
+      retry_count: An integer specifying which retry this is.
+
+    Returns:
+      The number of microseconds before a task should be retried.
+    """
+    exponent = min(retry_count - 1, self._params.max_doublings())
+    linear_steps = retry_count - exponent
+    min_backoff_usec = _SecToUsec(self._params.min_backoff_sec())
+    max_backoff_usec = _SecToUsec(self._params.max_backoff_sec())
+    backoff_usec = min_backoff_usec
+    if exponent > 0:
+      backoff_usec *= (2 ** (min(1023, exponent)))
+    if linear_steps > 1:
+      backoff_usec *= linear_steps
+
+    return int(min(max_backoff_usec, backoff_usec))
+
+
 class _Queue(object):
   """A Taskqueue Queue.
 
@@ -1052,7 +1126,18 @@ class _Queue(object):
 
     leased_tasks = self._sorted_by_eta[:max_tasks]
     self._sorted_by_eta = self._sorted_by_eta[max_tasks:]
+    tasks_to_delete = []
     for _, name, task in leased_tasks:
+      retry = Retry(task, self)
+      if not retry.CanRetry(task.retry_count() + 1, 0):
+        logging.warning(
+            'Task %s in queue %s cannot be leased again after %d leases.',
+             task.task_name(), self.queue_name, task.retry_count())
+        tasks_to_delete.append(task)
+
+        self._PostponeTaskInsertOnly(task, task.eta_usec())
+        continue
+
 
       self._PostponeTaskInsertOnly(
           task, now_eta_usec + _SecToUsec(lease_seconds))
@@ -1067,6 +1152,10 @@ class _Queue(object):
 
 
       task_response.set_body(task.body())
+
+
+    for task in tasks_to_delete:
+      self._DeleteNoAcquireLock(task.task_name())
 
   @_WithLock
   def ModifyTaskLease_Rpc(self, request, response):
@@ -1637,14 +1726,25 @@ class _BackgroundTaskScheduler(object):
     now = time.time()
     queue, task = self._group.GetNextPushTask()
     while task and _UsecToSec(task.eta_usec()) <= now:
+      if task.retry_count() == 0:
+        task.set_first_try_usec(_SecToUsec(now))
       if self.task_executor.ExecuteTask(task, queue):
         queue.Delete(task.task_name())
       else:
-        logging.warning(
-            'Task %s failed to execute. This task will retry in %.1f seconds',
-            task.task_name(), self.default_retry_seconds)
-        queue.PostponeTask(task, _SecToUsec(
-            now + self.default_retry_seconds))
+        retry = Retry(task, queue)
+        age_usec = _SecToUsec(now) - task.first_try_usec()
+        if retry.CanRetry(task.retry_count() + 1, age_usec):
+          retry_usec = retry.CalculateBackoffUsec(task.retry_count() + 1)
+          logging.warning(
+              'Task %s failed to execute. This task will retry in %.3f seconds',
+              task.task_name(), _UsecToSec(retry_usec))
+          queue.PostponeTask(task, _SecToUsec(now) + retry_usec)
+        else:
+          logging.warning(
+              'Task %s failed to execute. The task has no remaining retries. '
+              'Failing permanently after %d retries and %d seconds',
+              task.task_name(), task.retry_count(), _UsecToSec(age_usec))
+          queue.Delete(task.task_name())
       queue, task = self._group.GetNextPushTask()
 
     if task:
@@ -2139,3 +2239,55 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
 
     self._GetGroup().ModifyTaskLease_Rpc(request, response)
+
+
+
+
+
+  def get_filtered_tasks(self, url=None, name=None, queue_names=None):
+    """Get the tasks in the task queue with filters.
+
+    Args:
+      url: A URL that all returned tasks should point at.
+      name: The name of all returned tasks.
+      queue_names: A list of queue names to retrieve tasks from. If left blank
+        this will get default to all queues available.
+
+    Returns:
+      A list of taskqueue.Task objects.
+    """
+    all_queue_names = [queue['name'] for queue in self.GetQueues()]
+
+
+    if isinstance(queue_names, basestring):
+      queue_names = [queue_names]
+
+
+    if queue_names is None:
+      queue_names = all_queue_names
+
+
+    task_dicts = []
+    for queue_name in queue_names:
+      if queue_name in all_queue_names:
+        for task in self.GetTasks(queue_name):
+          if url is not None and task['url'] != url:
+            continue
+          if name is not None and task['name'] != name:
+            continue
+          task_dicts.append(task)
+
+    tasks = []
+    for task in task_dicts:
+
+      decoded_body = base64.b64decode(task['body'])
+      if decoded_body:
+        task['params'] = cgi.parse_qs(decoded_body)
+
+      task['eta'] = datetime.datetime.strptime(task['eta'], '%Y/%m/%d %H:%M:%S')
+
+      task_object = taskqueue.Task(name=task['name'], method=task['method'],
+                                   url=task['url'], headers=task['headers'],
+                                   params=task.get('params'), eta=task['eta'])
+      tasks.append(task_object)
+    return tasks

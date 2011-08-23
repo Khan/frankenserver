@@ -33,6 +33,7 @@ Methods defined in this module:
 
 
 import os
+import threading
 import UserDict
 import urllib2
 import urlparse
@@ -53,7 +54,6 @@ HEAD = 3
 PUT = 4
 DELETE = 5
 
-
 _URL_STRING_MAP = {
     'GET': GET,
     'POST': POST,
@@ -62,8 +62,9 @@ _URL_STRING_MAP = {
     'DELETE': DELETE,
 }
 
-
 _VALID_METHODS = frozenset(_URL_STRING_MAP.values())
+
+_thread_local_settings = threading.local()
 
 
 class _CaselessDict(UserDict.IterableUserDict):
@@ -212,6 +213,8 @@ def create_rpc(deadline=None, callback=None):
   Returns:
     An apiproxy_stub_map.UserRPC object specialized for this service.
   """
+  if deadline is None:
+    deadline = get_default_fetch_deadline()
   return apiproxy_stub_map.UserRPC('urlfetch', deadline, callback)
 
 
@@ -396,3 +399,21 @@ class _URLFetchResult(object):
     self.final_url = response_proto.finalurl() or None
     for header_proto in response_proto.header_list():
       self.headers[header_proto.key()] = header_proto.value()
+
+
+def get_default_fetch_deadline():
+  """Get the default value for create_rpc()'s deadline parameter."""
+  return getattr(_thread_local_settings, "default_fetch_deadline", None)
+
+
+def set_default_fetch_deadline(value):
+  """Set the default value for create_rpc()'s deadline parameter.
+
+  This setting is thread-specific (i.e. it's stored in a thread local).
+  This function doesn't do any range or type checking of the value.  The
+  default is None.
+
+  See also: create_rpc(), fetch()
+
+  """
+  _thread_local_settings.default_fetch_deadline = value

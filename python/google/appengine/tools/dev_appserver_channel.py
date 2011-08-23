@@ -91,7 +91,7 @@ def CreateChannelDispatcher(channel_service_stub):
           Defaults to None.
       """
 
-      outfile.write('Status: 200\n\n')
+      outfile.write('Status: 200\r\n')
 
       (unused_scheme, unused_netloc,
        path, query,
@@ -102,8 +102,10 @@ def CreateChannelDispatcher(channel_service_stub):
 
       if page == 'jsapi':
         path = os.path.join(os.path.dirname(__file__), 'dev-channel-js.js')
+        outfile.write('Content-type: text/javascript\r\n\r\n')
         outfile.write(open(path).read())
       elif page == 'dev':
+        outfile.write('\r\n')
         id = param_dict['channel'][0]
         command = param_dict['command'][0]
 

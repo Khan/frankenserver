@@ -86,9 +86,11 @@ EXTENSION_MIME_MAP = {
     'css': 'text/css',
     'csv': 'text/csv',
     'doc': 'application/msword',
+    'docx': 'application/msword',
     'diff': 'text/plain',
     'flac': 'audio/flac',
     'gif': 'image/gif',
+    'gzip': 'application/x-gzip',
     'htm': 'text/html',
     'html': 'text/html',
     'ics': 'text/calendar',
@@ -116,6 +118,7 @@ EXTENSION_MIME_MAP = {
     'pot': 'text/plain',
     'pps': 'application/vnd.ms-powerpoint',
     'ppt': 'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.ms-powerpoint',
     'qt': 'video/quicktime',
     'rmi': 'audio/mid',
     'rss': 'text/rss+xml',
@@ -132,9 +135,45 @@ EXTENSION_MIME_MAP = {
     'webm': 'video/webm',
     'webp': 'image/webp',
     'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.ms-excel',
+    'zip': 'application/zip'
     }
 
-EXTENSION_WHITELIST = frozenset(EXTENSION_MIME_MAP.iterkeys())
+
+
+
+
+EXTENSION_BLACKLIST = [
+    'ade',
+    'adp',
+    'bat',
+    'chm',
+    'cmd',
+    'com',
+    'cpl',
+    'exe',
+    'hta',
+    'ins',
+    'isp',
+    'jse',
+    'lib',
+    'mde',
+    'msc',
+    'msp',
+    'mst',
+    'pif',
+    'scr',
+    'sct',
+    'shb',
+    'sys',
+    'vb',
+    'vbe',
+    'vbs',
+    'vxd',
+    'wsc',
+    'wsf',
+    'wsh',
+    ]
 
 
 HEADER_WHITELIST = frozenset([
@@ -401,13 +440,15 @@ def _GetMimeType(file_name):
   """
   extension_index = file_name.rfind('.')
   if extension_index == -1:
+    extension = ''
+  else:
+    extension = file_name[extension_index + 1:].lower()
+  if extension in EXTENSION_BLACKLIST:
     raise InvalidAttachmentTypeError(
-        "File '%s' does not have an extension" % file_name)
-  extension = file_name[extension_index + 1:].lower()
+        'Extension %s is not supported.' % extension)
   mime_type = EXTENSION_MIME_MAP.get(extension, None)
   if mime_type is None:
-    raise InvalidAttachmentTypeError(
-        "Extension '%s' is not supported." % extension)
+    mime_type = 'application/octet-stream'
   return mime_type
 
 

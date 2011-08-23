@@ -35,6 +35,7 @@ constant values instead of app-specific values:
 
 
 import binascii
+import time
 
 try:
   from Crypto.Hash import SHA256
@@ -124,3 +125,16 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_GetServiceAccountName(self, request, response):
     """Implementation of AppIdentityService::GetServiceAccountName"""
     response.set_service_account_name(APP_SERVICE_ACCOUNT_NAME)
+
+  def _Dynamic_GetAccessToken(self, request, response):
+    """Implementation of AppIdentityService::GetAccessToken.
+
+    This API returns an invalid token, as the dev_appserver does not have
+    access to an actual service account.
+    """
+    response.set_access_token('InvalidToken:%s:%s' %
+                              (':'.join(request.scope_list()),
+                               time.time() % 100))
+
+    response.set_expiration_time(time.time() + 1800)
+

@@ -31,12 +31,14 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   HTML         =    1
   ATOM         =    2
   DATE         =    3
+  NUMBER       =    4
 
   _ContentType_NAMES = {
     0: "TEXT",
     1: "HTML",
     2: "ATOM",
     3: "DATE",
+    4: "NUMBER",
   }
 
   def ContentType_Name(cls, x): return cls._ContentType_NAMES.get(x, "")
@@ -45,11 +47,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   has_type_ = 0
   type_ = 0
   has_language_ = 0
-  language_ = ""
+  language_ = "en"
   has_string_value_ = 0
   string_value_ = ""
-  has_date_value_ = 0
-  date_value_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -76,7 +76,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   def clear_language(self):
     if self.has_language_:
       self.has_language_ = 0
-      self.language_ = ""
+      self.language_ = "en"
 
   def has_language(self): return self.has_language_
 
@@ -93,26 +93,12 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
 
   def has_string_value(self): return self.has_string_value_
 
-  def date_value(self): return self.date_value_
-
-  def set_date_value(self, x):
-    self.has_date_value_ = 1
-    self.date_value_ = x
-
-  def clear_date_value(self):
-    if self.has_date_value_:
-      self.has_date_value_ = 0
-      self.date_value_ = ""
-
-  def has_date_value(self): return self.has_date_value_
-
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_type()): self.set_type(x.type())
     if (x.has_language()): self.set_language(x.language())
     if (x.has_string_value()): self.set_string_value(x.string_value())
-    if (x.has_date_value()): self.set_date_value(x.date_value())
 
   def Equals(self, x):
     if x is self: return 1
@@ -122,8 +108,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if self.has_language_ and self.language_ != x.language_: return 0
     if self.has_string_value_ != x.has_string_value_: return 0
     if self.has_string_value_ and self.string_value_ != x.string_value_: return 0
-    if self.has_date_value_ != x.has_date_value_: return 0
-    if self.has_date_value_ and self.date_value_ != x.date_value_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -135,7 +119,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
-    if (self.has_date_value_): n += 1 + self.lengthString(len(self.date_value_))
     return n
 
   def ByteSizePartial(self):
@@ -143,14 +126,12 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
-    if (self.has_date_value_): n += 1 + self.lengthString(len(self.date_value_))
     return n
 
   def Clear(self):
     self.clear_type()
     self.clear_language()
     self.clear_string_value()
-    self.clear_date_value()
 
   def OutputUnchecked(self, out):
     if (self.has_type_):
@@ -162,9 +143,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_):
       out.putVarInt32(26)
       out.putPrefixedString(self.string_value_)
-    if (self.has_date_value_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.date_value_)
 
   def OutputPartial(self, out):
     if (self.has_type_):
@@ -176,9 +154,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_):
       out.putVarInt32(26)
       out.putPrefixedString(self.string_value_)
-    if (self.has_date_value_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.date_value_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -192,9 +167,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       if tt == 26:
         self.set_string_value(d.getPrefixedString())
         continue
-      if tt == 34:
-        self.set_date_value(d.getPrefixedString())
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -206,7 +178,6 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if self.has_type_: res+=prefix+("type: %s\n" % self.DebugFormatInt32(self.type_))
     if self.has_language_: res+=prefix+("language: %s\n" % self.DebugFormatString(self.language_))
     if self.has_string_value_: res+=prefix+("string_value: %s\n" % self.DebugFormatString(self.string_value_))
-    if self.has_date_value_: res+=prefix+("date_value: %s\n" % self.DebugFormatString(self.date_value_))
     return res
 
 
@@ -216,23 +187,20 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   ktype = 1
   klanguage = 2
   kstring_value = 3
-  kdate_value = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "type",
     2: "language",
     3: "string_value",
-    4: "date_value",
-  }, 4)
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
-    4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -533,10 +501,10 @@ class Document(ProtocolBuffer.ProtocolMessage):
   def Storage_Name(cls, x): return cls._Storage_NAMES.get(x, "")
   Storage_Name = classmethod(Storage_Name)
 
-  has_doc_id_ = 0
-  doc_id_ = ""
+  has_id_ = 0
+  id_ = ""
   has_language_ = 0
-  language_ = ""
+  language_ = "en"
   has_order_id_ = 0
   order_id_ = 0
   has_storage_ = 0
@@ -546,18 +514,18 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.field_ = []
     if contents is not None: self.MergeFromString(contents)
 
-  def doc_id(self): return self.doc_id_
+  def id(self): return self.id_
 
-  def set_doc_id(self, x):
-    self.has_doc_id_ = 1
-    self.doc_id_ = x
+  def set_id(self, x):
+    self.has_id_ = 1
+    self.id_ = x
 
-  def clear_doc_id(self):
-    if self.has_doc_id_:
-      self.has_doc_id_ = 0
-      self.doc_id_ = ""
+  def clear_id(self):
+    if self.has_id_:
+      self.has_id_ = 0
+      self.id_ = ""
 
-  def has_doc_id(self): return self.has_doc_id_
+  def has_id(self): return self.has_id_
 
   def language(self): return self.language_
 
@@ -568,7 +536,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
   def clear_language(self):
     if self.has_language_:
       self.has_language_ = 0
-      self.language_ = ""
+      self.language_ = "en"
 
   def has_language(self): return self.has_language_
 
@@ -617,7 +585,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_doc_id()): self.set_doc_id(x.doc_id())
+    if (x.has_id()): self.set_id(x.id())
     if (x.has_language()): self.set_language(x.language())
     for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_order_id()): self.set_order_id(x.order_id())
@@ -625,8 +593,8 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_doc_id_ != x.has_doc_id_: return 0
-    if self.has_doc_id_ and self.doc_id_ != x.doc_id_: return 0
+    if self.has_id_ != x.has_id_: return 0
+    if self.has_id_ and self.id_ != x.id_: return 0
     if self.has_language_ != x.has_language_: return 0
     if self.has_language_ and self.language_ != x.language_: return 0
     if len(self.field_) != len(x.field_): return 0
@@ -640,17 +608,17 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_doc_id_):
+    if (not self.has_id_):
       initialized = 0
       if debug_strs is not None:
-        debug_strs.append('Required field: doc_id not set.')
+        debug_strs.append('Required field: id not set.')
     for p in self.field_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.doc_id_))
+    n += self.lengthString(len(self.id_))
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
@@ -660,9 +628,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_doc_id_):
+    if (self.has_id_):
       n += 1
-      n += self.lengthString(len(self.doc_id_))
+      n += self.lengthString(len(self.id_))
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
@@ -671,7 +639,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_doc_id()
+    self.clear_id()
     self.clear_language()
     self.clear_field()
     self.clear_order_id()
@@ -679,7 +647,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
-    out.putPrefixedString(self.doc_id_)
+    out.putPrefixedString(self.id_)
     if (self.has_language_):
       out.putVarInt32(18)
       out.putPrefixedString(self.language_)
@@ -695,9 +663,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(self.storage_)
 
   def OutputPartial(self, out):
-    if (self.has_doc_id_):
+    if (self.has_id_):
       out.putVarInt32(10)
-      out.putPrefixedString(self.doc_id_)
+      out.putPrefixedString(self.id_)
     if (self.has_language_):
       out.putVarInt32(18)
       out.putPrefixedString(self.language_)
@@ -716,7 +684,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
-        self.set_doc_id(d.getPrefixedString())
+        self.set_id(d.getPrefixedString())
         continue
       if tt == 18:
         self.set_language(d.getPrefixedString())
@@ -741,7 +709,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_doc_id_: res+=prefix+("doc_id: %s\n" % self.DebugFormatString(self.doc_id_))
+    if self.has_id_: res+=prefix+("id: %s\n" % self.DebugFormatString(self.id_))
     if self.has_language_: res+=prefix+("language: %s\n" % self.DebugFormatString(self.language_))
     cnt=0
     for e in self.field_:
@@ -759,7 +727,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kdoc_id = 1
+  kid = 1
   klanguage = 2
   kfield = 3
   korder_id = 4
@@ -767,7 +735,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    1: "doc_id",
+    1: "id",
     2: "language",
     3: "field",
     4: "order_id",

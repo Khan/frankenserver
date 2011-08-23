@@ -216,11 +216,98 @@ def _GetConfigFromKwargs(kwargs):
     raise datastore_errors.BadArgumentError(
       'rpc= argument should be None or a UserRPC instance')
   if config is not None:
-    if not isinstance(config, (datastore_rpc.Configuration,
-                               apiproxy_stub_map.UserRPC)):
+    if not (datastore_rpc.Configuration.is_configuration(config) or
+            isinstance(config, apiproxy_stub_map.UserRPC)):
       raise datastore_errors.BadArgumentError(
       'config= argument should be None or a Configuration instance')
   return config
+
+class _BaseIndex(object):
+
+
+  BUILDING, SERVING, DELETING, ERROR = range(4)
+
+
+  ASCENDING = datastore_query.PropertyOrder.ASCENDING
+  DESCENDING = datastore_query.PropertyOrder.DESCENDING
+
+  def __init__(self, index_id, kind, has_ancestor, properties):
+    """Construct a datastore index instance.
+
+    Args:
+      index_id: Required long; Uniquely identifies the index
+      kind: Required string; Specifies the kind of the entities to index
+      has_ancestor: Required boolean; indicates if the index supports a query
+        that filters entities by the entity group parent
+      properties: Required list of (string, int) tuples; The entity properties
+        to index. First item in a tuple is the property name and the second
+        item is the sorting direction (ASCENDING|DESCENDING).
+        The order of the properties is based on the order in the index.
+    """
+    argument_error = datastore_errors.BadArgumentError
+    datastore_types.ValidateInteger(index_id, 'index_id', argument_error)
+    datastore_types.ValidateString(kind, 'kind', argument_error)
+    if not isinstance(properties, (list, tuple)):
+      raise argument_error('properties must be a list or a tuple')
+    for idx, index_property in enumerate(properties):
+      if not isinstance(index_property, (list, tuple)):
+        raise argument_error('property[%d] must be a list or a tuple' % idx)
+      if len(index_property) != 2:
+        raise argument_error('property[%d] length should be 2 but was %d' %
+                        (idx, len(index_property)))
+      datastore_types.ValidateString(index_property[0], 'property name',
+                                     argument_error)
+      _BaseIndex.__ValidateEnum(index_property[1],
+                               (self.ASCENDING, self.DESCENDING),
+                               'sort direction')
+    self.__id = long(index_id)
+    self.__kind = kind
+    self.__has_ancestor = bool(has_ancestor)
+    self.__properties = properties
+
+  @staticmethod
+  def __ValidateEnum(value, accepted_values, name='value',
+                     exception=datastore_errors.BadArgumentError):
+    datastore_types.ValidateInteger(value, name, exception)
+    if not value in accepted_values:
+      raise exception('%s should be one of %s but was %d' %
+                      (name, str(accepted_values), value))
+
+  def _Id(self):
+    """Returns the index id, a long."""
+    return self.__id
+
+  def _Kind(self):
+    """Returns the index kind, a string."""
+    return self.__kind
+
+  def _HasAncestor(self):
+    """Indicates if this is an ancestor index, a boolean."""
+    return self.__has_ancestor
+
+  def _Properties(self):
+    """Returns the index properties. a tuple of
+    (index name as a string, [ASCENDING|DESCENDING]) tuples.
+    """
+    return self.__properties
+
+  def __eq__(self, other):
+    return self.__id == other.__id
+
+  def __ne__(self, other):
+    return self.__id != other.__id
+
+  def __hash__(self):
+    return hash(self.__id)
+
+
+class Index(_BaseIndex):
+  """A datastore index."""
+
+  Id = _BaseIndex._Id
+  Kind = _BaseIndex._Kind
+  HasAncestor = _BaseIndex._HasAncestor
+  Properties = _BaseIndex._Properties
 
 
 class DatastoreAdapter(datastore_rpc.AbstractAdapter):
@@ -228,6 +315,20 @@ class DatastoreAdapter(datastore_rpc.AbstractAdapter):
 
   See the base class in datastore_rpc.py for more docs.
   """
+
+
+  index_state_mappings = {
+          entity_pb.CompositeIndex.ERROR: Index.ERROR,
+          entity_pb.CompositeIndex.DELETED: Index.DELETING,
+          entity_pb.CompositeIndex.READ_WRITE: Index.SERVING,
+          entity_pb.CompositeIndex.WRITE_ONLY: Index.BUILDING
+      }
+
+
+  index_direction_mappings = {
+          entity_pb.Index_Property.ASCENDING: Index.ASCENDING,
+          entity_pb.Index_Property.DESCENDING: Index.DESCENDING
+      }
 
   def key_to_pb(self, key):
     return key._Key__reference
@@ -240,6 +341,16 @@ class DatastoreAdapter(datastore_rpc.AbstractAdapter):
 
   def pb_to_entity(self, pb):
     return Entity._FromPb(pb)
+
+  def pb_to_index(self, pb):
+    index_def = pb.definition()
+    properties = [(property.name(),
+          DatastoreAdapter.index_direction_mappings.get(property.direction()))
+          for property in index_def.property_list()]
+    index = Index(pb.id(), index_def.entity_type(), index_def.ancestor(),
+                  properties)
+    state = DatastoreAdapter.index_state_mappings.get(pb.state())
+    return index, state
 
 
 _adapter = DatastoreAdapter()
@@ -393,7 +504,7 @@ def _Rpc2Config(rpc):
   Returns:
     None or a datastore_rpc.Configuration object.
   """
-  if rpc is None or isinstance(rpc, datastore_rpc.Configuration):
+  if rpc is None or datastore_rpc.Configuration.is_configuration(rpc):
     return rpc
   read_policy = getattr(rpc, 'read_policy', None)
   return datastore_rpc.Configuration(deadline=rpc.deadline,
@@ -515,6 +626,39 @@ def Get(keys, **kwargs):
   """
   return GetAsync(keys, **kwargs).get_result()
 
+def GetIndexesAsync(**kwargs):
+  """Asynchronously retrieves the application indexes and their states.
+
+  Identical to GetIndexes() except returns an asynchronous object. Call
+  get_result() on the return value to block on the call and get the results.
+  """
+  extra_hook = kwargs.pop('extra_hook', None)
+  config = _GetConfigFromKwargs(kwargs)
+
+  def local_extra_hook(result):
+    if extra_hook:
+      return extra_hook(result)
+    return result
+
+  return _GetConnection().async_get_indexes(config, local_extra_hook)
+
+
+def GetIndexes(**kwargs):
+  """Retrieves the application indexes and their states.
+
+  Args:
+    config: Optional Configuration to use for this request, must be specified
+      as a keyword argument.
+
+  Returns:
+    A list of (Index, Index.[BUILDING|SERVING|DELETING|ERROR]) tuples.
+    An index can be in the following states:
+      Index.BUILDING: Index is being built and therefore can not serve queries
+      Index.SERVING: Index is ready to service queries
+      Index.DELETING: Index is being deleted
+      Index.ERROR: Index encounted an error in the BUILDING state
+  """
+  return GetIndexesAsync(**kwargs).get_result()
 
 def DeleteAsync(keys, **kwargs):
   """Asynchronously deletes one or more entities from the datastore.
@@ -1239,11 +1383,11 @@ class Query(dict):
         direction = Query.ASCENDING
 
       if (self.__kind is None and
-          (property != datastore_types._KEY_SPECIAL_PROPERTY or
+          (property != datastore_types.KEY_SPECIAL_PROPERTY or
           direction != Query.ASCENDING)):
         raise datastore_errors.BadArgumentError(
             'Only %s ascending orders are supported on kindless queries' %
-            datastore_types._KEY_SPECIAL_PROPERTY)
+            datastore_types.KEY_SPECIAL_PROPERTY)
 
       orderings[i] = (property, direction)
 
@@ -1667,11 +1811,11 @@ class Query(dict):
             ', '.join(self.INEQUALITY_OPERATORS))
 
     if (self.__kind is None and
-        property != datastore_types._KEY_SPECIAL_PROPERTY and
+        property != datastore_types.KEY_SPECIAL_PROPERTY and
         property != datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY):
       raise datastore_errors.BadFilterError(
           'Only %s filters are allowed on kindless queries.' %
-          datastore_types._KEY_SPECIAL_PROPERTY)
+          datastore_types.KEY_SPECIAL_PROPERTY)
 
     if property == datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY:
       if self.__kind:
@@ -1689,12 +1833,12 @@ class Query(dict):
 
 
 
-      if property == datastore_types._KEY_SPECIAL_PROPERTY:
+      if property == datastore_types.KEY_SPECIAL_PROPERTY:
         for value in values:
           if not isinstance(value, Key):
             raise datastore_errors.BadFilterError(
               '%s filter value must be a Key; received %s (a %s)' %
-              (datastore_types._KEY_SPECIAL_PROPERTY, value, typename(value)))
+              (datastore_types.KEY_SPECIAL_PROPERTY, value, typename(value)))
 
     return match
 
@@ -2172,10 +2316,10 @@ def RunInTransaction(function, *args, **kwargs):
      number of times.
 
     Args:
-    # a function to be run inside the transaction
-    function: callable
-    # positional arguments to pass to the function
-    args: variable number of any type
+      function: a function to be run inside the transaction on all remaining
+        arguments
+      *args: positional arguments for function.
+      **kwargs: keyword arguments for function.
 
   Returns:
     the function's return value, if any
@@ -2183,14 +2327,36 @@ def RunInTransaction(function, *args, **kwargs):
   Raises:
     TransactionFailedError, if the transaction could not be committed.
   """
-  return RunInTransactionCustomRetries(
-      DEFAULT_TRANSACTION_RETRIES, function, *args, **kwargs)
+  return RunInTransactionOptions(None, function, *args, **kwargs)
 
 
 
 
 
 def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
+  """Runs a function inside a datastore transaction.
+
+     Runs the user-provided function inside transaction, with a specified
+     number of retries.
+
+    Args:
+      retries: number of retries (not counting the initial try)
+      function: a function to be run inside the transaction on all remaining
+        arguments
+      *args: positional arguments for function.
+      **kwargs: keyword arguments for function.
+
+  Returns:
+    the function's return value, if any
+
+  Raises:
+    TransactionFailedError, if the transaction could not be committed.
+  """
+  options = datastore_rpc.TransactionOptions(retries=retries)
+  return RunInTransactionOptions(options, function, *args, **kwargs)
+
+
+def RunInTransactionOptions(options, function, *args, **kwargs):
   """Runs a function inside a datastore transaction.
 
   Runs the user-provided function inside a full-featured, ACID datastore
@@ -2246,12 +2412,12 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
   Nested transactions are not supported.
 
   Args:
-    # number of retries (not counting the initial try)
-    retries: integer
-    # a function to be run inside the transaction
-    function: callable
-    # positional arguments to pass to the function
-    args: variable number of any type
+    options: TransactionOptions specifying options (number of retries, etc) for
+      this transaction
+    function: a function to be run inside the transaction on all remaining
+      arguments
+      *args: positional arguments for function.
+      **kwargs: keyword arguments for function.
 
   Returns:
     the function's return value, if any
@@ -2268,9 +2434,9 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
 
 
 
-  if retries < 0:
-    raise datastore_errors.BadRequestError(
-      'Number of retries should be non-negative number.')
+  retries = datastore_rpc.TransactionOptions.retries(options)
+  if retries is None:
+    retries = DEFAULT_TRANSACTION_RETRIES
 
 
   if IsInTransaction():
@@ -2280,7 +2446,7 @@ def RunInTransactionCustomRetries(retries, function, *args, **kwargs):
   old_connection = _GetConnection()
 
   for i in range(0, retries + 1):
-    new_connection = old_connection.new_transaction()
+    new_connection = old_connection.new_transaction(options)
     _SetConnection(new_connection)
     try:
       ok, result = _DoOneTry(new_connection, function, args, kwargs)
@@ -2300,8 +2466,8 @@ def _DoOneTry(new_connection, function, args, kwargs):
   Args:
     new_connection: The new, transactional, connection object.
     function: The function to call.
-    args: Tuple of positional arguments.
-    kwargs: Dict of keyword arguments.
+    *args: Tuple of positional arguments.
+    **kwargs: Dict of keyword arguments.
   """
 
   try:
@@ -2361,8 +2527,7 @@ def IsInTransaction():
 
 
 datastore_rpc._positional(1)
-def Transactional(func=None, require_new=False,
-                  retries=DEFAULT_TRANSACTION_RETRIES):
+def Transactional(_func=None, require_new=False, **kwargs):
   """A decorator that makes sure a function is run in a transaction.
 
   WARNING: Reading from the datastore while in a transaction will not see any
@@ -2370,24 +2535,24 @@ def Transactional(func=None, require_new=False,
   on seeing all changes made in the calling scoope, set require_new=True.
 
   Args:
+    _func: do not use.
     require_new: A bool that indicates the function requires its own transaction
       and cannot share a transaction with the calling scope (nested transactions
       are not currently supported by the datastore).
-    retries: An integer that indicates how many times the function should be
-      tried not including the inital attempt. This value is ignored if using
-      a transaction from the calling scope.
+    **kwargs: TransactionOptions configuration options.
 
   Returns:
     A wrapper for the given function that creates a new transaction if needed.
   """
-  if func is None:
-    return lambda function: Transactional(func=function,
+  if _func is None:
+    return lambda function: Transactional(_func=function,
                                           require_new=require_new,
-                                          retries=retries)
+                                          **kwargs)
+  options = datastore_rpc.TransactionOptions(**kwargs)
   def wrapper(*args, **kwds):
     if not require_new and IsInTransaction():
-      return func(*args, **kwds)
-    return RunInTransactionCustomRetries(retries, func, *args, **kwds)
+      return _func(*args, **kwds)
+    return RunInTransactionOptions(options, _func, *args, **kwds)
   return wrapper
 
 
@@ -2441,7 +2606,7 @@ def _GetPropertyValue(entity, property):
     if property == datastore_types._UNAPPLIED_LOG_TIMESTAMP_SPECIAL_PROPERTY:
       raise KeyError(property)
 
-    assert property == datastore_types._KEY_SPECIAL_PROPERTY
+    assert property == datastore_types.KEY_SPECIAL_PROPERTY
     return entity.key()
   else:
     return entity[property]

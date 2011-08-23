@@ -164,17 +164,19 @@ goog.bindNative_ = function(fn, selfObj, var_args) {
   return fn.call.apply(fn.bind, arguments)
 };
 goog.bindJs_ = function(fn, selfObj, var_args) {
-  var context = selfObj || goog.global;
+  if(!fn) {
+    throw Error();
+  }
   if(arguments.length > 2) {
     var boundArgs = Array.prototype.slice.call(arguments, 2);
     return function() {
       var newArgs = Array.prototype.slice.call(arguments);
       Array.prototype.unshift.apply(newArgs, boundArgs);
-      return fn.apply(context, newArgs)
+      return fn.apply(selfObj, newArgs)
     }
   }else {
     return function() {
-      return fn.apply(context, arguments)
+      return fn.apply(selfObj, arguments)
     }
   }
 };
@@ -521,7 +523,7 @@ goog.string.truncateMiddle = function(str, chars, opt_protectEscapedCharacters, 
   opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
   return str
 };
-goog.string.specialEscapeChars_ = {"\000":"\\0", "\u0008":"\\b", "\u000c":"\\f", "\n":"\\n", "\r":"\\r", "\t":"\\t", "\u000b":"\\x0B", '"':'\\"', "\\":"\\\\"};
+goog.string.specialEscapeChars_ = {"\x00":"\\0", "\u0008":"\\b", "\u000c":"\\f", "\n":"\\n", "\r":"\\r", "\t":"\\t", "\u000b":"\\x0B", '"':'\\"', "\\":"\\\\"};
 goog.string.jsEscapeCache_ = {"'":"\\'"};
 goog.string.quote = function(s) {
   s = String(s);
@@ -998,6 +1000,15 @@ goog.array.equals = function(arr1, arr2, opt_equalsFn) {
 goog.array.compare = function(arr1, arr2, opt_equalsFn) {
   return goog.array.equals(arr1, arr2, opt_equalsFn)
 };
+goog.array.compare3 = function(arr1, arr2, opt_compareFn) {
+  for(var compare = opt_compareFn || goog.array.defaultCompare, l = Math.min(arr1.length, arr2.length), i = 0;i < l;i++) {
+    var result = compare(arr1[i], arr2[i]);
+    if(result != 0) {
+      return result
+    }
+  }
+  return goog.array.defaultCompare(arr1.length, arr2.length)
+};
 goog.array.defaultCompare = function(a, b) {
   return a > b ? 1 : a < b ? -1 : 0
 };
@@ -1292,7 +1303,7 @@ goog.object.transpose = function(obj) {
   }
   return transposed
 };
-goog.object.PROTOTYPE_FIELDS_ = ["constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "toString", "valueOf"];
+goog.object.PROTOTYPE_FIELDS_ = "constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf".split(",");
 goog.object.extend = function(target, var_args) {
   for(var key, source, i = 1;i < arguments.length;i++) {
     source = arguments[i];
@@ -1547,7 +1558,7 @@ goog.dom.getElementsByTagNameAndClass_ = function(doc, opt_tag, opt_class, opt_e
 goog.dom.$$ = goog.dom.getElementsByTagNameAndClass;
 goog.dom.setProperties = function(element, properties) {
   goog.object.forEach(properties, function(val, key) {
-    key == "style" ? element.style.cssText = val : key == "class" ? element.className = val : key == "for" ? element.htmlFor = val : key in goog.dom.DIRECT_ATTRIBUTE_MAP_ ? element.setAttribute(goog.dom.DIRECT_ATTRIBUTE_MAP_[key], val) : element[key] = val
+    key == "style" ? element.style.cssText = val : key == "class" ? element.className = val : key == "for" ? element.htmlFor = val : key in goog.dom.DIRECT_ATTRIBUTE_MAP_ ? element.setAttribute(goog.dom.DIRECT_ATTRIBUTE_MAP_[key], val) : goog.string.startsWith(key, "aria-") ? element.setAttribute(key, val) : element[key] = val
   })
 };
 goog.dom.DIRECT_ATTRIBUTE_MAP_ = {cellpadding:"cellPadding", cellspacing:"cellSpacing", colspan:"colSpan", rowspan:"rowSpan", valign:"vAlign", height:"height", width:"width", usemap:"useMap", frameborder:"frameBorder", maxlength:"maxLength", type:"type"};
@@ -1956,13 +1967,14 @@ goog.dom.findNodes = function(root, p) {
 };
 goog.dom.findNodes_ = function(root, p, rv, findOne) {
   if(root != null) {
-    for(var i = 0, child;child = root.childNodes[i];i++) {
+    for(var child = root.firstChild;child;) {
       if(p(child) && (rv.push(child), findOne)) {
         return!0
       }
       if(goog.dom.findNodes_(child, p, rv, findOne)) {
         return!0
       }
+      child = child.nextSibling
     }
   }
   return!1
@@ -2461,6 +2473,26 @@ goog.iter.product = function(var_args) {
       return retVal
     }
     throw goog.iter.StopIteration;
+  };
+  return iter
+};
+goog.iter.cycle = function(iterable) {
+  var baseIterator = goog.iter.toIterator(iterable), cache = [], cacheIndex = 0, iter = new goog.iter.Iterator, useCache = !1;
+  iter.next = function() {
+    var returnElement = null;
+    if(!useCache) {
+      try {
+        return returnElement = baseIterator.next(), cache.push(returnElement), returnElement
+      }catch(e) {
+        if(e != goog.iter.StopIteration || goog.array.isEmpty(cache)) {
+          throw e;
+        }
+        useCache = !0
+      }
+    }
+    returnElement = cache[cacheIndex];
+    cacheIndex = (cacheIndex + 1) % cache.length;
+    return returnElement
   };
   return iter
 };
@@ -3110,6 +3142,10 @@ goog.debug.Logger.Level.getPredefinedLevelByValue = function(value) {
 goog.debug.Logger.getLogger = function(name) {
   return goog.debug.LogManager.getLogger(name)
 };
+goog.debug.Logger.logToProfilers = function(msg) {
+  goog.global.console && (goog.global.console.timeStamp ? goog.global.console.timeStamp(msg) : goog.global.console.markTimeline && goog.global.console.markTimeline(msg));
+  goog.global.msWriteProfilerMark && goog.global.msWriteProfilerMark(msg)
+};
 goog.debug.Logger.prototype.getParent = function() {
   return this.parent_
 };
@@ -3158,11 +3194,8 @@ goog.debug.Logger.prototype.fine = function(msg, opt_exception) {
 goog.debug.Logger.prototype.finest = function(msg, opt_exception) {
   this.log(goog.debug.Logger.Level.FINEST, msg, opt_exception)
 };
-goog.debug.Logger.prototype.logToSpeedTracer_ = function(msg) {
-  goog.global.console && goog.global.console.markTimeline && goog.global.console.markTimeline(msg)
-};
 goog.debug.Logger.prototype.doLogRecord_ = function(logRecord) {
-  this.logToSpeedTracer_("log:" + logRecord.getMessage());
+  goog.debug.Logger.logToProfilers("log:" + logRecord.getMessage());
   if(goog.debug.Logger.ENABLE_HIERARCHY) {
     for(var target = this;target;) {
       target.callPublish_(logRecord), target = target.getParent()
@@ -3497,7 +3530,10 @@ goog.events.ASSUME_GOOD_GC = !1;
   }
   function getProxy() {
     var f = function(eventObject) {
-      return proxyCallbackFunction.call(f.src, f.key, eventObject)
+      var v = proxyCallbackFunction.call(f.src, f.key, eventObject);
+      if(!v) {
+        return v
+      }
     };
     return f
   }
@@ -4943,7 +4979,7 @@ goog.Uri.QueryData = function(opt_query, opt_uri, opt_ignoreCase) {
   this.ignoreCase_ = !!opt_ignoreCase
 };
 goog.Uri.QueryData.prototype.ensureKeyMapInitialized_ = function() {
-  if(!this.keyMap_ && (this.keyMap_ = new goog.structs.Map, this.encodedQuery_)) {
+  if(!this.keyMap_ && (this.keyMap_ = new goog.structs.Map, this.count_ = 0, this.encodedQuery_)) {
     for(var pairs = this.encodedQuery_.split("&"), i = 0;i < pairs.length;i++) {
       var indexOfEquals = pairs[i].indexOf("="), name = null, value = null;
       indexOfEquals >= 0 ? (name = pairs[i].substring(0, indexOfEquals), value = pairs[i].substring(indexOfEquals + 1)) : name = pairs[i];

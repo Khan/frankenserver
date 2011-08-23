@@ -42,6 +42,28 @@ from google.appengine.api.search import search_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+__all__ = [
+    'AtomField',
+    'DateField',
+    'Document',
+    'Error',
+    'Field',
+    'FieldExpression',
+    'HtmlField',
+    'Index',
+    'InternalError',
+    'InvalidRequestError',
+    'OperationResult',
+    'TransientError',
+    'ScorerSpec',
+    'SearchRequest',
+    'SearchResult',
+    'SearchResponse',
+    'SortSpec',
+    'TextField',
+    'list_indexes',
+    ]
+
 _MAXIMUM_INDEX_NAME_LENGTH = 100
 _MAXIMUM_FIELD_VALUE_LENGTH = 1024 * 1024
 _MAXIMUM_FIELD_ATOM_LENGTH = 500
@@ -234,7 +256,8 @@ def _ValidateString(value,
 def _ValidatePrintableAsciiNotReserved(value, name):
   """Raises an exception if value is not printable ASCII string nor reserved.
 
-  Printable ASCII strings starting with '!' are reserved for internal use.
+  Non-space whitespace characters are also excluded. Printable ASCII
+  strings starting with '!' are reserved for internal use.
 
   Args:
     value: The value to validate.
@@ -248,20 +271,29 @@ def _ValidatePrintableAsciiNotReserved(value, name):
   """
   for char in value:
     if char not in _ASCII_PRINTABLE:
-      raise ValueError('%s must be printable ASCII: %s' % (name, value))
+      raise ValueError(
+          '%s must be printable ASCII and not non-space whitespace: %s'
+          % (name, value))
   if value.startswith('!'):
     raise ValueError('%s must not start with "!": %s' % (name, value))
   return value
 
 
 def _CheckIndexName(index_name):
-  """Checks index_name is a string which is not too long, and returns it."""
+  """Checks index_name is a string which is not too long, and returns it.
+
+  Index names must be ASCII printable, not reserved (start with '!') nor
+  include non-space whitespace characters.
+  """
   _ValidateString(index_name, 'index name', _MAXIMUM_INDEX_NAME_LENGTH)
   return _ValidatePrintableAsciiNotReserved(index_name, 'index_name')
 
 
 def _CheckFieldName(name):
-  """Checks field name is not too long, is ASCII printable and not reserved."""
+  """Checks field name is not too long, is ASCII printable and not reserved.
+
+  Non-space whitespace characters are also excluded from field names.
+  """
   _ValidateString(name, 'name', _MAXIMUM_FIELD_NAME_LENGTH)
   name_str = str(name)
   _ValidatePrintableAsciiNotReserved(name, 'field name')
@@ -308,7 +340,11 @@ def _ConvertToList(arg):
 
 
 def _CheckDocumentId(doc_id):
-  """Checks doc_id is a valid document identifier, and returns it."""
+  """Checks doc_id is a valid document identifier, and returns it.
+
+  Document ids must be ASCII printable, not include non-space whitespace
+  characters, and not start with '!'.
+  """
   _ValidateString(doc_id, 'doc_id', _MAXIMUM_DOCUMENT_ID_LENGTH)
   _ValidatePrintableAsciiNotReserved(doc_id, 'doc_id')
   return doc_id
@@ -352,7 +388,7 @@ def _CheckLanguage(language):
 
 def _Repr(class_instance, ordered_dictionary):
   """Generates an unambiguous representation for instance and ordered dict."""
-  return 'search_api.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
+  return 'search.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
       ["%s='%s'" % (key, value) for (key, value) in ordered_dictionary
        if value is not None and value != []]))
 
@@ -404,7 +440,8 @@ class Field(object):
     Args:
       name: The name of the field. Field names must have maximum length
         _MAXIMUM_FIELD_NAME_LENGTH, be ASCII printable and not matched
-        reserved pattern '_[A-Z]*' nor start with '!'.
+        reserved pattern '_[A-Z]*' nor start with '!'. Further, field
+        names cannot contain non-space whitespace characters.
       value: The value of the field which can be a str, unicode or date.
         (optional)
       language: The ISO 693-1 two letter code of the language used in the value.
@@ -582,7 +619,7 @@ class DateField(Field):
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.DATE)
-    field_value_pb.set_date_value(self.value.isoformat())
+    field_value_pb.set_string_value(self.value.isoformat())
 
 
 def _GetValue(value_pb):
@@ -592,8 +629,8 @@ def _GetValue(value_pb):
       return value_pb.string_value()
     return None
   if value_pb.type() == document_pb.FieldValue.DATE:
-    if value_pb.has_date_value():
-      return datetime.datetime.strptime(value_pb.date_value(),
+    if value_pb.has_string_value():
+      return datetime.datetime.strptime(value_pb.string_value(),
                                         '%Y-%m-%d').date()
     return None
   raise TypeError('unknown FieldValue type %d' % value_pb.type())
@@ -644,7 +681,8 @@ class Document(object):
 
     Args:
       doc_id: The printable ASCII string identifying the document which does
-        not start with '!' which is reserved.
+        not start with '!' which is reserved. Non-space whitespace characters
+        are also excluded from ids.
       fields: An iterable of Field instances representing the content of the
         document. (optional)
       language: The code of the language used in the field values. Defaults
@@ -708,7 +746,7 @@ class Document(object):
 def _CopyDocumentToProtocolBuffer(document, pb):
   """Copies Document to a document_pb.Document protocol buffer."""
   pb.set_storage(document_pb.Document.DISK)
-  pb.set_doc_id(document.doc_id)
+  pb.set_id(document.doc_id)
   if document.language:
     pb.set_language(document.language)
   for field in document.fields:
@@ -724,7 +762,7 @@ def _NewDocumentFromPb(doc_pb):
   lang = None
   if doc_pb.has_language():
     lang = doc_pb.language()
-  return Document(doc_id=doc_pb.doc_id(), fields=fields,
+  return Document(doc_id=doc_pb.id(), fields=fields,
                   language=lang,
                   order_id=doc_pb.order_id())
 
@@ -890,7 +928,6 @@ def _CopySortSpecToProtocolBuffer(sort_spec, pb):
   return pb
 
 
-
 class ScorerSpec(object):
   """Specifies how to score a search result.
 
@@ -901,12 +938,11 @@ class ScorerSpec(object):
                limit=5000)
   """
 
-  GENERIC, HIT_COUNT, TIME_STAMP, MATCH_SCORER = ('GENERIC', 'HIT_COUNT',
-                                             'TIME_STAMP', 'MATCH_SCORER')
+  GENERIC, MATCH_SCORER = ('GENERIC', 'MATCH_SCORER')
   _DEFAULT_LIMIT = 1000
   _MAXIMUM_LIMIT = 10000
 
-  _TYPES = frozenset([GENERIC, HIT_COUNT, TIME_STAMP, MATCH_SCORER])
+  _TYPES = frozenset([GENERIC, MATCH_SCORER])
 
   _CONSTRUCTOR_KWARGS = frozenset(['scorer_type', 'limit'])
 
@@ -917,8 +953,6 @@ class ScorerSpec(object):
       scorer_type: The type of scorer to use on search results. Defaults to
         GENERIC.  (optional) The possible types include:
           GENERIC: A generic scorer that uses match scoring and rescoring.
-          HIT_COUNT: A simple scorer that counts hits as the score.
-          TIME_STAMP: A scorer that returns the document timestamp as the score.
           MATCH_SCORER: A scorer that returns a score based on term frequency
           divided by document frequency.
       limit: The limit on the number of documents to score. Defaults to
@@ -962,8 +996,6 @@ class ScorerSpec(object):
 
 _SCORER_TYPE_PB_MAP = {
     ScorerSpec.GENERIC: search_service_pb.ScorerSpec.GENERIC,
-    ScorerSpec.HIT_COUNT: search_service_pb.ScorerSpec.HIT_COUNT,
-    ScorerSpec.TIME_STAMP: search_service_pb.ScorerSpec.TIME_STAMP,
     ScorerSpec.MATCH_SCORER: search_service_pb.ScorerSpec.MATCH_SCORER}
 
 
@@ -1221,7 +1253,7 @@ def _CopySearchRequestToProtocolBuffer(request, pb):
       or request.returned_expressions):
     field_spec_pb = pb.mutable_field_spec()
     for field in request.returned_fields:
-      field_spec_pb.add_field_name(field)
+      field_spec_pb.add_name(field)
     for snippeted_field in request.snippeted_fields:
       _CopyFieldExpressionToProtocolBuffer(
           FieldExpression(
@@ -1538,7 +1570,8 @@ class Index(object):
 
     Args:
       name: The name of the index. An index name must be a printable ASCII
-        string not starting with '!'.
+        string not starting with '!', but not containing any non-space
+        whitespace characters.
       namespace: The namespace of the index name.
       consistency: The consistency mode of the index, either GLOBALLY_CONSISTENT
         or PER_DOCUMENT_CONSISTENT. Defaults to PER_DOCUMENT_CONSISTENT.
@@ -1695,7 +1728,7 @@ class Index(object):
     _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
     for document_id in doc_ids:
       _CheckDocumentId(document_id)
-      params.add_document_id(document_id)
+      params.add_doc_id(document_id)
 
     try:
       apiproxy_stub_map.MakeSyncCall('search', 'DeleteDocument', request,
@@ -1762,6 +1795,58 @@ class Index(object):
         matched_count=response.matched_count(),
         returned_count=response.result_size())
 
+  def list_documents(self, start_doc_id=None, include_start_doc=True,
+                     limit=100, keys_only=False, **kwargs):
+    """List documents in the index, in doc_id order.
+
+    Args:
+      start_doc_id: String containing the document Id from which to list
+        documents from. By default, starts at the first document Id.
+      include_start_doc: If true, include the document with the Id specified by
+        the start_doc_id parameter.
+      limit: The maximum number of documents to return. Defaults to 100.
+      keys_only: If true, the documents returned only contain their keys.
+
+    Returns:
+      A list of Documents, ordered by Id.
+
+    Raises:
+      TransientError: The request failed but retrying may succeed.
+      InternalError: A problem with the backend was encountered.
+      InvalidRequestError: The request is not well formed.
+      TypeError: An unknown attribute is passed in.
+    """
+    request = search_service_pb.ListDocumentsRequest()
+    if 'app_id' in kwargs:
+      request.set_app_id(kwargs.pop('app_id'))
+
+    if kwargs:
+      raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
+
+    params = request.mutable_params()
+    _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
+
+    if start_doc_id:
+      params.set_start_doc_id(start_doc_id)
+    params.set_include_start_doc(include_start_doc)
+
+    params.set_limit(limit)
+    params.set_keys_only(keys_only)
+
+    response = search_service_pb.ListDocumentsResponse()
+    try:
+      apiproxy_stub_map.MakeSyncCall('search', 'ListDocuments', request,
+                                     response)
+    except apiproxy_errors.ApplicationError, e:
+      raise _ToSearchError(e)
+
+    _CheckStatus(response.status())
+    documents = []
+    for doc_proto in response.document_list():
+      documents.append(_NewDocumentFromPb(doc_proto))
+
+    return documents
+
 
 
 
@@ -1778,7 +1863,7 @@ _CONSISTENCY_PB_TO_MODES_MAP = {
 
 def _CopyMetadataToProtocolBuffer(index, spec_pb):
   """Copies Index specification to a search_service_pb.IndexSpec."""
-  spec_pb.set_index_name(index.name)
+  spec_pb.set_name(index.name)
   spec_pb.set_namespace(index.namespace)
   spec_pb.set_consistency(_CONSISTENCY_MODES_TO_PB_MAP.get(index.consistency))
 
@@ -1790,4 +1875,4 @@ def _NewIndexFromPb(spec_pb):
     return Index(name=spec_pb.index_name(), namespace=spec_pb.namespace(),
                  consistency=consistency)
   else:
-    return Index(name=spec_pb.index_name(), consistency=consistency)
+    return Index(name=spec_pb.name(), consistency=consistency)

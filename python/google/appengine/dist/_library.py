@@ -308,8 +308,8 @@ def CallSetAllowedModule(name, desired):
 
     sys.path[:] = [dirname
                    for dirname in sys.path
-                   if not (dirname.startswith(PYTHON_LIB) and
-                           'django' in dirname)]
+                   if not dirname.startswith(os.path.join(
+                       PYTHON_LIB, 'lib', 'django'))]
 
 
 

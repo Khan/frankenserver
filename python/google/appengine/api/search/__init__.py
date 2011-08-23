@@ -20,27 +20,22 @@
 
 """Search API module."""
 
-from search_api import *
-
-
-__all__ = [
-    'AtomField',
-    'DateField',
-    'Document',
-    'Error',
-    'Field',
-    'FieldExpression',
-    'HtmlField',
-    'Index',
-    'InternalError',
-    'InvalidRequestError',
-    'OperationResult',
-    'TransientError',
-    'ScorerSpec',
-    'SearchRequest',
-    'SearchResult',
-    'SearchResponse',
-    'SortSpec',
-    'TextField',
-    'list_indexes',
-    ]
+from search import AtomField
+from search import DateField
+from search import Document
+from search import Error
+from search import Field
+from search import FieldExpression
+from search import HtmlField
+from search import Index
+from search import InternalError
+from search import InvalidRequestError
+from search import list_indexes
+from search import OperationResult
+from search import ScorerSpec
+from search import SearchRequest
+from search import SearchResponse
+from search import SearchResult
+from search import SortSpec
+from search import TextField
+from search import TransientError

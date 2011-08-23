@@ -249,7 +249,8 @@ class DatastoreStatsProcessor(object):
       count = 0
 
 
-    self.__Increment(self.namespace_stats, count,
+    self.__Increment(
+        self.namespace_stats, count,
         (stats.NamespaceGlobalStat, 'total_entity_usage', namespace), size)
 
   def __Increment(self, stats_dict, count, stat_key, size, **kwds):

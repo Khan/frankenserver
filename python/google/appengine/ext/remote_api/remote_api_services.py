@@ -88,8 +88,6 @@ SERVICE_PB_MAP = {
                   file_service_pb.CloseResponse),
         'Append': (file_service_pb.AppendRequest,
                    file_service_pb.AppendResponse),
-        'AppendKeyValue': (file_service_pb.AppendKeyValueRequest,
-                           file_service_pb.AppendKeyValueResponse),
         'Stat': (file_service_pb.StatRequest,
                  file_service_pb.StatResponse),
         'Delete': (file_service_pb.DeleteRequest,

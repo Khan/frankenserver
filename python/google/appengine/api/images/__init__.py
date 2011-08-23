@@ -39,7 +39,10 @@ Classes defined in this module:
 
 import struct
 
-import simplejson as json
+try:
+  import json
+except:
+  import simplejson as json
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_types

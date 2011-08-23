@@ -30,7 +30,7 @@
 
 
 from google.appengine.api import apiproxy_stub_map
-from google.appengine.api.conversion import conversion_service_pb2
+from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -91,19 +91,19 @@ def _to_conversion_error(error):
     error: ConversionApi specific error message.
   """
   error_map = {
-      conversion_service_pb2.ConversionServiceError.TIMEOUT:
+      conversion_service_pb.ConversionServiceError.TIMEOUT:
       BackendDeadlineExceeded,
-      conversion_service_pb2.ConversionServiceError.TRANSIENT_ERROR:
+      conversion_service_pb.ConversionServiceError.TRANSIENT_ERROR:
       TransientError,
-      conversion_service_pb2.ConversionServiceError.INTERNAL_ERROR:
+      conversion_service_pb.ConversionServiceError.INTERNAL_ERROR:
       BackendError,
-      conversion_service_pb2.ConversionServiceError.UNSUPPORTED_CONVERSION:
+      conversion_service_pb.ConversionServiceError.UNSUPPORTED_CONVERSION:
       ConversionUnsupported,
-      conversion_service_pb2.ConversionServiceError.CONVERSION_TOO_LARGE:
+      conversion_service_pb.ConversionServiceError.CONVERSION_TOO_LARGE:
       ConversionTooLarge,
-      conversion_service_pb2.ConversionServiceError.TOO_MANY_CONVERSIONS:
+      conversion_service_pb.ConversionServiceError.TOO_MANY_CONVERSIONS:
       TooManyConversions,
-      conversion_service_pb2.ConversionServiceError.INVALID_REQUEST:
+      conversion_service_pb.ConversionServiceError.INVALID_REQUEST:
       InvalidRequest,
       }
   if error.application_error in error_map:
@@ -116,25 +116,25 @@ def _to_error_text(error_code):
   """Translate an error code to an error message, if possible.
 
   Args:
-    error_code: An conversion_service_pb2.ConversionServiceError error code.
+    error_code: An conversion_service_pb.ConversionServiceError error code.
 
   Returns:
     Human readable error message.
   """
   error_map = {
-      conversion_service_pb2.ConversionServiceError.TIMEOUT:
+      conversion_service_pb.ConversionServiceError.TIMEOUT:
       "BackendDeadlineExceeded",
-      conversion_service_pb2.ConversionServiceError.TRANSIENT_ERROR:
+      conversion_service_pb.ConversionServiceError.TRANSIENT_ERROR:
       "TransientError",
-      conversion_service_pb2.ConversionServiceError.INTERNAL_ERROR:
+      conversion_service_pb.ConversionServiceError.INTERNAL_ERROR:
       "BackendError",
-      conversion_service_pb2.ConversionServiceError.UNSUPPORTED_CONVERSION:
+      conversion_service_pb.ConversionServiceError.UNSUPPORTED_CONVERSION:
       "ConversionUnsupported",
-      conversion_service_pb2.ConversionServiceError.CONVERSION_TOO_LARGE:
+      conversion_service_pb.ConversionServiceError.CONVERSION_TOO_LARGE:
       "ConversionTooLarge",
-      conversion_service_pb2.ConversionServiceError.TOO_MANY_CONVERSIONS:
+      conversion_service_pb.ConversionServiceError.TOO_MANY_CONVERSIONS:
       "TooManyConversions",
-      conversion_service_pb2.ConversionServiceError.INVALID_REQUEST:
+      conversion_service_pb.ConversionServiceError.INVALID_REQUEST:
       "InvalidRequest",
       }
   if error_code in error_map:
@@ -160,21 +160,18 @@ class Asset(object):
       name: name of the asset (string).
 
     Raises:
-      TypeError: if input arguments are not string or data is missing.
+      TypeError: if input arguments are not string.
     """
-    if mime_type is not None:
-      if not isinstance(mime_type, (str, unicode)):
-        raise TypeError("mime_type %r is not a string" % mime_type)
-    self._mime_type = mime_type
+    if not isinstance(mime_type, basestring):
+      raise TypeError("mime type %r is not a string" % mime_type)
+    self._mime_type = mime_type.lower()
 
-    if data is None:
-      raise TypeError("Asset must have a data field")
-    if not isinstance(data, (str, unicode)):
+    if not isinstance(data, basestring):
       raise TypeError("data %r is not a string" % data)
     self._data = data
 
     if name is not None:
-      if not isinstance(name, (str, unicode)):
+      if not isinstance(name, basestring):
         raise TypeError("name %r is not a string" % name)
     self._name = name
 
@@ -193,19 +190,17 @@ class Asset(object):
     """The name of the asset (string)."""
     return self._name
 
-  def to_proto(self):
-    """Create and return an AssetInfo protocol buffer.
+  def _fill_proto(self, asset_info_pb):
+    """Fill an AssetInfo protocol buffer with Asset properties.
 
-    Returns:
-      An conversion_service_pb2.AssetInfo protocol buffer.
+    Args:
+      asset_info_pb: An AssetInfo protocol buffer.
     """
-    asset_info_pb = conversion_service_pb2.AssetInfo()
-    if self.mime_type is not None:
-      asset_info_pb.mime_type = self._mime_type
-    asset_info_pb.data = self._data
-    if self.name is not None:
-      asset_info_pb.name = self._name
-    return asset_info_pb
+    if self._mime_type is not None:
+      asset_info_pb.set_mime_type(self._mime_type)
+    asset_info_pb.set_data(self._data)
+    if self._name is not None:
+      asset_info_pb.set_name(self._name)
 
 
 class ConversionRequest(object):
@@ -216,31 +211,30 @@ class ConversionRequest(object):
   for example images in HTML.
   """
 
-  def __init__(self, asset, output_type):
+  def __init__(self, asset, output_mime_type):
     """Create a single conversion.
 
     Args:
       asset: An Asset instance.
-      output_type: output data mime type (string), put into the
-                   output_mime_type field.
+      output_mime_type: output data mime type (string), put into the
+                        output_mime_type field.
 
     Raises:
-      TypeError: if input arguments are not string or data is missing.
+      TypeError: if asset mime type or output_mime_type is not a string.
+      ValueError: if asset mime type or output_mime_type is empty.
     """
-    self.input_assets = []
+    self._assets = []
 
     if not asset.mime_type:
-      raise TypeError("Asset's mime type %r should not be None or empty" %
-                      asset.mime_type)
+      raise ValueError("Asset mime type should not be empty")
 
-    if not output_type:
-      raise TypeError("Output mime type %r should not be None or empty" %
-                      output_type)
-    if not isinstance(output_type, (str, unicode)):
-      raise TypeError("Output mime type %r is not a string" % output_type)
+    if not isinstance(output_mime_type, basestring):
+      raise TypeError("Output mime type %r is not a string" % output_mime_type)
+    if not output_mime_type:
+      raise ValueError("Output mime type should not be empty")
 
     self.add_asset(asset)
-    self.output_mime_type = output_type
+    self._output_mime_type = output_mime_type.lower()
 
   def add_asset(self, asset):
     """Add an asset into the conversion request.
@@ -254,16 +248,18 @@ class ConversionRequest(object):
     if not isinstance(asset, Asset):
       raise TypeError("Input %r is not an Asset instance" % asset)
 
-    self.input_assets.append(asset.to_proto())
+    self._assets.append(asset)
 
-  def to_proto(self):
-    """Create and return a ConversionInput protocol buffer."""
-    conversion = conversion_service_pb2.ConversionInput()
-    for asset in self.input_assets:
-      conversion.input.asset.extend([asset])
-    conversion.output_mime_type = self.output_mime_type
+  def _fill_proto(self, conversion_input_pb):
+    """Fill a ConversionInput protocol buffer with ConversionRequest properties.
 
-    return conversion
+    Args:
+      conversion_input_pb: A ConversionInput protocol buffer.
+    """
+    for asset in self._assets:
+      asset_pb = conversion_input_pb.mutable_input().add_asset()
+      asset._fill_proto(asset_pb)
+    conversion_input_pb.set_output_mime_type(self._output_mime_type)
 
 
 class ConversionOutput(object):
@@ -282,16 +278,16 @@ class ConversionOutput(object):
       AssertionError: if asset_info_proto is not an AssetInfo protocol buffer.
     """
     assert isinstance(conversion_output_proto,
-                      conversion_service_pb2.ConversionOutput)
+                      conversion_service_pb.ConversionOutput)
 
-    self._error_code = conversion_output_proto.error_code
+    self._error_code = conversion_output_proto.error_code()
     self._error_text = "OK"
-    if self._error_code != conversion_service_pb2.ConversionServiceError.OK:
+    if self._error_code != conversion_service_pb.ConversionServiceError.OK:
       self._error_text = _to_error_text(self._error_code)
     self._assets = []
-    for asset_pb in conversion_output_proto.output.asset:
+    for asset_pb in conversion_output_proto.output().asset_list():
       self._assets.append(Asset(
-          asset_pb.mime_type, asset_pb.data, asset_pb.name))
+          asset_pb.mime_type(), asset_pb.data(), asset_pb.name()))
 
   @property
   def error_code(self):
@@ -360,8 +356,8 @@ def make_convert_call(rpc, conversion_request):
     TypeError: Input conversion_requests with wrong type.
     See more details in _to_conversion_error function.
   """
-  request = conversion_service_pb2.ConversionRequest()
-  response = conversion_service_pb2.ConversionResponse()
+  request = conversion_service_pb.ConversionRequest()
+  response = conversion_service_pb.ConversionResponse()
 
   try:
     conversion_requests = list(iter(conversion_request))
@@ -373,7 +369,8 @@ def make_convert_call(rpc, conversion_request):
 
   for conversion in conversion_requests:
     if isinstance(conversion, ConversionRequest):
-      request.conversion.extend([conversion.to_proto()])
+      conversion_input_pb = request.add_conversion()
+      conversion._fill_proto(conversion_input_pb)
     else:
       raise TypeError("conversion_request must be a ConversionRequest instance "
                       "or a list of ConversionRequest instances")
@@ -404,7 +401,7 @@ def _get_convert_result(rpc):
     raise _to_conversion_error(e)
 
   results = []
-  for output_pb in rpc.response.result:
+  for output_pb in rpc.response.result_list():
     results.append(ConversionOutput(output_pb))
 
   multiple = rpc.user_data

@@ -79,6 +79,8 @@ MAX_START_TIME = 1
 HEADER_MAP = {
     'APPLICATION_ID': 'X-AppEngine-Inbound-AppId',
     'CONTENT_TYPE': 'Content-Type',
+    'CURRENT_VERSION_ID': 'X-AppEngine-Inbound-Version-Id',
+    'HTTP_HOST': 'X-AppEngine-Default-Version-Hostname',
     'REMOTE_ADDR': 'X-AppEngine-Remote-Addr',
     'USER_EMAIL': 'X-AppEngine-Inbound-User-Email',
     'USER_ID': 'X-AppEngine-Inbound-User-Id',
@@ -230,25 +232,35 @@ class RemoteAPIHandler(asyncore.dispatcher_with_send):
 
 
 
-def find_go_files_mtime(basedir):
+def find_app_files(basedir):
   if not basedir.endswith(os.path.sep):
     basedir = basedir + os.path.sep
-  files, dirs, mtime = [], [basedir], 0
+  files, dirs = {}, [basedir]
   while dirs:
     dname = dirs.pop()
     for entry in os.listdir(dname):
       ename = os.path.join(dname, entry)
-      if (APP_CONFIG.skip_files.match(ename) or
-          APP_CONFIG.nobuild_files.match(ename)):
+      if APP_CONFIG.skip_files.match(ename):
         continue
       s = os.stat(ename)
       if stat.S_ISDIR(s[stat.ST_MODE]):
         dirs.append(ename)
         continue
-      if not ename.endswith('.go'):
-        continue
-      files.append(ename[len(basedir):])
-      mtime = max(mtime, s[stat.ST_MTIME])
+      files[ename[len(basedir):]] = s[stat.ST_MTIME]
+  return files
+
+
+
+
+def find_go_files_mtime(app_files):
+  files, mtime = [], 0
+  for f, mt in app_files.items():
+    if not f.endswith('.go'):
+      continue
+    if APP_CONFIG.nobuild_files.match(f):
+      continue
+    files.append(f)
+    mtime = max(mtime, mt)
   return files, mtime
 
 
@@ -280,6 +292,7 @@ class GoApp:
   def __init__(self, root_path):
     self.root_path = root_path
     self.proc = None
+    self.proc_start = 0
     self.goroot = os.path.join(
 
         up(__file__, 5),
@@ -295,22 +308,40 @@ class GoApp:
     if not self.arch:
       raise Exception('bad goroot: no compiler found')
 
+    atexit.register(self.cleanup)
+
+  def cleanup(self):
+    if self.proc:
+      os.kill(self.proc.pid, signal.SIGTERM)
+
   def make_and_run(self):
-    go_files, go_mtime = find_go_files_mtime(self.root_path)
+    app_files = find_app_files(self.root_path)
+    go_files, go_mtime = find_go_files_mtime(app_files)
     if not go_files:
       raise Exception('no .go files in %s', self.root_path)
-    app_name, app_mtime = os.path.join(GAB_WORK_DIR, GO_APP_NAME), 0
+    app_mtime = max(app_files.values())
+    bin_name, bin_mtime = os.path.join(GAB_WORK_DIR, GO_APP_NAME), 0
     try:
-      app_mtime = os.stat(app_name)[stat.ST_MTIME]
+      bin_mtime = os.stat(bin_name)[stat.ST_MTIME]
     except:
       pass
 
-    if go_mtime >= app_mtime:
-      if self.proc:
-        os.kill(self.proc.pid, signal.SIGTERM)
-        self.proc.wait()
-        self.proc = None
-      self.build(go_files, app_name)
+
+
+
+    rebuild, restart = False, False
+    if go_mtime >= bin_mtime:
+      rebuild, restart = True, True
+    elif app_mtime > self.proc_start:
+      restart = True
+
+    if restart and self.proc:
+      os.kill(self.proc.pid, signal.SIGTERM)
+      self.proc.wait()
+      self.proc = None
+    if rebuild:
+      self.build(go_files)
+
 
     if not self.proc or self.proc.poll() is not None:
       logging.info('running ' + GO_APP_NAME)
@@ -319,13 +350,14 @@ class GoApp:
           'PWD': self.root_path,
           'TZ': 'UTC',
       }
-      self.proc = subprocess.Popen([app_name,
+      self.proc_start = app_mtime
+      self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'unix:' + SOCKET_HTTP,
           '-addr_api', 'unix:' + SOCKET_API],
           cwd=self.root_path, env=env)
       wait_until_go_app_ready(self.proc.pid)
 
-  def build(self, go_files, app_name):
+  def build(self, go_files):
     logging.info('building ' + GO_APP_NAME)
     if not os.path.exists(GAB_WORK_DIR):
       os.makedirs(GAB_WORK_DIR)

@@ -263,6 +263,9 @@ class AbstractDatastoreInputReader(InputReader):
       if self._current_key_range is None:
         if self._key_ranges:
           self._current_key_range = self._key_ranges.pop()
+
+
+          continue
         else:
           break
 
@@ -325,9 +328,7 @@ class AbstractDatastoreInputReader(InputReader):
   @classmethod
   def _choose_split_points(cls, random_keys, shard_count):
     """Returns the best split points given a random set of db.Keys."""
-    if len(random_keys) < shard_count:
-      return sorted(random_keys)
-
+    assert len(random_keys) >= shard_count
     index_stride = len(random_keys) / float(shard_count)
     return [sorted(random_keys)[int(round(index_stride * i))]
             for i in range(1, shard_count)]
@@ -337,7 +338,13 @@ class AbstractDatastoreInputReader(InputReader):
   @classmethod
   def _split_input_from_namespace(cls, app, namespace, entity_kind_name,
                                   shard_count):
-    """Return KeyRange objects. Helper for _split_input_from_params."""
+    """Return KeyRange objects. Helper for _split_input_from_params.
+
+    If there are not enough Entities to make all of the given shards, the
+    returned list of KeyRanges will include Nones. The returned list will
+    contain KeyRanges ordered lexographically with any Nones appearing at the
+    end.
+    """
 
     raw_entity_kind = util.get_short_name(entity_kind_name)
 
@@ -353,10 +360,11 @@ class AbstractDatastoreInputReader(InputReader):
                                keys_only=True)
     ds_query.Order("__scatter__")
     random_keys = ds_query.Get(shard_count * cls._OVERSAMPLING_FACTOR)
-    if not random_keys:
+    if not random_keys or len(random_keys) < shard_count:
 
 
-      return [key_range.KeyRange(namespace=namespace, _app=app)]
+      return ([key_range.KeyRange(namespace=namespace, _app=app)] +
+          [None] * (shard_count - 1))
     else:
       random_keys = cls._choose_split_points(random_keys, shard_count)
 
@@ -411,6 +419,7 @@ class AbstractDatastoreInputReader(InputReader):
     for i, k_range in enumerate(key_ranges):
       shared_ranges[i % shard_count].append(k_range)
     batch_size = int(params.get(cls.BATCH_SIZE_PARAM, cls._BATCH_SIZE))
+
     return [cls(entity_kind_name,
                 key_ranges=key_ranges,
                 ns_range=None,
@@ -453,9 +462,7 @@ class AbstractDatastoreInputReader(InputReader):
 
     Tries as best as it can to split the whole query result set into equal
     shards. Due to difficulty of making the perfect split, resulting shards'
-    sizes might differ significantly from each other. The actual number of
-    shards might also be less then requested (even 1), though it is never
-    greater.
+    sizes might differ significantly from each other.
 
     Args:
       mapper_spec: MapperSpec with params containing 'entity_kind'.
@@ -466,7 +473,10 @@ class AbstractDatastoreInputReader(InputReader):
         to specify the number of entities to process in each batch.
 
     Returns:
-      A list of InputReader objects of length <= number_of_shards.
+      A list of InputReader objects. If the query results are empty then the
+      empty list will be returned. Otherwise, the list will always have a length
+      equal to number_of_shards but may be padded with Nones if there are too
+      few results for effective sharding.
     """
     params = mapper_spec.params
     entity_kind_name = params[cls.ENTITY_KIND_PARAM]
@@ -520,7 +530,12 @@ class AbstractDatastoreInputReader(InputReader):
     if self._key_ranges is None:
       key_ranges_json = None
     else:
-      key_ranges_json = [k.to_json() for k in self._key_ranges]
+      key_ranges_json = []
+      for k in self._key_ranges:
+        if k:
+          key_ranges_json.append(k.to_json())
+        else:
+          key_ranges_json.append(None)
 
     if self._ns_range is None:
       namespace_range_json = None
@@ -552,8 +567,12 @@ class AbstractDatastoreInputReader(InputReader):
     if json[cls.KEY_RANGE_PARAM] is None:
       key_ranges = None
     else:
-      key_ranges = [key_range.KeyRange.from_json(k)
-                    for k in json[cls.KEY_RANGE_PARAM]]
+      key_ranges = []
+      for k in json[cls.KEY_RANGE_PARAM]:
+        if k:
+          key_ranges.append(key_range.KeyRange.from_json(k))
+        else:
+          key_ranges.append(None)
 
     if json[cls.NAMESPACE_RANGE_PARAM] is None:
       ns_range = None
@@ -1290,15 +1309,21 @@ class ConsistentKeyReader(DatastoreKeyInputReader):
                                   shard_count):
     key_ranges = super(ConsistentKeyReader, cls)._split_input_from_namespace(
         app, namespace, entity_kind_name, shard_count)
+    assert len(key_ranges) == shard_count
 
 
 
 
-    if key_ranges:
+    try:
+      last_key_range_index = key_ranges.index(None) - 1
+    except ValueError:
+      last_key_range_index = shard_count - 1
+
+    if last_key_range_index != -1:
       key_ranges[0].key_start = None
       key_ranges[0].include_start = False
-      key_ranges[-1].key_end = None
-      key_ranges[-1].include_end = False
+      key_ranges[last_key_range_index].key_end = None
+      key_ranges[last_key_range_index].include_end = False
     return key_ranges
 
   @classmethod
@@ -1457,12 +1482,13 @@ class NamespaceInputReader(InputReader):
     return repr(self.ns_range)
 
 
-
-
 class RecordsReader(InputReader):
   """Reader to read a list of Files API file in records format.
 
-  All files are read in a single shard consequently.
+  The number of input shards can be specified by the SHARDS_PARAM
+  mapper parameter. Input files cannot be split, so there will be at most
+  one shard per file. Also the number of shards will not be reduced based on
+  the number of input files, so shards in always equals shards out.
   """
 
   FILE_PARAM = "file"
@@ -1544,6 +1570,7 @@ class RecordsReader(InputReader):
       A list of InputReaders.
     """
     params = mapper_spec.params
+    shard_count = mapper_spec.shard_count
 
     if cls.FILES_PARAM in params:
       filenames = params[cls.FILES_PARAM]
@@ -1552,7 +1579,14 @@ class RecordsReader(InputReader):
     else:
       filenames = [params[cls.FILE_PARAM]]
 
-    return [RecordsReader(filenames, 0)]
+    batch_list = [[] for _ in xrange(shard_count)]
+    for index, filename in enumerate(filenames):
+
+      batch_list[index % shard_count].append(filenames[index])
+
+
+    batch_list.sort(reverse=True, key=lambda x: len(x))
+    return [RecordsReader(batch, 0) for batch in batch_list]
 
   @classmethod
   def validate(cls, mapper_spec):
@@ -1574,4 +1608,7 @@ class RecordsReader(InputReader):
           (cls.FILES_PARAM, cls.FILE_PARAM))
 
   def __str__(self):
-    return "%s:%s" % (self._filenames, self._reader.tell())
+    position = 0
+    if self._reader:
+      position = self._reader.tell()
+    return "%s:%s" % (self._filenames, position)

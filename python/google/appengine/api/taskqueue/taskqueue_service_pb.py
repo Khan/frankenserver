@@ -6044,6 +6044,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
   payload_ = None
   has_retry_parameters_ = 0
   retry_parameters_ = None
+  has_first_try_usec_ = 0
+  first_try_usec_ = 0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -6259,6 +6261,19 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
 
   def has_retry_parameters(self): return self.has_retry_parameters_
 
+  def first_try_usec(self): return self.first_try_usec_
+
+  def set_first_try_usec(self, x):
+    self.has_first_try_usec_ = 1
+    self.first_try_usec_ = x
+
+  def clear_first_try_usec(self):
+    if self.has_first_try_usec_:
+      self.has_first_try_usec_ = 0
+      self.first_try_usec_ = 0
+
+  def has_first_try_usec(self): return self.has_first_try_usec_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6276,6 +6291,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (x.has_description()): self.set_description(x.description())
     if (x.has_payload()): self.mutable_payload().MergeFrom(x.payload())
     if (x.has_retry_parameters()): self.mutable_retry_parameters().MergeFrom(x.retry_parameters())
+    if (x.has_first_try_usec()): self.set_first_try_usec(x.first_try_usec())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6308,6 +6324,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if self.has_payload_ and self.payload_ != x.payload_: return 0
     if self.has_retry_parameters_ != x.has_retry_parameters_: return 0
     if self.has_retry_parameters_ and self.retry_parameters_ != x.retry_parameters_: return 0
+    if self.has_first_try_usec_ != x.has_first_try_usec_: return 0
+    if self.has_first_try_usec_ and self.first_try_usec_ != x.first_try_usec_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6349,6 +6367,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_description_): n += 2 + self.lengthString(len(self.description_))
     if (self.has_payload_): n += 2 + self.lengthString(self.payload_.ByteSize())
     if (self.has_retry_parameters_): n += 2 + self.lengthString(self.retry_parameters_.ByteSize())
+    if (self.has_first_try_usec_): n += 2 + self.lengthVarInt64(self.first_try_usec_)
     return n + 3
 
   def ByteSizePartial(self):
@@ -6374,6 +6393,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_description_): n += 2 + self.lengthString(len(self.description_))
     if (self.has_payload_): n += 2 + self.lengthString(self.payload_.ByteSizePartial())
     if (self.has_retry_parameters_): n += 2 + self.lengthString(self.retry_parameters_.ByteSizePartial())
+    if (self.has_first_try_usec_): n += 2 + self.lengthVarInt64(self.first_try_usec_)
     return n
 
   def Clear(self):
@@ -6391,6 +6411,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     self.clear_description()
     self.clear_payload()
     self.clear_retry_parameters()
+    self.clear_first_try_usec()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -6437,6 +6458,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(186)
       out.putVarInt32(self.retry_parameters_.ByteSize())
       self.retry_parameters_.OutputUnchecked(out)
+    if (self.has_first_try_usec_):
+      out.putVarInt32(192)
+      out.putVarInt64(self.first_try_usec_)
 
   def OutputPartial(self, out):
     if (self.has_task_name_):
@@ -6486,6 +6510,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(186)
       out.putVarInt32(self.retry_parameters_.ByteSizePartial())
       self.retry_parameters_.OutputPartial(out)
+    if (self.has_first_try_usec_):
+      out.putVarInt32(192)
+      out.putVarInt64(self.first_try_usec_)
 
   def TryMerge(self, d):
     while 1:
@@ -6539,6 +6566,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_retry_parameters().TryMerge(tmp)
         continue
+      if tt == 192:
+        self.set_first_try_usec(d.getVarInt64())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6580,6 +6610,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"retry_parameters <\n"
       res+=self.retry_parameters_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_first_try_usec_: res+=prefix+("first_try_usec: %s\n" % self.DebugFormatInt64(self.first_try_usec_))
     return res
 
 class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
@@ -6700,6 +6731,7 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
   kTaskdescription = 21
   kTaskpayload = 22
   kTaskretry_parameters = 23
+  kTaskfirst_try_usec = 24
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6726,7 +6758,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     21: "description",
     22: "payload",
     23: "retry_parameters",
-  }, 23)
+    24: "first_try_usec",
+  }, 24)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6753,7 +6786,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     21: ProtocolBuffer.Encoder.STRING,
     22: ProtocolBuffer.Encoder.STRING,
     23: ProtocolBuffer.Encoder.STRING,
-  }, 23, ProtocolBuffer.Encoder.MAX_TYPE)
+    24: ProtocolBuffer.Encoder.NUMERIC,
+  }, 24, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

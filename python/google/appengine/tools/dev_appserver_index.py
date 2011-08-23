@@ -33,6 +33,7 @@ from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_admin
 from google.appengine.api import yaml_errors
 from google.appengine.datastore import datastore_index
+from google.appengine.datastore import entity_pb
 
 import yaml
 
@@ -311,7 +312,10 @@ def SetupIndexes(app_id, root_path):
   created = 0
   for key, index in requested.iteritems():
     if key not in existing:
-      datastore_admin.CreateIndex(index)
+      id = datastore_admin.CreateIndex(index)
+      index.set_id(id)
+      index.set_state(entity_pb.CompositeIndex.READ_WRITE)
+      datastore_admin.UpdateIndex(index)
       created += 1
 
 

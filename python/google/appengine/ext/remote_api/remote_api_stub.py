@@ -451,7 +451,7 @@ class RemoteDatastoreStub(RemoteStub):
             'Transaction %d not found.' % (txid,))
 
       txdata = self.__transactions[txid]
-      assert (txdata[txid].thread_id ==
+      assert (txdata.thread_id ==
           thread.get_ident()), "Transactions are single-threaded."
       del self.__transactions[txid]
     finally:

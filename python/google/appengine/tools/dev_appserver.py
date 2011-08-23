@@ -4129,9 +4129,8 @@ def CreateRequestHandler(root_path,
         dispatcher = MatcherDispatcher(login_url,
                                        [implicit_matcher, explicit_matcher])
 
-        if require_indexes:
 
-          dev_appserver_index.SetupIndexes(config.application, root_path)
+        dev_appserver_index.SetupIndexes(config.application, root_path)
 
 
 

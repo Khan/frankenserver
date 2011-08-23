@@ -31,12 +31,14 @@
 import os
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import memcache
 from google.appengine.api.app_identity import app_identity_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 __all__ = ['BackendDeadlineExceeded',
            'BlobSizeTooLarge',
            'InternalError',
+           'InvalidScope',
            'Error',
            'create_rpc',
            'make_sign_blob_call',
@@ -48,6 +50,9 @@ __all__ = ['BackendDeadlineExceeded',
            'get_service_account_name',
            'get_application_id',
            'get_default_version_hostname',
+           'get_access_token',
+           'get_access_token_uncached',
+           'make_get_access_token_call',
           ]
 
 
@@ -55,8 +60,11 @@ _APP_IDENTITY_SERVICE_NAME = 'app_identity_service'
 _SIGN_FOR_APP_METHOD_NAME = 'SignForApp'
 _GET_CERTS_METHOD_NAME = 'GetPublicCertificatesForApp'
 _GET_SERVICE_ACCOUNT_NAME_METHOD_NAME = 'GetServiceAccountName'
+_GET_ACCESS_TOKEN_METHOD_NAME = 'GetAccessToken'
 _PARTITION_SEPARATOR = '~'
 _DOMAIN_SEPARATOR = ':'
+_MEMCACHE_KEY_PREFIX = '_ah_app_identity_'
+_MEMCACHE_NAMESPACE = '_ah_'
 
 
 class Error(Exception):
@@ -73,6 +81,10 @@ class BlobSizeTooLarge(Error):
 
 class InternalError(Error):
   """Unspecified internal failure."""
+
+
+class InvalidScope(Error):
+  """Invalid scope."""
 
 
 def _to_app_identity_error(error):
@@ -93,6 +105,8 @@ def _to_app_identity_error(error):
       BlobSizeTooLarge,
       app_identity_service_pb.AppIdentityServiceError.UNKNOWN_ERROR:
       InternalError,
+      app_identity_service_pb.AppIdentityServiceError.UNKNOWN_SCOPE:
+      InvalidScope,
       }
   if error.application_error in error_map:
     return error_map[error.application_error](error.error_detail)
@@ -148,9 +162,6 @@ def make_sign_blob_call(rpc, bytes_to_sign):
   request.set_bytes_to_sign(bytes_to_sign)
   response = app_identity_service_pb.SignForAppResponse()
 
-  if rpc.deadline is not None:
-    request.set_deadline(rpc.deadline)
-
   def signing_for_app_result(rpc):
     """Check success, handle exceptions, and return converted RPC result.
 
@@ -188,9 +199,6 @@ def make_get_public_certificates_call(rpc):
   """
   request = app_identity_service_pb.GetPublicCertificateForAppRequest()
   response = app_identity_service_pb.GetPublicCertificateForAppResponse()
-
-  if rpc.deadline is not None:
-    request.set_deadline(rpc.deadline)
 
   def get_certs_result(rpc):
     """Check success, handle exceptions, and return converted RPC result.
@@ -362,3 +370,98 @@ def get_default_version_hostname():
 
 
   return os.getenv('DEFAULT_VERSION_HOSTNAME')
+
+
+def make_get_access_token_call(rpc, scopes):
+  """OAuth2 access token to act on behalf of the application (async, uncached).
+
+  Most developers should use get_access_token instead.
+
+  Args:
+    rpc: RPC object.
+    scopes: The requested API scope string, or a list of strings.
+  Raises:
+    InvalidScope: if the scopes are unspecified or invalid.
+  """
+
+  request = app_identity_service_pb.GetAccessTokenRequest()
+  if not scopes:
+    raise InvalidScope('No scopes specified.')
+  if isinstance(scopes, basestring):
+    request.add_scope(scopes)
+  else:
+    for scope in scopes:
+      request.add_scope(scope)
+  response = app_identity_service_pb.GetAccessTokenResponse()
+
+  def get_access_token_result(rpc):
+    """Check success, handle exceptions, and return converted RPC result.
+
+    This method waits for the RPC if it has not yet finished, and calls the
+    post-call hooks on the first invocation.
+
+    Args:
+      rpc: A UserRPC object.
+
+    Returns:
+      Pair, Access token (string) and expiration time (seconds since the epoch).
+    """
+    assert rpc.service == _APP_IDENTITY_SERVICE_NAME, repr(rpc.service)
+    assert rpc.method == _GET_ACCESS_TOKEN_METHOD_NAME, repr(rpc.method)
+    try:
+      rpc.check_success()
+    except apiproxy_errors.ApplicationError, err:
+      raise _to_app_identity_error(err)
+
+    return response.access_token(), response.expiration_time()
+
+
+  rpc.make_call(_GET_ACCESS_TOKEN_METHOD_NAME, request,
+                response, get_access_token_result)
+
+
+def get_access_token_uncached(scopes, deadline=None):
+  """OAuth2 access token to act on behalf of the application (sync, uncached).
+
+  Most developers should use get_access_token instead.
+
+  Args:
+    scopes: The requested API scope string, or a list of strings.
+    deadline: Optional deadline in seconds for the operation; the default
+      is a system-specific deadline (typically 5 seconds).
+  Returns:
+    Pair, Access token (string) and expiration time (seconds since the epoch).
+  """
+  rpc = create_rpc(deadline)
+  make_get_access_token_call(rpc, scopes)
+  rpc.wait()
+  return rpc.get_result()
+
+
+def get_access_token(scopes):
+  """OAuth2 access token to act on behalf of the application, cached.
+
+  Generates and caches an OAuth2 access token for the service account for the
+  appengine application.
+
+  Each application has an associated Google account. This function returns
+  OAuth2 access token corresponding to the running app. Access tokens are safe
+  to cache and reuse until their expiry time as returned. This method will
+  do that using memcache.
+
+  Args:
+    scopes: The requested API scope string, or a list of strings.
+  Returns:
+    Pair, Access token (string) and expiration time (seconds since the epoch).
+  """
+
+  memcache_key = _MEMCACHE_KEY_PREFIX + str(scopes)
+  memcache_value = memcache.get(memcache_key, namespace=_MEMCACHE_NAMESPACE)
+  if memcache_value:
+    access_token, expires_at = memcache_value
+  else:
+    access_token, expires_at = get_access_token_uncached(scopes)
+
+    memcache.add(memcache_key, (access_token, expires_at), expires_at - 300,
+                 namespace=_MEMCACHE_NAMESPACE)
+  return access_token, expires_at

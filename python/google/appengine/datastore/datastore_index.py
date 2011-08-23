@@ -84,7 +84,7 @@ class Property(validation.Validated):
 class Index(validation.Validated):
   """Individual index definition.
 
-  Order of the properties properties determins a given indixes sort priority.
+  Order of the properties determines a given indexes sort priority.
 
   Attributes:
     kind: Datastore kind that index belongs to.
@@ -248,14 +248,14 @@ def Normalize(filters, orders):
 
 
 
-  if datastore_types._KEY_SPECIAL_PROPERTY in eq_properties:
+  if datastore_types.KEY_SPECIAL_PROPERTY in eq_properties:
     orders = []
 
 
 
   new_orders = []
   for o in orders:
-    if o.property() == datastore_types._KEY_SPECIAL_PROPERTY:
+    if o.property() == datastore_types.KEY_SPECIAL_PROPERTY:
       new_orders.append(o)
       break
     new_orders.append(o)
@@ -276,7 +276,7 @@ def RemoveNativelySupportedComponents(filters, orders):
 
 
   has_key_desc_order = False
-  if orders and orders[-1].property() == datastore_types._KEY_SPECIAL_PROPERTY:
+  if orders and orders[-1].property() == datastore_types.KEY_SPECIAL_PROPERTY:
     if orders[-1].direction() == ASCENDING:
       orders = orders[:-1]
     else:
@@ -290,11 +290,11 @@ def RemoveNativelySupportedComponents(filters, orders):
   if not has_key_desc_order:
     for f in filters:
       if (f.op() in INEQUALITY_OPERATORS and
-          f.property(0).name() != datastore_types._KEY_SPECIAL_PROPERTY):
+          f.property(0).name() != datastore_types.KEY_SPECIAL_PROPERTY):
         break
     else:
       filters = [f for f in filters
-          if f.property(0).name() != datastore_types._KEY_SPECIAL_PROPERTY]
+          if f.property(0).name() != datastore_types.KEY_SPECIAL_PROPERTY]
 
   return (filters, orders)
 
@@ -475,6 +475,67 @@ def CompositeIndexForQuery(query):
 
 
   return (required, kind, ancestor, tuple(props), len(eq_filters))
+
+def MinimalCompositeIndexForQuery(query, index_defs):
+  """Computes the minimal composite index for this query.
+
+  Unlike datastore_index.CompositeIndexForQuery, this function takes into
+  account indexes that already exist in the system.
+
+  Args:
+    query: the datastore_pb.Query to compute suggestions for
+    index_defs: a list of datastore_index.Index objects that
+      already exist.
+
+  Returns:
+    None if no index is needed, otherwise the minimal index in the form
+  (is_most_efficient, kind, ancestor, properties). Where is_most_efficient is a
+  bool denoting if the suggested index is the most efficient (i.e. the one
+  returned by datastore_index.CompositeIndexForQuery).
+  """
+
+  required, kind, ancestor, props, num_eq = CompositeIndexForQuery(query)
+
+  if not required:
+    return None
+
+
+  postfix = props[num_eq:]
+  eq_props = set(prop[0] for prop in props[:num_eq])
+  prefix_remaining = eq_props.copy()
+  ancestor_remaining = ancestor
+
+  for definition in index_defs:
+    if (kind != definition.kind or
+
+        (not ancestor and definition.ancestor)):
+      continue
+
+    _, _, index_props = IndexToKey(definition)
+
+    if index_props[-len(postfix):] != postfix:
+      continue
+
+
+    index_eq_props = set(prop[0] for prop in index_props[:-len(postfix)])
+    if index_eq_props - eq_props:
+      continue
+
+
+    prefix_remaining -= index_eq_props
+    if definition.ancestor:
+      ancestor_remaining = False
+
+    if not (prefix_remaining or ancestor_remaining):
+      return None
+
+  minimal_props = tuple((prop, datastore_pb.Query_Order.ASCENDING)
+                   for prop in sorted(prefix_remaining)) + postfix
+
+  return (minimal_props == props and ancestor_remaining == ancestor,
+          kind,
+          ancestor_remaining,
+          minimal_props)
 
 
 def IndexYamlForQuery(kind, ancestor, props):

@@ -254,8 +254,8 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   def Consistency_Name(cls, x): return cls._Consistency_NAMES.get(x, "")
   Consistency_Name = classmethod(Consistency_Name)
 
-  has_index_name_ = 0
-  index_name_ = ""
+  has_name_ = 0
+  name_ = ""
   has_consistency_ = 0
   consistency_ = 1
   has_namespace_ = 0
@@ -266,18 +266,18 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
 
-  def index_name(self): return self.index_name_
+  def name(self): return self.name_
 
-  def set_index_name(self, x):
-    self.has_index_name_ = 1
-    self.index_name_ = x
+  def set_name(self, x):
+    self.has_name_ = 1
+    self.name_ = x
 
-  def clear_index_name(self):
-    if self.has_index_name_:
-      self.has_index_name_ = 0
-      self.index_name_ = ""
+  def clear_name(self):
+    if self.has_name_:
+      self.has_name_ = 0
+      self.name_ = ""
 
-  def has_index_name(self): return self.has_index_name_
+  def has_name(self): return self.has_name_
 
   def consistency(self): return self.consistency_
 
@@ -321,15 +321,15 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_index_name()): self.set_index_name(x.index_name())
+    if (x.has_name()): self.set_name(x.name())
     if (x.has_consistency()): self.set_consistency(x.consistency())
     if (x.has_namespace()): self.set_namespace(x.namespace())
     if (x.has_version()): self.set_version(x.version())
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_index_name_ != x.has_index_name_: return 0
-    if self.has_index_name_ and self.index_name_ != x.index_name_: return 0
+    if self.has_name_ != x.has_name_: return 0
+    if self.has_name_ and self.name_ != x.name_: return 0
     if self.has_consistency_ != x.has_consistency_: return 0
     if self.has_consistency_ and self.consistency_ != x.consistency_: return 0
     if self.has_namespace_ != x.has_namespace_: return 0
@@ -340,15 +340,15 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_index_name_):
+    if (not self.has_name_):
       initialized = 0
       if debug_strs is not None:
-        debug_strs.append('Required field: index_name not set.')
+        debug_strs.append('Required field: name not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.index_name_))
+    n += self.lengthString(len(self.name_))
     if (self.has_consistency_): n += 1 + self.lengthVarInt64(self.consistency_)
     if (self.has_namespace_): n += 1 + self.lengthString(len(self.namespace_))
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
@@ -356,23 +356,23 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_index_name_):
+    if (self.has_name_):
       n += 1
-      n += self.lengthString(len(self.index_name_))
+      n += self.lengthString(len(self.name_))
     if (self.has_consistency_): n += 1 + self.lengthVarInt64(self.consistency_)
     if (self.has_namespace_): n += 1 + self.lengthString(len(self.namespace_))
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def Clear(self):
-    self.clear_index_name()
+    self.clear_name()
     self.clear_consistency()
     self.clear_namespace()
     self.clear_version()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
-    out.putPrefixedString(self.index_name_)
+    out.putPrefixedString(self.name_)
     if (self.has_consistency_):
       out.putVarInt32(16)
       out.putVarInt32(self.consistency_)
@@ -384,9 +384,9 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(self.version_)
 
   def OutputPartial(self, out):
-    if (self.has_index_name_):
+    if (self.has_name_):
       out.putVarInt32(10)
-      out.putPrefixedString(self.index_name_)
+      out.putPrefixedString(self.name_)
     if (self.has_consistency_):
       out.putVarInt32(16)
       out.putVarInt32(self.consistency_)
@@ -401,7 +401,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
-        self.set_index_name(d.getPrefixedString())
+        self.set_name(d.getPrefixedString())
         continue
       if tt == 16:
         self.set_consistency(d.getVarInt32())
@@ -420,7 +420,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_index_name_: res+=prefix+("index_name: %s\n" % self.DebugFormatString(self.index_name_))
+    if self.has_name_: res+=prefix+("name: %s\n" % self.DebugFormatString(self.name_))
     if self.has_consistency_: res+=prefix+("consistency: %s\n" % self.DebugFormatInt32(self.consistency_))
     if self.has_namespace_: res+=prefix+("namespace: %s\n" % self.DebugFormatString(self.namespace_))
     if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt32(self.version_))
@@ -430,14 +430,14 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kindex_name = 1
+  kname = 1
   kconsistency = 2
   knamespace = 3
   kversion = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    1: "index_name",
+    1: "name",
     2: "consistency",
     3: "namespace",
     4: "version",
@@ -1065,24 +1065,24 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
   has_index_spec_ = 0
 
   def __init__(self, contents=None):
-    self.document_id_ = []
+    self.doc_id_ = []
     self.index_spec_ = IndexSpec()
     if contents is not None: self.MergeFromString(contents)
 
-  def document_id_size(self): return len(self.document_id_)
-  def document_id_list(self): return self.document_id_
+  def doc_id_size(self): return len(self.doc_id_)
+  def doc_id_list(self): return self.doc_id_
 
-  def document_id(self, i):
-    return self.document_id_[i]
+  def doc_id(self, i):
+    return self.doc_id_[i]
 
-  def set_document_id(self, i, x):
-    self.document_id_[i] = x
+  def set_doc_id(self, i, x):
+    self.doc_id_[i] = x
 
-  def add_document_id(self, x):
-    self.document_id_.append(x)
+  def add_doc_id(self, x):
+    self.doc_id_.append(x)
 
-  def clear_document_id(self):
-    self.document_id_ = []
+  def clear_doc_id(self):
+    self.doc_id_ = []
 
   def index_spec(self): return self.index_spec_
 
@@ -1095,13 +1095,13 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.document_id_size()): self.add_document_id(x.document_id(i))
+    for i in xrange(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
     if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
 
   def Equals(self, x):
     if x is self: return 1
-    if len(self.document_id_) != len(x.document_id_): return 0
-    for e1, e2 in zip(self.document_id_, x.document_id_):
+    if len(self.doc_id_) != len(x.doc_id_): return 0
+    for e1, e2 in zip(self.doc_id_, x.doc_id_):
       if e1 != e2: return 0
     if self.has_index_spec_ != x.has_index_spec_: return 0
     if self.has_index_spec_ and self.index_spec_ != x.index_spec_: return 0
@@ -1118,36 +1118,36 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    n += 1 * len(self.document_id_)
-    for i in xrange(len(self.document_id_)): n += self.lengthString(len(self.document_id_[i]))
+    n += 1 * len(self.doc_id_)
+    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     n += self.lengthString(self.index_spec_.ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
     n = 0
-    n += 1 * len(self.document_id_)
-    for i in xrange(len(self.document_id_)): n += self.lengthString(len(self.document_id_[i]))
+    n += 1 * len(self.doc_id_)
+    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     if (self.has_index_spec_):
       n += 1
       n += self.lengthString(self.index_spec_.ByteSizePartial())
     return n
 
   def Clear(self):
-    self.clear_document_id()
+    self.clear_doc_id()
     self.clear_index_spec()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.document_id_)):
+    for i in xrange(len(self.doc_id_)):
       out.putVarInt32(10)
-      out.putPrefixedString(self.document_id_[i])
+      out.putPrefixedString(self.doc_id_[i])
     out.putVarInt32(18)
     out.putVarInt32(self.index_spec_.ByteSize())
     self.index_spec_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.document_id_)):
+    for i in xrange(len(self.doc_id_)):
       out.putVarInt32(10)
-      out.putPrefixedString(self.document_id_[i])
+      out.putPrefixedString(self.doc_id_[i])
     if (self.has_index_spec_):
       out.putVarInt32(18)
       out.putVarInt32(self.index_spec_.ByteSizePartial())
@@ -1157,7 +1157,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
-        self.add_document_id(d.getPrefixedString())
+        self.add_doc_id(d.getPrefixedString())
         continue
       if tt == 18:
         length = d.getVarInt32()
@@ -1174,10 +1174,10 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     cnt=0
-    for e in self.document_id_:
+    for e in self.doc_id_:
       elm=""
       if printElemNumber: elm="(%d)" % cnt
-      res+=prefix+("document_id%s: %s\n" % (elm, self.DebugFormatString(e)))
+      res+=prefix+("doc_id%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     if self.has_index_spec_:
       res+=prefix+"index_spec <\n"
@@ -1189,12 +1189,12 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kdocument_id = 1
+  kdoc_id = 1
   kindex_spec = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    1: "document_id",
+    1: "doc_id",
     2: "index_spec",
   }, 2)
 
@@ -1457,310 +1457,7 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
-class CreateIndexRequest(ProtocolBuffer.ProtocolMessage):
-  has_index_spec_ = 0
-  has_app_id_ = 0
-  app_id_ = ""
-
-  def __init__(self, contents=None):
-    self.index_spec_ = IndexSpec()
-    if contents is not None: self.MergeFromString(contents)
-
-  def index_spec(self): return self.index_spec_
-
-  def mutable_index_spec(self): self.has_index_spec_ = 1; return self.index_spec_
-
-  def clear_index_spec(self):self.has_index_spec_ = 0; self.index_spec_.Clear()
-
-  def has_index_spec(self): return self.has_index_spec_
-
-  def app_id(self): return self.app_id_
-
-  def set_app_id(self, x):
-    self.has_app_id_ = 1
-    self.app_id_ = x
-
-  def clear_app_id(self):
-    if self.has_app_id_:
-      self.has_app_id_ = 0
-      self.app_id_ = ""
-
-  def has_app_id(self): return self.has_app_id_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
-    if (x.has_app_id()): self.set_app_id(x.app_id())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_index_spec_ != x.has_index_spec_: return 0
-    if self.has_index_spec_ and self.index_spec_ != x.index_spec_: return 0
-    if self.has_app_id_ != x.has_app_id_: return 0
-    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_index_spec_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: index_spec not set.')
-    elif not self.index_spec_.IsInitialized(debug_strs): initialized = 0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(self.index_spec_.ByteSize())
-    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
-    return n + 1
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_index_spec_):
-      n += 1
-      n += self.lengthString(self.index_spec_.ByteSizePartial())
-    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
-    return n
-
-  def Clear(self):
-    self.clear_index_spec()
-    self.clear_app_id()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.index_spec_.ByteSize())
-    self.index_spec_.OutputUnchecked(out)
-    if (self.has_app_id_):
-      out.putVarInt32(26)
-      out.putPrefixedString(self.app_id_)
-
-  def OutputPartial(self, out):
-    if (self.has_index_spec_):
-      out.putVarInt32(10)
-      out.putVarInt32(self.index_spec_.ByteSizePartial())
-      self.index_spec_.OutputPartial(out)
-    if (self.has_app_id_):
-      out.putVarInt32(26)
-      out.putPrefixedString(self.app_id_)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 10:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_index_spec().TryMerge(tmp)
-        continue
-      if tt == 26:
-        self.set_app_id(d.getPrefixedString())
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_index_spec_:
-      res+=prefix+"index_spec <\n"
-      res+=self.index_spec_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kindex_spec = 1
-  kapp_id = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "index_spec",
-    3: "app_id",
-  }, 3)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-class CreateIndexResponse(ProtocolBuffer.ProtocolMessage):
-  has_status_ = 0
-  has_index_spec_ = 0
-  index_spec_ = None
-
-  def __init__(self, contents=None):
-    self.status_ = RequestStatus()
-    self.lazy_init_lock_ = thread.allocate_lock()
-    if contents is not None: self.MergeFromString(contents)
-
-  def status(self): return self.status_
-
-  def mutable_status(self): self.has_status_ = 1; return self.status_
-
-  def clear_status(self):self.has_status_ = 0; self.status_.Clear()
-
-  def has_status(self): return self.has_status_
-
-  def index_spec(self):
-    if self.index_spec_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.index_spec_ is None: self.index_spec_ = IndexSpec()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.index_spec_
-
-  def mutable_index_spec(self): self.has_index_spec_ = 1; return self.index_spec()
-
-  def clear_index_spec(self):
-
-    if self.has_index_spec_:
-      self.has_index_spec_ = 0;
-      if self.index_spec_ is not None: self.index_spec_.Clear()
-
-  def has_index_spec(self): return self.has_index_spec_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_status()): self.mutable_status().MergeFrom(x.status())
-    if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_status_ != x.has_status_: return 0
-    if self.has_status_ and self.status_ != x.status_: return 0
-    if self.has_index_spec_ != x.has_index_spec_: return 0
-    if self.has_index_spec_ and self.index_spec_ != x.index_spec_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_status_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: status not set.')
-    elif not self.status_.IsInitialized(debug_strs): initialized = 0
-    if (self.has_index_spec_ and not self.index_spec_.IsInitialized(debug_strs)): initialized = 0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(self.status_.ByteSize())
-    if (self.has_index_spec_): n += 1 + self.lengthString(self.index_spec_.ByteSize())
-    return n + 1
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_status_):
-      n += 1
-      n += self.lengthString(self.status_.ByteSizePartial())
-    if (self.has_index_spec_): n += 1 + self.lengthString(self.index_spec_.ByteSizePartial())
-    return n
-
-  def Clear(self):
-    self.clear_status()
-    self.clear_index_spec()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.status_.ByteSize())
-    self.status_.OutputUnchecked(out)
-    if (self.has_index_spec_):
-      out.putVarInt32(18)
-      out.putVarInt32(self.index_spec_.ByteSize())
-      self.index_spec_.OutputUnchecked(out)
-
-  def OutputPartial(self, out):
-    if (self.has_status_):
-      out.putVarInt32(10)
-      out.putVarInt32(self.status_.ByteSizePartial())
-      self.status_.OutputPartial(out)
-    if (self.has_index_spec_):
-      out.putVarInt32(18)
-      out.putVarInt32(self.index_spec_.ByteSizePartial())
-      self.index_spec_.OutputPartial(out)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 10:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_status().TryMerge(tmp)
-        continue
-      if tt == 18:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_index_spec().TryMerge(tmp)
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_status_:
-      res+=prefix+"status <\n"
-      res+=self.status_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_index_spec_:
-      res+=prefix+"index_spec <\n"
-      res+=self.index_spec_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kstatus = 1
-  kindex_spec = 2
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "status",
-    2: "index_spec",
-  }, 2)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-    2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
 class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
-
-
-  FULL_DOCUMENTS =    0
-  KEYS_ONLY    =    1
-
-  _ListMode_NAMES = {
-    0: "FULL_DOCUMENTS",
-    1: "KEYS_ONLY",
-  }
-
-  def ListMode_Name(cls, x): return cls._ListMode_NAMES.get(x, "")
-  ListMode_Name = classmethod(ListMode_Name)
-
   has_index_spec_ = 0
   has_start_doc_id_ = 0
   start_doc_id_ = ""
@@ -1768,8 +1465,8 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
   include_start_doc_ = 1
   has_limit_ = 0
   limit_ = 100
-  has_mode_ = 0
-  mode_ = 0
+  has_keys_only_ = 0
+  keys_only_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
@@ -1822,18 +1519,18 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
 
   def has_limit(self): return self.has_limit_
 
-  def mode(self): return self.mode_
+  def keys_only(self): return self.keys_only_
 
-  def set_mode(self, x):
-    self.has_mode_ = 1
-    self.mode_ = x
+  def set_keys_only(self, x):
+    self.has_keys_only_ = 1
+    self.keys_only_ = x
 
-  def clear_mode(self):
-    if self.has_mode_:
-      self.has_mode_ = 0
-      self.mode_ = 0
+  def clear_keys_only(self):
+    if self.has_keys_only_:
+      self.has_keys_only_ = 0
+      self.keys_only_ = 0
 
-  def has_mode(self): return self.has_mode_
+  def has_keys_only(self): return self.has_keys_only_
 
 
   def MergeFrom(self, x):
@@ -1842,7 +1539,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if (x.has_start_doc_id()): self.set_start_doc_id(x.start_doc_id())
     if (x.has_include_start_doc()): self.set_include_start_doc(x.include_start_doc())
     if (x.has_limit()): self.set_limit(x.limit())
-    if (x.has_mode()): self.set_mode(x.mode())
+    if (x.has_keys_only()): self.set_keys_only(x.keys_only())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1854,8 +1551,8 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if self.has_include_start_doc_ and self.include_start_doc_ != x.include_start_doc_: return 0
     if self.has_limit_ != x.has_limit_: return 0
     if self.has_limit_ and self.limit_ != x.limit_: return 0
-    if self.has_mode_ != x.has_mode_: return 0
-    if self.has_mode_ and self.mode_ != x.mode_: return 0
+    if self.has_keys_only_ != x.has_keys_only_: return 0
+    if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1873,7 +1570,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_doc_id_): n += 1 + self.lengthString(len(self.start_doc_id_))
     if (self.has_include_start_doc_): n += 2
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
-    if (self.has_mode_): n += 1 + self.lengthVarInt64(self.mode_)
+    if (self.has_keys_only_): n += 2
     return n + 1
 
   def ByteSizePartial(self):
@@ -1884,7 +1581,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_doc_id_): n += 1 + self.lengthString(len(self.start_doc_id_))
     if (self.has_include_start_doc_): n += 2
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
-    if (self.has_mode_): n += 1 + self.lengthVarInt64(self.mode_)
+    if (self.has_keys_only_): n += 2
     return n
 
   def Clear(self):
@@ -1892,7 +1589,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     self.clear_start_doc_id()
     self.clear_include_start_doc()
     self.clear_limit()
-    self.clear_mode()
+    self.clear_keys_only()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1907,9 +1604,9 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_):
       out.putVarInt32(32)
       out.putVarInt32(self.limit_)
-    if (self.has_mode_):
+    if (self.has_keys_only_):
       out.putVarInt32(40)
-      out.putVarInt32(self.mode_)
+      out.putBoolean(self.keys_only_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
@@ -1925,9 +1622,9 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_):
       out.putVarInt32(32)
       out.putVarInt32(self.limit_)
-    if (self.has_mode_):
+    if (self.has_keys_only_):
       out.putVarInt32(40)
-      out.putVarInt32(self.mode_)
+      out.putBoolean(self.keys_only_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1948,7 +1645,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
         self.set_limit(d.getVarInt32())
         continue
       if tt == 40:
-        self.set_mode(d.getVarInt32())
+        self.set_keys_only(d.getBoolean())
         continue
 
 
@@ -1965,7 +1662,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     if self.has_start_doc_id_: res+=prefix+("start_doc_id: %s\n" % self.DebugFormatString(self.start_doc_id_))
     if self.has_include_start_doc_: res+=prefix+("include_start_doc: %s\n" % self.DebugFormatBool(self.include_start_doc_))
     if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
-    if self.has_mode_: res+=prefix+("mode: %s\n" % self.DebugFormatInt32(self.mode_))
+    if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
     return res
 
 
@@ -1976,7 +1673,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
   kstart_doc_id = 2
   kinclude_start_doc = 3
   klimit = 4
-  kmode = 5
+  kkeys_only = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1984,7 +1681,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
     2: "start_doc_id",
     3: "include_start_doc",
     4: "limit",
-    5: "mode",
+    5: "keys_only",
   }, 5)
 
   _TYPES = _BuildTagLookupTable({
@@ -2296,7 +1993,7 @@ class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
   has_fetch_schema_ = 0
   fetch_schema_ = 0
   has_limit_ = 0
-  limit_ = 100
+  limit_ = 20
   has_namespace_ = 0
   namespace_ = ""
   has_start_index_name_ = 0
@@ -2333,7 +2030,7 @@ class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
   def clear_limit(self):
     if self.has_limit_:
       self.has_limit_ = 0
-      self.limit_ = 100
+      self.limit_ = 20
 
   def has_limit(self): return self.has_limit_
 
@@ -2887,7 +2584,7 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
   has_sort_expression_ = 0
   sort_expression_ = ""
   has_sort_descending_ = 0
-  sort_descending_ = 0
+  sort_descending_ = 1
   has_default_value_text_ = 0
   default_value_text_ = ""
   has_default_value_numeric_ = 0
@@ -2918,7 +2615,7 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
   def clear_sort_descending(self):
     if self.has_sort_descending_:
       self.has_sort_descending_ = 0
-      self.sort_descending_ = 0
+      self.sort_descending_ = 1
 
   def has_sort_descending(self): return self.has_sort_descending_
 
@@ -2974,26 +2671,22 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: sort_expression not set.')
-    if (not self.has_sort_descending_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: sort_descending not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.sort_expression_))
+    if (self.has_sort_descending_): n += 2
     if (self.has_default_value_text_): n += 1 + self.lengthString(len(self.default_value_text_))
     if (self.has_default_value_numeric_): n += 9
-    return n + 3
+    return n + 1
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_sort_expression_):
       n += 1
       n += self.lengthString(len(self.sort_expression_))
-    if (self.has_sort_descending_):
-      n += 2
+    if (self.has_sort_descending_): n += 2
     if (self.has_default_value_text_): n += 1 + self.lengthString(len(self.default_value_text_))
     if (self.has_default_value_numeric_): n += 9
     return n
@@ -3007,8 +2700,9 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.sort_expression_)
-    out.putVarInt32(16)
-    out.putBoolean(self.sort_descending_)
+    if (self.has_sort_descending_):
+      out.putVarInt32(16)
+      out.putBoolean(self.sort_descending_)
     if (self.has_default_value_text_):
       out.putVarInt32(34)
       out.putPrefixedString(self.default_value_text_)
@@ -3091,15 +2785,11 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
 
 
   GENERIC      =    0
-  HIT_COUNT    =    1
-  TIME_STAMP   =    2
-  MATCH_SCORER =    3
+  MATCH_SCORER =    2
 
   _Scorer_NAMES = {
     0: "GENERIC",
-    1: "HIT_COUNT",
-    2: "TIME_STAMP",
-    3: "MATCH_SCORER",
+    2: "MATCH_SCORER",
   }
 
   def Scorer_Name(cls, x): return cls._Scorer_NAMES.get(x, "")
@@ -3108,9 +2798,9 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
   has_scorer_ = 0
   scorer_ = 0
   has_limit_ = 0
-  limit_ = 0
-  has_escorer_parameters_ = 0
-  escorer_parameters_ = ""
+  limit_ = 1000
+  has_match_scorer_parameters_ = 0
+  match_scorer_parameters_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -3137,29 +2827,29 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
   def clear_limit(self):
     if self.has_limit_:
       self.has_limit_ = 0
-      self.limit_ = 0
+      self.limit_ = 1000
 
   def has_limit(self): return self.has_limit_
 
-  def escorer_parameters(self): return self.escorer_parameters_
+  def match_scorer_parameters(self): return self.match_scorer_parameters_
 
-  def set_escorer_parameters(self, x):
-    self.has_escorer_parameters_ = 1
-    self.escorer_parameters_ = x
+  def set_match_scorer_parameters(self, x):
+    self.has_match_scorer_parameters_ = 1
+    self.match_scorer_parameters_ = x
 
-  def clear_escorer_parameters(self):
-    if self.has_escorer_parameters_:
-      self.has_escorer_parameters_ = 0
-      self.escorer_parameters_ = ""
+  def clear_match_scorer_parameters(self):
+    if self.has_match_scorer_parameters_:
+      self.has_match_scorer_parameters_ = 0
+      self.match_scorer_parameters_ = ""
 
-  def has_escorer_parameters(self): return self.has_escorer_parameters_
+  def has_match_scorer_parameters(self): return self.has_match_scorer_parameters_
 
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_scorer()): self.set_scorer(x.scorer())
     if (x.has_limit()): self.set_limit(x.limit())
-    if (x.has_escorer_parameters()): self.set_escorer_parameters(x.escorer_parameters())
+    if (x.has_match_scorer_parameters()): self.set_match_scorer_parameters(x.match_scorer_parameters())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3167,8 +2857,8 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
     if self.has_scorer_ and self.scorer_ != x.scorer_: return 0
     if self.has_limit_ != x.has_limit_: return 0
     if self.has_limit_ and self.limit_ != x.limit_: return 0
-    if self.has_escorer_parameters_ != x.has_escorer_parameters_: return 0
-    if self.has_escorer_parameters_ and self.escorer_parameters_ != x.escorer_parameters_: return 0
+    if self.has_match_scorer_parameters_ != x.has_match_scorer_parameters_: return 0
+    if self.has_match_scorer_parameters_ and self.match_scorer_parameters_ != x.match_scorer_parameters_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3179,20 +2869,20 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_scorer_): n += 1 + self.lengthVarInt64(self.scorer_)
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
-    if (self.has_escorer_parameters_): n += 1 + self.lengthString(len(self.escorer_parameters_))
+    if (self.has_match_scorer_parameters_): n += 1 + self.lengthString(len(self.match_scorer_parameters_))
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_scorer_): n += 1 + self.lengthVarInt64(self.scorer_)
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
-    if (self.has_escorer_parameters_): n += 1 + self.lengthString(len(self.escorer_parameters_))
+    if (self.has_match_scorer_parameters_): n += 1 + self.lengthString(len(self.match_scorer_parameters_))
     return n
 
   def Clear(self):
     self.clear_scorer()
     self.clear_limit()
-    self.clear_escorer_parameters()
+    self.clear_match_scorer_parameters()
 
   def OutputUnchecked(self, out):
     if (self.has_scorer_):
@@ -3201,9 +2891,9 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_):
       out.putVarInt32(16)
       out.putVarInt32(self.limit_)
-    if (self.has_escorer_parameters_):
+    if (self.has_match_scorer_parameters_):
       out.putVarInt32(74)
-      out.putPrefixedString(self.escorer_parameters_)
+      out.putPrefixedString(self.match_scorer_parameters_)
 
   def OutputPartial(self, out):
     if (self.has_scorer_):
@@ -3212,9 +2902,9 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_):
       out.putVarInt32(16)
       out.putVarInt32(self.limit_)
-    if (self.has_escorer_parameters_):
+    if (self.has_match_scorer_parameters_):
       out.putVarInt32(74)
-      out.putPrefixedString(self.escorer_parameters_)
+      out.putPrefixedString(self.match_scorer_parameters_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3226,7 +2916,7 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
         self.set_limit(d.getVarInt32())
         continue
       if tt == 74:
-        self.set_escorer_parameters(d.getPrefixedString())
+        self.set_match_scorer_parameters(d.getPrefixedString())
         continue
 
 
@@ -3238,7 +2928,7 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_scorer_: res+=prefix+("scorer: %s\n" % self.DebugFormatInt32(self.scorer_))
     if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
-    if self.has_escorer_parameters_: res+=prefix+("escorer_parameters: %s\n" % self.DebugFormatString(self.escorer_parameters_))
+    if self.has_match_scorer_parameters_: res+=prefix+("match_scorer_parameters: %s\n" % self.DebugFormatString(self.match_scorer_parameters_))
     return res
 
 
@@ -3247,13 +2937,13 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
 
   kscorer = 1
   klimit = 2
-  kescorer_parameters = 9
+  kmatch_scorer_parameters = 9
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "scorer",
     2: "limit",
-    9: "escorer_parameters",
+    9: "match_scorer_parameters",
   }, 9)
 
   _TYPES = _BuildTagLookupTable({
@@ -3386,24 +3076,24 @@ class FieldSpec_Expression(ProtocolBuffer.ProtocolMessage):
 class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
-    self.field_name_ = []
+    self.name_ = []
     self.expression_ = []
     if contents is not None: self.MergeFromString(contents)
 
-  def field_name_size(self): return len(self.field_name_)
-  def field_name_list(self): return self.field_name_
+  def name_size(self): return len(self.name_)
+  def name_list(self): return self.name_
 
-  def field_name(self, i):
-    return self.field_name_[i]
+  def name(self, i):
+    return self.name_[i]
 
-  def set_field_name(self, i, x):
-    self.field_name_[i] = x
+  def set_name(self, i, x):
+    self.name_[i] = x
 
-  def add_field_name(self, x):
-    self.field_name_.append(x)
+  def add_name(self, x):
+    self.name_.append(x)
 
-  def clear_field_name(self):
-    self.field_name_ = []
+  def clear_name(self):
+    self.name_ = []
 
   def expression_size(self): return len(self.expression_)
   def expression_list(self): return self.expression_
@@ -3424,13 +3114,13 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    for i in xrange(x.field_name_size()): self.add_field_name(x.field_name(i))
+    for i in xrange(x.name_size()): self.add_name(x.name(i))
     for i in xrange(x.expression_size()): self.add_expression().CopyFrom(x.expression(i))
 
   def Equals(self, x):
     if x is self: return 1
-    if len(self.field_name_) != len(x.field_name_): return 0
-    for e1, e2 in zip(self.field_name_, x.field_name_):
+    if len(self.name_) != len(x.name_): return 0
+    for e1, e2 in zip(self.name_, x.name_):
       if e1 != e2: return 0
     if len(self.expression_) != len(x.expression_): return 0
     for e1, e2 in zip(self.expression_, x.expression_):
@@ -3445,37 +3135,37 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    n += 1 * len(self.field_name_)
-    for i in xrange(len(self.field_name_)): n += self.lengthString(len(self.field_name_[i]))
+    n += 1 * len(self.name_)
+    for i in xrange(len(self.name_)): n += self.lengthString(len(self.name_[i]))
     n += 2 * len(self.expression_)
     for i in xrange(len(self.expression_)): n += self.expression_[i].ByteSize()
     return n
 
   def ByteSizePartial(self):
     n = 0
-    n += 1 * len(self.field_name_)
-    for i in xrange(len(self.field_name_)): n += self.lengthString(len(self.field_name_[i]))
+    n += 1 * len(self.name_)
+    for i in xrange(len(self.name_)): n += self.lengthString(len(self.name_[i]))
     n += 2 * len(self.expression_)
     for i in xrange(len(self.expression_)): n += self.expression_[i].ByteSizePartial()
     return n
 
   def Clear(self):
-    self.clear_field_name()
+    self.clear_name()
     self.clear_expression()
 
   def OutputUnchecked(self, out):
-    for i in xrange(len(self.field_name_)):
+    for i in xrange(len(self.name_)):
       out.putVarInt32(10)
-      out.putPrefixedString(self.field_name_[i])
+      out.putPrefixedString(self.name_[i])
     for i in xrange(len(self.expression_)):
       out.putVarInt32(19)
       self.expression_[i].OutputUnchecked(out)
       out.putVarInt32(20)
 
   def OutputPartial(self, out):
-    for i in xrange(len(self.field_name_)):
+    for i in xrange(len(self.name_)):
       out.putVarInt32(10)
-      out.putPrefixedString(self.field_name_[i])
+      out.putPrefixedString(self.name_[i])
     for i in xrange(len(self.expression_)):
       out.putVarInt32(19)
       self.expression_[i].OutputPartial(out)
@@ -3485,7 +3175,7 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
-        self.add_field_name(d.getPrefixedString())
+        self.add_name(d.getPrefixedString())
         continue
       if tt == 19:
         self.add_expression().TryMerge(d)
@@ -3499,10 +3189,10 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     cnt=0
-    for e in self.field_name_:
+    for e in self.name_:
       elm=""
       if printElemNumber: elm="(%d)" % cnt
-      res+=prefix+("field_name%s: %s\n" % (elm, self.DebugFormatString(e)))
+      res+=prefix+("name%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     cnt=0
     for e in self.expression_:
@@ -3518,14 +3208,14 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kfield_name = 1
+  kname = 1
   kExpressionGroup = 2
   kExpressionname = 3
   kExpressionexpression = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    1: "field_name",
+    1: "name",
     2: "Expression",
     3: "name",
     4: "expression",
@@ -3568,9 +3258,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   has_cursor_type_ = 0
   cursor_type_ = 0
   has_limit_ = 0
-  limit_ = 0
+  limit_ = 20
   has_matched_count_accuracy_ = 0
-  matched_count_accuracy_ = 0
+  matched_count_accuracy_ = 100
   has_scorer_spec_ = 0
   scorer_spec_ = None
   has_field_spec_ = 0
@@ -3651,7 +3341,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   def clear_limit(self):
     if self.has_limit_:
       self.has_limit_ = 0
-      self.limit_ = 0
+      self.limit_ = 20
 
   def has_limit(self): return self.has_limit_
 
@@ -3664,7 +3354,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
   def clear_matched_count_accuracy(self):
     if self.has_matched_count_accuracy_:
       self.has_matched_count_accuracy_ = 0
-      self.matched_count_accuracy_ = 0
+      self.matched_count_accuracy_ = 100
 
   def has_matched_count_accuracy(self): return self.has_matched_count_accuracy_
 
@@ -3772,10 +3462,6 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: query not set.')
-    if (not self.has_limit_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: limit not set.')
     for p in self.sort_spec_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_scorer_spec_ and not self.scorer_spec_.IsInitialized(debug_strs)): initialized = 0
@@ -3789,13 +3475,13 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_cursor_type_): n += 1 + self.lengthVarInt64(self.cursor_type_)
-    n += self.lengthVarInt64(self.limit_)
+    if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
     if (self.has_matched_count_accuracy_): n += 1 + self.lengthVarInt64(self.matched_count_accuracy_)
     n += 1 * len(self.sort_spec_)
     for i in xrange(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSize())
     if (self.has_scorer_spec_): n += 1 + self.lengthString(self.scorer_spec_.ByteSize())
     if (self.has_field_spec_): n += 1 + self.lengthString(self.field_spec_.ByteSize())
-    return n + 3
+    return n + 2
 
   def ByteSizePartial(self):
     n = 0
@@ -3808,9 +3494,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_cursor_type_): n += 1 + self.lengthVarInt64(self.cursor_type_)
-    if (self.has_limit_):
-      n += 1
-      n += self.lengthVarInt64(self.limit_)
+    if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
     if (self.has_matched_count_accuracy_): n += 1 + self.lengthVarInt64(self.matched_count_accuracy_)
     n += 1 * len(self.sort_spec_)
     for i in xrange(len(self.sort_spec_)): n += self.lengthString(self.sort_spec_[i].ByteSizePartial())
@@ -3842,8 +3526,9 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_type_):
       out.putVarInt32(40)
       out.putVarInt32(self.cursor_type_)
-    out.putVarInt32(48)
-    out.putVarInt32(self.limit_)
+    if (self.has_limit_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.limit_)
     if (self.has_matched_count_accuracy_):
       out.putVarInt32(56)
       out.putVarInt32(self.matched_count_accuracy_)
@@ -4624,4 +4309,4 @@ class SearchResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
 
-__all__ = ['SearchServiceError','RequestStatus','IndexSpec','IndexMetadata','IndexDocumentParams','IndexDocumentRequest','IndexDocumentResponse','DeleteDocumentParams','DeleteDocumentRequest','DeleteDocumentResponse','CreateIndexRequest','CreateIndexResponse','ListDocumentsParams','ListDocumentsRequest','ListDocumentsResponse','ListIndexesParams','ListIndexesRequest','ListIndexesResponse','SortSpec','ScorerSpec','FieldSpec','FieldSpec_Expression','SearchParams','SearchRequest','SearchResult','SearchResponse']
+__all__ = ['SearchServiceError','RequestStatus','IndexSpec','IndexMetadata','IndexDocumentParams','IndexDocumentRequest','IndexDocumentResponse','DeleteDocumentParams','DeleteDocumentRequest','DeleteDocumentResponse','ListDocumentsParams','ListDocumentsRequest','ListDocumentsResponse','ListIndexesParams','ListIndexesRequest','ListIndexesResponse','SortSpec','ScorerSpec','FieldSpec','FieldSpec_Expression','SearchParams','SearchRequest','SearchResult','SearchResponse']

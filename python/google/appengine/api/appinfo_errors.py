@@ -85,17 +85,26 @@ class BackendNotFound(Error):
 class DuplicateBackend(Error):
   """Raised when a backend is found more than once in 'backends'."""
 
+
 class MissingApiConfig(Error):
   """Raised if an api_endpoint handler is configured but no api_config."""
+
 
 class RuntimeDoesNotSupportLibraries(Error):
   """Raised when 'libraries' is used in a runtime that does not support it."""
 
+
 class DuplicateLibrary(Error):
   """Raised when a library is found more than once in 'libraries'."""
+
 
 class InvalidLibraryVersion(Error):
   """Raised when a library uses a version that isn't supported."""
 
+
 class InvalidLibraryName(Error):
   """Raised when a library is specified that isn't supported."""
+
+
+class ThreadsafeWithCgiHandler(Error):
+  """Raised when threadsafe is enabled with a CGI handler specified."""

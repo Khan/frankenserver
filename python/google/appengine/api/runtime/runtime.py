@@ -26,6 +26,10 @@
 
 
 
+from __future__ import with_statement
+
+
+import threading
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api.system import system_service_pb
@@ -66,13 +70,16 @@ def _GetSystemStats():
   return response
 
 
+__shutdown_mutex = threading.Lock()
 __shutdown_hook = None
 __shuting_down = False
 
 
 def is_shutting_down():
   """Returns true if the server is shutting down."""
-  return __shuting_down
+  with __shutdown_mutex:
+    shutting_down = __shuting_down
+  return shutting_down
 
 
 def set_shutdown_hook(hook):
@@ -97,8 +104,9 @@ def set_shutdown_hook(hook):
   if hook is not None and not callable(hook):
     raise TypeError("hook must be callable, got %s" % hook.__class__)
   global __shutdown_hook
-  old_hook = __shutdown_hook
-  __shutdown_hook = hook
+  with __shutdown_mutex:
+    old_hook = __shutdown_hook
+    __shutdown_hook = hook
   return old_hook
 
 
@@ -106,6 +114,8 @@ def __BeginShutdown():
 
 
   global __shuting_down
-  __shuting_down = True
-  if __shutdown_hook:
-    __shutdown_hook()
+  with __shutdown_mutex:
+    __shuting_down = True
+    shutdown_hook = __shutdown_hook
+  if shutdown_hook:
+    shutdown_hook()

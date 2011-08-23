@@ -44,6 +44,7 @@ __all__ = ['AbstractAdapter',
            'IdentityAdapter',
            'MultiRpc',
            'TransactionalConnection',
+           'TransactionOptions',
           ]
 
 
@@ -51,7 +52,6 @@ __all__ = ['AbstractAdapter',
 
 import collections
 import logging
-import os
 
 
 from google.appengine.datastore import entity_pb
@@ -120,6 +120,11 @@ class AbstractAdapter(object):
     """Turn an entity_pb.EntityProto into a user-level entity."""
     raise NotImplementedError
 
+  def pb_to_index(self, pb):
+   """Turn an entity_pb.CompositeIndex into a user-level Index
+   representation."""
+   raise NotImplementedError
+
   def pb_to_query_result(self, pb, keys_only=False):
     """Turn an entity_pb.EntityProto into a user-level query result."""
     if keys_only:
@@ -163,6 +168,9 @@ class IdentityAdapter(AbstractAdapter):
   def entity_to_pb(self, entity):
     return entity
 
+  def pb_to_index(self, pb):
+    return pb
+
 
 class ConfigOption(object):
   """A descriptor for a Configuration option.
@@ -203,13 +211,16 @@ class ConfigOption(object):
       datastore_errors.BadArgumentError if a given in object is not a
     configuration object.
     """
+    name = self.validator.__name__
     for config in args:
-      if isinstance(config, self._cls):
-        if self.validator.__name__ in config._values:
-          return config._values[self.validator.__name__]
-      elif config is not None and not isinstance(config, BaseConfiguration):
+
+      if isinstance(config, (type(None), apiproxy_stub_map.UserRPC)):
+        pass
+      elif not isinstance(config, BaseConfiguration):
         raise datastore_errors.BadArgumentError(
             'invalid config argument (%r)' % (config,))
+      elif name in config._values and self is config._options[name]:
+        return config._values[name]
     return None
 
 
@@ -222,6 +233,10 @@ class _ConfigurationMetaClass(type):
   """
 
   def __new__(metaclass, classname, bases, classDict):
+    if classname == '_MergedConfiguration':
+
+      return type.__new__(metaclass, classname, bases, classDict)
+
     classDict['__slots__'] = ['_values']
     cls = type.__new__(metaclass, classname, bases, classDict)
     if object not in bases:
@@ -234,6 +249,8 @@ class _ConfigurationMetaClass(type):
           cls._options[option] = value
           value._cls = cls
     return cls
+
+
 
 
 class BaseConfiguration(object):
@@ -285,10 +302,12 @@ class BaseConfiguration(object):
         return config
 
       for key, value in config._values.iteritems():
-        kwargs.setdefault(key, value)
+
+        if issubclass(cls, config._options[key]._cls):
+          kwargs.setdefault(key, value)
     else:
       raise datastore_errors.BadArgumentError(
-        'config argument should be Configuration (%r)' % (config,))
+          'config argument should be Configuration (%r)' % (config,))
 
     obj = super(BaseConfiguration, cls).__new__(cls)
     obj._values = {}
@@ -304,11 +323,9 @@ class BaseConfiguration(object):
   def __eq__(self, other):
     if self is other:
       return True
-
-    if (not isinstance(other, self.__class__) and
-        not isinstance(self, other.__class__)):
+    if not isinstance(other, BaseConfiguration):
       return NotImplemented
-    return self._values == other._values
+    return self._options == other._options and self._values == other._values
 
   def __ne__(self, other):
     equal = self.__eq__(other)
@@ -316,11 +333,21 @@ class BaseConfiguration(object):
       return equal
     return not equal
 
+  def __hash__(self):
+    return (hash(frozenset(self._values.iteritems())) ^
+            hash(frozenset(self._options.iteritems())))
+
+  def __repr__(self):
+    args = []
+    for key_value in sorted(self._values.iteritems()):
+      args.append('%s=%r' % key_value)
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(args))
+
   def __is_stronger(self, **kwargs):
     """Internal helper to ask whether a configuration is stronger than another.
 
-    A configuration is stronger when every value it contains is equal to or
-    missing from the values in the kwargs.
+    A configuration is stronger when it contains every name/value pair in
+    kwargs.
 
     Example: a configuration with:
       (deadline=5, on_configuration=None, read_policy=EVENTUAL_CONSISTENCY)
@@ -344,6 +371,23 @@ class BaseConfiguration(object):
         return False
     return True
 
+  @classmethod
+  def is_configuration(cls, obj):
+    """True if configuration obj handles all options of this class.
+
+    Use this method rather than isinstance(obj, cls) to test if a
+    configuration object handles the options of cls (is_configuration
+    is handled specially for results of merge which may handle the options
+    of unrelated configuration classes).
+
+    Args:
+      obj: the object to test.
+    """
+    return isinstance(obj, BaseConfiguration) and obj._is_configuration(cls)
+
+  def _is_configuration(self, cls):
+    return isinstance(self, cls)
+
   def merge(self, config):
     """Merge two configurations.
 
@@ -355,8 +399,13 @@ class BaseConfiguration(object):
         be omitted).
 
     Returns:
-      Either a new Configuration object or (if it would be equivalent)
+      Either a new configuration object or (if it would be equivalent)
       self or the config argument unchanged, but never None.
+
+    Raises:
+      BadArgumentError if self or config are of configurations classes
+      with conflicting options (i.e. the same option name defined in
+      two different configuration classes).
     """
     if config is None or config is self:
 
@@ -364,21 +413,89 @@ class BaseConfiguration(object):
 
 
 
-    if isinstance(config, self.__class__):
-      for key in self._values:
-        if key not in config._values:
-          break
-      else:
-        return config
-
-    if self.__is_stronger(**config._values):
-      return self
+    if not (isinstance(config, _MergedConfiguration) or
+            isinstance(self, _MergedConfiguration)):
 
 
-    obj = type(self)()
-    obj._values = self._values.copy()
-    obj._values.update(config._values)
+
+      if isinstance(config, self.__class__):
+        for key in self._values:
+          if key not in config._values:
+            break
+        else:
+          return config
+      if isinstance(self, config.__class__):
+        if  self.__is_stronger(**config._values):
+          return self
+
+
+      def _quick_merge(obj):
+        obj._values = self._values.copy()
+        obj._values.update(config._values)
+        return obj
+
+      if isinstance(config, self.__class__):
+        return _quick_merge(type(config)())
+      if isinstance(self, config.__class__):
+        return _quick_merge(type(self)())
+
+
+    return _MergedConfiguration(config, self)
+
+
+class _MergedConfiguration(BaseConfiguration):
+  """Helper class to handle merges of configurations.
+
+  Instances of _MergedConfiguration are in some sense "subclasses" of the
+  argument configurations, i.e.:
+  - they handle exactly the configuration options of the argument configurations
+  - the value of these options is taken in priority order from the arguments
+  - isinstance is true on this configuration if it is true on any of the
+    argument configurations
+  This class raises an exception if two argument configurations have an option
+  with the same name but coming from a different configuration class.
+  """
+  __slots__ = ['_values', '_configs', '_options', '_classes']
+
+  def __new__(cls, *configs):
+    obj = super(BaseConfiguration, cls).__new__(cls)
+    obj._configs = configs
+
+
+    obj._options = {}
+    for config in configs:
+      for name, option in config._options.iteritems():
+        if name in obj._options:
+          if option is not obj._options[name]:
+            error = ("merge conflict on '%s' from '%s' and '%s'" %
+                     (name, option._cls.__name__,
+                      obj._options[name]._cls.__name__))
+            raise datastore_errors.BadArgumentError(error)
+        obj._options[name] = option
+
+    obj._values = {}
+    for config in reversed(configs):
+      for name, value in config._values.iteritems():
+        obj._values[name] = value
+
     return obj
+
+  def __repr__(self):
+    return '%s%r' % (self.__class__.__name__, tuple(self._configs))
+
+  def _is_configuration(self, cls):
+    for config in self._configs:
+      if config._is_configuration(cls):
+        return True
+    return False
+
+  def __getattr__(self, name):
+    if name in self._options:
+      if name in self._values:
+        return self._values[name]
+      else:
+        return None
+    raise AttributeError("Configuration has no attribute '%s'" % (name,))
 
 
 class Configuration(BaseConfiguration):
@@ -802,7 +919,7 @@ class BaseConnection(object):
 
     if config is None:
       config = Configuration()
-    elif not isinstance(config, Configuration):
+    elif not Configuration.is_configuration(config):
       raise datastore_errors.BadArgumentError(
         'invalid config argument (%r)' % (config,))
     self.__config = config
@@ -927,15 +1044,6 @@ class BaseConnection(object):
 
 
 
-
-  def _check_entity_group(self, key_pbs):
-    pass
-
-  def _update_entity_group(self, key_pbs):
-    pass
-
-  def _get_transaction(self, request=None):
-    return None
 
   def create_rpc(self, config=None):
     """Create an RPC object using the configuration parameters.
@@ -1239,7 +1347,6 @@ class BaseConnection(object):
 
     def make_get_call(req, pbs, user_data=None):
       req.key_list().extend(pbs)
-      self._check_entity_group(req.key_list())
       self._set_request_transaction(req)
       resp = datastore_pb.GetResponse()
       return self.make_rpc_call(config, 'Get', req, resp,
@@ -1249,7 +1356,7 @@ class BaseConnection(object):
     self._set_request_read_policy(base_req, config)
 
 
-    if isinstance(config, apiproxy_stub_map.UserRPC):
+    if isinstance(config, apiproxy_stub_map.UserRPC) or len(keys) <= 1:
       pbs = [self.__adapter.key_to_pb(key) for key in keys]
       return make_get_call(base_req, pbs, extra_hook)
 
@@ -1305,6 +1412,40 @@ class BaseConnection(object):
       entities = rpc.user_data(entities)
     return entities
 
+  def get_indexes(self):
+    """Synchronous get indexes operation.
+
+    Returns:
+      user-level indexes representation
+    """
+    return self.async_get_indexes(None).get_result()
+
+  def async_get_indexes(self, config, extra_hook=None, _app=None):
+    """Asynchronous get indexes operation.
+
+    Args:
+      config: A Configuration object or None.  Defaults are taken from
+        the connection's default configuration.
+      extra_hook: Optional function to be called once the RPC has completed.
+
+    Returns:
+      A MultiRpc object.
+    """
+    req = api_base_pb.StringProto()
+    req.set_value(datastore_types.ResolveAppId(_app))
+    resp = datastore_pb.CompositeIndices()
+    return self.make_rpc_call(config, 'GetIndices', req, resp,
+                                self.__get_indexes_hook, extra_hook)
+
+  def __get_indexes_hook(self, rpc):
+    """Internal method used as get_result_hook for Get operation."""
+    self.check_rpc_success(rpc)
+    indexes = [self.__adapter.pb_to_index(index)
+               for index in rpc.response.index_list()]
+    if rpc.user_data:
+      indexes = rpc.user_data(indexes)
+    return indexes
+
   def put(self, entities):
     """Synchronous Put operation.
 
@@ -1339,7 +1480,6 @@ class BaseConnection(object):
 
     def make_put_call(req, pbs, user_data=None):
       req.entity_list().extend(pbs)
-      self._check_entity_group(e.key() for e in req.entity_list())
       self._set_request_transaction(req)
       resp = datastore_pb.PutResponse()
       return self.make_rpc_call(config, 'Put', req, resp,
@@ -1347,16 +1487,14 @@ class BaseConnection(object):
 
 
     base_req = datastore_pb.PutRequest()
+    if Configuration.force_writes(config, self.__config):
+      base_req.set_force(True)
 
 
-    if isinstance(config, apiproxy_stub_map.UserRPC):
-      if self.__config.force_writes:
-        base_req.set_force(True)
+    if isinstance(config, apiproxy_stub_map.UserRPC) or len(entities) <= 1:
       pbs = [self.__adapter.entity_to_pb(entity) for entity in entities]
       return make_put_call(base_req, pbs, extra_hook)
 
-    if Configuration.force_writes(config, self.__config):
-      base_req.set_force(True)
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_put_entities(config, self.__config) or
                  self.MAX_PUT_ENTITIES)
@@ -1383,7 +1521,6 @@ class BaseConnection(object):
   def __put_hook(self, rpc):
     """Internal method used as get_result_hook for Put operation."""
     self.check_rpc_success(rpc)
-    self._update_entity_group(rpc.response.key_list())
     keys = [self.__adapter.pb_to_key(pb)
             for pb in rpc.response.key_list()]
 
@@ -1418,7 +1555,6 @@ class BaseConnection(object):
 
     def make_delete_call(req, pbs, user_data=None):
       req.key_list().extend(pbs)
-      self._check_entity_group(req.key_list())
       self._set_request_transaction(req)
       resp = datastore_pb.DeleteResponse()
       return self.make_rpc_call(config, 'Delete', req, resp,
@@ -1426,16 +1562,14 @@ class BaseConnection(object):
 
 
     base_req = datastore_pb.DeleteRequest()
+    if Configuration.force_writes(config, self.__config):
+      base_req.set_force(True)
 
 
-    if isinstance(config, apiproxy_stub_map.UserRPC):
-      if self.__config.force_writes:
-        base_req.set_force(True)
+    if isinstance(config, apiproxy_stub_map.UserRPC) or len(keys) <= 1:
       pbs = [self.__adapter.key_to_pb(key) for key in keys]
       return make_delete_call(base_req, pbs, extra_hook)
 
-    if Configuration.force_writes(config, self.__config):
-      base_req.set_force(True)
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_delete_keys(config, self.__config) or
                  self.MAX_DELETE_KEYS)
@@ -1487,7 +1621,7 @@ class BaseConnection(object):
     """Asynchronous BeginTransaction operation.
 
     Args:
-      config: A Configuration object or None.  Defaults are taken from
+      config: A configuration object or None.  Defaults are taken from
         the connection's default configuration.
       app: Application ID.
 
@@ -1500,6 +1634,8 @@ class BaseConnection(object):
         (app,))
     req = datastore_pb.BeginTransactionRequest()
     req.set_app(app)
+    if TransactionOptions.allow_multiple_entity_groups(config, self.__config):
+      req.set_allow_multiple_eg(True)
     resp = datastore_pb.Transaction()
     rpc = self.make_rpc_call(config, 'BeginTransaction', req, resp,
                              self.__begin_transaction_hook)
@@ -1535,20 +1671,19 @@ class Connection(BaseConnection):
 
 
 
-  def new_transaction(self):
+  def new_transaction(self, config=None):
     """Create a new transactional connection based on this one.
 
     This is different from, and usually preferred over, the
     begin_transaction() method; new_transaction() returns a new
-    TransactionalConnection object which will begin the transaction
-    lazily.  This is necessary because the low-level
-    begin_transaction() method needs the app id which will be gleaned
-    from the transaction's entity group, which in turn is gleaned from
-    the first key used in the transaction.
-    """
+    TransactionalConnection object.
 
-    return TransactionalConnection(adapter=self.__adapter,
-                                   config=self.__config)
+    Args:
+      config: A configuration object for the new connection, merged
+        with this connection's config.
+    """
+    config = self.__config.merge(config)
+    return TransactionalConnection(adapter=self.__adapter, config=config)
 
 
 
@@ -1623,6 +1758,47 @@ class Connection(BaseConnection):
     return pair
 
 
+class TransactionOptions(Configuration):
+  """An immutable class that contains options for a transaction."""
+
+  @ConfigOption
+  def allow_multiple_entity_groups(value):
+    """If the transaction can cover multiple entity groups.
+
+    Raises: datastore_errors.BadArgumentError if value is not a bool.
+    """
+    if not isinstance(value, bool):
+      raise datastore_errors.BadArgumentError(
+          'allow_multiple_entity_groups argument should be bool (%r)' %
+          (value,))
+    return value
+
+  @ConfigOption
+  def retries(value):
+    """How many retries to attempt on the transaction.
+
+    Raises: datastore_errors.BadArgumentError if value is not an integer or
+      is not greater than zero.
+    """
+    datastore_types.ValidateInteger(value,
+                                    'retries',
+                                    datastore_errors.BadArgumentError,
+                                    zero_ok=True)
+    return value
+
+  @ConfigOption
+  def app(value):
+    """The application in which to perform the transaction.
+
+    Raises: datastore_errors.BadArgumentError if value is not a string
+      or is the empty string.
+    """
+    datastore_types.ValidateString(value,
+                                   'app',
+                                   datastore_errors.BadArgumentError)
+    return value
+
+
 class TransactionalConnection(BaseConnection):
   """A connection specific to one transaction.
 
@@ -1643,45 +1819,27 @@ class TransactionalConnection(BaseConnection):
         default IdentityAdapter.
       config: Optional Configuration object.
       transaction: Optional datastore_db.Transaction object.
-      entity_group: Optional user-level key to be used as entity group
-        constraining the transaction.  If specified, must be a
-        top-level key.
+      entity_group: Deprecated, do not use.
     """
     super(TransactionalConnection, self).__init__(adapter=adapter,
                                                   config=config)
     self.__adapter = self.adapter
-    if transaction is not None:
+    if transaction is None:
+      app = TransactionOptions.app(self.config)
+      app = datastore_types.ResolveAppId(TransactionOptions.app(self.config))
+      self.__transaction_rpc = self.async_begin_transaction(None, app)
+    else:
       if not isinstance(transaction, datastore_pb.Transaction):
         raise datastore_errors.BadArgumentError(
           'Invalid transaction (%r)' % (transaction,))
-    self.__transaction = transaction
-    self.__entity_group_pb = None
-    if entity_group is not None:
-      self.__entity_group_pb = self.__adapter.key_to_pb(entity_group)
-      if self.__entity_group_pb.path().element_list()[1:]:
-        raise datastore_errors.BadArgumentError(
-          'Entity group must be a toplevel key')
-      if transaction is not None:
-        if self.__entity_group_pb.app() != transaction.app():
-          raise datastore_errors.BadArgumentError(
-            'Entity group app (%s) does not match transaction app (%s)' %
-            (self.__entity_group_pb.app(), transaction.app()))
+      self.__transaction = transaction
+      self.__transaction_rpc = None
     self.__finished = False
 
   def _get_base_size(self, base_req):
     """Internal helper: return size in bytes plus room for transaction."""
-    trans = self.__transaction
-    if trans is None:
-
-
-
-
-      incr_size = 1000
-    else:
-
-      incr_size = trans.lengthString(trans.ByteSize()) + 1
     return (super(TransactionalConnection, self)._get_base_size(base_req) +
-            incr_size)
+            self.transaction.lengthString(self.transaction.ByteSize()) + 1)
 
   @property
   def finished(self):
@@ -1689,11 +1847,10 @@ class TransactionalConnection(BaseConnection):
 
   @property
   def transaction(self):
+    if self.__transaction_rpc is not None:
+      self.__transaction = self.__transaction_rpc.get_result()
+      self.__transaction_rpc = None
     return self.__transaction
-
-  @property
-  def entity_group(self):
-    return self.adapter.pb_to_key(self.__entity_group_pb)
 
   def _set_request_transaction(self, request):
     """Set the current transaction on a request.
@@ -1708,133 +1865,12 @@ class TransactionalConnection(BaseConnection):
     Returns:
       A datastore_pb.Transaction object or None.
     """
-    transaction = self._get_transaction(request)
-    request.mutable_transaction().CopyFrom(transaction)
-    return transaction
-
-  def _check_entity_group(self, key_pbs):
-    """Check that a list of keys are consistent with the entity group.
-
-    This also updates the connection's entity group if necessary.
-
-    Args:
-      key_pbs: A list of entity_pb.Reference objects.
-
-    Raises:
-      datastore_errors.BadRequestError if one or more of the keys
-      refers to a different top-level key than the the connection's
-      entity group.
-    """
-    base_entity_group_pb = self.__entity_group_pb
-    for ref in key_pbs:
-      entity_group_pb = ref
-      if entity_group_pb.path().element_list()[1:]:
-        entity_group_pb = self.__adapter.new_key_pb()
-        entity_group_pb.CopyFrom(ref)
-        del entity_group_pb.path().element_list()[1:]
-      if base_entity_group_pb is None:
-
-
-
-
-
-        base_entity_group_pb = entity_group_pb
-      else:
-        pb1 = entity_group_pb.path().element(0)
-        ok = (entity_group_pb == base_entity_group_pb)
-        if ok:
-
-
-
-
-          ok = (entity_group_pb is base_entity_group_pb or
-                pb1.id() or pb1.name())
-        if not ok:
-          pb0 = base_entity_group_pb.path().element(0)
-          def helper(pb):
-            if pb.name():
-              return 'name=%r' % pb.name()
-            else:
-              return 'id=%r' % pb.id()
-          raise datastore_errors.BadRequestError(
-              'Cannot operate on different entity groups in a transaction: '
-              '(kind=%r, %s) and (kind=%r, %s).' %
-              (pb0.type(), helper(pb0), pb1.type(), helper(pb1)))
-    self.__entity_group_pb = base_entity_group_pb
-
-  def _update_entity_group(self, key_pbs):
-    """Patch up the entity group if we wrote an entity with an incomplete key.
-
-    This should be called after a put() which could have assigned a
-    key to an entity with an incomplete key.
-
-    Args:
-      key_pbs: A list of entity_pb.Reference objects.
-    """
-    if self.__entity_group_pb is None:
-      assert not key_pbs
-      return
-
-    pb = self.__entity_group_pb.path().element(0)
-    if pb.id() or pb.name():
-      return
-    if not key_pbs:
-      return
-    ref = key_pbs[0]
-    assert not ref.path().element_list()[1:]
-    self.__entity_group_pb = ref
-
-  def _get_transaction(self, request=None):
-    """Get the transaction object for the current connection.
-
-    This may send an RPC to get the transaction object and block
-    waiting for it to complete.
-
-    Args:
-      request: Optional request protobuf object.  This is only used
-        if it is a Query object; it is then used to extract the ancestor
-        key for purposes of checking or setting the entity group.
-
-    Returns:
-      A datastore_pb.Transaction object.
-
-    Raises:
-      datastore_errors.BadRequestError if the transaction is already
-      finished, or if the request argument represents an ancestor-less
-      query, or if the ancestor does not match the connection's entity
-      group.
-    """
-
     if self.__finished:
       raise datastore_errors.BadRequestError(
-        'Cannot start a new operation in a finished transaction.')
-    key_pbs = None
-    if isinstance(request, datastore_pb.Query):
-      ok = request.has_ancestor()
-      if ok:
-        ref = request.ancestor()
-        path = ref.path()
-        ok = path.element_size()
-        if ok:
-          elem = path.element(ok - 1)
-          ok = elem.id() or elem.name()
-      if not ok:
-        raise datastore_errors.BadRequestError(
-          'Only ancestor queries are allowed inside a transaction.')
-      key_pbs = [ref]
-    if key_pbs is not None:
-      self._check_entity_group(key_pbs)
-
-    if self.__transaction is not None:
-      return self.__transaction
-    app = None
-    if self.__entity_group_pb is not None:
-      app = self.__entity_group_pb.app()
-    if app is None:
-
-      app = os.getenv('APPLICATION_ID')
-    self.__transaction = self.begin_transaction(app)
-    return self.__transaction
+          'Cannot start a new operation in a finished transaction.')
+    transaction = self.transaction
+    request.mutable_transaction().CopyFrom(transaction)
+    return transaction
 
   def _end_transaction(self):
     """Finish the current transaction.
@@ -1857,7 +1893,7 @@ class TransactionalConnection(BaseConnection):
 
     self.wait_for_all_pending_rpcs()
     assert not self.get_pending_rpcs()
-    transaction = self.__transaction
+    transaction = self.transaction
     self.__finished = True
     self.__transaction = None
     return transaction

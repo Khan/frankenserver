@@ -108,13 +108,6 @@ PREFIXED_BY_ADMIN_CONSOLE_RE = '^(?:admin-console)(.*)'
 SDK_PRODUCT = 'appcfg_py'
 
 
-
-_api_versions = os.environ.get('GOOGLE_TEST_API_VERSIONS', '1')
-_options = validation.Options(*_api_versions.split(','))
-appinfo.AppInfoExternal.ATTRIBUTES[appinfo.API_VERSION] = _options
-del _api_versions, _options
-
-
 DAY = 24*3600
 SUNDAY = 6
 
