@@ -158,6 +158,7 @@ class AppIdentityServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.AppIdentityServiceError'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3JzeglFcnJvckNvZGWLAZIBB1NVQ0NFU1OYAQCMAYsBkgENVU5LTk9XTl9TQ09QRZgBCYwBiwGSAQ5CTE9CX1RPT19MQVJHRZgB6AeMAYsBkgERREVBRExJTkVfRVhDRUVERUSYAekHjAGLAZIBD05PVF9BX1ZBTElEX0FQUJgB6geMAYsBkgENVU5LTk9XTl9FUlJPUpgB6weMAYsBkgEZR0FJQU1JTlRfTk9UX0lOSVRJQUlMSVpFRJgB7AeMAXS6AaMKCjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8SCmFwcGhvc3RpbmcivgEKF0FwcElkZW50aXR5U2VydmljZUVycm9yIqIBCglFcnJvckNvZGUSCwoHU1VDQ0VTUxAAEhEKDVVOS05PV05fU0NPUEUQCRITCg5CTE9CX1RPT19MQVJHRRDoBxIWChFERUFETElORV9FWENFRURFRBDpBxIUCg9OT1RfQV9WQUxJRF9BUFAQ6gcSEgoNVU5LTk9XTl9FUlJPUhDrBxIeChlHQUlBTUlOVF9OT1RfSU5JVElBSUxJWkVEEOwHIioKEVNpZ25Gb3JBcHBSZXF1ZXN0EhUKDWJ5dGVzX3RvX3NpZ24YASABKAwiPwoSU2lnbkZvckFwcFJlc3BvbnNlEhAKCGtleV9uYW1lGAEgASgJEhcKD3NpZ25hdHVyZV9ieXRlcxgCIAEoDCIjCiFHZXRQdWJsaWNDZXJ0aWZpY2F0ZUZvckFwcFJlcXVlc3QiQwoRUHVibGljQ2VydGlmaWNhdGUSEAoIa2V5X25hbWUYASABKAkSHAoUeDUwOV9jZXJ0aWZpY2F0ZV9wZW0YAiABKAkijQEKIkdldFB1YmxpY0NlcnRpZmljYXRlRm9yQXBwUmVzcG9uc2USPgoXcHVibGljX2NlcnRpZmljYXRlX2xpc3QYASADKAsyHS5hcHBob3N0aW5nLlB1YmxpY0NlcnRpZmljYXRlEicKH21heF9jbGllbnRfY2FjaGVfdGltZV9pbl9zZWNvbmQYAiABKAMiHgocR2V0U2VydmljZUFjY291bnROYW1lUmVxdWVzdCI9Ch1HZXRTZXJ2aWNlQWNjb3VudE5hbWVSZXNwb25zZRIcChRzZXJ2aWNlX2FjY291bnRfbmFtZRgBIAEoCSImChVHZXRBY2Nlc3NUb2tlblJlcXVlc3QSDQoFc2NvcGUYASADKAkiRwoWR2V0QWNjZXNzVG9rZW5SZXNwb25zZRIUCgxhY2Nlc3NfdG9rZW4YASABKAkSFwoPZXhwaXJhdGlvbl90aW1lGAIgASgDMqIDCg5TaWduaW5nU2VydmljZRJLCgpTaWduRm9yQXBwEh0uYXBwaG9zdGluZy5TaWduRm9yQXBwUmVxdWVzdBoeLmFwcGhvc3RpbmcuU2lnbkZvckFwcFJlc3BvbnNlEnwKG0dldFB1YmxpY0NlcnRpZmljYXRlc0ZvckFwcBItLmFwcGhvc3RpbmcuR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXF1ZXN0Gi4uYXBwaG9zdGluZy5HZXRQdWJsaWNDZXJ0aWZpY2F0ZUZvckFwcFJlc3BvbnNlEmwKFUdldFNlcnZpY2VBY2NvdW50TmFtZRIoLmFwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVxdWVzdBopLmFwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVzcG9uc2USVwoOR2V0QWNjZXNzVG9rZW4SIS5hcHBob3N0aW5nLkdldEFjY2Vzc1Rva2VuUmVxdWVzdBoiLmFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXNwb25zZUJACiRjb20uZ29vZ2xlLmFwcGVuZ2luZS5hcGkuYXBwaWRlbnRpdHkgASgCQhRBcHBJZGVudGl0eVNlcnZpY2VQYg=="))
   if _net_proto___parse__python is not None:
@@ -285,6 +286,7 @@ class SignForAppRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SignForAppRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuU2lnbkZvckFwcFJlcXVlc3QTGg1ieXRlc190b19zaWduIAEoAjAJOAEUwgEiYXBwaG9zdGluZy5BcHBJZGVudGl0eVNlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
@@ -446,6 +448,7 @@ class SignForAppResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SignForAppResponse'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KHWFwcGhvc3RpbmcuU2lnbkZvckFwcFJlc3BvbnNlExoIa2V5X25hbWUgASgCMAk4ARQTGg9zaWduYXR1cmVfYnl0ZXMgAigCMAk4ARTCASJhcHBob3N0aW5nLkFwcElkZW50aXR5U2VydmljZUVycm9y"))
   if _net_proto___parse__python is not None:
@@ -543,6 +546,7 @@ class GetPublicCertificateForAppRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetPublicCertificateForAppRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KLGFwcGhvc3RpbmcuR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXF1ZXN0wgEiYXBwaG9zdGluZy5BcHBJZGVudGl0eVNlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
@@ -704,6 +708,7 @@ class PublicCertificate(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.PublicCertificate'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KHGFwcGhvc3RpbmcuUHVibGljQ2VydGlmaWNhdGUTGghrZXlfbmFtZSABKAIwCTgBFBMaFHg1MDlfY2VydGlmaWNhdGVfcGVtIAIoAjAJOAEUwgEiYXBwaG9zdGluZy5BcHBJZGVudGl0eVNlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
@@ -884,6 +889,7 @@ class GetPublicCertificateForAppResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetPublicCertificateForAppResponse'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KLWFwcGhvc3RpbmcuR2V0UHVibGljQ2VydGlmaWNhdGVGb3JBcHBSZXNwb25zZRMaF3B1YmxpY19jZXJ0aWZpY2F0ZV9saXN0IAEoAjALOANKHGFwcGhvc3RpbmcuUHVibGljQ2VydGlmaWNhdGWjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExofbWF4X2NsaWVudF9jYWNoZV90aW1lX2luX3NlY29uZCACKAAwAzgBFMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
@@ -981,6 +987,7 @@ class GetServiceAccountNameRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetServiceAccountNameRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KJ2FwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVxdWVzdMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
@@ -1108,6 +1115,7 @@ class GetServiceAccountNameResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetServiceAccountNameResponse'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KKGFwcGhvc3RpbmcuR2V0U2VydmljZUFjY291bnROYW1lUmVzcG9uc2UTGhRzZXJ2aWNlX2FjY291bnRfbmFtZSABKAIwCTgBFMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
@@ -1244,6 +1252,7 @@ class GetAccessTokenRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetAccessTokenRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KIGFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXF1ZXN0ExoFc2NvcGUgASgCMAk4AxTCASJhcHBob3N0aW5nLkFwcElkZW50aXR5U2VydmljZUVycm9y"))
   if _net_proto___parse__python is not None:
@@ -1405,6 +1414,7 @@ class GetAccessTokenResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.GetAccessTokenResponse'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WjZhcHBob3N0aW5nL2FwaS9hcHBfaWRlbnRpdHkvYXBwX2lkZW50aXR5X3NlcnZpY2UucHJvdG8KIWFwcGhvc3RpbmcuR2V0QWNjZXNzVG9rZW5SZXNwb25zZRMaDGFjY2Vzc190b2tlbiABKAIwCTgBFBMaD2V4cGlyYXRpb25fdGltZSACKAAwAzgBFMIBImFwcGhvc3RpbmcuQXBwSWRlbnRpdHlTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:

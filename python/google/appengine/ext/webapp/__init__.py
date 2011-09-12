@@ -185,9 +185,7 @@ if os.environ.get('APPENGINE_RUNTIME') == 'python27':
 
   _config_handle = lib_config.register(
       'webapp',
-      {'django_setup': _django_setup,
-       'add_wsgi_middleware': lambda app: app,
-       })
+      {'add_wsgi_middleware': lambda app: app,})
   from webapp2 import *
 else:
   _config_handle = lib_config.register(
@@ -196,5 +194,5 @@ else:
        'django_version': None,
        'add_wsgi_middleware': lambda app: app,
        })
-  from _webapp25 import *
-  from _webapp25 import __doc__
+  from google.appengine.ext.webapp._webapp25 import *
+  from google.appengine.ext.webapp._webapp25 import __doc__

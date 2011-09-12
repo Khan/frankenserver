@@ -131,7 +131,7 @@ SERVICE_PB_MAP = {
         'RunQuery':    (datastore_pb.Query, datastore_pb.QueryResult),
         'Transaction': (remote_api_pb.TransactionRequest,
                         datastore_pb.PutResponse),
-        'GetIDs':      (remote_api_pb.PutRequest, datastore_pb.PutResponse),
+        'GetIDs':      (datastore_pb.PutRequest, datastore_pb.PutResponse),
     },
     'taskqueue': {
         'Add': (taskqueue_service_pb.TaskQueueAddRequest,

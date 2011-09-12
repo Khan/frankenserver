@@ -115,6 +115,7 @@ class XmppServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppServiceError'
 class PresenceRequest(ProtocolBuffer.ProtocolMessage):
   has_jid_ = 0
   jid_ = ""
@@ -248,6 +249,7 @@ class PresenceRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.PresenceRequest'
 class PresenceResponse(ProtocolBuffer.ProtocolMessage):
 
 
@@ -398,6 +400,7 @@ class PresenceResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.PresenceResponse'
 class XmppMessageRequest(ProtocolBuffer.ProtocolMessage):
   has_body_ = 0
   body_ = ""
@@ -642,6 +645,7 @@ class XmppMessageRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppMessageRequest'
 class XmppMessageResponse(ProtocolBuffer.ProtocolMessage):
 
 
@@ -760,6 +764,7 @@ class XmppMessageResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppMessageResponse'
 class XmppSendPresenceRequest(ProtocolBuffer.ProtocolMessage):
   has_jid_ = 0
   jid_ = ""
@@ -995,6 +1000,7 @@ class XmppSendPresenceRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppSendPresenceRequest'
 class XmppSendPresenceResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1059,6 +1065,7 @@ class XmppSendPresenceResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppSendPresenceResponse'
 class XmppInviteRequest(ProtocolBuffer.ProtocolMessage):
   has_jid_ = 0
   jid_ = ""
@@ -1192,6 +1199,7 @@ class XmppInviteRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppInviteRequest'
 class XmppInviteResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1256,5 +1264,6 @@ class XmppInviteResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.XmppInviteResponse'
 
 __all__ = ['XmppServiceError','PresenceRequest','PresenceResponse','XmppMessageRequest','XmppMessageResponse','XmppSendPresenceRequest','XmppSendPresenceResponse','XmppInviteRequest','XmppInviteResponse']

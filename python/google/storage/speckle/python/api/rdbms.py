@@ -30,6 +30,7 @@ import exceptions
 import time
 import types
 
+from google.storage.speckle.proto import client_error_code_pb2
 from google.storage.speckle.proto import client_pb2
 from google.storage.speckle.proto import jdbc_type
 from google.storage.speckle.proto import sql_pb2
@@ -286,7 +287,8 @@ class Cursor(object):
     response = self._conn.MakeRequest('Exec', request)
     result = response.result
     if result.HasField('sql_exception'):
-      raise DatabaseError(result.sql_exception.message)
+      raise DatabaseError('%d: %s' % (result.sql_exception.code,
+                                      result.sql_exception.message))
 
     self._rows = collections.deque()
     if result.rows.columns:
@@ -416,7 +418,8 @@ class Cursor(object):
 class Connection(object):
 
   def __init__(self, dsn, instance, database=None, user='root', password=None,
-               deadline_seconds=30.0, conv=None):
+               deadline_seconds=30.0, conv=None,
+               query_deadline_seconds=86400.0, retry_interval_seconds=30.0):
     """Creates a new SQL Service connection.
 
     Args:
@@ -427,7 +430,8 @@ class Connection(object):
       password: A string, database password.
       deadline_seconds: A float, request deadline in seconds.
       conv: A dict, maps types to a conversion function. See converters.py.
-
+      query_deadline_seconds: A float, query deadline in seconds.
+      retry_interval_seconds: A float, seconds to wait between each retry.
     Raises:
       OperationalError: Transport failure.
       DatabaseError: Error from SQL Service server.
@@ -445,6 +449,8 @@ class Connection(object):
     self._idempotent_request_id = 0
     if not conv:
       conv = converters.conversions
+    self._query_deadline_seconds = query_deadline_seconds
+    self._retry_interval_seconds = retry_interval_seconds
     self.converter = {}
     self.encoders = {}
     for key, value in conv.items():
@@ -458,6 +464,7 @@ class Connection(object):
   def OpenConnection(self):
     """Opens a connection to SQL Service."""
     request = sql_pb2.OpenConnectionRequest()
+    request.client_type = client_pb2.CLIENT_TYPE_PYTHON_DBAPI
     prop = request.property.add()
     prop.key = 'autoCommit'
     prop.value = 'false'
@@ -569,11 +576,117 @@ class Connection(object):
     if stub_method in ('Exec', 'ExecOp', 'GetMetadata'):
       self._idempotent_request_id += 1
       request.request_id = self._idempotent_request_id
-
-    response = self.MakeRequestImpl(stub_method, request)
+      response = self._MakeRetriableRequest(stub_method, request)
+    else:
+      response = self.MakeRequestImpl(stub_method, request)
 
     if (hasattr(response, 'sql_exception') and
         response.HasField('sql_exception')):
+      raise DatabaseError('%d: %s' % (response.sql_exception.code,
+                                      response.sql_exception.message))
+    return response
+
+  def _MakeRetriableRequest(self, stub_method, request):
+    """Makes a retriable request.
+
+    Args:
+      stub_method: A string, the name of the method to call.
+      request: A protobuf.
+
+    Returns:
+      A protobuf.
+
+    Raises:
+      DatabaseError: Error from SQL Service server.
+    """
+    absolute_deadline_seconds = time.clock() + self._query_deadline_seconds
+    response = self.MakeRequestImpl(stub_method, request)
+    if not response.HasField('sql_exception'):
+      return response
+    sql_exception = response.sql_exception
+    if (sql_exception.application_error_code !=
+        client_error_code_pb2.SqlServiceClientError.ERROR_TIMEOUT):
+      raise DatabaseError('%d: %s' % (sql_exception.code,
+                                      sql_exception.message))
+    if time.clock() >= absolute_deadline_seconds:
+      raise DatabaseError('%d: %s' % (sql_exception.code,
+                                      sql_exception.message))
+    return self._Retry(stub_method, request.request_id,
+                       absolute_deadline_seconds)
+
+  def _Retry(self, stub_method, request_id, absolute_deadline_seconds):
+    """Retries request with the given request id.
+
+    Continues to retry until either the deadline has expired or the response
+    has been received.
+
+    Args:
+      stub_method: A string, the name of the original method that triggered the
+                   retry.
+      request_id: An integer, the request id used in the original request
+      absolute_deadline_seconds: An integer, absolute deadline in seconds.
+
+    Returns:
+      A protobuf.
+
+    Raises:
+      DatabaseError: If the ExecOpResponse contains a SqlException that it not
+                     related to retry.
+      InternalError: If the ExceOpResponse is not valid.
+    """
+    request = sql_pb2.ExecOpRequest()
+    request.op.type = client_pb2.OpProto.RETRY
+    request.op.request_id = request_id
+    request.connection_id = self._connection_id
+    request.instance = self._instance
+    while True:
+      seconds_remaining = absolute_deadline_seconds - time.clock()
+      if seconds_remaining <= 0:
+        raise InternalError('Request [%d] timed out' % (request_id))
+      time.sleep(min(self._retry_interval_seconds, seconds_remaining))
+      self._idempotent_request_id += 1
+      request.request_id = self._idempotent_request_id
+      response = self.MakeRequestImpl('ExecOp', request)
+      if not response.HasField('sql_exception'):
+        return self._ConvertCachedResponse(stub_method, response)
+      sql_exception = response.sql_exception
+      if (sql_exception.application_error_code !=
+          client_error_code_pb2.SqlServiceClientError.ERROR_RESPONSE_PENDING):
+        raise DatabaseError('%d: %s' % (response.sql_exception.code,
+                                        response.sql_exception.message))
+
+  def _ConvertCachedResponse(self, stub_method, exec_op_response):
+    """Converts the cached response or RPC error.
+
+    Args:
+      stub_method: A string, the name of the original method that triggered the
+                   retry.
+      exec_op_response: A protobuf, the retry response that contains either the
+                        RPC error or the cached response.
+
+    Returns:
+      A protobuf, the cached response.
+
+    Raises:
+      DatabaseError: If the cached response contains SqlException.
+      InternalError: If a cached RpcErrorProto exists.
+    """
+    if exec_op_response.HasField('cached_rpc_error'):
+      raise InternalError('%d: %s' % (
+          exec_op_response.cached_rpc_error.error_code,
+          exec_op_response.cached_rpc_error.error_message))
+    if not exec_op_response.HasField('cached_payload'):
+      raise InternalError('Invalid exec op response for retry request')
+    if stub_method == 'Exec':
+      response = sql_pb2.ExecResponse()
+    elif stub_method == 'ExecOp':
+      response = sql_pb2.ExecOpResponse()
+    elif stub_method == 'GetMetadata':
+      response = sql_pb2.MetadataResponse()
+    else:
+      raise InternalError('Found unexpected stub_method: %s' % (stub_method))
+    response.ParseFromString(exec_op_response.cached_payload)
+    if response.HasField('sql_exception'):
       raise DatabaseError('%d: %s' % (response.sql_exception.code,
                                       response.sql_exception.message))
     return response

@@ -68,6 +68,10 @@ class InvalidMIMETypeFormatError(Error):
   """MIME type was formatted incorrectly."""
 
 
+class UploadEntityTooLargeError(Error):
+  """Entity being uploaded exceeded the allowed size."""
+
+
 def GenerateBlobKey(time_func=time.time, random_func=random.random):
   """Generate a unique BlobKey.
 
@@ -190,14 +194,27 @@ class UploadCGIHandler(object):
         content_type_formatter['content-type'].decode('utf-8'))
     blob_entity['creation'] = creation
     blob_entity['filename'] = form_item.filename.decode('utf-8')
-    form_item.file.seek(0, 2)
-    size = form_item.file.tell()
+
     form_item.file.seek(0)
-    blob_entity['size'] = size
+    digester = hashlib.md5()
+    while True:
+      block = form_item.file.read(1 << 20)
+      if not block:
+        break
+      digester.update(block)
+
+    blob_entity['md5_hash'] = digester.hexdigest()
+    blob_entity['size'] = form_item.file.tell()
+    form_item.file.seek(0)
+
     datastore.Put(blob_entity)
     return blob_entity
 
-  def _GenerateMIMEMessage(self, form, boundary=None):
+  def _GenerateMIMEMessage(self,
+                           form,
+                           boundary=None,
+                           max_bytes_per_blob=None,
+                           max_bytes_total=None):
     """Generate a new post from original form.
 
     Also responsible for storing blobs in the datastore.
@@ -207,12 +224,20 @@ class UploadCGIHandler(object):
         derived from original post data.
       boundary: Boundary to use for resulting form.  Used only in tests so
         that the boundary is always consistent.
+      max_bytes_per_blob: The maximum size in bytes that any single blob
+        in the form is allowed to be.
+      max_bytes_total: The maximum size in bytes that the total of all blobs
+        in the form is allowed to be.
 
     Returns:
       A MIMEMultipart instance representing the new HTTP post which should be
       forwarded to the developers actual CGI handler. DO NOT use the return
       value of this method to generate a string unless you know what you're
       doing and properly handle folding whitespace (from rfc822) properly.
+
+    Raises:
+      UploadEntityTooLargeError: The upload exceeds either the
+        max_bytes_per_blob or max_bytes_total limits.
     """
     message = multipart.MIMEMultipart('form-data', boundary)
     for name, value in form.headers.items():
@@ -245,6 +270,10 @@ class UploadCGIHandler(object):
           yield form_item
 
     creation = self.__now_func()
+    total_bytes_uploaded = 0
+    created_blobs = []
+    upload_too_large = False
+
     for form_item in IterateForm():
 
 
@@ -272,7 +301,26 @@ class UploadCGIHandler(object):
         main_type, sub_type = _SplitMIMEType(form_item.type)
 
 
+        form_item.file.seek(0, 2)
+        content_length = form_item.file.tell()
+        form_item.file.seek(0)
+
+        total_bytes_uploaded += content_length
+
+        if max_bytes_per_blob is not None:
+          if max_bytes_per_blob < content_length:
+            upload_too_large = True
+            break
+        if max_bytes_total is not None:
+          if max_bytes_total < total_bytes_uploaded:
+            upload_too_large = True
+            break
+
+
         blob_entity = self.StoreBlob(form_item, creation)
+
+
+        created_blobs.append(blob_entity)
 
         variable = base.MIMEBase('message',
                                  'external-body',
@@ -280,10 +328,16 @@ class UploadCGIHandler(object):
                                  blob_key=blob_entity.key().name())
 
 
-        form_item.file.seek(0, 2)
-        content_length = form_item.file.tell()
         form_item.file.seek(0)
+        digester = hashlib.md5()
+        while True:
+          block = form_item.file.read(1 << 20)
+          if not block:
+            break
+          digester.update(block)
 
+        blob_key = base64.urlsafe_b64encode(digester.hexdigest())
+        form_item.file.seek(0)
 
         external = base.MIMEBase(main_type,
                                  sub_type,
@@ -292,6 +346,7 @@ class UploadCGIHandler(object):
         headers['Content-Length'] = str(content_length)
         headers[blobstore.UPLOAD_INFO_CREATION_HEADER] = (
             blobstore._format_creation(creation))
+        headers['Content-MD5'] = blob_key
         for key, value in headers.iteritems():
           external.add_header(key, value)
 
@@ -312,9 +367,18 @@ class UploadCGIHandler(object):
                           **disposition_parameters)
       message.attach(variable)
 
+    if upload_too_large:
+      for blob in created_blobs:
+        datastore.Delete(blob)
+      raise UploadEntityTooLargeError()
+
     return message
 
-  def GenerateMIMEMessageString(self, form, boundary=None):
+  def GenerateMIMEMessageString(self,
+                                form,
+                                boundary=None,
+                                max_bytes_per_blob=None,
+                                max_bytes_total=None):
     """Generate a new post string from original form.
 
     Args:
@@ -322,11 +386,18 @@ class UploadCGIHandler(object):
         derived from original post data.
       boundary: Boundary to use for resulting form.  Used only in tests so
         that the boundary is always consistent.
+      max_bytes_per_blob: The maximum size in bytes that any single blob
+        in the form is allowed to be.
+      max_bytes_total: The maximum size in bytes that the total of all blobs
+        in the form is allowed to be.
 
     Returns:
       A string rendering of a MIMEMultipart instance.
     """
-    message = self._GenerateMIMEMessage(form, boundary=boundary)
+    message = self._GenerateMIMEMessage(form,
+                                        boundary=boundary,
+                                        max_bytes_per_blob=max_bytes_per_blob,
+                                        max_bytes_total=max_bytes_total)
     message_out = cStringIO.StringIO()
     gen = generator.Generator(message_out, maxheaderlen=0)
     gen.flatten(message, unixfrom=False)

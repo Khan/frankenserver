@@ -69,6 +69,7 @@
           </td>
           <td valign="top">
             <form id="runform.{{ task.name|escape }}" action="{{ task.url|escape }}" method="{{ task.method|escape }}" onsubmit="(new Webhook('runform.{{ task.name|escape }}')).run(handleTaskResult); return false">
+            <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
             <input type="hidden" name="payload" value="{{ task.body|escape }}">
             {% for header in task.headers %}
               <input type="hidden" name="header:{{ header.0|escape }}"
@@ -79,6 +80,7 @@
           </td>
           <td valign="top">
             <form id="deleteform.{{ task.name|escape }}" action="{{ tasks_path }}" method="post">
+            <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
             <input type="hidden" name="queue" value="{{ queue|escape }}"/>
             <input type="hidden" name="task" value="{{ task.name|escape }}"/>
             <input type="hidden" name="start_name" value="{{ this_page.start_name|escape }}"/>
@@ -116,4 +118,3 @@
 
 
 {% endblock %}
-

@@ -198,13 +198,16 @@ OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
 
 SUPPORTED_LIBRARIES = {
     'django': ['1.2'],
+    'jinja2': ['2.6'],
     'lxml': ['2.3'],
+    'markupsafe': ['0.15'],
     'numpy': ['1.5.1'],
     'PIL': ['1.1.7'],
     'pycrypto': ['2.3'],
-    'yaml': ['3.05'],
-    'webapp2': ['2.0.2'],
+    'setuptools': ['0.6c11'],
+    'webapp2': ['2.0.2', '2.2.3', '2.3'],
     'webob': ['1.0.8'],
+    'yaml': ['3.05'],
 }
 
 

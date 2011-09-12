@@ -45,7 +45,6 @@ from google.appengine.ext import db
 from google.appengine.ext.mapreduce import base_handler
 from google.appengine.ext.mapreduce import errors
 from google.appengine.ext.mapreduce import model
-from google.appengine.ext.webapp import template
 
 
 

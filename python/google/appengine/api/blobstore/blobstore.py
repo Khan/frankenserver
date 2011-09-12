@@ -189,19 +189,62 @@ def _parse_creation(creation_string, field_name):
 
 
 def create_upload_url(success_path,
-                      _make_sync_call=apiproxy_stub_map.MakeSyncCall):
+                      _make_sync_call=None,
+                      **kwargs):
   """Create upload URL for POST form.
 
   Args:
     success_path: Path within application to call when POST is successful
       and upload is complete.
     _make_sync_call: Used for dependency injection in tests.
+    max_bytes_per_blob: The maximum size in bytes that any one blob in the
+      upload can be or None for no maximum size.
+    max_bytes_total: The maximum size in bytes that the aggregate sizes of all
+      of the blobs in the upload can be or None for no maximum size.
+
+  Raises:
+    TypeError: If max_bytes_per_blob or max_bytes_total are not integral types.
+    ValueError: If max_bytes_per_blob or max_bytes_total are not
+      positive values.
   """
   request = blobstore_service_pb.CreateUploadURLRequest()
   response = blobstore_service_pb.CreateUploadURLResponse()
   request.set_success_path(success_path)
+
+  make_sync_call = kwargs.pop('_make_sync_call',
+                               apiproxy_stub_map.MakeSyncCall)
+
+  if _make_sync_call:
+    if callable(_make_sync_call):
+      make_sync_call = _make_sync_call
+    else:
+      raise TypeError('_make_sync_call must be callable')
+
+  if 'max_bytes_per_blob' in kwargs:
+    max_bytes_per_blob = kwargs.pop('max_bytes_per_blob')
+    if not isinstance(max_bytes_per_blob, (int, long)):
+      raise TypeError('max_bytes_per_blob must be integer.')
+    if max_bytes_per_blob < 1:
+      raise ValueError('max_bytes_per_blob must be positive.')
+    request.set_max_upload_size_per_blob_bytes(max_bytes_per_blob)
+
+  if 'max_bytes_total' in kwargs:
+    max_bytes_total = kwargs.pop('max_bytes_total')
+    if not isinstance(max_bytes_total, (int, long)):
+      raise TypeError('max_bytes_total must be integer.')
+    if max_bytes_total < 1:
+      raise ValueError('max_bytes_total must be positive.')
+    request.set_max_upload_size_bytes(max_bytes_total)
+
+  if (request.has_max_upload_size_bytes() and
+      request.has_max_upload_size_per_blob_bytes()):
+    if (request.max_upload_size_bytes() <
+        request.max_upload_size_per_blob_bytes()):
+      raise ValueError('max_bytes_total can not be less'
+                       ' than max_upload_size_per_blob_bytes')
+
   try:
-    _make_sync_call('blobstore', 'CreateUploadURL', request, response)
+    make_sync_call('blobstore', 'CreateUploadURL', request, response)
   except apiproxy_errors.ApplicationError, e:
     raise _ToBlobstoreError(e)
 

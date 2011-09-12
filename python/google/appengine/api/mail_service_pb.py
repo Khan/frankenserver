@@ -111,6 +111,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.MailServiceError'
 class MailAttachment(ProtocolBuffer.ProtocolMessage):
   has_filename_ = 0
   filename_ = ""
@@ -249,6 +250,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.MailAttachment'
 class MailHeader(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -387,6 +389,7 @@ class MailHeader(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.MailHeader'
 class MailMessage(ProtocolBuffer.ProtocolMessage):
   has_sender_ = 0
   sender_ = ""
@@ -862,5 +865,6 @@ class MailMessage(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.MailMessage'
 
 __all__ = ['MailServiceError','MailAttachment','MailHeader','MailMessage']

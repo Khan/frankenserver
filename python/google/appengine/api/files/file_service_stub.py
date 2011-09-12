@@ -324,3 +324,8 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
       raise_error(file_service_pb.FileServiceErrors.FILE_NOT_OPENED)
 
     self.open_files[filename].append(request, response)
+
+  def _Dynamic_GetCapabilities(self, request, response):
+    """Handler for GetCapabilities RPC call."""
+    response.add_filesystem("blobstore")
+    response.set_shuffle_available(False)

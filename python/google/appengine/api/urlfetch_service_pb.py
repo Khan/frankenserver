@@ -111,6 +111,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.URLFetchServiceError'
 class URLFetchRequest_Header(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -577,6 +578,7 @@ class URLFetchRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.URLFetchRequest'
 class URLFetchResponse_Header(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -1121,5 +1123,6 @@ class URLFetchResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.URLFetchResponse'
 
 __all__ = ['URLFetchServiceError','URLFetchRequest','URLFetchRequest_Header','URLFetchResponse','URLFetchResponse_Header']

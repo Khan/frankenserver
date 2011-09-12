@@ -111,6 +111,8 @@ SDK_PRODUCT = 'appcfg_py'
 DAY = 24*3600
 SUNDAY = 6
 
+SUPPORTED_RUNTIMES = ('go', 'python', 'python27')
+
 
 def PrintUpdate(msg):
   """Print a message to stderr.
@@ -132,6 +134,18 @@ def StatusUpdate(msg):
 def ErrorUpdate(msg):
   """Print an error message to stderr."""
   PrintUpdate(msg)
+
+
+def _PrintErrorAndExit(stream, msg, exit_code=2):
+  """Prints the given error message and exists the program.
+
+  Args:
+    stream: The stream (e.g. StringIO or file) to write the message to.
+    msg: The error message to display as a string.
+    exit_code: The integer code to pass to sys.exit().
+  """
+  stream.write(msg)
+  sys.exit(exit_code)
 
 
 def GetMimeTypeIfStaticFile(config, filename):
@@ -2213,7 +2227,8 @@ class AppCfgApp(object):
                throttle_class=None,
                opener=open,
                file_iterator=FileIterator,
-               time_func=time.time):
+               time_func=time.time,
+               wrap_server_error_message=True):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -2237,6 +2252,10 @@ class AppCfgApp(object):
         regular expression.
       time_func: Function which provides the current time (can be replaced for
           testing).
+      wrap_server_error_message: If true, the error messages from
+          urllib2.HTTPError exceptions in Run() are wrapped with
+          '--- begin server output ---' and '--- end server output ---',
+          otherwise the error message is printed as is.
     """
     self.parser_class = parser_class
     self.argv = argv
@@ -2248,6 +2267,7 @@ class AppCfgApp(object):
     self.update_check_class = update_check_class
     self.throttle_class = throttle_class
     self.time_func = time_func
+    self.wrap_server_error_message = wrap_server_error_message
 
 
 
@@ -2264,7 +2284,14 @@ class AppCfgApp(object):
       self._PrintHelpAndExit()
 
     if not self.options.allow_any_runtime:
-      appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = 'python|go'
+      if self.options.runtime:
+        if self.options.runtime not in SUPPORTED_RUNTIMES:
+          _PrintErrorAndExit(self.error_fh,
+                             '"%s" is not a supported runtime\n' %
+                             self.options.runtime)
+      else:
+        appinfo.AppInfoExternal.ATTRIBUTES[appinfo.RUNTIME] = (
+            '|'.join(SUPPORTED_RUNTIMES))
 
     action = self.args.pop(0)
 
@@ -2357,9 +2384,13 @@ class AppCfgApp(object):
       self.action(self)
     except urllib2.HTTPError, e:
       body = e.read()
-      print >>self.error_fh, ('Error %d: --- begin server output ---\n'
-                              '%s\n--- end server output ---' %
-                              (e.code, body.rstrip('\n')))
+      if self.wrap_server_error_message:
+        error_format = ('Error %d: --- begin server output ---\n'
+                        '%s\n--- end server output ---')
+      else:
+        error_format = 'Error %d: %s'
+
+      print >>self.error_fh, (error_format % (e.code, body.rstrip('\n')))
       return 1
     except yaml_errors.EventListenerError, e:
       print >>self.error_fh, ('Error parsing yaml file:\n%s' % e)
@@ -2438,6 +2469,8 @@ class AppCfgApp(object):
                       help='Override application from app.yaml file.')
     parser.add_option('-V', '--version', action='store', dest='version',
                       help='Override (major) version from app.yaml file.')
+    parser.add_option('-r', '--runtime', action='store', dest='runtime',
+                      help='Override runtime from app.yaml file.')
     parser.add_option('-R', '--allow_any_runtime', action='store_true',
                       dest='allow_any_runtime', default=False,
                       help='Do not validate the runtime in app.yaml')
@@ -2541,10 +2574,15 @@ class AppCfgApp(object):
     if not os.path.isdir(basepath):
       self.parser.error('Not a directory: %s' % basepath)
 
-    for yaml_file in (file_name + '.yaml', file_name + '.yml'):
-      yaml_path = os.path.join(basepath, yaml_file)
-      if os.path.isfile(yaml_path):
-        return yaml_path
+
+
+    alt_basepath = os.path.join(basepath, "WEB-INF", "appengine-generated")
+
+    for yaml_basepath in (basepath, alt_basepath):
+      for yaml_file in (file_name + '.yaml', file_name + '.yml'):
+        yaml_path = os.path.join(yaml_basepath, yaml_file)
+        if os.path.isfile(yaml_path):
+          return yaml_path
 
     return None
 
@@ -2577,6 +2615,9 @@ class AppCfgApp(object):
       appyaml.application = self.options.app_id
     if self.options.version:
       appyaml.version = self.options.version
+    if self.options.runtime:
+      appyaml.runtime = self.options.runtime
+
     msg = 'Application: %s' % appyaml.application
     if appyaml.application != orig_application:
       msg += ' (was: %s)' % orig_application

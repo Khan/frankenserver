@@ -35,16 +35,27 @@ from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
-__all__ = ["ConversionServiceStub",
-           "CONVERTED_FILES_STUB"]
+__all__ = ["ConversionServiceStub"]
 
 
 
 
 
-CONVERTED_FILES_STUB = {
+_CONVERTED_FILES_STUB = {
     "text/html": "<b>Some &nbsp; data!</b>",
     "text/plain": "Some data!",
+    }
+
+
+
+_SUPPORTED_PATHS = {
+    "application/pdf": ("image/png", "text/html", "text/plain"),
+    "image/bmp": ("application/pdf", "text/html", "text/plain"),
+    "image/gif": ("application/pdf", "text/html", "text/plain"),
+    "image/jpeg": ("application/pdf", "text/html", "text/plain"),
+    "image/png": ("application/pdf", "text/html", "text/plain"),
+    "text/html": ("application/pdf", "image/png", "text/plain"),
+    "text/plain": ("application/pdf", "image/png", "text/html"),
     }
 
 
@@ -97,11 +108,21 @@ def _validate_conversion_request(request):
 
 
 
+
+
+    input_mime_type = request.conversion(x).input().asset(0).mime_type()
     output_mime_type = request.conversion(x).output_mime_type()
-    if output_mime_type not in CONVERTED_FILES_STUB:
+    if not _is_supported(input_mime_type, output_mime_type):
       raise apiproxy_errors.ApplicationError(
           conversion_service_pb.ConversionServiceError.UNSUPPORTED_CONVERSION,
-          "Output mime type %s is not supported" % output_mime_type)
+          "Conversion from %s to %s is not supported" %
+          (input_mime_type, output_mime_type))
+
+
+def _is_supported(input_mime_type, output_mime_type):
+  """Whether the conversion path is supported."""
+  return (input_mime_type in _SUPPORTED_PATHS and
+          output_mime_type in _SUPPORTED_PATHS[input_mime_type])
 
 
 class ConversionServiceStub(apiproxy_stub.APIProxyStub):
@@ -129,7 +150,7 @@ class ConversionServiceStub(apiproxy_stub.APIProxyStub):
       output_mime_type = request.conversion(x).output_mime_type()
       output_asset = result.mutable_output().add_asset()
       output_asset.set_mime_type(output_mime_type)
-      output_asset.set_data(CONVERTED_FILES_STUB[output_mime_type])
+      output_asset.set_data(_CONVERTED_FILES_STUB[output_mime_type])
       first_input_asset = request.conversion(x).input().asset(0)
       if first_input_asset.has_name():
         output_asset.set_name(first_input_asset.name())

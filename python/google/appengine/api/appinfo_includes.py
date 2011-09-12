@@ -104,13 +104,14 @@ def _MergeBuiltinsIncludes(appinfo_path, appyaml, open_fn=open):
                        appinfo.AppInclude(builtins=appyaml.builtins,
                                           includes=appyaml.includes),
                        os.path.dirname(appinfo_path),
+                       appyaml.runtime,
                        open_fn=open_fn))
 
   return appinfo.AppInclude.MergeAppYamlAppInclude(appyaml,
                                                    aggregate_appinclude)
 
 
-def _ResolveIncludes(included_from, app_include, basepath, state=None,
+def _ResolveIncludes(included_from, app_include, basepath, runtime, state=None,
                      open_fn=open):
   """Recursively includes all encountered builtins/includes directives.
 
@@ -124,6 +125,7 @@ def _ResolveIncludes(included_from, app_include, basepath, state=None,
     included_from: file that included file was included from.
     app_include: the AppInclude object to resolve.
     basepath: application basepath.
+    runtime: name of the runtime.
     state: contains the list of included and excluded files as well as the
            directives of all encountered AppInclude objects.
     open_fn: file opening function udes, used when reading yaml files.
@@ -157,7 +159,7 @@ def _ResolveIncludes(included_from, app_include, basepath, state=None,
 
 
   includes_list = _ConvertBuiltinsToIncludes(included_from, app_include,
-                                             state)
+                                             state, runtime)
 
 
   includes_list.extend(app_include.includes or [])
@@ -177,7 +179,7 @@ def _ResolveIncludes(included_from, app_include, basepath, state=None,
       yaml_file = open_fn(inc_path, 'r')
       try:
         inc_yaml = appinfo.LoadAppInclude(yaml_file)
-        _ResolveIncludes(inc_path, inc_yaml, basepath, state=state,
+        _ResolveIncludes(inc_path, inc_yaml, basepath, runtime, state=state,
                          open_fn=open_fn)
       except appinfo_errors.EmptyConfigurationFile:
 
@@ -188,7 +190,7 @@ def _ResolveIncludes(included_from, app_include, basepath, state=None,
   return state.aggregate_appinclude
 
 
-def _ConvertBuiltinsToIncludes(included_from, app_include, state):
+def _ConvertBuiltinsToIncludes(included_from, app_include, state, runtime):
   """Converts builtins directives to includes directives.
 
   Moves all builtins directives in app_include into the includes
@@ -201,6 +203,7 @@ def _ConvertBuiltinsToIncludes(included_from, app_include, state):
     app_include: the AppInclude object currently being processed.
     state: contains the list of included and excluded files as well as the
            directives of all encountered AppInclude objects.
+    runtime: name of the runtime.
 
   Returns:
     list of the absolute paths to the include files for builtins where
@@ -216,7 +219,7 @@ def _ConvertBuiltinsToIncludes(included_from, app_include, state):
         continue
 
 
-      yaml_path = builtins.get_yaml_path(builtin_name)
+      yaml_path = builtins.get_yaml_path(builtin_name, runtime)
 
       if on_or_off == 'on':
         includes_list.append(yaml_path)

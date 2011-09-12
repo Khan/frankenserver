@@ -56,6 +56,9 @@ LOG_LEVEL = logging.DEBUG - 1
 
 _EPOCH = datetime.datetime.utcfromtimestamp(0)
 
+
+_EMPTY_LIST_PROPERTY_NAME = '__empty_IN_list__'
+
 def Execute(query_string, *args, **keyword_args):
   """Execute command to parse and run the query.
 
@@ -636,7 +639,7 @@ class GQL(object):
       assert False, 'Unknown reference %s' % reference
 
   def __AddMultiQuery(self, identifier, condition, value, enumerated_queries):
-    """Helper function to add a muti-query to previously enumerated queries.
+    """Helper function to add a multi-query to previously enumerated queries.
 
     Args:
       identifier: property being filtered by this condition
@@ -694,6 +697,14 @@ class GQL(object):
       if len(enumerated_queries) * in_list_size > self.MAX_ALLOWABLE_QUERIES:
         raise datastore_errors.BadArgumentError(
           'Cannot satisfy query -- too many IN/!= values.')
+
+      if in_list_size == 0:
+
+        num_iterations = CloneQueries(enumerated_queries, 1)
+        for clone_num in xrange(num_iterations):
+
+          enumerated_queries[clone_num][_EMPTY_LIST_PROPERTY_NAME] = True
+        return
 
       num_iterations = CloneQueries(enumerated_queries, in_list_size)
       for clone_num in xrange(num_iterations):

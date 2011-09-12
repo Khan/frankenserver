@@ -1096,6 +1096,7 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.PropertyValue'
 class Property(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1386,6 +1387,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Property'
 class Path_Element(ProtocolBuffer.ProtocolMessage):
   has_type_ = 0
   type_ = ""
@@ -1648,6 +1650,7 @@ class Path(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Path'
 class Reference(ProtocolBuffer.ProtocolMessage):
   has_app_ = 0
   app_ = ""
@@ -1824,6 +1827,7 @@ class Reference(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Reference'
 class User(ProtocolBuffer.ProtocolMessage):
   has_email_ = 0
   email_ = ""
@@ -2137,6 +2141,7 @@ class User(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.User'
 class EntityProto(ProtocolBuffer.ProtocolMessage):
 
 
@@ -2522,6 +2527,7 @@ class EntityProto(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.EntityProto'
 class CompositeProperty(ProtocolBuffer.ProtocolMessage):
   has_index_id_ = 0
   index_id_ = 0
@@ -2664,6 +2670,7 @@ class CompositeProperty(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.CompositeProperty'
 class Index_Property(ProtocolBuffer.ProtocolMessage):
 
 
@@ -2981,6 +2988,7 @@ class Index(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Index'
 class CompositeIndex(ProtocolBuffer.ProtocolMessage):
 
 
@@ -3218,5 +3226,6 @@ class CompositeIndex(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.CompositeIndex'
 
 __all__ = ['PropertyValue','PropertyValue_ReferenceValuePathElement','PropertyValue_PointValue','PropertyValue_UserValue','PropertyValue_ReferenceValue','Property','Path','Path_Element','Reference','User','EntityProto','CompositeProperty','Index','Index_Property','CompositeIndex']

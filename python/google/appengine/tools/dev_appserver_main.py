@@ -367,17 +367,20 @@ def ParseArguments(argv):
         print >>sys.stderr, 'Invalid value supplied for port'
         PrintUsageExit(1)
 
+    def expand_path(s):
+      return os.path.abspath(os.path.expanduser(s))
+
     if option in ('-a', '--address'):
       option_dict[ARG_ADDRESS] = value
 
     if option == '--blobstore_path':
-      option_dict[ARG_BLOBSTORE_PATH] = os.path.abspath(value)
+      option_dict[ARG_BLOBSTORE_PATH] = expand_path(value)
 
     if option == '--datastore_path':
-      option_dict[ARG_DATASTORE_PATH] = os.path.abspath(value)
+      option_dict[ARG_DATASTORE_PATH] = expand_path(value)
 
     if option == '--prospective_search_path':
-      option_dict[ARG_PROSPECTIVE_SEARCH_PATH] = os.path.abspath(value)
+      option_dict[ARG_PROSPECTIVE_SEARCH_PATH] = expand_path(value)
 
     if option == '--skip_sdk_update_check':
       option_dict[ARG_SKIP_SDK_UPDATE_CHECK] = True
@@ -389,7 +392,7 @@ def ParseArguments(argv):
       option_dict[ARG_HIGH_REPLICATION] = True
 
     if option == '--history_path':
-      option_dict[ARG_HISTORY_PATH] = os.path.abspath(value)
+      option_dict[ARG_HISTORY_PATH] = expand_path(value)
 
     if option in ('-c', '--clear_datastore'):
       option_dict[ARG_CLEAR_DATASTORE] = True
@@ -555,27 +558,6 @@ def main(argv):
     print >>sys.stderr, 'Invalid arguments'
     PrintUsageExit(1)
 
-  version_tuple = tuple(sys.version_info[:2])
-
-  if ARG_MULTIPROCESS not in option_dict and WARN_ABOUT_PYTHON_VERSION:
-    if version_tuple < PRODUCTION_VERSION:
-      sys.stderr.write('Warning: You are using a Python runtime (%d.%d) that '
-                       'is older than the production runtime environment '
-                       '(%d.%d). Your application may be dependent on Python '
-                       'behaviors that have changed and may not work correctly '
-                       'when deployed to production.\n' % (
-                           version_tuple[0], version_tuple[1],
-                           PRODUCTION_VERSION[0], PRODUCTION_VERSION[1]))
-
-    if version_tuple > PRODUCTION_VERSION:
-      sys.stderr.write('Warning: You are using a Python runtime (%d.%d) that '
-                       'is more recent than the production runtime environment '
-                       '(%d.%d). Your application may use features that are not '
-                       'available in the production environment and may not work '
-                       'correctly when deployed to production.\n' % (
-                           version_tuple[0], version_tuple[1],
-                           PRODUCTION_VERSION[0], PRODUCTION_VERSION[1]))
-
   root_path = args[0]
 
   if '_DEFAULT_ENV_AUTH_DOMAIN' in option_dict:
@@ -603,6 +585,30 @@ def main(argv):
   except dev_appserver.InvalidAppConfigError, e:
     logging.error('Application configuration file invalid:\n%s', e)
     return 1
+
+  version_tuple = tuple(sys.version_info[:2])
+  expected_version = PRODUCTION_VERSION
+  if appinfo.runtime == 'python27':
+    expected_version = (2, 7)
+
+  if ARG_MULTIPROCESS not in option_dict and WARN_ABOUT_PYTHON_VERSION:
+    if version_tuple < expected_version:
+      sys.stderr.write('Warning: You are using a Python runtime (%d.%d) that '
+                       'is older than the production runtime environment '
+                       '(%d.%d). Your application may be dependent on Python '
+                       'behaviors that have changed and may not work correctly '
+                       'when deployed to production.\n' % (
+                           version_tuple[0], version_tuple[1],
+                           expected_version[0], expected_version[1]))
+
+    if version_tuple > expected_version:
+      sys.stderr.write('Warning: You are using a Python runtime (%d.%d) that '
+                       'is more recent than the production runtime environment '
+                       '(%d.%d). Your application may use features that are '
+                       'not available in the production environment and may '
+                       'not work correctly when deployed to production.\n' % (
+                           version_tuple[0], version_tuple[1],
+                           expected_version[0], expected_version[1]))
 
   multiprocess.Init(argv, option_dict, root_path, appinfo)
   dev_process = multiprocess.GlobalProcess()

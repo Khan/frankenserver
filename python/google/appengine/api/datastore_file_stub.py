@@ -669,7 +669,7 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     finally:
       self.__entities_lock.release()
 
-    return datastore_stub_util._GetQueryCursor(results, query, filters, orders)
+    return datastore_stub_util._ExecuteQuery(results, query, filters, orders)
 
   def _AllocateIds(self, reference, size=1, max_id=None):
     datastore_stub_util.Check(not (size and max_id),

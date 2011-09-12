@@ -75,7 +75,6 @@ import threading
 import yaml
 import hashlib
 
-from google.appengine.api import datastore
 from google.appengine.api import apiproxy_rpc
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.datastore import datastore_pb
@@ -254,6 +253,11 @@ class RemoteDatastoreStub(RemoteStub):
     assert response.IsInitialized(explanation), explanation
 
   def _Dynamic_RunQuery(self, query, query_result, cursor_id = None):
+    if query.has_transaction():
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'Remote API does not support queries inside transactions')
+
     super(RemoteDatastoreStub, self).MakeSyncCall(
         'datastore_v3', 'RunQuery', query, query_result)
 

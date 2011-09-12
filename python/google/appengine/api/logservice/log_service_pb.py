@@ -46,6 +46,477 @@ __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
 
 from google.appengine.api.api_base_pb import *
 import google.appengine.api.api_base_pb
+class LogServiceError(ProtocolBuffer.ProtocolMessage):
+
+
+  OK           =    0
+  INVALID_REQUEST =    1
+  STORAGE_ERROR =    2
+
+  _ErrorCode_NAMES = {
+    0: "OK",
+    1: "INVALID_REQUEST",
+    2: "STORAGE_ERROR",
+  }
+
+  def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
+  ErrorCode_Name = classmethod(ErrorCode_Name)
+
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.LogServiceError', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.LogServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.LogServiceError')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.LogServiceError', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.LogServiceError', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.LogServiceError', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    return n
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def OutputPartial(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.LogServiceError'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcnN6CUVycm9yQ29kZYsBkgECT0uYAQCMAYsBkgEPSU5WQUxJRF9SRVFVRVNUmAEBjAGLAZIBDVNUT1JBR0VfRVJST1KYAQKMAXS6AdkOCithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvEgphcHBob3N0aW5nGh1hcHBob3N0aW5nL2FwaS9hcGlfYmFzZS5wcm90byJOCg9Mb2dTZXJ2aWNlRXJyb3IiOwoJRXJyb3JDb2RlEgYKAk9LEAASEwoPSU5WQUxJRF9SRVFVRVNUEAESEQoNU1RPUkFHRV9FUlJPUhACIkgKDlVzZXJBcHBMb2dMaW5lEhYKDnRpbWVzdGFtcF91c2VjGAEgAigDEg0KBWxldmVsGAIgAigDEg8KB21lc3NhZ2UYAyACKAkiPwoPVXNlckFwcExvZ0dyb3VwEiwKCGxvZ19saW5lGAIgAygLMhouYXBwaG9zdGluZy5Vc2VyQXBwTG9nTGluZSIcCgxGbHVzaFJlcXVlc3QSDAoEbG9ncxgBIAEoDCIiChBTZXRTdGF0dXNSZXF1ZXN0Eg4KBnN0YXR1cxgBIAIoCSIfCglMb2dPZmZzZXQSEgoKcmVxdWVzdF9pZBgBIAEoCSI7CgdMb2dMaW5lEgwKBHRpbWUYASACKAMSDQoFbGV2ZWwYAiACKAUSEwoLbG9nX21lc3NhZ2UYAyACKAki1wUKClJlcXVlc3RMb2cSDgoGYXBwX2lkGAEgAigJEhIKCnZlcnNpb25faWQYAiACKAkSEgoKcmVxdWVzdF9pZBgDIAIoCRIKCgJpcBgEIAIoCRIQCghuaWNrbmFtZRgFIAEoCRISCgpzdGFydF90aW1lGAYgAigDEhAKCGVuZF90aW1lGAcgAigDEg8KB2xhdGVuY3kYCCACKAMSDwoHbWN5Y2xlcxgJIAIoAxIOCgZtZXRob2QYCiACKAkSEAoIcmVzb3VyY2UYCyACKAkSFAoMaHR0cF92ZXJzaW9uGAwgAigJEg4KBnN0YXR1cxgNIAIoBRIVCg1yZXNwb25zZV9zaXplGA4gAigDEhAKCHJlZmVycmVyGA8gASgJEhIKCnVzZXJfYWdlbnQYECABKAkSFQoNdXJsX21hcF9lbnRyeRgRIAIoCRIQCghjb21iaW5lZBgSIAIoCRITCgthcGlfbWN5Y2xlcxgTIAEoAxIMCgRob3N0GBQgASgJEgwKBGNvc3QYFSABKAESFwoPdGFza19xdWV1ZV9uYW1lGBYgASgJEhEKCXRhc2tfbmFtZRgXIAEoCRIbChN3YXNfbG9hZGluZ19yZXF1ZXN0GBggASgIEhQKDHBlbmRpbmdfdGltZRgZIAEoAxIZCg1yZXBsaWNhX2luZGV4GBogASgFOgItMRIWCghmaW5pc2hlZBgbIAEoCDoEdHJ1ZRIRCgljbG9uZV9rZXkYHCABKAwSIQoEbGluZRgdIAMoCzITLmFwcGhvc3RpbmcuTG9nTGluZRITCgtleGl0X3JlYXNvbhgeIAEoBRIeChZ3YXNfdGhyb3R0bGVkX2Zvcl90aW1lGB8gASgIEiIKGndhc190aHJvdHRsZWRfZm9yX3JlcXVlc3RzGCAgASgIEhYKDnRocm90dGxlZF90aW1lGCEgASgDEhMKC3NlcnZlcl9uYW1lGCIgASgMIrgCCg5Mb2dSZWFkUmVxdWVzdBIOCgZhcHBfaWQYASACKAkSEgoKdmVyc2lvbl9pZBgCIAMoCRISCgpzdGFydF90aW1lGAMgASgDEhAKCGVuZF90aW1lGAQgASgDEiUKBm9mZnNldBgFIAEoCzIVLmFwcGhvc3RpbmcuTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYBiADKAkSGQoRbWluaW11bV9sb2dfbGV2ZWwYByABKAUSGgoSaW5jbHVkZV9pbmNvbXBsZXRlGAggASgIEg0KBWNvdW50GAkgASgDEhgKEGluY2x1ZGVfYXBwX2xvZ3MYCiABKAgSFAoMaW5jbHVkZV9ob3N0GAsgASgIEhMKC2luY2x1ZGVfYWxsGAwgASgIEhYKDmNhY2hlX2l0ZXJhdG9yGA0gASgIIl0KD0xvZ1JlYWRSZXNwb25zZRIjCgNsb2cYASADKAsyFi5hcHBob3N0aW5nLlJlcXVlc3RMb2cSJQoGb2Zmc2V0GAIgASgLMhUuYXBwaG9zdGluZy5Mb2dPZmZzZXQy0wEKCkxvZ1NlcnZpY2USPQoFRmx1c2gSGC5hcHBob3N0aW5nLkZsdXNoUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8SRQoJU2V0U3RhdHVzEhwuYXBwaG9zdGluZy5TZXRTdGF0dXNSZXF1ZXN0GhouYXBwaG9zdGluZy5iYXNlLlZvaWRQcm90bxI/CgRSZWFkEhouYXBwaG9zdGluZy5Mb2dSZWFkUmVxdWVzdBobLmFwcGhvc3RpbmcuTG9nUmVhZFJlc3BvbnNlQjoKJGNvbS5nb29nbGUuYXBwaG9zdGluZy5hcGkubG9nc2VydmljZRABIAEoAUIMTG9nU2VydmljZVBi"))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
+  has_timestamp_usec_ = 0
+  timestamp_usec_ = 0
+  has_level_ = 0
+  level_ = 0
+  has_message_ = 0
+  message_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def timestamp_usec(self): return self.timestamp_usec_
+
+  def set_timestamp_usec(self, x):
+    self.has_timestamp_usec_ = 1
+    self.timestamp_usec_ = x
+
+  def clear_timestamp_usec(self):
+    if self.has_timestamp_usec_:
+      self.has_timestamp_usec_ = 0
+      self.timestamp_usec_ = 0
+
+  def has_timestamp_usec(self): return self.has_timestamp_usec_
+
+  def level(self): return self.level_
+
+  def set_level(self, x):
+    self.has_level_ = 1
+    self.level_ = x
+
+  def clear_level(self):
+    if self.has_level_:
+      self.has_level_ = 0
+      self.level_ = 0
+
+  def has_level(self): return self.has_level_
+
+  def message(self): return self.message_
+
+  def set_message(self, x):
+    self.has_message_ = 1
+    self.message_ = x
+
+  def clear_message(self):
+    if self.has_message_:
+      self.has_message_ = 0
+      self.message_ = ""
+
+  def has_message(self): return self.has_message_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_timestamp_usec()): self.set_timestamp_usec(x.timestamp_usec())
+    if (x.has_level()): self.set_level(x.level())
+    if (x.has_message()): self.set_message(x.message())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.UserAppLogLine', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.UserAppLogLine')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.UserAppLogLine')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.UserAppLogLine', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.UserAppLogLine', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.UserAppLogLine', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_timestamp_usec_ != x.has_timestamp_usec_: return 0
+    if self.has_timestamp_usec_ and self.timestamp_usec_ != x.timestamp_usec_: return 0
+    if self.has_level_ != x.has_level_: return 0
+    if self.has_level_ and self.level_ != x.level_: return 0
+    if self.has_message_ != x.has_message_: return 0
+    if self.has_message_ and self.message_ != x.message_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_timestamp_usec_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: timestamp_usec not set.')
+    if (not self.has_level_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: level not set.')
+    if (not self.has_message_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: message not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthVarInt64(self.timestamp_usec_)
+    n += self.lengthVarInt64(self.level_)
+    n += self.lengthString(len(self.message_))
+    return n + 3
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_timestamp_usec_):
+      n += 1
+      n += self.lengthVarInt64(self.timestamp_usec_)
+    if (self.has_level_):
+      n += 1
+      n += self.lengthVarInt64(self.level_)
+    if (self.has_message_):
+      n += 1
+      n += self.lengthString(len(self.message_))
+    return n
+
+  def Clear(self):
+    self.clear_timestamp_usec()
+    self.clear_level()
+    self.clear_message()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8)
+    out.putVarInt64(self.timestamp_usec_)
+    out.putVarInt32(16)
+    out.putVarInt64(self.level_)
+    out.putVarInt32(26)
+    out.putPrefixedString(self.message_)
+
+  def OutputPartial(self, out):
+    if (self.has_timestamp_usec_):
+      out.putVarInt32(8)
+      out.putVarInt64(self.timestamp_usec_)
+    if (self.has_level_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.level_)
+    if (self.has_message_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.message_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_timestamp_usec(d.getVarInt64())
+        continue
+      if tt == 16:
+        self.set_level(d.getVarInt64())
+        continue
+      if tt == 26:
+        self.set_message(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_timestamp_usec_: res+=prefix+("timestamp_usec: %s\n" % self.DebugFormatInt64(self.timestamp_usec_))
+    if self.has_level_: res+=prefix+("level: %s\n" % self.DebugFormatInt64(self.level_))
+    if self.has_message_: res+=prefix+("message: %s\n" % self.DebugFormatString(self.message_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  ktimestamp_usec = 1
+  klevel = 2
+  kmessage = 3
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "timestamp_usec",
+    2: "level",
+    3: "message",
+  }, 3)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.UserAppLogLine'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChlhcHBob3N0aW5nLlVzZXJBcHBMb2dMaW5lExoOdGltZXN0YW1wX3VzZWMgASgAMAM4AhQTGgVsZXZlbCACKAAwAzgCFBMaB21lc3NhZ2UgAygCMAk4AhTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+class UserAppLogGroup(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    self.log_line_ = []
+    if contents is not None: self.MergeFromString(contents)
+
+  def log_line_size(self): return len(self.log_line_)
+  def log_line_list(self): return self.log_line_
+
+  def log_line(self, i):
+    return self.log_line_[i]
+
+  def mutable_log_line(self, i):
+    return self.log_line_[i]
+
+  def add_log_line(self):
+    x = UserAppLogLine()
+    self.log_line_.append(x)
+    return x
+
+  def clear_log_line(self):
+    self.log_line_ = []
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.log_line_size()): self.add_log_line().CopyFrom(x.log_line(i))
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.UserAppLogGroup', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.UserAppLogGroup')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.UserAppLogGroup')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.UserAppLogGroup', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.UserAppLogGroup', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.UserAppLogGroup', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.log_line_) != len(x.log_line_): return 0
+    for e1, e2 in zip(self.log_line_, x.log_line_):
+      if e1 != e2: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    for p in self.log_line_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.log_line_)
+    for i in xrange(len(self.log_line_)): n += self.lengthString(self.log_line_[i].ByteSize())
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    n += 1 * len(self.log_line_)
+    for i in xrange(len(self.log_line_)): n += self.lengthString(self.log_line_[i].ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_log_line()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.log_line_)):
+      out.putVarInt32(18)
+      out.putVarInt32(self.log_line_[i].ByteSize())
+      self.log_line_[i].OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    for i in xrange(len(self.log_line_)):
+      out.putVarInt32(18)
+      out.putVarInt32(self.log_line_[i].ByteSizePartial())
+      self.log_line_[i].OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_log_line().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.log_line_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("log_line%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  klog_line = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    2: "log_line",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.UserAppLogGroup'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLlVzZXJBcHBMb2dHcm91cBMaCGxvZ19saW5lIAIoAjALOANKGWFwcGhvc3RpbmcuVXNlckFwcExvZ0xpbmUUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class FlushRequest(ProtocolBuffer.ProtocolMessage):
   has_logs_ = 0
   logs_ = ""
@@ -167,8 +638,9 @@ class FlushRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.FlushRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChdhcHBob3N0aW5nLkZsdXNoUmVxdWVzdBMaBGxvZ3MgASgCMAk4ARS6Ab0MCithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvEgphcHBob3N0aW5nGh1hcHBob3N0aW5nL2FwaS9hcGlfYmFzZS5wcm90byIcCgxGbHVzaFJlcXVlc3QSDAoEbG9ncxgBIAEoDCIiChBTZXRTdGF0dXNSZXF1ZXN0Eg4KBnN0YXR1cxgBIAIoCSIfCglMb2dPZmZzZXQSEgoKcmVxdWVzdF9pZBgBIAEoCSI7CgdMb2dMaW5lEgwKBHRpbWUYASACKAMSDQoFbGV2ZWwYAiACKAUSEwoLbG9nX21lc3NhZ2UYAyACKAki1wUKClJlcXVlc3RMb2cSDgoGYXBwX2lkGAEgAigJEhIKCnZlcnNpb25faWQYAiACKAkSEgoKcmVxdWVzdF9pZBgDIAIoCRIKCgJpcBgEIAIoCRIQCghuaWNrbmFtZRgFIAEoCRISCgpzdGFydF90aW1lGAYgAigDEhAKCGVuZF90aW1lGAcgAigDEg8KB2xhdGVuY3kYCCACKAMSDwoHbWN5Y2xlcxgJIAIoAxIOCgZtZXRob2QYCiACKAkSEAoIcmVzb3VyY2UYCyACKAkSFAoMaHR0cF92ZXJzaW9uGAwgAigJEg4KBnN0YXR1cxgNIAIoBRIVCg1yZXNwb25zZV9zaXplGA4gAigDEhAKCHJlZmVycmVyGA8gASgJEhIKCnVzZXJfYWdlbnQYECABKAkSFQoNdXJsX21hcF9lbnRyeRgRIAIoCRIQCghjb21iaW5lZBgSIAIoCRITCgthcGlfbWN5Y2xlcxgTIAEoAxIMCgRob3N0GBQgASgJEgwKBGNvc3QYFSABKAESFwoPdGFza19xdWV1ZV9uYW1lGBYgASgJEhEKCXRhc2tfbmFtZRgXIAEoCRIbChN3YXNfbG9hZGluZ19yZXF1ZXN0GBggASgIEhQKDHBlbmRpbmdfdGltZRgZIAEoAxIZCg1yZXBsaWNhX2luZGV4GBogASgFOgItMRIWCghmaW5pc2hlZBgbIAEoCDoEdHJ1ZRIRCgljbG9uZV9rZXkYHCABKAwSIQoEbGluZRgdIAMoCzITLmFwcGhvc3RpbmcuTG9nTGluZRITCgtleGl0X3JlYXNvbhgeIAEoBRIeChZ3YXNfdGhyb3R0bGVkX2Zvcl90aW1lGB8gASgIEiIKGndhc190aHJvdHRsZWRfZm9yX3JlcXVlc3RzGCAgASgIEhYKDnRocm90dGxlZF90aW1lGCEgASgDEhMKC3NlcnZlcl9uYW1lGCIgASgMIrgCCg5Mb2dSZWFkUmVxdWVzdBIOCgZhcHBfaWQYASACKAkSEgoKdmVyc2lvbl9pZBgCIAMoCRISCgpzdGFydF90aW1lGAMgASgDEhAKCGVuZF90aW1lGAQgASgDEiUKBm9mZnNldBgFIAEoCzIVLmFwcGhvc3RpbmcuTG9nT2Zmc2V0EhIKCnJlcXVlc3RfaWQYBiADKAkSGQoRbWluaW11bV9sb2dfbGV2ZWwYByABKAUSGgoSaW5jbHVkZV9pbmNvbXBsZXRlGAggASgIEg0KBWNvdW50GAkgASgDEhgKEGluY2x1ZGVfYXBwX2xvZ3MYCiABKAgSFAoMaW5jbHVkZV9ob3N0GAsgASgIEhMKC2luY2x1ZGVfYWxsGAwgASgIEhYKDmNhY2hlX2l0ZXJhdG9yGA0gASgIIl0KD0xvZ1JlYWRSZXNwb25zZRIjCgNsb2cYASADKAsyFi5hcHBob3N0aW5nLlJlcXVlc3RMb2cSJQoGb2Zmc2V0GAIgASgLMhUuYXBwaG9zdGluZy5Mb2dPZmZzZXQykgEKCkxvZ1NlcnZpY2USPQoFRmx1c2gSGC5hcHBob3N0aW5nLkZsdXNoUmVxdWVzdBoaLmFwcGhvc3RpbmcuYmFzZS5Wb2lkUHJvdG8SRQoJU2V0U3RhdHVzEhwuYXBwaG9zdGluZy5TZXRTdGF0dXNSZXF1ZXN0GhouYXBwaG9zdGluZy5iYXNlLlZvaWRQcm90b0I6CiRjb20uZ29vZ2xlLmFwcGhvc3RpbmcuYXBpLmxvZ3NlcnZpY2UQASABKAFCDExvZ1NlcnZpY2VQYg=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChdhcHBob3N0aW5nLkZsdXNoUmVxdWVzdBMaBGxvZ3MgASgCMAk4ARTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -299,8 +771,9 @@ class SetStatusRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SetStatusRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChthcHBob3N0aW5nLlNldFN0YXR1c1JlcXVlc3QTGgZzdGF0dXMgASgCMAk4AhTCARdhcHBob3N0aW5nLkZsdXNoUmVxdWVzdA=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChthcHBob3N0aW5nLlNldFN0YXR1c1JlcXVlc3QTGgZzdGF0dXMgASgCMAk4AhTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -426,8 +899,9 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.LogOffset'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChRhcHBob3N0aW5nLkxvZ09mZnNldBMaCnJlcXVlc3RfaWQgASgCMAk4ARTCARdhcHBob3N0aW5nLkZsdXNoUmVxdWVzdA=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChRhcHBob3N0aW5nLkxvZ09mZnNldBMaCnJlcXVlc3RfaWQgASgCMAk4ARTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -636,8 +1110,9 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.LogLine'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChJhcHBob3N0aW5nLkxvZ0xpbmUTGgR0aW1lIAEoADADOAIUExoFbGV2ZWwgAigAMAU4AhQTGgtsb2dfbWVzc2FnZSADKAIwCTgCFMIBF2FwcGhvc3RpbmcuRmx1c2hSZXF1ZXN0"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChJhcHBob3N0aW5nLkxvZ0xpbmUTGgR0aW1lIAEoADADOAIUExoFbGV2ZWwgAigAMAU4AhQTGgtsb2dfbWVzc2FnZSADKAIwCTgCFMIBGmFwcGhvc3RpbmcuTG9nU2VydmljZUVycm9y"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -1979,8 +2454,9 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.RequestLog'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChVhcHBob3N0aW5nLlJlcXVlc3RMb2cTGgZhcHBfaWQgASgCMAk4AhQTGgp2ZXJzaW9uX2lkIAIoAjAJOAIUExoKcmVxdWVzdF9pZCADKAIwCTgCFBMaAmlwIAQoAjAJOAIUExoIbmlja25hbWUgBSgCMAk4ARQTGgpzdGFydF90aW1lIAYoADADOAIUExoIZW5kX3RpbWUgBygAMAM4AhQTGgdsYXRlbmN5IAgoADADOAIUExoHbWN5Y2xlcyAJKAAwAzgCFBMaBm1ldGhvZCAKKAIwCTgCFBMaCHJlc291cmNlIAsoAjAJOAIUExoMaHR0cF92ZXJzaW9uIAwoAjAJOAIUExoGc3RhdHVzIA0oADAFOAIUExoNcmVzcG9uc2Vfc2l6ZSAOKAAwAzgCFBMaCHJlZmVycmVyIA8oAjAJOAEUExoKdXNlcl9hZ2VudCAQKAIwCTgBFBMaDXVybF9tYXBfZW50cnkgESgCMAk4AhQTGghjb21iaW5lZCASKAIwCTgCFBMaC2FwaV9tY3ljbGVzIBMoADADOAEUExoEaG9zdCAUKAIwCTgBFBMaBGNvc3QgFSgBMAE4ARQTGg90YXNrX3F1ZXVlX25hbWUgFigCMAk4ARQTGgl0YXNrX25hbWUgFygCMAk4ARQTGhN3YXNfbG9hZGluZ19yZXF1ZXN0IBgoADAIOAEUExoMcGVuZGluZ190aW1lIBkoADADOAEUExoNcmVwbGljYV9pbmRleCAaKAAwBTgBQgItMaMBqgEHZGVmYXVsdLIBAi0xpAEUExoIZmluaXNoZWQgGygAMAg4AUIEdHJ1ZaMBqgEHZGVmYXVsdLIBBHRydWWkARQTGgljbG9uZV9rZXkgHCgCMAk4ARQTGgRsaW5lIB0oAjALOANKEmFwcGhvc3RpbmcuTG9nTGluZRQTGgtleGl0X3JlYXNvbiAeKAAwBTgBFBMaFndhc190aHJvdHRsZWRfZm9yX3RpbWUgHygAMAg4ARQTGhp3YXNfdGhyb3R0bGVkX2Zvcl9yZXF1ZXN0cyAgKAAwCDgBFBMaDnRocm90dGxlZF90aW1lICEoADADOAEUExoLc2VydmVyX25hbWUgIigCMAk4ARTCARdhcHBob3N0aW5nLkZsdXNoUmVxdWVzdA=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChVhcHBob3N0aW5nLlJlcXVlc3RMb2cTGgZhcHBfaWQgASgCMAk4AhQTGgp2ZXJzaW9uX2lkIAIoAjAJOAIUExoKcmVxdWVzdF9pZCADKAIwCTgCFBMaAmlwIAQoAjAJOAIUExoIbmlja25hbWUgBSgCMAk4ARQTGgpzdGFydF90aW1lIAYoADADOAIUExoIZW5kX3RpbWUgBygAMAM4AhQTGgdsYXRlbmN5IAgoADADOAIUExoHbWN5Y2xlcyAJKAAwAzgCFBMaBm1ldGhvZCAKKAIwCTgCFBMaCHJlc291cmNlIAsoAjAJOAIUExoMaHR0cF92ZXJzaW9uIAwoAjAJOAIUExoGc3RhdHVzIA0oADAFOAIUExoNcmVzcG9uc2Vfc2l6ZSAOKAAwAzgCFBMaCHJlZmVycmVyIA8oAjAJOAEUExoKdXNlcl9hZ2VudCAQKAIwCTgBFBMaDXVybF9tYXBfZW50cnkgESgCMAk4AhQTGghjb21iaW5lZCASKAIwCTgCFBMaC2FwaV9tY3ljbGVzIBMoADADOAEUExoEaG9zdCAUKAIwCTgBFBMaBGNvc3QgFSgBMAE4ARQTGg90YXNrX3F1ZXVlX25hbWUgFigCMAk4ARQTGgl0YXNrX25hbWUgFygCMAk4ARQTGhN3YXNfbG9hZGluZ19yZXF1ZXN0IBgoADAIOAEUExoMcGVuZGluZ190aW1lIBkoADADOAEUExoNcmVwbGljYV9pbmRleCAaKAAwBTgBQgItMaMBqgEHZGVmYXVsdLIBAi0xpAEUExoIZmluaXNoZWQgGygAMAg4AUIEdHJ1ZaMBqgEHZGVmYXVsdLIBBHRydWWkARQTGgljbG9uZV9rZXkgHCgCMAk4ARQTGgRsaW5lIB0oAjALOANKEmFwcGhvc3RpbmcuTG9nTGluZRQTGgtleGl0X3JlYXNvbiAeKAAwBTgBFBMaFndhc190aHJvdHRsZWRfZm9yX3RpbWUgHygAMAg4ARQTGhp3YXNfdGhyb3R0bGVkX2Zvcl9yZXF1ZXN0cyAgKAAwCDgBFBMaDnRocm90dGxlZF90aW1lICEoADADOAEUExoLc2VydmVyX25hbWUgIigCMAk4ARTCARphcHBob3N0aW5nLkxvZ1NlcnZpY2VFcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2553,8 +3029,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.LogReadRequest'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChlhcHBob3N0aW5nLkxvZ1JlYWRSZXF1ZXN0ExoGYXBwX2lkIAEoAjAJOAIUExoKdmVyc2lvbl9pZCACKAIwCTgDFBMaCnN0YXJ0X3RpbWUgAygAMAM4ARQTGghlbmRfdGltZSAEKAAwAzgBFBMaBm9mZnNldCAFKAIwCzgBShRhcHBob3N0aW5nLkxvZ09mZnNldBQTGgpyZXF1ZXN0X2lkIAYoAjAJOAMUExoRbWluaW11bV9sb2dfbGV2ZWwgBygAMAU4ARQTGhJpbmNsdWRlX2luY29tcGxldGUgCCgAMAg4ARQTGgVjb3VudCAJKAAwAzgBFBMaEGluY2x1ZGVfYXBwX2xvZ3MgCigAMAg4ARQTGgxpbmNsdWRlX2hvc3QgCygAMAg4ARQTGgtpbmNsdWRlX2FsbCAMKAAwCDgBFBMaDmNhY2hlX2l0ZXJhdG9yIA0oADAIOAEUwgEXYXBwaG9zdGluZy5GbHVzaFJlcXVlc3Q="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChlhcHBob3N0aW5nLkxvZ1JlYWRSZXF1ZXN0ExoGYXBwX2lkIAEoAjAJOAIUExoKdmVyc2lvbl9pZCACKAIwCTgDFBMaCnN0YXJ0X3RpbWUgAygAMAM4ARQTGghlbmRfdGltZSAEKAAwAzgBFBMaBm9mZnNldCAFKAIwCzgBShRhcHBob3N0aW5nLkxvZ09mZnNldBQTGgpyZXF1ZXN0X2lkIAYoAjAJOAMUExoRbWluaW11bV9sb2dfbGV2ZWwgBygAMAU4ARQTGhJpbmNsdWRlX2luY29tcGxldGUgCCgAMAg4ARQTGgVjb3VudCAJKAAwAzgBFBMaEGluY2x1ZGVfYXBwX2xvZ3MgCigAMAg4ARQTGgxpbmNsdWRlX2hvc3QgCygAMAg4ARQTGgtpbmNsdWRlX2FsbCAMKAAwCDgBFBMaDmNhY2hlX2l0ZXJhdG9yIA0oADAIOAEUwgEaYXBwaG9zdGluZy5Mb2dTZXJ2aWNlRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2749,8 +3226,9 @@ class LogReadResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.LogReadResponse'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1JlYWRSZXNwb25zZRMaA2xvZyABKAIwCzgDShVhcHBob3N0aW5nLlJlcXVlc3RMb2cUExoGb2Zmc2V0IAIoAjALOAFKFGFwcGhvc3RpbmcuTG9nT2Zmc2V0FMIBF2FwcGhvc3RpbmcuRmx1c2hSZXF1ZXN0"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WithcHBob3N0aW5nL2FwaS9sb2dzZXJ2aWNlL2xvZ19zZXJ2aWNlLnByb3RvChphcHBob3N0aW5nLkxvZ1JlYWRSZXNwb25zZRMaA2xvZyABKAIwCzgDShVhcHBob3N0aW5nLlJlcXVlc3RMb2cUExoGb2Zmc2V0IAIoAjALOAFKFGFwcGhvc3RpbmcuTG9nT2Zmc2V0FMIBGmFwcGhvc3RpbmcuTG9nU2VydmljZUVycm9y"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2763,6 +3241,7 @@ class _LogService_ClientBaseStub(_client_stub_base_class):
   __slots__ = (
       '_protorpc_Flush', '_full_name_Flush',
       '_protorpc_SetStatus', '_full_name_SetStatus',
+      '_protorpc_Read', '_full_name_Read',
   )
 
   def __init__(self, rpc_stub):
@@ -2775,6 +3254,10 @@ class _LogService_ClientBaseStub(_client_stub_base_class):
     self._protorpc_SetStatus = pywraprpc.RPC()
     self._full_name_SetStatus = self._stub.GetFullMethodName(
         'SetStatus')
+
+    self._protorpc_Read = pywraprpc.RPC()
+    self._full_name_Read = self._stub.GetFullMethodName(
+        'Read')
 
   def Flush(self, request, rpc=None, callback=None, response=None):
     """Make a Flush RPC call.
@@ -2825,6 +3308,31 @@ class _LogService_ClientBaseStub(_client_stub_base_class):
                           response,
                           callback,
                           self._protorpc_SetStatus)
+
+  def Read(self, request, rpc=None, callback=None, response=None):
+    """Make a Read RPC call.
+
+    Args:
+      request: a LogReadRequest instance.
+      rpc: Optional RPC instance to use for the call.
+      callback: Optional final callback. Will be called as
+          callback(rpc, result) when the rpc completes. If None, the
+          call is synchronous.
+      response: Optional ProtocolMessage to be filled in with response.
+
+    Returns:
+      The LogReadResponse if callback is None. Otherwise, returns None.
+    """
+
+    if response is None:
+      response = LogReadResponse
+    return self._MakeCall(rpc,
+                          self._full_name_Read,
+                          'Read',
+                          request,
+                          response,
+                          callback,
+                          self._protorpc_Read)
 
 
 class _LogService_ClientStub(_LogService_ClientBaseStub):
@@ -2913,6 +3421,17 @@ class LogService(_server_stub_base_class):
     """
     raise NotImplementedError
 
+
+  def Read(self, rpc, request, response):
+    """Handles a Read RPC call. You should override this.
+
+    Args:
+      rpc: a Stubby RPC object
+      request: a LogReadRequest that contains the client request
+      response: a LogReadResponse that should be modified to send the response
+    """
+    raise NotImplementedError
+
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.
 
@@ -2930,6 +3449,12 @@ class LogService(_server_stub_base_class):
         google.appengine.api.api_base_pb.VoidProto,
         None,
         'none')
+    rpcserver._GetHandlerDecorator(
+        self.Read.im_func,
+        LogReadRequest,
+        LogReadResponse,
+        None,
+        'none')
 
 
-__all__ = ['FlushRequest','SetStatusRequest','LogOffset','LogLine','RequestLog','LogReadRequest','LogReadResponse','LogService']
+__all__ = ['LogServiceError','UserAppLogLine','UserAppLogGroup','FlushRequest','SetStatusRequest','LogOffset','LogLine','RequestLog','LogReadRequest','LogReadResponse','LogService']

@@ -105,6 +105,7 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ChannelServiceError'
 class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
   has_application_key_ = 0
   application_key_ = ""
@@ -204,6 +205,7 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateChannelRequest'
 class CreateChannelResponse(ProtocolBuffer.ProtocolMessage):
   has_client_id_ = 0
   client_id_ = ""
@@ -298,6 +300,7 @@ class CreateChannelResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateChannelResponse'
 class SendMessageRequest(ProtocolBuffer.ProtocolMessage):
   has_application_key_ = 0
   application_key_ = ""
@@ -436,5 +439,6 @@ class SendMessageRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SendMessageRequest'
 
 __all__ = ['ChannelServiceError','CreateChannelRequest','CreateChannelResponse','SendMessageRequest']

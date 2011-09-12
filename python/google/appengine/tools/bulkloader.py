@@ -1346,6 +1346,8 @@ class RequestManager(object):
       kind: The string name of a kind.
       high_id: The int value to which to increment the unique id counter.
     """
+    if self.dry_run:
+      return
     high_id_key = datastore.Key.from_path(*(ancestor_path + [kind, high_id]))
     IncrementId(high_id_key)
 

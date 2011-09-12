@@ -205,6 +205,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.FieldValue'
 class Field(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -347,6 +348,7 @@ class Field(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Field'
 class FieldTypes(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -489,6 +491,7 @@ class FieldTypes(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.FieldTypes'
 class Document(ProtocolBuffer.ProtocolMessage):
 
 
@@ -608,29 +611,23 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_id_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: id not set.')
     for p in self.field_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.id_))
+    if (self.has_id_): n += 1 + self.lengthString(len(self.id_))
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
-    return n + 1
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_id_):
-      n += 1
-      n += self.lengthString(len(self.id_))
+    if (self.has_id_): n += 1 + self.lengthString(len(self.id_))
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
@@ -646,8 +643,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.clear_storage()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.id_)
+    if (self.has_id_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.id_)
     if (self.has_language_):
       out.putVarInt32(18)
       out.putPrefixedString(self.language_)
@@ -754,5 +752,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Document'
 
 __all__ = ['FieldValue','Field','FieldTypes','Document']

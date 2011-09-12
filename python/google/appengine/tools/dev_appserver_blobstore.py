@@ -59,6 +59,19 @@ UPLOAD_URL_PATTERN = '/%s(.*)' % UPLOAD_URL_PATH
 AUTO_MIME_TYPE = 'application/vnd.google.appengine.auto'
 
 
+ERROR_RESPONSE_TEMPLATE = """
+<html>
+  <head>
+    <title>%(response_code)d %(response_string)s</title>
+  </head>
+  <body text=#000000 bgcolor=#ffffff>
+    <h1>Error: %(response_string)s</h1>
+    <h2>%(response_text)s</h2>
+  </body>
+</html>
+"""
+
+
 def GetBlobStorage():
   """Get blob-storage from api-proxy stub map.
 
@@ -314,6 +327,8 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
 
       if upload_session:
         success_path = upload_session['success_path']
+        max_bytes_per_blob = upload_session['max_bytes_per_blob']
+        max_bytes_total = upload_session['max_bytes_total']
 
         upload_form = cgi.FieldStorage(fp=request.infile,
                                        headers=request.headers,
@@ -323,7 +338,10 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
 
 
           mime_message_string = self.__cgi_handler.GenerateMIMEMessageString(
-              upload_form)
+              upload_form,
+              max_bytes_per_blob=max_bytes_per_blob,
+              max_bytes_total=max_bytes_total)
+
           datastore.Delete(upload_session)
           self.current_session = upload_session
 
@@ -347,35 +365,39 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
               force_admin=True)
         except dev_appserver_upload.InvalidMIMETypeFormatError:
           outfile.write('Status: 400\n\n')
+        except dev_appserver_upload.UploadEntityTooLargeError:
+          outfile.write('Status: 413\n\n')
+          response = ERROR_RESPONSE_TEMPLATE % {
+              'response_code': 413,
+              'response_string': 'Request Entity Too Large',
+              'response_text': 'Your client issued a request that was too '
+              'large.'}
+          outfile.write(response)
       else:
         logging.error('Could not find session for %s', upload_key)
         outfile.write('Status: 404\n\n')
 
 
-    def EndRedirect(self, redirected_outfile, original_outfile):
+    def EndRedirect(self, dispatched_output, original_output):
       """Handle the end of upload complete notification.
 
       Makes sure the application upload handler returned an appropriate status
       code.
       """
-      response = dev_appserver.RewriteResponse(redirected_outfile)
+      response = dev_appserver.RewriteResponse(dispatched_output)
       logging.info('Upload handler returned %d', response.status_code)
+      outfile = cStringIO.StringIO()
+      outfile.write('Status: %s\n' % response.status_code)
 
-      if (response.status_code in (301, 302, 303) and
-          (not response.body or len(response.body.read()) == 0)):
-        contentless_outfile = cStringIO.StringIO()
-
-
-        contentless_outfile.write('Status: %s\n' % response.status_code)
-        contentless_outfile.write(''.join(response.headers.headers))
-        contentless_outfile.seek(0)
-        dev_appserver.URLDispatcher.EndRedirect(self,
-                                                contentless_outfile,
-                                                original_outfile)
+      if response.body and len(response.body.read()) > 0:
+        response.body.seek(0)
+        outfile.write(response.body.read())
       else:
-        logging.error(
-            'Invalid upload handler response. Only 301, 302 and 303 '
-            'statuses are permitted and it may not have a content body.')
-        original_outfile.write('Status: 500\n\n')
+        outfile.write(''.join(response.headers.headers))
+
+      outfile.seek(0)
+      dev_appserver.URLDispatcher.EndRedirect(self,
+                                              outfile,
+                                              original_output)
 
   return UploadDispatcher()

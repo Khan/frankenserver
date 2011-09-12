@@ -242,7 +242,11 @@ def find_app_files(basedir):
       ename = os.path.join(dname, entry)
       if APP_CONFIG.skip_files.match(ename):
         continue
-      s = os.stat(ename)
+      try:
+        s = os.stat(ename)
+      except OSError, e:
+        logging.warn('%s', e)
+        continue
       if stat.S_ISDIR(s[stat.ST_MODE]):
         dirs.append(ename)
         continue

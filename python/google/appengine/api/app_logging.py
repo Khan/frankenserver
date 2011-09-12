@@ -34,8 +34,6 @@ Classes defined here:
 
 
 import logging
-import sys
-import types
 
 from google.appengine.api import logservice
 
@@ -80,7 +78,6 @@ class AppLogsHandler(logging.StreamHandler):
     """Closes the stream.
 
     This implementation based on the implementation of FileHandler.close()."""
-    self.flush()
     self.stream.close()
     logging.StreamHandler.close(self)
 
@@ -93,11 +90,11 @@ class AppLogsHandler(logging.StreamHandler):
       message = self._AppLogsMessage(record)
       if isinstance(message, unicode):
         message = message.encode("UTF-8")
-      self.stream.write(message)
 
 
-      self.flush()
-      logservice.auto_flush(lines_emitted=1)
+
+
+      logservice.write(message)
     except (KeyboardInterrupt, SystemExit):
       raise
     except:

@@ -50,7 +50,7 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'whoosh'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
   os.path.join(DIR_PATH, 'lib', 'simplejson'),
-  os.path.join(DIR_PATH, 'lib', 'graphy'),
+  os.path.join(DIR_PATH, 'lib', 'google.appengine._internal.graphy'),
 ]
 
 

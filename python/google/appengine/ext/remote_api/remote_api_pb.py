@@ -205,6 +205,7 @@ class Request(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.Request'
 class ApplicationError(ProtocolBuffer.ProtocolMessage):
   has_code_ = 0
   code_ = 0
@@ -343,6 +344,7 @@ class ApplicationError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.ApplicationError'
 class Response(ProtocolBuffer.ProtocolMessage):
   has_response_ = 0
   response_ = ""
@@ -555,6 +557,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.Response'
 class TransactionRequest_Precondition(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   has_hash_ = 0
@@ -886,5 +889,6 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.TransactionRequest'
 
 __all__ = ['Request','ApplicationError','Response','TransactionRequest','TransactionRequest_Precondition']

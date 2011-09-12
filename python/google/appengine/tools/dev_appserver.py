@@ -387,7 +387,7 @@ class AppServerRequest(object):
       as equal.
     """
     results = []
-    for attribute in self.ATTRUBUTES:
+    for attribute in self.ATTRIBUTES:
       results.append('%s: %s' % (attributes, getattr(self, attributes)))
     return '<AppServerRequest %s>' % ' '.join(results)
 
@@ -2981,11 +2981,11 @@ def ExecuteCGI(root_path,
   old_env = os.environ.copy()
   old_cwd = os.getcwd()
   old_file_type = types.FileType
+  old_path = sys.path[:]
   reset_modules = False
 
   try:
     ClearAllButEncodingsModules(sys.modules)
-    before_path = sys.path[:]
     sys.modules.update(module_dict)
     sys.argv = [cgi_path]
 
@@ -3047,7 +3047,7 @@ def ExecuteCGI(root_path,
 
 
 
-    sys.path[:] = before_path
+    sys.path[:] = old_path
 
     os.environ.clear()
     os.environ.update(old_env)

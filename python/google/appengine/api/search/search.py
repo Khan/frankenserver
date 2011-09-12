@@ -327,6 +327,14 @@ def _IsReservedFieldName(name):
   return True
 
 
+def _GetList(a_list):
+  """Utility function that conversts None to the empty list."""
+  if a_list is None:
+    return []
+  else:
+    return list(a_list)
+
+
 def _ConvertToList(arg):
   """Converts arg to a list, empty if None, single element if not a list."""
   if isinstance(arg, basestring):
@@ -432,9 +440,7 @@ class Field(object):
   This class should not be directly instantiated.
   """
 
-  _CONSTRUCTOR_KWARGS = frozenset(['name', 'value', 'language'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, name, value, language=None):
     """Initializer.
 
     Args:
@@ -443,26 +449,20 @@ class Field(object):
         reserved pattern '_[A-Z]*' nor start with '!'. Further, field
         names cannot contain non-space whitespace characters.
       value: The value of the field which can be a str, unicode or date.
-        (optional)
       language: The ISO 693-1 two letter code of the language used in the value.
-        (optional) See
-        http://www.sil.org/iso639-3/codes.asp?order=639_1&letter=%25 for a list
-        of valid codes. Correct specification of language code will assist in
-        correct tokenization of the field. If None is given, then the language
-        code of the document will be used.
+        See http://www.sil.org/iso639-3/codes.asp?order=639_1&letter=%25 for a
+        list of valid codes. Correct specification of language code will assist
+        in correct tokenization of the field. If None is given, then the
+        language code of the document will be used.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
-    self._name = _CheckFieldName(kwargs.get('name'))
-    self._language = _CheckLanguage(kwargs.get('language'))
-    self._value = self._CheckValue(kwargs.get('value'))
+    self._name = _CheckFieldName(name)
+    self._value = self._CheckValue(value)
+    self._language = _CheckLanguage(language)
 
   @property
   def name(self):
@@ -513,19 +513,19 @@ class TextField(Field):
     TextField(name='signature', value='brzydka pogoda', language='pl')
   """
 
-  def __init__(self, **kwargs):
+  def __init__(self, name, value=None, language=None):
     """Initializer.
 
     Args:
       name: The name of the field.
-      value: A str or unicode object containing text. (optional)
-      language: The code of the language the value is encoded in. (optional)
+      value: A str or unicode object containing text.
+      language: The code of the language the value is encoded in.
 
     Raises:
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, **kwargs)
+    Field.__init__(self, name, value, language)
 
   def _CheckValue(self, value):
     return _CheckText(value)
@@ -542,20 +542,20 @@ class HtmlField(Field):
     HtmlField(name='content', value='<html>herbata, kawa</html>', language='pl')
   """
 
-  def __init__(self, **kwargs):
+  def __init__(self, name, value=None, language=None):
     """Initializer.
 
     Args:
       name: The name of the field.
       value: A str or unicode object containing the searchable content of the
-        Field. (optional)
-      language: The code of the language the value is encoded in. (optional)
+        Field.
+      language: The code of the language the value is encoded in.
 
     Raises:
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, **kwargs)
+    Field.__init__(self, name, value, language)
 
   def _CheckValue(self, value):
     return _CheckHtml(value)
@@ -572,20 +572,19 @@ class AtomField(Field):
     AtomField(name='contributor', value='foo@bar.com')
   """
 
-  def __init__(self, **kwargs):
+  def __init__(self, name, value=None, language=None):
     """Initializer.
 
     Args:
       name: The name of the field.
       value: A str or unicode object to be treated as an indivisible text value.
-        (optional)
-      language: The code of the language the value is encoded in. (optional)
+      language: The code of the language the value is encoded in.
 
     Raises:
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, **kwargs)
+    Field.__init__(self, name, value, language)
 
   def _CheckValue(self, value):
     return _CheckAtom(value)
@@ -602,17 +601,17 @@ class DateField(Field):
     DateField(name='creation_date', value=datetime.date(2011, 03, 11))
   """
 
-  def __init__(self, **kwargs):
+  def __init__(self, name, value=None):
     """Initializer.
 
     Args:
       name: The name of the field.
-      value: A datetime.date but not a datetime.datetime. (optional)
+      value: A datetime.date but not a datetime.datetime.
 
     Raises:
       TypeError: If value is not a datetime.date or is a datetime.datetime.
     """
-    Field.__init__(self, **kwargs)
+    Field.__init__(self, name, value)
 
   def _CheckValue(self, value):
     return _CheckDate(value)
@@ -638,20 +637,20 @@ def _GetValue(value_pb):
 
 def _NewFieldFromPb(pb):
   """Constructs a Field from a document_pb.Field protocol buffer."""
+  name = pb.name()
   value = _GetValue(pb.value())
   lang = None
   if pb.value().has_language():
     lang = pb.value().language()
-  args = dict(name=pb.name(), value=value, language=lang)
   val_type = pb.value().type()
   if val_type == document_pb.FieldValue.TEXT:
-    return TextField(**args)
+    return TextField(name, value, lang)
   elif val_type == document_pb.FieldValue.HTML:
-    return HtmlField(**args)
+    return HtmlField(name, value, lang)
   elif val_type == document_pb.FieldValue.ATOM:
-    return AtomField(**args)
+    return AtomField(name, value, lang)
   elif val_type == document_pb.FieldValue.DATE:
-    return DateField(**args)
+    return DateField(name, value)
   raise InternalError('Unknown field value type %d', val_type)
 
 
@@ -671,42 +670,37 @@ class Document(object):
   """
   _FIRST_JAN_2011 = datetime.datetime(2011, 1, 1)
 
-
-  DEFAULT_LANGUAGE = 'en'
-
-  _CONSTRUCTOR_KWARGS = frozenset(['doc_id', 'fields', 'language', 'order_id'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, doc_id=None, fields=None, language='en', order_id=None):
     """Initializer.
 
     Args:
       doc_id: The printable ASCII string identifying the document which does
         not start with '!' which is reserved. Non-space whitespace characters
-        are also excluded from ids.
+        are also excluded from ids. If no id is provided, the search service
+        will provide one.
       fields: An iterable of Field instances representing the content of the
-        document. (optional)
+        document.
       language: The code of the language used in the field values. Defaults
-      to DEFAULT_LANGUAGE. (optional)
+      to 'en' (English).
       order_id: The id used to specify the order this document will be returned
         in search results, where 0 <= order_id <= sys.maxint. Defaults to the
         number of seconds since 1st Jan 2011. Documents are returned in
-        descending order of the order ID. (optional)
+        descending order of the order ID.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
+    if doc_id is not None:
+      _CheckDocumentId(doc_id)
+    self._doc_id = doc_id
+    self._fields = _GetList(fields)
+    self._language = _CheckLanguage(language)
 
-    self._doc_id = _CheckDocumentId(kwargs.get('doc_id'))
-    self._fields = list(kwargs.get('fields', []))
-    self._language = _CheckLanguage(kwargs.get('language',
-                                               self.DEFAULT_LANGUAGE))
-    self._order_id = self._CheckOrderId(
-        kwargs.get('order_id', self._GetDefaultOrderId()))
+    if order_id is None:
+      order_id = self._GetDefaultOrderId()
+    self._order_id = self._CheckOrderId(order_id)
 
   @property
   def doc_id(self):
@@ -746,7 +740,8 @@ class Document(object):
 def _CopyDocumentToProtocolBuffer(document, pb):
   """Copies Document to a document_pb.Document protocol buffer."""
   pb.set_storage(document_pb.Document.DISK)
-  pb.set_id(document.doc_id)
+  if document.doc_id:
+    pb.set_id(document.doc_id)
   if document.language:
     pb.set_language(document.language)
   for field in document.fields:
@@ -786,9 +781,7 @@ class FieldExpression(object):
   _MAXIMUM_EXPRESSION_LENGTH = 1000
   _MAXIMUM_OPERATOR_LENGTH = 100
 
-  _CONSTRUCTOR_KWARGS = frozenset(['name', 'expression'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, name, expression):
     """Initializer.
 
     Args:
@@ -801,19 +794,14 @@ class FieldExpression(object):
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
+    self._name = _CheckFieldName(name)
 
-    self._name = _CheckFieldName(kwargs.get('name'))
-    self._expression = kwargs.get('expression')
-
-    if self._expression is None:
+    if expression is None:
       raise ValueError('expression in FieldExpression cannot be null')
-    if not isinstance(self._expression, basestring):
+    if not isinstance(expression, basestring):
       raise TypeError('expression expected in FieldExpression, but got %s' %
-                      type(self._expression))
-    self._expression = str(self._expression)
+                      type(expression))
+    self._expression = str(expression)
 
   @property
   def name(self):
@@ -859,10 +847,7 @@ class SortSpec(object):
 
   MIN_FIELD_VALUE = ''
 
-  _CONSTRUCTOR_KWARGS = frozenset(['expression', 'sort_descending',
-                                   'default_value'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, expression, sort_descending=True, default_value=None):
     """Initializer.
 
     Args:
@@ -872,23 +857,18 @@ class SortSpec(object):
         which will add the score from a scorer to a count of the values
         of a likes field times 0.1.
       sort_descending: Whether to sort in descending or ascending order.
-        Defaults to True, descending. (optional)
       default_value: The default value of the named field, if none
         present for a document. A text value must be specified for text sorts.
-        A numeric value must be specified for numeric sorts. (optional)
+        A numeric value must be specified for numeric sorts.
 
     Raises:
       TypeError: If any of the parameters has an invalid type, or an unknown
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
-    self._expression = _CheckExpression(kwargs.get('expression'))
-    self._sort_descending = kwargs.get('sort_descending', True)
-    self._default_value = kwargs.get('default_value')
+    self._expression = _CheckExpression(expression)
+    self._sort_descending = sort_descending
+    self._default_value = default_value
     if isinstance(self.default_value, basestring):
       _CheckText(self._default_value, 'default_value')
     elif self._default_value is not None:
@@ -939,36 +919,28 @@ class ScorerSpec(object):
   """
 
   GENERIC, MATCH_SCORER = ('GENERIC', 'MATCH_SCORER')
-  _DEFAULT_LIMIT = 1000
   _MAXIMUM_LIMIT = 10000
 
   _TYPES = frozenset([GENERIC, MATCH_SCORER])
 
-  _CONSTRUCTOR_KWARGS = frozenset(['scorer_type', 'limit'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, scorer_type=GENERIC, limit=1000):
     """Initializer.
 
     Args:
       scorer_type: The type of scorer to use on search results. Defaults to
-        GENERIC.  (optional) The possible types include:
+        GENERIC. The possible types include:
           GENERIC: A generic scorer that uses match scoring and rescoring.
           MATCH_SCORER: A scorer that returns a score based on term frequency
           divided by document frequency.
-      limit: The limit on the number of documents to score. Defaults to
-        _DEFAULT_LIMIT. (optional)
+      limit: The limit on the number of documents to score. Defaults to 1000.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
-    self._scorer_type = self._CheckType(kwargs.get('scorer_type', self.GENERIC))
-    self._limit = self._CheckLimit(kwargs.get('limit', self._DEFAULT_LIMIT))
+    self._scorer_type = self._CheckType(scorer_type)
+    self._limit = self._CheckLimit(limit)
 
   @property
   def scorer_type(self):
@@ -1026,25 +998,18 @@ class SearchRequest(object):
                   snippeted_fields=['content'])
   """
 
-  NONE, SINGLE, PER_RESULT = ('NONE', 'SINGLE', 'PER_RESULT')
+  SINGLE, PER_RESULT = ('SINGLE', 'PER_RESULT')
 
-  DEFAULT_LIMIT = 20
-  DEFAULT_MATCHED_COUNT_ACCURACY = 100
-
-  _CURSOR_TYPES = frozenset([NONE, SINGLE, PER_RESULT])
+  _CURSOR_TYPES = frozenset([SINGLE, PER_RESULT])
   _MAXIMUM_QUERY_LENGTH = 1000
   _MAXIMUM_LIMIT = 800
   _MAXIMUM_MATCHED_COUNT_ACCURACY = 10000
   _MAXIMUM_FIELDS_TO_RETURN = 100
 
-  _CONSTRUCTOR_KWARGS = frozenset(['query', 'offset', 'limit',
-                                   'matched_count_accuracy',
-                                   'cursor', 'cursor_type', 'sort_specs',
-                                   'scorer_spec', 'returned_fields',
-                                   'snippeted_fields', 'returned_expressions',
-                                   'app_id'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, query, offset=0, limit=20, matched_count_accuracy=100,
+               cursor=None, cursor_type=None, sort_specs=None, scorer_spec=None,
+               returned_fields=None, snippeted_fields=None,
+               returned_expressions=None, **kwargs):
     """Initializer.
 
     Args:
@@ -1062,36 +1027,33 @@ class SearchRequest(object):
         sony brand and a price field which is 300 (inclusive) to 400
         (exclusive).
       offset: The offset is number of documents to skip in results.
-        Defaults to 0. (optional)
       limit: The limit on number of documents to return in results.
-        Defaults to DEFAULT_LIMIT. (optional)
       matched_count_accuracy: The minimum accuracy requirement for
         SearchResponse.matched_count. If set, the matched_count will be
         accurate up to at least that number. For example, when set to 100,
         any SearchResponse with matched_count <= 100 is accurate. This option
         may add considerable latency/expense, especially when used with
-        returned_fields. Defaults to DEFAULT_MATCHED_COUNT_ACCURACY. (optional)
+        returned_fields.
       cursor: A cursor returned in a previous set of search results to use
         as a starting point to retrieve the next set of results. This can get
         you better performance, and also improves the consistency of pagination
-        through index updates. (optional)
-      cursor_type: The type of cursor returned results will have. Defaults to
-        SearchRequest.NONE. (optional) Possible types are:
-          NONE: No cursor will be returned in results.
+        through index updates.
+      cursor_type: The type of cursor returned results will have, if any.
+        Possible types are:
           SINGLE: A single cursor will be returned to continue from the end of
             the results.
           PER_RESULT: One cursor will be returned with each search result, so
             you can continue after any result.
       sort_specs: An iterable of SortSpecs specifying a multi-dimensional sort
-        over the search results. (optional)
-      score_spec: The ScorerSpec specifying which scorer to use to score
-        documents. (optional)
+        over the search results.
+      scorer_spec: The ScorerSpec specifying which scorer to use to score
+        documents.
       returned_fields: An iterable of names of fields to return in search
-        results.  (optional)
+        results.
       snippeted_fields: An iterable of names of fields to snippet and return
-        in search result expressions. (optional)
+        in search result expressions.
       returned_expressions: An iterable of FieldExpression to evaluate and
-        return in search results. (optional)
+        return in search results.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
@@ -1101,28 +1063,30 @@ class SearchRequest(object):
 
 
 
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-    self._query = self._CheckQuery(kwargs.get('query'))
-    self._offset = self._CheckOffset(kwargs.get('offset', 0))
-    self._limit = self._CheckLimit(
-        kwargs.get('limit', SearchRequest.DEFAULT_LIMIT))
-    self._app_id = kwargs.get('app_id')
+    if 'app_id' in kwargs:
+      self._app_id = kwargs.pop('app_id')
+    else:
+      self._app_id = None
+
+    if kwargs:
+      raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
+
+    self._query = self._CheckQuery(query)
+    self._offset = self._CheckOffset(offset)
+    self._limit = self._CheckLimit(limit)
     self._matched_count_accuracy = self._CheckMatchedCountAccuracy(
-        kwargs.get('matched_count_accuracy',
-                   SearchRequest.DEFAULT_MATCHED_COUNT_ACCURACY))
-    self._cursor = self._CheckCursor(kwargs.get('cursor'))
-    self._cursor_type = self._CheckCursorType(
-        kwargs.get('cursor_type', SearchRequest.NONE))
-    self._sort_specs = list(kwargs.get('sort_specs', []))
-    self._scorer_spec = kwargs.get('scorer_spec')
-    self._returned_fields = _CheckFieldNames(
-        _ConvertToList(kwargs.get('returned_fields', [])))
-    self._snippeted_fields = _CheckFieldNames(
-        _ConvertToList(kwargs.get('snippeted_fields', [])))
-    self._returned_expressions = _ConvertToList(
-        kwargs.get('returned_expressions', []))
+        matched_count_accuracy)
+
+    self._cursor = self._CheckCursor(cursor)
+    self._cursor_type = self._CheckCursorType(cursor_type)
+
+    self._sort_specs = _GetList(sort_specs)
+    self._scorer_spec = scorer_spec
+
+    self._returned_fields = _CheckFieldNames(_ConvertToList(returned_fields))
+    self._snippeted_fields = _CheckFieldNames(_ConvertToList(snippeted_fields))
+    self._returned_expressions = _ConvertToList(returned_expressions)
+
     if (len(self._returned_expressions) + len(self._snippeted_fields) +
         len(self._returned_fields)) > self._MAXIMUM_FIELDS_TO_RETURN:
       raise ValueError(
@@ -1215,7 +1179,9 @@ class SearchRequest(object):
                            empty_ok=True)
 
   def _CheckCursorType(self, cursor_type):
-    """Checks the cursor_type is one specified in _CURSOR_TYPES."""
+    """Checks the cursor_type is one specified in _CURSOR_TYPES or None."""
+    if cursor_type is None:
+      return None
     return _CheckEnum(cursor_type, 'cursor_type',
                       values=SearchRequest._CURSOR_TYPES)
 
@@ -1234,7 +1200,7 @@ class SearchRequest(object):
 
 
 _CURSOR_TYPE_PB_MAP = {
-  SearchRequest.NONE: search_service_pb.SearchParams.NONE,
+  None: search_service_pb.SearchParams.NONE,
   SearchRequest.SINGLE: search_service_pb.SearchParams.SINGLE,
   SearchRequest.PER_RESULT: search_service_pb.SearchParams.PER_RESULT
   }
@@ -1277,11 +1243,8 @@ def _CopySearchRequestToProtocolBuffer(request, pb):
 class SearchResult(object):
   """Represents a result of executing a search request."""
 
-  _CONSTRUCTOR_KWARGS = frozenset(['document', 'sort_scores',
-                                   'expressions', 'cursor'])
 
-
-  def __init__(self, **kwargs):
+  def __init__(self, document, sort_scores=None, expressions=None, cursor=None):
     """Initializer.
 
     Args:
@@ -1289,24 +1252,20 @@ class SearchResult(object):
         specified in a SearchRequest will be returned in the document.
       sort_scores: The list of scores assigned during sort evaluation. Each
         sort dimension is included. Positive scores are used for ascending
-        sorts; negative scores for descending. (optional)
+        sorts; negative scores for descending.
       expressions: The list of computed fields which are the result of
-        expressions requested. (optional)
-      cursor: A cursor associated with the document. (optional)
+        expressions requested.
+      cursor: A cursor associated with the document.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-    self._document = kwargs.get('document')
-    self._sort_scores = list(
-        self._CheckSortScores(kwargs.get('sort_scores', [])))
-    self._expressions = list(kwargs.get('expressions', []))
-    self._cursor = self._CheckCursor(kwargs.get('cursor'))
+    self._document = document
+    self._sort_scores = self._CheckSortScores(_GetList(sort_scores))
+    self._expressions = _GetList(expressions)
+    self._cursor = self._CheckCursor(cursor)
 
   @property
   def document(self):
@@ -1368,35 +1327,24 @@ class SearchResult(object):
 class SearchResponse(object):
   """Represents the result of executing a search request."""
 
-  _CONSTRUCTOR_KWARGS = frozenset(['operation_result', 'results',
-                                   'matched_count', 'returned_count'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, matched_count, results=None, operation_result=None):
     """Initializer.
 
     Args:
       operation_result: The OperationResult of the search including error code
       and message if any.
       results: The list of SearchResult returned from executing a search
-        request. (optional)
+        request.
       matched_count: The number of documents matched by the query.
-      returned_count: The number of documents returned in the
-        results list.
 
     Raises:
       TypeError: If any of the parameters have an invalid type, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have an invalid value.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-    self._operation_result = kwargs.get('operation_result')
-    self._results = list(kwargs.get('results', []))
-    self._matched_count = _CheckInteger(
-        kwargs.get('matched_count'), 'matched_count')
-    self._returned_count = _CheckInteger(
-        kwargs.get('returned_count'), 'returned_count')
+    self._operation_result = operation_result
+    self._matched_count = _CheckInteger(matched_count, 'matched_count')
+    self._results = _GetList(results)
 
   def __iter__(self):
 
@@ -1426,16 +1374,16 @@ class SearchResponse(object):
     """
     return self._matched_count
 
+
   @property
   def returned_count(self):
     """Returns the count of documents returned in results."""
-    return self._returned_count
+    return len(self._results)
 
   def __repr__(self):
     return _Repr(self, [('operation_result', self.operation_result),
                         ('results', self.results),
-                        ('matched_count', self.matched_count),
-                        ('returned_count', self.returned_count)])
+                        ('matched_count', self.matched_count)])
 
 
 class OperationResult(object):
@@ -1446,28 +1394,22 @@ class OperationResult(object):
 
   _CODES = frozenset([OK, INVALID_REQUEST, TRANSIENT_ERROR, INTERNAL_ERROR])
 
-  _CONSTRUCTOR_KWARGS = frozenset(['code', 'message'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, code, message=None):
     """Initializer.
 
     Args:
       code: The error or success code of the operation.
-      message: An error message associated with any error. (optional)
+      message: An error message associated with any error.
 
     Raises:
       TypeError: If an unknown attribute is passed.
       ValueError: If an unknown code is passed.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
-    self._code = kwargs.get('code')
+    self._code = code
     if self._code not in self._CODES:
       raise ValueError('Unknown operation result code %r, must be one of %s'
                        % (self._code, self._CODES))
-    self._message = kwargs.get('message')
+    self._message = message
     if self._message is not None and not isinstance(self._message, basestring):
       raise TypeError('message must be a string: %r' % self._message)
 
@@ -1563,9 +1505,8 @@ class Index(object):
 
   _CONSISTENCY_MODES = [GLOBALLY_CONSISTENT, PER_DOCUMENT_CONSISTENT]
 
-  _CONSTRUCTOR_KWARGS = frozenset(['name', 'namespace', 'consistency'])
-
-  def __init__(self, **kwargs):
+  def __init__(self, name, namespace=None,
+               consistency=PER_DOCUMENT_CONSISTENT):
     """Initializer.
 
     Args:
@@ -1575,24 +1516,19 @@ class Index(object):
       namespace: The namespace of the index name.
       consistency: The consistency mode of the index, either GLOBALLY_CONSISTENT
         or PER_DOCUMENT_CONSISTENT. Defaults to PER_DOCUMENT_CONSISTENT.
-        (optional)
 
     Raises:
       TypeError: If an unknown attribute is passed.
       ValueError: If an unknown consistency mode, or invalid namespace is given.
     """
-    args_diff = set(kwargs.iterkeys()) - self._CONSTRUCTOR_KWARGS
-    if args_diff:
-      raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
-    self._name = _CheckIndexName(kwargs.get('name'))
-    self._namespace = kwargs.get('namespace')
+    self._name = _CheckIndexName(name)
+    self._namespace = namespace
     if self._namespace is None:
       self._namespace = namespace_manager.get_namespace()
     if self._namespace is None:
       self._namespace = ''
     namespace_manager.validate_namespace(self._namespace, exception=ValueError)
-    self._consistency = kwargs.get('consistency', self.PER_DOCUMENT_CONSISTENT)
+    self._consistency = consistency
     if self._consistency not in self._CONSISTENCY_MODES:
       raise ValueError('consistency must be one of %s' %
                        self._CONSISTENCY_MODES)
@@ -1792,8 +1728,7 @@ class Index(object):
     return SearchResponse(
         operation_result=_NewOperationResultFromPb(response.status()),
         results=results,
-        matched_count=response.matched_count(),
-        returned_count=response.result_size())
+        matched_count=response.matched_count())
 
   def list_documents(self, start_doc_id=None, include_start_doc=True,
                      limit=100, keys_only=False, **kwargs):

@@ -329,8 +329,8 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
 class BlobstoreUploadHandler(webapp.RequestHandler):
   """Base class for creation blob upload handlers."""
 
-  def __init__(self):
-    super(BlobstoreUploadHandler, self).__init__()
+  def __init__(self, *args, **kwargs):
+    super(BlobstoreUploadHandler, self).__init__(*args, **kwargs)
     self.__uploads = None
 
   def get_uploads(self, field_name=None):

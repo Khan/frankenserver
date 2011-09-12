@@ -43,14 +43,11 @@ import array
 import itertools
 import logging
 import threading
+import weakref
 
 from google.appengine.datastore import entity_pb
-from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
-from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_types
-from google.appengine.api.taskqueue import taskqueue_service_pb
-from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_stub_util
 from google.appengine.datastore import sortable_pb_encoder
@@ -151,191 +148,22 @@ def ReferencePropertyToReference(refprop):
   return ref
 
 
-class QueryCursor(datastore_stub_util.BaseCursor):
-  """Encapsulates a database cursor and provides methods to fetch results."""
-
-  def __init__(self, query, db_cursor):
-    """Constructor.
-
-    Args:
-      query: A Query PB.
-      db_cursor: An SQLite cursor returning n+2 columns. The first 2 columns
-        must be the path of the entity and the entity itself, while the
-        remaining columns must be the sort columns for the query.
-    """
-    super(QueryCursor, self).__init__(query.app())
-    self.__query = query
-    self.app = query.app()
-    self.__cursor = db_cursor
+class _DedupingEntityIterator(object):
+  def __init__(self, cursor):
+    self.__cursor = cursor
     self.__seen = set()
 
+  def __iter__(self):
+    return self
 
-    self.__position = ('', '')
-
-
-    self.__next_result = (None, None)
-
-    if (query.has_compiled_cursor() and
-        query.compiled_cursor().position_size()):
-      self.ResumeFromCompiledCursor(query.compiled_cursor())
-
-    if query.has_limit():
-      self.limit = query.limit() + query.offset()
-    else:
-      self.limit = None
-
-  def Count(self):
-    """Counts results, up to the query's limit.
-
-    Note this method does not deduplicate results, so the query it was generated
-    from should have the 'distinct' clause applied.
-
-    Returns:
-      int: Result count.
-    """
-    count = 0
-    while self.limit is None or count < self.limit:
-      row = self.__cursor.fetchone()
-      if not row:
-        break
-      count += 1
-    return count
-
-  def _EncodeCompiledCursor(self, cc):
-    """Encodes the current position in the query as a compiled cursor.
-
-    Args:
-      cc: The compiled cursor to fill out.
-    """
-    if self.__position[0]:
-      position = cc.add_position()
-
-      position.set_start_key(self.__position[0])
-
-  def _GetResult(self):
-    """Returns the next result from the result set, without deduplication.
-
-    Returns:
-      (path, value): The path and value of the next result.
-    """
-    if self.__position[1]:
-      self.__position = (self.__position[1], None)
-
-    if not self.__cursor:
-      return None, None
-    row = self.__cursor.fetchone()
-    if not row:
-      self.__cursor = None
-      return None, None
-    path, data, position_parts = str(row[0]), row[1], row[2:]
-    position = ''.join(str(x) for x in position_parts)
-    if self.__query.has_end_compiled_cursor() and (
-        not self.__query.end_compiled_cursor().position_list() or
-        position > self.__query.end_compiled_cursor().position(0).start_key()):
-      self.__cursor = None
-      return None, None
-
-
-    self.__position = (self.__position[0], position)
-    return path, data
-
-  def _Next(self):
-    """Fetches the next unique result from the result set.
-
-    Returns:
-      A datastore_pb.EntityProto instance.
-    """
-    if self._HasNext():
-      self.__seen.add(self.__next_result[0])
-      entity = entity_pb.EntityProto(self.__next_result[1])
-      datastore_stub_util.PrepareSpecialPropertiesForLoad(entity)
-      self.__next_result = None, None
-      return entity
-    return None
-
-  def _HasNext(self):
-    """Prefetches the next result and returns true if successful.
-
-    Returns:
-      A boolean that indicates if there are more results.
-    """
-    while self.__cursor and (
-        not self.__next_result[0] or self.__next_result[0] in self.__seen):
-      self.__next_result = self._GetResult()
-
-
-
-    if self.limit is not None and len(self.__seen) >= self.limit:
-      return False
-
-    if self.__next_result[0]:
-      return True
-    return False
-
-  def Skip(self, count):
-    """Skips the specified number of unique results.
-
-    Args:
-      count: Number of results to skip.
-
-    Returns:
-      A number indicating how many results where actually skipped.
-    """
-    for i in xrange(count):
-      if not self._Next():
-        return i
-    return count
-
-  def ResumeFromCompiledCursor(self, cc):
-    """Resumes a query from a compiled cursor.
-
-    Args:
-      cc: The compiled cursor to resume from.
-    """
-
-
-
-    target_position = cc.position(0).start_key()
-    if (self.__query.has_end_compiled_cursor() and target_position >=
-        self.__query.end_compiled_cursor().position(0).start_key()):
-
-      self.__position = (target_position, target_position)
-      self.__cursor = None
-      return
-
-
-    while self.__position[1] <= target_position and self.__cursor:
-      self.__next_result = self._GetResult()
-
-  def PopulateQueryResult(self, result, count, offset, compile):
-    """Populates a QueryResult PB with results from the cursor.
-
-    Args:
-      result: out: A query_result PB.
-      count: The number of results to retrieve.
-      offset: The number of results to skip
-    """
-    limited_offset = min(offset, datastore_stub_util._MAX_QUERY_OFFSET)
-    if limited_offset:
-      result.set_skipped_results(self.Skip(limited_offset))
-
-    if offset == limited_offset:
-      if count > datastore_stub_util._MAXIMUM_RESULTS:
-        count = datastore_stub_util._MAXIMUM_RESULTS
-
-      result_list = result.result_list()
-      while len(result_list) < count:
-        entity = self._Next()
-        if entity is None:
-          break
-        result_list.append(entity)
-
-    result.set_keys_only(self.__query.keys_only())
-    result.set_more_results(self._HasNext())
-    self.PopulateCursor(result)
-    if compile:
-      self._EncodeCompiledCursor(result.mutable_compiled_cursor())
-
+  def next(self):
+    row = self.__cursor.next()
+    while str(row[0]) in self.__seen:
+      row = self.__cursor.next()
+    self.__seen.add(str(row[0]))
+    entity = entity_pb.EntityProto(row[1])
+    datastore_stub_util.PrepareSpecialPropertiesForLoad(entity)
+    return entity
 
 def MakeEntityForQuery(query, *path):
   """Make an entity to be returned by a pseudo-kind query.
@@ -440,8 +268,7 @@ class KindPseudoKind(object):
       for row in c.fetchall():
         kinds.append(MakeEntityForQuery(query, self.name, ToUtf8(row[0])))
 
-      cursor = datastore_stub_util.ListCursor(
-          query, kinds, datastore_stub_util.CompareEntityPbByKey, set())
+      cursor = datastore_stub_util._ExecuteQuery(kinds, query, [], [])
     finally:
       self.sqlitestub._ReleaseConnection(conn)
 
@@ -562,8 +389,7 @@ class PropertyPseudoKind(object):
       if property_pb:
         properties.append(property_pb)
 
-      cursor = datastore_stub_util.ListCursor(
-          query, properties, datastore_stub_util.CompareEntityPbByKey, set())
+      cursor = datastore_stub_util._ExecuteQuery(properties, query, [], [])
     finally:
       self.sqlitestub._ReleaseConnection(conn)
 
@@ -620,9 +446,7 @@ class NamespacePseudoKind(object):
           ns_id = datastore_types._EMPTY_NAMESPACE_ID
         namespace_entities.append(MakeEntityForQuery(query, self.name, ns_id))
 
-    return datastore_stub_util.ListCursor(
-        query, namespace_entities, datastore_stub_util.CompareEntityPbByKey,
-        set())
+    return datastore_stub_util._ExecuteQuery(namespace_entities, query, [], [])
 
 
 class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
@@ -672,7 +496,8 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     datastore_stub_util.BaseDatastore.__init__(self, require_indexes,
                                                consistency_policy)
     apiproxy_stub.APIProxyStub.__init__(self, service_name)
-    datastore_stub_util.DatastoreStub.__init__(self, self, app_id, trusted)
+    datastore_stub_util.DatastoreStub.__init__(self, weakref.proxy(self),
+                                               app_id, trusted)
 
     self.__datastore_file = datastore_file
 
@@ -696,9 +521,9 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
     self.__query_history = {}
 
-    self._RegisterPseudoKind(KindPseudoKind(self))
-    self._RegisterPseudoKind(PropertyPseudoKind(self))
-    self._RegisterPseudoKind(NamespacePseudoKind(self))
+    self._RegisterPseudoKind(KindPseudoKind(weakref.proxy(self)))
+    self._RegisterPseudoKind(PropertyPseudoKind(weakref.proxy(self)))
+    self._RegisterPseudoKind(NamespacePseudoKind(weakref.proxy(self)))
 
     try:
       self.__Init()
@@ -1090,9 +915,8 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       orders = [('__path__', datastore_pb.Query_Order.ASCENDING)]
 
     params = []
-    query = ('SELECT Entities.__path__, Entities.entity, %s '
+    query = ('SELECT Entities.__path__, Entities.entity '
              'FROM "%s!Entities" AS Entities %s %s' % (
-                 ','.join(x[0] for x in orders),
                  self._GetTablePrefix(query),
                  self._CreateFilterString(filters, params),
                  self.__CreateOrderString(orders)))
@@ -1148,12 +972,11 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
     params = []
     format_args = (
-        ','.join(x[0] for x in orders[2:]),
         prefix,
         prefix,
         self._CreateFilterString(filters, params),
         self.__CreateOrderString(orders))
-    query = ('SELECT Entities.__path__, Entities.entity, %s '
+    query = ('SELECT Entities.__path__, Entities.entity '
              'FROM "%s!EntitiesByProperty" AS EntitiesByProperty INNER JOIN '
              '"%s!Entities" AS Entities USING (__path__) %s %s' % format_args)
     return query, params
@@ -1235,12 +1058,11 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
     params = []
     format_args = (
-        ','.join(x[0] for x in orders),
         prefix,
         ' '.join(joins),
         self._CreateFilterString(filters, params),
         self.__CreateOrderString(orders))
-    query = ('SELECT Entities.__path__, Entities.entity, %s '
+    query = ('SELECT Entities.__path__, Entities.entity '
              'FROM "%s!Entities" AS Entities %s %s %s' % format_args)
     return query, params
 
@@ -1377,7 +1199,9 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       conn = self._GetConnection()
       try:
         db_cursor = conn.execute(sql_stmt, params)
-        cursor = QueryCursor(query, db_cursor)
+        dsquery = datastore_stub_util._MakeQuery(query, filters, orders)
+        cursor = datastore_stub_util.IteratorCursor(
+            query, dsquery, orders, _DedupingEntityIterator(db_cursor))
       finally:
         self._ReleaseConnection(conn)
     return cursor

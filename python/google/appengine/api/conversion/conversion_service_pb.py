@@ -113,6 +113,7 @@ class ConversionServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionServiceError'
 class AssetInfo(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -275,6 +276,7 @@ class AssetInfo(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.AssetInfo'
 class DocumentInfo(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -388,6 +390,7 @@ class DocumentInfo(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DocumentInfo'
 class ConversionInput_AuxData(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -521,6 +524,7 @@ class ConversionInput_AuxData(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionInput_AuxData'
 class ConversionInput(ProtocolBuffer.ProtocolMessage):
   has_input_ = 0
   has_output_mime_type_ = 0
@@ -716,6 +720,7 @@ class ConversionInput(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionInput'
 class ConversionOutput(ProtocolBuffer.ProtocolMessage):
   has_error_code_ = 0
   error_code_ = 0
@@ -865,6 +870,7 @@ class ConversionOutput(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionOutput'
 class ConversionRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -978,6 +984,7 @@ class ConversionRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionRequest'
 class ConversionResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1091,5 +1098,6 @@ class ConversionResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ConversionResponse'
 
 __all__ = ['ConversionServiceError','AssetInfo','DocumentInfo','ConversionInput_AuxData','ConversionInput','ConversionOutput','ConversionRequest','ConversionResponse']

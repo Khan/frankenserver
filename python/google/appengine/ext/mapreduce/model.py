@@ -50,7 +50,11 @@ import datetime
 import logging
 import math
 import os
-import simplejson
+import random
+try:
+  import json as simplejson
+except ImportError:
+  import simplejson
 import time
 import types
 
@@ -60,7 +64,7 @@ from google.appengine.ext import db
 from google.appengine.ext.mapreduce import context
 from google.appengine.ext.mapreduce import hooks
 from google.appengine.ext.mapreduce import util
-from graphy.backends import google_chart_api
+from google.appengine._internal.graphy.backends import google_chart_api
 
 
 
@@ -228,8 +232,10 @@ def _get_descending_key(gettime=time.time):
     A string with a time descending key.
   """
   now_descending = int((_FUTURE_TIME - gettime()) * 100)
-  return "%d%s" % (now_descending,
-                   os.environ.get("REQUEST_ID_HASH", "FFFFFFFF"))
+  request_id_hash = os.environ.get("REQUEST_ID_HASH")
+  if not request_id_hash:
+    request_id_hash = str(random.getrandbits(32))
+  return "%d%s" % (now_descending, request_id_hash)
 
 
 class CountersMap(JsonMixin):

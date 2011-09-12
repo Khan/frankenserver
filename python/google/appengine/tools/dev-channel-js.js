@@ -1835,6 +1835,9 @@ goog.dom.getPreviousNode = function(node) {
 goog.dom.isNodeLike = function(obj) {
   return goog.isObject(obj) && obj.nodeType > 0
 };
+goog.dom.isElement = function(obj) {
+  return goog.isObject(obj) && obj.nodeType == goog.dom.NodeType.ELEMENT
+};
 goog.dom.isWindow = function(obj) {
   return goog.isObject(obj) && obj.window == obj
 };
@@ -1990,7 +1993,7 @@ goog.dom.isFocusableTabIndex = function(element) {
   return!1
 };
 goog.dom.setFocusableTabIndex = function(element, enable) {
-  enable ? element.tabIndex = 0 : element.removeAttribute("tabIndex")
+  enable ? element.tabIndex = 0 : (element.tabIndex = -1, element.removeAttribute("tabIndex"))
 };
 goog.dom.getTextContent = function(node) {
   var textContent;
@@ -2188,18 +2191,30 @@ goog.debug.entryPointRegistry = {};
 goog.debug.EntryPointMonitor = function() {
 };
 goog.debug.entryPointRegistry.refList_ = [];
+goog.debug.entryPointRegistry.monitors_ = [];
+goog.debug.entryPointRegistry.monitorsMayExist_ = !1;
 goog.debug.entryPointRegistry.register = function(callback) {
-  goog.debug.entryPointRegistry.refList_[goog.debug.entryPointRegistry.refList_.length] = callback
+  goog.debug.entryPointRegistry.refList_[goog.debug.entryPointRegistry.refList_.length] = callback;
+  if(goog.debug.entryPointRegistry.monitorsMayExist_) {
+    for(var monitors = goog.debug.entryPointRegistry.monitors_, i = 0;i < monitors.length;i++) {
+      callback(goog.bind(monitors[i].wrap, monitors[i]))
+    }
+  }
 };
 goog.debug.entryPointRegistry.monitorAll = function(monitor) {
+  goog.debug.entryPointRegistry.monitorsMayExist_ = !0;
   for(var transformer = goog.bind(monitor.wrap, monitor), i = 0;i < goog.debug.entryPointRegistry.refList_.length;i++) {
     goog.debug.entryPointRegistry.refList_[i](transformer)
   }
+  goog.debug.entryPointRegistry.monitors_.push(monitor)
 };
 goog.debug.entryPointRegistry.unmonitorAllIfPossible = function(monitor) {
+  var monitors = goog.debug.entryPointRegistry.monitors_;
+  goog.asserts.assert(monitor == monitors[monitors.length - 1], "Only the most recent monitor can be unwrapped.");
   for(var transformer = goog.bind(monitor.unwrap, monitor), i = 0;i < goog.debug.entryPointRegistry.refList_.length;i++) {
     goog.debug.entryPointRegistry.refList_[i](transformer)
   }
+  monitors.length--
 };
 goog.debug.errorHandlerWeakDep = {protectEntryPoint:function(fn) {
   return fn
@@ -2812,11 +2827,11 @@ goog.structs.Set.prototype.__iterator__ = function() {
   return this.map_.__iterator__(!1)
 };
 goog.debug.catchErrors = function(logFunc, opt_cancel, opt_target) {
-  var target = opt_target || goog.global, oldErrorHandler = target.onerror;
+  var target = opt_target || goog.global, oldErrorHandler = target.onerror, retVal = goog.userAgent.WEBKIT ? !opt_cancel : !!opt_cancel;
   target.onerror = function(message, url, line) {
     oldErrorHandler && oldErrorHandler(message, url, line);
     logFunc({message:message, fileName:url, line:line});
-    return Boolean(opt_cancel)
+    return retVal
   }
 };
 goog.debug.expose = function(obj, opt_showFn) {
@@ -3298,7 +3313,11 @@ goog.reflect = {};
 goog.reflect.object = function(type, object) {
   return object
 };
-goog.reflect.sinkValue = new Function("a", "return a");
+goog.reflect.sinkValue = function(x) {
+  goog.reflect.sinkValue[" "](x);
+  return x
+};
+goog.reflect.sinkValue[" "] = goog.nullFunction;
 goog.reflect.canAccessProperty = function(obj, prop) {
   try {
     return goog.reflect.sinkValue(obj[prop]), !0

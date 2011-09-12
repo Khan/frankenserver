@@ -504,6 +504,11 @@ class PropertiedClass(type):
       _kind_map[cls.kind()] = cls
 
 
+
+
+AUTO_UPDATE_UNCHANGED = object()
+
+
 class Property(object):
   """A Property is an attribute of a Model.
 
@@ -656,6 +661,10 @@ class Property(object):
     entity.  Most critically, it will fetch the datastore key value for
     reference properties.
 
+    Some properies (e.g. DateTimeProperty, UserProperty) optionally update their
+    value on every put(). This call must return the current value for such
+    properties (get_updated_value_for_datastore returns the new value).
+
     Args:
       model_instance: Instance to fetch datastore value from.
 
@@ -664,6 +673,23 @@ class Property(object):
       appropriate for storing in the datastore.
     """
     return self.__get__(model_instance, model_instance.__class__)
+
+  def get_updated_value_for_datastore(self, model_instance):
+    """Determine new value for auto-updated property.
+
+    Some properies (e.g. DateTimeProperty, UserProperty) optionally update their
+    value on every put(). This call must return the new desired value for such
+    properties. For all other properties, this call must return
+    AUTO_UPDATE_UNCHANGED.
+
+    Args:
+      model_instance: Instance to get new value for.
+
+    Returns:
+      Datastore representation of the new model value in a form that is
+      appropriate for storing in the datastore, or AUTO_UPDATE_UNCHANGED.
+    """
+    return AUTO_UPDATE_UNCHANGED
 
   def make_value_from_datastore(self, value):
     """Native representation of this property.
@@ -926,6 +952,13 @@ class Model(object):
         if prop.name in kwds and not _from_entity:
           raise
 
+
+    if isinstance(_from_entity, datastore.Entity) and _from_entity.is_saved():
+      self._entity = _from_entity
+      del self._key_name
+      del self._key
+
+
   def key(self):
     """Unique key for this entity.
 
@@ -952,6 +985,15 @@ class Model(object):
     else:
       raise NotSavedError()
 
+  def __set_property(self, entity, name, datastore_value):
+    if datastore_value == []:
+
+
+
+      entity.pop(name, None)
+    else:
+      entity[name] = datastore_value
+
   def _to_entity(self, entity):
     """Copies information from this model to provided entity.
 
@@ -960,18 +1002,7 @@ class Model(object):
     """
 
     for prop in self.properties().values():
-      datastore_value = prop.get_value_for_datastore(self)
-      if datastore_value == []:
-
-
-
-        try:
-          del entity[prop.name]
-        except KeyError:
-
-          pass
-      else:
-        entity[prop.name] = datastore_value
+      self.__set_property(entity, prop.name, prop.get_value_for_datastore(self))
 
 
     set_unindexed_properties = getattr(entity, 'set_unindexed_properties', None)
@@ -987,6 +1018,13 @@ class Model(object):
       Populated self._entity
     """
     self._entity = self._populate_entity(_entity_class=_entity_class)
+
+
+    for prop in self.properties().values():
+      new_value = prop.get_updated_value_for_datastore(self)
+      if new_value is not AUTO_UPDATE_UNCHANGED:
+        self.__set_property(self._entity, prop.name, new_value)
+
     for attr in ('_key_name', '_key'):
       try:
         delattr(self, attr)
@@ -1378,12 +1416,7 @@ class Model(object):
     entity_values = cls._load_entity_values(entity)
     if entity.key().has_id_or_name():
       entity_values['key'] = entity.key()
-    instance = cls(None, _from_entity=True, **entity_values)
-    if entity.is_saved():
-      instance._entity = entity
-      del instance._key_name
-      del instance._key
-    return instance
+    return cls(None, _from_entity=entity, **entity_values)
 
   @classmethod
   def kind(cls):
@@ -2880,18 +2913,16 @@ class DateTimeProperty(Property):
       return self.now()
     return Property.default_value(self)
 
-  def get_value_for_datastore(self, model_instance):
-    """Get value from property to send to datastore.
+  def get_updated_value_for_datastore(self, model_instance):
+    """Get new value for property to send to datastore.
 
     Returns:
       now() as appropriate to the date-time instance in the odd case where
-      auto_now is set to True, else the default implementation.
+      auto_now is set to True, else AUTO_UPDATE_UNCHANGED.
     """
     if self.auto_now:
       return self.now()
-    else:
-      return super(DateTimeProperty,
-                   self).get_value_for_datastore(model_instance)
+    return AUTO_UPDATE_UNCHANGED
 
   data_type = datetime.datetime
 
@@ -2969,6 +3000,17 @@ class DateProperty(DateTimeProperty):
                           (self.name, self.data_type.__name__))
     return value
 
+  def get_updated_value_for_datastore(self, model_instance):
+    """Get new value for property to send to datastore.
+
+    Returns:
+      now() as appropriate to the date instance in the odd case where
+      auto_now is set to True, else AUTO_UPDATE_UNCHANGED.
+    """
+    if self.auto_now:
+      return _date_to_datetime(self.now())
+    return AUTO_UPDATE_UNCHANGED
+
   def get_value_for_datastore(self, model_instance):
     """Get value from property to send to datastore.
 
@@ -3027,6 +3069,17 @@ class TimeProperty(DateTimeProperty):
       True if value is None, else False.
     """
     return value is None
+
+  def get_updated_value_for_datastore(self, model_instance):
+    """Get new value for property to send to datastore.
+
+    Returns:
+      now() as appropriate to the time instance in the odd case where
+      auto_now is set to True, else AUTO_UPDATE_UNCHANGED.
+    """
+    if self.auto_now:
+      return _time_to_datetime(self.now())
+    return AUTO_UPDATE_UNCHANGED
 
   def get_value_for_datastore(self, model_instance):
     """Get value from property to send to datastore.
@@ -3229,16 +3282,16 @@ class UserProperty(Property):
       return users.get_current_user()
     return None
 
-  def get_value_for_datastore(self, model_instance):
-    """Get value from property to send to datastore.
+  def get_updated_value_for_datastore(self, model_instance):
+    """Get new value for property to send to datastore.
 
     Returns:
       Value of users.get_current_user() if auto_current_user is set;
-      else the default implementation.
+      else AUTO_UPDATE_UNCHANGED.
     """
     if self.auto_current_user:
       return users.get_current_user()
-    return super(UserProperty, self).get_value_for_datastore(model_instance)
+    return AUTO_UPDATE_UNCHANGED
 
   data_type = users.User
 

@@ -451,6 +451,11 @@ def _AddPropertiesForNonRepeatedCompositeField(field, cls):
 
   proto_field_name = field.name
   property_name = _PropertyName(proto_field_name)
+
+
+
+
+
   message_type = field.message_type
 
   def getter(self):

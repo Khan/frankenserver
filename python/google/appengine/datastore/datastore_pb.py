@@ -205,6 +205,7 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Transaction'
 class Query_Filter(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1402,6 +1403,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Query'
 class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
   has_index_name_ = 0
   index_name_ = ""
@@ -2412,6 +2414,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CompiledQuery'
 class CompiledCursor_PositionIndexValue(ProtocolBuffer.ProtocolMessage):
   has_property_ = 0
   property_ = ""
@@ -2891,6 +2894,7 @@ class CompiledCursor(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CompiledCursor'
 class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
   has_app_ = 0
   app_ = ""
@@ -3185,6 +3189,7 @@ class RunCompiledQueryRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.RunCompiledQueryRequest'
 class Cursor(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   cursor_ = 0
@@ -3316,6 +3321,7 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Cursor'
 class Error(ProtocolBuffer.ProtocolMessage):
 
 
@@ -3409,6 +3415,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Error'
 class Cost_CommitCost(ProtocolBuffer.ProtocolMessage):
   has_requested_entity_puts_ = 0
   requested_entity_puts_ = 0
@@ -3765,6 +3772,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Cost'
 class GetRequest(ProtocolBuffer.ProtocolMessage):
   has_transaction_ = 0
   transaction_ = None
@@ -3996,6 +4004,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.GetRequest'
 class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   has_entity_ = 0
   entity_ = None
@@ -4201,6 +4210,7 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.GetResponse'
 class PutRequest(ProtocolBuffer.ProtocolMessage):
   has_transaction_ = 0
   transaction_ = None
@@ -4519,6 +4529,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.PutRequest'
 class PutResponse(ProtocolBuffer.ProtocolMessage):
   has_cost_ = 0
   cost_ = None
@@ -4682,6 +4693,7 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.PutResponse'
 class TouchRequest(ProtocolBuffer.ProtocolMessage):
   has_force_ = 0
   force_ = 0
@@ -4882,6 +4894,7 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.TouchRequest'
 class TouchResponse(ProtocolBuffer.ProtocolMessage):
   has_cost_ = 0
   cost_ = None
@@ -4992,6 +5005,7 @@ class TouchResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.TouchResponse'
 class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   has_transaction_ = 0
   transaction_ = None
@@ -5257,6 +5271,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.DeleteRequest'
 class DeleteResponse(ProtocolBuffer.ProtocolMessage):
   has_cost_ = 0
   cost_ = None
@@ -5367,6 +5382,7 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.DeleteResponse'
 class NextRequest(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   has_count_ = 0
@@ -5572,6 +5588,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.NextRequest'
 class QueryResult(ProtocolBuffer.ProtocolMessage):
   has_cursor_ = 0
   cursor_ = None
@@ -5938,6 +5955,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.QueryResult'
 class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
   has_model_key_ = 0
   has_size_ = 0
@@ -6109,6 +6127,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AllocateIdsRequest'
 class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
   has_start_ = 0
   start_ = 0
@@ -6247,6 +6266,7 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AllocateIdsResponse'
 class CompositeIndices(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -6360,6 +6380,7 @@ class CompositeIndices(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CompositeIndices'
 class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
   has_transaction_ = 0
 
@@ -6516,6 +6537,7 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AddActionsRequest'
 class AddActionsResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -6580,6 +6602,7 @@ class AddActionsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AddActionsResponse'
 class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
   has_app_ = 0
   app_ = ""
@@ -6713,6 +6736,7 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.BeginTransactionRequest'
 class CommitResponse(ProtocolBuffer.ProtocolMessage):
   has_cost_ = 0
   cost_ = None
@@ -6823,5 +6847,6 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CommitResponse'
 
 __all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']

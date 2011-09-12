@@ -350,9 +350,10 @@ Point your stubs (google.appengine.ext.remote_api.remote_api_stub) here.</p>
 </body>
 </html>"""
 
+application = webapp.WSGIApplication([('.*', ApiCallHandler)])
+
 
 def main():
-  application = webapp.WSGIApplication([('.*', ApiCallHandler)])
   wsgiref.handlers.CGIHandler().run(application)
 
 

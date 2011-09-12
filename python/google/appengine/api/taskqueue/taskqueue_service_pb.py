@@ -156,6 +156,7 @@ class TaskQueueServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueServiceError'
 class TaskQueueRetryParameters(ProtocolBuffer.ProtocolMessage):
   has_retry_limit_ = 0
   retry_limit_ = 0
@@ -386,6 +387,7 @@ class TaskQueueRetryParameters(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueRetryParameters'
 class TaskQueueAcl(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -489,6 +491,7 @@ class TaskQueueAcl(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueAcl'
 class TaskQueueHttpHeader(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -627,6 +630,7 @@ class TaskQueueHttpHeader(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueHttpHeader'
 class TaskQueueMode(ProtocolBuffer.ProtocolMessage):
 
 
@@ -704,6 +708,7 @@ class TaskQueueMode(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueMode'
 class TaskQueueAddRequest_Header(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -1594,6 +1599,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueAddRequest'
 class TaskQueueAddResponse(ProtocolBuffer.ProtocolMessage):
   has_chosen_task_name_ = 0
   chosen_task_name_ = ""
@@ -1688,6 +1694,7 @@ class TaskQueueAddResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueAddResponse'
 class TaskQueueBulkAddRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1801,6 +1808,7 @@ class TaskQueueBulkAddRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueBulkAddRequest'
 class TaskQueueBulkAddResponse_TaskResult(ProtocolBuffer.ProtocolMessage):
   has_result_ = 0
   result_ = 0
@@ -2029,6 +2037,7 @@ class TaskQueueBulkAddResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueBulkAddResponse'
 class TaskQueueDeleteRequest(ProtocolBuffer.ProtocolMessage):
   has_queue_name_ = 0
   queue_name_ = ""
@@ -2205,6 +2214,7 @@ class TaskQueueDeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteRequest'
 class TaskQueueDeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -2308,6 +2318,7 @@ class TaskQueueDeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteResponse'
 class TaskQueueForceRunRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -2485,6 +2496,7 @@ class TaskQueueForceRunRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueForceRunRequest'
 class TaskQueueForceRunResponse(ProtocolBuffer.ProtocolMessage):
   has_result_ = 0
   result_ = 0
@@ -2584,6 +2596,7 @@ class TaskQueueForceRunResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueForceRunResponse'
 class TaskQueueUpdateQueueRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -3052,6 +3065,7 @@ class TaskQueueUpdateQueueRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueUpdateQueueRequest'
 class TaskQueueUpdateQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -3116,6 +3130,7 @@ class TaskQueueUpdateQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueUpdateQueueResponse'
 class TaskQueueFetchQueuesRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -3249,6 +3264,7 @@ class TaskQueueFetchQueuesRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchQueuesRequest'
 class TaskQueueFetchQueuesResponse_Queue(ProtocolBuffer.ProtocolMessage):
   has_queue_name_ = 0
   queue_name_ = ""
@@ -3842,6 +3858,7 @@ class TaskQueueFetchQueuesResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchQueuesResponse'
 class TaskQueueFetchQueueStatsRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -4018,6 +4035,7 @@ class TaskQueueFetchQueueStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchQueueStatsRequest'
 class TaskQueueScannerQueueInfo(ProtocolBuffer.ProtocolMessage):
   has_executed_last_minute_ = 0
   executed_last_minute_ = 0
@@ -4261,6 +4279,7 @@ class TaskQueueScannerQueueInfo(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueScannerQueueInfo'
 class TaskQueueFetchQueueStatsResponse_QueueStats(ProtocolBuffer.ProtocolMessage):
   has_num_tasks_ = 0
   num_tasks_ = 0
@@ -4544,6 +4563,7 @@ class TaskQueueFetchQueueStatsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchQueueStatsResponse'
 class TaskQueuePauseQueueRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -4719,6 +4739,7 @@ class TaskQueuePauseQueueRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueuePauseQueueRequest'
 class TaskQueuePauseQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4783,6 +4804,7 @@ class TaskQueuePauseQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueuePauseQueueResponse'
 class TaskQueuePurgeQueueRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -4916,6 +4938,7 @@ class TaskQueuePurgeQueueRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueuePurgeQueueRequest'
 class TaskQueuePurgeQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -4980,6 +5003,7 @@ class TaskQueuePurgeQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueuePurgeQueueResponse'
 class TaskQueueDeleteQueueRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -5118,6 +5142,7 @@ class TaskQueueDeleteQueueRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteQueueRequest'
 class TaskQueueDeleteQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -5182,6 +5207,7 @@ class TaskQueueDeleteQueueResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteQueueResponse'
 class TaskQueueDeleteGroupRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -5281,6 +5307,7 @@ class TaskQueueDeleteGroupRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteGroupRequest'
 class TaskQueueDeleteGroupResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -5345,6 +5372,7 @@ class TaskQueueDeleteGroupResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueDeleteGroupResponse'
 class TaskQueueQueryTasksRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -5580,6 +5608,7 @@ class TaskQueueQueryTasksRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueQueryTasksRequest'
 class TaskQueueQueryTasksResponse_TaskHeader(ProtocolBuffer.ProtocolMessage):
   has_key_ = 0
   key_ = ""
@@ -6792,6 +6821,7 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueQueryTasksResponse'
 class TaskQueueFetchTaskRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -6964,6 +6994,7 @@ class TaskQueueFetchTaskRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchTaskRequest'
 class TaskQueueFetchTaskResponse(ProtocolBuffer.ProtocolMessage):
   has_task_ = 0
 
@@ -7067,6 +7098,7 @@ class TaskQueueFetchTaskResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueFetchTaskResponse'
 class TaskQueueUpdateStorageLimitRequest(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
@@ -7205,6 +7237,7 @@ class TaskQueueUpdateStorageLimitRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueUpdateStorageLimitRequest'
 class TaskQueueUpdateStorageLimitResponse(ProtocolBuffer.ProtocolMessage):
   has_new_limit_ = 0
   new_limit_ = 0
@@ -7304,6 +7337,7 @@ class TaskQueueUpdateStorageLimitResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueUpdateStorageLimitResponse'
 class TaskQueueQueryAndOwnTasksRequest(ProtocolBuffer.ProtocolMessage):
   has_queue_name_ = 0
   queue_name_ = ""
@@ -7479,6 +7513,7 @@ class TaskQueueQueryAndOwnTasksRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueQueryAndOwnTasksRequest'
 class TaskQueueQueryAndOwnTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
   has_task_name_ = 0
   task_name_ = ""
@@ -7780,6 +7815,7 @@ class TaskQueueQueryAndOwnTasksResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueQueryAndOwnTasksResponse'
 class TaskQueueModifyTaskLeaseRequest(ProtocolBuffer.ProtocolMessage):
   has_queue_name_ = 0
   queue_name_ = ""
@@ -7994,6 +8030,7 @@ class TaskQueueModifyTaskLeaseRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueModifyTaskLeaseRequest'
 class TaskQueueModifyTaskLeaseResponse(ProtocolBuffer.ProtocolMessage):
   has_updated_eta_usec_ = 0
   updated_eta_usec_ = 0
@@ -8093,5 +8130,6 @@ class TaskQueueModifyTaskLeaseResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueModifyTaskLeaseResponse'
 
 __all__ = ['TaskQueueServiceError','TaskQueueRetryParameters','TaskQueueAcl','TaskQueueHttpHeader','TaskQueueMode','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddRequest_CronTimetable','TaskQueueAddResponse','TaskQueueBulkAddRequest','TaskQueueBulkAddResponse','TaskQueueBulkAddResponse_TaskResult','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueForceRunRequest','TaskQueueForceRunResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueuePauseQueueRequest','TaskQueuePauseQueueResponse','TaskQueuePurgeQueueRequest','TaskQueuePurgeQueueResponse','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueDeleteGroupRequest','TaskQueueDeleteGroupResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_TaskCronTimetable','TaskQueueQueryTasksResponse_TaskRunLog','TaskQueueQueryTasksResponse_Task','TaskQueueFetchTaskRequest','TaskQueueFetchTaskResponse','TaskQueueUpdateStorageLimitRequest','TaskQueueUpdateStorageLimitResponse','TaskQueueQueryAndOwnTasksRequest','TaskQueueQueryAndOwnTasksResponse','TaskQueueQueryAndOwnTasksResponse_Task','TaskQueueModifyTaskLeaseRequest','TaskQueueModifyTaskLeaseResponse']

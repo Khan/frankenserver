@@ -1016,7 +1016,8 @@ class Entity(dict):
         properties = [properties]
 
       for prop in properties:
-        if (prop.meaning() in datastore_types._RAW_PROPERTY_MEANINGS or
+        if ((prop.has_meaning() and
+             prop.meaning() in datastore_types._RAW_PROPERTY_MEANINGS) or
             name in self.unindexed_properties()):
           pb.raw_property_list().append(prop)
         else:

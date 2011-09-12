@@ -33,15 +33,15 @@ be patient.</p>
 <p>
 <form action="{{ datastore_stats_path }}" method="post">
   <div id="entities-control">
+    <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
     {% if app_id %}
     <input type="hidden" name="app_id" value="{{ app_id }}"/>
     {% endif %}
     <input type="hidden" name="action:compute_stats" value="1"/>
     <input id="action:compute_stats" type="submit"
       value="Generate Datastore Stats{% if app_id %} for {{ app_id }}{% endif %}"
-      onclick="return confirm('This may take a while depending on the size of your datastore. Contiue?')" />
+      onclick="return confirm('This may take a while depending on the size of your datastore. Continue?')" />
   </div>
 </form>
 
 {% endblock %}
-

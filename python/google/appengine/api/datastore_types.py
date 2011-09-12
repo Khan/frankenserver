@@ -112,6 +112,10 @@ _NAMESPACE_SEPARATOR = '!'
 _EMPTY_NAMESPACE_ID = 1
 
 
+_EPOCH = datetime.datetime.utcfromtimestamp(0)
+
+
+
 
 
 class UtcTzinfo(datetime.tzinfo):
@@ -736,7 +740,7 @@ class Key(object):
     return cmp(len(self_args), len(other_args))
 
   def __hash__(self):
-    """Returns a 32-bit integer hash of this key.
+    """Returns an integer hash of this key.
 
     Implements Python's hash protocol so that Keys may be used in sets and as
     dictionary keys.
@@ -747,6 +751,24 @@ class Key(object):
     args = self.to_path(_default_id=0)
     args.append(self.__reference.app())
     return hash(type(args)) ^ hash(tuple(args))
+
+
+class _OverflowDateTime(long):
+  """Container for GD_WHEN values that don't fit into a datetime.datetime.
+
+  This class only exists to safely round-trip GD_WHEN values that are too large
+  to fit in a datetime.datetime instance e.g. that were created by Java
+  applications. It should not be created directly.
+  """
+  pass
+
+
+def _When(val):
+  """Coverts a GD_WHEN value to the appropriate type."""
+  try:
+    return _EPOCH + datetime.timedelta(microseconds=val)
+  except OverflowError:
+    return _OverflowDateTime(val)
 
 
 
@@ -884,7 +906,7 @@ class GeoPt(object):
       return cmp(self.lon, other.lon)
 
   def __hash__(self):
-    """Returns a 32-bit integer hash of this point.
+    """Returns an integer hash of this point.
 
     Implements Python's hash protocol so that GeoPts may be used in sets and
     as dictionary keys.
@@ -1247,6 +1269,7 @@ _PROPERTY_MEANINGS = {
   ByteString:        entity_pb.Property.BYTESTRING,
   Text:              entity_pb.Property.TEXT,
   datetime.datetime: entity_pb.Property.GD_WHEN,
+  _OverflowDateTime: entity_pb.Property.GD_WHEN,
   Category:          entity_pb.Property.ATOM_CATEGORY,
   Link:              entity_pb.Property.ATOM_LINK,
   Email:             entity_pb.Property.GD_EMAIL,
@@ -1265,6 +1288,7 @@ _PROPERTY_TYPES = frozenset([
   bool,
   Category,
   datetime.datetime,
+  _OverflowDateTime,
   Email,
   float,
   GeoPt,
@@ -1379,6 +1403,7 @@ _VALIDATE_PROPERTY_VALUES = {
   bool: ValidatePropertyNothing,
   Category: ValidatePropertyString,
   datetime.datetime: ValidatePropertyNothing,
+  _OverflowDateTime: ValidatePropertyInteger,
   Email: ValidatePropertyString,
   float: ValidatePropertyNothing,
   GeoPt: ValidatePropertyNothing,
@@ -1610,6 +1635,7 @@ _PACK_PROPERTY_VALUES = {
   bool: PackBool,
   Category: PackString,
   datetime.datetime: PackDatetime,
+  _OverflowDateTime: PackInteger,
   Email: PackString,
   float: PackFloat,
   GeoPt: PackGeoPt,
@@ -1707,9 +1733,6 @@ def FromReferenceProperty(value):
 
 
 
-_EPOCH = datetime.datetime.utcfromtimestamp(0)
-
-
 
 
 
@@ -1717,10 +1740,7 @@ _EPOCH = datetime.datetime.utcfromtimestamp(0)
 
 
 _PROPERTY_CONVERSIONS = {
-  entity_pb.Property.GD_WHEN:
-
-
-    lambda val: _EPOCH + datetime.timedelta(microseconds=val),
+  entity_pb.Property.GD_WHEN:           _When,
   entity_pb.Property.ATOM_CATEGORY:     Category,
   entity_pb.Property.ATOM_LINK:         Link,
   entity_pb.Property.GD_EMAIL:          Email,
@@ -1750,7 +1770,8 @@ def FromPropertyPb(pb):
 
   if pbval.has_stringvalue():
     value = pbval.stringvalue()
-    if meaning not in (entity_pb.Property.BLOB, entity_pb.Property.BYTESTRING):
+    if not pb.has_meaning() or meaning not in (entity_pb.Property.BLOB,
+                                               entity_pb.Property.BYTESTRING):
       value = unicode(value.decode('utf-8'))
   elif pbval.has_int64value():
 
@@ -1788,7 +1809,7 @@ def FromPropertyPb(pb):
     value = None
 
   try:
-    if pb.has_meaning() and pb.meaning() in _PROPERTY_CONVERSIONS:
+    if pb.has_meaning() and meaning in _PROPERTY_CONVERSIONS:
       conversion = _PROPERTY_CONVERSIONS[meaning]
       value = conversion(value)
   except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:

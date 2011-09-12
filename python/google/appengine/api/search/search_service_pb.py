@@ -33,12 +33,14 @@ class SearchServiceError(ProtocolBuffer.ProtocolMessage):
   INVALID_REQUEST =    1
   TRANSIENT_ERROR =    2
   INTERNAL_ERROR =    3
+  PERMISSION_DENIED =    4
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INVALID_REQUEST",
     2: "TRANSIENT_ERROR",
     3: "INTERNAL_ERROR",
+    4: "PERMISSION_DENIED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -107,6 +109,7 @@ class SearchServiceError(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SearchServiceError'
 class RequestStatus(ProtocolBuffer.ProtocolMessage):
   has_status_ = 0
   status_ = 0
@@ -240,6 +243,7 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.RequestStatus'
 class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
 
@@ -454,6 +458,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexSpec'
 class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   has_index_spec_ = 0
 
@@ -610,6 +615,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexMetadata'
 class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
 
 
@@ -811,6 +817,7 @@ class IndexDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexDocumentParams'
 class IndexDocumentRequest(ProtocolBuffer.ProtocolMessage):
   has_params_ = 0
   has_app_id_ = 0
@@ -948,10 +955,12 @@ class IndexDocumentRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexDocumentRequest'
 class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.status_ = []
+    self.doc_id_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def status_size(self): return len(self.status_)
@@ -970,15 +979,34 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   def clear_status(self):
     self.status_ = []
+  def doc_id_size(self): return len(self.doc_id_)
+  def doc_id_list(self): return self.doc_id_
+
+  def doc_id(self, i):
+    return self.doc_id_[i]
+
+  def set_doc_id(self, i, x):
+    self.doc_id_[i] = x
+
+  def add_doc_id(self, x):
+    self.doc_id_.append(x)
+
+  def clear_doc_id(self):
+    self.doc_id_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.status_size()): self.add_status().CopyFrom(x.status(i))
+    for i in xrange(x.doc_id_size()): self.add_doc_id(x.doc_id(i))
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.status_) != len(x.status_): return 0
     for e1, e2 in zip(self.status_, x.status_):
+      if e1 != e2: return 0
+    if len(self.doc_id_) != len(x.doc_id_): return 0
+    for e1, e2 in zip(self.doc_id_, x.doc_id_):
       if e1 != e2: return 0
     return 1
 
@@ -992,28 +1020,39 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.status_)
     for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSize())
+    n += 1 * len(self.doc_id_)
+    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.status_)
     for i in xrange(len(self.status_)): n += self.lengthString(self.status_[i].ByteSizePartial())
+    n += 1 * len(self.doc_id_)
+    for i in xrange(len(self.doc_id_)): n += self.lengthString(len(self.doc_id_[i]))
     return n
 
   def Clear(self):
     self.clear_status()
+    self.clear_doc_id()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSize())
       self.status_[i].OutputUnchecked(out)
+    for i in xrange(len(self.doc_id_)):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.doc_id_[i])
 
   def OutputPartial(self, out):
     for i in xrange(len(self.status_)):
       out.putVarInt32(10)
       out.putVarInt32(self.status_[i].ByteSizePartial())
       self.status_[i].OutputPartial(out)
+    for i in xrange(len(self.doc_id_)):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.doc_id_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1023,6 +1062,9 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_status().TryMerge(tmp)
+        continue
+      if tt == 18:
+        self.add_doc_id(d.getPrefixedString())
         continue
 
 
@@ -1040,6 +1082,12 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    cnt=0
+    for e in self.doc_id_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("doc_id%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
     return res
 
 
@@ -1047,20 +1095,24 @@ class IndexDocumentResponse(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kstatus = 1
+  kdoc_id = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "status",
-  }, 1)
+    2: "doc_id",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexDocumentResponse'
 class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
   has_index_spec_ = 0
 
@@ -1207,6 +1259,7 @@ class DeleteDocumentParams(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteDocumentParams'
 class DeleteDocumentRequest(ProtocolBuffer.ProtocolMessage):
   has_params_ = 0
   has_app_id_ = 0
@@ -1344,6 +1397,7 @@ class DeleteDocumentRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteDocumentRequest'
 class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1457,6 +1511,7 @@ class DeleteDocumentResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteDocumentResponse'
 class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
   has_index_spec_ = 0
   has_start_doc_id_ = 0
@@ -1696,6 +1751,7 @@ class ListDocumentsParams(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListDocumentsParams'
 class ListDocumentsRequest(ProtocolBuffer.ProtocolMessage):
   has_params_ = 0
   has_app_id_ = 0
@@ -1833,6 +1889,7 @@ class ListDocumentsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListDocumentsRequest'
 class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
   has_status_ = 0
 
@@ -1989,6 +2046,7 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListDocumentsResponse'
 class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
   has_fetch_schema_ = 0
   fetch_schema_ = 0
@@ -2287,6 +2345,7 @@ class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListIndexesParams'
 class ListIndexesRequest(ProtocolBuffer.ProtocolMessage):
   has_params_ = 0
   has_app_id_ = 0
@@ -2424,6 +2483,7 @@ class ListIndexesRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListIndexesRequest'
 class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
   has_status_ = 0
 
@@ -2580,6 +2640,7 @@ class ListIndexesResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ListIndexesResponse'
 class SortSpec(ProtocolBuffer.ProtocolMessage):
   has_sort_expression_ = 0
   sort_expression_ = ""
@@ -2781,6 +2842,7 @@ class SortSpec(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SortSpec'
 class ScorerSpec(ProtocolBuffer.ProtocolMessage):
 
 
@@ -2956,6 +3018,7 @@ class ScorerSpec(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ScorerSpec'
 class FieldSpec_Expression(ProtocolBuffer.ProtocolMessage):
   has_name_ = 0
   name_ = ""
@@ -3232,6 +3295,7 @@ class FieldSpec(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.FieldSpec'
 class SearchParams(ProtocolBuffer.ProtocolMessage):
 
 
@@ -3711,6 +3775,7 @@ class SearchParams(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SearchParams'
 class SearchRequest(ProtocolBuffer.ProtocolMessage):
   has_params_ = 0
   has_app_id_ = 0
@@ -3848,6 +3913,7 @@ class SearchRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SearchRequest'
 class SearchResult(ProtocolBuffer.ProtocolMessage):
   has_document_ = 0
   has_cursor_ = 0
@@ -4079,6 +4145,7 @@ class SearchResult(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SearchResult'
 class SearchResponse(ProtocolBuffer.ProtocolMessage):
   has_matched_count_ = 0
   matched_count_ = 0
@@ -4308,5 +4375,6 @@ class SearchResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.SearchResponse'
 
 __all__ = ['SearchServiceError','RequestStatus','IndexSpec','IndexMetadata','IndexDocumentParams','IndexDocumentRequest','IndexDocumentResponse','DeleteDocumentParams','DeleteDocumentRequest','DeleteDocumentResponse','ListDocumentsParams','ListDocumentsRequest','ListDocumentsResponse','ListIndexesParams','ListIndexesRequest','ListIndexesResponse','SortSpec','ScorerSpec','FieldSpec','FieldSpec_Expression','SearchParams','SearchRequest','SearchResult','SearchResponse']

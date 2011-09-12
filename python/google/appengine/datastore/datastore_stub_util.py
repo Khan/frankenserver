@@ -685,30 +685,44 @@ class BaseCursor(object):
   """A base query cursor over a list of entities.
 
   Public properties:
-    cursor: the integer cursor
-    app: the app for which this cursor was created
+    cursor: the integer cursor.
+    app: the app for which this cursor was created.
+    keys_only: whether the query is keys_only.
 
   Class attributes:
-    _next_cursor: the next cursor to allocate
-    _next_cursor_lock: protects _next_cursor
+    _next_cursor: the next cursor to allocate.
+    _next_cursor_lock: protects _next_cursor.
   """
   _next_cursor = 1
   _next_cursor_lock = threading.Lock()
 
-  def __init__(self, app):
+  def __init__(self, query, dsquery, orders):
     """Constructor.
 
     Args:
-      app: The app this cursor is being created for.
+      query: the query request proto.
+      dsquery: a datastore_query.Query over query.
+      orders: the orders of query as returned by _GuessOrders.
     """
-    self.app = app
+
+    self.keys_only = query.keys_only()
+    self.app = query.app()
     self.cursor = self._AcquireCursorID()
 
-  def PopulateCursor(self, query_result):
+    self.__order_compare_entities = dsquery._order.cmp_for_filter(
+        dsquery._filter_predicate)
+    self.__order_property_names = set(
+        order.property() for order in orders if order.property() != '__key__')
+
+  def _PopulateResultMetadata(self, query_result, compile, last_result):
+    query_result.set_keys_only(self.keys_only)
     if query_result.more_results():
       cursor = query_result.mutable_cursor()
       cursor.set_app(self.app)
       cursor.set_cursor(self.cursor)
+    if compile:
+      self._EncodeCompiledCursor(last_result,
+                                 query_result.mutable_compiled_cursor())
 
   @classmethod
   def _AcquireCursorID(cls):
@@ -721,100 +735,18 @@ class BaseCursor(object):
       cls._next_cursor_lock.release()
     return cursor_id
 
-
-class ListCursor(BaseCursor):
-  """A query cursor over a list of entities.
-
-  Public properties:
-    keys_only: whether the query is keys_only
-  """
-
-  def __init__(self, query, results, order_compare_entities,
-               order_property_names):
-    """Constructor.
+  def _IsBeforeCursor(self, entity, cursor):
+    """True if entity is before cursor according to the current order.
 
     Args:
-      query: the query request proto
-      results: list of datastore_pb.EntityProto
-      order_compare_entities: a __cmp__ function for datastore_pb.EntityProto
-        that follows sort order as specified by the query
-      order_property_names: a set of the names of properties used in
-        order_compare_entities.
+      entity: a datastore_pb.EntityProto entity.
+      cursor: a compiled cursor as returned by _DecodeCompiledCursor.
     """
-    super(ListCursor, self).__init__(query.app())
-
-    self.__order_property_names = order_property_names
-    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
-      self.__last_result, inclusive = (self._DecodeCompiledCursor(
-          query.compiled_cursor()))
-      start_cursor_position = ListCursor._GetCursorOffset(
-          results, self.__last_result, inclusive, order_compare_entities)
+    x = self.__order_compare_entities(entity, cursor[0])
+    if cursor[1]:
+      return x < 0
     else:
-      self.__last_result = None
-      start_cursor_position = 0
-
-    if query.has_end_compiled_cursor():
-      if query.end_compiled_cursor().position_list():
-        end_cursor_entity, inclusive = self._DecodeCompiledCursor(
-            query.end_compiled_cursor())
-        end_cursor_position = ListCursor._GetCursorOffset(
-            results, end_cursor_entity, inclusive, order_compare_entities)
-      else:
-        end_cursor_position = 0
-    else:
-      end_cursor_position = len(results)
-
-
-    results = results[start_cursor_position:end_cursor_position]
-
-
-    if query.has_limit():
-      limit = query.limit()
-      if query.offset():
-        limit += query.offset()
-      if limit >= 0 and limit < len(results):
-        results = results[:limit]
-
-    self.__results = results
-    self.__offset = 0
-    self.__count = len(self.__results)
-
-
-    self.keys_only = query.keys_only()
-
-  @staticmethod
-  def _GetCursorOffset(results, cursor_entity, inclusive, compare):
-    """Converts a cursor entity into a offset into the result set even if the
-    cursor_entity no longer exists.
-
-    Args:
-      results: the query's results (sequence of datastore_pb.EntityProto)
-      cursor_entity: the datastore_pb.EntityProto from the compiled query
-      inclusive: boolean that specifies if to offset past the cursor_entity
-      compare: a function that takes two datastore_pb.EntityProto and compares
-        them.
-    Returns:
-      the integer offset
-    """
-    lo = 0
-    hi = len(results)
-    if inclusive:
-
-      while lo < hi:
-        mid = (lo + hi) // 2
-        if compare(results[mid], cursor_entity) < 0:
-          lo = mid + 1
-        else:
-          hi = mid
-    else:
-
-      while lo < hi:
-        mid = (lo + hi) // 2
-        if compare(cursor_entity, results[mid]) < 0:
-          hi = mid
-        else:
-          lo = mid + 1
-    return lo
+      return x <= 0
 
   def _DecodeCompiledCursor(self, compiled_cursor):
     """Converts a compiled_cursor into a cursor_entity.
@@ -848,35 +780,214 @@ class ListCursor(BaseCursor):
 
     return (cursor_entity, position.start_inclusive())
 
-  def _EncodeCompiledCursor(self, compiled_cursor):
+  def _EncodeCompiledCursor(self, last_result, compiled_cursor):
     """Converts the current state of the cursor into a compiled_cursor.
 
     Args:
-      query: the datastore_pb.Query this cursor is related to
-      compiled_cursor: an empty datstore_pb.CompiledCursor
+      last_result: the last result returned by this query.
+      compiled_cursor: an empty datstore_pb.CompiledCursor.
     """
-    if self.__last_result is not None:
+    if last_result is not None:
 
 
       position = compiled_cursor.add_position()
-      position.mutable_key().MergeFrom(self.__last_result.key())
-      for prop in self.__last_result.property_list():
+      position.mutable_key().MergeFrom(last_result.key())
+      for prop in last_result.property_list():
         if prop.name() in self.__order_property_names:
           indexvalue = position.add_indexvalue()
           indexvalue.set_property(prop.name())
           indexvalue.mutable_value().CopyFrom(prop.value())
       position.set_start_inclusive(False)
 
-  def Count(self):
-    """Counts results, up to the query's limit.
 
-    Note this method does not deduplicate results, so the query it was generated
-    from should have the 'distinct' clause applied.
+class IteratorCursor(BaseCursor):
+  """A query cursor over an entity iterator."""
 
-    Returns:
-      int: Result count.
+  def __init__(self, query, dsquery, orders, results):
+    """Constructor.
+
+    Args:
+      query: the query request proto
+      dsquery: a datastore_query.Query over query.
+      orders: the orders of query as returned by _GuessOrders.
+      results: iterator over datastore_pb.EntityProto
     """
-    return self.__count
+    super(IteratorCursor, self).__init__(query, dsquery, orders)
+
+    self.__last_result = None
+    self.__next_result = None
+    self.__results = results
+    self.__done = False
+
+
+    if query.has_end_compiled_cursor():
+      if query.end_compiled_cursor().position_list():
+        self.__end_cursor = self._DecodeCompiledCursor(
+            query.end_compiled_cursor())
+      else:
+        self.__done = True
+    else:
+      self.__end_cursor = None
+
+    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
+      start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
+      self.__last_result = start_cursor[0]
+      try:
+        self._Advance()
+        while self._IsBeforeCursor(self.__next_result, start_cursor):
+          self._Advance()
+      except StopIteration:
+        pass
+
+
+    self.__offset = 0
+    self.__limit = None
+    if query.has_limit():
+      limit = query.limit()
+      if query.offset():
+        limit += query.offset()
+      if limit >= 0:
+        self.__limit = limit
+
+  def _Done(self):
+    self.__done = True
+    self.__next_result = None
+    raise StopIteration
+
+  def _Advance(self):
+    """Advance to next result (handles end cursor, ignores limit)."""
+    if self.__done:
+      raise StopIteration
+    try:
+      self.__next_result = self.__results.next()
+    except StopIteration:
+      self._Done()
+    if (self.__end_cursor and
+        not self._IsBeforeCursor(self.__next_result, self.__end_cursor)):
+      self._Done()
+
+  def _GetNext(self):
+    """Ensures next result is fetched."""
+    if self.__limit is not None and self.__offset >= self.__limit:
+      self._Done()
+    if self.__next_result is None:
+      self._Advance()
+
+  def _Next(self):
+    """Returns and consumes next result."""
+    self._GetNext()
+    self.__last_result = self.__next_result
+    self.__next_result = None
+    self.__offset += 1
+    return self.__last_result
+
+  def PopulateQueryResult(self, result, count, offset, compile=False):
+    """Populates a QueryResult with this cursor and the given number of results.
+
+    Args:
+      result: datastore_pb.QueryResult
+      count: integer of how many results to return
+      offset: integer of how many results to skip
+      compile: boolean, whether we are compiling this query
+    """
+    skipped = 0
+    try:
+      limited_offset = min(offset, _MAX_QUERY_OFFSET)
+      while skipped < limited_offset:
+        self._Next()
+        skipped += 1
+
+
+
+
+
+
+
+      if skipped == offset:
+        if count > _MAXIMUM_RESULTS:
+          count = _MAXIMUM_RESULTS
+        while count > 0:
+          result.result_list().append(LoadEntity(self._Next()))
+          count -= 1
+
+      self._GetNext()
+    except StopIteration:
+      pass
+
+    result.set_more_results(not self.__done)
+    result.set_skipped_results(skipped)
+    self._PopulateResultMetadata(result, compile, self.__last_result)
+
+
+class ListCursor(BaseCursor):
+  """A query cursor over a list of entities.
+
+  Public properties:
+    keys_only: whether the query is keys_only
+  """
+
+  def __init__(self, query, dsquery, orders, results):
+    """Constructor.
+
+    Args:
+      query: the query request proto
+      dsquery: a datastore_query.Query over query.
+      orders: the orders of query as returned by _GuessOrders.
+      results: list of datastore_pb.EntityProto
+    """
+    super(ListCursor, self).__init__(query, dsquery, orders)
+
+    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
+      start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
+      self.__last_result = start_cursor[0]
+      start_cursor_position = self._GetCursorOffset(results, start_cursor)
+    else:
+      self.__last_result = None
+      start_cursor_position = 0
+
+    if query.has_end_compiled_cursor():
+      if query.end_compiled_cursor().position_list():
+        end_cursor = self._DecodeCompiledCursor(query.end_compiled_cursor())
+        end_cursor_position = self._GetCursorOffset(results, end_cursor)
+      else:
+        end_cursor_position = 0
+    else:
+      end_cursor_position = len(results)
+
+
+    results = results[start_cursor_position:end_cursor_position]
+
+
+    if query.has_limit():
+      limit = query.limit()
+      if query.offset():
+        limit += query.offset()
+      if limit >= 0 and limit < len(results):
+        results = results[:limit]
+
+    self.__results = results
+    self.__offset = 0
+    self.__count = len(self.__results)
+
+  def _GetCursorOffset(self, results, cursor):
+    """Converts a cursor into a offset into the result set even if the
+    cursor's entity no longer exists.
+
+    Args:
+      results: the query's results (sequence of datastore_pb.EntityProto)
+      cursor: a compiled cursor as returned by _DecodeCompiledCursor
+    Returns:
+      the integer offset
+    """
+    lo = 0
+    hi = len(results)
+    while lo < hi:
+      mid = (lo + hi) // 2
+      if self._IsBeforeCursor(results[mid], cursor):
+        lo = mid + 1
+      else:
+        hi = mid
+    return lo
 
   def PopulateQueryResult(self, result, count, offset, compile=False):
     """Populates a QueryResult with this cursor and the given number of results.
@@ -912,11 +1023,8 @@ class ListCursor(BaseCursor):
 
       self.__last_result = self.__results[self.__offset - 1]
 
-    result.set_keys_only(self.keys_only)
     result.set_more_results(self.__offset < self.__count)
-    self.PopulateCursor(result)
-    if compile:
-      self._EncodeCompiledCursor(result.mutable_compiled_cursor())
+    self._PopulateResultMetadata(result, compile, self.__last_result)
 
 
 def _SynchronizeTxn(function):
@@ -1078,7 +1186,7 @@ class LiveTxn(object):
     Check(query.has_ancestor(),
           'Query must have an ancestor when performed in a transaction.')
     self._CheckOrSetSnapshot(query.ancestor())
-    return _GetQueryCursor(self._snapshot.values(), query, filters, orders)
+    return _ExecuteQuery(self._snapshot.values(), query, filters, orders)
 
   @_SynchronizeTxn
   def Put(self, entity, insert):
@@ -1423,8 +1531,8 @@ class BaseTransactionManager(object):
       raise TypeError('policy should be of type '
                       'datastore_stub_util.BaseConsistencyPolicy found %r.' %
                       (policy,))
+    self.Flush()
     self._consistency_policy = policy
-    self.Clear()
 
   def Clear(self):
     """Discards any pending transactions and resets the meta_data."""
@@ -1464,7 +1572,7 @@ class BaseTransactionManager(object):
     CheckTransaction(request_trusted, request_app, transaction)
     txn = self._txn_map.get(transaction.handle())
     Check(txn and txn._app == transaction.app(),
-          'Transaction %s not found' % transaction)
+          'Transaction(<%s>) not found' % str(transaction).replace('\n', ', '))
     return txn
 
   def Groom(self):
@@ -1879,7 +1987,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     grouped_keys = collections.defaultdict(list)
     for i, key in enumerate(raw_keys):
-      CheckReference(calling_app, trusted, key)
+      CheckReference(trusted, calling_app, key)
       entity_group = _GetEntityGroup(key)
       entity_group_key = datastore_types.ReferenceToKeyValue(entity_group)
       grouped_keys[entity_group_key].append((key, i))
@@ -2327,20 +2435,32 @@ def _GuessOrders(filters, orders):
   return orders
 
 
-def _GetQueryCursor(results, query, filters, orders):
-  """Get the generate a cursor for the given datastore_pb.Query."""
-  orders = _GuessOrders(filters, orders)
+def _MakeQuery(query, filters, orders):
+  """Make a datastore_query.Query for the given datastore_pb.Query.
 
+  Overrides filters and orders in query with the specified arguments."""
   clone = datastore_pb.Query()
   clone.CopyFrom(query)
   clone.clear_filter()
   clone.clear_order()
   clone.filter_list().extend(filters)
   clone.order_list().extend(orders)
+  return datastore_query.Query._from_pb(clone)
 
-  dsquery = datastore_query.Query._from_pb(clone)
-  cursor = ListCursor(query, datastore_query.apply_query(dsquery, results),
-                      dsquery._order.cmp_for_filter(dsquery._filter_predicate),
-                      set(order.property() for order in orders
-                          if order.property() != '__key__'))
-  return cursor
+
+def _ExecuteQuery(results, query, filters, orders):
+  """Executes the query on a superset of its results.
+
+  Args:
+    results: superset of results for query.
+    query: a datastore_pb.Query.
+    filters: the filters from query.
+    orders: the orders from query.
+
+  Returns:
+    A ListCursor over the results of applying query to results.
+  """
+  orders = _GuessOrders(filters, orders)
+  dsquery = _MakeQuery(query, filters, orders)
+  return ListCursor(query, dsquery, orders,
+                    datastore_query.apply_query(dsquery, results))

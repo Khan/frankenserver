@@ -65,7 +65,11 @@ class ConfigurationError(Error):
 _UPLOAD_SESSION_KIND = '__BlobUploadSession__'
 
 
-def CreateUploadSession(creation, success_path, user):
+def CreateUploadSession(creation,
+                        success_path,
+                        user,
+                        max_bytes_per_blob,
+                        max_bytes_total):
   """Create upload session in datastore.
 
   Creates an upload session and puts it in Datastore to be referenced by
@@ -75,6 +79,8 @@ def CreateUploadSession(creation, success_path, user):
     creation: Creation timestamp.
     success_path: Path in users application to call upon success.
     user: User that initiated this upload, if any.
+    max_bytes_per_blob: Maximum number of bytes for any blob in the upload.
+    max_bytes_total: Maximum aggregate bytes for all blobs in the upload.
 
   Returns:
     String encoded key of new Datastore entity.
@@ -83,7 +89,9 @@ def CreateUploadSession(creation, success_path, user):
   entity.update({'creation': creation,
                  'success_path': success_path,
                  'user': user,
-                 'state': 'init'})
+                 'state': 'init',
+                 'max_bytes_per_blob': max_bytes_per_blob,
+                 'max_bytes_total': max_bytes_total})
   datastore.Put(entity)
   return str(entity.key())
 
@@ -196,19 +204,27 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     except KeyError:
       raise ConfigurationError('%s is not set in environment.' % name)
 
-  def _CreateSession(self, success_path, user):
+  def _CreateSession(self,
+                     success_path,
+                     user,
+                     max_bytes_per_blob=None,
+                     max_bytes_total=None):
     """Create new upload session.
 
     Args:
       success_path: Application path to call upon successful POST.
       user: User that initiated the upload session.
+      max_bytes_per_blob: Maximum number of bytes for any blob in the upload.
+      max_bytes_total: Maximum aggregate bytes for all blobs in the upload.
 
     Returns:
       String encoded key of a new upload session created in the datastore.
     """
     return CreateUploadSession(self.__time_function(),
                                success_path,
-                               user)
+                               user,
+                               max_bytes_per_blob,
+                               max_bytes_total)
 
   def _Dynamic_CreateUploadURL(self, request, response):
     """Create upload URL implementation.
@@ -221,8 +237,19 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       request: A fully initialized CreateUploadURLRequest instance.
       response: A CreateUploadURLResponse instance.
     """
+    max_bytes_per_blob = None
+    max_bytes_total = None
+
+    if request.has_max_upload_size_per_blob_bytes():
+      max_bytes_per_blob = request.max_upload_size_per_blob_bytes()
+
+    if request.has_max_upload_size_bytes():
+      max_bytes_total = request.max_upload_size_bytes()
+
     session = self._CreateSession(request.success_path(),
-                                  users.get_current_user())
+                                  users.get_current_user(),
+                                  max_bytes_per_blob,
+                                  max_bytes_total)
 
     response.set_url('http://%s:%s/%s%s' % (self._GetEnviron('SERVER_NAME'),
                                             self._GetEnviron('SERVER_PORT'),

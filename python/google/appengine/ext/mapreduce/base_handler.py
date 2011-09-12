@@ -36,7 +36,10 @@
 
 
 import logging
-import simplejson
+try:
+  import json as simplejson
+except ImportError:
+  import simplejson
 
 import google
 try:
@@ -102,9 +105,9 @@ class JsonHandler(BaseHandler):
   name of the error_class and the error_message.
   """
 
-  def __init__(self):
+  def __init__(self, *args):
     """Initializer."""
-    super(BaseHandler, self).__init__()
+    super(BaseHandler, self).__init__(*args)
     self.json_response = {}
 
   def base_path(self):

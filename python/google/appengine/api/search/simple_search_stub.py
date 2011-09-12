@@ -34,6 +34,7 @@ import copy
 import random
 import string
 import urllib
+import uuid
 
 from whoosh import analysis
 
@@ -284,9 +285,8 @@ class RamInvertedIndex(object):
     self._tokenizer = tokenizer
     self._inverted_index = {}
 
-  def AddDocument(self, document):
+  def AddDocument(self, doc_id, document):
     """Adds a document into the index."""
-    doc_id = document.id()
     token_position = 0
     for field in document.field_list():
       self._AddTokens(doc_id, field.name(), field.value(),
@@ -353,13 +353,17 @@ class SimpleIndex(object):
     """Indexes an iterable DocumentPb.Document."""
     for document in documents:
       doc_id = document.id()
+      if not doc_id:
+        doc_id = str(uuid.uuid4())
+        document.set_id(doc_id)
+      response.add_doc_id(doc_id)
       if doc_id in self._documents:
         old_document = self._documents[doc_id]
         self._inverted_index.RemoveDocument(old_document)
       self._documents[doc_id] = document
       new_status = response.add_status()
       new_status.set_status(search_service_pb.SearchServiceError.OK)
-      self._inverted_index.AddDocument(document)
+      self._inverted_index.AddDocument(doc_id, document)
 
   def DeleteDocuments(self, document_ids, response):
     """Deletes documents for the given document_ids."""
@@ -370,6 +374,10 @@ class SimpleIndex(object):
         del self._documents[document_id]
       delete_status = response.add_status()
       delete_status.set_status(search_service_pb.SearchServiceError.OK)
+
+  def Documents(self):
+    """Returns the documents in the index."""
+    return self._documents.values()
 
   def _DocumentsForPostings(self, postings):
     """Returns the documents for the given postings."""
@@ -606,6 +614,44 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     response.mutable_status().set_status(
         search_service_pb.SearchServiceError.OK)
 
+  def _AddDocument(self, response, document, keys_only):
+    doc = response.add_document()
+    if keys_only:
+      doc.set_id(document.id())
+    else:
+      doc.MergeFrom(document)
+
+  def _Dynamic_ListDocuments(self, request, response):
+    """A local implementation of SearchService.ListDocuments RPC.
+
+    Args:
+      request: A search_service_pb.ListDocumentsRequest.
+      response: An search_service_pb.ListDocumentsResponse.
+    """
+    params = request.params()
+    index = self._GetIndex(params.index_spec(), create=True)
+    if index is None:
+      self._UnknownIndex(response.mutable_status(), params.index_spec())
+      return
+
+    num_docs = 0
+    start = not params.has_start_doc_id()
+    for document in index.Documents():
+      if start:
+        if num_docs < params.limit():
+          self._AddDocument(response, document, params.keys_only())
+          num_docs += 1
+      else:
+        if params.has_start_doc_id():
+          if document.id() is params.start_doc_id():
+            start = True
+            if params.include_start_doc():
+              self._AddDocument(response, document, params.keys_only())
+              num_docs += 1
+
+    response.mutable_status().set_status(
+        search_service_pb.SearchServiceError.OK)
+
   def _RandomSearchResponse(self, request, response):
 
     random.seed()
@@ -676,6 +722,21 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     response.set_matched_count(matched_count)
 
+  def _DefaultFillSearchResponse(self, params, results, response):
+    """Fills the SearchResponse with the first set of results."""
+    position_range = range(0, min(params.limit(), len(results)))
+    self._FillSearchResponse(results, position_range, params.cursor_type(),
+                             response)
+
+  def _FillSearchResponse(self, results, position_range, cursor_type, response):
+    """Fills the SearchResponse with a selection of results."""
+    for i in position_range:
+      result = results[i]
+      search_result = response.add_result()
+      search_result.mutable_document().CopyFrom(result)
+      if cursor_type is search_service_pb.SearchParams.PER_RESULT:
+        search_result.set_cursor(result.id())
+
   def _Dynamic_Search(self, request, response):
     """A local implementation of SearchService.Search RPC.
 
@@ -697,26 +758,33 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     except IndexConsistencyError, exception:
       self._InvalidRequest(response.mutable_status(), exception)
 
-
-
-
     params = request.params()
-    docs_to_return = 20
-    if params.has_limit():
-      docs_to_return = params.limit()
-
     results = index.Search(params)
-
     response.set_matched_count(len(results))
 
-    count = 0
-    for i in xrange(len(results)):
-      result = results[i]
-      search_result = response.add_result()
-      search_result.mutable_document().CopyFrom(result)
-      count += 1
-      if count >= docs_to_return:
-        break
+    offset = 0
+    if params.has_cursor():
+      positions = [i for i in range(len(results)) if results[i].id() is
+                   params.cursor()]
+      if positions:
+        offset = positions[0] + 1
+    elif params.has_offset():
+      offset = params.offset()
+
+
+
+    if offset < len(results):
+      position_range = range(
+          offset,
+          min(offset + params.limit(), len(results)))
+    else:
+      position_range = range(0)
+    self._FillSearchResponse(results, position_range, params.cursor_type(),
+                             response)
+    if (params.cursor_type() is search_service_pb.SearchParams.SINGLE and
+        len(position_range)):
+      response.set_cursor(results[position_range[len(position_range) - 1]].id())
+
     response.status().set_status(search_service_pb.SearchServiceError.OK)
 
   def __repr__(self):

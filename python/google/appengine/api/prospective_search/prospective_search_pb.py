@@ -220,6 +220,7 @@ class SchemaEntry(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.SchemaEntry'
 class SubscribeRequest(ProtocolBuffer.ProtocolMessage):
   has_topic_ = 0
   topic_ = ""
@@ -487,6 +488,7 @@ class SubscribeRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.SubscribeRequest'
 class SubscribeResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -551,6 +553,7 @@ class SubscribeResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.SubscribeResponse'
 class UnsubscribeRequest(ProtocolBuffer.ProtocolMessage):
   has_topic_ = 0
   topic_ = ""
@@ -689,6 +692,7 @@ class UnsubscribeRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.UnsubscribeRequest'
 class UnsubscribeResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -753,6 +757,7 @@ class UnsubscribeResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.UnsubscribeResponse'
 class SubscriptionRecord(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1016,6 +1021,7 @@ class SubscriptionRecord(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.SubscriptionRecord'
 class ListSubscriptionsRequest(ProtocolBuffer.ProtocolMessage):
   has_topic_ = 0
   topic_ = ""
@@ -1251,6 +1257,7 @@ class ListSubscriptionsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.ListSubscriptionsRequest'
 class ListSubscriptionsResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1364,6 +1371,7 @@ class ListSubscriptionsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.ListSubscriptionsResponse'
 class ListTopicsRequest(ProtocolBuffer.ProtocolMessage):
   has_topic_start_ = 0
   topic_start_ = ""
@@ -1526,6 +1534,7 @@ class ListTopicsRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.ListTopicsRequest'
 class ListTopicsResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -1629,6 +1638,7 @@ class ListTopicsResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.ListTopicsResponse'
 class MatchRequest(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1969,6 +1979,7 @@ class MatchRequest(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.MatchRequest'
 class MatchResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
@@ -2033,5 +2044,6 @@ class MatchResponse(ProtocolBuffer.ProtocolMessage):
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.MatchResponse'
 
 __all__ = ['SchemaEntry','SubscribeRequest','SubscribeResponse','UnsubscribeRequest','UnsubscribeResponse','SubscriptionRecord','ListSubscriptionsRequest','ListSubscriptionsResponse','ListTopicsRequest','ListTopicsResponse','MatchRequest','MatchResponse']

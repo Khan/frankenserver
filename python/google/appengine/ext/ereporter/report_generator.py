@@ -54,7 +54,7 @@ from google.appengine.api import mail
 from google.appengine.ext import db
 from google.appengine.ext import ereporter
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp import _template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 
@@ -125,7 +125,7 @@ class ReportGenerator(webapp.RequestHandler):
         'versions': versions,
     }
     path = os.path.join(os.path.dirname(__file__), 'templates', 'report.html')
-    return template.render(path, template_values)
+    return _template.render(path, template_values)
 
   def SendReport(self, report):
     """Emails an exception report.
