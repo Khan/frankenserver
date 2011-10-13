@@ -44,6 +44,13 @@ except ImportError:
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
+  _extension_runtime = True
+  _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
+else:
+  _extension_runtime = False
+  _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
+
 from google.appengine.api.api_base_pb import *
 import google.appengine.api.api_base_pb
 class LogServiceError(ProtocolBuffer.ProtocolMessage):
@@ -3456,5 +3463,7 @@ class LogService(_server_stub_base_class):
         None,
         'none')
 
+if _extension_runtime:
+  pass
 
 __all__ = ['LogServiceError','UserAppLogLine','UserAppLogGroup','FlushRequest','SetStatusRequest','LogOffset','LogLine','RequestLog','LogReadRequest','LogReadResponse','LogService']

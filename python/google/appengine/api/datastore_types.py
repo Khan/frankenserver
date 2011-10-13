@@ -561,7 +561,7 @@ class Key(object):
     if self.__reference.path().element_size() > 1:
       parent = Key()
       parent.__reference.CopyFrom(self.__reference)
-      parent.__reference.path().element_list().pop()
+      del parent.__reference.path().element_list()[-1]
       return parent
     else:
       return None

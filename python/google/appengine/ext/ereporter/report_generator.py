@@ -75,13 +75,12 @@ class ReportGenerator(webapp.RequestHandler):
 
   DEFAULT_MAX_RESULTS = 100
 
-  def __init__(self, send_mail=mail.send_mail,
-               mail_admins=mail.send_mail_to_admins):
-    super(ReportGenerator, self).__init__()
+  def __init__(self, *args, **kwargs):
+    super(ReportGenerator, self).__init__(*args, **kwargs)
 
 
-    self.send_mail = send_mail
-    self.send_mail_to_admins = mail_admins
+    self.send_mail = mail.send_mail
+    self.send_mail_to_admins = mail.send_mail_to_admins
 
   def GetQuery(self, order=None):
     """Creates a query object that will retrieve the appropriate exceptions.

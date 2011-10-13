@@ -270,6 +270,9 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
 
   The first argument is a UserRPC instance.  See urlfetch.fetch for a
   thorough description of remaining arguments.
+
+  Returns:
+    The rpc object passed into the function.
   """
   assert rpc.service == 'urlfetch', repr(rpc.service)
   if isinstance(method, basestring):
@@ -324,6 +327,7 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
 
 
   rpc.make_call('Fetch', request, response, _get_fetch_result, allow_truncated)
+  return rpc
 
 
 def _get_fetch_result(rpc):

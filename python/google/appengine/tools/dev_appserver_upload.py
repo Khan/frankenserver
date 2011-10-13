@@ -183,7 +183,12 @@ class UploadCGIHandler(object):
     main_type, sub_type = _SplitMIMEType(form_item.type)
 
     blob_key = self.__generate_blob_key()
-    self.__blob_storage.StoreBlob(blob_key, form_item.file)
+    blob_file = form_item.file
+    if 'Content-Transfer-Encoding' in form_item.headers:
+      if form_item.headers['Content-Transfer-Encoding'] == 'base64':
+        blob_file = cStringIO.StringIO(
+            base64.urlsafe_b64decode(blob_file.read()))
+    self.__blob_storage.StoreBlob(blob_key, blob_file)
     content_type_formatter = base.MIMEBase(main_type, sub_type,
                                            **form_item.type_options)
 
@@ -195,17 +200,17 @@ class UploadCGIHandler(object):
     blob_entity['creation'] = creation
     blob_entity['filename'] = form_item.filename.decode('utf-8')
 
-    form_item.file.seek(0)
+    blob_file.seek(0)
     digester = hashlib.md5()
     while True:
-      block = form_item.file.read(1 << 20)
+      block = blob_file.read(1 << 20)
       if not block:
         break
       digester.update(block)
 
     blob_entity['md5_hash'] = digester.hexdigest()
-    blob_entity['size'] = form_item.file.tell()
-    form_item.file.seek(0)
+    blob_entity['size'] = blob_file.tell()
+    blob_file.seek(0)
 
     datastore.Put(blob_entity)
     return blob_entity

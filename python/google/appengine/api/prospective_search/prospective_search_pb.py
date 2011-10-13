@@ -24,6 +24,13 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
+  _extension_runtime = True
+  _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
+else:
+  _extension_runtime = False
+  _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
+
 from google.appengine.datastore.entity_pb import EntityProto
 class SchemaEntry(ProtocolBuffer.ProtocolMessage):
 
@@ -2045,5 +2052,7 @@ class MatchResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.prospective_search.MatchResponse'
+if _extension_runtime:
+  pass
 
 __all__ = ['SchemaEntry','SubscribeRequest','SubscribeResponse','UnsubscribeRequest','UnsubscribeResponse','SubscriptionRecord','ListSubscriptionsRequest','ListSubscriptionsResponse','ListTopicsRequest','ListTopicsResponse','MatchRequest','MatchResponse']

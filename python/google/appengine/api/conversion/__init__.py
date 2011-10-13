@@ -26,8 +26,8 @@ __all__ = [
 
     "BackendDeadlineExceeded",
     "BackendError",
-    "ConversionUnsupported",
     "ConversionTooLarge",
+    "ConversionUnsupported",
     "Error",
     "InvalidRequest",
     "TooManyConversions",

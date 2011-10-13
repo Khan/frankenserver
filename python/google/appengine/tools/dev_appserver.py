@@ -28,8 +28,7 @@ Example:
   root_path = '/path/to/application/directory'
   login_url = '/login'
   port = 8080
-  template_dir = '/path/to/appserver/templates'
-  server = dev_appserver.CreateServer(root_path, login_url, port, template_dir)
+  server = dev_appserver.CreateServer(root_path, login_url, port)
   server.serve_forever()
 """
 
@@ -57,6 +56,7 @@ import dummy_thread
 import email.Utils
 import fancy_urllib
 import errno
+import hashlib
 import heapq
 import httplib
 import imp
@@ -156,13 +156,6 @@ MAX_URL_LENGTH = 2047
 
 
 
-HEADER_TEMPLATE = 'logging_console_header.html'
-SCRIPT_TEMPLATE = 'logging_console.js'
-MIDDLE_TEMPLATE = 'logging_console_middle.html'
-FOOTER_TEMPLATE = 'logging_console_footer.html'
-
-
-
 DEFAULT_ENV = {
     'GATEWAY_INTERFACE': 'CGI/1.1',
     'AUTH_DOMAIN': 'gmail.com',
@@ -180,11 +173,11 @@ for ext, mime_type in mail.EXTENSION_MIME_MAP.iteritems():
 
 
 
-MAX_RUNTIME_RESPONSE_SIZE = 10 << 20
+MAX_RUNTIME_RESPONSE_SIZE = 32 << 20
 
 
 
-MAX_REQUEST_SIZE = 10 * 1024 * 1024
+MAX_REQUEST_SIZE = 32 * 1024 * 1024
 
 
 COPY_BLOCK_SIZE = 1 << 20
@@ -226,10 +219,6 @@ class InvalidAppConfigError(Error):
 
 class AppConfigNotFoundError(Error):
   """Application configuration file not found."""
-
-
-class TemplatesNotLoadedError(Error):
-  """Templates for the debugging console were not loaded."""
 
 
 class CompileError(Error):
@@ -388,7 +377,7 @@ class AppServerRequest(object):
     """
     results = []
     for attribute in self.ATTRIBUTES:
-      results.append('%s: %s' % (attributes, getattr(self, attributes)))
+      results.append('%s: %s' % (attribute, getattr(self, attribute)))
     return '<AppServerRequest %s>' % ' '.join(results)
 
 
@@ -639,117 +628,11 @@ class MatcherDispatcher(URLDispatcher):
 
 
 
-class ApplicationLoggingHandler(logging.Handler):
-  """Python Logging handler that displays the debugging console to users."""
-
-
-  _COOKIE_NAME = '_ah_severity'
-
-  _TEMPLATES_INITIALIZED = False
-  _HEADER = None
-  _SCRIPT = None
-  _MIDDLE = None
-  _FOOTER = None
-
-  @staticmethod
-  def InitializeTemplates(header, script, middle, footer):
-    """Initializes the templates used to render the debugging console.
-
-    This method must be called before any ApplicationLoggingHandler instances
-    are created.
-
-    Args:
-      header: The header template that is printed first.
-      script: The script template that is printed after the logging messages.
-      middle: The middle element that's printed before the footer.
-      footer; The last element that's printed at the end of the document.
-    """
-    ApplicationLoggingHandler._HEADER = header
-    ApplicationLoggingHandler._SCRIPT = script
-    ApplicationLoggingHandler._MIDDLE = middle
-    ApplicationLoggingHandler._FOOTER = footer
-    ApplicationLoggingHandler._TEMPLATES_INITIALIZED = True
-
-  @staticmethod
-  def AreTemplatesInitialized():
-    """Returns True if InitializeTemplates has been called, False otherwise."""
-    return ApplicationLoggingHandler._TEMPLATES_INITIALIZED
-
-  def __init__(self, *args, **kwargs):
-    """Initializer.
-
-    Args:
-      args, kwargs: See logging.Handler.
-
-    Raises:
-      TemplatesNotLoadedError exception if the InitializeTemplates method was
-      not called before creating this instance.
-    """
-    if not self._TEMPLATES_INITIALIZED:
-      raise TemplatesNotLoadedError
-
-    logging.Handler.__init__(self, *args, **kwargs)
-    self._record_list = []
-    self._start_time = time.time()
-
-  def emit(self, record):
-    """Called by the logging module each time the application logs a message.
-
-    Args:
-      record: logging.LogRecord instance corresponding to the newly logged
-        message.
-    """
-    self._record_list.append(record)
-
-  def AddDebuggingConsole(self, relative_url, env, outfile):
-    """Prints an HTML debugging console to an output stream, if requested.
-
-    Args:
-      relative_url: Relative URL that was accessed, including the query string.
-        Used to determine if the parameter 'debug' was supplied, in which case
-        the console will be shown.
-      env: Dictionary containing CGI environment variables. Checks for the
-        HTTP_COOKIE entry to see if the accessing user has any logging-related
-        cookies set.
-      outfile: Output stream to which the console should be written if either
-        a debug parameter was supplied or a logging cookie is present.
-    """
-    unused_script_name, query_string = SplitURL(relative_url)
-    param_dict = cgi.parse_qs(query_string, True)
-    cookie_dict = Cookie.SimpleCookie(env.get('HTTP_COOKIE', ''))
-    if 'debug' not in param_dict and self._COOKIE_NAME not in cookie_dict:
-      return
-
-    outfile.write(self._HEADER)
-    for record in self._record_list:
-      self._PrintRecord(record, outfile)
-
-    outfile.write(self._MIDDLE)
-    outfile.write(self._SCRIPT)
-    outfile.write(self._FOOTER)
-
-  def _PrintRecord(self, record, outfile):
-    """Prints a single logging record to an output stream.
-
-    Args:
-      record: logging.LogRecord instance to print.
-      outfile: Output stream to which the LogRecord should be printed.
-    """
-    message = cgi.escape(record.getMessage())
-    level_name = logging.getLevelName(record.levelno).lower()
-    level_letter = level_name[:1].upper()
-    time_diff = record.created - self._start_time
-    outfile.write('<span class="_ah_logline_%s">\n' % level_name)
-    outfile.write('<span class="_ah_logline_%s_prefix">%2.5f %s &gt;</span>\n'
-                  % (level_name, time_diff, level_letter))
-    outfile.write('%s\n' % message)
-    outfile.write('</span>\n')
-
-
-
-
 _IGNORE_REQUEST_HEADERS = frozenset(['content-type', 'content-length',
                                      'accept-encoding', 'transfer-encoding'])
+
+
+_request_id = 0
 
 
 def SetupEnvironment(cgi_path,
@@ -795,6 +678,11 @@ def SetupEnvironment(cgi_path,
     if len(parts) == 2 and parts[1]:
       auth_domain = parts[1]
     env['AUTH_DOMAIN'] = auth_domain
+
+  global _request_id
+  env['REQUEST_ID_HASH'] = hashlib.sha1(str(
+      _request_id)).hexdigest()[:8].upper()
+  _request_id += 1
 
 
   for key in headers:
@@ -2151,6 +2039,7 @@ class HardenedModulesHook(object):
 
 
 
+    import_error = None
     for path_entry in search_path:
       result = self.FindPathHook(submodule, submodule_fullname, path_entry)
       if result is not None:
@@ -2158,13 +2047,6 @@ class HardenedModulesHook(object):
         if description == (None, None, None):
 
           return result
-        else:
-
-          break
-    else:
-
-      self.log('Could not find module "%s"', submodule_fullname)
-      raise CouldNotFindModuleError()
 
 
 
@@ -2183,22 +2065,38 @@ class HardenedModulesHook(object):
 
 
 
-    suffix, mode, file_type = description
 
-    if (file_type not in (self._imp.C_BUILTIN, self._imp.C_EXTENSION) and
-        not FakeFile.IsFileAccessible(pathname)):
-      error_message = 'Access to module file denied: %s' % pathname
-      logging.debug(error_message)
-      raise ImportError(error_message)
 
-    if (file_type not in self._ENABLED_FILE_TYPES and
-        submodule not in self._WHITE_LIST_C_MODULES):
-      error_message = ('Could not import "%s": Disallowed C-extension '
-                       'or built-in module' % submodule_fullname)
-      logging.debug(error_message)
-      raise ImportError(error_message)
+        suffix, mode, file_type = description
 
-    return source_file, pathname, description
+        try:
+          if (file_type not in (self._imp.C_BUILTIN, self._imp.C_EXTENSION) and
+              not FakeFile.IsFileAccessible(pathname)):
+            error_message = 'Access to module file denied: %s' % pathname
+            logging.debug(error_message)
+            raise ImportError(error_message)
+
+          if (file_type not in self._ENABLED_FILE_TYPES and
+              submodule not in self._WHITE_LIST_C_MODULES):
+            error_message = ('Could not import "%s": Disallowed C-extension '
+                             'or built-in module' % submodule_fullname)
+            logging.debug(error_message)
+            raise ImportError(error_message)
+          return source_file, pathname, description
+        except ImportError, e:
+
+
+          import_error = e
+
+    if import_error:
+
+
+      raise import_error
+
+
+    self.log('Could not find module "%s"', submodule_fullname)
+    raise CouldNotFindModuleError()
+
 
   def FindPathHook(self, submodule, submodule_fullname, path_entry):
     """Helper for FindModuleRestricted to find a module in a sys.path entry.
@@ -2899,7 +2797,6 @@ def ExecuteOrImportScript(handler_path, cgi_path, import_hook):
     finally:
 
 
-
       sys.stdout.seek(0, 2)
     status_header = headers.get('status')
     error_response = False
@@ -3006,8 +2903,12 @@ def ExecuteCGI(root_path,
     dist.fix_paths(root_path, sdk_dir)
 
 
+
+
     hook = HardenedModulesHook(sys.modules, root_path)
-    sys.meta_path = [hook]
+    sys.meta_path = [finder for finder in sys.meta_path
+                     if not isinstance(finder, HardenedModulesHook)]
+    sys.meta_path.insert(0, hook)
     if hasattr(sys, 'path_importer_cache'):
       sys.path_importer_cache.clear()
 
@@ -3029,7 +2930,6 @@ def ExecuteCGI(root_path,
       raise
 
   finally:
-    sys.meta_path = []
     sys.path_importer_cache.clear()
 
     _ClearTemplateCache(sys.modules)
@@ -3065,8 +2965,7 @@ class CGIDispatcher(URLDispatcher):
                root_path,
                path_adjuster,
                setup_env=SetupEnvironment,
-               exec_cgi=ExecuteCGI,
-               create_logging_handler=ApplicationLoggingHandler):
+               exec_cgi=ExecuteCGI):
     """Initializer.
 
     Args:
@@ -3075,15 +2974,13 @@ class CGIDispatcher(URLDispatcher):
         sys.modules dictionary.
       path_adjuster: Instance of PathAdjuster to use for finding absolute
         paths of CGI files on disk.
-      setup_env, exec_cgi, create_logging_handler: Used for dependency
-        injection.
+      setup_env, exec_cgi: Used for dependency injection.
     """
     self._module_dict = module_dict
     self._root_path = root_path
     self._path_adjuster = path_adjuster
     self._setup_env = setup_env
     self._exec_cgi = exec_cgi
-    self._create_logging_handler = create_logging_handler
 
   def Dispatch(self,
                request,
@@ -3099,8 +2996,6 @@ class CGIDispatcher(URLDispatcher):
     CopyStreamPart(request.infile, memory_file, request_size)
     memory_file.seek(0)
 
-    handler = self._create_logging_handler()
-    logging.getLogger().addHandler(handler)
     before_level = logging.root.level
     try:
       env = {}
@@ -3118,10 +3013,8 @@ class CGIDispatcher(URLDispatcher):
                      memory_file,
                      outfile,
                      self._module_dict)
-      handler.AddDebuggingConsole(request.relative_url, env, outfile)
     finally:
       logging.root.level = before_level
-      logging.getLogger().removeHandler(handler)
 
   def __str__(self):
     """Returns a string representation of this dispatcher."""
@@ -3804,6 +3697,9 @@ class ModuleManager(object):
 
 
     sys.path_hooks[:] = self._save_path_hooks
+
+
+    sys.meta_path = []
 
 
 
@@ -4601,6 +4497,10 @@ def SetupStubs(app_id, **config):
 
   os.environ['APPLICATION_ID'] = app_id
 
+
+
+  os.environ['REQUEST_ID_HASH'] = ''
+
   if clear_prospective_search and prospective_search_path:
 
     if os.path.lexists(prospective_search_path):
@@ -4879,36 +4779,10 @@ def CreateImplicitMatcher(
   return url_matcher
 
 
-def SetupTemplates(template_dir):
-  """Reads debugging console template files and initializes the console.
-
-  Does nothing if templates have already been initialized.
-
-  Args:
-    template_dir: Path to the directory containing the templates files.
-
-  Raises:
-    OSError or IOError if any of the template files could not be read.
-  """
-  if ApplicationLoggingHandler.AreTemplatesInitialized():
-    return
-
-  try:
-    header = open(os.path.join(template_dir, HEADER_TEMPLATE)).read()
-    script = open(os.path.join(template_dir, SCRIPT_TEMPLATE)).read()
-    middle = open(os.path.join(template_dir, MIDDLE_TEMPLATE)).read()
-    footer = open(os.path.join(template_dir, FOOTER_TEMPLATE)).read()
-  except (OSError, IOError):
-    logging.error('Could not read template files from %s', template_dir)
-    raise
-
-  ApplicationLoggingHandler.InitializeTemplates(header, script, middle, footer)
-
-
 def CreateServer(root_path,
                  login_url,
                  port,
-                 template_dir,
+                 template_dir=None,
                  serve_address='',
                  require_indexes=False,
                  allow_skipped_files=False,
@@ -4928,8 +4802,7 @@ def CreateServer(root_path,
       application where the app.yaml file is.
     login_url: Relative URL which should be used for handling user login/logout.
     port: Port to start the application server on.
-    template_dir: Path to the directory in which the debug console templates
-      are stored.
+    template_dir: Unused.
     serve_address: Address on which the server should serve.
     require_indexes: True if index.yaml is read-only gospel; default False.
     allow_skipped_files: True if skipped files should be accessible.
@@ -4947,10 +4820,8 @@ def CreateServer(root_path,
 
   absolute_root_path = os.path.realpath(root_path)
 
-  SetupTemplates(template_dir)
   FakeFile.SetAllowedPaths(absolute_root_path,
-                           [sdk_dir,
-                            template_dir])
+                           [sdk_dir])
   FakeFile.SetAllowSkippedFiles(allow_skipped_files)
 
   handler_class = CreateRequestHandler(absolute_root_path,

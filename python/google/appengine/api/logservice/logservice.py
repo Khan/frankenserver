@@ -32,6 +32,7 @@ ability to programmatically access their log files.
 
 import cStringIO
 import os
+import re
 import sys
 import threading
 import time
@@ -40,23 +41,28 @@ from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.logservice import logsutil
-from google.appengine.runtime import apiproxy_errors
 
 
 AUTOFLUSH_ENABLED = True
 
 
-AUTOFLUSH_EVERY_SECONDS = 10
+AUTOFLUSH_EVERY_SECONDS = 60
 
 
-AUTOFLUSH_EVERY_BYTES = 1024
+AUTOFLUSH_EVERY_BYTES = 4096
 
 
-AUTOFLUSH_EVERY_LINES = 20
+AUTOFLUSH_EVERY_LINES = 50
 
 
 
-MAX_ITEMS_PER_FETCH = 20
+
+
+
+DEFAULT_ITEMS_PER_FETCH = 20
+
+
+MAX_ITEMS_PER_FETCH = 100
 
 
 LOG_LEVEL_DEBUG = 0
@@ -64,6 +70,9 @@ LOG_LEVEL_INFO = 1
 LOG_LEVEL_WARNING = 2
 LOG_LEVEL_ERROR = 3
 LOG_LEVEL_CRITICAL = 4
+
+_MAJOR_VERSION_ID_PATTERN = r'[a-z\d][a-z\d\-]{0,99}'
+_MAJOR_VERSION_ID_RE = re.compile(_MAJOR_VERSION_ID_PATTERN)
 
 
 class Error(Exception):
@@ -183,6 +192,11 @@ class LogsBuffer(object):
     """Writes a line to the logs buffer."""
     return self._lock_and_call(self._write, line)
 
+  def writelines(self, seq):
+    """Writes each line in the given sequence to the logs buffer."""
+    for line in seq:
+      self.write(line)
+
   def _write(self, line):
     """Writes a line to the logs buffer."""
     if self._request != logsutil.RequestID():
@@ -245,7 +259,7 @@ class LogsBuffer(object):
 
   def autoflush_enabled(self):
     """Indicates if the buffer will periodically flush logs during a request."""
-    return AUTOFLUSH_ENABLED and 'BACKEND_ID' in os.environ
+    return AUTOFLUSH_ENABLED
 
 
 
@@ -311,24 +325,29 @@ def log_buffer_lines():
 
 
 class _LogQueryResult(object):
-  """A container that holds logs and a cursor to fetch additional logs.
+  """A container that holds a log request and provides an iterator to read logs.
 
   A _LogQueryResult object is the standard returned item for a call to fetch().
   It is iterable - each value returned is a log that the user has queried for,
   and internally, it holds a cursor that it uses to fetch more results once the
   current, locally held set, are exhausted.
+
+  Properties:
+    _request: A LogReadRequest that contains the parameters the user has set for
+      the initial fetch call, which will be updated with a more current cursor
+      if more logs are requested.
+    _logs: A list of RequestLogs corresponding to logs the user has asked for.
   """
 
-  def __init__(self, response):
+  def __init__(self, request):
     """Constructor.
 
     Args:
-      response: A LogReadResponse object acquired from a call to fetch().
+      request: A LogReadRequest object that will be used for Read calls.
     """
-    self._logs = response.log_
-    self._cursor = response.offset_
-    self._current_log = 0
-    self._num_logs = len(self._logs)
+    self._request = request
+    self._logs = []
+    self._read_called = False
 
   def __iter__(self):
     """Provides an iterator that yields log records one at a time.
@@ -341,7 +360,8 @@ class _LogQueryResult(object):
     while True:
       for log_item in self._logs:
         yield log_item
-      if self._cursor:
+      if not self._read_called or self._request.has_offset():
+        self._read_called = True
         self._advance()
       else:
         break
@@ -352,25 +372,22 @@ class _LogQueryResult(object):
     This method is used by the iterator when it has exhausted its current set of
     logs to acquire more logs and update its internal structures accordingly.
     """
-    request = log_service_pb.LogReadRequest()
     response = log_service_pb.LogReadResponse()
 
-    request.set_app_id(os.environ['APPLICATION_ID'])
-
-    if self._cursor:
-      request.offset_ = self._cursor
-
-    apiproxy_stub_map.MakeSyncCall('logservice', 'Read', request, response)
-    self._logs = response.log_
-    self._cursor = response.offset_
+    apiproxy_stub_map.MakeSyncCall('logservice', 'Read', self._request,
+                                   response)
+    self._logs = response.log_list()
+    self._request.clear_offset()
+    if response.has_offset():
+      self._request.mutable_offset().CopyFrom(response.offset())
 
 
 def fetch(start_time_usec=None,
           end_time_usec=None,
-          batch_size=MAX_ITEMS_PER_FETCH,
+          batch_size=DEFAULT_ITEMS_PER_FETCH,
           min_log_level=None,
           include_incomplete=False,
-          include_app_logs=True,
+          include_app_logs=False,
           version_ids=None):
   """Fetches an application's request and/or application-level logs.
 
@@ -404,7 +421,6 @@ def fetch(start_time_usec=None,
   """
 
   request = log_service_pb.LogReadRequest()
-  response = log_service_pb.LogReadResponse()
 
   request.set_app_id(os.environ['APPLICATION_ID'])
 
@@ -448,12 +464,16 @@ def fetch(start_time_usec=None,
   request.set_include_app_logs(include_app_logs)
 
   if version_ids is None:
-    version_ids = [os.environ['CURRENT_VERSION_ID']]
+    version_id = os.environ['CURRENT_VERSION_ID']
+    version_ids = [version_id.split('.')[0]]
+  else:
+    if not isinstance(version_ids, list):
+      raise InvalidArgumentError('version_ids must be a list')
+    for version_id in version_ids:
+      if not _MAJOR_VERSION_ID_RE.match(version_id):
+        raise InvalidArgumentError(
+            'version_ids must only contain valid major version identifiers')
 
-  if not isinstance(version_ids, list):
-    raise InvalidArgumentError('version_ids must be a list')
+  request.version_id_list()[:] = version_ids
 
-  request.version_id_ = version_ids
-
-  apiproxy_stub_map.MakeSyncCall('logservice', 'Read', request, response)
-  return _LogQueryResult(response)
+  return _LogQueryResult(request)

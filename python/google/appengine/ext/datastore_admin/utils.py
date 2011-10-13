@@ -340,7 +340,8 @@ class MapreduceDoneHandler(webapp.RequestHandler):
 
       keys = []
       job_success = True
-      for shard_state in model.ShardState.find_by_mapreduce_id(mapreduce_id):
+      shard_states = model.ShardState.find_by_mapreduce_state(mapreduce_state)
+      for shard_state in shard_states:
         keys.append(shard_state.key())
         if not shard_state.result_status == 'success':
           job_success = False

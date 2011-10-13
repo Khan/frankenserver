@@ -108,3 +108,7 @@ class InvalidLibraryName(Error):
 
 class ThreadsafeWithCgiHandler(Error):
   """Raised when threadsafe is enabled with a CGI handler specified."""
+
+
+class MissingThreadsafe(Error):
+  """Raised when the runtime needs a threadsafe declaration and it's missing."""

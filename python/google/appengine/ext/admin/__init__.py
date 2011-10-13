@@ -48,7 +48,6 @@ import traceback
 import types
 import urllib
 import urlparse
-import wsgiref.handlers
 
 
 
@@ -77,6 +76,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.admin import datastore_stats_generator
 from google.appengine.ext.db import metadata
 from google.appengine.ext.webapp import _template
+from google.appengine.ext.webapp import util
 
 
 _DEBUG = True
@@ -502,7 +502,8 @@ class QueuesPageHandler(BaseRequestHandler):
   """Shows information about configured (and default) task queues."""
   PATH = '/queues'
 
-  def __init__(self):
+  def __init__(self, *args, **kwargs):
+    super(QueuesPageHandler, self).__init__(*args, **kwargs)
     self.helper = TaskQueueHelper()
 
   def get(self):
@@ -531,7 +532,8 @@ class TasksPageHandler(BaseRequestHandler):
   MAX_TASKS_TO_FETCH = 1000
   MIN_TASKS_TO_FETCH = 200
 
-  def __init__(self):
+  def __init__(self, *args, **kwargs):
+    super(TasksPageHandler, self).__init__(*args, **kwargs)
     self.helper = TaskQueueHelper()
     self.prev_page = None
     self.next_page = None
@@ -676,7 +678,8 @@ class BackendsPageHandler(BaseRequestHandler):
 
   PATH = '/backends'
 
-  def __init__(self):
+  def __init__(self, *args, **kwargs):
+    super(BackendsPageHandler, self).__init__(*args, **kwargs)
     self.stub = apiproxy_stub_map.apiproxy.GetStub('system')
 
   def get(self):
@@ -1954,28 +1957,30 @@ def PseudoBreadcrumbs(key):
   return ' > '.join(parts)
 
 
+handlers = [
+    ('.*' + DatastoreGetIndexesHandler.PATH, DatastoreGetIndexesHandler),
+    ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
+    ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
+    ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
+    ('.*' + DatastoreStatsHandler.PATH, DatastoreStatsHandler),
+    ('.*' + InteractivePageHandler.PATH, InteractivePageHandler),
+    ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
+    ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
+    ('.*' + ImageHandler.PATH, ImageHandler),
+    ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
+    ('.*' + TasksPageHandler.PATH, TasksPageHandler),
+    ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
+    ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
+    ('.*' + BackendsPageHandler.PATH, BackendsPageHandler),
+    ('.*', DefaultPageHandler),
+  ]
+if HAVE_CRON:
+  handlers.insert(0, ('.*' + CronPageHandler.PATH, CronPageHandler))
+application = webapp.WSGIApplication(handlers, debug=_DEBUG)
+
+
 def main():
-  handlers = [
-      ('.*' + DatastoreGetIndexesHandler.PATH, DatastoreGetIndexesHandler),
-      ('.*' + DatastoreQueryHandler.PATH, DatastoreQueryHandler),
-      ('.*' + DatastoreEditHandler.PATH, DatastoreEditHandler),
-      ('.*' + DatastoreBatchEditHandler.PATH, DatastoreBatchEditHandler),
-      ('.*' + DatastoreStatsHandler.PATH, DatastoreStatsHandler),
-      ('.*' + InteractivePageHandler.PATH, InteractivePageHandler),
-      ('.*' + InteractiveExecuteHandler.PATH, InteractiveExecuteHandler),
-      ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
-      ('.*' + ImageHandler.PATH, ImageHandler),
-      ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
-      ('.*' + TasksPageHandler.PATH, TasksPageHandler),
-      ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
-      ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),
-      ('.*' + BackendsPageHandler.PATH, BackendsPageHandler),
-      ('.*', DefaultPageHandler),
-    ]
-  if HAVE_CRON:
-    handlers.insert(0, ('.*' + CronPageHandler.PATH, CronPageHandler))
-  application = webapp.WSGIApplication(handlers, debug=_DEBUG)
-  wsgiref.handlers.CGIHandler().run(application)
+  util.run_wsgi_app(application)
 
 
 if __name__ == '__main__':

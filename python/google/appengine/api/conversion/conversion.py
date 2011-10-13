@@ -48,6 +48,18 @@ _CONVERSION_SERVICE = "conversion"
 
 _CONVERT_METHOD = "Convert"
 
+_IMAGE_WIDTH_FLAG = "imageWidth"
+
+_FIRST_PAGE_FLAG = "firstPage"
+
+_LAST_PAGE_FLAG = "lastPage"
+
+
+
+_LAST_PAGE_DEFAULT = -1
+
+_OCR_INPUT_LANGUAGE_FLAG = "input_language_hint"
+
 
 class Error(Exception):
   """Base-class for exceptions in this module."""
@@ -163,16 +175,16 @@ class Asset(object):
       TypeError: if input arguments are not string.
     """
     if not isinstance(mime_type, basestring):
-      raise TypeError("mime type %r is not a string" % mime_type)
+      raise TypeError("mime type %r is not a string" % (mime_type,))
     self._mime_type = mime_type.lower()
 
     if not isinstance(data, basestring):
-      raise TypeError("data %r is not a string" % data)
+      raise TypeError("data %r is not a string" % (data,))
     self._data = data
 
     if name is not None:
       if not isinstance(name, basestring):
-        raise TypeError("name %r is not a string" % name)
+        raise TypeError("name %r is not a string" % (name,))
     self._name = name
 
   @property
@@ -190,14 +202,13 @@ class Asset(object):
     """The name of the asset (string)."""
     return self._name
 
-  def _fill_proto(self, asset_info_pb):
-    """Fill an AssetInfo protocol buffer with Asset properties.
+  def _populate_proto(self, asset_info_pb):
+    """Populate an AssetInfo protocol buffer with Asset properties.
 
     Args:
       asset_info_pb: An AssetInfo protocol buffer.
     """
-    if self._mime_type is not None:
-      asset_info_pb.set_mime_type(self._mime_type)
+    asset_info_pb.set_mime_type(self._mime_type)
     asset_info_pb.set_data(self._data)
     if self._name is not None:
       asset_info_pb.set_name(self._name)
@@ -211,30 +222,97 @@ class ConversionRequest(object):
   for example images in HTML.
   """
 
-  def __init__(self, asset, output_mime_type):
+  def __init__(self,
+               asset,
+               output_mime_type,
+
+               image_width=800,
+               first_page=1,
+               last_page=None,
+               ocr_input_language=None):
     """Create a single conversion.
 
     Args:
       asset: An Asset instance.
-      output_mime_type: output data mime type (string), put into the
-                        output_mime_type field.
+      output_mime_type: The output data mime type (string), put into the
+        output_mime_type field.
+      image_width: The output image width in pixels. Only applies to
+        conversions that generate image files.
+      first_page: The number of the first page to generate. Only applies to
+        conversions that generate image files.
+      last_page: The number of the last page to generate, defaults to the last
+        page of the document. Only applies to conversions that generate image
+        files.
+      ocr_input_language: The language code in BCP 47 format, used by OCR engine
+        to search for language-specific character set.
 
     Raises:
-      TypeError: if asset mime type or output_mime_type is not a string.
-      ValueError: if asset mime type or output_mime_type is empty.
+      TypeError: if an unexpected type is used for any of the arguments.
+      ValueError: if an unexpected value is used for any of the arguments.
     """
     self._assets = []
 
     if not asset.mime_type:
       raise ValueError("Asset mime type should not be empty")
-
-    if not isinstance(output_mime_type, basestring):
-      raise TypeError("Output mime type %r is not a string" % output_mime_type)
-    if not output_mime_type:
-      raise ValueError("Output mime type should not be empty")
-
     self.add_asset(asset)
+
+    ConversionRequest._ensure_nonempty_string(
+        "output_mime_type", output_mime_type)
     self._output_mime_type = output_mime_type.lower()
+
+    self._image_width = ConversionRequest._ensure_positive_integer(
+        "image_width", image_width)
+    self._first_page = ConversionRequest._ensure_positive_integer(
+        "first_page", first_page)
+    self._last_page = None
+    if last_page is not None:
+      self._last_page = ConversionRequest._ensure_positive_integer(
+          "last_page", last_page)
+
+    self._ocr_input_language = None
+    if ocr_input_language is not None:
+      ConversionRequest._ensure_nonempty_string(
+          "ocr_input_language", ocr_input_language)
+      self._ocr_input_language = ocr_input_language.lower()
+
+  @staticmethod
+  def _ensure_nonempty_string(argname, argvalue):
+    """Ensure the input argument is a non-empty string.
+
+    Args:
+      argname: The name of argument to check.
+      argvalue: The value of argument to check.
+
+    Raises:
+      TypeError: if an unexpected type is used for the argument.
+      ValueError: if an unexpected value is used for the argument.
+    """
+    if not isinstance(argvalue, basestring):
+      raise TypeError("%s(%r) is not a string" % (argname, argvalue))
+    if not argvalue:
+      raise ValueError("%s(%r) must not be empty" % (argname, argvalue))
+
+  @staticmethod
+  def _ensure_positive_integer(argname, argvalue):
+    """Ensure the input argument is a positive integer.
+
+    Args:
+      argname: The name of argument to check.
+      argvalue: The value of argument to check.
+
+    Returns:
+      The input argument value.
+
+    Raises:
+      TypeError: if an unexpected type is used for the argument.
+      ValueError: if an unexpected value is used for the argument.
+    """
+    if not isinstance(argvalue, (int, long)):
+      raise TypeError("%s(%r) is not integer or long" % (argname, argvalue))
+    if argvalue <= 0:
+      raise ValueError("%s(%r) must be larger than 0" % (argname, argvalue))
+
+    return argvalue
 
   def add_asset(self, asset):
     """Add an asset into the conversion request.
@@ -250,16 +328,46 @@ class ConversionRequest(object):
 
     self._assets.append(asset)
 
-  def _fill_proto(self, conversion_input_pb):
-    """Fill a ConversionInput protocol buffer with ConversionRequest properties.
+  def _populate_proto(self, conversion_input_pb):
+    """Populate a ConversionInput protocol buffer with ConversionRequest.
 
     Args:
       conversion_input_pb: A ConversionInput protocol buffer.
     """
     for asset in self._assets:
       asset_pb = conversion_input_pb.mutable_input().add_asset()
-      asset._fill_proto(asset_pb)
+      asset._populate_proto(asset_pb)
+
     conversion_input_pb.set_output_mime_type(self._output_mime_type)
+
+    self._populate_flags(conversion_input_pb)
+
+  def _populate_flags(self, conversion_input_pb):
+    """Populate a ConversionInput protocol buffer with auxiliary parameters.
+
+    Args:
+      conversion_input_pb: A ConversionInput protocol buffer.
+    """
+    image_width_flag = conversion_input_pb.add_flag()
+    image_width_flag.set_key(_IMAGE_WIDTH_FLAG)
+    image_width_flag.set_value(str(self._image_width))
+
+    first_page_flag = conversion_input_pb.add_flag()
+    first_page_flag.set_key(_FIRST_PAGE_FLAG)
+    first_page_flag.set_value(str(self._first_page))
+
+    last_page_flag = conversion_input_pb.add_flag()
+    last_page_flag.set_key(_LAST_PAGE_FLAG)
+    if self._last_page is not None:
+      last_page_flag.set_value(str(self._last_page))
+    else:
+
+      last_page_flag.set_value(str(_LAST_PAGE_DEFAULT))
+
+    if self._ocr_input_language is not None:
+      ocr_input_language_flag = conversion_input_pb.add_flag()
+      ocr_input_language_flag.set_key(_OCR_INPUT_LANGUAGE_FLAG)
+      ocr_input_language_flag.set_value(self._ocr_input_language)
 
 
 class ConversionOutput(object):
@@ -310,7 +418,7 @@ def convert(conversion_request, deadline=None):
 
   Args:
     conversion_request: A ConversionRequest instance or a list of
-                        ConversionRequest instances.
+      ConversionRequest instances.
     deadline: Optional deadline in seconds for all the conversions.
 
   Returns:
@@ -331,8 +439,8 @@ def create_rpc(deadline=None, callback=None):
   """Creates an RPC object for use with the Conversion API.
 
   Args:
-    deadline: Optional deadline in seconds for the operation; the default
-              is a system-specific deadline (typically 5 seconds).
+    deadline: Optional deadline in seconds for the operation; the default is
+      a system-specific deadline (typically 5 seconds).
     callback: Optional callable to invoke on completion.
 
   Returns:
@@ -350,7 +458,7 @@ def make_convert_call(rpc, conversion_request):
   Args:
     rpc: a UserRPC instance.
     conversion_request: A ConversionRequest instance or a list of
-                        ConversionRequest instances.
+      ConversionRequest instances.
 
   Raises:
     TypeError: Input conversion_requests with wrong type.
@@ -370,7 +478,8 @@ def make_convert_call(rpc, conversion_request):
   for conversion in conversion_requests:
     if isinstance(conversion, ConversionRequest):
       conversion_input_pb = request.add_conversion()
-      conversion._fill_proto(conversion_input_pb)
+
+      conversion._populate_proto(conversion_input_pb)
     else:
       raise TypeError("conversion_request must be a ConversionRequest instance "
                       "or a list of ConversionRequest instances")

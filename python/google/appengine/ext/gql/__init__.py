@@ -230,8 +230,7 @@ class GQL(object):
       datastore_errors.BadQueryError: if the query is not parsable.
     """
 
-    self._entity = ''
-
+    self._kind = ''
     self.__filters = {}
 
 
@@ -289,7 +288,7 @@ class GQL(object):
       query_count = 1
 
     for i in xrange(query_count):
-      queries.append(datastore.Query(self._entity,
+      queries.append(datastore.Query(self._kind,
                                      _app=self.__app,
                                      keys_only=self._keys_only,
                                      namespace=self.__namespace,
@@ -802,6 +801,16 @@ class GQL(object):
     """Returns True if this query returns Keys, False if it returns Entities."""
     return self._keys_only
 
+  def kind(self):
+    return self._kind
+
+
+
+  @property
+  def _entity(self):
+    logging.warning('GQL._entity is deprecated. Please use GQL.kind().')
+    return self._kind
+
 
   __iter__ = Run
 
@@ -939,12 +948,12 @@ class GQL(object):
     if self.__Accept('FROM'):
       kind = self.__Identifier()
       if kind:
-        self._entity = kind
+        self._kind = kind
       else:
         self.__Error('Identifier Expected')
         return False
     else:
-      self._entity = None
+      self._kind = None
     return self.__Where()
 
   def __Where(self):

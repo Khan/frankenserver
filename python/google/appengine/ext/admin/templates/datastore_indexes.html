@@ -42,7 +42,7 @@
               &nbsp;&nbsp;&nbsp;
               {% for property in kind_index.properties %}
                 {{ property.name }}
-                <span class="ae-unimportant" title="{{ property.sort_direction }}">{{ property.sort_symbol }}</span>
+                <span class="ae-unimportant" title="{{ property.sort_direction }}">{{ property.sort_symbol|safe }}</span>
               {% endfor %}&nbsp;
               {% if kind_index.has_ancestor %}
                 <div class="ae-unimportant">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Includes ancestors</div>

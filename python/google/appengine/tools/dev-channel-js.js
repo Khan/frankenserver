@@ -4599,7 +4599,7 @@ goog.net.XhrIo.prototype.send = function(url, opt_method, opt_content, opt_heade
   }
 };
 goog.net.XhrIo.prototype.createXhr = function() {
-  return this.xmlHttpFactory_ ? this.xmlHttpFactory_.createInstance() : new goog.net.XmlHttp
+  return this.xmlHttpFactory_ ? this.xmlHttpFactory_.createInstance() : goog.net.XmlHttp()
 };
 goog.net.XhrIo.prototype.dispatchEvent = function(e) {
   if(this.xhr_) {
@@ -4696,6 +4696,10 @@ goog.net.XhrIo.prototype.isSuccess = function() {
     case 0:
       return!this.isLastUriEffectiveSchemeHttp_();
     case goog.net.HttpStatus.OK:
+    ;
+    case goog.net.HttpStatus.CREATED:
+    ;
+    case goog.net.HttpStatus.ACCEPTED:
     ;
     case goog.net.HttpStatus.NO_CONTENT:
     ;

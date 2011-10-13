@@ -58,7 +58,7 @@ _START_PATH = '/_ah/start'
 
 
 _ALLOWED_SERVICES = ['mail', 'xmpp_message', 'xmpp_subscribe', 'xmpp_presence',
-                     'channel_presence', 'rest', 'warmup']
+                     'xmpp_error', 'channel_presence', 'rest', 'warmup']
 _SERVICE_RE_STRING = '(' + '|'.join(_ALLOWED_SERVICES) + ')'
 
 
@@ -178,6 +178,7 @@ ERROR_HANDLERS = 'error_handlers'
 BACKENDS = 'backends'
 THREADSAFE = 'threadsafe'
 API_CONFIG = 'api_config'
+CODE_LOCK = 'code_lock'
 
 
 PAGES = 'pages'
@@ -201,13 +202,13 @@ SUPPORTED_LIBRARIES = {
     'jinja2': ['2.6'],
     'lxml': ['2.3'],
     'markupsafe': ['0.15'],
-    'numpy': ['1.5.1'],
+    'numpy': ['1.6.1'],
     'PIL': ['1.1.7'],
     'pycrypto': ['2.3'],
     'setuptools': ['0.6c11'],
     'webapp2': ['2.0.2', '2.2.3', '2.3'],
-    'webob': ['1.0.8'],
-    'yaml': ['3.05'],
+    'webob': ['1.0.8', '1.1'],
+    'yaml': ['3.05', '3.10'],
 }
 
 
@@ -822,6 +823,7 @@ class AppInfoExternal(validation.Validated):
           backendinfo.BackendEntry)),
       THREADSAFE: validation.Optional(bool),
       API_CONFIG: validation.Optional(ApiConfigHandler),
+      CODE_LOCK: validation.Optional(bool),
   }
 
   def CheckInitialized(self):
@@ -840,6 +842,7 @@ class AppInfoExternal(validation.Validated):
       MissingURLMapping: if no URLMap object is present in the object.
       TooManyURLMappings: if there are too many URLMap entries.
       MissingApiConfig: if api_endpoints exist without an api_config.
+      MissingThreadsafe: if threadsafe is not set but the runtime requires it.
       ThreadsafeWithCgiHandler: if the runtime is python27, threadsafe is set
           and CGI handlers are specified.
     """
@@ -851,6 +854,10 @@ class AppInfoExternal(validation.Validated):
       raise appinfo_errors.TooManyURLMappings(
           'Found more than %d URLMap entries in application configuration' %
           MAX_URL_MAPS)
+
+    if self.threadsafe is None and self.runtime == 'python27':
+      raise appinfo_errors.MissingThreadsafe(
+          'threadsafe must be present and set to either "yes" or "no"')
 
     if self.libraries:
       if self.runtime != 'python27':
@@ -884,7 +891,7 @@ class AppInfoExternal(validation.Validated):
           if (handler.script and (handler.script.endswith('.py') or
                                   '/' in handler.script)):
             raise appinfo_errors.ThreadsafeWithCgiHandler(
-                'Threadsafe cannot be enabled with CGI handler: %s' %
+                'threadsafe cannot be enabled with CGI handler: %s' %
                 handler.script)
 
   def ApplyBackendSettings(self, backend_name):

@@ -231,8 +231,9 @@ def defer(obj, *args, **kwargs):
 
   Args:
     obj: The callable to execute. See module docstring for restrictions.
-    _countdown, _eta, _name, _target, _transactional, _url, _queue: Passed
-    through to the task queue - see the task queue documentation for details.
+        _countdown, _eta, _headers, _name, _target, _transactional, _url,
+        _queue: Passed through to the task queue - see the task queue
+        documentation for details.
     args: Positional arguments to call the callable with.
     kwargs: Any other keyword arguments are passed through to the callable.
   Returns:
@@ -242,7 +243,8 @@ def defer(obj, *args, **kwargs):
                   for x in ("countdown", "eta", "name", "target"))
   taskargs["url"] = kwargs.pop("_url", _DEFAULT_URL)
   transactional = kwargs.pop("_transactional", False)
-  taskargs["headers"] = _TASKQUEUE_HEADERS
+  taskargs["headers"] = dict(_TASKQUEUE_HEADERS)
+  taskargs["headers"].update(kwargs.pop("_headers", {}))
   queue = kwargs.pop("_queue", _DEFAULT_QUEUE)
   pickled = serialize(obj, *args, **kwargs)
   try:

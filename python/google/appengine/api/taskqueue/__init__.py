@@ -38,4 +38,6 @@ __all__ = [
     'MAX_PULL_TASK_SIZE_BYTES', 'MAX_PUSH_TASK_SIZE_BYTES',
     'MAX_URL_LENGTH',
 
+    'DEFAULT_APP_VERSION',
+
     'Queue', 'Task', 'TaskRetryOptions', 'add']

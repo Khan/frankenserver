@@ -24,10 +24,12 @@ This module allows AppEngine apps to interact with a bot representing that app
 on the Google Talk network.
 
 Functions defined in this module:
-  get_presence: Gets the presence for a JID.
   send_message: Sends a chat message to any number of JIDs.
   send_invite: Sends an invitation to chat to a JID.
   send_presence: Sends a presence to a JID.
+
+  get_presence: Deprecated method to gets the presence for a JID. Use
+      send_presence with type=PRESENCE_TYPE_PROBE instead.
 
 Classes defined in this module:
   Message: A class to encapsulate received messages.
@@ -125,6 +127,10 @@ class InvalidStatusError(Error):
 
 def get_presence(jid, from_jid=None):
   """Gets the presence for a JID.
+
+  Deprecated. Use send_presence with type=PRESENCE_TYPE_PROBE instead.
+
+  TODO(moishel): remove this eventually.
 
   Args:
     jid: The JID of the contact whose presence is requested.

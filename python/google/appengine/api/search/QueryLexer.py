@@ -17,8 +17,8 @@
 
 
 import sys
-from antlr3 import *
-from antlr3.compat import set, frozenset
+from google.appengine._internal.antlr3 import *
+from google.appengine._internal.antlr3.compat import set, frozenset
 
 
 
@@ -65,7 +65,7 @@ STRING=10
 
 class QueryLexer(Lexer):
 
-    grammarFileName = "apphosting/api/search/Query.g"
+    grammarFileName = "blaze-out/host/genfiles/apphosting/api/search/genantlr/Query.g"
     antlr_version = version_str_to_tuple("3.1.1")
     antlr_version_str = "3.1.1"
 
@@ -959,7 +959,7 @@ class QueryLexer(Lexer):
 
 
 def main(argv, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr):
-    from antlr3.main import LexerMain
+    from google.appengine._internal.antlr3.main import LexerMain
     main = LexerMain(QueryLexer)
     main.stdin = stdin
     main.stdout = stdout

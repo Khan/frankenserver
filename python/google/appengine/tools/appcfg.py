@@ -89,7 +89,7 @@ NAG_FILE = '.appcfg_nag'
 MAX_LOG_LEVEL = 4
 
 
-MAX_BATCH_SIZE = 1000000
+MAX_BATCH_SIZE = 3200000
 MAX_BATCH_COUNT = 100
 MAX_BATCH_FILE_SIZE = 200000
 BATCH_OVERHEAD = 500
@@ -470,7 +470,8 @@ class UpdateCheck(object):
                                      timeout=UPDATE_CHECK_TIMEOUT,
                                      release=version['release'],
                                      timestamp=version['timestamp'],
-                                     api_versions=version['api_versions'])
+                                     api_versions=version['api_versions'],
+                                     runtime=self.config.runtime)
     except urllib2.URLError, e:
       logging.info('Update check failed: %s', e)
       return
@@ -2848,7 +2849,7 @@ class AppCfgApp(object):
       parser: An instance of OptionsParser.
     """
     parser.add_option('-S', '--max_size', type='int', dest='max_size',
-                      default=10485760, metavar='SIZE',
+                      default=32000000, metavar='SIZE',
                       help='Maximum size of a file to upload.')
     parser.add_option('--no_precompilation', action='store_false',
                       dest='precompilation', default=True,

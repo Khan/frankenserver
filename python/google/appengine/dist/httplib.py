@@ -159,6 +159,12 @@ class HTTPConnection:
     self._body = ''
     self.headers = []
 
+
+
+    if not isinstance(timeout, (float, int, long)):
+      timeout = None
+    self.timeout = timeout
+
   def connect(self):
     pass
 
@@ -210,7 +216,8 @@ class HTTPConnection:
       raise ValueError("%r is an unrecognized HTTP method" % self._method)
 
     response = self._fetch(url, self._body, method, headers,
-                           self._allow_truncated, self._follow_redirects)
+                           self._allow_truncated, self._follow_redirects,
+                           deadline=self.timeout)
     return HTTPResponse(response)
 
   def close(self):

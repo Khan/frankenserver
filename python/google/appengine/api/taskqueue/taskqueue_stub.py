@@ -51,6 +51,7 @@ import httplib
 import logging
 import os
 import random
+import socket
 import string
 import threading
 import time
@@ -1668,7 +1669,7 @@ class _TaskExecutor(object):
       response.close()
 
       return 200 <= response.status < 300
-    except httplib.HTTPException:
+    except (httplib.HTTPException, socket.error):
       logging.exception('An error occured while sending the task "%s" '
                         '(Url: "%s") in queue "%s". Treating as a task error.',
                         task.task_name(), task.url(), queue.queue_name)
@@ -1684,7 +1685,7 @@ class _BackgroundTaskScheduler(object):
   group.
   """
 
-  def __init__(self, group, task_executor, retry_seconds):
+  def __init__(self, group, task_executor, retry_seconds, **kwargs):
     """Constructor.
 
     Args:
@@ -1694,6 +1695,9 @@ class _BackgroundTaskScheduler(object):
           be an instance of _TaskExecutor.
       retry_seconds: The number of seconds to delay a task by if its execution
           fails.
+      _get_time: a callable that returns the current time in seconds since the
+          epoch. This argument may only be passed in by keyword. If unset, use
+          time.time.
     """
     self._group = group
     self._should_exit = False
@@ -1702,6 +1706,10 @@ class _BackgroundTaskScheduler(object):
     self._wakeup_lock = threading.Lock()
     self.task_executor = task_executor
     self.default_retry_seconds = retry_seconds
+
+    self._get_time = kwargs.pop('_get_time', time.time)
+    if kwargs:
+      raise TypeError('Unknown parameters: %s' % ', '.join(kwargs))
 
   def UpdateNextEventTime(self, next_event_time):
     """Notify the TaskExecutor of the closest event it needs to process.
@@ -1723,12 +1731,19 @@ class _BackgroundTaskScheduler(object):
     with self._wakeup_lock:
       self._next_wakeup = INF
 
-    now = time.time()
+    now = self._get_time()
     queue, task = self._group.GetNextPushTask()
     while task and _UsecToSec(task.eta_usec()) <= now:
       if task.retry_count() == 0:
         task.set_first_try_usec(_SecToUsec(now))
-      if self.task_executor.ExecuteTask(task, queue):
+
+      task_result = self.task_executor.ExecuteTask(task, queue)
+
+
+
+
+      now = self._get_time()
+      if task_result:
         queue.Delete(task.task_name())
       else:
         retry = Retry(task, queue)
@@ -1738,6 +1753,9 @@ class _BackgroundTaskScheduler(object):
           logging.warning(
               'Task %s failed to execute. This task will retry in %.3f seconds',
               task.task_name(), _UsecToSec(retry_usec))
+
+
+
           queue.PostponeTask(task, _SecToUsec(now) + retry_usec)
         else:
           logging.warning(
@@ -1757,12 +1775,12 @@ class _BackgroundTaskScheduler(object):
     """Block until we need to process a task or we need to exit."""
 
 
-    now = time.time()
+    now = self._get_time()
     while not self._should_exit and self._next_wakeup > now:
       timeout = self._next_wakeup - now
       self._event.wait(timeout)
       self._event.clear()
-      now = time.time()
+      now = self._get_time()
 
   def MainLoop(self):
     """The main loop of the scheduler."""

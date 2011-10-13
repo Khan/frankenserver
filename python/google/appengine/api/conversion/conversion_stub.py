@@ -29,6 +29,8 @@
 
 
 
+import os
+
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import conversion
 from google.appengine.api.conversion import conversion_service_pb
@@ -38,12 +40,16 @@ from google.appengine.runtime import apiproxy_errors
 __all__ = ["ConversionServiceStub"]
 
 
+_STATIC_FILES_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "static")
 
 
 
 _CONVERTED_FILES_STUB = {
-    "text/html": "<b>Some &nbsp; data!</b>",
-    "text/plain": "Some data!",
+    "application/pdf": "test.pdf",
+    "image/png": "test.png",
+    "text/html": "test.html",
+    "text/plain": "test.txt",
     }
 
 
@@ -131,10 +137,10 @@ class ConversionServiceStub(apiproxy_stub.APIProxyStub):
   Provides stub functions which allow a developer to test integration before
   deployment.
 
-  Since there's no obvious way to simulate the conversion service, we will
-  simply bundle "canonical" files for each target conversion type and return
-  them all the time regardless of the input. For each conversion, we only
-  return one asset here.
+  Since there's no obvious way to simulate the conversion service, we bundle
+  "canonical" files under the static subdirectory for each target
+  conversion type and return them all the time regardless of the input.
+  For each conversion, we only return one asset here.
   """
 
   def __init__(self, service_name="conversion"):
@@ -150,7 +156,7 @@ class ConversionServiceStub(apiproxy_stub.APIProxyStub):
       output_mime_type = request.conversion(x).output_mime_type()
       output_asset = result.mutable_output().add_asset()
       output_asset.set_mime_type(output_mime_type)
-      output_asset.set_data(_CONVERTED_FILES_STUB[output_mime_type])
-      first_input_asset = request.conversion(x).input().asset(0)
-      if first_input_asset.has_name():
-        output_asset.set_name(first_input_asset.name())
+      output_asset.set_data(open(os.path.join(
+          _STATIC_FILES_DIR,
+          _CONVERTED_FILES_STUB[output_mime_type]), "r").read())
+      output_asset.set_name(_CONVERTED_FILES_STUB[output_mime_type])

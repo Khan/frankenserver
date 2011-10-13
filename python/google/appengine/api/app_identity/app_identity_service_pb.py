@@ -44,6 +44,13 @@ except ImportError:
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
+  _extension_runtime = True
+  _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
+else:
+  _extension_runtime = False
+  _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
+
 class AppIdentityServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -1691,5 +1698,7 @@ class SigningService(_server_stub_base_class):
         None,
         'none')
 
+if _extension_runtime:
+  pass
 
 __all__ = ['AppIdentityServiceError','SignForAppRequest','SignForAppResponse','GetPublicCertificateForAppRequest','PublicCertificate','GetPublicCertificateForAppResponse','GetServiceAccountNameRequest','GetServiceAccountNameResponse','GetAccessTokenRequest','GetAccessTokenResponse','SigningService']

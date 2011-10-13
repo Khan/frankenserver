@@ -51,6 +51,9 @@ from google.appengine.api import urlfetch_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+
+MAX_REQUEST_SIZE = 5 << 20
+
 MAX_RESPONSE_SIZE = 2 ** 25
 
 MAX_REDIRECTS = urlfetch.MAX_REDIRECTS
@@ -141,7 +144,8 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     Args:
       service_name: Service name expected for all calls.
     """
-    super(URLFetchServiceStub, self).__init__(service_name)
+    super(URLFetchServiceStub, self).__init__(service_name,
+                                              max_request_size=MAX_REQUEST_SIZE)
 
   def _Dynamic_Fetch(self, request, response):
     """Trivial implementation of URLFetchService::Fetch().

@@ -40,6 +40,9 @@ base path. A default queue is also provided for simple usage.
 
 
 
+
+
+
 __all__ = [
 
     'BadTaskStateError', 'BadTransactionState', 'BadTransactionStateError',
@@ -56,12 +59,15 @@ __all__ = [
     'MAX_PULL_TASK_SIZE_BYTES', 'MAX_PUSH_TASK_SIZE_BYTES',
     'MAX_URL_LENGTH',
 
+    'DEFAULT_APP_VERSION',
+
     'Queue', 'Task', 'TaskRetryOptions', 'add']
 
 
 import calendar
 import cgi
 import datetime
+import logging
 import math
 import os
 import re
@@ -70,6 +76,7 @@ import urllib
 import urlparse
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import app_identity
 from google.appengine.api import namespace_manager
 from google.appengine.api import urlfetch
 from google.appengine.api.taskqueue import taskqueue_service_pb
@@ -187,6 +194,17 @@ class QueuePausedError(Error):
   """The queue is paused and cannot process modify task lease requests."""
 
 
+class _DefaultAppVersionSingleton(object):
+  def __repr__(self):
+    return '<DefaultApplicationVersion>'
+
+
+class _UnknownAppVersionSingleton(object):
+  def __repr__(self):
+    return '<UnknownApplicationVersion>'
+
+
+
 
 BadTransactionState = BadTransactionStateError
 
@@ -210,6 +228,10 @@ MAX_URL_LENGTH = 2083
 MAX_TASKS_PER_LEASE = 1000
 
 MAX_LEASE_SECONDS = 3600 * 24 * 7
+
+
+DEFAULT_APP_VERSION = _DefaultAppVersionSingleton()
+_UNKNOWN_APP_VERSION = _UnknownAppVersionSingleton()
 
 _DEFAULT_QUEUE = 'default'
 
@@ -515,7 +537,8 @@ class Task(object):
         time indicated by eta.
       retry_options: TaskRetryOptions used to control when the task will be
         retried if it fails.
-      target: The alternate version/server on which to execute this task.
+      target: The alternate version/server on which to execute this task, or
+        DEFAULT_APP_VERSION to execute on the application's default version.
 
     Raises:
       InvalidTaskError: if any of the parameters are invalid;
@@ -598,21 +621,8 @@ class Task(object):
     else:
       raise InvalidTaskError('Invalid method: %s' % self.__method)
 
-    host_suffix = '.%s' % os.environ.get('DEFAULT_VERSION_HOSTNAME', '')
     self.__target = kwargs.get('target')
-    if self.__target is not None and 'Host' in self.__headers:
-      raise InvalidTaskError(
-          'A host header may not set when a target is specified.')
-    elif self.__target is not None:
-      self.__headers['Host'] = '%s%s' % (
-          self.__target, host_suffix)
-    elif 'Host' in self.__headers:
-      host = self.__headers['Host']
-      if host.endswith(host_suffix):
-        self.__target = host[:-len(host_suffix)]
-    elif 'HTTP_HOST' in os.environ:
-
-      self.__headers['Host'] = os.environ['HTTP_HOST']
+    self.__resolve_hostname_and_target()
 
     self.__headers_list = _flatten_params(self.__headers)
     self.__eta_posix = Task.__determine_eta_posix(
@@ -630,6 +640,110 @@ class Task(object):
       if self.size > max_task_size_bytes:
         raise TaskTooLargeError('Task size must be less than %d; found %d' %
                                 (max_task_size_bytes, self.size))
+
+  def __resolve_hostname_and_target(self):
+    """Resolve the values of the target parameter and the `Host' header.
+
+    Requires that the attributes __target and __headers exist before this method
+    is called.
+
+    This function should only be called once from the __init__ function of the
+    Task class.
+
+    Raises:
+      InvalidTaskError: If the task is invalid.
+    """
+
+
+
+
+
+    if 'HTTP_HOST' not in os.environ:
+      logging.warning(
+          'The HTTP_HOST environment variable was not set, but is required '
+          'to determine the correct value for the `Task.target\' property. '
+          'Please update your unit tests to specify a correct value for this '
+          'environment variable.')
+
+    if self.__target is not None and 'Host' in self.__headers:
+      raise InvalidTaskError(
+          'A host header may not be set when a target is specified.')
+    elif self.__target is not None:
+      host = self.__host_from_target(self.__target)
+      if host:
+
+
+        self.__headers['Host'] = host
+    elif 'Host' in self.__headers:
+      self.__target = self.__target_from_host(self.__headers['Host'])
+    else:
+      if 'HTTP_HOST' in os.environ:
+        self.__headers['Host'] = os.environ['HTTP_HOST']
+        self.__target = self.__target_from_host(self.__headers['Host'])
+      else:
+
+
+        self.__target = _UNKNOWN_APP_VERSION
+
+  @staticmethod
+  def __target_from_host(host):
+    """Calculate the value of the target parameter from a host header.
+
+    Args:
+      host: A string representing the hostname for this task.
+
+    Returns:
+      A string containing the target of this task, or the constant
+      DEFAULT_APP_VERSION if it is the default version.
+
+      If this code is running in a unit-test where the environment variable
+      `DEFAULT_VERSION_HOSTNAME' is not set then the constant
+      _UNKNOWN_APP_VERSION is returned.
+    """
+    default_hostname = app_identity.get_default_version_hostname()
+    if default_hostname is None:
+
+
+
+      return _UNKNOWN_APP_VERSION
+
+    if host.endswith(default_hostname):
+
+      version_name = host[:-(len(default_hostname) + 1)]
+      if version_name:
+        return version_name
+
+
+
+
+
+    return DEFAULT_APP_VERSION
+
+  @staticmethod
+  def __host_from_target(target):
+    """Calculate the value of the host header from a target.
+
+    Args:
+      target: A string representing the target hostname or the constant
+          DEFAULT_APP_VERSION.
+
+    Returns:
+      The string to be used as the host header, or None if it can not be
+      determined.
+    """
+    default_hostname = app_identity.get_default_version_hostname()
+    if default_hostname is None:
+
+
+
+      return None
+
+    if target is DEFAULT_APP_VERSION:
+      return default_hostname
+    else:
+
+
+      return '%s.%s' % (target, default_hostname)
 
   @staticmethod
   def __determine_url(relative_url):

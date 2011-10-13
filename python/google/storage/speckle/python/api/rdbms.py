@@ -734,6 +734,9 @@ class Connection(object):
     except DatabaseError:
       if not reconnect:
         raise
+
+
+      self._connection_id = None
       self.OpenConnection()
 
 

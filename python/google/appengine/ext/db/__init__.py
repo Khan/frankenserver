@@ -2593,8 +2593,8 @@ class GqlQuery(_BaseQuery):
       app, namespace = app
 
     self._proto_query = gql.GQL(query_string, _app=app, namespace=namespace)
-    if self._proto_query._entity is not None:
-      model_class = class_for_kind(self._proto_query._entity)
+    if self._proto_query._kind is not None:
+      model_class = class_for_kind(self._proto_query._kind)
     else:
       model_class = None
     super(GqlQuery, self).__init__(model_class,
@@ -3841,6 +3841,7 @@ def to_dict(model_instance, dictionary=None):
 
 run_in_transaction = datastore.RunInTransaction
 run_in_transaction_custom_retries = datastore.RunInTransactionCustomRetries
+run_in_transaction_options = datastore.RunInTransactionOptions
 
 
 
@@ -3857,3 +3858,4 @@ transactional = datastore.Transactional
 
 
 create_config = datastore.CreateConfig
+create_transaction_options = datastore.CreateTransactionOptions

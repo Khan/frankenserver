@@ -205,7 +205,6 @@ ARG_SMTP_PORT = 'smtp_port'
 ARG_SMTP_USER = 'smtp_user'
 ARG_STATIC_CACHING = 'static_caching'
 ARG_TASK_RETRY_SECONDS = 'task_retry_seconds'
-ARG_TEMPLATE_DIR = 'template_dir'
 
 
 ARG_TRUSTED = 'trusted'
@@ -263,7 +262,6 @@ DEFAULT_ARGS = {
   ARG_SMTP_USER: '',
   ARG_STATIC_CACHING: True,
   ARG_TASK_RETRY_SECONDS: 30,
-  ARG_TEMPLATE_DIR: os.path.join(SDK_PATH, 'templates'),
   ARG_TRUSTED: False,
   ARG_USE_SQLITE: False,
 }
@@ -343,7 +341,6 @@ def ParseArguments(argv):
         'smtp_port=',
         'smtp_user=',
         'task_retry_seconds=',
-        'template_dir=',
         'trusted',
         'use_sqlite',
       ])
@@ -444,9 +441,6 @@ def ParseArguments(argv):
 
     if option == '--debug_imports':
       option_dict['_ENABLE_LOGGING'] = True
-
-    if option == '--template_dir':
-      option_dict[ARG_TEMPLATE_DIR] = value
 
     if option == '--admin_console_server':
       option_dict[ARG_ADMIN_CONSOLE_SERVER] = value.strip()
@@ -614,7 +608,6 @@ def main(argv):
   dev_process = multiprocess.GlobalProcess()
   port = option_dict[ARG_PORT]
   login_url = option_dict[ARG_LOGIN_URL]
-  template_dir = option_dict[ARG_TEMPLATE_DIR]
   address = option_dict[ARG_ADDRESS]
   require_indexes = option_dict[ARG_REQUIRE_INDEXES]
   allow_skipped_files = option_dict[ARG_ALLOW_SKIPPED_FILES]
@@ -650,7 +643,6 @@ def main(argv):
       root_path,
       login_url,
       port,
-      template_dir,
       sdk_dir=SDK_PATH,
       serve_address=address,
       require_indexes=require_indexes,

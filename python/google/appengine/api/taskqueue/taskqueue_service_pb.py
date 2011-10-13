@@ -24,6 +24,13 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
+  _extension_runtime = True
+  _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
+else:
+  _extension_runtime = False
+  _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
+
 from google.appengine.datastore.datastore_v3_pb import *
 import google.appengine.datastore.datastore_v3_pb
 from google.net.proto.message_set import MessageSet
@@ -8131,5 +8138,7 @@ class TaskQueueModifyTaskLeaseResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.TaskQueueModifyTaskLeaseResponse'
+if _extension_runtime:
+  pass
 
 __all__ = ['TaskQueueServiceError','TaskQueueRetryParameters','TaskQueueAcl','TaskQueueHttpHeader','TaskQueueMode','TaskQueueAddRequest','TaskQueueAddRequest_Header','TaskQueueAddRequest_CronTimetable','TaskQueueAddResponse','TaskQueueBulkAddRequest','TaskQueueBulkAddResponse','TaskQueueBulkAddResponse_TaskResult','TaskQueueDeleteRequest','TaskQueueDeleteResponse','TaskQueueForceRunRequest','TaskQueueForceRunResponse','TaskQueueUpdateQueueRequest','TaskQueueUpdateQueueResponse','TaskQueueFetchQueuesRequest','TaskQueueFetchQueuesResponse','TaskQueueFetchQueuesResponse_Queue','TaskQueueFetchQueueStatsRequest','TaskQueueScannerQueueInfo','TaskQueueFetchQueueStatsResponse','TaskQueueFetchQueueStatsResponse_QueueStats','TaskQueuePauseQueueRequest','TaskQueuePauseQueueResponse','TaskQueuePurgeQueueRequest','TaskQueuePurgeQueueResponse','TaskQueueDeleteQueueRequest','TaskQueueDeleteQueueResponse','TaskQueueDeleteGroupRequest','TaskQueueDeleteGroupResponse','TaskQueueQueryTasksRequest','TaskQueueQueryTasksResponse','TaskQueueQueryTasksResponse_TaskHeader','TaskQueueQueryTasksResponse_TaskCronTimetable','TaskQueueQueryTasksResponse_TaskRunLog','TaskQueueQueryTasksResponse_Task','TaskQueueFetchTaskRequest','TaskQueueFetchTaskResponse','TaskQueueUpdateStorageLimitRequest','TaskQueueUpdateStorageLimitResponse','TaskQueueQueryAndOwnTasksRequest','TaskQueueQueryAndOwnTasksResponse','TaskQueueQueryAndOwnTasksResponse_Task','TaskQueueModifyTaskLeaseRequest','TaskQueueModifyTaskLeaseResponse']

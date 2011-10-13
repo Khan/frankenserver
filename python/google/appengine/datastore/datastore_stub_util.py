@@ -52,7 +52,6 @@ from google.appengine.datastore import entity_pb
 
 
 
-
 _MAXIMUM_RESULTS = 1000
 
 
@@ -77,6 +76,11 @@ _PROPERTY_TYPE_NAMES = {
 
 
 _SCATTER_PROPORTION = 32768
+
+
+
+
+_MAX_EG_PER_TXN = 5
 
 
 def _GetScatterProperty(entity_proto):
@@ -1032,10 +1036,10 @@ def _SynchronizeTxn(function):
 
   def sync(txn, *args, **kwargs):
 
-    assert txn._read_pos is None or txn._read_pos >= LiveTxn.FIRST_LOG_POS
-
     txn._lock.acquire()
     try:
+
+      Check(txn._state is LiveTxn.ACTIVE, 'transaction closed')
 
       return function(txn, *args, **kwargs)
     finally:
@@ -1058,100 +1062,121 @@ class LiveTxn(object):
   """An in flight transaction."""
 
 
-  FIRST_LOG_POS = -1
-  COMMITED = -2
-  APPLIED = -3
-  ROLLEDBACK = -4
 
 
 
-  _read_pos = None
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ACTIVE = 1
+  COMMITED = 2
+  ROLLEDBACK = 3
+  FAILED = 4
+
+  _state = ACTIVE
   _commit_time = None
 
-
-
-  _snapshot = None
-
-
-
-  _entity_group = None
-
-  def __init__(self, txn_manager, app):
+  def __init__(self, txn_manager, app, allow_multiple_eg):
     assert isinstance(txn_manager, BaseTransactionManager)
     assert isinstance(app, basestring)
 
     self._txn_manager = txn_manager
     self._app = app
+    self._allow_multiple_eg = allow_multiple_eg
 
 
+    self._entity_groups = {}
 
     self._lock = threading.RLock()
+    self._apply_lock = threading.Lock()
 
-
-    self._put = {}
-    self._delete = {}
     self._actions = []
 
-  def _GetEntityGroup(self):
-    """Get the current entity group.
+  def _GetTracker(self, reference):
+    """Gets the entity group tracker for reference.
 
-    If no entity group has been discovered returns a 'global' entity group.
-    This is possible if the txn only contains transactional tasks.
-
-    Returns:
-      The entity_pb.Reference for the entity group used in this txn.
-    """
-    return self._entity_group or datastore_types.Key.from_path(
-        '__global__', 1, _app=self._app)._ToPb()
-
-  def GetEntityGroup(self):
-    """Get the current entity group.
-
-    If no entity group has been discovered returns a 'global' entity group.
-    This is possible if the txn only contains transactional tasks.
-
-    This can only be called after the txn has been committed as the entity group
-    can change as operations are performed.
-
-    Returns:
-      The entity_pb.Reference for the entity group used in this txn.
-    """
-    assert self._read_pos == self.COMMITED
-    return self._GetEntityGroup()
-
-  def _CheckOrSetEntityGroup(self, reference):
-    """Checks or sets the entity group.
-
-    If no entity group has been set, the entity group of the given
-    entity_pb.Reference is set for the txn. Otherwise the entity group of the
-    reference is asserted to be the set entity group.
-
-    Args:
-      reference: A entity_pb.Reference from which to extract the entity group.
+    If this is the first time reference's entity group is seen, creates a new
+    tracker, checking that the transaction doesn't exceed the entity group
+    limit.
     """
     entity_group = _GetEntityGroup(reference)
-    if self._entity_group:
-      Check(self._entity_group == entity_group,
-            'Transactions cannot span entity groups')
-    else:
+    key = datastore_types.ReferenceToKeyValue(entity_group)
+    tracker = self._entity_groups.get(key, None)
+    if tracker is None:
       Check(self._app == reference.app(),
             'Transactions cannot span applications')
-      self._entity_group = entity_group
+      if self._allow_multiple_eg:
+        Check(len(self._entity_groups) < _MAX_EG_PER_TXN,
+              'operating on too many entity groups in a single transaction.')
+      else:
+        Check(len(self._entity_groups) < 1,
+              'can\'t operate on multiple entity groups in a single '
+              'transaction.')
+      tracker = EntityGroupTracker(entity_group)
+      self._entity_groups[key] = tracker
 
-  def _CheckOrSetSnapshot(self, reference):
-    """Checks or sets the snapshot for this txn.
+    return tracker
 
-    The entity group of reference is first checked or set on the current txn.
-    Then, if no snapshot has been set, a snapshot is taken of the entity_group
-    and stored for future reads (this also sets the read position)
+  def _GetAllTrackers(self):
+    """Get the trackers for the transaction's entity groups.
+
+    If no entity group has been discovered returns a 'global' entity group
+    tracker. This is possible if the txn only contains transactional tasks.
+
+    Returns:
+      The tracker list for the entity groups used in this txn.
+    """
+    if not self._entity_groups:
+      self._GetTracker(datastore_types.Key.from_path(
+          '__global__', 1, _app=self._app)._ToPb())
+    return self._entity_groups.values()
+
+  def _GrabSnapshot(self, reference):
+    """Gets snapshot for this reference, creating it if necessary.
+
+    If no snapshot has been set for reference's entity group, a snapshot is
+    taken and stored for future reads (this also sets the read position),
+    and a CONCURRENT_TRANSACTION exception is thrown if we no longer have
+    a consistent snapshot.
 
     Args:
       reference: A entity_pb.Reference from which to extract the entity group.
+    Raises:
+      apiproxy_errors.ApplicationError if the snapshot is not consistent.
     """
-    self._CheckOrSetEntityGroup(reference)
-    if self._snapshot is None:
-      self._read_pos, self._snapshot = self._txn_manager._GrabSnapshot(
-          self._entity_group)
+    tracker = self._GetTracker(reference)
+    check_contention = tracker._snapshot is None
+    snapshot = tracker._GrabSnapshot(self._txn_manager)
+    if check_contention:
+
+
+
+
+
+      candidates = [other for other in self._entity_groups.values()
+                    if other._snapshot is not None and other != tracker]
+      meta_data_list = [other._meta_data for other in candidates]
+      self._txn_manager._AcquireWriteLocks(meta_data_list)
+      try:
+        for other in candidates:
+          if other._meta_data._log_pos != other._read_pos:
+            self._state = self.FAILED
+            raise apiproxy_errors.ApplicationError(
+                datastore_pb.Error.CONCURRENT_TRANSACTION,
+                'Concurrency exception.')
+      finally:
+        self._txn_manager._ReleaseWriteLocks(meta_data_list)
+    return snapshot
 
   @_SynchronizeTxn
   def Get(self, reference):
@@ -1165,8 +1190,8 @@ class LiveTxn(object):
     Returns:
       The associated entity_pb.EntityProto or None if no such entity exists.
     """
-    self._CheckOrSetSnapshot(reference)
-    entity = self._snapshot.get(datastore_types.ReferenceToKeyValue(reference))
+    snapshot = self._GrabSnapshot(reference)
+    entity = snapshot.get(datastore_types.ReferenceToKeyValue(reference))
     return LoadEntity(entity)
 
   @_SynchronizeTxn
@@ -1185,8 +1210,8 @@ class LiveTxn(object):
     """
     Check(query.has_ancestor(),
           'Query must have an ancestor when performed in a transaction.')
-    self._CheckOrSetSnapshot(query.ancestor())
-    return _ExecuteQuery(self._snapshot.values(), query, filters, orders)
+    snapshot = self._GrabSnapshot(query.ancestor())
+    return _ExecuteQuery(snapshot.values(), query, filters, orders)
 
   @_SynchronizeTxn
   def Put(self, entity, insert):
@@ -1197,10 +1222,10 @@ class LiveTxn(object):
       insert: A boolean that indicates if we should fail if the entity already
         exists.
     """
-    self._CheckOrSetEntityGroup(entity.key())
+    tracker = self._GetTracker(entity.key())
     key = datastore_types.ReferenceToKeyValue(entity.key())
-    self._delete.pop(key, None)
-    self._put[key] = (entity, insert)
+    tracker._delete.pop(key, None)
+    tracker._put[key] = (entity, insert)
 
   @_SynchronizeTxn
   def Delete(self, reference):
@@ -1209,10 +1234,10 @@ class LiveTxn(object):
     Args:
       reference: The entity_pb.Reference of the entity to delete.
     """
-    self._CheckOrSetEntityGroup(reference)
+    tracker = self._GetTracker(reference)
     key = datastore_types.ReferenceToKeyValue(reference)
-    self._put.pop(key, None)
-    self._delete[key] = reference
+    tracker._put.pop(key, None)
+    tracker._delete[key] = reference
 
   @_SynchronizeTxn
   def AddActions(self, actions, max_actions=None):
@@ -1227,10 +1252,17 @@ class LiveTxn(object):
           'Too many messages, maximum allowed %s' % max_actions)
     self._actions.extend(actions)
 
-  @_SynchronizeTxn
   def Rollback(self):
     """Rollback the current txn."""
-    self._read_pos = self.ROLLEDBACK
+
+    self._lock.acquire()
+    try:
+      Check(self._state is self.ACTIVE or self._state is self.FAILED,
+            'transaction closed')
+      self._state = self.ROLLEDBACK
+    finally:
+
+      self._lock.release()
 
   @_SynchronizeTxn
   def Commit(self):
@@ -1239,24 +1271,27 @@ class LiveTxn(object):
     This function hands off the responsibility of calling _Apply to the owning
     TransactionManager.
     """
-
-    if not self._put and not self._delete and not self._actions:
-      return self.Rollback()
-
     try:
 
+      trackers = self._GetAllTrackers()
+      empty = True
+      for tracker in trackers:
+        tracker._GrabSnapshot(self._txn_manager)
+        empty = empty and not tracker._put and not tracker._delete
 
-      for entity, insert in self._put.itervalues():
-        Check(not insert or self.Get(entity.key()) is None,
-              'the id allocated for a new entity was already '
-              'in use, please try again')
+
+        for entity, insert in tracker._put.itervalues():
+          Check(not insert or self.Get(entity.key()) is None,
+                'the id allocated for a new entity was already '
+                'in use, please try again')
 
 
-      entity_group = self._GetEntityGroup()
-      self._commit_time = datetime.datetime.now()
-      success = False
-      self._read_pos = self._txn_manager._AcquireWriteLock(entity_group,
-                                                           self._read_pos)
+      if empty and not self._actions:
+        return self.Rollback()
+
+
+      meta_data_list = [tracker._meta_data for tracker in trackers]
+      self._txn_manager._AcquireWriteLocks(meta_data_list)
     except:
 
       self.Rollback()
@@ -1264,32 +1299,58 @@ class LiveTxn(object):
 
     try:
 
-      self._read_pos = self.COMMITED
-      success = True
+      for tracker in trackers:
+        Check(tracker._meta_data._log_pos == tracker._read_pos,
+              'Concurrency exception.',
+              datastore_pb.Error.CONCURRENT_TRANSACTION)
+
+
+      for tracker in trackers:
+        tracker._meta_data.Log(self)
+      self._state = self.COMMITED
+      self._commit_time = datetime.datetime.now()
+    except:
+
+      self.Rollback()
+      raise
     finally:
 
-      self._txn_manager._ReleaseWriteLock(entity_group, self, success)
+      self._txn_manager._ReleaseWriteLocks(meta_data_list)
 
-  def _Apply(self):
-    """Applies the current txn.
+
+    self._txn_manager._consistency_policy._OnCommit(self)
+
+  def _Apply(self, meta_data):
+    """Applies the current txn on the given entity group.
 
     This function blindly performs the operations contained in the current txn.
-    The calling function must acquire the entity group write lock and insure
+    The calling function must acquire the entity group write lock and ensure
     transactions are applied in order.
     """
 
-    self._lock.acquire()
+    self._apply_lock.acquire()
     try:
 
-      assert self._read_pos == self.COMMITED
+      assert self._state == self.COMMITED
+      for tracker in self._entity_groups.values():
+        if tracker._meta_data is meta_data:
+          break
+      else:
+        assert False
+      assert tracker._read_pos != tracker.APPLIED
 
 
-      for entity, insert in self._put.itervalues():
+      tracker._meta_data.Unlog(self)
+
+
+      for entity, insert in tracker._put.itervalues():
         self._txn_manager._Put(entity, insert)
 
 
-      for key in self._delete.itervalues():
+      for key in tracker._delete.itervalues():
         self._txn_manager._Delete(key)
+
+
 
 
       for action in self._actions:
@@ -1299,22 +1360,55 @@ class LiveTxn(object):
         except apiproxy_errors.ApplicationError, e:
           logging.warning('Transactional task %s has been dropped, %s',
                           action, e)
+      self._actions = []
 
-      self._read_pos = self.APPLIED
+
+      tracker._read_pos = EntityGroupTracker.APPLIED
       self._txn_manager._OnApply()
     finally:
-      self._lock.release()
+      self._apply_lock.release()
+
+
+class EntityGroupTracker(object):
+  """An entity group involved a transaction."""
+
+  APPLIED = -2
+
+
+
+
+
+  _read_pos = None
+
+
+  _snapshot = None
+
+
+  _meta_data = None
+
+  def __init__(self, entity_group):
+    self._entity_group = entity_group
+    self._put = {}
+    self._delete = {}
+
+  def _GrabSnapshot(self, txn_manager):
+    """Snapshot this entity group, remembering the read position."""
+    if self._snapshot is None:
+      self._meta_data, self._read_pos, self._snapshot = (
+          txn_manager._GrabSnapshot(self._entity_group))
+    return self._snapshot
 
 
 class EntityGroupMetaData(object):
-  """The metadata assoicated with an entity group."""
+  """The meta_data assoicated with an entity group."""
 
 
   _log_pos = -1
 
   _snapshot = None
 
-  def __init__(self):
+  def __init__(self, entity_group):
+    self._entity_group = entity_group
     self._write_lock = threading.Lock()
     self._apply_queue = []
 
@@ -1323,19 +1417,35 @@ class EntityGroupMetaData(object):
 
     assert self._write_lock.acquire(False) is False
 
-    for txn in self._apply_queue:
-      txn._Apply()
-    self._apply_queue = []
+    while self._apply_queue:
+      self._apply_queue[0]._Apply(self)
 
-  def IncrementLogPos(self):
-    """Increments the current log position and clears the snapshot cache.
+  def Log(self, txn):
+    """Add a pending transaction to this entity group.
 
-    This should be called everytime a txn is commited.
+    Requires that the caller hold the meta data lock.
+    This also increments the current log position and clears the snapshot cache.
     """
 
     assert self._write_lock.acquire(False) is False
+    self._apply_queue.append(txn)
     self._log_pos += 1
     self._snapshot = None
+
+  def Unlog(self, txn):
+    """Remove the first pending transaction from the apply queue.
+
+    Requires that the caller hold the meta data lock.
+    This checks that the first pending transaction is indeed txn.
+    """
+
+    assert self._write_lock.acquire(False) is False
+
+    Check(self._apply_queue and self._apply_queue[0] is txn,
+          'Transaction is not appliable',
+          datastore_pb.Error.INTERNAL_ERROR)
+    self._apply_queue.pop(0)
+
 
 class BaseConsistencyPolicy(object):
   """A base class for a consistency policy to be used with a transaction manger.
@@ -1343,18 +1453,13 @@ class BaseConsistencyPolicy(object):
 
 
 
-  def _OnCommit(self, txn, meta_data):
+  def _OnCommit(self, txn):
     """Called after a LiveTxn has been commited.
 
-    This function can either apply the txn right away or enqueue it in the
-    entity group metadata.
-
-    This function should assume the write lock on the metadata object is already
-    acquired.
+    This function can decide whether to apply the txn right away.
 
     Args:
       txn: A LiveTxn that has been commited
-      meta_data: The EntityGroupMetaData for thie given txn
     """
     raise NotImplementedError
 
@@ -1376,11 +1481,18 @@ class MasterSlaveConsistencyPolicy(BaseConsistencyPolicy):
   Applies all txn on commit.
   """
 
-  def _OnCommit(self, txn, meta_data):
-    assert not meta_data._apply_queue
-    txn._Apply()
+  def _OnCommit(self, txn):
+
+    for tracker in txn._GetAllTrackers():
+      tracker._meta_data._write_lock.acquire()
+      try:
+        tracker._meta_data.CatchUp()
+      finally:
+        tracker._meta_data._write_lock.release()
 
   def _OnGroom(self, meta_data_list):
+
+
     pass
 
 
@@ -1390,8 +1502,8 @@ class BaseHighReplicationConsistencyPolicy(BaseConsistencyPolicy):
   All txn are applied asynchronously.
   """
 
-  def _OnCommit(self, txn, meta_data):
-    meta_data._apply_queue.append(txn)
+  def _OnCommit(self, txn):
+    pass
 
   def _OnGroom(self, meta_data_list):
 
@@ -1403,21 +1515,16 @@ class BaseHighReplicationConsistencyPolicy(BaseConsistencyPolicy):
 
       meta_data._write_lock.acquire()
       try:
-        for i, txn in enumerate(meta_data._apply_queue):
-          if self._ShouldApply(txn):
-
-            txn._Apply()
+        while meta_data._apply_queue:
+          txn = meta_data._apply_queue[0]
+          if self._ShouldApply(txn, meta_data):
+            txn._Apply(meta_data)
           else:
-
-            meta_data._apply_queue = meta_data._apply_queue[i:]
             break
-        else:
-
-          meta_data._apply_queue = []
       finally:
         meta_data._write_lock.release()
 
-  def _ShouldApply(self, txn):
+  def _ShouldApply(self, txn, meta_data):
     """Determins if the given transaction should be applied."""
     raise NotImplementedError
 
@@ -1458,13 +1565,13 @@ class TimeBasedHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
         break
     return elapsed_ms >= ms
 
-  def _Classify(self, txn):
-    return random.Random(id(txn)).random()
+  def _Classify(self, txn, meta_data):
+    return random.Random(id(txn) ^ id(meta_data)).random()
 
-  def _ShouldApply(self, txn):
+  def _ShouldApply(self, txn, meta_data):
     elapsed_ms = ((datetime.datetime.now() - txn._commit_time).microseconds //
                   1000)
-    classification = self._Classify(txn)
+    classification = self._Classify(txn, meta_data)
     return self._ShouldApplyImpl(elapsed_ms, classification)
 
 
@@ -1499,7 +1606,7 @@ class PseudoRandomHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
     """Reset the seed."""
     self._random = random.Random(seed)
 
-  def _ShouldApply(self, txn):
+  def _ShouldApply(self, txn, meta_data):
     return self._random.random() < self._probability
 
 
@@ -1535,22 +1642,27 @@ class BaseTransactionManager(object):
     self._consistency_policy = policy
 
   def Clear(self):
-    """Discards any pending transactions and resets the meta_data."""
+    """Discards any pending transactions and resets the meta data."""
 
-    self._meta_data = collections.defaultdict(EntityGroupMetaData)
+    self._meta_data = {}
 
     self._txn_map = {}
 
-  def BeginTransaction(self, app):
+  def BeginTransaction(self, app, allow_multiple_eg):
     """Start a transaction on the given app.
 
     Args:
       app: A string representing the app for which to start the transaction.
+      allow_multiple_eg: True if transactions can span multiple entity groups.
 
     Returns:
       A datastore_pb.Transaction for the created transaction
     """
-    txn = self._BeginTransaction(app)
+    Check(not (allow_multiple_eg and isinstance(
+        self._consistency_policy, MasterSlaveConsistencyPolicy)),
+          'transactions on multiple entity groups only allowed with the '
+          'High Reliability datastore')
+    txn = self._BeginTransaction(app, allow_multiple_eg)
     self._txn_map[id(txn)] = txn
     transaction = datastore_pb.Transaction()
     transaction.set_app(app)
@@ -1604,13 +1716,19 @@ class BaseTransactionManager(object):
     """
     self._meta_data_lock.acquire()
     try:
-      return self._meta_data[datastore_types.ReferenceToKeyValue(entity_group)]
+      key = datastore_types.ReferenceToKeyValue(entity_group)
+
+      meta_data = self._meta_data.get(key, None)
+      if not meta_data:
+        meta_data = EntityGroupMetaData(entity_group)
+        self._meta_data[key] = meta_data
+      return meta_data
     finally:
       self._meta_data_lock.release()
 
-  def _BeginTransaction(self, app):
+  def _BeginTransaction(self, app, allow_multiple_eg):
     """Starts a transaction without storing it in the txn_map."""
-    return LiveTxn(self, app)
+    return LiveTxn(self, app, allow_multiple_eg)
 
   def _GrabSnapshot(self, entity_group):
     """Grabs a consistent snapshot of the given entity group.
@@ -1631,57 +1749,30 @@ class BaseTransactionManager(object):
 
         meta_data.CatchUp()
         meta_data._snapshot = self._GetEntitiesInEntityGroup(entity_group)
-      return meta_data._log_pos, meta_data._snapshot
+      return meta_data, meta_data._log_pos, meta_data._snapshot
     finally:
 
       meta_data._write_lock.release()
 
-  def _AcquireWriteLock(self, entity_group, log_pos=None):
-    """Acquire the write lock for the given entity_group.
+  def _AcquireWriteLocks(self, meta_data_list):
+    """Acquire the write locks for the given entity group meta data.
 
-    This lock must be released with _ReleaseWriteLock before returning to the
+    These locks must be released with _ReleaseWriteLock before returning to the
     user.
 
     Args:
-      entity_group: A entity_pb.Reference of the entity group to lock.
-      log_pos: The log position to lock or None.
-
-    Returns:
-      The log position locked.
-
-    Raises:
-      apiproxy_errors.ApplicatonError if the log position cannot be locked
+      meta_data_list: list of EntityGroupMetaData objects.
     """
-    meta_data = self._GetMetaData(_GetEntityGroup(entity_group))
-    meta_data._write_lock.acquire()
-    try:
-      if log_pos is None:
+    for meta_data in sorted(meta_data_list):
+      meta_data._write_lock.acquire()
 
-        meta_data.CatchUp()
-      else:
-          Check(meta_data._log_pos == log_pos,
-                'Concurrency exception.',
-                datastore_pb.Error.CONCURRENT_TRANSACTION)
-    except:
-      meta_data._write_lock.release()
-      raise
-    return meta_data._log_pos
-
-  def _ReleaseWriteLock(self, entity_group, txn=None, modified=True):
-    """Release the write lock of the given entity group.
+  def _ReleaseWriteLocks(self, meta_data_list):
+    """Release the write locks of the given entity group meta data.
 
     Args:
-      entity_group: A entity_pb.Reference of the entity group to release.
-      txn: A LiveTxn that may need to be applied or None.
-      modified: A boolean that indicates if the entity group has been changed.
+      meta_data_list: list of EntityGroupMetaData objects.
     """
-    meta_data = self._GetMetaData(entity_group)
-    try:
-      if modified:
-        meta_data.IncrementLogPos()
-        if txn:
-          self._consistency_policy._OnCommit(txn, meta_data)
-    finally:
+    for meta_data in sorted(meta_data_list):
       meta_data._write_lock.release()
 
   def _RemoveTxn(self, txn):
@@ -1946,7 +2037,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     if raw_query.has_ancestor() and raw_query.kind() not in self._pseudo_kinds:
 
-      txn = self._BeginTransaction(raw_query.app())
+      txn = self._BeginTransaction(raw_query.app(), False)
       return txn.GetQueryCursor(raw_query, filters, orders)
 
 
@@ -1994,10 +2085,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     if transaction:
 
-      Check(len(grouped_keys) == 1, 'Transactions cannot span entity groups')
       txn = self.GetTxn(transaction, trusted, calling_app)
-
-      return [txn.Get(key) for key, _ in grouped_keys.values()[0]]
+      return [txn.Get(key) for key in raw_keys]
     else:
 
 
@@ -2071,11 +2160,10 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     if transaction:
 
-      Check(len(grouped_entities) == 1,
-            'Transactions cannot span entity groups')
       txn = self.GetTxn(transaction, trusted, calling_app)
-      for entity, insert in grouped_entities.values()[0]:
-        txn.Put(entity, insert)
+      for group in grouped_entities.values():
+        for entity, insert in group:
+          txn.Put(entity, insert)
     else:
 
       for entities in grouped_entities.itervalues():
@@ -2109,10 +2197,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
     if transaction:
 
-      Check(len(grouped_keys) == 1,
-            'Transactions cannot span entity groups')
       txn = self.GetTxn(transaction, trusted, calling_app)
-      for key in grouped_keys.values()[0]:
+      for key in raw_keys:
         txn.Delete(key)
     else:
 
@@ -2141,7 +2227,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       app: The app to create the Txns on.
       op: A function to run in each Txn.
     """
-    txn = self._BeginTransaction(app)
+    txn = self._BeginTransaction(app, False)
     for value in values:
       op(txn, value)
     txn.Commit()
@@ -2349,7 +2435,8 @@ class DatastoreStub(object):
 
   def _Dynamic_BeginTransaction(self, req, transaction):
     CheckAppId(self._trusted, self._app_id, req.app())
-    transaction.CopyFrom(self._datastore.BeginTransaction(req.app()))
+    transaction.CopyFrom(self._datastore.BeginTransaction(
+        req.app(), req.allow_multiple_eg()))
 
   def _Dynamic_Commit(self, transaction, _):
     CheckAppId(self._trusted, self._app_id, transaction.app())

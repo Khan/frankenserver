@@ -28,12 +28,16 @@
 
 
 
+import os
+import warnings
+
 try:
   from google.appengine.runtime import apiproxy
 except ImportError:
   apiproxy = None
 
-def get_request_cpu_usage():
+
+def __get_request_cpu_usage():
   """Get the amount of CPU used so far for the current request.
 
   Returns the number of megacycles used so far for the current
@@ -41,11 +45,19 @@ def get_request_cpu_usage():
 
   Does nothing when used in the dev_appserver.
   """
+  warnings.warn('get_request_cpu_usage may not always return correct values',
+                DeprecationWarning,
+                stacklevel=2)
 
   if apiproxy:
     return apiproxy.GetRequestCpuUsage()
 
   return 0
+
+
+if os.environ.get('APPENGINE_RUNTIME') != 'python27':
+  get_request_cpu_usage = __get_request_cpu_usage
+
 
 def get_request_api_cpu_usage():
   """Get the amount of CPU used so far by API calls during the current request.

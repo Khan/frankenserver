@@ -72,7 +72,7 @@ SOCKET_API = os.path.join(tempfile.gettempdir(), 'dev_appserver_%s_socket_api')
 HEALTH_CHECK_PATH = '/_appengine_delegate_health_check'
 INTERNAL_SERVER_ERROR = ('Status: 500 Internal Server Error\r\n' +
     'Content-Type: text/plain\r\n\r\nInternal Server Error')
-MAX_START_TIME = 1
+MAX_START_TIME = 10
 
 
 

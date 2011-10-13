@@ -3,6 +3,59 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.5.5
+===============================
+- Python 2.7 is now available as an experimental runtime for all applications
+  using the High Replication Datastore. To upload your app to the Python 2.7
+  runtime, change the runtime argument in your app.yaml to python27.
+- We have increased the number of files you can upload with your application
+  from 3,000 to 10,000.
+- We have increased the size limit for a single file uploaded to App Engine from
+  10MB to 32MB.
+- We have increased the Frontend request deadline from 30 seconds to 60 seconds.
+- We have increased the online URLFetch maximum deadline from 10 seconds to 60
+  seconds. The default deadline remains at 10 seconds. The offline maximum deadline
+  for URLFetch remains at 10 minutes.
+- We have increased the URLFetch Post payload from 1MB to 5MB.
+- App Engine now supports Cross Group (XG) transactions with the High
+  Replication Datastore, which allow you to perform transactions across
+  multiple entity groups.
+    http://code.google.com/appengine/docs/python/datastore/transactions.html
+- We have released an experimental API that can write to Google Storage for
+  Developers directly from App Engine.
+    http://code.google.com/appengine/docs/python/googlestorage/overview.html
+- We have added a graph to the admin console that displays the number of
+  instances for which you will be billed.
+- In the XMPP API, get_presence() is deprecated in favor of using the inbound
+  presence handlers documented in
+  http://code.google.com/appengine/docs/python/xmpp/overview.html#Handling_User_Presence.
+- The Task Queue API 'target' parameter now accepts a new value,
+  taskqueue.DEFAULT_APP_VERSION, which will send the task to the default
+  frontend version, rather than the version or backend where the 'add' method is
+  being called.
+- In the URLFetch API, make_fetch_call() now returns an RPC object.
+- Fixed an issue in the Admin Console where the "Run Now" button did not work
+  for tasks with a '-' in the name.
+- Fixed an issue where the SDK did not decode Base64 encoded blobs.
+- Fixed an issue to provide a better error message when using the Mail API to
+  send email to an invalid user address.
+- Fixed an issue in the SDK where a skip_files entry caused an ImportError when
+  the library was located elsewhere in the PYTHONPATH.
+- Fixed an issue in the SDK index viewer where the arrows indicating whether a
+  query was ascending or descending were not properly rendered.
+- Fixed an issue where httplib did not support the deadline argument for
+  URLFetch calls.
+    http://code.google.com/p/googleappengine/issues/detail?id=2216
+- Fixed an issue where you could not schedule a cron job to run every 100
+  minutes.
+    http://code.google.com/p/googleappengine/issues/detail?id=5243
+- Fixed an issue in the SDK where failed tasks retried immediately instead of
+  waiting for 30 seconds.
+    http://code.google.com/p/googleappengine/issues/detail?id=5587
+- Fixed an issue making it possible to modify request headers using the deferred
+  library.
+    http://code.google.com/p/googleappengine/issues/detail?id=5861
+
 Version 1.5.4
 ===============================
 - You can now specify the maximum size for a blob in create_upload_url().

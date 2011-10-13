@@ -24,6 +24,13 @@ import dummy_thread as thread
 __pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
                    unusednames=printElemNumber,debug_strs no-special"""
 
+if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
+  _extension_runtime = True
+  _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
+else:
+  _extension_runtime = False
+  _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
+
 class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -3754,5 +3761,7 @@ class MemcacheGrabTailResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.MemcacheGrabTailResponse'
+if _extension_runtime:
+  pass
 
 __all__ = ['MemcacheServiceError','AppOverride','MemcacheGetRequest','MemcacheGetResponse','MemcacheGetResponse_Item','MemcacheSetRequest','MemcacheSetRequest_Item','MemcacheSetResponse','MemcacheDeleteRequest','MemcacheDeleteRequest_Item','MemcacheDeleteResponse','MemcacheIncrementRequest','MemcacheIncrementResponse','MemcacheBatchIncrementRequest','MemcacheBatchIncrementResponse','MemcacheFlushRequest','MemcacheFlushResponse','MemcacheStatsRequest','MergedNamespaceStats','MemcacheStatsResponse','MemcacheGrabTailRequest','MemcacheGrabTailResponse','MemcacheGrabTailResponse_Item']

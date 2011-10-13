@@ -72,6 +72,7 @@ SERVICE_PB_MAP = {
                        datastore_pb.QueryResult),
         'RunCompiledQuery':(datastore_pb.RunCompiledQueryRequest,
                             datastore_pb.QueryResult),
+        'Next':       (datastore_pb.NextRequest, datastore_pb.QueryResult),
         'BeginTransaction':(datastore_pb.BeginTransactionRequest,
                             datastore_pb.Transaction),
         'Commit':          (datastore_pb.Transaction,
