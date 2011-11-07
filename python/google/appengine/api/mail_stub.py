@@ -171,8 +171,12 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       messages = [m for m in messages if re.search(body, m.textbody())]
     if html:
       messages = [m for m in messages if re.search(html, m.htmlbody())]
-
-    return messages
+    mail_messages = []
+    for message in messages:
+      mime_message = mail.mail_message_to_mime_message(message)
+      email_message = mail.EmailMessage(mime_message=mime_message)
+      mail_messages.append(email_message)
+    return mail_messages
 
   def _SendSMTP(self, mime_message, smtp_lib=smtplib.SMTP):
     """Send MIME message via SMTP.

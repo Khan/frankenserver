@@ -98,13 +98,16 @@ def _SimplifyNode(node):
   elif node.getType() is QueryParser.DISJUNCTION and node.getChildCount() is 1:
     return _SimplifyNode(node.children[0])
   elif (node.getType() is QueryParser.RESTRICTION and node.getChildCount() is 2
-        and node.children[0].getType() is QueryParser.NONE):
+        and node.children[0].getType() is QueryParser.GLOBAL):
     return _SimplifyNode(node.children[1])
   elif (node.getType() is QueryParser.VALUE and node.getChildCount() is 2 and
         (node.children[0].getType() is QueryParser.WORD or
          node.children[0].getType() is QueryParser.STRING or
          node.children[0].getType() is QueryParser.NUMBER)):
     return _SimplifyNode(node.children[1])
+  elif ((node.getType() is QueryParser.EQ or node.getType() is QueryParser.HAS)
+        and node.getChildCount() is 1):
+    return _SimplifyNode(node.children[0])
   for i, child in enumerate(node.children):
     node.setChild(i, _SimplifyNode(child))
   return node

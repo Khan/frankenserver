@@ -427,11 +427,11 @@ def CompositeIndexForQuery(query):
   props = []
 
 
-  seen = set()
+  eq_set = set()
   for f in eq_filters:
     prop = f.property(0)
-    if prop.name() not in seen:
-      seen.add(prop.name())
+    if prop.name() not in eq_set:
+      eq_set.add(prop.name())
       props.append((prop.name(), ASCENDING))
 
 
@@ -474,7 +474,7 @@ def CompositeIndexForQuery(query):
         required = True
 
 
-  return (required, kind, ancestor, tuple(props), len(eq_filters))
+  return (required, kind, ancestor, tuple(props), len(eq_set))
 
 def MinimalCompositeIndexForQuery(query, index_defs):
   """Computes the minimal composite index for this query.

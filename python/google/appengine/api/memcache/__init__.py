@@ -1296,7 +1296,16 @@ class Client(object):
     else:
       request.set_direction(MemcacheIncrementRequest.INCREMENT)
     if initial_value is not None:
+
       request.set_initial_value(long(initial_value))
+      initial_flags = None
+      if isinstance(initial_value, int):
+        initial_flags = TYPE_INT
+      elif isinstance(initial_value, long):
+        initial_flags = TYPE_LONG
+      if initial_flags is not None:
+        request.set_initial_flags(initial_flags)
+
 
     return self._make_async_call(rpc, 'Increment', request, response,
                                  self.__incrdecr_hook, None)
@@ -1344,11 +1353,16 @@ class Client(object):
       A UserRPC instance whose get_result() method returns a dict just
       like offset_multi() returns.
     """
+    initial_flags = None
     if initial_value is not None:
       if not isinstance(initial_value, (int, long)):
         raise TypeError('initial_value must be an integer')
       if initial_value < 0:
         raise ValueError('initial_value must be >= 0')
+      if isinstance(initial_value, int):
+        initial_flags = TYPE_INT
+      else:
+        initial_flags = TYPE_LONG
 
     request = MemcacheBatchIncrementRequest()
     self._add_app_id(request)
@@ -1372,6 +1386,7 @@ class Client(object):
       item.set_direction(direction)
       if initial_value is not None:
         item.set_initial_value(initial_value)
+        item.set_initial_flags(initial_flags)
 
 
     return self._make_async_call(rpc, 'BatchIncrement', request, response,

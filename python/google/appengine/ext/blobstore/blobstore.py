@@ -44,6 +44,7 @@ from google.appengine.ext import db
 
 __all__ = ['BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
+           'BLOB_MIGRATION_KIND',
            'BLOB_RANGE_HEADER',
            'BlobFetchSizeTooLargeError',
            'BlobInfo',
@@ -53,6 +54,7 @@ __all__ = ['BLOB_INFO_KIND',
            'BlobReferenceProperty',
            'BlobReader',
            'DataIndexOutOfRangeError',
+           'PermissionDeniedError',
            'Error',
            'InternalError',
            'MAX_BLOB_FETCH_SIZE',
@@ -69,6 +71,7 @@ BlobFetchSizeTooLargeError = blobstore.BlobFetchSizeTooLargeError
 BlobNotFoundError = blobstore.BlobNotFoundError
 _CreationFormatError = blobstore._CreationFormatError
 DataIndexOutOfRangeError = blobstore.DataIndexOutOfRangeError
+PermissionDeniedError = blobstore.PermissionDeniedError
 
 BlobKey = blobstore.BlobKey
 create_upload_url = blobstore.create_upload_url
@@ -80,6 +83,7 @@ class BlobInfoParseError(Error):
 
 
 BLOB_INFO_KIND = blobstore.BLOB_INFO_KIND
+BLOB_MIGRATION_KIND = blobstore.BLOB_MIGRATION_KIND
 BLOB_KEY_HEADER = blobstore.BLOB_KEY_HEADER
 BLOB_RANGE_HEADER = blobstore.BLOB_RANGE_HEADER
 MAX_BLOB_FETCH_SIZE = blobstore.MAX_BLOB_FETCH_SIZE

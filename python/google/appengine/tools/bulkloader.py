@@ -4048,14 +4048,16 @@ def ProcessArguments(arg_dict,
 
 
 def _GetRemoteAppId(url, throttle, email, passin,
-                    raw_input_fn=raw_input, password_input_fn=getpass.getpass):
+                    raw_input_fn=raw_input, password_input_fn=getpass.getpass,
+                    throttle_class=None):
   """Get the App ID from the remote server."""
   scheme, host_port, url_path, _, _ = urlparse.urlsplit(url)
 
   secure = (scheme == 'https')
 
   throttled_rpc_server_factory = (
-      remote_api_throttle.ThrottledHttpRpcServerFactory(throttle))
+      remote_api_throttle.ThrottledHttpRpcServerFactory(
+            throttle, throttle_class=throttle_class))
 
   def AuthFunction():
     return _AuthFunction(host_port, email, passin, raw_input_fn,
@@ -4117,6 +4119,7 @@ def _PerformBulkload(arg_dict,
   create_config = arg_dict['create_config']
   namespace = arg_dict['namespace']
   dry_run = arg_dict['dry_run']
+  throttle_class = arg_dict['throttle_class']
 
   if namespace:
     namespace_manager.set_namespace(namespace)
@@ -4154,7 +4157,8 @@ def _PerformBulkload(arg_dict,
     if dry_run:
 
       raise ConfigurationError('Must sepcify application ID in dry run mode.')
-    (app_id, server) = _GetRemoteAppId(url, throttle, email, passin)
+    app_id, server = _GetRemoteAppId(url, throttle, email, passin,
+                                       throttle_class=throttle_class)
 
     arg_dict['application'] = app_id
 

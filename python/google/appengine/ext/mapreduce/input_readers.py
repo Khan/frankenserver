@@ -35,6 +35,7 @@
 
 __all__ = [
     "AbstractDatastoreInputReader",
+    "ALLOW_CHECKPOINT",
     "BadReaderParamsError",
     "BlobstoreLineInputReader",
     "BlobstoreZipInputReader",
@@ -85,6 +86,11 @@ COUNTER_IO_READ_BYTES = "io-read-bytes"
 
 
 COUNTER_IO_READ_MSEC = "io-read-msec"
+
+
+
+
+ALLOW_CHECKPOINT = object()
 
 
 class InputReader(model.JsonMixin):
@@ -289,6 +295,7 @@ class AbstractDatastoreInputReader(InputReader):
         namespace = namespace_result[0].name() or ""
         self._current_key_range = key_range.KeyRange(
             namespace=namespace, _app=self._ns_range.app)
+        yield ALLOW_CHECKPOINT
 
       for key, o in self._iter_key_range(
           copy.deepcopy(self._current_key_range)):

@@ -20,7 +20,7 @@
 
 """Relational database API stub that uses the MySQLdb DB-API library.
 
-Also see the rdbms_sqlite and rdbms modules.
+Also see the rdbms module.
 """
 
 
@@ -87,8 +87,8 @@ try:
     return MySQLdb.connect(**merged_kwargs)
 
 except ImportError:
-  logging.error('The rdbms API is not available because the MySQLdb '
-                'library could not be loaded.')
+  logging.warning('The rdbms API is not available because the MySQLdb '
+                  'library could not be loaded.')
 
 
   def connect(instance=None, database=None):

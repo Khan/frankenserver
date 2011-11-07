@@ -21,8 +21,8 @@
 """
 LogService API.
 
-This module allows apps to flush logs, provide status messages, as well as the
-ability to programmatically access their log files.
+This module allows apps to flush logs, provide status messages, and
+programmatically access their request and application logs.
 """
 
 
@@ -41,6 +41,7 @@ from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.logservice import logsutil
+from google.appengine.datastore import datastore_rpc
 
 
 AUTOFLUSH_ENABLED = True
@@ -55,14 +56,7 @@ AUTOFLUSH_EVERY_BYTES = 4096
 AUTOFLUSH_EVERY_LINES = 50
 
 
-
-
-
-
-DEFAULT_ITEMS_PER_FETCH = 20
-
-
-MAX_ITEMS_PER_FETCH = 100
+MAX_ITEMS_PER_FETCH = 1000
 
 
 LOG_LEVEL_DEBUG = 0
@@ -71,7 +65,7 @@ LOG_LEVEL_WARNING = 2
 LOG_LEVEL_ERROR = 3
 LOG_LEVEL_CRITICAL = 4
 
-_MAJOR_VERSION_ID_PATTERN = r'[a-z\d][a-z\d\-]{0,99}'
+_MAJOR_VERSION_ID_PATTERN = r'^[a-z\d][a-z\d\-]{0,99}$'
 _MAJOR_VERSION_ID_RE = re.compile(_MAJOR_VERSION_ID_PATTERN)
 
 
@@ -85,6 +79,10 @@ class InvalidArgumentError(Error):
 
 class LogsBuffer(object):
   """Threadsafe buffer for storing and periodically flushing app logs."""
+
+  _MAX_FLUSH_SIZE = int(1e6)
+  _MAX_LINE_SIZE = _MAX_FLUSH_SIZE
+  assert _MAX_LINE_SIZE <= _MAX_FLUSH_SIZE
 
   def __init__(self, stream=None, stderr=False):
     """Initializes the buffer, which wraps the given stream or sys.stderr.
@@ -205,13 +203,18 @@ class LogsBuffer(object):
       self._reset()
     self.stream().write(line)
 
-
-
-
-    self.stream().flush()
     self._lines += 1
     self._bytes += len(line)
     self._autoflush()
+
+  @staticmethod
+  def _truncate(line, max_length=_MAX_LINE_SIZE):
+    """Truncates a potentially long log down to a specified maximum length."""
+    if len(line) > max_length:
+      original_length = len(line)
+      suffix = '...(length %d)' % original_length
+      line = line[:max_length - len(suffix)] + suffix
+    return line
 
   def flush(self):
     """Flushes the contents of the logs buffer.
@@ -229,19 +232,32 @@ class LogsBuffer(object):
     logs = self.parse_logs()
     self._clear()
 
-    if len(logs) == 0:
-      return
+    while logs:
+      request = log_service_pb.FlushRequest()
+      group = log_service_pb.UserAppLogGroup()
+      byte_size = 0
+      n = 0
+      for entry in logs:
 
-    request = log_service_pb.FlushRequest()
-    group = log_service_pb.UserAppLogGroup()
-    for entry in logs:
-      line = group.add_log_line()
-      line.set_timestamp_usec(entry[0])
-      line.set_level(entry[1])
-      line.set_message(entry[2])
-    request.set_logs(group.Encode())
-    response = api_base_pb.VoidProto()
-    apiproxy_stub_map.MakeSyncCall('logservice', 'Flush', request, response)
+
+        if len(entry[2]) > LogsBuffer._MAX_LINE_SIZE:
+          entry = list(entry)
+          entry[2] = self._truncate(entry[2], LogsBuffer._MAX_LINE_SIZE)
+
+
+        if byte_size + len(entry[2]) > LogsBuffer._MAX_FLUSH_SIZE:
+          break
+        line = group.add_log_line()
+        line.set_timestamp_usec(entry[0])
+        line.set_level(entry[1])
+        line.set_message(entry[2])
+        byte_size += 1 + group.lengthString(line.ByteSize())
+        n += 1
+      assert n > 0
+      logs = logs[n:]
+      request.set_logs(group.Encode())
+      response = api_base_pb.VoidProto()
+      apiproxy_stub_map.MakeSyncCall('logservice', 'Flush', request, response)
 
   def autoflush(self):
     """Flushes the buffer if certain conditions have been met."""
@@ -259,7 +275,7 @@ class LogsBuffer(object):
 
   def autoflush_enabled(self):
     """Indicates if the buffer will periodically flush logs during a request."""
-    return AUTOFLUSH_ENABLED
+    return AUTOFLUSH_ENABLED and 'BACKEND_ID' in os.environ
 
 
 
@@ -337,6 +353,8 @@ class _LogQueryResult(object):
       the initial fetch call, which will be updated with a more current cursor
       if more logs are requested.
     _logs: A list of RequestLogs corresponding to logs the user has asked for.
+    _read_called: A boolean that indicates if a Read call has even been made
+      with the request stored in this object..
   """
 
   def __init__(self, request):
@@ -382,35 +400,47 @@ class _LogQueryResult(object):
       self._request.mutable_offset().CopyFrom(response.offset())
 
 
-def fetch(start_time_usec=None,
-          end_time_usec=None,
-          batch_size=DEFAULT_ITEMS_PER_FETCH,
-          min_log_level=None,
+
+_FETCH_KWARGS = frozenset([
+    'start_time_usec', 'end_time_usec', 'min_log_level', 'prototype_request'])
+
+
+@datastore_rpc._positional(0)
+def fetch(start_time=None,
+          end_time=None,
+          minimum_log_level=None,
           include_incomplete=False,
           include_app_logs=False,
-          version_ids=None):
-  """Fetches an application's request and/or application-level logs.
+          version_ids=None,
+          batch_size=None,
+          **kwargs):
+  """Fetches an application's request and application logs.
+
+  Results will be yielded in reverse chronological order by request end time,
+  or by last flush time for requests still in progress (if requested).
+
+  All parameters are optional.
 
   Args:
-    start_time_usec: A long corresponding to the earliest time (in microseconds
-      since epoch) that results should be fetched for.
-    end_time_usec: A long corresponding to the latest time (in microseconds
-      since epoch) that results should be fetched for.
-    batch_size: The maximum number of log records that this request should
-      return. A log record corresponds to a web request made to the
-      application. Therefore, it may include a single request log and multiple
-      application level logs (e.g., WARN and INFO messages).
-    min_log_level: The minimum app log level that this request should be
-      returned. This means that querying for a certain log level always returns
-      that log level and all log levels above it. In ascending order, the log
-      levels available are: logs.DEBUG, logs.INFO, logs.WARNING, logs.ERROR,
-      and logs.CRITICAL.
+    start_time: The earliest request completion or last-update time that
+      results should be fetched for, in seconds since the Unix epoch.
+    end_time: The latest request completion or last-update time that
+      results should be fetched for, in seconds since the Unix epoch.
+    minimum_log_level: An application log level which serves as a filter on the
+      requests returned--requests with no application log at or above the
+      specified level will be omitted.  Works even if include_app_logs is not
+      True.  In ascending order, the available log levels are:
+      logservice.LOG_LEVEL_DEBUG, logservice.LOG_LEVEL_INFO,
+      logservice.LOG_LEVEL_WARNING, logservice.LOG_LEVEL_ERROR,
+      and logservice.LOG_LEVEL_CRITICAL.
     include_incomplete: Whether or not to include requests that have started but
-      not yet finished, as a boolean.
+      not yet finished, as a boolean.  Defaults to False.
     include_app_logs: Whether or not to include application level logs in the
-      results, as a boolean.
+      results, as a boolean.  Defaults to False.
     version_ids: A list of version ids whose logs should be queried against.
       Defaults to the application's current version id only.
+    batch_size: The number of log records that the iterator for this request
+      should request from the storage infrastructure at a time.
 
   Returns:
     An iterable object containing the logs that the user has queried for.
@@ -420,47 +450,69 @@ def fetch(start_time_usec=None,
       correct type.
   """
 
+  args_diff = set(kwargs.iterkeys()) - _FETCH_KWARGS
+  if args_diff:
+    raise InvalidArgumentError('Invalid arguments: %s' % ', '.join(args_diff))
+
   request = log_service_pb.LogReadRequest()
 
   request.set_app_id(os.environ['APPLICATION_ID'])
 
-  if start_time_usec:
-    if not isinstance(start_time_usec, long):
-      raise InvalidArgumentError('start_time_usec must be a long')
-    request.set_start_time(start_time_usec)
+  start_time_usec = kwargs.get('start_time_usec')
+  if start_time_usec is not None:
+    if not isinstance(start_time_usec, (float, int, long)):
+      raise InvalidArgumentError('start_time_usec must be a float or integer')
+    if start_time is not None:
+      raise InvalidArgumentError(
+          'start_time_usec and start_time may not be used together')
+    request.set_start_time(long(start_time_usec))
+  end_time_usec = kwargs.get('end_time_usec')
+  if end_time_usec is not None:
+    if not isinstance(end_time_usec, (float, int, long)):
+      raise InvalidArgumentError('end_time_usec must be a float or integer')
+    if end_time is not None:
+      raise InvalidArgumentError(
+          'end_time_usec and end_time may not be used together')
+    request.set_end_time(long(end_time_usec))
 
-  if end_time_usec:
-    if not isinstance(end_time_usec, long):
-      raise InvalidArgumentError('end_time_usec must be a long')
-    request.set_end_time(end_time_usec)
+  if start_time is not None:
+    if not isinstance(start_time, (float, int, long)):
+      raise InvalidArgumentError('start_time must be a float or integer')
+    request.set_start_time(long(start_time * 1000000))
 
-  if not isinstance(batch_size, int):
-    raise InvalidArgumentError('batch_size must be an integer')
+  if end_time is not None:
+    if not isinstance(end_time, (float, int, long)):
+      raise InvalidArgumentError('end_time must be a float or integer')
+    request.set_end_time(long(end_time * 1000000))
 
-  if batch_size < 1:
-    raise InvalidArgumentError('batch_size must be greater than zero')
+  if batch_size is not None:
+    if not isinstance(batch_size, (int, long)):
+      raise InvalidArgumentError('batch_size must be an integer')
 
-  if batch_size > MAX_ITEMS_PER_FETCH:
-    raise InvalidArgumentError('batch_size specified was too large')
-  request.set_count(batch_size)
+    if batch_size < 1:
+      raise InvalidArgumentError('batch_size must be greater than zero')
 
-  if min_log_level:
-    if not isinstance(min_log_level, int):
-      raise InvalidArgumentError('min_log_level must be an int')
+    if batch_size > MAX_ITEMS_PER_FETCH:
+      raise InvalidArgumentError('batch_size specified is too large')
+    request.set_count(batch_size)
 
-    if not min_log_level in range(LOG_LEVEL_CRITICAL+1):
-      raise InvalidArgumentError("""min_log_level must be between 0 and 4
+  if minimum_log_level is None:
+    minimum_log_level = kwargs.get('min_log_level')
+  if minimum_log_level is not None:
+    if not isinstance(minimum_log_level, int):
+      raise InvalidArgumentError('minimum_log_level must be an int')
+
+    if not minimum_log_level in range(LOG_LEVEL_CRITICAL+1):
+      raise InvalidArgumentError("""minimum_log_level must be between 0 and 4
                                  inclusive""")
-    request.set_minimum_log_level(min_log_level)
+    request.set_minimum_log_level(minimum_log_level)
 
   if not isinstance(include_incomplete, bool):
-    raise InvalidArgumentError('include_incomplete must be boolean')
-
+    raise InvalidArgumentError('include_incomplete must be a boolean')
   request.set_include_incomplete(include_incomplete)
 
   if not isinstance(include_app_logs, bool):
-    raise InvalidArgumentError('include_app_logs must be boolean')
-
+    raise InvalidArgumentError('include_app_logs must be a boolean')
   request.set_include_app_logs(include_app_logs)
 
   if version_ids is None:
@@ -475,5 +527,11 @@ def fetch(start_time_usec=None,
             'version_ids must only contain valid major version identifiers')
 
   request.version_id_list()[:] = version_ids
+
+  prototype_request = kwargs.get('prototype_request')
+  if prototype_request:
+    if not isinstance(prototype_request, log_service_pb.LogReadRequest):
+      raise InvalidArgumentError('prototype_request must be a LogReadRequest')
+    request.MergeFrom(prototype_request)
 
   return _LogQueryResult(request)

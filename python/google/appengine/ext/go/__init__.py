@@ -49,6 +49,7 @@ import errno
 import getpass
 import logging
 import os
+import re
 import shutil
 import signal
 import socket
@@ -60,6 +61,7 @@ import time
 
 from google.appengine.ext.remote_api import handler
 from google.appengine.ext.remote_api import remote_api_pb
+from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools import dev_appserver
 
 GAB_WORK_DIR = None
@@ -80,12 +82,14 @@ HEADER_MAP = {
     'APPLICATION_ID': 'X-AppEngine-Inbound-AppId',
     'CONTENT_TYPE': 'Content-Type',
     'CURRENT_VERSION_ID': 'X-AppEngine-Inbound-Version-Id',
-    'HTTP_HOST': 'X-AppEngine-Default-Version-Hostname',
     'REMOTE_ADDR': 'X-AppEngine-Remote-Addr',
     'USER_EMAIL': 'X-AppEngine-Inbound-User-Email',
     'USER_ID': 'X-AppEngine-Inbound-User-Id',
     'USER_IS_ADMIN': 'X-AppEngine-Inbound-User-Is-Admin',
 }
+
+
+ENV_PASSTHROUGH = re.compile(r'^(BACKEND_PORT\..*|INSTANCE_ID)$')
 
 
 APP_CONFIG = None
@@ -213,6 +217,12 @@ class RemoteAPIHandler(asyncore.dispatcher_with_send):
     rapi_error = 'unknown error'
     try:
       rapi_result = RAPI_HANDLER.ExecuteRequest(req)
+    except apiproxy_errors.CallNotFoundError, e:
+
+
+      service_name = req.service_name()
+      method = req.method()
+      rapi_error = 'call not found for %s/%s' % (service_name, method)
     except Exception, e:
       rapi_error = str(e)
 
@@ -354,6 +364,9 @@ class GoApp:
           'PWD': self.root_path,
           'TZ': 'UTC',
       }
+      for k, v in os.environ.items():
+        if ENV_PASSTHROUGH.match(k):
+          env[k] = v
       self.proc_start = app_mtime
       self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'unix:' + SOCKET_HTTP,

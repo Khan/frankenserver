@@ -537,7 +537,7 @@ class Task(object):
         time indicated by eta.
       retry_options: TaskRetryOptions used to control when the task will be
         retried if it fails.
-      target: The alternate version/server on which to execute this task, or
+      target: The alternate version/backend on which to execute this task, or
         DEFAULT_APP_VERSION to execute on the application's default version.
 
     Raises:
@@ -1550,6 +1550,9 @@ def add(*args, **kwargs):
   mode.
 
   Args:
+    payload: The payload data for this Task that will be delivered to the
+      webhook as the HTTP request body or fetched by workers for pull queues.
+      This is only allowed for POST, PUT, and PULL methods.
     queue_name: Name of queue to insert task into. If not supplied, defaults to
       the default queue.
     name: Name to give the Task; if not specified, a name will be
@@ -1564,9 +1567,6 @@ def add(*args, **kwargs):
     headers: Dictionary of headers to pass to the webhook. Values in the
       dictionary may be iterable to indicate repeated header fields. Must not be
       specified if method is PULL.
-    payload: The payload data for this Task that will be delivered to the
-      webhook as the HTTP request body or fetched by workers for pull queues.
-      This is only allowed for POST, PUT, and PULL methods.
     params: Dictionary of parameters to use for this Task. For POST and PULL
       requests these params will be encoded as
       'application/x-www-form-urlencoded' and set to the payload. For all other
@@ -1587,6 +1587,8 @@ def add(*args, **kwargs):
       indicated by eta.
     retry_options: TaskRetryOptions used to control when the task will be
       retried if it fails.
+    target: The alternate version/backend on which to execute this task, or
+      DEFAULT_APP_VERSION to execute on the application's default version.
 
   Returns:
     The Task that was added to the queue.

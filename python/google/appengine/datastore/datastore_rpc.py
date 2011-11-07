@@ -51,6 +51,7 @@ __all__ = ['AbstractAdapter',
 
 
 import collections
+import functools
 import logging
 
 
@@ -80,6 +81,7 @@ def _positional(max_pos_args):
   Note that for methods, n includes 'self'.
   """
   def positional_decorator(wrapped):
+    @functools.wraps(wrapped)
     def positional_wrapper(*args, **kwds):
       if len(args) > max_pos_args:
         plural_s = ''

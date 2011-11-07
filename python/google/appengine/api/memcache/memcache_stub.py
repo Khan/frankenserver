@@ -273,9 +273,12 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
         return None
       if namespace not in self._the_cache:
         self._the_cache[namespace] = {}
+      flags = 0
+      if request.has_initial_flags():
+        flags = request.initial_flags()
       self._the_cache[namespace][key] = CacheEntry(str(request.initial_value()),
                                                    expiration=0,
-                                                   flags=0,
+                                                   flags=flags,
                                                    cas_id=self._next_cas_id,
                                                    gettime=self._gettime)
       self._next_cas_id += 1

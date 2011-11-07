@@ -45,6 +45,7 @@ from google.appengine.runtime import apiproxy_errors
 
 __all__ = ['BLOB_INFO_KIND',
            'BLOB_KEY_HEADER',
+           'BLOB_MIGRATION_KIND',
            'BLOB_RANGE_HEADER',
            'MAX_BLOB_FETCH_SIZE',
            'UPLOAD_INFO_CREATION_HEADER',
@@ -52,6 +53,7 @@ __all__ = ['BLOB_INFO_KIND',
            'BlobKey',
            'BlobNotFoundError',
            'DataIndexOutOfRangeError',
+           'PermissionDeniedError',
            'Error',
            'InternalError',
            'create_upload_url',
@@ -67,6 +69,8 @@ BlobKey = datastore_types.BlobKey
 BLOB_INFO_KIND = '__BlobInfo__'
 
 BLOB_KEY_HEADER = 'X-AppEngine-BlobKey'
+
+BLOB_MIGRATION_KIND = '__BlobMigration__'
 
 BLOB_RANGE_HEADER = 'X-AppEngine-BlobRange'
 
@@ -101,6 +105,11 @@ class _CreationFormatError(Error):
   """Raised when attempting to parse bad creation date format."""
 
 
+class PermissionDeniedError(Error):
+  """Raised when permissions are lacking for a requested operation."""
+
+
+
 def _ToBlobstoreError(error):
   """Translate an application error to a datastore Error, if possible.
 
@@ -116,12 +125,11 @@ def _ToBlobstoreError(error):
       DataIndexOutOfRangeError,
       blobstore_service_pb.BlobstoreServiceError.BLOB_FETCH_SIZE_TOO_LARGE:
       BlobFetchSizeTooLargeError,
+      blobstore_service_pb.BlobstoreServiceError.PERMISSION_DENIED:
+      PermissionDeniedError,
       }
-
-  if error.application_error in error_map:
-    return error_map[error.application_error](error.error_detail)
-  else:
-    return error
+  desired_exc = error_map.get(error.application_error)
+  return desired_exc(error.error_detail) if desired_exc else error
 
 
 def _format_creation(stamp):

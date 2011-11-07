@@ -168,11 +168,13 @@ def _ConvertFormatToQmark(statement, args):
 
 class Cursor(object):
 
-  def __init__(self, conn):
+  def __init__(self, conn, use_dict_cursor=False):
     """Initializer.
 
     Args:
       conn: A Connection object.
+      use_dict_cursor: Optional boolean to convert each row of results into a
+          dictionary. Defaults to False.
     """
     self._conn = conn
     self._description = None
@@ -180,6 +182,7 @@ class Cursor(object):
     self.arraysize = 1
     self._open = True
     self.lastrowid = None
+    self._use_dict_cursor = use_dict_cursor
 
   @property
   def description(self):
@@ -301,6 +304,8 @@ class Cursor(object):
       self._description = None
 
     if result.rows.tuples:
+      assert self._description, 'Column descriptions do not exist.'
+      column_names = [col[0] for col in self._description]
       self._rowcount = len(result.rows.tuples)
       for tuple_proto in result.rows.tuples:
         row = []
@@ -313,7 +318,12 @@ class Cursor(object):
             row.append(self._DecodeVariable(column_descr[1],
                                             tuple_proto.values[value_index]))
             value_index += 1
-        self._rows.append(tuple(row))
+        if self._use_dict_cursor:
+          assert len(column_names) == len(row)
+          row = dict(zip(column_names, row))
+        else:
+          row = tuple(row)
+        self._rows.append(row)
     else:
       self._rowcount = result.rows_updated
 
@@ -551,9 +561,16 @@ class Connection(object):
     request.op.auto_commit = value
     self.MakeRequest('ExecOp', request)
 
-  def cursor(self):
-    """Returns a cursor for the current connection."""
-    return Cursor(self)
+  def cursor(self, **kwargs):
+    """Returns a cursor for the current connection.
+
+    Args:
+      **kwargs: Optional keyword args to pass into cursor.
+
+    Returns:
+      A Cursor object.
+    """
+    return Cursor(self, **kwargs)
 
   def MakeRequest(self, stub_method, request):
     """Makes an ApiProxy request, and possibly raises an appropriate exception.

@@ -194,15 +194,12 @@ class DetailsHandler(webapp.RequestHandler):
       api_total_mcycles += rpc_stat.api_mcycles()
 
     api_total = recording.mcycles_to_msecs(api_total_mcycles)
-    charged_total = recording.mcycles_to_msecs(record.processor_mcycles() +
-                                               api_total_mcycles)
 
     data = {'sys': sys,
             'record': record,
             'rpcstats_by_count': rpcstats_by_count,
             'real_total': real_total,
             'api_total': api_total,
-            'charged_total': charged_total,
             'file_url': './file',
             }
     self.response.out.write(render('details.html', data))

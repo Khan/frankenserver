@@ -288,7 +288,7 @@ def LoginCGI(login_url,
 
 def main():
   """Runs the login and logout CGI script."""
-  form = cgi.FieldStorage()
+  form = cgi.FieldStorage(environ=os.environ)
   login_url = os.environ['PATH_INFO']
   email = os.environ.get('USER_EMAIL', '')
   admin = os.environ.get('USER_IS_ADMIN', '0') == '1'

@@ -44,6 +44,9 @@ from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools import dev_appserver_upload
 
 
+MAX_REQUEST_SIZE = 32 << 20
+
+
 
 _now_function = datetime.datetime.now
 
@@ -426,15 +429,21 @@ class BlobstoreFile(object):
     self.file_storage.register_blob_key(self.ticket, blob_key)
 
     size = self.file_storage.save_blob(self.filename, blob_key)
-    blob_entity = datastore.Entity('__BlobInfo__',
+    blob_info = datastore.Entity('__BlobInfo__',
                                    name=str(blob_key),
                                    namespace='')
-    blob_entity['content_type'] = self.mime_content_type
-    blob_entity['creation'] = _now_function()
-    blob_entity['filename'] = self.blob_file_name
-    blob_entity['size'] = size
-    blob_entity['creation_handle'] = self.ticket
-    datastore.Put(blob_entity)
+    blob_info['content_type'] = self.mime_content_type
+    blob_info['creation'] = _now_function()
+    blob_info['filename'] = self.blob_file_name
+    blob_info['size'] = size
+    blob_info['creation_handle'] = self.ticket
+    datastore.Put(blob_info)
+
+    blob_file = datastore.Entity('__BlobFileIndex__',
+                                 name=self.ticket,
+                                 namespace='')
+    blob_file['blob_key'] = str(blob_key)
+    datastore.Put(blob_file)
 
 
 class FileServiceStub(apiproxy_stub.APIProxyStub):
@@ -442,7 +451,8 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
 
   def __init__(self, blob_storage):
     """Constructor."""
-    super(FileServiceStub, self).__init__('file')
+    super(FileServiceStub, self).__init__('file',
+                                          max_request_size=MAX_REQUEST_SIZE)
     self.open_files = {}
     self.file_storage = BlobstoreStorage(blob_storage)
     self.gs_storage = GoogleStorage()

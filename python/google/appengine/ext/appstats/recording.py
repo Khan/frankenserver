@@ -31,6 +31,7 @@ import re
 import sys
 import threading
 import time
+import warnings
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import lib_config
@@ -185,7 +186,7 @@ class Recorder(object):
 
   An instance is created soon after the request is received, and
   set as the Recorder for the current request in the
-  RequestLocalRecorderProxy in the global variable 'recorder'.  It
+  RequestLocalRecorderProxy in the global variable 'recorder_proxy'.  It
   collects information about the request and about individual RPCs
   made during the request, until just before the response is sent out,
   when the recorded information is saved to memcache by calling the
@@ -461,8 +462,6 @@ class Recorder(object):
       'overhead': int(self.overhead * 1000),
       'traces': traces,
       }
-    if hasattr(quota, 'get_request_cpu_usage'):
-      data['cpu'] = mcycles_to_msecs(quota.get_request_cpu_usage())
     return data
 
   def get_summary_proto_encoded(self):
@@ -494,8 +493,6 @@ class Recorder(object):
     api_mcycles = self.get_total_api_mcycles()
     if api_mcycles:
       summary.set_api_mcycles(api_mcycles)
-    if hasattr(quota, 'get_request_cpu_usage'):
-      summary.set_processor_mcycles(quota.get_request_cpu_usage())
     summary.set_overhead_walltime_milliseconds(int(self.overhead * 1000))
     rpc_stats = self.get_rpcstats().items()
     rpc_stats.sort(key=lambda x: (-x[1], x[0]))
@@ -757,9 +754,20 @@ class StatsProto(datamodel_pb.RequestStatProto):
     """Return an int giving .api_mcycles() converted to milliseconds."""
     return mcycles_to_msecs(self.api_mcycles())
 
+  def processor_mcycles(self):
+    warnings.warn('processor_mcycles does not return correct values',
+                  DeprecationWarning,
+                  stacklevel=2)
+    return datamodel_pb.RequestStatProto.processor_mcycles(self)
+
   def processor_milliseconds(self):
     """Return an int giving .processor_mcycles() converted to milliseconds."""
-    return mcycles_to_msecs(self.processor_mcycles())
+    warnings.warn('processor_milliseconds does not return correct values',
+                  DeprecationWarning,
+                  stacklevel=2)
+
+    return mcycles_to_msecs(
+        datamodel_pb.RequestStatProto.processor_mcycles(self))
 
   __combined_rpc_count = None
 
@@ -961,6 +969,7 @@ class RequestLocalRecorderProxy(object):
   def set_for_current_request(self, new_recorder):
     """Sets the recorder for the current request."""
     self._recorders[os.environ['REQUEST_ID_HASH']] = new_recorder
+    _set_global_recorder(new_recorder)
 
   @_synchronized
   def get_for_current_request(self):
@@ -972,20 +981,36 @@ class RequestLocalRecorderProxy(object):
     """Clears the recorder for the current request."""
     if os.environ['REQUEST_ID_HASH'] in self._recorders:
       del self._recorders[os.environ['REQUEST_ID_HASH']]
+    _clear_global_recorder()
 
   @_synchronized
   def _clear_all(self):
     """Clears the recorders for all requests."""
     self._recorders.clear()
+    _clear_global_recorder()
+
+
+def _set_global_recorder(new_recorder):
+  if os.environ.get('APPENGINE_RUNTIME') != 'python27':
+    global recorder
+    recorder = new_recorder
+
+
+def _clear_global_recorder():
+  _set_global_recorder(None)
 
 
 
-recorder = RequestLocalRecorderProxy()
+recorder_proxy = RequestLocalRecorderProxy()
+
+
+if os.environ.get('APPENGINE_RUNTIME') != 'python27':
+  recorder = None
 
 
 def dont_record():
   """API to prevent recording of the current request.  Used by ui.py."""
-  recorder.clear_for_current_request()
+  recorder_proxy.clear_for_current_request()
 
 
 def lock_key():
@@ -997,12 +1022,12 @@ def start_recording(env=None):
   """Start recording RPC traces.
 
   This creates a Recorder instance and sets it for the current request
-  in the global RequestLocalRecorderProxy 'recorder'.
+  in the global RequestLocalRecorderProxy 'recorder_proxy'.
 
   Args:
     env: Optional WSGI environment; defaults to os.environ.
   """
-  recorder.clear_for_current_request()
+  recorder_proxy.clear_for_current_request()
   if env is None:
     env = os.environ
   if not config.should_record(env):
@@ -1010,7 +1035,7 @@ def start_recording(env=None):
 
   if memcache.add(lock_key(), 0,
                   time=config.LOCK_TIMEOUT, namespace=config.KEY_NAMESPACE):
-    recorder.set_for_current_request(Recorder(env))
+    recorder_proxy.set_for_current_request(Recorder(env))
     if config.DEBUG:
       logging.debug('Set recorder')
 
@@ -1018,15 +1043,15 @@ def start_recording(env=None):
 def end_recording(status, firepython_set_extension_data=None):
   """Stop recording RPC traces and save all traces to memcache.
 
-  This clears the recorder set for this request in 'recorder'.
+  This clears the recorder set for this request in 'recorder_proxy'.
 
   Args:
     status: HTTP Status, a 3-digit integer.
     firepython_set_extension_data: Optional function to be called
       to pass the recorded data to FirePython.
   """
-  rec = recorder.get_for_current_request()
-  recorder.clear_for_current_request()
+  rec = recorder_proxy.get_for_current_request()
+  recorder_proxy.clear_for_current_request()
   if config.DEBUG:
     logging.debug('Cleared recorder')
   if rec is not None:
@@ -1056,13 +1081,13 @@ def pre_call_hook(service, call, request, response, rpc=None):
   Once registered, this fuction will be called right before any kind
   of RPC call is made through apiproxy_stub_map.  The arguments are
   passed on to the record_rpc_request() method of the global
-  'recorder' variable, unless the latter does not have a Recorder set
+  'recorder_proxy' variable, unless the latter does not have a Recorder set
   for this request.
   """
-  if recorder.has_recorder_for_current_request():
+  if recorder_proxy.has_recorder_for_current_request():
     if config.DEBUG:
       logging.debug('pre_call_hook: recording %s.%s', service, call)
-    recorder.record_rpc_request(service, call, request, response, rpc)
+    recorder_proxy.record_rpc_request(service, call, request, response, rpc)
 
 
 def post_call_hook(service, call, request, response, rpc=None, error=None):
@@ -1073,15 +1098,15 @@ def post_call_hook(service, call, request, response, rpc=None, error=None):
 
   Once registered, this fuction will be called right after any kind of
   RPC call made through apiproxy_stub_map returns.  The call is passed
-  on to the record_rpc_request() method of the global 'recorder'
+  on to the record_rpc_request() method of the global 'recorder_proxy'
   variable, unless the latter does not have a Recorder set for this
   request.
   """
 
-  if recorder.has_recorder_for_current_request():
+  if recorder_proxy.has_recorder_for_current_request():
     if config.DEBUG:
       logging.debug('post_call_hook: recording %s.%s', service, call)
-    recorder.record_rpc_response(service, call, request, response, rpc)
+    recorder_proxy.record_rpc_response(service, call, request, response, rpc)
 
 
 

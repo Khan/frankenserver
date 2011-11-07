@@ -52,7 +52,7 @@ from google.appengine.datastore import entity_pb
 
 
 
-_MAXIMUM_RESULTS = 1000
+_MAXIMUM_RESULTS = 300
 
 
 
@@ -2025,7 +2025,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     FillUsersInQuery(filters)
 
 
-    self._CheckHasIndex(raw_query)
+    self._CheckHasIndex(raw_query, trusted, calling_app)
 
 
     if raw_query.has_transaction():
@@ -2232,18 +2232,20 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       op(txn, value)
     txn.Commit()
 
-  def _CheckHasIndex(self, query):
+  def _CheckHasIndex(self, query, trusted=False, calling_app=None):
     """Checks if the query can be satisfied given the existing indexes.
 
     Args:
-      query: the datstore_pb.Query to check
+      query: the datastore_pb.Query to check
+      trusted: True if the calling app is trusted (like dev_admin_console)
+      calling_app: app_id of the current running application
     """
     if query.kind() in self._pseudo_kinds or not self._require_indexes:
       return
 
     minimal_index = datastore_index.MinimalCompositeIndexForQuery(query,
         (datastore_index.ProtoToIndexDefinition(index)
-        for index in self.GetIndexes(query.app())
+        for index in self.GetIndexes(query.app(), trusted, calling_app)
         if index.state() == datastore_pb.CompositeIndex.READ_WRITE))
     if minimal_index is not None:
       msg = ('This query requires a composite index that is not defined. '

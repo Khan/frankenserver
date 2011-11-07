@@ -78,7 +78,7 @@ _BYTES_UNIT = 'bytes'
 class Error(Exception):
   """Base class for all errors in blobstore handlers module."""
 
-if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+if not hasattr(webapp, 'Error'):
   class RangeFormatError(Error):
     """Raised when Range header incorrectly formatted."""
 else:
@@ -111,14 +111,14 @@ def _serialize_range(start, end):
 
 
 def _parse_bytes(range_header):
-  """Returns the a list of byte ranges given the value of a RANGE header."""
+  """Returns a list of byte ranges given the value of a RANGE header."""
 
 
 
 
 
 
-  if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  if not hasattr(byterange.Range, 'serialize_bytes'):
     parse_result = byterange.Range.parse_bytes(range_header)
     if parse_result is None:
       return None

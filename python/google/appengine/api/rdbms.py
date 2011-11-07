@@ -20,7 +20,7 @@
 
 """Relational database API for production.
 
-Note that rdbms_sqlite and rdbms_mysqldb are the modules used in dev_appserver.
+Note that rdbms_mysqldb is the module used in dev_appserver.
 """
 
 

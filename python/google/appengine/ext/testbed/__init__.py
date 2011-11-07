@@ -125,6 +125,10 @@ except ImportError:
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.xmpp import xmpp_service_stub
+try:
+  from google.appengine.datastore import datastore_sqlite_stub
+except ImportError:
+  datastore_sqlite_stub = None
 from google.appengine.datastore import datastore_stub_util
 
 
@@ -182,18 +186,6 @@ class NotActivatedError(Error):
 
 class StubNotSupportedError(Error):
   """Raised if an unsupported service stub is accessed."""
-
-
-class InMemoryDatastoreStub(datastore_file_stub.DatastoreFileStub):
-  """File-based Datastore stub which does not actually write files.
-
-  This class is now just a place holder for backwards compatibility as the
-  DatastoreFileStub now supports this directly.
-  """
-
-  def __init__(self, *args, **kwargs):
-    kwargs['save_changes'] = False
-    super(InMemoryDatastoreStub, self).__init__(*args, **kwargs)
 
 
 
@@ -350,37 +342,45 @@ class Testbed(object):
     self._register_stub(CHANNEL_SERVICE_NAME, stub)
 
   def init_datastore_v3_stub(self, enable=True, datastore_file=None,
-                             **stub_kw_args):
+                             use_sqlite=False, **stub_kw_args):
     """Enable the datastore stub.
 
-    The 'datastore_file' argument is the path to an existing datastore
-    file or None (default) to use an in-memory datastore that is
-    initially empty. In either case, the datastore is _not_ saved to disk, and
-    any changes are gone after tearDown executes, so unit tests cannot interfere
-    with each other (unless save_changes=True).
+    The 'datastore_file' argument can be the path to an existing
+    datastore file, or None (default) to use an in-memory datastore
+    that is initially empty.  If you use the sqlite stub and have
+    'datastore_file' defined, changes you apply in a test will be
+    written to the file.  If you use the default datastore stub,
+    changes are _not_ saved to disk unless you set save_changes=True.
 
     Note that you can only access those entities of the datastore file
     which have the same application ID associated with them as the
     test run. You can change the application ID for a test with
     setup_env().
 
-    Currently, the datastore stub only supports the file-based
-    datastore stub, not the sqlite-based stub.
-
     Args:
-      enable: True, if the fake service should be enabled, False if real
+      enable: True if the fake service should be enabled, False if real
         service should be disabled.
       datastore_file: Filename of a dev_appserver datastore file.
+      use_sqlite: True to use the Sqlite stub, False (default) for file stub.
       stub_kw_args: Keyword arguments passed on to the service stub.
     """
     if not enable:
       self._disable_stub(DATASTORE_SERVICE_NAME)
       return
-    stub_kw_args.setdefault('save_changes', False)
-    stub = datastore_file_stub.DatastoreFileStub(
-        os.environ['APPLICATION_ID'],
-        datastore_file,
-        **stub_kw_args)
+    if use_sqlite:
+      if datastore_sqlite_stub is None:
+        raise StubNotSupportedError(
+            'The sqlite stub is not supported in production.')
+      stub = datastore_sqlite_stub.DatastoreSqliteStub(
+          os.environ['APPLICATION_ID'],
+          datastore_file,
+          **stub_kw_args)
+    else:
+      stub_kw_args.setdefault('save_changes', False)
+      stub = datastore_file_stub.DatastoreFileStub(
+          os.environ['APPLICATION_ID'],
+          datastore_file,
+          **stub_kw_args)
     self._register_stub(DATASTORE_SERVICE_NAME, stub)
 
   def init_images_stub(self, enable=True):

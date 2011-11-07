@@ -3937,10 +3937,6 @@ class TaskQueueFetchQueueStatsRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_max_num_tasks_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: max_num_tasks not set.')
     return initialized
 
   def ByteSize(self):
@@ -3948,17 +3944,15 @@ class TaskQueueFetchQueueStatsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     n += 1 * len(self.queue_name_)
     for i in xrange(len(self.queue_name_)): n += self.lengthString(len(self.queue_name_[i]))
-    n += self.lengthVarInt64(self.max_num_tasks_)
-    return n + 1
+    if (self.has_max_num_tasks_): n += 1 + self.lengthVarInt64(self.max_num_tasks_)
+    return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     n += 1 * len(self.queue_name_)
     for i in xrange(len(self.queue_name_)): n += self.lengthString(len(self.queue_name_[i]))
-    if (self.has_max_num_tasks_):
-      n += 1
-      n += self.lengthVarInt64(self.max_num_tasks_)
+    if (self.has_max_num_tasks_): n += 1 + self.lengthVarInt64(self.max_num_tasks_)
     return n
 
   def Clear(self):
@@ -3973,8 +3967,9 @@ class TaskQueueFetchQueueStatsRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.queue_name_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.queue_name_[i])
-    out.putVarInt32(24)
-    out.putVarInt32(self.max_num_tasks_)
+    if (self.has_max_num_tasks_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.max_num_tasks_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):

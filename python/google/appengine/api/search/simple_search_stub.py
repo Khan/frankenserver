@@ -96,9 +96,8 @@ class Token(object):
   @property
   def chars(self):
     """Returns a list of fields of the document."""
-    if type(self._chars) is unicode:
-      value = self._chars
-    else:
+    value = self._chars
+    if not isinstance(value, basestring):
       value = str(self._chars)
     if self._field_name:
       return self._field_name + ':' + value
@@ -220,7 +219,7 @@ class SimpleTokenizer(object):
     if not self._split_restricts:
       token_strings = value.lower().split()
     else:
-      token_strings = self._TokenizeString(unicode(value))
+      token_strings = self._TokenizeString(value)
     for token in token_strings:
       if ':' in token and self._split_restricts:
         for subtoken in token.split(':'):
@@ -435,9 +434,13 @@ class SimpleIndex(object):
       return [token.RestrictField(field) for token in tokens]
     return tokens
 
+  def _GetQueryNodeText(self, node):
+    """Returns the text from the node, handling that it could be unicode."""
+    return node.getText().encode('utf-8')
+
   def _EvaluatePhrase(self, node, field=None):
     """Evaluates the phrase node returning matching postings."""
-    tokens = self._SplitPhrase(node.getText())
+    tokens = self._SplitPhrase(self._GetQueryNodeText(node))
     tokens = self._AddFieldToTokens(field, tokens)
     position_posting = {}
     token = tokens[0]
@@ -475,18 +478,21 @@ class SimpleIndex(object):
         postings.extend(self._Evaluate(child))
       return postings
     if node.getType() is QueryParser.RESTRICTION:
+
       field_name = node.children[0].getText()
 
       child = node.children[1]
       if child.getType() is QueryParser.PHRASE:
         return self._EvaluatePhrase(node=child, field=field_name)
-      return self._PostingsForFieldToken(field_name, child.getText())
+      return self._PostingsForFieldToken(field_name,
+                                         self._GetQueryNodeText(child))
     if node.getType() is QueryParser.PHRASE:
       return self._EvaluatePhrase(node)
     if (node.getType() is QueryParser.TEXT or
-        node.getType() is QueryParser.SELECTOR or
+        node.getType() is QueryParser.NAME or
+        node.getType() is QueryParser.FLOAT or
         node.getType() is QueryParser.INT):
-      token = node.getText()
+      token = self._GetQueryNodeText(node)
       token = self._MakeToken(token)
       return self._PostingsForToken(token)
 
@@ -498,6 +504,8 @@ class SimpleIndex(object):
     query = query.strip()
     if not query:
       return copy.copy(self._documents.values())
+    if not isinstance(query, unicode):
+      query = unicode(query, 'utf-8')
     query_tree = query_parser.Simplify(query_parser.Parse(query))
     postings = self._Evaluate(query_tree)
     return self._DocumentsForPostings(postings)
@@ -610,13 +618,31 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
                         [search_service_pb.SearchServiceError.INTERNAL_ERROR]))
       return
 
-    for index in self.__indexes.values():
+    response.mutable_status().set_code(
+        search_service_pb.SearchServiceError.OK)
+    if not len(self.__indexes):
+      return
+    keys, indexes = zip(*sorted(self.__indexes.iteritems(), key=lambda v: v[0]))
+    position = 0
+    params = request.params()
+    if params.has_start_index_name():
+      position = bisect.bisect_left(keys, params.start_index_name())
+      if (not params.include_start_index() and position < len(keys)
+          and keys[position] == params.start_index_name()):
+        position += 1
+    elif params.has_index_name_prefix():
+      position = bisect.bisect_left(keys, params.index_name_prefix())
+    if params.has_offset():
+      position += params.offset()
+    end_position = position + params.limit()
+    prefix = params.index_name_prefix()
+    for index in indexes[min(position, len(keys)):min(end_position, len(keys))]:
       index_spec = index.IndexSpec
+      if prefix and not index_spec.name().startswith(prefix):
+        break
       new_index_spec = response.add_index_metadata().mutable_index_spec()
       new_index_spec.set_name(index_spec.name())
       new_index_spec.set_consistency(index_spec.consistency())
-    response.mutable_status().set_code(
-        search_service_pb.SearchServiceError.OK)
 
   def _AddDocument(self, response, document, keys_only):
     doc = response.add_document()

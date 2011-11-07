@@ -66,6 +66,7 @@ is stored in memory before it is written.
 """
 
 
+import logging
 import os
 
 from google.appengine.api import lib_config

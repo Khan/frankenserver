@@ -263,6 +263,24 @@ class TaskHandler(webapp.RequestHandler):
 
   def post(self):
 
+
+    if 'X-AppEngine-TaskName' not in self.request.headers:
+      logging.critical('Detected an attempted XSRF attack. The header '
+                       '"X-AppEngine-Taskname" was not set.')
+      self.response.set_status(403)
+      return
+
+
+
+    in_prod = (
+        not self.request.environ.get("SERVER_SOFTWARE").startswith("Devel"))
+    if in_prod and self.request.environ.get("REMOTE_ADDR") != "0.1.0.2":
+      logging.critical('Detected an attempted XSRF attack. This request did '
+                       'not originate from Task Queue.')
+      self.response.set_status(403)
+      return
+
+
     headers = ["%s:%s" % (k, v) for k, v in self.request.headers.items()
                if k.lower().startswith("x-appengine-")]
     logging.info(", ".join(headers))

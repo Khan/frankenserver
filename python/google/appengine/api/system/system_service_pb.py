@@ -36,10 +36,12 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
 
   OK           =    0
   INTERNAL_ERROR =    1
+  BACKEND_REQUIRED =    2
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INTERNAL_ERROR",
+    2: "BACKEND_REQUIRED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

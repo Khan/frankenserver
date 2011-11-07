@@ -31,6 +31,7 @@ Contains API classes that forward to apiproxy.
 
 
 import datetime
+import re
 import string
 import sys
 
@@ -47,12 +48,17 @@ from google.appengine.runtime import apiproxy_errors
 __all__ = [
     'AtomField',
     'DateField',
+    'DeleteDocumentResponse',
     'Document',
     'Error',
     'Field',
     'FieldExpression',
     'HtmlField',
     'Index',
+    'IndexDocumentResponse',
+    'ListIndexesResponse',
+    'ListDocumentsResponse',
+    'NumberField',
     'OperationResult',
     'SearchRequest',
     'SearchResult',
@@ -74,6 +80,7 @@ _MAXIMUM_EXPRESSION_LENGTH = 5000
 
 _ASCII_PRINTABLE = frozenset(set(string.printable) - set(string.whitespace) |
                              set(' '))
+_FIELD_NAME_PATTERN = '^[A-Za-z][A-Za-z0-9_]*$'
 
 
 _PROTO_FIELDS_STRING_VALUE = frozenset([document_pb.FieldValue.TEXT,
@@ -259,7 +266,11 @@ def _ValidateString(value,
   if not value and not empty_ok:
     raise value_exception('%s must not be empty.' % name)
 
-  if len(value.encode('utf-8')) > max_len:
+  encoded_value = value
+  if isinstance(value, unicode):
+    encoded_value = value.encode('utf-8')
+
+  if len(encoded_value) > max_len:
     raise value_exception('%s must be under %d bytes.' % (name, max_len))
   return value
 
@@ -301,15 +312,14 @@ def _CheckIndexName(index_name):
 
 
 def _CheckFieldName(name):
-  """Checks field name is not too long, is ASCII printable and not reserved.
+  """Checks field name is not too long and matches field name pattern.
 
-  Non-space whitespace characters are also excluded from field names.
+  Field name pattern: "[A-Za-z][A-Za-z0-9_]*".
   """
   _ValidateString(name, 'name', _MAXIMUM_FIELD_NAME_LENGTH)
-  name_str = str(name)
-  _ValidatePrintableAsciiNotReserved(name, 'field name')
-  if _IsReservedFieldName(name_str):
-    raise ValueError('field name must not be of reserved pattern "_[A-Z]*')
+  if not re.match(_FIELD_NAME_PATTERN, name):
+    raise ValueError('field name "%s" should match pattern: %s' %
+                     (name, _FIELD_NAME_PATTERN))
   return name
 
 
@@ -325,18 +335,6 @@ def _CheckFieldNames(names):
   for name in names:
     _CheckFieldName(name)
   return names
-
-
-def _IsReservedFieldName(name):
-  """Returns true if name is of the form '_[A-Z]*'."""
-  if not name:
-    return False
-  if name[0] != '_':
-    return False
-  for char in name[1:]:
-    if not char.isupper():
-      return False
-  return True
 
 
 def _GetList(a_list):
@@ -414,18 +412,29 @@ def _Repr(class_instance, ordered_dictionary):
 
 
 def _ListIndexesResponseToList(response):
-  """Returns a list of IndexSpec from a list_indexes response."""
-  return [_NewIndexFromPb(index_spec.index_spec())
-          for index_spec in response.index_metadata_list()]
+  """Returns a ListIndexesResponse constructed from list_indexes response pb."""
+  return ListIndexesResponse(
+      indexes=[_NewIndexFromPb(index_spec.index_spec())
+               for index_spec in response.index_metadata_list()])
 
 
 
 
-def list_indexes(**kwargs):
+def list_indexes(namespace='', offset=None, limit=None,
+                 start_index_name=None, include_start_index=True,
+                 index_name_prefix=None, **kwargs):
   """Returns a list of available indexes.
 
+  Args:
+    namespace: The namespace of indexes to be returned.
+    offset: The offset of the first returned index.
+    limit: The number of indexes to return.
+    start_index_name: The name of the first index to be returned.
+    include_start_index: Whether or not to return the start index.
+    index_name_prefix: The prefix used to select returned indexes.
+
   Returns:
-    The list of available indexes.
+    The ListIndexesResponse containing a list of available indexes.
 
   Raises:
     InternalError: If the request fails on internal servers.
@@ -436,8 +445,31 @@ def list_indexes(**kwargs):
 
 
   request = search_service_pb.ListIndexesRequest()
+  params = request.mutable_params()
 
-  request.mutable_params()
+  if namespace is None:
+    namespace = namespace_manager.get_namespace()
+  if namespace is None:
+    namespace = ''
+  namespace_manager.validate_namespace(namespace, exception=ValueError)
+  params.set_namespace(namespace)
+  if offset is not None:
+    params.set_offset(_CheckInteger(offset, 'offset', zero_ok=True))
+  if limit is not None:
+    params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False))
+  if start_index_name is not None:
+    params.set_start_index_name(
+        _ValidateString(start_index_name, "start_index_name",
+                        _MAXIMUM_INDEX_NAME_LENGTH,
+                        empty_ok=False))
+  if include_start_index is not None:
+    params.set_include_start_index(bool(include_start_index))
+  if index_name_prefix is not None:
+    params.set_index_name_prefix(
+        _ValidateString(index_name_prefix, "index_name_prefix",
+                        _MAXIMUM_INDEX_NAME_LENGTH,
+                        empty_ok=False))
+
   response = search_service_pb.ListIndexesResponse()
   if 'app_id' in kwargs:
     request.set_app_id(kwargs.get('app_id'))
@@ -461,9 +493,7 @@ class Field(object):
 
     Args:
       name: The name of the field. Field names must have maximum length
-        _MAXIMUM_FIELD_NAME_LENGTH, be ASCII printable and not matched
-        reserved pattern '_[A-Z]*' nor start with '!'. Further, field
-        names cannot contain non-space whitespace characters.
+        _MAXIMUM_FIELD_NAME_LENGTH and match pattern "[A-Za-z][A-Za-z0-9_]*".
       value: The value of the field which can be a str, unicode or date.
       language: The ISO 693-1 two letter code of the language used in the value.
         See http://www.sil.org/iso639-3/codes.asp?order=639_1&letter=%25 for a
@@ -563,7 +593,10 @@ class TextField(Field):
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.TEXT)
-    field_value_pb.set_string_value(self.value)
+    if isinstance(self.value, unicode):
+      field_value_pb.set_string_value(self.value.encode('utf-8'))
+    else:
+      field_value_pb.set_string_value(self.value)
 
 
 class HtmlField(Field):
@@ -652,6 +685,33 @@ class DateField(Field):
     field_value_pb.set_string_value(self.value.isoformat())
 
 
+class NumberField(Field):
+  """A Field that has a numeric value.
+
+  The following example shows a number field named size:
+    NumberField(name='size', value=10)
+  """
+
+  def __init__(self, name, value=None):
+    """Initializer.
+
+    Args:
+      name: The name of the field.
+      value: A numeric value.
+
+    Raises:
+      TypeError: If value is not numeric.
+    """
+    Field.__init__(self, name, value)
+
+  def _CheckValue(self, value):
+    return _CheckNumber(value, 'field value')
+
+  def _CopyValueToProtocolBuffer(self, field_value_pb):
+    field_value_pb.set_type(document_pb.FieldValue.NUMBER)
+    field_value_pb.set_string_value(str(self.value))
+
+
 def _GetValue(value_pb):
   """Gets the value from the value_pb."""
   if value_pb.type() in _PROTO_FIELDS_STRING_VALUE:
@@ -662,6 +722,10 @@ def _GetValue(value_pb):
     if value_pb.has_string_value():
       return datetime.datetime.strptime(value_pb.string_value(),
                                         '%Y-%m-%d').date()
+    return None
+  if value_pb.type() == document_pb.FieldValue.NUMBER:
+    if value_pb.has_string_value():
+      return float(value_pb.string_value())
     return None
   raise TypeError('unknown FieldValue type %d' % value_pb.type())
 
@@ -682,6 +746,8 @@ def _NewFieldFromPb(pb):
     return AtomField(name, value, lang)
   elif val_type == document_pb.FieldValue.DATE:
     return DateField(name, value)
+  elif val_type == document_pb.FieldValue.NUMBER:
+    return NumberField(name, value)
   return Error(
       OperationResult(OperationResult.INVALID_REQUEST,
                       'Unknown field value type %d' % val_type))
@@ -1027,22 +1093,42 @@ class SearchRequest(object):
   For example, the following code fragment requests a search for
   documents where 'first' occurs in subject and 'good' occurs anywhere,
   returning at most 20 documents, starting the search from 'cursor token',
-  returning another single cursor for the the results, sorting by subject in
+  returning another single cursor for the response, sorting by subject in
   descending order, returning the author, subject, and summary fields as well
   as a snippeted field content.
 
     SearchRequest(query='subject:first good',
                   limit=20,
-                  cursor='cursor token',
-                  cursor_type=SearchRequest.SINGLE,
+                  cursor=cursor_from_previous_response,
+                  cursor_type=SearchRequest.RESPONSE_CURSOR,
                   sort_specs=[SortSpec(expression='subject', default_value='')],
                   returned_fields=['author', 'subject', 'summary'],
                   snippeted_fields=['content'])
+
+  The following code fragment shows how to use a response cursor
+
+    response = index.search(
+        SearchRequest(cursor=previous_cursor,
+                      cursor_type=SearchRequest.RESPONSE_CURSOR))
+
+    previous_cursor = response.cursor
+    for result in response:
+       # process result
+
+  The following code fragment shows how to use a result cursor
+
+    response = index.search(
+        SearchRequest(cursor=previous_cursor,
+                      cursor_type=SearchRequest.RESULT_CURSOR))
+
+    for result in response:
+       previous_cursor = result.cursor
   """
 
-  SINGLE, PER_RESULT = ('SINGLE', 'PER_RESULT')
 
-  _CURSOR_TYPES = frozenset([SINGLE, PER_RESULT])
+  RESPONSE_CURSOR, RESULT_CURSOR = ('RESPONSE_CURSOR', 'RESULT_CURSOR')
+
+  _CURSOR_TYPES = frozenset([RESPONSE_CURSOR, RESULT_CURSOR])
   _MAXIMUM_QUERY_LENGTH = 1000
   _MAXIMUM_LIMIT = 800
   _MAXIMUM_MATCHED_COUNT_ACCURACY = 10000
@@ -1082,10 +1168,10 @@ class SearchRequest(object):
         through index updates.
       cursor_type: The type of cursor returned results will have, if any.
         Possible types are:
-          SINGLE: A single cursor will be returned to continue from the end of
-            the results.
-          PER_RESULT: One cursor will be returned with each search result, so
-            you can continue after any result.
+          RESPONSE_CURSOR: A single cursor will be returned in the response
+          to continue from the end of the results.
+          RESULT_CURSOR: One cursor will be returned with each search
+          result, so you can continue after any result.
       sort_specs: An iterable of SortSpecs specifying a multi-dimensional sort
         over the search results.
       returned_fields: An iterable of names of fields to return in search
@@ -1154,12 +1240,19 @@ class SearchRequest(object):
 
   @property
   def cursor(self):
-    """Returns a cursor from a previous set of search results."""
+    """Returns a cursor from a previous set of search results.
+
+    The search will be continued from this cursor.
+    """
     return self._cursor
 
   @property
   def cursor_type(self):
-    """Returns the type of cursor to return with the search results."""
+    """Returns the type of cursor to return.
+
+    This can be NONE, a single RESPONSE_CURSOR, or a RESULT_CURSOR with each
+    result.
+    """
     return self._cursor_type
 
   @property
@@ -1189,7 +1282,10 @@ class SearchRequest(object):
     if query is None:
       raise ValueError('query must not be null')
     if query.strip():
-      query_parser.Parse(query)
+      if isinstance(query, unicode):
+        query_parser.Parse(query)
+      else:
+        query_parser.Parse(unicode(query, 'utf-8'))
     return query
 
   def _CheckLimit(self, limit):
@@ -1235,18 +1331,22 @@ class SearchRequest(object):
 
 _CURSOR_TYPE_PB_MAP = {
   None: search_service_pb.SearchParams.NONE,
-  SearchRequest.SINGLE: search_service_pb.SearchParams.SINGLE,
-  SearchRequest.PER_RESULT: search_service_pb.SearchParams.PER_RESULT
+  SearchRequest.RESPONSE_CURSOR: search_service_pb.SearchParams.SINGLE,
+  SearchRequest.RESULT_CURSOR: search_service_pb.SearchParams.PER_RESULT
   }
 
 
 def _CopySearchRequestToProtocolBuffer(request, pb):
   """Copies SearchRequest to search_service_pb.SearchParams proto buffer."""
-  pb.set_query(request.query)
+  if isinstance(request.query, unicode):
+    pb.set_query(request.query.encode('utf-8'))
+  else:
+    pb.set_query(request.query)
   if request.cursor:
     pb.set_cursor(request.cursor)
   pb.set_cursor_type(_CURSOR_TYPE_PB_MAP.get(request.cursor_type))
-  pb.set_offset(request.offset)
+  if request.offset:
+    pb.set_offset(request.offset)
   pb.set_limit(request.limit)
   pb.set_matched_count_accuracy(request.matched_count_accuracy)
   if (request.returned_fields or request.snippeted_fields
@@ -1338,7 +1438,14 @@ class SearchResult(object):
 
   @property
   def cursor(self):
-    """A cursor associated with a result, a continued search starting point."""
+    """A cursor associated with a result, a continued search starting point.
+
+    To get this cursor to appear, set the SearchRequest.cursor_type to
+    SearchRequest.RESULT_CURSOR, otherwise this will be None.
+
+    Returns:
+      The result cursor.
+    """
     return self._cursor
 
   def _CheckSortScores(self, sort_scores):
@@ -1359,10 +1466,104 @@ class SearchResult(object):
                         ('cursor', self.cursor)])
 
 
+class IndexDocumentResponse(object):
+  """Represents the result of executing a index document request.
+
+  For example, the following code shows how a response could be used
+  to determine which documents were successfully indexed or not. The
+  ids and statuses are in the order documents were supplied.
+
+  response = index.index_documents(documents)
+  for (result, doc_id) in zip(response.results, response.document_ids):
+    if result.code == OK:
+      print "doc with ID", doc_id, "indexed successfully"
+    else:
+     print "Failed to index doc with ID", doc_id
+  """
+
+  def __init__(self, results=None, document_ids=None):
+    """Initializer.
+
+    Args:
+      results: The list of OperationResult returned from executing
+        a index document request.
+      document_ids: The document ids of the documents indexed in the order
+        of the request. These ids could have been assigned by the service
+        if no document id was provided for a document in the request.
+
+    Raises:
+      TypeError: If any of the parameters have an invalid type, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have an invalid value.
+    """
+    self._results = _GetList(results)
+    self._document_ids = _GetList(document_ids)
+
+  def __iter__(self):
+    for result in self.results:
+      yield result
+
+  @property
+  def results(self):
+    """Returns list of OperationResult for indexing each document."""
+    return self._results
+
+  @property
+  def document_ids(self):
+    """Returns a list of document IDs of documents indexed."""
+    return self._document_ids
+
+  def __repr__(self):
+    return _Repr(self, [('results', self.results),
+                        ('document_ids', self.document_ids)])
+
+
+class DeleteDocumentResponse(object):
+  """Represents the result of executing a delete document request.
+
+  For example, the following code shows how a response could be used
+  to determine which documents were successfully deleted or not.
+
+  response = index.delete_documents(document_ids)
+  for (result, doc_id) in zip(response.results, document_ids):
+    if result.code == OK:
+      print "doc with ID", doc_id, "successfully deleted"
+    else:
+     print "Failed to delete doc with ID", doc_id
+  """
+
+  def __init__(self, results=None):
+    """Initializer.
+
+    Args:
+      results: The list of OperationResult returned from executing
+        a delete document request.
+
+    Raises:
+      TypeError: If any of the parameters have an invalid type, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have an invalid value.
+    """
+    self._results = _GetList(results)
+
+  def __iter__(self):
+    for result in self.results:
+      yield result
+
+  @property
+  def results(self):
+    """Returns list of OperationResult for deleting each document."""
+    return list(self._results)
+
+  def __repr__(self):
+    return _Repr(self, [('results', self.results)])
+
+
 class SearchResponse(object):
   """Represents the result of executing a search request."""
 
-  def __init__(self, matched_count, results=None, operation_result=None):
+  def __init__(self, matched_count, results=None, operation_result=None,
+               cursor=None):
     """Initializer.
 
     Args:
@@ -1371,6 +1572,8 @@ class SearchResponse(object):
       results: The list of SearchResult returned from executing a search
         request.
       matched_count: The number of documents matched by the query.
+      cursor: A cursor to continue the search from the end of the
+        search results.
 
     Raises:
       TypeError: If any of the parameters have an invalid type, or an unknown
@@ -1380,6 +1583,7 @@ class SearchResponse(object):
     self._operation_result = operation_result
     self._matched_count = _CheckInteger(matched_count, 'matched_count')
     self._results = _GetList(results)
+    self._cursor = cursor
 
   def __iter__(self):
 
@@ -1415,10 +1619,97 @@ class SearchResponse(object):
     """Returns the count of documents returned in results."""
     return len(self._results)
 
+  @property
+  def cursor(self):
+    """Returns a cursor that can be used to continue search from last result.
+
+    This corresponds to setting SearchRequest.cursor_type to
+    SearchRequest.RESPONSE_CURSOR, otherwise this will be None.
+
+    Returns:
+      The response cursor.
+    """
+    return self._cursor
+
   def __repr__(self):
     return _Repr(self, [('operation_result', self.operation_result),
                         ('results', self.results),
-                        ('matched_count', self.matched_count)])
+                        ('matched_count', self.matched_count),
+                        ('cursor', self.cursor)])
+
+
+class ListDocumentsResponse(object):
+  """Represents the result of executing a list documents request.
+
+  For example, the following code shows how a response could be used
+  to determine which documents were successfully deleted or not.
+
+  response = index.list_documents()
+  for document in response:
+    print "document ", document
+  """
+
+  def __init__(self, documents=None):
+    """Initializer.
+
+    Args:
+      documents: The documents returned from an index ordered by Id.
+
+    Raises:
+      TypeError: If any of the parameters have an invalid type, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have an invalid value.
+    """
+    self._documents = _GetList(documents)
+
+  def __iter__(self):
+    for document in self.documents:
+      yield document
+
+  @property
+  def documents(self):
+    """Returns a list of documents ordered by Id from the index."""
+    return self._documents
+
+  def __repr__(self):
+    return _Repr(self, [('documents', self.documents)])
+
+
+class ListIndexesResponse(object):
+  """Represents the result of executing a list indexes request.
+
+  For example, the following code shows how the response can be
+  used to get IndexSpec objects listed.
+
+  response = search.list_indexes()
+  for index in response:
+    print "index ", index.name
+  """
+
+  def __init__(self, indexes=None):
+    """Initializer.
+
+    Args:
+      indexes: A list of IndexSpec of available indexes.
+
+    Raises:
+      TypeError: If any of the parameters have an invalid type, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have an invalid value.
+    """
+    self._indexes = _GetList(indexes)
+
+  def __iter__(self):
+    for index in self.indexes:
+      yield index
+
+  @property
+  def indexes(self):
+    """Returns a list of IndexSpec of available indexes."""
+    return self._indexes
+
+  def __repr__(self):
+    return _Repr(self, [('indexes', self.indexes)])
 
 
 class OperationResult(object):
@@ -1620,6 +1911,15 @@ class Index(object):
     return _Repr(self, [('name', self.name), ('namespace', self.namespace),
                         ('consistency', self.consistency)])
 
+  def _NewIndexDocumentResponse(self, response):
+    return IndexDocumentResponse(
+        results=_NewOperationResultListFromPb(response.status_list()),
+        document_ids=response.doc_id_list())
+
+  def _CheckIndexResponse(self, response):
+    _CheckResponseList(response.results)
+    return response
+
   def index_documents(self, documents):
     """Index the collection of documents.
 
@@ -1637,7 +1937,7 @@ class Index(object):
         was not the same as requested.
 
     Returns:
-      Iterable of OperationResult.
+      IndexDocumentResponse
     """
 
     if isinstance(documents, basestring):
@@ -1665,16 +1965,23 @@ class Index(object):
       apiproxy_stub_map.MakeSyncCall('search', 'IndexDocument', request,
                                      response)
     except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(
-          e, _NewOperationResultListFromPb(response.status_list()))
+      raise _ToSearchError(e, self._NewIndexDocumentResponse(response))
 
-    response_list = _NewOperationResultListFromPb(response.status_list())
+    index_response = self._NewIndexDocumentResponse(response)
 
     if response.status_size() != len(docs):
       _RaiseInternalError('did not index requested number of documents',
-                          response_list)
+                          index_response)
 
-    return _CheckResponseList(response_list)
+    return self._CheckIndexResponse(index_response)
+
+  def _NewDeleteDocumentResponse(self, response):
+    return DeleteDocumentResponse(
+        results=_NewOperationResultListFromPb(response.status_list()))
+
+  def _CheckDeleteResponse(self, response):
+    _CheckResponseList(response.results)
+    return response
 
   def delete_documents(self, document_ids):
     """Delete the documents with the corresponding document ids from the index.
@@ -1694,7 +2001,7 @@ class Index(object):
         was not the same as requested.
 
     Returns:
-      Iterable of OperationResult.
+      DeleteDocumentResponse.
     """
     if isinstance(document_ids, basestring):
       doc_ids = [document_ids]
@@ -1718,16 +2025,15 @@ class Index(object):
       apiproxy_stub_map.MakeSyncCall('search', 'DeleteDocument', request,
                                      response)
     except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(
-          e, _NewOperationResultListFromPb(response.status_list()))
+      raise _ToSearchError(e, self._NewDeleteDocumentResponse(response))
 
-    response_list = _NewOperationResultListFromPb(response.status_list())
+    delete_response = self._NewDeleteDocumentResponse(response)
 
     if response.status_size() != len(doc_ids):
       _RaiseInternalError('did not delete requested number of documents',
-                          response_list)
+                          delete_response)
 
-    return _CheckResponseList(response_list)
+    return _CheckResponseList(delete_response)
 
   def _NewSearchResponse(self, response):
     """Returns a SearchResponse populated from a search_service response pb."""
@@ -1743,9 +2049,13 @@ class Index(object):
               expressions=[_NewFieldFromPb(f) for f in
                            result_pb.expression_list()],
               cursor=cursor))
+    response_cursor = None
+    if response.has_cursor():
+      response_cursor = response.cursor()
     return SearchResponse(
         operation_result=_NewOperationResultFromPb(response.status()),
-        results=results, matched_count=response.matched_count())
+        results=results, matched_count=response.matched_count(),
+        cursor=response_cursor)
 
   def search(self, search_request):
     """Search the index for documents matching the query in the search_request.
@@ -1782,12 +2092,12 @@ class Index(object):
     return _CheckStatus(response.status(), self._NewSearchResponse(response))
 
   def _NewListDocumentsResponse(self, response):
-    """Returns a list of documents from the list_documents response."""
+    """Returns a ListDocumentsResponse from the list_documents response pb."""
     documents = []
     for doc_proto in response.document_list():
       documents.append(_NewDocumentFromPb(doc_proto))
 
-    return documents
+    return ListDocumentsResponse(documents=documents)
 
   def list_documents(self, start_doc_id=None, include_start_doc=True,
                      limit=100, keys_only=False, **kwargs):
@@ -1802,7 +2112,7 @@ class Index(object):
       keys_only: If true, the documents returned only contain their keys.
 
     Returns:
-      A list of Documents, ordered by Id.
+      A ListDocumentsResponse containing a list of Documents, ordered by Id.
 
     Raises:
       Error: Some error occurred processing the request.

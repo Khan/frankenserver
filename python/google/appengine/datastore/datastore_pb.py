@@ -4543,6 +4543,7 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.key_ = []
+    self.version_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -4581,11 +4582,27 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_cost(self): return self.has_cost_
 
+  def version_size(self): return len(self.version_)
+  def version_list(self): return self.version_
+
+  def version(self, i):
+    return self.version_[i]
+
+  def set_version(self, i, x):
+    self.version_[i] = x
+
+  def add_version(self, x):
+    self.version_.append(x)
+
+  def clear_version(self):
+    self.version_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     if (x.has_cost()): self.mutable_cost().MergeFrom(x.cost())
+    for i in xrange(x.version_size()): self.add_version(x.version(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -4594,6 +4611,9 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_cost_ != x.has_cost_: return 0
     if self.has_cost_ and self.cost_ != x.cost_: return 0
+    if len(self.version_) != len(x.version_): return 0
+    for e1, e2 in zip(self.version_, x.version_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4608,6 +4628,8 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSize())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n
 
   def ByteSizePartial(self):
@@ -4615,11 +4637,14 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSizePartial())
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSizePartial())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n
 
   def Clear(self):
     self.clear_key()
     self.clear_cost()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.key_)):
@@ -4630,6 +4655,9 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.cost_.ByteSize())
       self.cost_.OutputUnchecked(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_[i])
 
   def OutputPartial(self, out):
     for i in xrange(len(self.key_)):
@@ -4640,6 +4668,9 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.cost_.ByteSizePartial())
       self.cost_.OutputPartial(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4655,6 +4686,9 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_cost().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.add_version(d.getVarInt64())
         continue
 
 
@@ -4676,6 +4710,12 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"cost <\n"
       res+=self.cost_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    cnt=0
+    for e in self.version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
     return res
 
 
@@ -4684,18 +4724,21 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
 
   kkey = 1
   kcost = 2
+  kversion = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "key",
     2: "cost",
-  }, 2)
+    3: "version",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -5284,6 +5327,7 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
   cost_ = None
 
   def __init__(self, contents=None):
+    self.version_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -5306,15 +5350,34 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_cost(self): return self.has_cost_
 
+  def version_size(self): return len(self.version_)
+  def version_list(self): return self.version_
+
+  def version(self, i):
+    return self.version_[i]
+
+  def set_version(self, i, x):
+    self.version_[i] = x
+
+  def add_version(self, x):
+    self.version_.append(x)
+
+  def clear_version(self):
+    self.version_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_cost()): self.mutable_cost().MergeFrom(x.cost())
+    for i in xrange(x.version_size()): self.add_version(x.version(i))
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_cost_ != x.has_cost_: return 0
     if self.has_cost_ and self.cost_ != x.cost_: return 0
+    if len(self.version_) != len(x.version_): return 0
+    for e1, e2 in zip(self.version_, x.version_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -5325,27 +5388,38 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSize())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSizePartial())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n
 
   def Clear(self):
     self.clear_cost()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     if (self.has_cost_):
       out.putVarInt32(10)
       out.putVarInt32(self.cost_.ByteSize())
       self.cost_.OutputUnchecked(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_[i])
 
   def OutputPartial(self, out):
     if (self.has_cost_):
       out.putVarInt32(10)
       out.putVarInt32(self.cost_.ByteSizePartial())
       self.cost_.OutputPartial(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5355,6 +5429,9 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_cost().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.add_version(d.getVarInt64())
         continue
 
 
@@ -5368,6 +5445,12 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"cost <\n"
       res+=self.cost_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    cnt=0
+    for e in self.version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
     return res
 
 
@@ -5375,16 +5458,19 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kcost = 1
+  kversion = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "cost",
-  }, 1)
+    3: "version",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6744,11 +6830,133 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.BeginTransactionRequest'
+class CommitResponse_Version(ProtocolBuffer.ProtocolMessage):
+  has_root_entity_key_ = 0
+  has_version_ = 0
+  version_ = 0
+
+  def __init__(self, contents=None):
+    self.root_entity_key_ = Reference()
+    if contents is not None: self.MergeFromString(contents)
+
+  def root_entity_key(self): return self.root_entity_key_
+
+  def mutable_root_entity_key(self): self.has_root_entity_key_ = 1; return self.root_entity_key_
+
+  def clear_root_entity_key(self):self.has_root_entity_key_ = 0; self.root_entity_key_.Clear()
+
+  def has_root_entity_key(self): return self.has_root_entity_key_
+
+  def version(self): return self.version_
+
+  def set_version(self, x):
+    self.has_version_ = 1
+    self.version_ = x
+
+  def clear_version(self):
+    if self.has_version_:
+      self.has_version_ = 0
+      self.version_ = 0
+
+  def has_version(self): return self.has_version_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_root_entity_key()): self.mutable_root_entity_key().MergeFrom(x.root_entity_key())
+    if (x.has_version()): self.set_version(x.version())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_root_entity_key_ != x.has_root_entity_key_: return 0
+    if self.has_root_entity_key_ and self.root_entity_key_ != x.root_entity_key_: return 0
+    if self.has_version_ != x.has_version_: return 0
+    if self.has_version_ and self.version_ != x.version_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_root_entity_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: root_entity_key not set.')
+    elif not self.root_entity_key_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_version_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: version not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.root_entity_key_.ByteSize())
+    n += self.lengthVarInt64(self.version_)
+    return n + 2
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_root_entity_key_):
+      n += 1
+      n += self.lengthString(self.root_entity_key_.ByteSizePartial())
+    if (self.has_version_):
+      n += 1
+      n += self.lengthVarInt64(self.version_)
+    return n
+
+  def Clear(self):
+    self.clear_root_entity_key()
+    self.clear_version()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(34)
+    out.putVarInt32(self.root_entity_key_.ByteSize())
+    self.root_entity_key_.OutputUnchecked(out)
+    out.putVarInt32(40)
+    out.putVarInt64(self.version_)
+
+  def OutputPartial(self, out):
+    if (self.has_root_entity_key_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.root_entity_key_.ByteSizePartial())
+      self.root_entity_key_.OutputPartial(out)
+    if (self.has_version_):
+      out.putVarInt32(40)
+      out.putVarInt64(self.version_)
+
+  def TryMerge(self, d):
+    while 1:
+      tt = d.getVarInt32()
+      if tt == 28: break
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_root_entity_key().TryMerge(tmp)
+        continue
+      if tt == 40:
+        self.set_version(d.getVarInt64())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_root_entity_key_:
+      res+=prefix+"root_entity_key <\n"
+      res+=self.root_entity_key_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
+    return res
+
 class CommitResponse(ProtocolBuffer.ProtocolMessage):
   has_cost_ = 0
   cost_ = None
 
   def __init__(self, contents=None):
+    self.version_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -6771,46 +6979,81 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_cost(self): return self.has_cost_
 
+  def version_size(self): return len(self.version_)
+  def version_list(self): return self.version_
+
+  def version(self, i):
+    return self.version_[i]
+
+  def mutable_version(self, i):
+    return self.version_[i]
+
+  def add_version(self):
+    x = CommitResponse_Version()
+    self.version_.append(x)
+    return x
+
+  def clear_version(self):
+    self.version_ = []
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_cost()): self.mutable_cost().MergeFrom(x.cost())
+    for i in xrange(x.version_size()): self.add_version().CopyFrom(x.version(i))
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_cost_ != x.has_cost_: return 0
     if self.has_cost_ and self.cost_ != x.cost_: return 0
+    if len(self.version_) != len(x.version_): return 0
+    for e1, e2 in zip(self.version_, x.version_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_cost_ and not self.cost_.IsInitialized(debug_strs)): initialized = 0
+    for p in self.version_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSize())
+    n += 2 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.version_[i].ByteSize()
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSizePartial())
+    n += 2 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.version_[i].ByteSizePartial()
     return n
 
   def Clear(self):
     self.clear_cost()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     if (self.has_cost_):
       out.putVarInt32(10)
       out.putVarInt32(self.cost_.ByteSize())
       self.cost_.OutputUnchecked(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(27)
+      self.version_[i].OutputUnchecked(out)
+      out.putVarInt32(28)
 
   def OutputPartial(self, out):
     if (self.has_cost_):
       out.putVarInt32(10)
       out.putVarInt32(self.cost_.ByteSizePartial())
       self.cost_.OutputPartial(out)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(27)
+      self.version_[i].OutputPartial(out)
+      out.putVarInt32(28)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6820,6 +7063,9 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_cost().TryMerge(tmp)
+        continue
+      if tt == 27:
+        self.add_version().TryMerge(d)
         continue
 
 
@@ -6833,6 +7079,14 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"cost <\n"
       res+=self.cost_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    cnt=0
+    for e in self.version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("Version%s {\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+"}\n"
+      cnt+=1
     return res
 
 
@@ -6840,16 +7094,25 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kcost = 1
+  kVersionGroup = 3
+  kVersionroot_entity_key = 4
+  kVersionversion = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "cost",
-  }, 1)
+    3: "Version",
+    4: "root_entity_key",
+    5: "version",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STARTGROUP,
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6858,4 +7121,4 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse']
+__all__ = ['Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','RunCompiledQueryRequest','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse','CommitResponse_Version']

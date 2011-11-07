@@ -88,6 +88,16 @@ Options:
                              lowest port value to use when choosing ports. If
                              set to 0, select random ports.
                              (Default 9000)
+  --mysql_host=HOSTNAME      MySQL database host that the rdbms API will use.
+                             (Default localhost)
+  --mysql_port=PORT          MySQL port to connect to.
+                             (Default 3306)
+  --mysql_user=USER          MySQL user to connect as.
+                             (Default '')
+  --mysql_password=PASSWORD  MySQL password to use.
+                             (Default '')
+  --mysql_socket=PATH        MySQL Unix socket file path.
+                             (Default '%(mysql_socket)s')
   --require_indexes          Disallows queries that require composite indexes
                              not defined in index.yaml.
   --show_mail_body           Log the body of emails in mail stub.
