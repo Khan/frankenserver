@@ -190,8 +190,10 @@ class HTTPConnection:
     line = '\r\n\t'.join([str(line) for line in lines])
     self.headers.append((header, line))
 
-  def endheaders(self):
-    pass
+  def endheaders(self, message_body=None):
+
+    if message_body is not None:
+      self.send(message_body)
 
   def set_debuglevel(self, level=None):
     pass

@@ -1928,8 +1928,8 @@ goog.dom.getOwnerDocument = function(node) {
   return node.nodeType == goog.dom.NodeType.DOCUMENT ? node : node.ownerDocument || node.document
 };
 goog.dom.getFrameContentDocument = function(frame) {
-  var doc;
-  return doc = goog.userAgent.WEBKIT ? frame.document || frame.contentWindow.document : frame.contentDocument || frame.contentWindow.document
+  var doc = frame.contentDocument || frame.contentWindow.document;
+  return doc
 };
 goog.dom.getFrameContentWindow = function(frame) {
   return frame.contentWindow || goog.dom.getWindow_(goog.dom.getFrameContentDocument(frame))
@@ -2095,6 +2095,13 @@ goog.dom.getAncestor = function(element, matcher, opt_includeNode, opt_maxSearch
     }
     element = element.parentNode;
     steps++
+  }
+  return null
+};
+goog.dom.getActiveElement = function(doc) {
+  try {
+    return doc && doc.activeElement
+  }catch(e) {
   }
   return null
 };
@@ -3326,7 +3333,7 @@ goog.reflect.canAccessProperty = function(obj, prop) {
   return false
 };
 goog.events = {};
-goog.events.BrowserFeature = {HAS_W3C_BUTTON:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), SET_KEY_CODE_TO_PREVENT_DEFAULT:goog.userAgent.IE && !goog.userAgent.isVersion("8")};
+goog.events.BrowserFeature = {HAS_W3C_BUTTON:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), HAS_W3C_EVENT_SUPPORT:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), SET_KEY_CODE_TO_PREVENT_DEFAULT:goog.userAgent.IE && !goog.userAgent.isVersion("8")};
 goog.events.Event = function(type, opt_target) {
   goog.Disposable.call(this);
   this.type = type;
@@ -3354,7 +3361,7 @@ goog.events.Event.preventDefault = function(e) {
 };
 goog.events.EventType = {CLICK:"click", DBLCLICK:"dblclick", MOUSEDOWN:"mousedown", MOUSEUP:"mouseup", MOUSEOVER:"mouseover", MOUSEOUT:"mouseout", MOUSEMOVE:"mousemove", SELECTSTART:"selectstart", KEYPRESS:"keypress", KEYDOWN:"keydown", KEYUP:"keyup", BLUR:"blur", FOCUS:"focus", DEACTIVATE:"deactivate", FOCUSIN:goog.userAgent.IE ? "focusin" : "DOMFocusIn", FOCUSOUT:goog.userAgent.IE ? "focusout" : "DOMFocusOut", CHANGE:"change", SELECT:"select", SUBMIT:"submit", INPUT:"input", PROPERTYCHANGE:"propertychange", 
 DRAGSTART:"dragstart", DRAGENTER:"dragenter", DRAGOVER:"dragover", DRAGLEAVE:"dragleave", DROP:"drop", TOUCHSTART:"touchstart", TOUCHMOVE:"touchmove", TOUCHEND:"touchend", TOUCHCANCEL:"touchcancel", CONTEXTMENU:"contextmenu", ERROR:"error", HELP:"help", LOAD:"load", LOSECAPTURE:"losecapture", READYSTATECHANGE:"readystatechange", RESIZE:"resize", SCROLL:"scroll", UNLOAD:"unload", HASHCHANGE:"hashchange", PAGEHIDE:"pagehide", PAGESHOW:"pageshow", POPSTATE:"popstate", COPY:"copy", PASTE:"paste", CUT:"cut", 
-BEFORECOPY:"beforecopy", BEFORECUT:"beforecut", BEFOREPASTE:"beforepaste", MESSAGE:"message", CONNECT:"connect"};
+BEFORECOPY:"beforecopy", BEFORECUT:"beforecut", BEFOREPASTE:"beforepaste", MESSAGE:"message", CONNECT:"connect", TRANSITIONEND:goog.userAgent.WEBKIT ? "webkitTransitionEnd" : goog.userAgent.OPERA ? "oTransitionEnd" : "transitionend"};
 goog.events.BrowserEvent = function(opt_e, opt_currentTarget) {
   opt_e && this.init(opt_e, opt_currentTarget)
 };
@@ -3445,70 +3452,6 @@ goog.events.EventWrapper.prototype.listen = function() {
 };
 goog.events.EventWrapper.prototype.unlisten = function() {
 };
-goog.structs.SimplePool = function(initialCount, maxCount) {
-  goog.Disposable.call(this);
-  this.maxCount_ = maxCount;
-  this.freeQueue_ = [];
-  this.createInitial_(initialCount)
-};
-goog.inherits(goog.structs.SimplePool, goog.Disposable);
-goog.structs.SimplePool.prototype.createObjectFn_ = null;
-goog.structs.SimplePool.prototype.disposeObjectFn_ = null;
-goog.structs.SimplePool.prototype.setCreateObjectFn = function(createObjectFn) {
-  this.createObjectFn_ = createObjectFn
-};
-goog.structs.SimplePool.prototype.getObject = function() {
-  return this.freeQueue_.length ? this.freeQueue_.pop() : this.createObject()
-};
-goog.structs.SimplePool.prototype.releaseObject = function(obj) {
-  this.freeQueue_.length < this.maxCount_ ? this.freeQueue_.push(obj) : this.disposeObject(obj)
-};
-goog.structs.SimplePool.prototype.createInitial_ = function(initialCount) {
-  if(initialCount > this.maxCount_) {
-    throw Error("[goog.structs.SimplePool] Initial cannot be greater than max");
-  }
-  for(var i = 0;i < initialCount;i++) {
-    this.freeQueue_.push(this.createObject())
-  }
-};
-goog.structs.SimplePool.prototype.createObject = function() {
-  return this.createObjectFn_ ? this.createObjectFn_() : {}
-};
-goog.structs.SimplePool.prototype.disposeObject = function(obj) {
-  if(this.disposeObjectFn_) {
-    this.disposeObjectFn_(obj)
-  }else {
-    if(goog.isObject(obj)) {
-      if(goog.isFunction(obj.dispose)) {
-        obj.dispose()
-      }else {
-        for(var i in obj) {
-          delete obj[i]
-        }
-      }
-    }
-  }
-};
-goog.structs.SimplePool.prototype.disposeInternal = function() {
-  goog.structs.SimplePool.superClass_.disposeInternal.call(this);
-  for(var freeQueue = this.freeQueue_;freeQueue.length;) {
-    this.disposeObject(freeQueue.pop())
-  }
-  delete this.freeQueue_
-};
-goog.userAgent.jscript = {};
-goog.userAgent.jscript.ASSUME_NO_JSCRIPT = false;
-goog.userAgent.jscript.init_ = function() {
-  var hasScriptEngine = "ScriptEngine" in goog.global;
-  goog.userAgent.jscript.DETECTED_HAS_JSCRIPT_ = hasScriptEngine && goog.global.ScriptEngine() == "JScript";
-  goog.userAgent.jscript.DETECTED_VERSION_ = goog.userAgent.jscript.DETECTED_HAS_JSCRIPT_ ? goog.global.ScriptEngineMajorVersion() + "." + goog.global.ScriptEngineMinorVersion() + "." + goog.global.ScriptEngineBuildVersion() : "0"
-};
-goog.userAgent.jscript.ASSUME_NO_JSCRIPT || goog.userAgent.jscript.init_();
-goog.userAgent.jscript.HAS_JSCRIPT = goog.userAgent.jscript.ASSUME_NO_JSCRIPT ? false : goog.userAgent.jscript.DETECTED_HAS_JSCRIPT_;
-goog.userAgent.jscript.VERSION = goog.userAgent.jscript.ASSUME_NO_JSCRIPT ? "0" : goog.userAgent.jscript.DETECTED_VERSION_;
-goog.userAgent.jscript.isVersion = function(version) {
-  return goog.string.compareVersions(goog.userAgent.jscript.VERSION, version) >= 0
-};
 goog.events.Listener = function() {
 };
 goog.events.Listener.counter_ = 0;
@@ -3538,79 +3481,7 @@ goog.events.Listener.prototype.init = function(listener, proxy, src, type, captu
 goog.events.Listener.prototype.handleEvent = function(eventObject) {
   return this.isFunctionListener_ ? this.listener.call(this.handler || this.src, eventObject) : this.listener.handleEvent.call(this.listener, eventObject)
 };
-goog.events.pools = {};
 goog.events.ASSUME_GOOD_GC = false;
-(function() {
-  function getObject() {
-    return{count_:0, remaining_:0}
-  }
-  function getArray() {
-    return[]
-  }
-  function getProxy() {
-    var f = function(eventObject) {
-      var v = proxyCallbackFunction.call(f.src, f.key, eventObject);
-      if(!v) {
-        return v
-      }
-    };
-    return f
-  }
-  function getListener() {
-    return new goog.events.Listener
-  }
-  function getEvent() {
-    return new goog.events.BrowserEvent
-  }
-  var BAD_GC = !goog.events.ASSUME_GOOD_GC && goog.userAgent.jscript.HAS_JSCRIPT && !goog.userAgent.jscript.isVersion("5.7"), proxyCallbackFunction;
-  goog.events.pools.setProxyCallbackFunction = function(cb) {
-    proxyCallbackFunction = cb
-  };
-  if(BAD_GC) {
-    goog.events.pools.getObject = function() {
-      return objectPool.getObject()
-    };
-    goog.events.pools.releaseObject = function(obj) {
-      objectPool.releaseObject(obj)
-    };
-    goog.events.pools.getArray = function() {
-      return arrayPool.getObject()
-    };
-    goog.events.pools.releaseArray = function(obj) {
-      arrayPool.releaseObject(obj)
-    };
-    goog.events.pools.getProxy = function() {
-      return proxyPool.getObject()
-    };
-    goog.events.pools.releaseProxy = function() {
-      proxyPool.releaseObject(getProxy())
-    };
-    goog.events.pools.getListener = function() {
-      return listenerPool.getObject()
-    };
-    goog.events.pools.releaseListener = function(obj) {
-      listenerPool.releaseObject(obj)
-    };
-    goog.events.pools.getEvent = function() {
-      return eventPool.getObject()
-    };
-    goog.events.pools.releaseEvent = function(obj) {
-      eventPool.releaseObject(obj)
-    };
-    var objectPool = new goog.structs.SimplePool(0, 600);
-    objectPool.setCreateObjectFn(getObject);
-    var arrayPool = new goog.structs.SimplePool(0, 600);
-    arrayPool.setCreateObjectFn(getArray);
-    var proxyPool = new goog.structs.SimplePool(0, 600);
-    proxyPool.setCreateObjectFn(getProxy);
-    var listenerPool = new goog.structs.SimplePool(0, 600);
-    listenerPool.setCreateObjectFn(getListener);
-    var eventPool = new goog.structs.SimplePool(0, 600);
-    eventPool.setCreateObjectFn(getEvent)
-  }else {
-    goog.events.pools.getObject = getObject, goog.events.pools.releaseObject = goog.nullFunction, goog.events.pools.getArray = getArray, goog.events.pools.releaseArray = goog.nullFunction, goog.events.pools.getProxy = getProxy, goog.events.pools.releaseProxy = goog.nullFunction, goog.events.pools.getListener = getListener, goog.events.pools.releaseListener = goog.nullFunction, goog.events.pools.getEvent = getEvent, goog.events.pools.releaseEvent = goog.nullFunction
-  }
-})();
 goog.events.listeners_ = {};
 goog.events.listenerTree_ = {};
 goog.events.sources_ = {};
@@ -3626,9 +3497,9 @@ goog.events.listen = function(src, type, listener, opt_capt, opt_handler) {
       return null
     }else {
       var capture = !!opt_capt, map = goog.events.listenerTree_;
-      type in map || (map[type] = goog.events.pools.getObject());
+      type in map || (map[type] = {count_:0, remaining_:0});
       map = map[type];
-      capture in map || (map[capture] = goog.events.pools.getObject(), map.count_++);
+      capture in map || (map[capture] = {count_:0, remaining_:0}, map.count_++);
       var map = map[capture], srcUid = goog.getUid(src), listenerArray, listenerObj;
       map.remaining_++;
       if(map[srcUid]) {
@@ -3642,17 +3513,17 @@ goog.events.listen = function(src, type, listener, opt_capt, opt_handler) {
           }
         }
       }else {
-        listenerArray = map[srcUid] = goog.events.pools.getArray(), map.count_++
+        listenerArray = map[srcUid] = [], map.count_++
       }
-      var proxy = goog.events.pools.getProxy();
+      var proxy = goog.events.getProxy();
       proxy.src = src;
-      listenerObj = goog.events.pools.getListener();
+      listenerObj = new goog.events.Listener;
       listenerObj.init(listener, proxy, src, type, capture, opt_handler);
       var key = listenerObj.key;
       proxy.key = key;
       listenerArray.push(listenerObj);
       goog.events.listeners_[key] = listenerObj;
-      goog.events.sources_[srcUid] || (goog.events.sources_[srcUid] = goog.events.pools.getArray());
+      goog.events.sources_[srcUid] || (goog.events.sources_[srcUid] = []);
       goog.events.sources_[srcUid].push(listenerObj);
       src.addEventListener ? (src == goog.global || !src.customEvent_) && src.addEventListener(type, proxy, capture) : src.attachEvent(goog.events.getOnString_(type), proxy);
       return key
@@ -3660,6 +3531,17 @@ goog.events.listen = function(src, type, listener, opt_capt, opt_handler) {
   }else {
     throw Error("Invalid event type");
   }
+};
+goog.events.getProxy = function() {
+  var proxyCallbackFunction = goog.events.handleBrowserEvent_, f = goog.events.BrowserFeature.HAS_W3C_EVENT_SUPPORT ? function(eventObject) {
+    return proxyCallbackFunction.call(f.src, f.key, eventObject)
+  } : function(eventObject) {
+    var v = proxyCallbackFunction.call(f.src, f.key, eventObject);
+    if(!v) {
+      return v
+    }
+  };
+  return f
 };
 goog.events.listenOnce = function(src, type, listener, opt_capt, opt_handler) {
   if(goog.isArray(type)) {
@@ -3723,17 +3605,14 @@ goog.events.cleanUp_ = function(type, capture, srcUid, listenerArray) {
     for(var oldIndex = 0, newIndex = 0;oldIndex < listenerArray.length;oldIndex++) {
       if(listenerArray[oldIndex].removed) {
         var proxy = listenerArray[oldIndex].proxy;
-        proxy.src = null;
-        goog.events.pools.releaseProxy(proxy);
-        goog.events.pools.releaseListener(listenerArray[oldIndex])
+        proxy.src = null
       }else {
         oldIndex != newIndex && (listenerArray[newIndex] = listenerArray[oldIndex]), newIndex++
       }
     }
     listenerArray.length = newIndex;
     listenerArray.needsCleanup_ = false;
-    newIndex == 0 && (goog.events.pools.releaseArray(listenerArray), delete goog.events.listenerTree_[type][capture][srcUid], goog.events.listenerTree_[type][capture].count_--, goog.events.listenerTree_[type][capture].count_ == 0 && (goog.events.pools.releaseObject(goog.events.listenerTree_[type][capture]), delete goog.events.listenerTree_[type][capture], goog.events.listenerTree_[type].count_--), goog.events.listenerTree_[type].count_ == 0 && (goog.events.pools.releaseObject(goog.events.listenerTree_[type]), 
-    delete goog.events.listenerTree_[type]))
+    newIndex == 0 && (delete goog.events.listenerTree_[type][capture][srcUid], goog.events.listenerTree_[type][capture].count_--, goog.events.listenerTree_[type][capture].count_ == 0 && (delete goog.events.listenerTree_[type][capture], goog.events.listenerTree_[type].count_--), goog.events.listenerTree_[type].count_ == 0 && delete goog.events.listenerTree_[type])
   }
 };
 goog.events.removeAll = function(opt_obj, opt_type, opt_capt) {
@@ -3880,8 +3759,7 @@ goog.events.dispatchEvent = function(src, e) {
   return Boolean(rv)
 };
 goog.events.protectBrowserEventEntryPoint = function(errorHandler) {
-  goog.events.handleBrowserEvent_ = errorHandler.protectEntryPoint(goog.events.handleBrowserEvent_);
-  goog.events.pools.setProxyCallbackFunction(goog.events.handleBrowserEvent_)
+  goog.events.handleBrowserEvent_ = errorHandler.protectEntryPoint(goog.events.handleBrowserEvent_)
 };
 goog.events.handleBrowserEvent_ = function(key, opt_evt) {
   if(!goog.events.listeners_[key]) {
@@ -3892,7 +3770,7 @@ goog.events.handleBrowserEvent_ = function(key, opt_evt) {
     return true
   }
   var map = map[type], retval, targetsMap;
-  if(goog.events.synthesizeEventPropagation_()) {
+  if(!goog.events.BrowserFeature.HAS_W3C_EVENT_SUPPORT) {
     var ieEvent = opt_evt || goog.getObjectByName("window.event"), hasCapture = true in map, hasBubble = false in map;
     if(hasCapture) {
       if(goog.events.isMarkedIeEvent_(ieEvent)) {
@@ -3900,12 +3778,12 @@ goog.events.handleBrowserEvent_ = function(key, opt_evt) {
       }
       goog.events.markIeEvent_(ieEvent)
     }
-    var evt = goog.events.pools.getEvent();
+    var evt = new goog.events.BrowserEvent;
     evt.init(ieEvent, this);
     retval = true;
     try {
       if(hasCapture) {
-        for(var ancestors = goog.events.pools.getArray(), parent = evt.currentTarget;parent;parent = parent.parentNode) {
+        for(var ancestors = [], parent = evt.currentTarget;parent;parent = parent.parentNode) {
           ancestors.push(parent)
         }
         targetsMap = map[true];
@@ -3925,10 +3803,9 @@ goog.events.handleBrowserEvent_ = function(key, opt_evt) {
       }
     }finally {
       if(ancestors) {
-        ancestors.length = 0, goog.events.pools.releaseArray(ancestors)
+        ancestors.length = 0
       }
-      evt.dispose();
-      goog.events.pools.releaseEvent(evt)
+      evt.dispose()
     }
     return retval
   }
@@ -3940,7 +3817,6 @@ goog.events.handleBrowserEvent_ = function(key, opt_evt) {
   }
   return retval
 };
-goog.events.pools.setProxyCallbackFunction(goog.events.handleBrowserEvent_);
 goog.events.markIeEvent_ = function(e) {
   var useReturnValue = false;
   if(e.keyCode == 0) {
@@ -3962,15 +3838,8 @@ goog.events.uniqueIdCounter_ = 0;
 goog.events.getUniqueId = function(identifier) {
   return identifier + "_" + goog.events.uniqueIdCounter_++
 };
-goog.events.synthesizeEventPropagation_ = function() {
-  if(goog.events.requiresSyntheticEventPropagation_ === void 0) {
-    goog.events.requiresSyntheticEventPropagation_ = goog.userAgent.IE && !goog.global.addEventListener
-  }
-  return goog.events.requiresSyntheticEventPropagation_
-};
 goog.debug.entryPointRegistry.register(function(transformer) {
-  goog.events.handleBrowserEvent_ = transformer(goog.events.handleBrowserEvent_);
-  goog.events.pools.setProxyCallbackFunction(goog.events.handleBrowserEvent_)
+  goog.events.handleBrowserEvent_ = transformer(goog.events.handleBrowserEvent_)
 });
 goog.events.EventTarget = function() {
   goog.Disposable.call(this)
@@ -5274,7 +5143,7 @@ goog.appengine.DevSocket.prototype.poll_ = function() {
   goog.net.XhrIo.send(this.getUrl_("poll"), goog.bind(this.forwardMessage_, this))
 };
 goog.appengine.DevSocket.prototype.beforeunload_ = function() {
-  var xhr = new goog.net.XmlHttp;
+  var xhr = goog.net.XmlHttp();
   xhr.open("GET", this.getUrl_("disconnect"), false);
   xhr.send()
 };

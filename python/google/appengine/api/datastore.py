@@ -64,6 +64,7 @@ from google.appengine.datastore import datastore_rpc
 from google.appengine.datastore import entity_pb
 
 
+
 MAX_ALLOWABLE_QUERIES = 30
 
 
@@ -87,16 +88,13 @@ WRITE_CAPABILITY = capabilities.CapabilitySet(
 
 
 
-_MAX_INDEXED_PROPERTIES = 5000
+_MAX_INDEXED_PROPERTIES = 20000
 
 
 _MAX_ID_BATCH_SIZE = datastore_rpc._MAX_ID_BATCH_SIZE
 
 Key = datastore_types.Key
 typename = datastore_types.typename
-
-
-_ALLOWED_API_KWARGS = frozenset(['rpc', 'config'])
 
 
 STRONG_CONSISTENCY = datastore_rpc.Configuration.STRONG_CONSISTENCY
@@ -182,7 +180,8 @@ def NormalizeAndTypeCheckKeys(keys):
   return (keys, multiple)
 
 
-def _GetConfigFromKwargs(kwargs):
+def _GetConfigFromKwargs(kwargs, convert_rpc=False,
+                         config_class=datastore_rpc.Configuration):
   """Get a Configuration object from the keyword arguments.
 
   This is purely an internal helper for the various public APIs below
@@ -190,6 +189,8 @@ def _GetConfigFromKwargs(kwargs):
 
   Args:
     kwargs: A dict containing the keyword arguments passed to a public API.
+    convert_rpc: If the an rpc should be converted or passed on directly.
+    config_class: The config class that should be generated.
 
   Returns:
     A UserRPC instance, or a Configuration instance, or None.
@@ -199,28 +200,30 @@ def _GetConfigFromKwargs(kwargs):
   """
   if not kwargs:
     return None
-  args_diff = set(kwargs) - _ALLOWED_API_KWARGS
-  if args_diff:
-    raise datastore_errors.BadArgumentError(
-      'Unexpected keyword arguments: %s' % ', '.join(args_diff))
-  rpc = kwargs.get('rpc')
-  config = kwargs.get('config')
-  if rpc is not None:
-    if config is not None:
-      raise datastore_errors.BadArgumentError(
-        'Expected rpc= or config= argument but not both')
 
-    if isinstance(rpc, (apiproxy_stub_map.UserRPC,
-                        datastore_rpc.Configuration)):
-      return rpc
-    raise datastore_errors.BadArgumentError(
-      'rpc= argument should be None or a UserRPC instance')
-  if config is not None:
-    if not (datastore_rpc.Configuration.is_configuration(config) or
-            isinstance(config, apiproxy_stub_map.UserRPC)):
+
+  rpc = kwargs.pop('rpc', None)
+  if rpc is not None:
+    if not isinstance(rpc, apiproxy_stub_map.UserRPC):
       raise datastore_errors.BadArgumentError(
-      'config= argument should be None or a Configuration instance')
-  return config
+        'rpc= argument should be None or a UserRPC instance')
+    if 'config' in kwargs:
+      raise datastore_errors.BadArgumentError(
+          'Expected rpc= or config= argument but not both')
+    if not convert_rpc:
+      if kwargs:
+        raise datastore_errors.BadArgumentError(
+            'Unexpected keyword arguments: %s' % ', '.join(kwargs))
+      return rpc
+
+
+    read_policy = getattr(rpc, 'read_policy', None)
+    kwargs['config'] = datastore_rpc.Configuration(
+       deadline=rpc.deadline, read_policy=read_policy,
+       config=_GetConnection().config)
+
+  return config_class(**kwargs)
+
 
 class _BaseIndex(object):
 
@@ -504,36 +507,6 @@ def CreateTransactionOptions(**kwds):
     A datastore_rpc.TransactionOptions instance.
   """
   return datastore_rpc.TransactionOptions(**kwds)
-
-
-def _Rpc2Config(rpc):
-  """Internal helper to construct a Configuration from a UserRPC object.
-
-  If the argument is a UserRPC object, it returns a Configuration
-  object constructed using the same deadline and read_policy;
-  otherwise it returns the argument unchanged.
-
-  NOTE: If the argument is a UserRPC object, its callback is *not*
-  transferred to the Configuration object; the Configuration's
-  on_completion attribute is set to None.  This is done because (a)
-  the signature of on_completion differs from the callback signature;
-  (b) the caller probably doesn't expect the callback to be called
-  more than once; and (c) the callback, being argument-less, wouldn't
-  know which UserRPC object was actually completing.  But yes,
-  technically, this is a backwards incompatibility.
-
-  Args:
-    rpc: None, a UserRPC object, or a datastore_rpc.Configuration object.
-
-  Returns:
-    None or a datastore_rpc.Configuration object.
-  """
-  if rpc is None or datastore_rpc.Configuration.is_configuration(rpc):
-    return rpc
-  read_policy = getattr(rpc, 'read_policy', None)
-  return datastore_rpc.Configuration(deadline=rpc.deadline,
-                                     read_policy=read_policy,
-                                     config=_GetConnection().config)
 
 
 def PutAsync(entities, **kwargs):
@@ -1610,13 +1583,14 @@ class Query(dict):
     more efficient.
 
     Args:
-      config: Optional Configuration to use for this request.
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       # an iterator that provides access to the query results
       Iterator
     """
-    config = _Rpc2Config(_GetConfigFromKwargs(kwargs))
+    config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
+                                  config_class=datastore_query.QueryOptions)
     itr = Iterator(self.GetBatcher(config=config))
 
     self.__cursor_source = itr.cursor
@@ -1625,55 +1599,21 @@ class Query(dict):
     return itr
 
   def Get(self, limit, offset=0, **kwargs):
-    """Fetches and returns a maximum number of results from the query.
-
-    This method fetches and returns a list of resulting entities that matched
-    the query. If the query specified a sort order, entities are returned in
-    that order. Otherwise, the order is undefined.
-
-    The limit argument specifies the maximum number of entities to return. If
-    it's greater than the number of remaining entities, all of the remaining
-    entities are returned. In that case, the length of the returned list will
-    be smaller than limit.
-
-    The offset argument specifies the number of entities that matched the
-    query criteria to skip before starting to return results.  The limit is
-    applied after the offset, so if you provide a limit of 10 and an offset of 5
-    and your query matches 20 records, the records whose index is 0 through 4
-    will be skipped and the records whose index is 5 through 14 will be
-    returned.
-
-    The results are always returned as a list. If there are no results left,
-    an empty list is returned.
-
-    If you know in advance how many results you want, this method is more
-    efficient than Run(), since it fetches all of the results at once. (The
-    datastore backend sets the the limit on the underlying
-    scan, which makes the scan significantly faster.)
+    """Deprecated, use list(Run(...)) instead.
 
     Args:
-      # the maximum number of entities to return
-      int or long
-      # the number of entities to skip
-      int or long
-      config: Optional Configuration to use for this request. If limit and
-      offset are specified in the config, they are ignored.
+      limit: int or long representing the maximum number of entities to return.
+      offset: int or long representing the number of entities to skip
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       # a list of entities
       [Entity, ...]
     """
-    config = _Rpc2Config(_GetConfigFromKwargs(kwargs))
-    batcher = self.GetBatcher(datastore_query.QueryOptions(
-        config=config, limit=limit, offset=offset, prefetch_size=limit))
-
     if limit is None:
-      batch = batcher.next_batch(_MAX_INT_32)
-    else:
-      batch = batcher.next_batch(limit)
-    self.__cursor_source = lambda: batch.end_cursor
-    self.__compiled_query_source = lambda: batch._compiled_query
-    return batch.results
+      kwargs.setdefault('batch_size', _MAX_INT_32)
+
+    return list(self.Run(limit=limit, offset=offset, **kwargs))
 
   def Count(self, limit=1000, **kwargs):
     """Returns the number of entities that this query matches.
@@ -1687,20 +1627,20 @@ class Query(dict):
     Returns:
       The number of results.
     """
+    original_offset = kwargs.pop('offset', 0)
     if limit is None:
       offset = _MAX_INT_32
     else:
-      offset = limit
-
-    config = datastore_query.QueryOptions(
-        config=_Rpc2Config(_GetConfigFromKwargs(kwargs)),
-        limit=0,
-        offset=offset)
+      offset = min(limit + original_offset, _MAX_INT_32)
+    kwargs['limit'] = 0
+    kwargs['offset'] = offset
+    config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
+                                  config_class=datastore_query.QueryOptions)
 
     batch = self.GetBatcher(config=config).next()
     self.__cursor_source = lambda: batch.cursor(0)
     self.__compiled_query_source = lambda: batch._compiled_query
-    return batch.skipped_results
+    return max(0, batch.skipped_results - original_offset)
 
   def __iter__(self):
     raise NotImplementedError(
@@ -1869,14 +1809,10 @@ class Query(dict):
 
   def _Run(self, limit=None, offset=None,
            prefetch_count=None, next_count=None, **kwargs):
-    """Deprecated, use .Run instead."""
-    config = _Rpc2Config(_GetConfigFromKwargs(kwargs))
-    return self.Run(config=datastore_query.QueryOptions(
-        config=config,
-        limit=limit,
-        offset=offset,
-        prefetch_size=prefetch_count,
-        batch_size=next_count))
+    """Deprecated, use Run() instead."""
+    return self.Run(limit=limit, offset=offset,
+                    prefetch_size=prefetch_count, batch_size=next_count,
+                    **kwargs)
 
   def _ToPb(self, limit=None, offset=None, count=None):
 
@@ -1997,43 +1933,20 @@ class MultiQuery(Query):
     return res
 
   def Get(self, limit, offset=0, **kwargs):
-    """Get results of the query with a limit on the number of results.
+    """Deprecated, use list(Run(...)) instead.
 
     Args:
-      limit: maximum number of values to return.
-      offset: offset requested -- if nonzero, this will override the offset in
-              the original query
-      config: Optional Configuration to use for this request.
+      limit: int or long representing the maximum number of entities to return.
+      offset: int or long representing the number of entities to skip
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       A list of entities with at most "limit" entries (less if the query
       completes before reading limit values).
     """
-    config = _GetConfigFromKwargs(kwargs)
-    count = 1
-    result = []
-
-
-
-
-    iterator = self.Run(config=config)
-
-
-    try:
-      for i in xrange(offset):
-        val = iterator.next()
-    except StopIteration:
-      pass
-
-
-    try:
-      while count <= limit:
-        val = iterator.next()
-        result.append(val)
-        count += 1
-    except StopIteration:
-      pass
-    return result
+    if limit is None:
+      kwargs.setdefault('batch_size', _MAX_INT_32)
+    return list(self.Run(limit=limit, offset=offset, **kwargs))
 
   class SortOrderEntity(object):
     """Allow entity comparisons using provided orderings.
@@ -2149,14 +2062,57 @@ class MultiQuery(Query):
 
         return cmp(self.__entity.key(), that.__entity.key())
 
+  def _ExtractBounds(self, config):
+    """This function extracts the range of results to consider.
+
+    Since MultiQuery dedupes in memory, we must apply the offset and limit in
+    memory. The results that should be considered are
+    results[lower_bound:upper_bound].
+
+    We also pass the offset=0 and limit=upper_bound to the base queries to
+    optimize performance.
+
+    Args:
+      config: The base datastore_query.QueryOptions.
+
+    Returns:
+      a tuple consisting of the lower_bound and upper_bound to impose in memory
+      and the config to use with each bound query. The upper_bound may be None.
+    """
+    if config is None:
+      return 0, None, None
+
+    lower_bound = config.offset or 0
+    upper_bound = config.limit
+    if lower_bound:
+      if upper_bound is not None:
+        upper_bound = min(lower_bound + upper_bound, _MAX_INT_32)
+      config = datastore_query.QueryOptions(offset=0,
+                                            limit=upper_bound,
+                                            config=config)
+    return lower_bound, upper_bound, config
+
   def Run(self, **kwargs):
     """Return an iterable output with all results in order.
 
     Merge sort the results. First create a list of iterators, then walk
     though them and yield results in order.
+
+    Args:
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
+
+    Returns:
+      An iterator for the result set.
     """
-    config = _GetConfigFromKwargs(kwargs)
-    config = _Rpc2Config(config)
+    config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
+                                  config_class=datastore_query.QueryOptions)
+    if config and config.keys_only:
+      raise datastore_errors.BadRequestError(
+          'keys only queries are not supported by multi-query.')
+
+
+    lower_bound, upper_bound, config = self._ExtractBounds(config)
+
     results = []
     count = 1
     log_level = logging.DEBUG - 1
@@ -2194,6 +2150,9 @@ class MultiQuery(Query):
 
 
       while result_heap:
+        if upper_bound is not None and len(used_keys) >= upper_bound:
+
+          break
         top_result = heapq.heappop(result_heap)
 
         results_to_push = []
@@ -2226,9 +2185,18 @@ class MultiQuery(Query):
           if popped_result.GetEntity():
             heapq.heappush(result_heap, popped_result)
 
-    return IterateResults(results)
+    it = IterateResults(results)
 
-  def Count(self, limit=None, **kwargs):
+
+    try:
+      for _ in xrange(lower_bound):
+        it.next()
+    except StopIteration:
+      pass
+
+    return it
+
+  def Count(self, limit=1000, **kwargs):
     """Return the number of matched entities for this query.
 
     Will return the de-duplicated count of results.  Will call the more
@@ -2243,21 +2211,23 @@ class MultiQuery(Query):
       count of the number of entries returned.
     """
 
-
-    config = _GetConfigFromKwargs(kwargs)
-    if limit is None:
-
-
-
-
-      count = 0
-      for _ in self.Run(config=config):
-        count += 1
-      return count
-    else:
+    kwargs['keys_only'] = True
+    kwargs['limit'] = limit
+    config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
+                                  config_class=datastore_query.QueryOptions)
 
 
-      return len(self.Get(limit, config=config))
+    lower_bound, upper_bound, config = self._ExtractBounds(config)
+
+
+    used_keys = set()
+    for bound_query in self.__bound_queries:
+      for key in bound_query.Run(config=config):
+        used_keys.add(key)
+        if upper_bound and len(used_keys) >= upper_bound:
+          return upper_bound - lower_bound
+
+    return max(0, len(used_keys) - lower_bound)
 
   def GetCursor(self):
     raise AssertionError('No cursor available for a MultiQuery (queries '
@@ -2470,7 +2440,7 @@ def RunInTransactionOptions(options, function, *args, **kwargs):
 
   old_connection = _GetConnection()
 
-  for i in range(0, retries + 1):
+  for _ in range(0, retries + 1):
     new_connection = old_connection.new_transaction(options)
     _SetConnection(new_connection)
     try:

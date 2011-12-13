@@ -36,6 +36,8 @@ if version_tuple < (2, 4):
 
 DIR_PATH = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
 SCRIPT_DIR = os.path.join(DIR_PATH, 'google', 'appengine', 'tools')
+GOOGLE_SQL_DIR = os.path.join(
+    DIR_PATH, 'google', 'storage', 'speckle', 'python', 'tool')
 
 
 
@@ -54,21 +56,41 @@ EXTRA_PATHS = [
 ]
 
 
+GOOGLE_SQL_EXTRA_PATHS = [
+  os.path.join(DIR_PATH, 'lib', 'enum'),
+  os.path.join(DIR_PATH, 'lib', 'google-api-python-client'),
+  os.path.join(DIR_PATH, 'lib', 'grizzled'),
+  os.path.join(DIR_PATH, 'lib', 'httplib2'),
+  os.path.join(DIR_PATH, 'lib', 'oauth2'),
+  os.path.join(DIR_PATH, 'lib', 'prettytable'),
+  os.path.join(DIR_PATH, 'lib', 'python-gflags'),
+  os.path.join(DIR_PATH, 'lib', 'sqlcmd'),
+]
+
+
 SCRIPT_EXCEPTIONS = {
   "dev_appserver.py" : "dev_appserver_main.py"
 }
 
+SCRIPT_DIR_EXCEPTIONS = {
+  'google_sql.py': GOOGLE_SQL_DIR,
+}
 
-def fix_sys_path():
+
+def fix_sys_path(include_google_sql_libs=False):
   """Fix the sys.path to include our extra paths."""
-  sys.path = EXTRA_PATHS + sys.path
+  extra_paths = EXTRA_PATHS[:]
+  if include_google_sql_libs:
+    extra_paths.extend(GOOGLE_SQL_EXTRA_PATHS)
+  sys.path = extra_paths + sys.path
 
 
 def run_file(file_path, globals_, script_dir=SCRIPT_DIR):
   """Execute the file at the specified path with the passed-in globals."""
-  fix_sys_path()
   script_name = os.path.basename(file_path)
+  fix_sys_path('google_sql' in script_name)
   script_name = SCRIPT_EXCEPTIONS.get(script_name, script_name)
+  script_dir = SCRIPT_DIR_EXCEPTIONS.get(script_name, script_dir)
   script_path = os.path.join(script_dir, script_name)
   execfile(script_path, globals_)
 

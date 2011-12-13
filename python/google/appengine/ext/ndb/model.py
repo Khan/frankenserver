@@ -336,6 +336,7 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
     self.want_pbs = 0
 
   # Make this a context manager to request setting _orig_pb.
+  # Used in query.py by _MultiQuery.run_to_queue().
 
   def __enter__(self):
     self.want_pbs += 1
@@ -350,17 +351,15 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
     return key.reference()
 
   def pb_to_entity(self, pb):
+    key = None
     kind = None
     if pb.has_key():
-      # TODO: Fix the inefficiency here: we extract the key just so we
-      # can get the kind just so we can find the intended model class,
-      # but the key is extracted again and stored in the entity by _from_pb().
       key = Key(reference=pb.key())
       kind = key.kind()
     modelclass = Model._kind_map.get(kind, self.default_model)
     if modelclass is None:
       raise KindError("No implementation found for kind '%s'" % kind)
-    entity = modelclass._from_pb(pb)
+    entity = modelclass._from_pb(pb, key=key, set_key=False)
     if self.want_pbs:
       entity._orig_pb = pb
     return entity
@@ -494,6 +493,9 @@ class Property(ModelAttribute):
     Returns:
       A FilterNode instance representing the requested comparison.
     """
+    if not self._indexed:
+      raise datastore_errors.BadFilterError(
+        'Cannot query for unindexed property %s' % self._name)
     from .query import FilterNode  # Import late to avoid circular imports.
     if value is not None:
       # TODO: Allow query.Binding instances?
@@ -542,6 +544,9 @@ class Property(ModelAttribute):
     as .IN(); ._IN() is provided for the case you have a
     StructuredProperty with a model that has a Property named IN.
     """
+    if not self._indexed:
+      raise datastore_errors.BadFilterError(
+        'Cannot query for unindexed property %s' % self._name)
     from .query import FilterNode  # Import late to avoid circular imports.
     if not isinstance(value, (list, tuple, set, frozenset)):
       raise datastore_errors.BadArgumentError(
@@ -1425,23 +1430,25 @@ class StructuredProperty(Property):
 
   def _comparison(self, op, value):
     if op != '=':
-      # TODO: 'in' might actually work.  But maybe it's been expanded
-      # already before we get here?
       raise datastore_errors.BadFilterError(
         'StructuredProperty filter can only use ==')
+    if not self._indexed:
+      raise datastore_errors.BadFilterError(
+        'Cannot query for unindexed StructuredProperty %s' % self._name)
     # Import late to avoid circular imports.
-    from .query import FilterNode, ConjunctionNode, PostFilterNode
+    from .query import ConjunctionNode, PostFilterNode
     from .query import RepeatedStructuredPropertyPredicate
     value = self._do_validate(value)  # None is not allowed!
     filters = []
     match_keys = []
     # TODO: Why not just iterate over value._values?
-    for name, prop in value._properties.iteritems():
+    for prop in self._modelclass._properties.itervalues():
       val = prop._retrieve_value(value)
       if val is not None:
-        name = self._name + '.' + name
-        filters.append(FilterNode(name, op, val))
-        match_keys.append(name)
+        altprop = getattr(self, prop._code_name)
+        filt = altprop._comparison(op, val)
+        filters.append(filt)
+        match_keys.append(altprop._name)
     if not filters:
       raise datastore_errors.BadFilterError(
         'StructuredProperty filter without any values')
@@ -1453,6 +1460,22 @@ class StructuredProperty(Property):
                                                  self._name + '.')
       filters.append(PostFilterNode(pred))
     return ConjunctionNode(*filters)
+
+  def _IN(self, value):
+    if not isinstance(value, (list, tuple, set, frozenset)):
+      raise datastore_errors.BadArgumentError(
+        'Expected list, tuple or set, got %r' % (value,))
+    from .query import DisjunctionNode, FalseNode
+    # Expand to a series of == filters.
+    filters = [self._comparison('=', val) for val in value]
+    if not filters:
+      # DisjunctionNode doesn't like an empty list of filters.
+      # Running the query will still fail, but this matches the
+      # behavior of IN for regular properties.
+      return FalseNode()
+    else:
+      return DisjunctionNode(*filters)
+  IN = _IN
 
   def _validate(self, value):
     if not isinstance(value, self._modelclass):
@@ -1528,7 +1551,7 @@ class StructuredProperty(Property):
     parts = name.split('.')
     if len(parts) <= depth:
       raise RuntimeError('StructuredProperty %s expected to find properties '
-                         'seperated by periods at a depth of %i; received %r' %
+                         'separated by periods at a depth of %i; received %r' %
                          (self._name, depth, parts))
     next = parts[depth]
     rest = parts[depth + 1:]
@@ -1753,18 +1776,15 @@ class ComputedProperty(GenericProperty):
   ...   hash = ComputedProperty(_compute_hash, name='sha1')
   """
 
-  def __init__(self, func, *args, **kwargs):
+  def __init__(self, func, name=None, indexed=None, repeated=None):
     """Constructor.
 
     Args:
       func: A function that takes one argument, the model instance, and returns
             a calculated value.
     """
-    super(ComputedProperty, self).__init__(*args, **kwargs)
-    if self._required:
-      raise TypeError('ComputedProperty %s cannot be required.' % self._name)
-    if self._default is not None:
-      raise TypeError('ComputedProperty %s cannot have a default.' % self._name)
+    super(ComputedProperty, self).__init__(name=name, indexed=indexed,
+                                           repeated=repeated)
     self._func = func
 
   def _set_value(self, entity, value):
@@ -1789,6 +1809,12 @@ class MetaModel(type):
   def __init__(cls, name, bases, classdict):
     super(MetaModel, cls).__init__(name, bases, classdict)
     cls._fix_up_properties()
+
+  def __repr__(cls):
+    props = []
+    for _, prop in sorted(cls._properties.iteritems()):
+      props.append('%s=%r' % (prop._code_name, prop))
+    return '%s<%s>' % (cls.__name__, ', '.join(props))
 
 
 class Model(object):
@@ -2016,39 +2042,44 @@ class Model(object):
 
     if set_key:
       # TODO: Move the key stuff into ModelAdapter.entity_to_pb()?
-      key = self._key
-      if key is None:
-        pairs = [(self._get_kind(), None)]
-        ref = key_module._ReferenceFromPairs(pairs, reference=pb.mutable_key())
-      else:
-        ref = key.reference()
-        pb.mutable_key().CopyFrom(ref)
-      group = pb.mutable_entity_group()  # Must initialize this.
-      # To work around an SDK issue, only set the entity group if the
-      # full key is complete.  TODO: Remove the top test once fixed.
-      if key is not None and key.id():
-        elem = ref.path().element(0)
-        if elem.id() or elem.name():
-          group.add_element().CopyFrom(elem)
+      self._key_to_pb(pb)
 
     for unused_name, prop in sorted(self._properties.iteritems()):
       prop._serialize(self, pb)
 
     return pb
 
+  def _key_to_pb(self, pb):
+    """Internal helper to copy the key into a protobuf."""
+    key = self._key
+    if key is None:
+      pairs = [(self._get_kind(), None)]
+      ref = key_module._ReferenceFromPairs(pairs, reference=pb.mutable_key())
+    else:
+      ref = key.reference()
+      pb.mutable_key().CopyFrom(ref)
+    group = pb.mutable_entity_group()  # Must initialize this.
+    # To work around an SDK issue, only set the entity group if the
+    # full key is complete.  TODO: Remove the top test once fixed.
+    if key is not None and key.id():
+      elem = ref.path().element(0)
+      if elem.id() or elem.name():
+        group.add_element().CopyFrom(elem)
+
   @classmethod
-  def _from_pb(cls, pb, set_key=True, ent=None):
+  def _from_pb(cls, pb, set_key=True, ent=None, key=None):
     """Internal helper to create an entity from an EntityProto protobuf."""
     if not isinstance(pb, entity_pb.EntityProto):
       raise TypeError('pb must be a EntityProto; received %r' % pb)
     if ent is None:
       ent = cls()
 
-    if pb.has_key():
+    # A key passed in overrides a key in the pb.
+    if key is None and pb.has_key():
       key = Key(reference=pb.key())
-      # If set_key is not set, skip a trivial incomplete key.
-      if set_key or key.id() or key.parent():
-        ent._key = key
+    # If set_key is not set, skip a trivial incomplete key.
+    if key is not None and (set_key or key.id() or key.parent()):
+      ent._key = key
 
     indexed_properties = pb.property_list()
     unindexed_properties = pb.raw_property_list()
@@ -2064,7 +2095,7 @@ class Model(object):
     name = p.name()
     parts = name.split('.')
     if len(parts) <= depth:
-      raise RuntimeError('Model %s expected to find property %s seperated by '
+      raise RuntimeError('Model %s expected to find property %s separated by '
                          'periods at a depth of %i; received %r' %
                          (self.__class__.__name__, name, depth, parts))
     next = parts[depth]
@@ -2089,6 +2120,7 @@ class Model(object):
       prop = GenericProperty(next,
                              repeated=p.multiple(),
                              indexed=indexed)
+    prop._code_name = next
     self._properties[prop._name] = prop
     return prop
 
@@ -2196,7 +2228,7 @@ class Model(object):
   put_async = _put_async
 
   @classmethod
-  def _get_or_insert(cls, name, parent=None, context_options=None, **kwds):
+  def _get_or_insert(*args, **kwds):
     """Transactionally retrieves an existing entity or creates a new one.
 
     Args:
@@ -2212,22 +2244,19 @@ class Model(object):
       Existing instance of Model class with the specified key name and parent
       or a new one that has just been created.
     """
-    return cls._get_or_insert_async(name=name, parent=parent,
-                                    context_options=context_options,
-                                    **kwds).get_result()
+    cls, args = args[0], args[1:]
+    return cls._get_or_insert_async(*args, **kwds).get_result()
   get_or_insert = _get_or_insert
 
   @classmethod
-  def _get_or_insert_async(cls, name, parent=None, context_options=None,
-                           **kwds):
+  def _get_or_insert_async(*args, **kwds):
     """Transactionally retrieves an existing entity or creates a new one.
 
     This is the asynchronous version of Model._get_or_insert().
     """
     from . import tasklets
     ctx = tasklets.get_context()
-    return ctx.get_or_insert(cls, name=name, parent=parent,
-                             context_options=context_options, **kwds)
+    return ctx.get_or_insert(*args, **kwds)
   get_or_insert_async = _get_or_insert_async
 
   @classmethod
@@ -2390,12 +2419,14 @@ class Expando(Model):
     if (name.startswith('_') or
         isinstance(getattr(self.__class__, name, None), (Property, property))):
       return super(Expando, self).__setattr__(name, value)
+    # TODO: Refactor this to share code with _fake_property().
     self._clone_properties()
     if isinstance(value, Model):
       prop = StructuredProperty(Model, name)
     else:
       repeated = isinstance(value, list)
       indexed = self._default_indexed
+      # TODO: What if it's a list of Model instances?
       prop = GenericProperty(name, repeated=repeated, indexed=indexed)
     prop._code_name = name
     self._properties[name] = prop

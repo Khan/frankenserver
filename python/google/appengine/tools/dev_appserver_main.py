@@ -81,6 +81,8 @@ Options:
   --mysql_socket=PATH        MySQL Unix socket file path.
                              Used by the Cloud SQL (rdbms) stub.
                              (Default '%(mysql_socket)s')
+  --persist_logs             Enables storage of all request and application
+                             logs to enable later access. (Default false).
   --require_indexes          Disallows queries that require composite indexes
                              not defined in index.yaml.
   --show_mail_body           Log the body of emails in mail stub.
@@ -194,6 +196,7 @@ ARG_MYSQL_PASSWORD = 'mysql_password'
 ARG_MYSQL_PORT = 'mysql_port'
 ARG_MYSQL_SOCKET = 'mysql_socket'
 ARG_MYSQL_USER = 'mysql_user'
+ARG_PERSIST_LOGS = 'persist_logs'
 ARG_PORT = 'port'
 ARG_PROSPECTIVE_SEARCH_PATH = 'prospective_search_path'
 ARG_REQUIRE_INDEXES = 'require_indexes'
@@ -248,6 +251,7 @@ DEFAULT_ARGS = {
   ARG_MYSQL_PORT: 3306,
   ARG_MYSQL_SOCKET: '',
   ARG_MYSQL_USER: '',
+  ARG_PERSIST_LOGS: False,
   ARG_PORT: 8080,
   ARG_PROSPECTIVE_SEARCH_PATH: os.path.join(tempfile.gettempdir(),
                                             'dev_appserver.prospective_search'),
@@ -329,6 +333,7 @@ def ParseArguments(argv):
         'mysql_port=',
         'mysql_socket=',
         'mysql_user=',
+        'persist_logs',
         'port=',
         'require_indexes',
         'show_mail_body',
@@ -462,6 +467,9 @@ def ParseArguments(argv):
 
     if option == '--trusted':
       option_dict[ARG_TRUSTED] = True
+
+    if option == '--persist_logs':
+      option_dict[ARG_PERSIST_LOGS] = True
 
     if option == '--backends':
       option_dict[ARG_BACKENDS] = value
@@ -608,6 +616,7 @@ def main(argv):
   require_indexes = option_dict[ARG_REQUIRE_INDEXES]
   allow_skipped_files = option_dict[ARG_ALLOW_SKIPPED_FILES]
   static_caching = option_dict[ARG_STATIC_CACHING]
+  persist_logs = option_dict[ARG_PERSIST_LOGS]
   skip_sdk_update_check = option_dict[ARG_SKIP_SDK_UPDATE_CHECK]
 
   if (option_dict[ARG_ADMIN_CONSOLE_SERVER] != '' and
@@ -643,7 +652,8 @@ def main(argv):
       require_indexes=require_indexes,
       allow_skipped_files=allow_skipped_files,
       static_caching=static_caching,
-      default_partition=default_partition)
+      default_partition=default_partition,
+      persist_logs=persist_logs)
 
   signal.signal(signal.SIGTERM, SigTermHandler)
 

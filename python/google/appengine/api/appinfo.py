@@ -212,6 +212,13 @@ SUPPORTED_LIBRARIES = {
 }
 
 
+
+REQUIRED_LIBRARIES = {
+    ('jinja2', '2.6'): [('markupsafe', '0.15'), ('setuptools', '0.6c11')],
+    ('jinja2', 'latest'): [('markupsafe', 'latest'), ('setuptools', 'latest')],
+}
+
+
 class HandlerBase(validation.Validated):
   """Base class for URLMap and ApiConfigHandler."""
   ATTRIBUTES = {
@@ -839,6 +846,7 @@ class AppInfoExternal(validation.Validated):
       - That the version name doesn't start with BUILTIN_NAME_PREFIX
 
     Raises:
+      DuplicateLibrary: if the name library name is specified more than once.
       MissingURLMapping: if no URLMap object is present in the object.
       TooManyURLMappings: if there are too many URLMap entries.
       MissingApiConfig: if api_endpoints exist without an api_config.
@@ -893,6 +901,28 @@ class AppInfoExternal(validation.Validated):
             raise appinfo_errors.ThreadsafeWithCgiHandler(
                 'threadsafe cannot be enabled with CGI handler: %s' %
                 handler.script)
+
+  def GetAllLibraries(self):
+    """Returns a list of all Library instances active for this configuration.
+
+    Returns:
+      The list of active Library instances for this configuration. This includes
+      directly-specified libraries as well as any required dependencies.
+    """
+    if not self.libraries:
+      return []
+
+    library_names = set(library.name for library in self.libraries)
+    required_libraries = []
+
+    for library in self.libraries:
+      for required_name, required_version in REQUIRED_LIBRARIES.get(
+          (library.name, library.version), []):
+        if required_name not in library_names:
+          required_libraries.append(Library(name=required_name,
+                                            version=required_version))
+
+    return self.libraries + required_libraries
 
   def ApplyBackendSettings(self, backend_name):
     """Applies settings from the indicated backend to the AppInfoExternal.

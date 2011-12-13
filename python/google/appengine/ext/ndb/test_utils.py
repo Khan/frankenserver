@@ -44,8 +44,23 @@ class NDBTest(unittest.TestCase):
     self.ResetKindMap()
     self.SetupContextCache()
 
+    self._logger = logging.getLogger()
+    self._old_log_level = self._logger.getEffectiveLevel()
+
+  def ExpectErrors(self):
+    if self.DefaultLogging():
+      self._logger.setLevel(logging.CRITICAL)
+
+  def ExpectWarnings(self):
+    if self.DefaultLogging():
+      self._logger.setLevel(logging.ERROR)
+
+  def DefaultLogging(self):
+    return self._old_log_level == logging.WARNING
+
   def tearDown(self):
     """Tear down test framework."""
+    self._logger.setLevel(self._old_log_level)
     ev = eventloop.get_event_loop()
     stragglers = 0
     while ev.run1():

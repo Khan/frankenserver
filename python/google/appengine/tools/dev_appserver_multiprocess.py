@@ -631,10 +631,13 @@ class DevProcess(object):
   def PrintStartMessage(self, app_id, host, port):
     """Print the start message for processes that are started automatically."""
     url = 'http://%s:%d' % (host, port)
+    admin_url = '%s/_ah/admin' % url
     if not self.IsSubprocess():
 
       logging.info('Running application %s on port %d: %s',
                    app_id, port, url)
+      logging.info('Admin console is available at: %s',
+                   admin_url)
 
   def Children(self):
     """Returns the children of this process."""

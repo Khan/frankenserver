@@ -67,6 +67,7 @@ from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api import memcache
+from google.appengine.api import search
 from google.appengine.api import taskqueue
 from google.appengine.api import users
 from google.appengine.api.taskqueue import taskqueue_service_pb
@@ -77,6 +78,7 @@ from google.appengine.ext.admin import datastore_stats_generator
 from google.appengine.ext.db import metadata
 from google.appengine.ext.webapp import _template
 from google.appengine.ext.webapp import util
+from google.appengine.runtime import apiproxy_errors
 
 
 _DEBUG = True
@@ -137,6 +139,22 @@ def ustr(value):
     return unicode(value).encode('UTF-8')
 
 
+def TruncateValue(value):
+  """Truncates potentially very long string to a fixed maximum length."""
+  value = str(value)
+  if len(value) > 32:
+    return value[:32] + '...'
+  return value
+
+
+class Document(object):
+  """Simple representation of document."""
+
+  def __init__(self, doc_id):
+    self.doc_id = doc_id
+    self.fields = {}
+
+
 class ImageHandler(webapp.RequestHandler):
   """Serves a static image.
 
@@ -195,6 +213,10 @@ class BaseRequestHandler(webapp.RequestHandler):
         'interactive_execute_path': base_path + InteractiveExecuteHandler.PATH,
         'memcache_path': base_path + MemcachePageHandler.PATH,
         'queues_path': base_path + QueuesPageHandler.PATH,
+        'search_path': base_path + SearchIndexesListHandler.PATH,
+        'search_index_path': base_path + SearchIndexHandler.PATH,
+        'search_document_path': base_path + SearchDocumentHandler.PATH,
+        'search_batch_delete_path': base_path + SearchBatchDeleteHandler.PATH,
         'tasks_path': base_path + TasksPageHandler.PATH,
         'xmpp_path': base_path + XMPPPageHandler.PATH,
         'inboundmail_path': base_path + InboundMailPageHandler.PATH,
@@ -509,7 +531,13 @@ class QueuesPageHandler(BaseRequestHandler):
   def get(self):
     """Shows template displaying the configured task queues."""
     now = datetime.datetime.utcnow()
-    values = {'queues': self.helper.get_queues(now)}
+    values = {}
+    try:
+      values['queues'] = self.helper.get_queues(now)
+    except apiproxy_errors.ApplicationError:
+
+
+      logging.exception('Could not fetch list of queues.')
     self.generate('queues.html', values)
 
   @xsrf_required
@@ -628,8 +656,14 @@ class TasksPageHandler(BaseRequestHandler):
     tasks_to_fetch = min(self.MAX_TASKS_TO_FETCH,
                          max(self.MIN_TASKS_TO_FETCH, self.per_page * 10))
 
-    tasks = self.helper.get_tasks(now, self.queue_name, self.start_eta,
-                                  self.start_name, tasks_to_fetch)
+    try:
+      tasks = self.helper.get_tasks(now, self.queue_name, self.start_eta,
+                                    self.start_name, tasks_to_fetch)
+    except apiproxy_errors.ApplicationError:
+
+
+      logging.exception('Could not fetch list of tasks.')
+      tasks = []
 
     if self.start_eta or self.start_name:
       if not tasks:
@@ -1501,6 +1535,176 @@ class DatastoreStatsHandler(BaseRequestHandler):
     return processor.Run().Report()
 
 
+class SearchIndexesListHandler(BaseRequestHandler):
+  """FTS main page with list on indexes."""
+
+  PATH = '/search'
+
+  def get(self):
+    """Displays list of FTS indexes."""
+    start = self.request.get_range('start', min_value=0, default=0)
+    limit = self.request.get_range('num', min_value=1, max_value=100,
+                                   default=10)
+    namespace = self.request.get('namespace', default_value=None)
+    resp = search.list_indexes(offset=start, limit=limit+1,
+                               namespace=namespace or '')
+    has_more = len(resp.indexes) > limit
+    indexes = resp.indexes[:limit]
+
+    current_page = start / limit + 1
+    values = {
+        'request': self.request,
+        'namespace': namespace,
+        'has_namespace': namespace is not None,
+        'current_page': current_page,
+        'next_start': -1,
+        'prev_start': -1,
+        'num': limit,
+        'start': start,
+        'start_base_url': self.filter_url(['num', 'namespace']),
+        'next': urllib.quote(ustr(self.request.uri)),
+        'indexes': indexes}
+    if current_page > 1:
+      values['prev_start'] = int((current_page - 2) * limit)
+      values['paging'] = True
+    if has_more:
+      values['next_start'] = int(current_page * limit)
+      values['paging'] = True
+
+    self.generate('search.html', values)
+
+
+class SearchIndexHandler(BaseRequestHandler):
+  """FTS index information."""
+
+  PATH = '/search_index'
+
+  def _ProcessSearchResponse(self, response):
+    """Format document list and produce corresponding hdf representation."""
+
+    documents = []
+    field_names = set()
+
+
+
+    for result in response.results:
+      doc = Document(result.document.doc_id)
+      for field in result.document.fields:
+        field_names.add(field.name)
+        doc.fields[field.name] = field
+      documents.append(doc)
+
+    field_names = sorted(field_names)
+    docs = []
+
+    for doc in documents:
+      doc_fields = []
+      for field_name in field_names:
+        if field_name in doc.fields:
+          value = TruncateValue(doc.fields[field_name].value)
+        else:
+          value = ''
+        doc_fields.append(value)
+      docs.append({
+          'doc_id': doc.doc_id,
+          'fields': doc_fields
+          })
+
+    return {
+        'documents': docs,
+        'field_names': field_names,
+        }
+
+  def get(self):
+    """Displays documents in a FTS index."""
+    start = self.request.get_range('start', min_value=0, default=0)
+    query = self.request.get('query')
+    namespace = self.request.get('namespace')
+    limit = self.request.get_range('num', min_value=1, max_value=100,
+                                   default=10)
+    index_name = self.request.get('index') or 'index'
+    index = search.Index(name=index_name, namespace=namespace)
+    resp = index.search(query=query, offset=start, limit=limit)
+    has_more = resp.matched_count > start + limit
+
+    current_page = start / limit + 1
+    values = {
+        'request': self.request,
+        'namespace': namespace,
+        'index': index_name,
+        'query': query,
+        'current_page': current_page,
+        'next_start': -1,
+        'prev_start': -1,
+        'start_base_url': self.filter_url([
+            'query', 'index', 'num', 'namespace']),
+        'next': urllib.quote(ustr(self.request.uri)),
+        'values': self._ProcessSearchResponse(resp),
+        'prev': self.request.get(
+            'next',
+            default_value=self.base_path() + SearchIndexesListHandler.PATH)}
+    if current_page > 1:
+      values['prev_start'] = int((current_page - 2) * limit)
+      values['paging'] = True
+    if has_more:
+      values['next_start'] = int(current_page * limit)
+      values['paging'] = True
+
+    self.generate('search_index.html', values)
+
+
+class SearchDocumentHandler(BaseRequestHandler):
+  """FTS document information."""
+
+  PATH = '/search_document'
+
+  def get(self):
+    """Displays FTS document."""
+    index_name = self.request.get('index')
+    doc_id = self.request.get('id')
+    namespace = self.request.get('namespace')
+    doc = None
+    index = search.Index(name=index_name, namespace=namespace)
+    resp = index.list_documents(start_doc_id=doc_id, limit=1)
+    if resp.documents and resp.documents[0].doc_id == doc_id:
+      doc = resp.documents[0]
+
+    values = {
+        'request': self.request,
+        'namespace': namespace,
+        'index': index_name,
+        'doc_id': doc_id,
+        'doc': doc,
+        'prev': self.request.get(
+            'next', default_value=self.base_path() + SearchIndexHandler.PATH +
+            '?index=' + index_name)}
+    self.generate('search_document.html', values)
+
+
+class SearchBatchDeleteHandler(BaseRequestHandler):
+  """FTS batch delete handler."""
+
+  PATH = '/search_batch_delete'
+
+  @xsrf_required
+  def post(self):
+    """Handle POST."""
+    index_name = self.request.get('index')
+    namespace = self.request.get('namespace')
+
+    docs = []
+    index = 0
+    num_docs = int(self.request.get('numdocs'))
+    for i in xrange(1, num_docs+1):
+      key = self.request.get('doc%d' % i)
+      if key:
+        docs.append(key)
+
+    index = search.Index(name=index_name, namespace=namespace)
+    index.delete_documents(docs)
+    self.redirect(self.request.get('next'))
+
+
 
 class DataType(object):
   """A DataType represents a data type in the datastore.
@@ -1968,6 +2172,10 @@ handlers = [
     ('.*' + MemcachePageHandler.PATH, MemcachePageHandler),
     ('.*' + ImageHandler.PATH, ImageHandler),
     ('.*' + QueuesPageHandler.PATH, QueuesPageHandler),
+    ('.*' + SearchIndexesListHandler.PATH, SearchIndexesListHandler),
+    ('.*' + SearchIndexHandler.PATH, SearchIndexHandler),
+    ('.*' + SearchDocumentHandler.PATH, SearchDocumentHandler),
+    ('.*' + SearchBatchDeleteHandler.PATH, SearchBatchDeleteHandler),
     ('.*' + TasksPageHandler.PATH, TasksPageHandler),
     ('.*' + XMPPPageHandler.PATH, XMPPPageHandler),
     ('.*' + InboundMailPageHandler.PATH, InboundMailPageHandler),

@@ -37,11 +37,13 @@ class SystemServiceError(ProtocolBuffer.ProtocolMessage):
   OK           =    0
   INTERNAL_ERROR =    1
   BACKEND_REQUIRED =    2
+  LIMIT_REACHED =    3
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INTERNAL_ERROR",
     2: "BACKEND_REQUIRED",
+    3: "LIMIT_REACHED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

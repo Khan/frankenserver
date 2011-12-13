@@ -135,6 +135,7 @@ from google.appengine.datastore import datastore_stub_util
 DEFAULT_ENVIRONMENT = {
     'APPLICATION_ID': 'testbed-test',
     'AUTH_DOMAIN': 'gmail.com',
+    'REQUEST_ID_HASH': 'testbed-request-id-hash',
     'SERVER_NAME': 'testbed.example.com',
     'SERVER_SOFTWARE': 'Development/1.0 (testbed)',
     'SERVER_PORT': '80',
@@ -151,6 +152,7 @@ DEFAULT_SERVER_SOFTWARE = DEFAULT_ENVIRONMENT['SERVER_SOFTWARE']
 DEFAULT_SERVER_PORT = DEFAULT_ENVIRONMENT['SERVER_PORT']
 
 
+BLOBSTORE_SERVICE_NAME = 'blobstore'
 CHANNEL_SERVICE_NAME = 'channel'
 DATASTORE_SERVICE_NAME = 'datastore_v3'
 IMAGES_SERVICE_NAME = 'images'
@@ -160,10 +162,10 @@ TASKQUEUE_SERVICE_NAME = 'taskqueue'
 URLFETCH_SERVICE_NAME = 'urlfetch'
 USER_SERVICE_NAME = 'user'
 XMPP_SERVICE_NAME = 'xmpp'
-BLOBSTORE_SERVICE_NAME = 'blobstore'
 
 
-SUPPORTED_SERVICES = [CHANNEL_SERVICE_NAME,
+SUPPORTED_SERVICES = [BLOBSTORE_SERVICE_NAME,
+                      CHANNEL_SERVICE_NAME,
                       DATASTORE_SERVICE_NAME,
                       IMAGES_SERVICE_NAME,
                       MAIL_SERVICE_NAME,
@@ -172,7 +174,6 @@ SUPPORTED_SERVICES = [CHANNEL_SERVICE_NAME,
                       URLFETCH_SERVICE_NAME,
                       USER_SERVICE_NAME,
                       XMPP_SERVICE_NAME,
-                      BLOBSTORE_SERVICE_NAME,
                       ]
 
 
@@ -327,6 +328,21 @@ class Testbed(object):
     if service_name not in self._enabled_stubs:
       return None
     return self._test_stub_map.GetStub(service_name)
+
+  def init_blobstore_stub(self, enable=True):
+    """Enable the blobstore stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(BLOBSTORE_SERVICE_NAME)
+      return
+
+    storage = dict_blob_storage.DictBlobStorage()
+    stub = blobstore_stub.BlobstoreServiceStub(storage)
+    self._register_stub(BLOBSTORE_SERVICE_NAME, stub)
 
   def init_channel_stub(self, enable=True):
     """Enable the channel stub.
@@ -490,18 +506,3 @@ class Testbed(object):
       return
     stub = xmpp_service_stub.XmppServiceStub()
     self._register_stub(XMPP_SERVICE_NAME, stub)
-
-  def init_blobstore_stub(self, enable=True):
-    """Enable the blobstore stub.
-
-    Args:
-      enable: True, if the fake service should be enabled, False if real
-              service should be disabled.
-    """
-    if not enable:
-      self._disable_stub(BLOBSTORE_SERVICE_NAME)
-      return
-
-    storage = dict_blob_storage.DictBlobStorage()
-    stub = blobstore_stub.BlobstoreServiceStub(storage)
-    self._register_stub(BLOBSTORE_SERVICE_NAME, stub)

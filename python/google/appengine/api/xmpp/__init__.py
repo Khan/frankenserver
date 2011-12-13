@@ -28,8 +28,7 @@ Functions defined in this module:
   send_invite: Sends an invitation to chat to a JID.
   send_presence: Sends a presence to a JID.
 
-  get_presence: Deprecated method to gets the presence for a JID. Use
-      send_presence with type=PRESENCE_TYPE_PROBE instead.
+  get_presence: Method to get the presence for a JID.
 
 Classes defined in this module:
   Message: A class to encapsulate received messages.
@@ -125,21 +124,20 @@ class InvalidStatusError(Error):
   """Error that indicates a send presence request has an invalid status."""
 
 
-def get_presence(jid, from_jid=None):
+def get_presence(jid, from_jid=None, get_show=False):
   """Gets the presence for a JID.
-
-  Deprecated. Use send_presence with type=PRESENCE_TYPE_PROBE instead.
-
-  TODO(moishel): remove this eventually.
 
   Args:
     jid: The JID of the contact whose presence is requested.
     from_jid: The optional custom JID to use for sending. Currently, the default
       is <appid>@appspot.com. This is supported as a value. Custom JIDs can be
       of the form <anything>@<appid>.appspotchat.com.
+    get_show: if True, return a tuple of (is_available, show).
 
   Returns:
-    bool, Whether the user is online.
+    bool, if get_show is False: Whether the user is online.
+    (bool, string), if get_show is True: whether the user is online, and a
+      string indicating the PRESENCE_SHOW of the user's presence.
 
   Raises:
     InvalidJidError if any of the JIDs passed are invalid.
@@ -167,7 +165,23 @@ def get_presence(jid, from_jid=None):
     else:
       raise Error()
 
-  return bool(response.is_available())
+  if get_show:
+    show = None
+    if response.has_presence():
+      presence = response.presence()
+      if presence == xmpp_service_pb.PresenceResponse.NORMAL:
+        show = PRESENCE_SHOW_NONE
+      elif presence == xmpp_service_pb.PresenceResponse.AWAY:
+        show = PRESENCE_SHOW_AWAY
+      elif presence == xmpp_service_pb.PresenceResponse.DO_NOT_DISTURB:
+        show = PRESENCE_SHOW_DND
+      elif presence == xmpp_service_pb.PresenceResponse.CHAT:
+        show = PRESENCE_SHOW_CHAT
+      elif presence == xmpp_service_pb.PresenceResponse.EXTENDED_AWAY:
+        show = PRESENCE_SHOW_XA
+    return (bool(response.is_available()), show)
+  else:
+    return bool(response.is_available())
 
 
 def send_invite(jid, from_jid=None):

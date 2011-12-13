@@ -236,7 +236,7 @@ def QueryTasksResponseToDict(queue_name, task_response, now):
   headers.append(('X-AppEngine-TaskRetryCount',
                   str(task_response.retry_count())))
   headers.append(('X-AppEngine-Development-Payload', '1'))
-  headers.append(('Content-Length', len(task['body'])))
+  headers.append(('Content-Length', str(len(task['body']))))
   if 'content-type' not in frozenset(key.lower() for key, _ in headers):
     headers.append(('Content-Type', 'application/octet-stream'))
   task['headers'] = headers
@@ -251,19 +251,23 @@ class _Group(object):
   """
 
   def __init__(self, queue_yaml_parser=None, app_id=None,
-               _all_queues_valid=False, _update_newest_eta=None):
+               _all_queues_valid=False, _update_newest_eta=None,
+               _testing_validate_state=False):
     """Constructor.
 
     Args:
       queue_yaml_parser: A function that takes no parameters and returns the
           parsed results of the queue.yaml file. If this queue is not based on a
-          queues.yaml file use None.
+          queue.yaml file use None.
       app_id: The app id this Group is representing or None if it is the
-        currently running application.
+          currently running application.
       _all_queues_valid: Automatically generate queues on first access.
       _update_newest_eta: Callable for automatically executing tasks.
-        Takes the ETA of the task in seconds since the epoch, the queue_name and
-        a task name. May be None if automatic task running is disabled.
+          Takes the ETA of the task in seconds since the epoch, the queue_name
+          and a task name. May be None if automatic task running is disabled.
+      _testing_validate_state: Should this _Group and all of its _Queues
+          validate their state after each operation? This should only be used
+          during testing of the taskqueue_stub.
     """
 
 
@@ -276,6 +280,7 @@ class _Group(object):
       self._update_newest_eta = lambda x: None
     else:
       self._update_newest_eta = _update_newest_eta
+    self._testing_validate_state = _testing_validate_state
 
 
 
@@ -376,18 +381,20 @@ class _Group(object):
     return result
 
   def _ConstructQueue(self, queue_name, *args, **kwargs):
-    self._queues[queue_name] = _Queue(
-        queue_name, *args, **kwargs)
+    if '_testing_validate_state' in kwargs:
+      raise TypeError, (
+          '_testing_validate_state should not be passed to _ConstructQueue')
+    kwargs['_testing_validate_state'] = self._testing_validate_state
+    self._queues[queue_name] = _Queue(queue_name, *args, **kwargs)
 
   def _ConstructAutomaticQueue(self, queue_name):
     if queue_name in AUTOMATIC_QUEUES:
-      queue = _Queue(queue_name, *AUTOMATIC_QUEUES[queue_name])
+      self._ConstructQueue(queue_name, *AUTOMATIC_QUEUES[queue_name])
     else:
 
 
       assert self._all_queues_valid
-      queue = _Queue(queue_name)
-    self._queues[queue_name] = queue
+      self._ConstructQueue(queue_name)
 
   def _ReloadQueuesFromYaml(self):
     """Update the queue map with the contents of the queue.yaml file.
@@ -517,7 +524,6 @@ class _Group(object):
     self._ReloadQueuesFromYaml()
 
     response = self._ValidateQueueName(queue_name)
-
     if response != taskqueue_service_pb.TaskQueueServiceError.OK:
       raise apiproxy_errors.ApplicationError(response)
 
@@ -690,6 +696,7 @@ class _Group(object):
     queue_name = request.queue_name()
 
     response = self._ValidateQueueName(queue_name)
+
     is_unknown_queue = (
         response == taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_QUEUE)
     if response != taskqueue_service_pb.TaskQueueServiceError.OK and (
@@ -942,7 +949,8 @@ class _Queue(object):
                bucket_capacity=DEFAULT_BUCKET_SIZE,
                user_specified_rate=DEFAULT_RATE, retry_parameters=None,
                max_concurrent_requests=None, paused=False,
-               queue_mode=QUEUE_MODE.PUSH, acl=None):
+               queue_mode=QUEUE_MODE.PUSH, acl=None,
+               _testing_validate_state=None):
 
     self.queue_name = queue_name
     self.bucket_refill_per_second = bucket_refill_per_second
@@ -954,6 +962,8 @@ class _Queue(object):
     self.queue_mode = queue_mode
     self.acl = acl
 
+    self._testing_validate_state = _testing_validate_state
+
 
     self.task_name_archive = set()
 
@@ -961,8 +971,64 @@ class _Queue(object):
 
     self._sorted_by_eta = []
 
+    self._sorted_by_tag = []
+
 
     self._lock = threading.Lock()
+
+  def VerifyIndexes(self):
+    """Ensures that all three indexes are in a valid state.
+
+    This method is used by internal tests and should not need to be called in
+    any other circumstances.
+
+    Raises:
+      AssertionError: if the indexes are not in a valid state.
+    """
+    assert self._IsInOrder(self._sorted_by_name)
+    assert self._IsInOrder(self._sorted_by_eta)
+    assert self._IsInOrder(self._sorted_by_tag)
+
+    tasks_by_name = set()
+    tasks_with_tags = set()
+    for name, task in self._sorted_by_name:
+      assert name == task.task_name()
+      assert name not in tasks_by_name
+      tasks_by_name.add(name)
+      if task.has_tag():
+        tasks_with_tags.add(name)
+
+    tasks_by_eta = set()
+    for eta, name, task in self._sorted_by_eta:
+      assert name == task.task_name()
+      assert eta == task.eta_usec()
+      assert name not in tasks_by_eta
+      tasks_by_eta.add(name)
+
+    assert tasks_by_eta == tasks_by_name
+
+    tasks_by_tag = set()
+    for tag, eta, name, task in self._sorted_by_tag:
+      assert name == task.task_name()
+      assert eta == task.eta_usec()
+      assert task.has_tag() and task.tag()
+      assert tag == task.tag()
+      assert name not in tasks_by_tag
+      tasks_by_tag.add(name)
+    assert tasks_by_tag == tasks_with_tags
+
+  @staticmethod
+  def _IsInOrder(l):
+    """Determine if the specified list is in ascending order.
+
+    Args:
+      l: The list to check
+
+    Returns:
+      True if the list is in order, False otherwise
+    """
+    sorted_list = sorted(l)
+    return l == sorted_list
 
   def _WithLock(f):
     """Runs the decorated function within self._lock.
@@ -976,7 +1042,10 @@ class _Queue(object):
     """
     def _Inner(self, *args, **kwargs):
       with self._lock:
-        return f(self, *args, **kwargs)
+        ret = f(self, *args, **kwargs)
+        if self._testing_validate_state:
+          self.VerifyIndexes()
+        return ret
     _Inner.__doc__ = f.__doc__
     return _Inner
 
@@ -1050,6 +1119,9 @@ class _Queue(object):
       request: A taskqueue_service_pb.TaskQueueQueryTasksRequest.
       response: A taskqueue_service_pb.TaskQueueQueryTasksResponse.
     """
+
+    assert not request.has_start_tag()
+
     if request.has_start_eta_usec():
       tasks = self._LookupNoAcquireLock(request.max_rows(),
                                         name=request.start_task_name(),
@@ -1098,6 +1170,37 @@ class _Queue(object):
       else:
         response.add_result(self._DeleteNoAcquireLock(taskname))
 
+  def _QueryAndOwnTasksGetTaskList(self, max_rows, group_by_tag, now_eta_usec,
+                                    tag=None):
+    assert self._lock.locked()
+    if group_by_tag and tag:
+
+      return self._IndexScan(self._sorted_by_tag,
+                             start_key=(tag, None, None,),
+                             end_key=(tag, now_eta_usec, None,),
+                             max_rows=max_rows)
+    elif group_by_tag:
+
+      tasks = self._IndexScan(self._sorted_by_eta,
+                              start_key=(None, None,),
+                              end_key=(now_eta_usec, None,),
+                              max_rows=max_rows)
+      if not tasks:
+        return []
+
+      if tasks[0].has_tag():
+        tag = tasks[0].tag()
+        return self._QueryAndOwnTasksGetTaskList(
+            max_rows, True, now_eta_usec, tag)
+      else:
+
+        return [task for task in tasks if not task.has_tag()]
+    else:
+      return self._IndexScan(self._sorted_by_eta,
+                             start_key=(None, None,),
+                             end_key=(now_eta_usec, None,),
+                             max_rows=max_rows)
+
   @_WithLock
   def QueryAndOwnTasks_Rpc(self, request, response):
     """Implementation of the QueryAndOwnTasks RPC.
@@ -1121,34 +1224,35 @@ class _Queue(object):
           taskqueue_service_pb.TaskQueueServiceError.INVALID_REQUEST)
 
 
-    now_eta_usec = _SecToUsec(time.time())
-    pos = bisect.bisect_left(self._sorted_by_eta, (now_eta_usec,))
-    max_tasks = min(max_tasks, pos)
+    if request.has_tag() and not request.group_by_tag():
+      raise apiproxy_errors.ApplicationError(
+          taskqueue_service_pb.TaskQueueServiceError.INVALID_REQUEST,
+          'Tag specified, but group_by_tag was not.')
 
-    leased_tasks = self._sorted_by_eta[:max_tasks]
-    self._sorted_by_eta = self._sorted_by_eta[max_tasks:]
+    now_eta_usec = _SecToUsec(time.time())
+    tasks = self._QueryAndOwnTasksGetTaskList(
+        max_tasks, request.group_by_tag(), now_eta_usec, request.tag())
+
     tasks_to_delete = []
-    for _, name, task in leased_tasks:
+    for task in tasks:
       retry = Retry(task, self)
       if not retry.CanRetry(task.retry_count() + 1, 0):
         logging.warning(
             'Task %s in queue %s cannot be leased again after %d leases.',
              task.task_name(), self.queue_name, task.retry_count())
         tasks_to_delete.append(task)
-
-        self._PostponeTaskInsertOnly(task, task.eta_usec())
         continue
 
-
-      self._PostponeTaskInsertOnly(
+      self._PostponeTaskNoAcquireLock(
           task, now_eta_usec + _SecToUsec(lease_seconds))
-      task.set_retry_count(task.retry_count() + 1)
 
 
       task_response = response.add_task()
-      task_response.set_task_name(name)
+      task_response.set_task_name(task.task_name())
       task_response.set_eta_usec(task.eta_usec())
       task_response.set_retry_count(task.retry_count())
+      if task.has_tag():
+        task_response.set_tag(task.tag())
 
 
 
@@ -1203,7 +1307,8 @@ class _Queue(object):
 
 
     future_eta_usec = now_usec + _SecToUsec(lease_seconds)
-    self._PostponeTaskNoLock(task, future_eta_usec)
+    self._PostponeTaskNoAcquireLock(
+        task, future_eta_usec, increase_retries=False)
     response.set_updated_eta_usec(future_eta_usec)
 
   @_WithLock
@@ -1300,6 +1405,7 @@ class _Queue(object):
     """Removes all content from the queue."""
     self._sorted_by_name = []
     self._sorted_by_eta = []
+    self._sorted_by_tag = []
 
   @_WithLock
   def _GetTasks(self):
@@ -1309,9 +1415,9 @@ class _Queue(object):
       A list of taskqueue_service_pb.TaskQueueQueryTasksResponse_Task objects
         sorted by eta.
     """
-    return self._GetTasksNoLock()
+    return self._GetTasksNoAcquireLock()
 
-  def _GetTasksNoLock(self):
+  def _GetTasksNoAcquireLock(self):
     """Helper method for tests returning all tasks sorted by eta.
 
     Returns:
@@ -1334,6 +1440,8 @@ class _Queue(object):
     eta = task.eta_usec()
     name = task.task_name()
     bisect.insort_left(self._sorted_by_eta, (eta, name, task))
+    if task.has_tag():
+      bisect.insort_left(self._sorted_by_tag, (task.tag(), eta, name, task))
     bisect.insort_left(self._sorted_by_name, (name, task))
     self.task_name_archive.add(name)
 
@@ -1348,18 +1456,20 @@ class _Queue(object):
           the current eta on the task.
     """
     assert new_eta_usec > task.eta_usec()
-    self._IncRetryCount(task)
-    self._PostponeTaskNoLock(task, new_eta_usec)
+    self._PostponeTaskNoAcquireLock(task, new_eta_usec)
 
-  def _PostponeTaskNoLock(self, task, new_eta_usec):
+  def _PostponeTaskNoAcquireLock(self, task, new_eta_usec,
+                                 increase_retries=True):
     assert self._lock.locked()
-    pos = bisect.bisect_left(
-        self._sorted_by_eta, (task.eta_usec(), task.task_name(), None))
-    assert self._sorted_by_eta[pos][2] is task, 'The task was not found'
-
-
-
-    self._sorted_by_eta.pop(pos)
+    if increase_retries:
+      self._IncRetryCount(task)
+    name = task.task_name()
+    eta = task.eta_usec()
+    assert self._RemoveTaskFromIndex(
+        self._sorted_by_eta, (eta, name, None), task)
+    if task.has_tag():
+      assert self._RemoveTaskFromIndex(
+          self._sorted_by_tag, (task.tag(), eta, name, None), task)
     self._PostponeTaskInsertOnly(task, new_eta_usec)
 
   def _PostponeTaskInsertOnly(self, task, new_eta_usec):
@@ -1367,6 +1477,9 @@ class _Queue(object):
     task.set_eta_usec(new_eta_usec)
     name = task.task_name()
     bisect.insort_left(self._sorted_by_eta, (new_eta_usec, name, task))
+    if task.has_tag():
+      tag = task.tag()
+      bisect.insort_left(self._sorted_by_tag, (tag, new_eta_usec, name, task))
 
   @_WithLock
   def Lookup(self, maximum, name=None, eta=None):
@@ -1391,21 +1504,55 @@ class _Queue(object):
     """
     return self._LookupNoAcquireLock(maximum, name, eta)
 
-  def _LookupNoAcquireLock(self, maximum, name=None, eta=None):
+  def _IndexScan(self, index, start_key, end_key=None, max_rows=None):
+    """Return the result of a 'scan' over the given index.
+
+    The scan is inclusive of start_key and exclusive of end_key. It returns at
+    most max_rows from the index.
+
+    Args:
+      index: One of the index lists, eg self._sorted_by_tag.
+      start_key: The key to start at.
+      end_key: Optional end key.
+      max_rows: The maximum number of rows to yield.
+
+    Returns:
+      a list of up to 'max_rows' TaskQueueQueryTasksResponse_Task instances from
+      the given index, in sorted order.
+    """
     assert self._lock.locked()
-    if eta is None:
 
-      pos = bisect.bisect_left(self._sorted_by_name, (name,))
+    start_pos = bisect.bisect_left(index, start_key)
+    end_pos = INF
+    if end_key is not None:
+      end_pos = bisect.bisect_left(index, end_key)
+    if max_rows is not None:
+      end_pos = min(end_pos, start_pos + max_rows)
+    end_pos = min(end_pos, len(index))
 
-      tasks = (x[1] for x in self._sorted_by_name[pos:pos + maximum])
-      return list(tasks)
-    if name is None:
-      raise ValueError('must supply name or eta')
+    tasks = []
+    for pos in xrange(start_pos, end_pos):
+      tasks.append(index[pos][-1])
+    return tasks
 
-    pos = bisect.bisect_left(self._sorted_by_eta, (eta, name))
+  def _LookupNoAcquireLock(self, maximum, name=None, eta=None, tag=None):
+    assert self._lock.locked()
+    if tag is not None:
 
-    tasks = (x[2] for x in self._sorted_by_eta[pos:pos + maximum])
-    return list(tasks)
+      return self._IndexScan(self._sorted_by_tag,
+                             start_key=(tag, eta, name,),
+                             end_key=('%s\x00' % tag, None, None,),
+                             max_rows=maximum)
+    elif eta is not None:
+
+      return self._IndexScan(self._sorted_by_eta,
+                             start_key=(eta, name,),
+                             max_rows=maximum)
+    else:
+
+      return self._IndexScan(self._sorted_by_name,
+                             start_key=(name,),
+                             max_rows=maximum)
 
   @_WithLock
   def Count(self):
@@ -1490,6 +1637,8 @@ class _Queue(object):
           request.crontimetable().timezone())
     if request.has_retry_parameters():
       task.mutable_retry_parameters().CopyFrom(request.retry_parameters())
+    if request.has_tag():
+      task.set_tag(request.tag())
     self._InsertTask(task)
 
   @_WithLock
@@ -1507,6 +1656,25 @@ class _Queue(object):
     """
     return self._DeleteNoAcquireLock(name)
 
+  def _RemoveTaskFromIndex(self, index, index_tuple, task):
+    """Remove a task from the specified index.
+
+    Args:
+      index: The index list that needs to be mutated.
+      index_tuple: The tuple to search for in the index.
+      task: The task instance that is expected to be stored at this location.
+
+    Returns:
+      True if the task was successfully removed from the index, False otherwise.
+    """
+    assert self._lock.locked()
+    pos = bisect.bisect_left(index, index_tuple)
+    if index[pos][-1] is not task:
+      logging.debug('Expected %s, found %s', task, index[pos][-1])
+      return False
+    index.pop(pos)
+    return True
+
   def _DeleteNoAcquireLock(self, name):
     assert self._lock.locked()
     pos = self._LocateTaskByName(name)
@@ -1516,14 +1684,21 @@ class _Queue(object):
       else:
         return taskqueue_service_pb.TaskQueueServiceError.UNKNOWN_TASK
 
-    old_task = self._sorted_by_name.pop(pos)[1]
+    old_task = self._sorted_by_name.pop(pos)[-1]
+
 
     eta = old_task.eta_usec()
-    pos = bisect.bisect_left(self._sorted_by_eta, (eta, name, None))
-    if self._sorted_by_eta[pos][2] is not old_task:
-      logging.error('task store corrupted')
+    if not self._RemoveTaskFromIndex(
+        self._sorted_by_eta, (eta, name, None), old_task):
       return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
-    self._sorted_by_eta.pop(pos)
+
+
+    if old_task.has_tag():
+      tag = old_task.tag()
+      if not self._RemoveTaskFromIndex(
+          self._sorted_by_tag, (tag, eta, name, None), old_task):
+        return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
+
     return taskqueue_service_pb.TaskQueueServiceError.OK
 
   @_WithLock
@@ -1620,7 +1795,7 @@ class _TaskExecutor(object):
     headers.append(('X-AppEngine-TaskName', task.task_name()))
     headers.append(('X-AppEngine-TaskRetryCount', str(task.retry_count())))
     headers.append(('X-AppEngine-Fake-Is-Admin', '1'))
-    headers.append(('Content-Length', len(task.body())))
+    headers.append(('Content-Length', str(len(task.body()))))
     if 'content-type' not in header_dict:
       headers.append(('Content-Type', 'application/octet-stream'))
 
@@ -1803,7 +1978,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
                auto_task_running=False,
                task_retry_seconds=30,
                _all_queues_valid=False,
-               default_http_server=None):
+               default_http_server=None,
+               _testing_validate_state=False):
     """Constructor.
 
     Args:
@@ -1815,6 +1991,10 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
         run tasks after they are enqueued.
       task_retry_seconds: How long to wait between task executions after a
         task fails.
+      _testing_validate_state: Should this stub and all of its  _Groups (and
+          thus and all of its _Queues) validate their state after each
+          operation? This should only be used during testing of the
+          taskqueue_stub.
     """
     super(TaskQueueServiceStub, self).__init__(
         service_name, max_request_size=MAX_REQUEST_SIZE)
@@ -1829,12 +2009,14 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     self._all_queues_valid = _all_queues_valid
 
     self._root_path = root_path
+    self._testing_validate_state = _testing_validate_state
 
 
     self._queues[None] = _Group(
         self._ParseQueueYaml, app_id=None,
         _all_queues_valid=_all_queues_valid,
-        _update_newest_eta=self._UpdateNextEventTime)
+        _update_newest_eta=self._UpdateNextEventTime,
+        _testing_validate_state=self._testing_validate_state)
 
     self._auto_task_running = auto_task_running
     self._started = False
@@ -1902,7 +2084,8 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
     """
     if app_id not in self._queues:
       self._queues[app_id] = _Group(
-          app_id=app_id, _all_queues_valid=self._all_queues_valid)
+          app_id=app_id, _all_queues_valid=self._all_queues_valid,
+          _testing_validate_state=self._testing_validate_state)
     return self._queues[app_id]
 
   def _Dynamic_Add(self, request, response):

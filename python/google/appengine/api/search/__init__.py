@@ -20,18 +20,27 @@
 
 """Search API module."""
 
+from search import AddDocumentError
+from search import AddDocumentResult
 from search import AtomField
 from search import DateField
+from search import DeleteDocumentError
+from search import DeleteDocumentResult
 from search import Document
+from search import DocumentOperationResult
 from search import Error
 from search import Field
 from search import FieldExpression
 from search import HtmlField
 from search import Index
+from search import InternalError
+from search import InvalidRequest
+from search import ListDocumentsResponse
 from search import list_indexes
-from search import OperationResult
-from search import SearchRequest
+from search import ListIndexesResponse
+from search import NumberField
 from search import SearchResponse
 from search import SearchResult
 from search import SortSpec
 from search import TextField
+from search import TransientError

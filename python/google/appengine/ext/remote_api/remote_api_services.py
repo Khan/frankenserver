@@ -32,9 +32,12 @@ from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import user_service_pb
 from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.api.capabilities import capability_service_pb
+from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.api.files import file_service_pb
 from google.appengine.api.images import images_service_pb
+from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.memcache import memcache_service_pb
+from google.appengine.api.system import system_service_pb
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.api.xmpp import xmpp_service_pb
 from google.appengine.datastore import datastore_pb
@@ -59,6 +62,10 @@ SERVICE_PB_MAP = {
                           channel_service_pb.CreateChannelResponse),
         'SendChannelMessage': (channel_service_pb.SendMessageRequest,
                                api_base_pb.VoidProto),
+    },
+    'conversion': {
+        'Convert': (conversion_service_pb.ConversionRequest,
+                    conversion_service_pb.ConversionResponse),
     },
     'datastore_v3': {
         'Get':        (datastore_pb.GetRequest, datastore_pb.GetResponse),
@@ -110,6 +117,9 @@ SERVICE_PB_MAP = {
         'Histogram': (images_service_pb.ImagesHistogramRequest,
                       images_service_pb.ImagesHistogramResponse),
     },
+    'logservice': {
+        'Read': (log_service_pb.LogReadRequest, log_service_pb.LogReadResponse),
+    },
     'mail': {
         'Send':         (mail_service_pb.MailMessage, api_base_pb.VoidProto),
         'SendToAdmins': (mail_service_pb.MailMessage, api_base_pb.VoidProto),
@@ -133,6 +143,10 @@ SERVICE_PB_MAP = {
         'Transaction': (remote_api_pb.TransactionRequest,
                         datastore_pb.PutResponse),
         'GetIDs':      (datastore_pb.PutRequest, datastore_pb.PutResponse),
+    },
+    'system': {
+        'GetSystemStats': (system_service_pb.GetSystemStatsRequest,
+                           system_service_pb.GetSystemStatsResponse),
     },
     'taskqueue': {
         'Add': (taskqueue_service_pb.TaskQueueAddRequest,

@@ -3,6 +3,58 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.6.1
+===============================
+- You can now configure Frontend Instance Classes from your Admin Console's
+  application settings page. Three classes are available, with increasing
+  memory, CPU limits, and associated cost. By default, all applications use the
+  basic frontend instance setting of 128MB memory and 600MHz CPU.
+- We've added new functionality to the Log API that will allow you to read your
+  application's logs programmatically.
+- We are releasing an experimental Conversion API that will allow you to convert
+  between document types including .doc, .html, .pdf, images using OCR, and
+  more.
+- The High Replication Datastore migration utility is now available as a GA
+  feature, and is no longer experimental.
+- The ext.db API query functions (run, fetch, count, get) now accept the keyword
+  arguments: deadline, read_policy, prefetch_size, batch_size, limit, offset,
+  start_cursor, end_cursor, keys_only. It is recommended that developers use
+  Query.run() with a limit or batch_size instead of Query.fetch() when iterating
+  over results.
+- The ext.db API model functions (get, put, delete, allocate_ids) now directly
+  accept the keyword arguments: deadline, read_policy
+- The Blobstore API now supports the multiple="true" attribute to the HTML input
+  tag.
+- Fixed an issue logging unicode objects in the SDK.
+- Fixed an issue with the dev_appserver where HTTP HEAD always returned
+  content-length: 0.
+    http://code.google.com/p/googleappengine/issues/detail?id=2000
+- Fixed an issue in the SDK where importing Crypto.Util.Counter caused an
+  ImportError.
+    http://code.google.com/p/googleappengine/issues/detail?id=4168
+- Fixed an issue where the SDK didn't work with virtualenv.
+    http://code.google.com/p/googleappengine/issues/detail?id=4339
+- Fixed an issue where cached static files served to IPs on the DoS blacklist
+  consumed bandwidth quota.
+    http://code.google.com/p/googleappengine/issues/detail?id=4607
+- Fixed an issue that was causing slow serving of requests in the SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=6005
+- Fixed an issue where the Channel API didn't work in the SDK with Python 2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=6267
+- Fixed an httplib compatibility issue between Python 2.5 and Python 2.7 in the
+  SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=6271
+- Fixed an issue where queries larger than 1MB didn't work with Python 2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=6282
+- Fixed an error in the SDK on first page load for a handler.
+    http://code.google.com/p/googleappengine/issues/detail?id=6302
+- Fixed an issue in the SDK that caused slowness due to app's logs being written
+  to the datastore. Set the --persist_logs flag in the SDK if you are using the
+  Logservice API to read logs.
+    http://code.google.com/p/googleappengine/issues/detail?id=6355
+- WARNING: Starting with the 1.6.2 release of the experimental Python 2.7
+  runtime, the mapreduce and datastore_admin builtins will not be supported.
+
 Version 1.6.0
 ===============================
 - On November 7th, App Engine will be out of Preview. The new Terms of Service
@@ -52,7 +104,9 @@ Version 1.5.5
 ===============================
 - Python 2.7 is now available as an experimental runtime for all applications
   using the High Replication Datastore. To upload your app to the Python 2.7
-  runtime, change the runtime argument in your app.yaml to python27.
+  runtime, change the runtime argument in your app.yaml to python27. Note that
+  the dev_appserver does NOT work with Python 2.7 - you must deploy your
+  application in order test it.
 - We have increased the number of files you can upload with your application
   from 3,000 to 10,000.
 - We have increased the size limit for a single file uploaded to App Engine from

@@ -328,7 +328,7 @@ class GoApp:
     if self.proc:
       os.kill(self.proc.pid, signal.SIGTERM)
 
-  def make_and_run(self):
+  def make_and_run(self, env):
     app_files = find_app_files(self.root_path)
     go_files, go_mtime = find_go_files_mtime(app_files)
     if not go_files:
@@ -360,18 +360,18 @@ class GoApp:
     if not self.proc or self.proc.poll() is not None:
       logging.info('running ' + GO_APP_NAME)
 
-      env = {
+      limited_env = {
           'PWD': self.root_path,
           'TZ': 'UTC',
       }
-      for k, v in os.environ.items():
+      for k, v in env.items():
         if ENV_PASSTHROUGH.match(k):
-          env[k] = v
+          limited_env[k] = v
       self.proc_start = app_mtime
       self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'unix:' + SOCKET_HTTP,
           '-addr_api', 'unix:' + SOCKET_API],
-          cwd=self.root_path, env=env)
+          cwd=self.root_path, env=limited_env)
       wait_until_go_app_ready(self.proc.pid)
 
   def build(self, go_files):
@@ -409,7 +409,7 @@ def execute_go_cgi(root_path, handler_path, cgi_path, env, infile, outfile):
     DelegateServer()
     RAPI_HANDLER = handler.ApiCallHandler()
     GO_APP = GoApp(root_path)
-  GO_APP.make_and_run()
+  GO_APP.make_and_run(env)
 
 
   request_method = env['REQUEST_METHOD']

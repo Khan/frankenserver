@@ -22,6 +22,7 @@
 import dummy_thread
 import errno
 import imp
+import inspect
 import itertools
 import locale
 import logging
@@ -45,7 +46,12 @@ except ImportError:
 
 
 
+
 from google.appengine import dist
+try:
+  from google.appengine import dist27
+except ImportError:
+  dist27 = None
 
 
 
@@ -53,8 +59,9 @@ SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
                                               'site-packages'))
 
 
-import google
-SDK_ROOT = os.path.dirname(os.path.dirname(google.__file__))
+import google.appengine
+SDK_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
+    google.appengine.__file__)))
 
 
 CODING_COOKIE_RE = re.compile("coding[:=]\s*([-\w.]+)")
@@ -273,6 +280,18 @@ class FakeFile(file):
       os.path.normcase(os.path.dirname(os.path.realpath(os.__file__))),
       os.path.normcase(os.path.dirname(os.path.abspath(os.__file__))),
   ])
+  os_source_location = inspect.getsourcefile(os)
+
+  if os_source_location is not None:
+
+
+
+    ALLOWED_DIRS.update([
+        os.path.normcase(os.path.realpath(os.path.dirname(os_source_location))),
+        os.path.normcase(os.path.abspath(os.path.dirname(os_source_location))),
+        os.path.normcase(os.path.dirname(os.path.realpath(os_source_location))),
+        os.path.normcase(os.path.dirname(os.path.abspath(os_source_location))),
+    ])
 
 
 
@@ -562,7 +581,6 @@ class FakeFile(file):
 
 
 
-
 dist._library.SetAllowedModule = FakeFile.SetAllowedModule
 
 
@@ -609,6 +627,10 @@ class CouldNotFindModuleError(ImportError):
   In contrast to when a module has been found, but cannot be loaded because of
   hardening restrictions.
   """
+
+
+class Py27OptionalModuleError(ImportError):
+  """Raised for error conditions relating to optional Python 2.7 modules."""
 
 
 def Trace(func):
@@ -732,6 +754,7 @@ class HardenedModulesHook(object):
       'pyexpat',
       'sha',
       'struct',
+      'strxor',
       'sys',
       'time',
       'timing',
@@ -747,8 +770,10 @@ class HardenedModulesHook(object):
       '_codecs_kr',
       '_codecs_tw',
       '_collections',
+      '_counter',
       '_csv',
       '_elementtree',
+      '_fastmath',
       '_functools',
       '_hashlib',
       '_heapq',
@@ -1185,39 +1210,47 @@ class HardenedModulesHook(object):
 
 
 
+
       self._white_list_partial_modules['os'] = (
-        list(self._white_list_partial_modules['os']) + ['getpid', 'getuid'])
-
-      if self._config.libraries:
-        for libentry in self._config.libraries:
-          self._enabled_modules.append(libentry.name)
-          extra = self.__PY27_OPTIONAL_ALLOWED_MODULES.get(libentry.name)
-          logging.debug('Enabling %s: %r', libentry.name, extra)
-          if extra:
-            self._white_list_c_modules.extend(extra)
-          if libentry.name == 'django':
+        list(self._white_list_partial_modules['os']) +
+        ['getpid', 'getuid', 'sys'])
 
 
 
 
-            if 'django' not in self._module_dict:
-              version = libentry.version
-              if version == 'latest':
-                version = '1.2'
-              sitedir = os.path.join(SDK_ROOT,
-                                     'lib',
-                                     'django_%s' % version.replace('.', '_'))
-              if os.path.isdir(sitedir):
-                logging.debug('Enabling Django version %s at %s',
-                              version, sitedir)
-                sys.path[:] = [dirname
-                               for dirname in sys.path
-                               if not dirname.startswith(os.path.join(
-                                 SDK_ROOT, 'lib', 'django'))]
-                sys.path.insert(1, sitedir)
-              else:
-                logging.warn('Enabling Django version %s (no directory found)',
-                             version)
+      self._white_list_partial_modules['socket'] = (
+        list(self._white_list_partial_modules['socket']) +
+        ['getdefaulttimeout', 'setdefaulttimeout'])
+
+      for libentry in self._config.GetAllLibraries():
+        self._enabled_modules.append(libentry.name)
+        extra = self.__PY27_OPTIONAL_ALLOWED_MODULES.get(libentry.name)
+        logging.debug('Enabling %s: %r', libentry.name, extra)
+        if extra:
+          self._white_list_c_modules.extend(extra)
+        if libentry.name == 'django':
+
+
+
+
+          if 'django' not in self._module_dict:
+            version = libentry.version
+            if version == 'latest':
+              version = '1.2'
+            sitedir = os.path.join(SDK_ROOT,
+                                   'lib',
+                                   'django_%s' % version.replace('.', '_'))
+            if os.path.isdir(sitedir):
+              logging.debug('Enabling Django version %s at %s',
+                            version, sitedir)
+              sys.path[:] = [dirname
+                             for dirname in sys.path
+                             if not dirname.startswith(os.path.join(
+                               SDK_ROOT, 'lib', 'django'))]
+              sys.path.insert(1, sitedir)
+            else:
+              logging.warn('Enabling Django version %s (no directory found)',
+                           version)
 
 
   @Trace
@@ -1278,6 +1311,14 @@ class HardenedModulesHook(object):
 
       return None
 
+    except Py27OptionalModuleError, err:
+
+
+
+
+      logging.error(err)
+      raise
+
 
 
     return self
@@ -1286,8 +1327,12 @@ class HardenedModulesHook(object):
     """Check if the named module has a stub replacement."""
     if name in sys.builtin_module_names:
       name = 'py_%s' % name
-    if name in dist.__all__:
-      return True
+    if self._config and self._config.runtime == 'python27':
+      if dist27 is not None and name in dist27.MODULE_OVERRIDES:
+        return True
+    else:
+      if name in dist.__all__:
+        return True
     return False
 
   def ImportStubModule(self, name):
@@ -1297,7 +1342,14 @@ class HardenedModulesHook(object):
 
 
 
-    module = __import__(dist.__name__, {}, {}, [name])
+    module = None
+    if self._config and self._config.runtime == 'python27':
+
+
+      if dist27 is not None and name in dist27.__all__:
+        module = __import__(dist27.__name__, {}, {}, [name])
+    if module is None:
+      module = __import__(dist.__name__, {}, {}, [name])
     return getattr(module, name)
 
   @Trace
@@ -1361,32 +1413,16 @@ class HardenedModulesHook(object):
 
       search_path = [None] + sys.path
 
-    module_import_ok = False
+    py27_optional = False
+    py27_enabled = False
+    topmodule = None
     if self._config and self._config.runtime == 'python27':
-
-
-
 
 
       topmodule = submodule_fullname.split('.')[0]
       if topmodule in self.__PY27_OPTIONAL_ALLOWED_MODULES:
-        if topmodule in self._enabled_modules:
-
-
-
-
-          module_import_ok = True
-
-
-
-        else:
-          msg = ('Third party package %s must be included in the '
-                 '"libraries:" clause of your app.yaml file '
-                 'in order to be imported.' % topmodule)
-          logging.error(msg)
-
-
-          raise ImportError(msg)
+        py27_optional = True
+        py27_enabled = topmodule in self._enabled_modules
 
 
 
@@ -1425,8 +1461,8 @@ class HardenedModulesHook(object):
 
         try:
           if (file_type not in (self._imp.C_BUILTIN, self._imp.C_EXTENSION) and
-              not module_import_ok and
-              not FakeFile.IsFileAccessible(pathname)):
+              not (FakeFile.IsFileAccessible(pathname) or
+                   (py27_optional and py27_enabled))):
             error_message = 'Access to module file denied: %s' % pathname
             logging.debug(error_message)
             raise ImportError(error_message)
@@ -1437,16 +1473,42 @@ class HardenedModulesHook(object):
                              'or built-in module' % submodule_fullname)
             logging.debug(error_message)
             raise ImportError(error_message)
+
+          if (py27_optional and not py27_enabled and
+              isinstance(source_file, str) and
+              not source_file.startswith(self._app_code_path)):
+            error_message = ('Third party package %s not enabled.' % topmodule)
+            logging.debug(error_message)
+            raise ImportError(error_message)
+
           return source_file, pathname, description
         except ImportError, e:
 
 
           import_error = e
 
+
+
+    if py27_optional and submodule_fullname == topmodule:
+      if py27_enabled:
+        msg = ('Third party package %s was enabled in app.yaml '
+               'but not found on import. You may have to download '
+               'and install it.' % topmodule)
+      else:
+        msg = ('Third party package %s must be included in the '
+               '"libraries:" clause of your app.yaml file '
+               'in order to be imported.' % topmodule)
+      logging.debug(msg)
+      raise Py27OptionalModuleError(msg)
+
     if import_error:
 
 
+
+
       raise import_error
+
+
 
 
     self.log('Could not find module "%s"', submodule_fullname)

@@ -1048,9 +1048,8 @@ class Model(object):
     Raises:
       TransactionFailedError if the data could not be committed.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
     self._populate_internal_entity()
-    return datastore.Put(self._entity, config=config)
+    return datastore.Put(self._entity, **kwargs)
 
 
 
@@ -1101,8 +1100,7 @@ class Model(object):
     Raises:
       TransactionFailedError if the data could not be committed.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
-    datastore.Delete(self.key(), config=config)
+    datastore.Delete(self.key(), **kwargs)
 
 
     self._key = self.key()
@@ -1219,8 +1217,7 @@ class Model(object):
       KindError if any of the retreived objects are not instances of the
       type associated with call to 'get'.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
-    results = get(keys, config=config)
+    results = get(keys, **kwargs)
     if results is None:
       return None
 
@@ -1251,14 +1248,13 @@ class Model(object):
 
       raise BadArgumentError(str(e))
 
-    config = datastore._GetConfigFromKwargs(kwargs)
     key_names, multiple = datastore.NormalizeAndTypeCheck(key_names, basestring)
     keys = [datastore.Key.from_path(cls.kind(), name, parent=parent)
             for name in key_names]
     if multiple:
-      return get(keys, config=config)
+      return get(keys, **kwargs)
     else:
-      return get(keys[0], config=config)
+      return get(keys[0], **kwargs)
 
   @classmethod
   def get_by_id(cls, ids, parent=None, **kwargs):
@@ -1269,16 +1265,15 @@ class Model(object):
       parent: Parent of instances to get.  Can be a model or key.
       config: datastore_rpc.Configuration to use for this request.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
     if isinstance(parent, Model):
       parent = parent.key()
     ids, multiple = datastore.NormalizeAndTypeCheck(ids, (int, long))
     keys = [datastore.Key.from_path(cls.kind(), id, parent=parent)
             for id in ids]
     if multiple:
-      return get(keys, config=config)
+      return get(keys, **kwargs)
     else:
-      return get(keys[0], config=config)
+      return get(keys[0], **kwargs)
 
 
 
@@ -1470,7 +1465,6 @@ def get_async(keys, **kwargs):
   Identical to db.get() except returns an asynchronous object. Call
   get_result() on the return value to block on the call and get the results.
   """
-  config = datastore._GetConfigFromKwargs(kwargs)
   keys, multiple = datastore.NormalizeAndTypeCheckKeys(keys)
   def extra_hook(entities):
     if not multiple and not entities:
@@ -1490,7 +1484,7 @@ def get_async(keys, **kwargs):
     assert len(models) == 1
     return models[0]
 
-  return datastore.GetAsync(keys, config=config, extra_hook=extra_hook)
+  return datastore.GetAsync(keys, extra_hook=extra_hook, **kwargs)
 
 
 
@@ -1521,7 +1515,6 @@ def put_async(models, **kwargs):
   Identical to db.put() except returns an asynchronous object. Call
   get_result() on the return value to block on the call and get the results.
   """
-  config = datastore._GetConfigFromKwargs(kwargs)
   models, multiple = datastore.NormalizeAndTypeCheck(models, Model)
   entities = [model._populate_internal_entity() for model in models]
 
@@ -1531,7 +1524,7 @@ def put_async(models, **kwargs):
     assert len(keys) == 1
     return keys[0]
 
-  return datastore.PutAsync(entities, config=config, extra_hook=extra_hook)
+  return datastore.PutAsync(entities, extra_hook=extra_hook, **kwargs)
 
 
 def put(models, **kwargs):
@@ -1562,8 +1555,6 @@ def delete_async(models, **kwargs):
   Identical to db.delete() except returns an asynchronous object. Call
   get_result() on the return value to block on the call.
   """
-  config = datastore._GetConfigFromKwargs(kwargs)
-
 
   if isinstance(models, (basestring, Model, Key)):
     models = [models]
@@ -1574,7 +1565,7 @@ def delete_async(models, **kwargs):
       models = [models]
   keys = [_coerce_to_key(v) for v in models]
 
-  return datastore.DeleteAsync(keys, config=config)
+  return datastore.DeleteAsync(keys, **kwargs)
 
 
 def delete(models, **kwargs):
@@ -1695,13 +1686,11 @@ def get_indexes_async(**kwargs):
   Identical to get_indexes() except returns an asynchronous object. Call
   get_result() on the return value to block on the call and get the results.
   """
-  config = datastore._GetConfigFromKwargs(kwargs)
-
   def extra_hook(indexes):
     return [(Index(index.Id(), index.Kind(), index.HasAncestor(),
                   index.Properties()), state) for index, state in indexes]
 
-  return datastore.GetIndexesAsync(config=config, extra_hook=extra_hook)
+  return datastore.GetIndexesAsync(extra_hook=extra_hook, **kwargs)
 
 
 def get_indexes(**kwargs):
@@ -1999,23 +1988,25 @@ class _BaseQuery(object):
   def run(self, **kwargs):
     """Iterator for this query.
 
-    If you know the number of results you need, consider fetch() instead,
-    or use a GQL query with a LIMIT clause. It's more efficient.
+    If you know the number of results you need, use run(limit=...) instead,
+    or use a GQL query with a LIMIT clause. It's more efficient. If you want
+    all results use run(batch_size=<large number>).
 
     Args:
-      config: datastore_rpc.Configuration to use for this request.
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       Iterator for this query.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
     raw_query = self._get_query()
-    iterator = raw_query.Run(config=config)
+    iterator = raw_query.Run(**kwargs)
+    self._last_raw_query = raw_query
 
-    if self._compile:
-      self._last_raw_query = raw_query
+    keys_only = kwargs.get('keys_only')
+    if keys_only is None:
+      keys_only = self._keys_only
 
-    if self._keys_only:
+    if keys_only:
       return iterator
     else:
       return _QueryIterator(self._model_class, iter(iterator))
@@ -2037,19 +2028,18 @@ class _BaseQuery(object):
   def get(self, **kwargs):
     """Get first result from this.
 
-    Args:
-      config: datastore_rpc.Configuration to use for this request.
-
     Beware: get() ignores the LIMIT clause on GQL queries.
+
+    Args:
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       First result from running the query if there are any, else None.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
-    results = self.fetch(1, config=config)
+    results = self.run(limit=1, **kwargs)
     try:
-      return results[0]
-    except IndexError:
+      return results.next()
+    except StopIteration:
       return None
 
   def count(self, limit=1000, **kwargs):
@@ -2061,56 +2051,37 @@ class _BaseQuery(object):
       limit: A number. If there are more results than this, stop short and
         just return this number. Providing this argument makes the count
         operation more efficient.
-      config: datastore_rpc.Configuration to use for this request.
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       Number of entities this query fetches.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
     raw_query = self._get_query()
-    result = raw_query.Count(limit=limit, config=config)
-    if self._compile:
-      self._last_raw_query = raw_query
+    result = raw_query.Count(limit=limit, **kwargs)
+    self._last_raw_query = raw_query
+
     return result
 
   def fetch(self, limit, offset=0, **kwargs):
     """Return a list of items selected using SQL-like limit and offset.
 
-    Whenever possible, use fetch() instead of iterating over the query
-    results with run() or __iter__() . fetch() is more efficient.
+    Always use run(limit=...) instead of fetch() when iterating over a query.
 
-    Beware: fetch() ignores the LIMIT clause on GQL queries.
+    Beware: offset must read and discard all skipped entities. Use
+    cursor()/with_cursor() instead.
 
     Args:
       limit: Maximum number of results to return.
       offset: Optional number of results to skip first; default zero.
-      config: datastore_rpc.Configuration to use for this request.
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       A list of db.Model instances.  There may be fewer than 'limit'
       results if there aren't enough results to satisfy the request.
     """
-    config = datastore._GetConfigFromKwargs(kwargs)
-
-    accepted = (int, long)
-    if not (isinstance(limit, accepted) and isinstance(offset, accepted)):
-      raise TypeError('Arguments to fetch() must be integers')
-    if limit < 0 or offset < 0:
-      raise ValueError('Arguments to fetch() must be >= 0')
-
-    raw_query = self._get_query()
-    raw = raw_query.Get(limit, offset, config=config)
-
-    if self._compile:
-      self._last_raw_query = raw_query
-
-    if self._keys_only:
-      return raw
-    else:
-      if self._model_class is not None:
-        return [self._model_class.from_entity(e) for e in raw]
-      else:
-        return [class_for_kind(e.kind()).from_entity(e) for e in raw]
+    if limit is None:
+      kwargs.setdefault('batch_size', datastore._MAX_INT_32)
+    return list(self.run(limit=limit, offset=offset, **kwargs))
 
   def cursor(self):
     """Get a serialized cursor for an already executed query.
@@ -2265,8 +2236,17 @@ class _QueryIterator(object):
     if self.__model_class is not None:
       return self.__model_class.from_entity(self.__iterator.next())
     else:
-      entity = self.__iterator.next()
-      return class_for_kind(entity.kind()).from_entity(entity)
+      while True:
+        entity = self.__iterator.next()
+        try:
+          model_class = class_for_kind(entity.kind())
+        except KindError:
+
+          if datastore_types.RESERVED_PROPERTY_NAME.match(entity.kind()):
+            continue
+          raise
+        else:
+          return model_class.from_entity(entity)
 
 
 def _normalize_query_parameter(value):
@@ -2638,26 +2618,15 @@ class GqlQuery(_BaseQuery):
     in batches by the iterator.
 
     Args:
-      config: datastore_rpc.Configuration to use for this request.
+      kwargs: Any keyword arguments accepted by datastore_query.QueryOptions().
 
     Returns:
       Iterator for this query.
     """
-    if self._proto_query.limit() >= 0:
-      return iter(self.fetch(limit=self._proto_query.limit(),
-                             offset=self._proto_query.offset(),
-                             **kwargs))
-    else:
-      results = _BaseQuery.run(self, **kwargs)
-
-      try:
-        for _ in xrange(self._proto_query.offset()):
-          results.next()
-      except StopIteration:
-        pass
-
-
-      return results
+    if self._proto_query.limit() > 0:
+      kwargs.setdefault('limit', self._proto_query.limit())
+    kwargs.setdefault('offset', self._proto_query.offset())
+    return _BaseQuery.run(self, **kwargs)
 
   def _get_query(self):
     return self._proto_query.Bind(self._args, self._kwds,

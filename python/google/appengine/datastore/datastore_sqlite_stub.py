@@ -813,10 +813,8 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       apiproxy_stub.APIProxyStub.MakeSyncCall(self, service, call, request,
                                               response)
     except sqlite3.OperationalError, e:
-      datastore_stub_util.Check(e.args[0] == 'database is locked',
-                                'Database is locked.',
-                                datastore_pb.Error.TIMEOUT)
-      raise
+      raise apiproxy_errors.ApplicationError(datastore_pb.Error.INTERNAL_ERROR,
+                                             e.args[0])
     self.AssertPbIsInitialized(response)
 
   def AssertPbIsInitialized(self, pb):

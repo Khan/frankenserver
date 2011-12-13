@@ -23,14 +23,15 @@ transports such as HTTP.
 Includes HTTP transport built over urllib2.
 """
 
+import httplib
 import logging
 import sys
 import urllib2
 
-from protorpc import messages
-from protorpc import protobuf
-from protorpc import remote
-from protorpc import util
+from . import messages
+from . import protobuf
+from . import remote
+from . import util
 
 try:
   from google.appengine.api import urlfetch
@@ -156,14 +157,25 @@ class Transport(object):
 
     Args:
       protocol: The protocol implementation.  Must implement encode_message and
-        decode_message.
+        decode_message.  Can also be an instance of remote.ProtocolConfig.
     """
     self.__protocol = protocol
+    if isinstance(protocol, remote.ProtocolConfig):
+      self.__protocol = protocol.protocol
+      self.__protocol_config = protocol
+    else:
+      self.__protocol = protocol
+      self.__protocol_config = remote.ProtocolConfig(protocol, 'default')
 
   @property
   def protocol(self):
     """Protocol associated with this transport."""
     return self.__protocol
+
+  @property
+  def protocol_config(self):
+    """Protocol associated with this transport."""
+    return self.__protocol_config
 
   def send_rpc(self, remote_info, request):
     """Initiate sending an RPC over the transport.
@@ -294,8 +306,13 @@ class HttpTransport(Transport):
           if status:
             return http_response.content, status
 
-          return None, remote.RpcStatus(state=remote.RpcState.SERVER_ERROR,
-                                        error_message=http_response.content)
+          error_message = httplib.responses.get(http_response.status_code,
+                                                'Unknown Error')
+          return (None,
+                  remote.RpcStatus(
+                    state=remote.RpcState.SERVER_ERROR,
+                    error_message='HTTP Error %d: %s' % (
+                      http_response.status_code, error_message)))
 
       except urlfetch.DownloadError, err:
         raise remote.NetworkError, (str(err), err)
@@ -360,7 +377,7 @@ class HttpTransport(Transport):
       service_url: URL where the service is located.  All communication via
         the transport will go to this URL.
       protocol: The protocol implementation.  Must implement encode_message and
-        decode_message.
+        decode_message.  Can also be an instance of remote.ProtocolConfig.
     """
     super(HttpTransport, self).__init__(protocol=protocol)
     self.__service_url = service_url

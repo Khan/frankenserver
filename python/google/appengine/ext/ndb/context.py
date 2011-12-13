@@ -18,6 +18,8 @@ from . import tasklets
 from . import eventloop
 from . import utils
 
+logging_debug = utils.logging_debug
+
 _LOCK_TIME = 32  # Time to lock out memcache.add() after datastore updates.
 _LOCKED = 0  # Special value to store in memcache indicating locked value.
 
@@ -106,9 +108,8 @@ class AutoBatcher(object):
     return '%s(%s)' % (self.__class__.__name__, self._todo_tasklet.__name__)
 
   def run_queue(self, options, todo):
-    # TODO: Use logging_debug(), at least if len(todo) == 1.
-    logging.info('AutoBatcher(%s): %d items',
-                 self._todo_tasklet.__name__, len(todo))
+    logging_debug('AutoBatcher(%s): %d items',
+                  self._todo_tasklet.__name__, len(todo))
     fut = self._todo_tasklet(todo, options)
     self._running.append(fut)
     # Add a callback when we're done.
@@ -123,8 +124,8 @@ class AutoBatcher(object):
     fut = tasklets.Future('%s.add(%s, %s)' % (self, arg, options))
     todo = self._queues.get(options)
     if todo is None:
-      logging.info('AutoBatcher(%s): creating new queue for %r',
-                   self._todo_tasklet.__name__, options)
+      logging_debug('AutoBatcher(%s): creating new queue for %r',
+                    self._todo_tasklet.__name__, options)
       if not self._queues:
         eventloop.add_idle(self._on_idle)
       todo = self._queues[options] = []
@@ -646,7 +647,7 @@ class Context(object):
         else:
           pbs = entity._to_pb(set_key=False).SerializePartialToString()
           timeout = self._get_memcache_timeout(key, options)
-          yield self.memcache_add(mkey, pbs, time=timeout, namespace=ns)
+          yield self.memcache_set(mkey, pbs, time=timeout, namespace=ns)
 
     if use_datastore:
       key = yield self._put_batcher.add(entity, options)
@@ -844,10 +845,26 @@ class Context(object):
     yield futures
 
   @tasklets.tasklet
-  def get_or_insert(self, model_class, name,
-                    app=None, namespace=None, parent=None,
-                    context_options=None,
-                    **kwds):
+  def get_or_insert(*args, **kwds):
+    # NOTE: The signature is really weird here because we want to support
+    # models with properties named e.g. 'self' or 'name'.
+    self, model_class, name = args  # These must always be positional.
+    our_kwds = {}
+    for kwd in 'app', 'namespace', 'parent', 'context_options':
+      # For each of these keyword arguments, if there is a property
+      # with the same name, the caller *must* use _foo=..., otherwise
+      # they may use either _foo=... or foo=..., but _foo=... wins.
+      alt_kwd = '_' + kwd
+      if alt_kwd in kwds:
+        our_kwds[kwd] = kwds.pop(alt_kwd)
+      elif (kwd in kwds and
+          not isinstance(getattr(model_class, kwd, None), model.Property)):
+        our_kwds[kwd] = kwds.pop(kwd)
+    app = our_kwds.get('app')
+    namespace = our_kwds.get('namespace')
+    parent = our_kwds.get('parent')
+    context_options = our_kwds.get('context_options')
+    # (End of super-special argument parsing.)
     # TODO: Test the heck out of this, in all sorts of evil scenarios.
     if not isinstance(name, basestring):
       raise TypeError('name must be a string; received %r' % name)
@@ -894,7 +911,10 @@ class Context(object):
       mapping[key] = value
     results = yield method(mapping, time=time, namespace=namespace)
     for fut, (key, unused_value) in todo:
-      status = results.get(key)
+      if results is None:
+        status = memcache.MemcacheSetResponse.ERROR
+      else:
+        status = results.get(key)
       fut.set_result(status == memcache.MemcacheSetResponse.STORED)
 
   @tasklets.tasklet
@@ -908,10 +928,12 @@ class Context(object):
     statuses = yield self._memcache.delete_multi_async(keys, seconds=seconds,
                                                        namespace=namespace)
     status_key_mapping = {}
-    for key, status in zip(keys, statuses):
-      status_key_mapping[key] = status
+    if statuses:  # On network error, statuses is None.
+      for key, status in zip(keys, statuses):
+        status_key_mapping[key] = status
     for fut, key in todo:
-      fut.set_result(status_key_mapping.get(key))
+      status = status_key_mapping.get(key, memcache.DELETE_NETWORK_FAILURE)
+      fut.set_result(status)
 
   @tasklets.tasklet
   def _memcache_off_tasklet(self, todo, options):

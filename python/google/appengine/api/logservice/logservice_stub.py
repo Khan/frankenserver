@@ -33,12 +33,13 @@ import os
 import time
 
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import datastore_errors
 from google.appengine.api import logservice
 from google.appengine.api import namespace_manager
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.logservice import logservice
-
 from google.appengine.ext import db
+from google.appengine.runtime import apiproxy_errors
 
 
 LOG_NAMESPACE = '_Logs'
@@ -99,7 +100,7 @@ class _LogLine(db.Model):
   """Representation of an application-level log line."""
   time = db.IntegerProperty()
   level = db.IntegerProperty()
-  message = db.TextProperty()
+  message = db.BlobProperty()
 
 
 class _LogRecord(db.Model):
@@ -118,8 +119,9 @@ class _LogRecord(db.Model):
   status = db.IntegerProperty()
   response_size = db.IntegerProperty()
   http_version = db.StringProperty()
+  host = db.StringProperty()
+  user_agent = db.StringProperty()
   finished = db.BooleanProperty()
-  combined = db.TextProperty()
   app_logs = db.ListProperty(db.Key)
 
   @classmethod
@@ -144,7 +146,7 @@ class _LogRecord(db.Model):
     log.set_version_id(self.version_id)
     log.set_ip(self.ip)
     log.set_nickname(self.nickname)
-    log.set_request_id(self.request_id)
+    log.set_request_id(str(self.key()))
     log.set_start_time(self.start_time)
     log.set_end_time(self.end_time)
     log.set_latency(self.latency)
@@ -154,8 +156,20 @@ class _LogRecord(db.Model):
     log.set_status(self.status)
     log.set_response_size(self.response_size)
     log.set_http_version(self.http_version)
+    if self.host is not None:
+      log.set_host(self.host)
+    if self.user_agent is not None:
+      log.set_user_agent(self.user_agent)
     log.set_finished(self.finished)
-    log.set_combined(self.combined)
+    log.set_url_map_entry('')
+
+
+    time_seconds = (self.end_time or self.start_time) / 10**6
+    date_string = time.strftime('%d/%b/%Y:%T %z', time.localtime(time_seconds))
+    log.set_combined('%s - %s [%s] \"%s %s %s\" %d %d - \"%s\"' %
+                     (self.ip, self.nickname, date_string, self.method,
+                      self.resource, self.http_version, self.status or 0,
+                      self.response_size or 0, self.user_agent))
 
     if request.include_app_logs():
       for app_log in app_logs:
@@ -200,8 +214,16 @@ class RequestLogWriter(object):
       not just "1.1").
   """
 
-  def write_request_info(self, ip, app_id, version_id, nickname,
-                         start_time=None, end_time=None):
+  def __init__(self, persist=False):
+    """Constructor.
+
+    Args:
+      persist: If true, log records should be durably persisted.
+    """
+    self.persist = persist
+
+  def write_request_info(self, ip, app_id, version_id, nickname, user_agent,
+                         host, start_time=None, end_time=None):
     """Writes a single request log with currently known information.
 
     Args:
@@ -213,11 +235,15 @@ class RequestLogWriter(object):
       nickname: A string representing the user that has made this request (that
         is, the user's nickname, e.g., 'foobar' for a user logged in as
         'foobar@gmail.com').
+      user_agent: A string representing the agent used to make this request.
+      host: A string representing the host that received this request.
       start_time: If specified, a starting time that should be used instead of
         generating one internally (useful for testing).
       end_time: If specified, an ending time that should be used instead of
         generating one internally (useful for testing).
     """
+    if not self.persist:
+      return
 
 
 
@@ -242,6 +268,8 @@ class RequestLogWriter(object):
 
     log.ip = ip
     log.nickname = nickname
+    log.user_agent = user_agent
+    log.host = host
 
     now_time_usecs = self.get_time_now()
     log.request_id = str(now_time_usecs)
@@ -269,12 +297,13 @@ class RequestLogWriter(object):
     """Get the current time in microseconds since epoch."""
     return int(time.time() * 1000000)
 
-  def write(self, method, resource, status, size, http_version, combined):
+  def write(self, method, resource, status, size, http_version):
     """Writes all request-level information to the Datastore."""
-    _run_in_namespace(self._write, method, resource, status, size,
-                      http_version, combined)
+    if self.persist:
+      _run_in_namespace(self._write, method, resource, status, size,
+                        http_version)
 
-  def _write(self, method, resource, status, size, http_version, combined):
+  def _write(self, method, resource, status, size, http_version):
     """Implements write if called by _run_in_namespace."""
     log = _LogRecord.get_or_create()
     log.method = method
@@ -282,10 +311,10 @@ class RequestLogWriter(object):
     log.status = status
     log.response_size = size
     log.http_version = http_version
-    log.combined = combined
 
     if not log.finished:
       log.end_time = self.get_time_now()
+      log.latency = log.end_time - (log.start_time or 0)
       log.finished = True
 
     log.put()
@@ -297,17 +326,18 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
   __DEFAULT_READ_COUNT = 20
 
-  def __init__(self):
+  def __init__(self, persist=False):
     """Constructor."""
     super(LogServiceStub, self).__init__('logservice')
+    self.persist = persist
     self.status = None
-    self.cursor = None
 
   def _Dynamic_Flush(self, request, unused_response):
     """Writes application-level log messages for a request to the Datastore."""
-    group = log_service_pb.UserAppLogGroup(request.logs())
-    new_app_logs = self.put_log_lines(group.log_line_list())
-    self.write_app_logs(new_app_logs)
+    if self.persist:
+      group = log_service_pb.UserAppLogGroup(request.logs())
+      new_app_logs = self.put_log_lines(group.log_line_list())
+      self.write_app_logs(new_app_logs)
 
   def put_log_lines(self, lines):
     """Creates application-level log lines and stores them in the Datastore.
@@ -369,16 +399,49 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
+
+    response.clear_offset()
+
+
+    if request.version_id_size() != 1:
+      raise apiproxy_errors.ApplicationError(
+          log_service_pb.LogServiceError.INVALID_REQUEST)
+
+    if (request.request_id_size() and
+        (request.has_start_time() or request.has_end_time() or
+         request.has_offset())):
+      raise apiproxy_errors.ApplicationError(
+          log_service_pb.LogServiceError.INVALID_REQUEST)
+
+
+    if request.request_id_size():
+      results = []
+      try:
+        results = db.get(request.request_id_list())
+      except datastore_errors.BadKeyError:
+
+        for request_id in request.request_id_list():
+          try:
+            results.append(db.get(request_id))
+          except datastore_errors.BadKeyError:
+            pass
+      for result in results:
+        if result.version_id != request.version_id(0):
+          continue
+        log = response.add_log()
+        app_logs = db.get(result.app_logs)
+        result.fill_in_log(request, log, app_logs)
+      return
+
     query = db.Query(_LogRecord)
 
     if request.has_offset():
-      query.with_cursor(start_cursor=request.mutable_offset().request_id())
+      query.filter('__key__ > ', db.Key(request.offset().request_id()))
 
     if request.has_count():
       limit = request.count()
     else:
       limit = LogServiceStub.__DEFAULT_READ_COUNT
-    results = query.fetch(limit)
 
     versions = request.version_id_list()
 
@@ -387,7 +450,9 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
-    for result in results:
+    index = 0
+    for result in query.run(limit=limit):
+      index += 1
       start = result.start_time
 
       if request.has_start_time():
@@ -411,24 +476,18 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
       app_logs = db.get(result.app_logs)
       if request.has_minimum_log_level():
-        log_level_matched = False
         for app_log in app_logs:
           if app_log.level >= request.minimum_log_level():
-            log_level_matched = True
             break
-
-        if not log_level_matched:
+        else:
           continue
 
       log = response.add_log()
       result.fill_in_log(request, log, app_logs)
+      log.mutable_offset().set_request_id(str(result.key()))
 
-    possible_cursor = query.cursor()
-    if self.cursor == possible_cursor:
-      response.clear_offset()
-    else:
-      response.mutable_offset().set_request_id(possible_cursor)
-      self.cursor = possible_cursor
+    if index == limit:
+      response.mutable_offset().set_request_id(str(result.key()))
 
   def get_status(self):
     """Internal method for dev_appserver to read the status."""

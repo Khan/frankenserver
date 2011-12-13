@@ -109,7 +109,7 @@ def _GetScatterProperty(entity_proto):
     return None
 
   scatter_property = entity_pb.Property()
-  scatter_property.set_name('__scatter__')
+  scatter_property.set_name(datastore_types.SCATTER_SPECIAL_PROPERTY)
   scatter_property.set_meaning(entity_pb.Property.BYTESTRING)
   scatter_property.set_multiple(False)
   property_value = scatter_property.mutable_value()
@@ -121,7 +121,7 @@ def _GetScatterProperty(entity_proto):
 
 
 _SPECIAL_PROPERTY_MAP = {
-    '__scatter__' : (False, True, _GetScatterProperty)
+    datastore_types.SCATTER_SPECIAL_PROPERTY: (False, True, _GetScatterProperty)
     }
 
 
@@ -1661,7 +1661,7 @@ class BaseTransactionManager(object):
     Check(not (allow_multiple_eg and isinstance(
         self._consistency_policy, MasterSlaveConsistencyPolicy)),
           'transactions on multiple entity groups only allowed with the '
-          'High Reliability datastore')
+          'High Replication datastore')
     txn = self._BeginTransaction(app, allow_multiple_eg)
     self._txn_map[id(txn)] = txn
     transaction = datastore_pb.Transaction()

@@ -220,8 +220,8 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
       self._log('Ignoring clear messages for nonexistent token (' +
                 token + ')')
 
-  class ChannelPresenceConnection(object):
-    """A connection object to update channel client presence."""
+  class ChannelPresenceSocket():
+    """A socket object to update channel client presence."""
 
     def __init__(self, path, client_id):
       payload = StringIO.StringIO()
@@ -239,18 +239,22 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     def connection_done(self):
       self.wfile_close()
 
-    def close(self):
-      pass
-
     def makefile(self, mode, buffsize):
       if mode.startswith('w'):
         return self.wfile
       else:
         return self.rfile
 
+    def close(self):
+      pass
+
+    def shutdown(self, how):
+      pass
+
+
   def connect_channel_event(self, client_id):
     """Tell the application that the client has connected."""
-    return (self.ChannelPresenceConnection('connected/', client_id),
+    return (self.ChannelPresenceSocket('connected/', client_id),
             (ChannelServiceStub.XMPP_PUBLIC_IP,
              ChannelServiceStub.XMPP_PUBLIC_PORT))
 
@@ -278,7 +282,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     self._log('Removing channel %s', client_id)
     if client_id in self._connected_channel_messages:
       del self._connected_channel_messages[client_id]
-    return (self.ChannelPresenceConnection('disconnected/', client_id),
+    return (self.ChannelPresenceSocket('disconnected/', client_id),
             (ChannelServiceStub.XMPP_PUBLIC_IP,
              ChannelServiceStub.XMPP_PUBLIC_PORT))
 

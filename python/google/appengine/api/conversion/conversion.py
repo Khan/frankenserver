@@ -42,7 +42,7 @@ CONVERSION_MAX_NUM_PER_REQUEST = 10
 
 
 
-CONVERSION_MAX_DOC_SIZE_BYTES = 10 * (2 ** 20)
+CONVERSION_MAX_SIZE_BYTES = 2 * (2 ** 20)
 
 _CONVERSION_SERVICE = "conversion"
 
@@ -214,12 +214,12 @@ class Asset(object):
       asset_info_pb.set_name(self._name)
 
 
-class ConversionRequest(object):
+class Conversion(object):
   """Represents a single conversion from one file format to another.
 
-  A conversion document must contain at least one asset, typically the
-  document contents. Additional assets are those needed for the conversion,
-  for example images in HTML.
+  A conversion must contain at least one asset, typically the document contents.
+  Additional assets are those needed for the conversion, for example images in
+  HTML.
   """
 
   def __init__(self,
@@ -256,22 +256,22 @@ class ConversionRequest(object):
       raise ValueError("Asset mime type should not be empty")
     self.add_asset(asset)
 
-    ConversionRequest._ensure_nonempty_string(
+    Conversion._ensure_nonempty_string(
         "output_mime_type", output_mime_type)
     self._output_mime_type = output_mime_type.lower()
 
-    self._image_width = ConversionRequest._ensure_positive_integer(
+    self._image_width = Conversion._ensure_positive_integer(
         "image_width", image_width)
-    self._first_page = ConversionRequest._ensure_positive_integer(
+    self._first_page = Conversion._ensure_positive_integer(
         "first_page", first_page)
     self._last_page = None
     if last_page is not None:
-      self._last_page = ConversionRequest._ensure_positive_integer(
+      self._last_page = Conversion._ensure_positive_integer(
           "last_page", last_page)
 
     self._ocr_input_language = None
     if ocr_input_language is not None:
-      ConversionRequest._ensure_nonempty_string(
+      Conversion._ensure_nonempty_string(
           "ocr_input_language", ocr_input_language)
       self._ocr_input_language = ocr_input_language.lower()
 
@@ -329,7 +329,7 @@ class ConversionRequest(object):
     self._assets.append(asset)
 
   def _populate_proto(self, conversion_input_pb):
-    """Populate a ConversionInput protocol buffer with ConversionRequest.
+    """Populate a ConversionInput protocol buffer with Conversion instance.
 
     Args:
       conversion_input_pb: A ConversionInput protocol buffer.
@@ -413,25 +413,23 @@ class ConversionOutput(object):
     return self._assets
 
 
-def convert(conversion_request, deadline=None):
+def convert(conversion, deadline=None):
   """Makes all conversions in parallel, blocking until all results are returned.
 
   Args:
-    conversion_request: A ConversionRequest instance or a list of
-      ConversionRequest instances.
+    conversion: A Conversion instance or a list of Conversion instances.
     deadline: Optional deadline in seconds for all the conversions.
 
   Returns:
-    A ConverionOutput instance if conversion_request is a ConversionRequest
-    instance. Or a list of ConversionOutput instances,
-    one per ConversionRequest in the same order.
+    A ConverionOutput instance if conversion is a Conversion instance. Or a list
+    of ConversionOutput instances, one per Conversion in the same order.
 
   Raises:
-    TypeError: Input conversion_requests with wrong type.
+    TypeError: Input conversions with wrong type.
     See more details in _to_conversion_error function.
   """
   rpc = create_rpc(deadline=deadline)
-  make_convert_call(rpc, conversion_request)
+  make_convert_call(rpc, conversion)
   return rpc.get_result()
 
 
@@ -449,7 +447,7 @@ def create_rpc(deadline=None, callback=None):
   return apiproxy_stub_map.UserRPC(_CONVERSION_SERVICE, deadline, callback)
 
 
-def make_convert_call(rpc, conversion_request):
+def make_convert_call(rpc, conversion):
   """Executes the RPC call to do the conversions.
 
   The result can then be got from rpc.get_result which will call
@@ -457,32 +455,31 @@ def make_convert_call(rpc, conversion_request):
 
   Args:
     rpc: a UserRPC instance.
-    conversion_request: A ConversionRequest instance or a list of
-      ConversionRequest instances.
+    conversion: A Conversion instance or a list of Conversion instances.
 
   Raises:
-    TypeError: Input conversion_requests with wrong type.
+    TypeError: Input conversions with wrong type.
     See more details in _to_conversion_error function.
   """
   request = conversion_service_pb.ConversionRequest()
   response = conversion_service_pb.ConversionResponse()
 
   try:
-    conversion_requests = list(iter(conversion_request))
+    conversions = list(iter(conversion))
   except TypeError:
-    conversion_requests = [conversion_request]
+    conversions = [conversion]
     multiple = False
   else:
     multiple = True
 
-  for conversion in conversion_requests:
-    if isinstance(conversion, ConversionRequest):
+  for conversion in conversions:
+    if isinstance(conversion, Conversion):
       conversion_input_pb = request.add_conversion()
 
       conversion._populate_proto(conversion_input_pb)
     else:
-      raise TypeError("conversion_request must be a ConversionRequest instance "
-                      "or a list of ConversionRequest instances")
+      raise TypeError("conversion must be a Conversion instance "
+                      "or a list of Conversion instances")
 
   rpc.make_call(_CONVERT_METHOD, request, response,
                 _get_convert_result, user_data=multiple)
@@ -495,9 +492,8 @@ def _get_convert_result(rpc):
     rpc: A UserRPC instance.
 
   Returns:
-    A ConverionOutput instance if conversion_request is a ConversionRequest
-    instance. Or a list of ConversionOutput instances,
-    one per ConversionRequest in the same order.
+    A ConverionOutput instance if conversion is a Conversion instance. Or a list
+    of ConversionOutput instances, one per Conversion in the same order.
 
   Raises:
     See more details in _to_conversion_error function.

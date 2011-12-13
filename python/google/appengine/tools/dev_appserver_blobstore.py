@@ -425,6 +425,13 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
               'response_text': 'Your client issued a request that was too '
               'large.'}
           outfile.write(response)
+        except dev_appserver_upload.FilenameOrContentTypeTooLargeError, ex:
+          outfile.write('Status: 400\n\n')
+          response = ERROR_RESPONSE_TEMPLATE % {
+              'response_code': 400,
+              'response_string': 'Bad Request',
+              'response_text': str(ex)}
+          outfile.write(response)
       else:
         logging.error('Could not find session for %s', upload_key)
         outfile.write('Status: 404\n\n')

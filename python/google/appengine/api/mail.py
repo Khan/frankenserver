@@ -1138,6 +1138,8 @@ class EmailMessage(_EmailMessageBase):
 
     if attr in ['to', 'cc', 'bcc']:
       if isinstance(value, basestring):
+        if value == '' and getattr(self, 'ALLOW_BLANK_EMAIL', False):
+          return
         check_email_valid(value, attr)
       else:
         for address in value:
@@ -1244,6 +1246,8 @@ class InboundEmailMessage(EmailMessage):
   PROPERTIES = frozenset(_EmailMessageBase.PROPERTIES |
                          set(('alternate_bodies',)) |
                          set(__HEADER_PROPERTIES.iterkeys()))
+
+  ALLOW_BLANK_EMAIL = True
 
   def update_from_mime_message(self, mime_message):
     """Update values from MIME message.

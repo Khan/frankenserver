@@ -40,4 +40,4 @@ __all__ = [
 
     'DEFAULT_APP_VERSION',
 
-    'Queue', 'Task', 'TaskRetryOptions', 'add']
+    'Queue', 'QueueStatistics', 'Task', 'TaskRetryOptions', 'add']

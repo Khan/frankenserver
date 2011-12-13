@@ -116,7 +116,7 @@ class GoogleStorage(object):
     """Starts a new upload based on the specified CreateRequest."""
 
     mime_type = None
-    gs_filename = None
+    gs_filename = request.filename()
     ignored_parameters = [
         gs._CACHE_CONTROL_PARAMETER,
         gs._CANNED_ACL_PARAMETER,
@@ -131,8 +131,6 @@ class GoogleStorage(object):
       elif (name in ignored_parameters or
             name.startswith(gs._USER_METADATA_PREFIX)):
         pass
-      elif name == gs._FILENAME_PARAMETER:
-        gs_filename = _GS_PREFIX[:-1] + param.value()
       else:
         raise_error(file_service_pb.FileServiceErrors.INVALID_PARAMETER)
 
@@ -460,7 +458,7 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Create(self, request, response):
     filesystem = request.filesystem()
 
-    if request.has_filename():
+    if request.has_filename() and filesystem != gs._GS_FILESYSTEM:
       raise_error(file_service_pb.FileServiceErrors.FILE_NAME_SPECIFIED)
 
     if filesystem == files_blobstore._BLOBSTORE_FILESYSTEM:

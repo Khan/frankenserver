@@ -27,6 +27,7 @@ http://www.python.org/dev/peps/pep-0249/
 import collections
 import datetime
 import exceptions
+import os
 import time
 import types
 
@@ -42,6 +43,11 @@ from google.storage.speckle.python.api import converters
 
 __path__ = api.__path__
 
+
+
+
+
+OAUTH_CREDENTIALS_PATH = os.path.expanduser('~/.googlesql_oauth2.dat')
 
 
 

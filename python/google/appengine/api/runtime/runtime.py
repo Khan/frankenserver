@@ -51,7 +51,7 @@ def cpu_usage():
 
 
 def memory_usage():
-  """Returns a SystemStat describing memory usage, expressed in bytes.
+  """Returns a SystemStat describing memory usage, expressed in MB.
 
   The returned object has the following accessors:
 

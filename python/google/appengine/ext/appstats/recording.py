@@ -963,24 +963,24 @@ class RequestLocalRecorderProxy(object):
   @_synchronized
   def has_recorder_for_current_request(self):
     """Returns whether the current request has a recorder set."""
-    return os.environ['REQUEST_ID_HASH'] in self._recorders
+    return os.environ.get('REQUEST_ID_HASH') in self._recorders
 
   @_synchronized
   def set_for_current_request(self, new_recorder):
     """Sets the recorder for the current request."""
-    self._recorders[os.environ['REQUEST_ID_HASH']] = new_recorder
+    self._recorders[os.environ.get('REQUEST_ID_HASH')] = new_recorder
     _set_global_recorder(new_recorder)
 
   @_synchronized
   def get_for_current_request(self):
     """Returns the recorder for the current request or None."""
-    return self._recorders.get(os.environ['REQUEST_ID_HASH'])
+    return self._recorders.get(os.environ.get('REQUEST_ID_HASH'))
 
   @_synchronized
   def clear_for_current_request(self):
     """Clears the recorder for the current request."""
-    if os.environ['REQUEST_ID_HASH'] in self._recorders:
-      del self._recorders[os.environ['REQUEST_ID_HASH']]
+    if os.environ.get('REQUEST_ID_HASH') in self._recorders:
+      del self._recorders[os.environ.get('REQUEST_ID_HASH')]
     _clear_global_recorder()
 
   @_synchronized

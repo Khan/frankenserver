@@ -33,12 +33,12 @@ __all__ = [
     "TooManyConversions",
     "TransientError",
 
-    "CONVERSION_MAX_DOC_SIZE_BYTES",
+    "CONVERSION_MAX_SIZE_BYTES",
     "CONVERSION_MAX_NUM_PER_REQUEST",
 
     "Asset",
+    "Conversion",
     "ConversionOutput",
-    "ConversionRequest",
     "convert",
     "create_rpc",
     "make_convert_call",

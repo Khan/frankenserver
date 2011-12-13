@@ -932,6 +932,8 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
   finished_ = 1
   has_clone_key_ = 0
   clone_key_ = ""
+  has_lines_incomplete_ = 0
+  lines_incomplete_ = 0
   has_exit_reason_ = 0
   exit_reason_ = 0
   has_was_throttled_for_time_ = 0
@@ -1347,6 +1349,19 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
 
   def clear_line(self):
     self.line_ = []
+  def lines_incomplete(self): return self.lines_incomplete_
+
+  def set_lines_incomplete(self, x):
+    self.has_lines_incomplete_ = 1
+    self.lines_incomplete_ = x
+
+  def clear_lines_incomplete(self):
+    if self.has_lines_incomplete_:
+      self.has_lines_incomplete_ = 0
+      self.lines_incomplete_ = 0
+
+  def has_lines_incomplete(self): return self.has_lines_incomplete_
+
   def exit_reason(self): return self.exit_reason_
 
   def set_exit_reason(self, x):
@@ -1445,6 +1460,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     if (x.has_finished()): self.set_finished(x.finished())
     if (x.has_clone_key()): self.set_clone_key(x.clone_key())
     for i in xrange(x.line_size()): self.add_line().CopyFrom(x.line(i))
+    if (x.has_lines_incomplete()): self.set_lines_incomplete(x.lines_incomplete())
     if (x.has_exit_reason()): self.set_exit_reason(x.exit_reason())
     if (x.has_was_throttled_for_time()): self.set_was_throttled_for_time(x.was_throttled_for_time())
     if (x.has_was_throttled_for_requests()): self.set_was_throttled_for_requests(x.was_throttled_for_requests())
@@ -1514,6 +1530,8 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     if len(self.line_) != len(x.line_): return 0
     for e1, e2 in zip(self.line_, x.line_):
       if e1 != e2: return 0
+    if self.has_lines_incomplete_ != x.has_lines_incomplete_: return 0
+    if self.has_lines_incomplete_ and self.lines_incomplete_ != x.lines_incomplete_: return 0
     if self.has_exit_reason_ != x.has_exit_reason_: return 0
     if self.has_exit_reason_ and self.exit_reason_ != x.exit_reason_: return 0
     if self.has_was_throttled_for_time_ != x.has_was_throttled_for_time_: return 0
@@ -1626,6 +1644,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     if (self.has_clone_key_): n += 2 + self.lengthString(len(self.clone_key_))
     n += 2 * len(self.line_)
     for i in xrange(len(self.line_)): n += self.lengthString(self.line_[i].ByteSize())
+    if (self.has_lines_incomplete_): n += 3
     if (self.has_exit_reason_): n += 2 + self.lengthVarInt64(self.exit_reason_)
     if (self.has_was_throttled_for_time_): n += 3
     if (self.has_was_throttled_for_requests_): n += 3
@@ -1696,6 +1715,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     if (self.has_clone_key_): n += 2 + self.lengthString(len(self.clone_key_))
     n += 2 * len(self.line_)
     for i in xrange(len(self.line_)): n += self.lengthString(self.line_[i].ByteSizePartial())
+    if (self.has_lines_incomplete_): n += 3
     if (self.has_exit_reason_): n += 2 + self.lengthVarInt64(self.exit_reason_)
     if (self.has_was_throttled_for_time_): n += 3
     if (self.has_was_throttled_for_requests_): n += 3
@@ -1734,6 +1754,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     self.clear_finished()
     self.clear_clone_key()
     self.clear_line()
+    self.clear_lines_incomplete()
     self.clear_exit_reason()
     self.clear_was_throttled_for_time()
     self.clear_was_throttled_for_requests()
@@ -1833,6 +1854,9 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(282)
       out.putVarInt32(self.offset_.ByteSize())
       self.offset_.OutputUnchecked(out)
+    if (self.has_lines_incomplete_):
+      out.putVarInt32(288)
+      out.putBoolean(self.lines_incomplete_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -1942,6 +1966,9 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(282)
       out.putVarInt32(self.offset_.ByteSizePartial())
       self.offset_.OutputPartial(out)
+    if (self.has_lines_incomplete_):
+      out.putVarInt32(288)
+      out.putBoolean(self.lines_incomplete_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2057,6 +2084,9 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_offset().TryMerge(tmp)
         continue
+      if tt == 288:
+        self.set_lines_incomplete(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2105,6 +2135,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_lines_incomplete_: res+=prefix+("lines_incomplete: %s\n" % self.DebugFormatBool(self.lines_incomplete_))
     if self.has_exit_reason_: res+=prefix+("exit_reason: %s\n" % self.DebugFormatInt32(self.exit_reason_))
     if self.has_was_throttled_for_time_: res+=prefix+("was_throttled_for_time: %s\n" % self.DebugFormatBool(self.was_throttled_for_time_))
     if self.has_was_throttled_for_requests_: res+=prefix+("was_throttled_for_requests: %s\n" % self.DebugFormatBool(self.was_throttled_for_requests_))
@@ -2146,6 +2177,7 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
   kfinished = 27
   kclone_key = 28
   kline = 29
+  klines_incomplete = 36
   kexit_reason = 30
   kwas_throttled_for_time = 31
   kwas_throttled_for_requests = 32
@@ -2189,7 +2221,8 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     33: "throttled_time",
     34: "server_name",
     35: "offset",
-  }, 35)
+    36: "lines_incomplete",
+  }, 36)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2228,7 +2261,8 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
     33: ProtocolBuffer.Encoder.NUMERIC,
     34: ProtocolBuffer.Encoder.STRING,
     35: ProtocolBuffer.Encoder.STRING,
-  }, 35, ProtocolBuffer.Encoder.MAX_TYPE)
+    36: ProtocolBuffer.Encoder.NUMERIC,
+  }, 36, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2257,6 +2291,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   replica_index_ = 0
   has_include_app_logs_ = 0
   include_app_logs_ = 0
+  has_app_logs_per_request_ = 0
+  app_logs_per_request_ = 0
   has_include_host_ = 0
   include_host_ = 0
   has_include_all_ = 0
@@ -2449,6 +2485,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_include_app_logs(self): return self.has_include_app_logs_
 
+  def app_logs_per_request(self): return self.app_logs_per_request_
+
+  def set_app_logs_per_request(self, x):
+    self.has_app_logs_per_request_ = 1
+    self.app_logs_per_request_ = x
+
+  def clear_app_logs_per_request(self):
+    if self.has_app_logs_per_request_:
+      self.has_app_logs_per_request_ = 0
+      self.app_logs_per_request_ = 0
+
+  def has_app_logs_per_request(self): return self.has_app_logs_per_request_
+
   def include_host(self): return self.include_host_
 
   def set_include_host(self, x):
@@ -2504,6 +2553,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_host_regex()): self.set_host_regex(x.host_regex())
     if (x.has_replica_index()): self.set_replica_index(x.replica_index())
     if (x.has_include_app_logs()): self.set_include_app_logs(x.include_app_logs())
+    if (x.has_app_logs_per_request()): self.set_app_logs_per_request(x.app_logs_per_request())
     if (x.has_include_host()): self.set_include_host(x.include_host())
     if (x.has_include_all()): self.set_include_all(x.include_all())
     if (x.has_cache_iterator()): self.set_cache_iterator(x.cache_iterator())
@@ -2538,6 +2588,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_replica_index_ and self.replica_index_ != x.replica_index_: return 0
     if self.has_include_app_logs_ != x.has_include_app_logs_: return 0
     if self.has_include_app_logs_ and self.include_app_logs_ != x.include_app_logs_: return 0
+    if self.has_app_logs_per_request_ != x.has_app_logs_per_request_: return 0
+    if self.has_app_logs_per_request_ and self.app_logs_per_request_ != x.app_logs_per_request_: return 0
     if self.has_include_host_ != x.has_include_host_: return 0
     if self.has_include_host_ and self.include_host_ != x.include_host_: return 0
     if self.has_include_all_ != x.has_include_all_: return 0
@@ -2572,6 +2624,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
     if (self.has_include_app_logs_): n += 2
+    if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
@@ -2596,6 +2649,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
     if (self.has_include_app_logs_): n += 2
+    if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
@@ -2615,6 +2669,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_host_regex()
     self.clear_replica_index()
     self.clear_include_app_logs()
+    self.clear_app_logs_per_request()
     self.clear_include_host()
     self.clear_include_all()
     self.clear_cache_iterator()
@@ -2668,6 +2723,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_replica_index_):
       out.putVarInt32(128)
       out.putVarInt32(self.replica_index_)
+    if (self.has_app_logs_per_request_):
+      out.putVarInt32(136)
+      out.putVarInt32(self.app_logs_per_request_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -2719,6 +2777,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_replica_index_):
       out.putVarInt32(128)
       out.putVarInt32(self.replica_index_)
+    if (self.has_app_logs_per_request_):
+      out.putVarInt32(136)
+      out.putVarInt32(self.app_logs_per_request_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2774,6 +2835,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 128:
         self.set_replica_index(d.getVarInt32())
         continue
+      if tt == 136:
+        self.set_app_logs_per_request(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2808,6 +2872,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_host_regex_: res+=prefix+("host_regex: %s\n" % self.DebugFormatString(self.host_regex_))
     if self.has_replica_index_: res+=prefix+("replica_index: %s\n" % self.DebugFormatInt32(self.replica_index_))
     if self.has_include_app_logs_: res+=prefix+("include_app_logs: %s\n" % self.DebugFormatBool(self.include_app_logs_))
+    if self.has_app_logs_per_request_: res+=prefix+("app_logs_per_request: %s\n" % self.DebugFormatInt32(self.app_logs_per_request_))
     if self.has_include_host_: res+=prefix+("include_host: %s\n" % self.DebugFormatBool(self.include_host_))
     if self.has_include_all_: res+=prefix+("include_all: %s\n" % self.DebugFormatBool(self.include_all_))
     if self.has_cache_iterator_: res+=prefix+("cache_iterator: %s\n" % self.DebugFormatBool(self.cache_iterator_))
@@ -2830,6 +2895,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   khost_regex = 15
   kreplica_index = 16
   kinclude_app_logs = 10
+  kapp_logs_per_request = 17
   kinclude_host = 11
   kinclude_all = 12
   kcache_iterator = 13
@@ -2852,7 +2918,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     14: "combined_log_regex",
     15: "host_regex",
     16: "replica_index",
-  }, 16)
+    17: "app_logs_per_request",
+  }, 17)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2872,7 +2939,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     14: ProtocolBuffer.Encoder.STRING,
     15: ProtocolBuffer.Encoder.STRING,
     16: ProtocolBuffer.Encoder.NUMERIC,
-  }, 16, ProtocolBuffer.Encoder.MAX_TYPE)
+    17: ProtocolBuffer.Encoder.NUMERIC,
+  }, 17, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

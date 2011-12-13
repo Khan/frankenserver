@@ -116,11 +116,12 @@ SUPPORTED_RUNTIMES = ('go', 'python', 'python27')
 
 
 
-MB = 1024 * 1024
+MEGA = 1024 * 1024
+MILLION = 1000 * 1000
 DEFAULT_RESOURCE_LIMITS = {
-    'max_file_size': 32 * MB,
-    'max_blob_size': 32 * MB,
-    'max_total_file_size': 150 * MB,
+    'max_file_size': 32 * MILLION,
+    'max_blob_size': 32 * MILLION,
+    'max_total_file_size': 150 * MEGA,
     'max_file_count': 10000,
 }
 
@@ -159,75 +160,110 @@ def _PrintErrorAndExit(stream, msg, exit_code=2):
   sys.exit(exit_code)
 
 
-def GetMimeTypeIfStaticFile(config, filename):
-  """Looks up the mime type for 'filename'.
+class FileClassification(object):
+  """A class to hold a file's classification.
 
-  Uses the handlers in 'config' to determine if the file should
-  be treated as a static file.
-
-  Args:
-    config: The app.yaml object to check the filename against.
-    filename: The name of the file.
-
-  Returns:
-    The mime type string.  For example, 'text/plain' or 'image/gif'.
-    None if this is not a static file.
+  This class both abstracts away the details of how we determine
+  whether a file is a regular, static or error file as well as acting
+  as a container for various metadata about the file.
   """
-  for handler in config.handlers:
-    handler_type = handler.GetHandlerType()
-    if handler_type in ('static_dir', 'static_files'):
-      if handler_type == 'static_dir':
-        regex = os.path.join(re.escape(handler.GetHandler()), '.*')
-      else:
-        regex = handler.upload
-      if re.match(regex, filename):
-        if handler.mime_type is not None:
-          return handler.mime_type
+
+  def __init__(self, config, filename):
+    """Initializes a FileClassification instance.
+
+    Args:
+      config: The app.yaml object to check the filename against.
+      filename: The name of the file.
+    """
+    self.__static_mime_type = self.__GetMimeTypeIfStaticFile(config, filename)
+    self.__error_mime_type, self.__error_code = self.__LookupErrorBlob(config,
+                                                                       filename)
+
+  @staticmethod
+  def __GetMimeTypeIfStaticFile(config, filename):
+    """Looks up the mime type for 'filename'.
+
+    Uses the handlers in 'config' to determine if the file should
+    be treated as a static file.
+
+    Args:
+      config: The app.yaml object to check the filename against.
+      filename: The name of the file.
+
+    Returns:
+      The mime type string.  For example, 'text/plain' or 'image/gif'.
+      None if this is not a static file.
+    """
+    for handler in config.handlers:
+      handler_type = handler.GetHandlerType()
+      if handler_type in ('static_dir', 'static_files'):
+        if handler_type == 'static_dir':
+          regex = os.path.join(re.escape(handler.GetHandler()), '.*')
         else:
-          guess = mimetypes.guess_type(filename)[0]
-          if guess is None:
-            default = 'application/octet-stream'
-            print >>sys.stderr, ('Could not guess mimetype for %s.  Using %s.'
-                                 % (filename, default))
-            return default
-          return guess
-  return None
+          regex = handler.upload
+        if re.match(regex, filename):
+          if handler.mime_type is not None:
+            return handler.mime_type
+          else:
+            return FileClassification.__MimeType(filename)
+    return None
 
+  @staticmethod
+  def __LookupErrorBlob(config, filename):
+    """Looks up the mime type and error_code for 'filename'.
 
-def LookupErrorBlob(config, filename):
-  """Looks up the mime type and error_code for 'filename'.
+    Uses the error handlers in 'config' to determine if the file should
+    be treated as an error blob.
 
-  Uses the error handlers in 'config' to determine if the file should
-  be treated as an error blob.
+    Args:
+      config: The app.yaml object to check the filename against.
+      filename: The name of the file.
 
-  Args:
-    config: The app.yaml object to check the filename against.
-    filename: The name of the file.
+    Returns:
 
-  Returns:
-
-    A tuple of (mime_type, error_code), or (None, None) if this is not an error
-    blob.  For example, ('text/plain', default) or ('image/gif', timeout) or
-    (None, None).
-  """
-  if not config.error_handlers:
+      A tuple of (mime_type, error_code), or (None, None) if this is not an
+      error blob.  For example, ('text/plain', default) or ('image/gif',
+      timeout) or (None, None).
+    """
+    if not config.error_handlers:
+      return (None, None)
+    for error_handler in config.error_handlers:
+      if error_handler.file == filename:
+        error_code = error_handler.error_code
+        if not error_code:
+          error_code = 'default'
+        if error_handler.mime_type is not None:
+          return (error_handler.mime_type, error_code)
+        else:
+          return (FileClassification.__MimeType(filename), error_code)
     return (None, None)
-  for error_handler in config.error_handlers:
-    if error_handler.file == filename:
-      error_code = error_handler.error_code
-      if not error_code:
-        error_code = 'default'
-      if error_handler.mime_type is not None:
-        return (error_handler.mime_type, error_code)
-      else:
-        guess = mimetypes.guess_type(filename)[0]
-        if guess is None:
-          default = 'application/octet-stream'
-          print >>sys.stderr, ('Could not guess mimetype for %s.  Using %s.'
-                               % (filename, default))
-          return (default, error_code)
-        return (guess, error_code)
-  return (None, None)
+
+  @staticmethod
+  def __MimeType(filename, default='application/octet-stream'):
+    guess = mimetypes.guess_type(filename)[0]
+    if guess is None:
+      print >>sys.stderr, ('Could not guess mimetype for %s.  Using %s.'
+                           % (filename, default))
+      return default
+    return guess
+
+  def IsApplicationFile(self):
+    return self.__static_mime_type is None and self.__error_mime_type is None
+
+  def IsStaticFile(self):
+    return self.__static_mime_type is not None
+
+  def StaticMimeType(self):
+    return self.__static_mime_type
+
+  def IsErrorFile(self):
+    return self.__error_mime_type is not None
+
+  def ErrorMimeType(self):
+    return self.__error_mime_type
+
+  def ErrorCode(self):
+    return self.__error_code
 
 
 def BuildClonePostBody(file_tuples):
@@ -248,7 +284,7 @@ def BuildClonePostBody(file_tuples):
   return LIST_DELIMITER.join(file_list)
 
 
-def GetRemoteResourceLimits(rpcserver):
+def GetRemoteResourceLimits(rpcserver, config):
   """Get the resource limit as reported by the admin console.
 
   Get the resource limits by querying the admin_console/appserver. The
@@ -257,12 +293,16 @@ def GetRemoteResourceLimits(rpcserver):
 
   Args:
     rpcserver: The RPC server to use.
+    config: The appyaml configuration.
 
   Returns:
     A dictionary.
   """
   try:
-    yaml_data = rpcserver.Send('/api/appversion/getresourcelimits')
+    StatusUpdate('Getting current resource limits.')
+    yaml_data = rpcserver.Send('/api/appversion/getresourcelimits',
+                               app_id=config.application,
+                               version=config.version)
 
   except urllib2.HTTPError, err:
 
@@ -275,7 +315,7 @@ def GetRemoteResourceLimits(rpcserver):
   return yaml.safe_load(yaml_data)
 
 
-def GetResourceLimits(rpcserver):
+def GetResourceLimits(rpcserver, config):
   """Gets the resource limits.
 
   Gets the resource limits that should be applied to apps. Any values
@@ -285,12 +325,13 @@ def GetResourceLimits(rpcserver):
 
   Args:
     rpcserver: The RPC server to use.
+    config: The appyaml configuration.
 
   Returns:
     A dictionary.
   """
   resource_limits = DEFAULT_RESOURCE_LIMITS.copy()
-  resource_limits.update(GetRemoteResourceLimits(rpcserver))
+  resource_limits.update(GetRemoteResourceLimits(rpcserver, config))
   return resource_limits
 
 
@@ -1743,24 +1784,21 @@ class AppVersionUpload(object):
     blobs_to_clone = []
     errorblobs = {}
     for path, content_hash in self.files.iteritems():
-      match_found = False
+      file_classification = FileClassification(self.config, path)
 
-      mime_type = GetMimeTypeIfStaticFile(self.config, path)
-      if mime_type is not None:
-        blobs_to_clone.append((path, content_hash, mime_type))
-        match_found = True
-
+      if file_classification.IsStaticFile():
+        blobs_to_clone.append((path, content_hash,
+                               file_classification.StaticMimeType()))
 
 
-      (mime_type, unused_error_code) = LookupErrorBlob(self.config, path)
-      if mime_type is not None:
+
+      if file_classification.IsErrorFile():
 
 
 
         errorblobs[path] = content_hash
-        match_found = True
 
-      if not match_found:
+      if file_classification.IsApplicationFile():
         files_to_clone.append((path, content_hash))
 
     files_to_upload = {}
@@ -1819,23 +1857,22 @@ class AppVersionUpload(object):
 
     del self.files[path]
 
-    match_found = False
-    mime_type = GetMimeTypeIfStaticFile(self.config, path)
+    file_classification = FileClassification(self.config, path)
     payload = file_handle.read()
-    if mime_type is not None:
-      self.blob_batcher.AddToBatch(path, payload, mime_type)
-      match_found = True
+    if file_classification.IsStaticFile():
+      self.blob_batcher.AddToBatch(path, payload,
+                                   file_classification.StaticMimeType())
 
 
 
-    (mime_type, error_code) = LookupErrorBlob(self.config, path)
-    if mime_type is not None:
+    if file_classification.IsErrorFile():
 
 
-      self.errorblob_batcher.AddToBatch(error_code, payload, mime_type)
-      match_found = True
+      self.errorblob_batcher.AddToBatch(file_classification.ErrorCode(),
+                                        payload,
+                                        file_classification.ErrorMimeType())
 
-    if not match_found:
+    if file_classification.IsApplicationFile():
 
       self.file_batcher.AddToBatch(path, payload, None)
 
@@ -2018,13 +2055,16 @@ class AppVersionUpload(object):
     self.in_transaction = False
     self.files = {}
 
-  def DoUpload(self, paths, max_size, openfunc):
+  def DoUpload(self, paths, openfunc, max_size_override=None):
     """Uploads a new appversion with the given config and files to the server.
 
     Args:
       paths: An iterator that yields the relative paths of the files to upload.
-      max_size: The maximum size file to upload.
       openfunc: A function that takes a path and returns a file-like object.
+      max_size_override: The maximum size file to upload (or None to use server
+        returned resource limits). For historic reasons, this size applies
+        to both files and blobs (while server resource limits can be
+        varied independently).
 
     Returns:
       An appinfo.AppInfoSummary if one was returned from the server, None
@@ -2037,12 +2077,23 @@ class AppVersionUpload(object):
 
     path = ''
     try:
+      resource_limits = GetResourceLimits(self.rpcserver, self.config)
+
       StatusUpdate('Scanning files on local disk.')
       num_files = 0
       for path in paths:
         file_handle = openfunc(path)
+        file_classification = FileClassification(self.config, path)
         try:
           file_length = GetFileLength(file_handle)
+
+
+          if max_size_override is not None:
+            max_size = max_size_override
+          elif file_classification.IsApplicationFile():
+            max_size = resource_limits['max_file_size']
+          else:
+            max_size = resource_limits['max_blob_size']
           if file_length > max_size:
             logging.error('Ignoring file \'%s\': Too long '
                           '(max %d bytes, file is %d bytes)',
@@ -2337,6 +2388,10 @@ class AppCfgApp(object):
 
 
     self.options, self.args = self.parser.parse_args(argv[1:])
+    if self.options.max_size is not None:
+      print >>sys.stderr, """\
+WARNING: -S/--max_size is deprecated. The server provides the current value;
+you do not need to override the size except in rare cases."""
 
     if len(self.args) < 1:
       self._PrintHelpAndExit()
@@ -2845,8 +2900,8 @@ class AppCfgApp(object):
                                   backend, self.error_fh)
     return appversion.DoUpload(
         self.file_iterator(basepath, appyaml.skip_files, appyaml.runtime),
-        self.options.max_size,
-        lambda path: self.opener(os.path.join(basepath, path), 'rb'))
+        lambda path: self.opener(os.path.join(basepath, path), 'rb'),
+        self.options.max_size)
 
   def Update(self):
     """Updates and deploys a new appversion and global app configs."""
@@ -2906,8 +2961,10 @@ class AppCfgApp(object):
       parser: An instance of OptionsParser.
     """
     parser.add_option('-S', '--max_size', type='int', dest='max_size',
-                      default=32000000, metavar='SIZE',
-                      help='Maximum size of a file to upload.')
+                      default=None, metavar='SIZE',
+                      help='DEPRECATED: Maximum size of a file to upload. '
+                      'The server provides the current value; you do not need '
+                      'to override the size except in rare cases.')
     parser.add_option('--no_precompilation', action='store_false',
                       dest='precompilation', default=True,
                       help='Disable automatic Python precompilation.')
@@ -3304,11 +3361,12 @@ class AppCfgApp(object):
     """
 
     handlers = appyaml.handlers
-    handler_suffix = 'remote_api/handler.py'
+    handler_suffixes = ['remote_api/handler.py',
+                        'remote_api.handler.application']
     app_id = appyaml.application
     for handler in handlers:
       if hasattr(handler, 'script') and handler.script:
-        if handler.script.endswith(handler_suffix):
+        if any(handler.script.endswith(suffix) for suffix in handler_suffixes):
           server = self.options.server
           url = handler.url
           if url.endswith('(/.*)?'):
@@ -3577,7 +3635,8 @@ class AppCfgApp(object):
 
   def ResourceLimitsInfo(self, output=None):
     """Outputs the current resource limits."""
-    resource_limits = GetResourceLimits(self._GetRpcServer())
+    appyaml = self._ParseAppYaml(self.basepath, includes=True)
+    resource_limits = GetResourceLimits(self._GetRpcServer(), appyaml)
 
 
     for attr_name in sorted(resource_limits):
@@ -3854,8 +3913,7 @@ override this."""),
           short_desc='Get the resource limits.',
           long_desc="""
 The 'resource_limits_info' command prints the current resource limits that
-are enforced.""",
-          uses_basepath=False),
+are enforced."""),
 
 
   }

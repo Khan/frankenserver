@@ -32,6 +32,8 @@ Example:
   server.serve_forever()
 """
 
+from __future__ import with_statement
+
 
 
 from google.appengine.tools import os_compat
@@ -54,8 +56,10 @@ import logging
 import mimetools
 import mimetypes
 import os
+import pdb
 import select
 import shutil
+import simplejson
 import tempfile
 import yaml
 
@@ -144,6 +148,8 @@ from google.appengine.tools import dev_appserver_oauth
 from google.appengine.tools import dev_appserver_multiprocess as multiprocess
 from google.appengine.tools import dev_appserver_upload
 
+from google.storage.speckle.python.api import rdbms
+
 
 CouldNotFindModuleError = dev_appserver_import_hook.CouldNotFindModuleError
 FakeAccess = dev_appserver_import_hook.FakeAccess
@@ -155,6 +161,8 @@ GetSubmoduleName = dev_appserver_import_hook.GetSubmoduleName
 HardenedModulesHook = dev_appserver_import_hook.HardenedModulesHook
 
 
+
+SDK_ROOT = dev_appserver_import_hook.SDK_ROOT
 
 
 PYTHON_LIB_VAR = '$PYTHON_LIB'
@@ -235,6 +243,35 @@ class CompileError(Error):
     self.text = text
 
 
+
+def MonkeyPatchPdb(pdb):
+  """Given a reference to the pdb module, fix its set_trace function.
+
+  This will allow the standard trick of setting a breakpoint in your
+  code by inserting a call to pdb.set_trace() to work properly, as
+  long as the original stdin and stdout of dev_appserver.py are
+  connected to a console or shell window.
+  """
+
+  def NewSetTrace():
+    """Replacement for set_trace() that uses the original i/o streams.
+
+    This is necessary because by the time the user code that might
+    invoke pdb.set_trace() runs, the default sys.stdin and sys.stdout
+    are redirected to the HTTP request and response streams instead,
+    so that pdb will encounter garbage (or EOF) in its input, and its
+    output will garble the HTTP response.  Fortunately, sys.__stdin__
+    and sys.__stderr__ retain references to the original streams --
+    this is a standard Python feature.  Also, fortunately, as of
+    Python 2.5, the Pdb class lets you easily override stdin and
+    stdout.  The original set_trace() function does essentially the
+    same thing as the code here except it instantiates Pdb() without
+    arguments.
+    """
+    p = pdb.Pdb(stdin=sys.__stdin__, stdout=sys.__stdout__)
+    p.set_trace(sys._getframe().f_back)
+
+  pdb.set_trace = NewSetTrace
 
 
 def SplitURL(relative_url):
@@ -651,6 +688,20 @@ def _generate_request_id_hash():
   return hashlib.sha1(str(_request_id)).hexdigest()[:8].upper()
 
 
+def GetGoogleSqlOAuth2RefreshToken(oauth_file_path):
+  """Reads the user's Google Cloud SQL OAuth2.0 token from disk."""
+  if not os.path.exists(oauth_file_path):
+    return None
+  try:
+    with open(oauth_file_path) as oauth_file:
+      token = simplejson.load(oauth_file)
+      return token['refresh_token']
+  except (IOError, KeyError, simplejson.decoder.JSONDecodeError):
+    logging.exception(
+        'Could not read OAuth2.0 token from %s', oauth_file_path)
+    return None
+
+
 def SetupEnvironment(cgi_path,
                      relative_url,
                      headers,
@@ -727,6 +778,10 @@ def SetupEnvironment(cgi_path,
   if DEVEL_FAKE_IS_ADMIN_HEADER in env:
     del env[DEVEL_FAKE_IS_ADMIN_HEADER]
 
+  token = GetGoogleSqlOAuth2RefreshToken(rdbms.OAUTH_CREDENTIALS_PATH)
+  if token:
+    env['GOOGLE_SQL_OAUTH2_REFRESH_TOKEN'] = token
+
   return env
 
 
@@ -772,6 +827,27 @@ def ClearAllButEncodingsModules(module_dict):
   for module_name in module_dict.keys():
     if not IsEncodingsModule(module_name):
       del module_dict[module_name]
+
+
+def UpdateNotSharedModulesInParents(module_dict):
+  """Replace modules not shared between the hardened and unhardened parts of the
+  process in their parent packages.
+
+  If foo.bar is not shared then this replaces the reference to bar contained in
+  foo with the foo.bar in module_dict if it is present and deletes it otherwise.
+
+  Args:
+    module_dict: A dict containing the modules to be added to sys.modules.
+
+  """
+  for prefix in NOT_SHARED_MODULE_PREFIXES:
+    parent_name, _, submodule_name = prefix.rpartition('.')
+    parent = module_dict.get(parent_name)
+    if parent:
+      if prefix in module_dict:
+        setattr(parent, submodule_name, module_dict[prefix])
+      elif hasattr(parent, submodule_name):
+        delattr(parent, submodule_name)
 
 
 
@@ -1192,6 +1268,11 @@ def ExecuteOrImportScript(config, handler_path, cgi_path, import_hook):
   script_module.__name__ = '__main__'
   sys.modules['__main__'] = script_module
   try:
+
+    import pdb
+    MonkeyPatchPdb(pdb)
+
+
     if module_code:
       exec module_code in script_module.__dict__
     else:
@@ -1294,10 +1375,11 @@ def ExecutePy27Handler(config, handler_path, cgi_path, import_hook):
   else:
     application_root = ''
 
-  python_lib = os.path.dirname(os.path.dirname(google.__file__))
-
 
   try:
+
+    import pdb
+    MonkeyPatchPdb(pdb)
 
 
 
@@ -1309,7 +1391,7 @@ def ExecutePy27Handler(config, handler_path, cgi_path, import_hook):
     os.getenv = os.environ.get
 
     response = runtime.HandleRequest(env, handler_path, url,
-                                     post_data, application_root, python_lib,
+                                     post_data, application_root, SDK_ROOT,
                                      import_hook)
   finally:
 
@@ -1426,6 +1508,7 @@ def ExecuteCGI(config,
   try:
     ClearAllButEncodingsModules(sys.modules)
     sys.modules.update(module_dict)
+    UpdateNotSharedModulesInParents(module_dict)
     sys.argv = [cgi_path]
 
     sys.stdin = cStringIO.StringIO(infile.getvalue())
@@ -1454,8 +1537,7 @@ def ExecuteCGI(config,
     else:
       os.chdir(root_path)
 
-    sdk_dir = os.path.dirname(os.path.dirname(google.__file__))
-    dist.fix_paths(root_path, sdk_dir)
+    dist.fix_paths(root_path, SDK_ROOT)
 
 
 
@@ -1507,6 +1589,7 @@ def ExecuteCGI(config,
     module_dict.update(sys.modules)
     ClearAllButEncodingsModules(sys.modules)
     sys.modules.update(old_module_dict)
+    UpdateNotSharedModulesInParents(old_module_dict)
 
     __builtin__.__dict__.update(old_builtin)
     sys.argv = old_argv
@@ -1674,8 +1757,7 @@ class PathAdjuster(object):
       The adjusted path.
     """
     if path.startswith(PYTHON_LIB_VAR):
-      path = os.path.join(os.path.dirname(os.path.dirname(google.__file__)),
-                          path[len(PYTHON_LIB_VAR) + 1:])
+      path = os.path.join(SDK_ROOT, path[len(PYTHON_LIB_VAR) + 1:])
     else:
       path = os.path.join(self._root_path, path)
 
@@ -2341,7 +2423,8 @@ def CreateRequestHandler(root_path,
                          login_url,
                          require_indexes=False,
                          static_caching=True,
-                         default_partition=None):
+                         default_partition=None,
+                         persist_logs=False):
   """Creates a new BaseHTTPRequestHandler sub-class.
 
   This class will be used with the Python BaseHTTPServer module's HTTP server.
@@ -2434,7 +2517,7 @@ def CreateRequestHandler(root_path,
         args: Positional arguments passed to the superclass constructor.
         kwargs: Keyword arguments passed to the superclass constructor.
       """
-      self._log_record_writer = logservice_stub.RequestLogWriter()
+      self._log_record_writer = logservice_stub.RequestLogWriter(persist_logs)
       BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def version_string(self):
@@ -2540,8 +2623,8 @@ def CreateRequestHandler(root_path,
 
 
 
-      server_name = self.headers.get('host') or self.server.server_name
-      server_name = server_name.split(':', 1)[0]
+      host_name = self.headers.get('host') or self.server.server_name
+      server_name = host_name.split(':', 1)[0]
 
       env_dict = {
           'REQUEST_METHOD': self.command,
@@ -2619,10 +2702,12 @@ def CreateRequestHandler(root_path,
         email_addr, admin, user_id = dev_appserver_login.GetUserInfo(cookies)
 
         self._log_record_writer.write_request_info(
-            env_dict['REMOTE_ADDR'],
-            env_dict['APPLICATION_ID'],
-            env_dict['CURRENT_VERSION_ID'],
-            user_id)
+            ip=env_dict['REMOTE_ADDR'],
+            app_id=env_dict['APPLICATION_ID'],
+            version_id=env_dict['CURRENT_VERSION_ID'],
+            nickname=email_addr.split('@')[0],
+            user_agent=self.headers.get('user-agent'),
+            host=host_name)
 
         dispatcher = MatcherDispatcher(config, login_url,
                                        [implicit_matcher, explicit_matcher])
@@ -2746,13 +2831,15 @@ def CreateRequestHandler(root_path,
       else:
         logging.info(format, *args)
 
-    def log_request(self, code=200, size=0):
+    def log_request(self, code='-', size='-'):
       """Indicate that this request has completed."""
-      request_log = '"' + self.command + " " + self.path + " "
-      request_log += self.request_version + '" ' + str(code) + " -"
-      logging.info(request_log)
+      BaseHTTPServer.BaseHTTPRequestHandler.log_request(self, code, size)
+      if code == '-':
+        code = 0
+      if size == '-':
+        size = 0
       self._log_record_writer.write(self.command, self.path, code, size,
-                                    self.request_version, request_log)
+                                    self.request_version)
 
   return DevAppServerRequestHandler
 
@@ -3047,7 +3134,7 @@ def SetupStubs(app_id, **config):
 
   Keywords:
     root_path: Root path to the directory of the application which should
-        contain the app.yaml, indexes.yaml, and queues.yaml files.
+        contain the app.yaml, index.yaml, and queue.yaml files.
     login_url: Relative URL which should be used for handling user login/logout.
     blobstore_path: Path to the directory to store Blobstore blobs in.
     datastore_path: Path to the file to store Datastore file stub data in.
@@ -3073,6 +3160,8 @@ def SetupStubs(app_id, **config):
       they are enqueued.
     task_retry_seconds: How long to wait after an auto-running task before it
       is tried again.
+    persist_logs: True if request and application logs should be persisted for
+      later access.
     trusted: True if this app can access data belonging to other apps.  This
       behavior is different from the real app server and should be left False
       except for advanced uses of dev_appserver.
@@ -3105,6 +3194,7 @@ def SetupStubs(app_id, **config):
   remove = config.get('remove', os.remove)
   disable_task_running = config.get('disable_task_running', False)
   task_retry_seconds = config.get('task_retry_seconds', 30)
+  persist_logs = config.get('persist_logs', False)
   trusted = config.get('trusted', False)
   serve_port = config.get('port', 8080)
   serve_address = config.get('address', 'localhost')
@@ -3269,7 +3359,7 @@ def SetupStubs(app_id, **config):
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'logservice',
-      logservice_stub.LogServiceStub())
+      logservice_stub.LogServiceStub(persist_logs))
 
   system_service_stub = system_stub.SystemServiceStub()
   multiprocess.GlobalProcess().UpdateSystemStub(system_service_stub)
@@ -3396,8 +3486,9 @@ def CreateServer(root_path,
                  allow_skipped_files=False,
                  static_caching=True,
                  python_path_list=sys.path,
-                 sdk_dir=os.path.dirname(os.path.dirname(google.__file__)),
-                 default_partition=None):
+                 sdk_dir=SDK_ROOT,
+                 default_partition=None,
+                 persist_logs=False):
   """Creates an new HTTPServer for an application.
 
   The sdk_dir argument must be specified for the directory storing all code for
@@ -3436,7 +3527,8 @@ def CreateServer(root_path,
                                        login_url,
                                        require_indexes,
                                        static_caching,
-                                       default_partition)
+                                       default_partition,
+                                       persist_logs)
 
 
   if absolute_root_path not in python_path_list:

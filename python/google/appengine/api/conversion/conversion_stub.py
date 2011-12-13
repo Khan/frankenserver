@@ -91,10 +91,11 @@ def _validate_conversion_request(request):
 
   for x in range(0, request.conversion_size()):
     if (request.conversion(x).ByteSize() >
-        conversion.CONVERSION_MAX_DOC_SIZE_BYTES):
+        conversion.CONVERSION_MAX_SIZE_BYTES):
       raise apiproxy_errors.ApplicationError(
           conversion_service_pb.ConversionServiceError.CONVERSION_TOO_LARGE,
-          "Each conversion should not be over 10MB")
+          "Each conversion should not be over %d bytes" %
+          (conversion.CONVERSION_MAX_SIZE_BYTES))
 
     if not request.conversion(x).input().asset_list():
       raise apiproxy_errors.ApplicationError(

@@ -59,9 +59,13 @@ __all__ = ['BLOB_INFO_KIND',
            'InternalError',
            'MAX_BLOB_FETCH_SIZE',
            'UPLOAD_INFO_CREATION_HEADER',
+           'create_rpc',
            'create_upload_url',
+           'create_upload_url_async',
            'delete',
+           'delete_async',
            'fetch_data',
+           'fetch_data_async',
            'get',
            'parse_blob_info']
 
@@ -74,8 +78,11 @@ DataIndexOutOfRangeError = blobstore.DataIndexOutOfRangeError
 PermissionDeniedError = blobstore.PermissionDeniedError
 
 BlobKey = blobstore.BlobKey
+create_rpc = blobstore.create_rpc
 create_upload_url = blobstore.create_upload_url
+create_upload_url_async = blobstore.create_upload_url_async
 delete = blobstore.delete
+delete_async = blobstore.delete_async
 
 
 class BlobInfoParseError(Error):
@@ -484,7 +491,7 @@ class BlobReferenceProperty(db.Property):
     return super(BlobReferenceProperty, self).validate(value)
 
 
-def fetch_data(blob, start_index, end_index):
+def fetch_data(blob, start_index, end_index, rpc=None):
   """Fetch data for blob.
 
   Fetches a fragment of a blob up to MAX_BLOB_FETCH_SIZE in length.  Attempting
@@ -500,6 +507,7 @@ def fetch_data(blob, start_index, end_index):
     start_index: Start index of blob data to fetch.  May not be negative.
     end_index: End index (inclusive) of blob data to fetch.  Must be
       >= start_index.
+    rpc: Optional UserRPC object.
 
   Returns:
     str containing partial data of blob.  If the indexes are legal but outside
@@ -513,9 +521,44 @@ def fetch_data(blob, start_index, end_index):
       MAX_BLOB_FETCH_SIZE.
     BlobNotFoundError when blob does not exist.
   """
+  rpc = fetch_data_async(blob, start_index, end_index, rpc=rpc)
+  return rpc.get_result()
+
+
+def fetch_data_async(blob, start_index, end_index, rpc=None):
+  """Fetch data for blob -- async version.
+
+  Fetches a fragment of a blob up to MAX_BLOB_FETCH_SIZE in length.  Attempting
+  to fetch a fragment that extends beyond the boundaries of the blob will return
+  the amount of data from start_index until the end of the blob, which will be
+  a smaller size than requested.  Requesting a fragment which is entirely
+  outside the boundaries of the blob will return empty string.  Attempting
+  to fetch a negative index will raise an exception.
+
+  Args:
+    blob: BlobInfo, BlobKey, str or unicode representation of BlobKey of
+      blob to fetch data from.
+    start_index: Start index of blob data to fetch.  May not be negative.
+    end_index: End index (inclusive) of blob data to fetch.  Must be
+      >= start_index.
+    rpc: Optional UserRPC object.
+
+  Returns:
+    A UserRPC whose result will be a str as returned by fetch_data().
+
+  Raises:
+    TypeError if start_index or end_index are not indexes.  Also when blob
+      is not a string, BlobKey or BlobInfo.
+    The following exceptions may be raised when rpc.get_result() is
+    called:
+    DataIndexOutOfRangeError when start_index < 0 or end_index < start_index.
+    BlobFetchSizeTooLargeError when request blob fragment is larger than
+      MAX_BLOB_FETCH_SIZE.
+    BlobNotFoundError when blob does not exist.
+  """
   if isinstance(blob, BlobInfo):
     blob = blob.key()
-  return blobstore.fetch_data(blob, start_index, end_index)
+  return blobstore.fetch_data_async(blob, start_index, end_index, rpc=rpc)
 
 
 class BlobReader(object):

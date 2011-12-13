@@ -597,7 +597,7 @@ class Client(object):
     """Async version of get_multi().
 
     Returns:
-      A UserRPC instance whose get_result() method returns None if
+      A UserRPC instance whose get_result() method returns {} if
       there was a network error, otherwise a dict just like
       get_multi() returns.
     """

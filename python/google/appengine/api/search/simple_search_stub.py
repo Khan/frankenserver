@@ -32,6 +32,7 @@
 import bisect
 import copy
 import random
+import re
 import string
 import urllib
 import uuid
@@ -194,6 +195,7 @@ class SimpleTokenizer(object):
 
   def __init__(self, split_restricts=True):
     self._split_restricts = split_restricts
+    self._htmlPattern = re.compile(r'<[^>]*>')
 
   def TokenizeText(self, text, token_position=0):
     """Tokenizes the text into a sequence of Tokens."""
@@ -206,8 +208,14 @@ class SimpleTokenizer(object):
                                  value=field_value.string_value(),
                                  token_position=token_position)
 
-  def _TokenizeString(self, value):
+  def _TokenizeString(self, value, field_type):
+    if field_type is document_pb.FieldValue.HTML:
+      return self._StripHtmlTags(value).lower().split()
     return value.lower().split()
+
+  def _StripHtmlTags(self, value):
+    """Replace HTML tags with spaces."""
+    return self._htmlPattern.sub(' ', value)
 
   def _TokenizeForType(self, field_type, value, token_position=0):
     """Tokenizes value into a sequence of Tokens."""
@@ -216,10 +224,11 @@ class SimpleTokenizer(object):
 
     tokens = []
     token_strings = []
+
     if not self._split_restricts:
       token_strings = value.lower().split()
     else:
-      token_strings = self._TokenizeString(value)
+      token_strings = self._TokenizeString(value, field_type)
     for token in token_strings:
       if ':' in token and self._split_restricts:
         for subtoken in token.split(':'):
@@ -287,11 +296,23 @@ class RamInvertedIndex(object):
   def __init__(self, tokenizer):
     self._tokenizer = tokenizer
     self._inverted_index = {}
+    self._schema = {}
+
+  def _AddFieldType(self, name, field_type):
+    """Adds the type to the list supported for a named field."""
+    if name not in self._schema:
+      field_types = document_pb.FieldTypes()
+      field_types.set_name(name)
+      self._schema[name] = field_types
+    field_types = self._schema[name]
+    if field_type not in field_types.type_list():
+      field_types.add_type(field_type)
 
   def AddDocument(self, doc_id, document):
     """Adds a document into the index."""
     token_position = 0
     for field in document.field_list():
+      self._AddFieldType(field.name(), field.value().type())
       self._AddTokens(doc_id, field.name(), field.value(),
                       token_position)
 
@@ -334,8 +355,13 @@ class RamInvertedIndex(object):
       return self._inverted_index[token].postings
     return []
 
+  def GetSchema(self):
+    """Returns the schema for the index."""
+    return self._schema
+
   def __repr__(self):
-    return _Repr(self, [('_inverted_index', self._inverted_index)])
+    return _Repr(self, [('_inverted_index', self._inverted_index),
+                        ('_schema', self._schema)])
 
 
 class SimpleIndex(object):
@@ -510,6 +536,10 @@ class SimpleIndex(object):
     postings = self._Evaluate(query_tree)
     return self._DocumentsForPostings(postings)
 
+  def GetSchema(self):
+    """Returns the schema for the index."""
+    return self._inverted_index.GetSchema()
+
   def __repr__(self):
     return _Repr(self, [('_index_spec', self._index_spec),
                         ('_documents', self._documents),
@@ -605,8 +635,8 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       for _ in xrange(random.randint(0, 2) * random.randint(5, 15)):
         new_index_spec = response.add_index_metadata().mutable_index_spec()
         new_index_spec.set_name(
-            random.choice(list(search._ASCII_PRINTABLE - set('!'))) +
-            ''.join(random.choice(list(search._ASCII_PRINTABLE))
+            random.choice(list(search._VISIBLE_PRINTABLE_ASCII - set('!'))) +
+            ''.join(random.choice(list(search._VISIBLE_PRINTABLE_ASCII))
                     for _ in xrange(random.randint(
                         0, search._MAXIMUM_INDEX_NAME_LENGTH))))
         new_index_spec.set_consistency(random.choice([
@@ -640,9 +670,19 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       index_spec = index.IndexSpec
       if prefix and not index_spec.name().startswith(prefix):
         break
-      new_index_spec = response.add_index_metadata().mutable_index_spec()
+      metadata = response.add_index_metadata()
+      new_index_spec = metadata.mutable_index_spec()
       new_index_spec.set_name(index_spec.name())
       new_index_spec.set_consistency(index_spec.consistency())
+      if params.fetch_schema():
+        self._AddSchemaInformation(index, metadata)
+
+  def _AddSchemaInformation(self, index, metadata_pb):
+    schema = index.GetSchema()
+    for name in schema:
+      field_types = schema[name]
+      new_field_types = metadata_pb.add_field()
+      new_field_types.MergeFrom(field_types)
 
   def _AddDocument(self, response, document, keys_only):
     doc = response.add_document()
@@ -666,18 +706,18 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     num_docs = 0
     start = not params.has_start_doc_id()
-    for document in index.Documents():
+    for document in sorted(index.Documents(), key=lambda doc: doc.id()):
       if start:
         if num_docs < params.limit():
           self._AddDocument(response, document, params.keys_only())
           num_docs += 1
       else:
-        if params.has_start_doc_id():
-          if document.id() is params.start_doc_id():
-            start = True
-            if params.include_start_doc():
-              self._AddDocument(response, document, params.keys_only())
-              num_docs += 1
+        if document.id() >= params.start_doc_id():
+          start = True
+          if (document.id() != params.start_doc_id() or
+              params.include_start_doc()):
+            self._AddDocument(response, document, params.keys_only())
+            num_docs += 1
 
     response.mutable_status().set_code(
         search_service_pb.SearchServiceError.OK)
@@ -815,7 +855,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         len(position_range)):
       response.set_cursor(results[position_range[len(position_range) - 1]].id())
 
-    response.status().set_code(search_service_pb.SearchServiceError.OK)
+    response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
 
   def __repr__(self):
     return _Repr(self, [('__indexes', self.__indexes)])
