@@ -1,0 +1,1607 @@
+  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/openid.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Using Federated Authentication via OpenID in Google App Engine - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">Using Federated Authentication via OpenID in Google App Engine</h1>
+
+
+
+<p><em>Wesley Chun</em><br>
+<em>July 2010</em><br/>
+<em>SDK: 1.3.4</em>
+</p>
+
+<div id="jd-content">
+<div class="jd-descr">
+
+<p class="warning">
+Federated authentication (OpenID) was introduced to App Engine in SDK 1.3.4 (May 2010), integrated as part of the Users service (<a href="../docs/python/users/overview.html">Python</a> | <a href="../docs/java/users/overview.html">Java</a>). The content here is intended to complement the existing documentation. The features outlined here cannot be used in older versions of the SDK.
+</p>
+
+<ul>
+<li> <a href=#bg>Background</a></li>
+<li> <a href=#fo>Federated Authentication and OpenID</a></li>
+<li> <a href=#fa>Federated Authentication in App Engine</a></li>
+<li> <a href=#su>Setup</a></li>
+<li> <a href=#ip>Federated identity providers</a></li>
+<li> <a href=#ui>UI Presentation</a></li>
+<li> <a href=#fl>Federated login and logout</a></li>
+<li> <a href=#ex>Examples</a></li>
+<li> <a href=#au>Authorization</a></li>
+<li> <a href=#uf>Unsupported Features</a></li>
+<li> <a href=#cc>Conclusion</a></li>
+</ul>
+
+<h2 id="bg">Background</h2>
+
+<p>
+Authentication and authorization are two topics of current interest to the web application community at-large. Users and developers often confuse the two, and even worse, many can't distinguish between them. To understand them better requires one to know more keenly what their differences are. When you hear <em>authentication</em>, think "user identities," e.g., logins and passwords; and when you see the term <em>authorization</em>, think "APIs" and "data access." In some cases, the two will overlap, such as when you go to a Twitter photo hosting and sharing website: you will <em>authenticate</em> with Twitter which also <em>authorizes</em> the site (via <a href="http://oauth.net">OAuth</a> [more on OAuth in a bit]) to give it the ability to add a pic and status message to your Twitter stream.
+</p>
+
+<p>
+Well-known and established Internet brands such as Google, Yahoo!, and MSN have been using single sign-on (SSO) solutions across their respective properties for years, and more recently, have started to act as <em>identity providers</em> for third-party sites. In addition, the huge growth in popularity of social networks such as Twitter, MySpace, and Facebook have pushed them to become identity platforms as well. It is increasingly common for new websites and services to leverage these existing platforms to authenticate users who have grown wary of registering for new services. Leveraging such services allows users to login with a familiar name. However, readers should be aware that there are two different flavors of authentication, <em>delegated</em> and <em>federated</em>.
+</p>
+
+<p>
+Twitter's system, as described above, is known as <em>delegated authentication</em>. Many websites, opting out of building their own authentication system altogether, are effectively outsourcing, or "delegating," it to more well-known entities such as Twitter. Logging into a web app with <a href="http://www.facebook.com/help/?page=730">Facebook Connect</a> is another delegation example, <a href="http://hueniverse.com/2009/04/introducing-sign-in-with-twitter-oauth-style-connect">although it is a closed system</a> as opposed to <a href="http://apiwiki.twitter.com/Sign-in-with-Twitter">"Sign in with Twitter"</a> which uses OAuth. (OAuth is an open authorization system, a concept outside of the scope of this article but which is used regularly in conjunction with delegated authentication.)
+</p>
+
+<p>
+Delegated authentication is one effort to bring the concept of Internet SSO to reality. The fewer accounts users have to worry about, the better the web scales. However, you have another problem now: developers who use this type of authentication are requiring their users have Twitter or Facebook accounts. This is not the "create one identity somewhere and use it any anywhere" type of solution that has been envisioned. In comes <em>federated authentication</em>, a solution that's much closer to true Internet SSO.
+</p>
+
+
+<h2 id="fo">Federated Authentication and OpenID</h2>
+
+<p>
+Federated authentication is a decentralized security mechanism not tied to any one particular provider, and <a href="http://openid.net">OpenID</a> is an open standard which implements federated authentication. With OpenID, users can create an identity (username and password [or alternatives such as biometrics, keyfob, etc.]) at any OpenID provider and be able to use that same identity at any online app which accepts OpenID logins. Google has supported the OpenID 2.0 protocol since 2008 in a variety of products such as Blogger and Google Apps.
+</p>
+
+<p>
+In the land of OpenID, there are two types of players:
+<ul>
+    <li> <em>Identity provider</em> or <em>Server</em> &ndash; service which hosts OpenID identities and can authenticate users whose credentials were created there
+    <li> <em>Relying party</em> or <em>Consumer</em> &ndash; any application that has delegated its authentication to an OpenID provider
+</ul>
+
+<p>
+Google is both an identity provider &ndash; letting users login to a variety of Google and third-party websites with their Google Account information &ndash; as well as a relying party: Blogger and Google Apps let users sign in to those services using their OpenID identity. Note that sites that require users to sign in with a specific authority, such as Google or Yahoo! with OpenIDs created at those sites, are examples of delegated authentication even though OpenID is used. (Often in documentation, you will find that the term "OpenID" is also used interchangeably [like we just did] to refer to an OpenID identity as well as the protocol itself.) A truly federated system allows you to login using an identity created at <em>any</em> OpenID provider.
+</p>
+
+<h2 id="fa">Federated Authentication in App Engine</h2>
+
+<p>
+As of release 1.3.4, federated login via OpenID has been made available to App Engine users, meaning that developers can create apps that use OpenID as their authentication mechanism. This is a breakthrough and highly-desired feature for application developers who want to offer more flexible authentication to their users rather than having to roll their own or simply using App Engine's Users service which requires <em>their</em> users to have a Google Account. The addition of OpenID means that apps written for App Engine can now support three forms of authentication:
+</p>
+
+<p>
+<ul>
+    <li> Google Accounts (identity provider)
+    <li> Google Apps (identity provider)
+    <li> OpenID (relying party)
+</ul>
+</p>
+
+
+<h3 id="su"> Setup</h3>
+
+<p>
+Applications can be configured to use "Google Accounts" (the default) or "Federated Login" at creation time. Existing applications can migrate to federated authentication via a configuration change in the Admin Console Dashboard.
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/openid-googaccts.png">
+</p>
+
+<p>
+<b>Figure 1.</b> Google Accounts authentication is the default.
+</p>
+
+<p>
+Go to the "Authentication Options" pulldown and select "(Experimental) Federated Login" to switch to OpenID. Your settings will now look like this:
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/openid-openid.png">
+</p>
+
+<p>
+<b>Figure 2.</b> Selecting "Federated Login" as the authentication option.
+</p>
+
+<p>
+For more precise steps on how to do this as well as a general introduction to this feature in App Engine, check out the Users service overview documentation (<a href="../docs/python/users/overview.html#Authentication_Options">Python</a> | <a href="../docs/java/users/overview.html#Authentication_Options">Java</a>). There is also a <a href="http://blog.notdot.net/2010/05/Using-OpenID-authentication-on-App-Engine">blog post</a> where you can find additional information.
+</p>
+
+<p>
+If your app already exists, switching from using Google Accounts to OpenID as your authentication mechanism does not affect your app's existing User objects as Google will now serve as those users' OpenID provider. However, you should avoid doing the reverse as OpenID comprises a superset of the entire space of user identification (<a href="#ynosb">more on this below</a>).
+</p>
+
+<p>
+One thing that hasn't changed is <em>requiring</em> users to login to your app. If you wish to allow unauthenticated users, you can do that too. If not, you require users login "at runtime" by doing a redirect to a link created by <code>create_login_url()</code> (Python) or <code>createLoginURL()</code> (Java). Or, if there are multiple entry points to your app, you can make it a configuration setting in your <code>app.yaml</code> (Python) or <code>web.xml</code> (Java) file. You can review how to do this in the docs (<a href="../docs/python/config/appconfig.html#Requiring_Login_or_Administrator_Status">Python</a> | <a href="../docs/java/config/webxml.html#Security_and_Authentication">Java</a>).
+</p>
+
+<p>
+<p class="warning"><strong>WARNING</strong>: Be aware that if you change your authentication setting to "Federated Login" and add require logins in your config file <em>without</em> changing any application code, there will be automatic redirection to <code>/_ah/login_required</code>, so if you're not handling it, you'll get infinite recursion, as <a href="http://groups.google.com/group/google-appengine/browse_thread/thread/96c4248f5d289fba">discovered recently by early adopters</a>.
+</p>
+
+<p>
+Below are sample configurations for Python and Java to handle this redirection. Remember, you only need to do this if you do <em>not</em> change your application code. (In the code example further along in this article, we did not require users be logged in when accessing our app so these alterations were not made.)
+</p>
+
+<p>
+In this Python <code>app.yaml</code> file, we have set user login to be required for the <code>main.py</code> controller, thus we only need to add a section to handle the <code>/_ah/login_required</code> URL:
+</p>
+
+<p>
+<pre>
+handlers:
+<strong>- url: /_ah/login_required
+  script: <em>do_openid_login</em>.py</strong>
+
+- url: .*
+  script: main.py
+  <strong>login: required</strong>
+</pre>
+</p>
+
+<p>
+The changes to <code>web.xml</code> for Java users are similar. We start by specifying that logins are required for some URL pattern of your app:
+</p>
+
+<p>
+<pre>
+&lt;security-constraint&gt;
+    &lt;web-resource-collection&gt;
+        <strong>&lt;url-pattern&gt;.*&lt;/url-pattern&gt;</strong>
+    &lt;/web-resource-collection&gt;
+    &lt;auth-constraint&gt;
+        <strong>&lt;role-name&gt;*&lt;/role-name&gt;</strong>
+    &lt;/auth-constraint&gt;
+&lt;/security-constraint&gt;
+</pre>
+</p>
+
+<p>
+With standard Google authentication, you wouldn't need a specific handler. App Engine automatically brings up a Google Accounts login page for users. With OpenID, if you wish to use a different authentication screen, and presumably to accept non-Google OpenIDs you would, add a handler for <code>/_ah/login_required</code>:
+</p>
+
+<p>
+<pre>
+    &lt;servlet&gt;
+        <strong>&lt;servlet-name&gt;LoginRequiredServlet&lt;/servlet-name&gt;</strong>
+        <strong>&lt;servlet-class&gt;mysite.server.LoginRequiredServlet&lt;/servlet-class&gt;</strong>
+    &lt;/servlet&gt;
+    &lt;servlet-mapping&gt;
+        <strong>&lt;servlet-name&gt;LoginRequiredServlet&lt;/servlet-name&gt;</strong>
+        <strong>&lt;url-pattern&gt;/_ah/login_required&lt;/url-pattern&gt;</strong>
+    &lt;/servlet-mapping&gt;
+</pre>
+</p>
+
+<p>
+Whether you choose <code>do_openid_login.py</code> or <code>LoginRequiredServlet.java</code>, the corresponding snippet of code will likely contain HTML and display a nice login prompt to your users letting them enter their OpenID to authenticate with.
+</p>
+
+<p class="warning">
+<strong>WARNING</strong>: at the time of this writing, OpenID is not supported if your app runs in secure mode using HTTPS.
+</p>
+
+
+<h3 id="ip">Federated identity providers</h3>
+
+<p>
+The magic of OpenID in App Engine happens in the <code>create_login_url()</code> or <code>createLoginURL()</code> calls to generate the link that users click on or that your app redirects to appropriate provider for authentication. There are currently a number of <a href=http://openid.net/get-an-openid>OpenID providers</a> your users can choose from.
+</p>
+
+<h4>Provider types</h4>
+<p>
+There are two flavors of provider types: <em>direct providers</em> like Google and Yahoo! require only a generic federated identity that has no username associated with it. These are called <em>unbound discoverable URLs</em> because they're not tied to any particular user &ndash; in other words, there is no information contained within the OpenID URL string to uniquely identify users.
+</p>
+
+<p>
+In contrast, Flickr, WordPress, Blogger, and LiveJournal are known as <em>username providers</em> because all require you to provide a URL which does. Not surprisingly, those are called <em>bound discoverable URLs</em>. Each of these URLs contains a username in one form or another to directly associate it with a user registered at that provider.
+</p>
+
+<p>
+Some providers do both, meaning they will accept both bound as well as unbound discoverable URLs. AOL, MyOpenID, and MySpace are examples of providers that accept both types. Regardless of which method you choose, be sure that your interface is aware of the requirements and prompt if necessary from your users.
+</p>
+
+<p>
+In any case, that "URL" is passed as the <code>federated_identity</code> parameter to the <code>users.create_login_url(federated_identity=<em>URL</em>)</code> call to generate the HTML link that the user can select. Below are examples of both types of providers you can use as <em>URL</em> in your call (domain names are case-insensitive). These lists aren't exhaustive, however.
+</p>
+
+<h4>Direct provider federated identities</h4>
+<ul>
+<li> <code>www.google.com/accounts/o8/id</code> (shorter alternative: <code>gmail.com</code>)
+<li> <code>yahoo.com</code>
+<li> <code>myspace.com</code>
+<li> <code>aol.com</code>
+<li> <code>myopenid.com</code>
+</ul>
+
+<h4>Username provider federated identities</h4>
+<ul>
+<li> <code>flickr.com/<em>USERNAME</em></code>
+<li> <code><em>USERNAME</em>.wordpress.com</code>
+<li> <code><em>USERNAME</em>.blogspot.com</code>
+<li> <code><em>USERNAME</em>.livejournal.com</code>
+<li> <code>openid.aol.com/<em>USERNAME</em></code>
+<li> <code><em>USERNAME</em>.myopenid.com</code>
+<li> <code>www.myspace.com/<em>USERNAME</em></code>
+</ul>
+
+<h3 id="ui">UI presentation</h3>
+
+<p>
+There are a variety of ways you can let your users select their federated provider and login:
+</p>
+
+<p>
+<ul>
+<li> Present links for users to click
+<li> Let users select from a pulldown
+<li> Create a text field for users to enter an OpenID
+<li> Have a login page with logos
+</ul>
+</p>
+
+<p>
+For an example of how to design and structure your login page, check out Google's <a href="http://sites.google.com/site/oauthgoog/UXFedLogin/summary">federated login user experience summary document</a>. You can also take a look at this <a href="http://jvance.com/pages/JQueryOpenIDPlugin.xhtml">flexible and stylish jQuery plugin</a> &ndash; at this page, you will also find other direct and username providers that may not have been listed above.
+</p>
+
+
+<h3 id="fl"> Federated login and logout</h3>
+
+<p>
+As far as integrating OpenID into your app, the API call to get a link for users gets one or two new optional parameters &ndash; there are no other changes. This was done intentionally to simplify the process for developers and to preserve the existing API. The new <code>federated_identity</code> parameter is passed to <code>create_login_url()</code>; likewise for <code>federatedIdentity</code> and <code>createLoginURL()</code> method in Java. You would use this same value to instantiate new <code>User</code> objects with.
+</p>
+
+<p>
+<a name="ynosb"></a>
+There are no changes to existing <code>User</code> objects that you may have stored when using only Google Accounts or Google Apps domain, even when you switch to federated authentication. All user data in your datastore and user IDs are preserved and still valid. Earlier, we advised you that once you move to using OpenID, you should not revert back to using only Google Accounts. The reason for this is because once you start storing new user information created from OpenIDs in your datastore, there is no way to corroberate the non-Google generated user IDs in your datastore nor any way to convert them to any valid type of Google user.
+</p>
+
+<p>
+If you look at the docs, you'll see that both <code>create_login_url()</code> (Python) or <code>createLoginURL()</code> (Java) have an "authentication domain" parameter (<code>auth_domain</code> for Python or <code>authDomain</code> for Java) in their signatures, but it is not used so just pass an empty string (Java) or leave it out (Python). <code>dest_url</code> and <code>destinationURL</code> work as before. Java has an additional <code>attributesRequest</code> parameter for additional attributes to send as part of the request.
+</p>
+
+<p>
+Logging out is more interesting. As before, you will use <code>create_logout_url()</code> (Python) or <code>createLogoutURL()</code> (Java) for your app. When the user clicks on it, they will log out of the App Engine app but <em>not</em> logged out of the federated provider. In other words, if your user then logs into your app again, they will not be prompted to enter their credentials. Instead, they will likely get a choice to just continue (yes/no) to your app, and upon clicking it, go directly to whatever destination URL you had set. There is no equivalent of a "single sign-out" to log users out of both your App Engine app as well as with their OpenID provider.
+</p>
+
+<p class="warning"><strong>WARNING</strong>: 
+You should strongly urge users that if using a computer that is not their's, say a kiosk in a public venue, they should clear all cookies in addition to logging out. (A less attractive alternative is to tell users to logout of your app then go to their OpenID provider's website and sign-out from there too.)
+</p>
+
+
+<h3 id="ex"> Examples</h3>
+
+<p>
+Let's look at some code! As described above, login screens can be as simple or as complex as you like. The most generic way sends users directly to an OpenID provider where they enter their OpenID and password. In the example app below, all we do is take the "Hello World" example and add the ability for the user to do a federated login:
+</p>
+
+<p>
+<div class="tabpane">
+  <ul>
+    <li><a href="#model_python"><span>Python</span></a></li>
+    <li><a href="#model_java"><span>Java</span></a></li>
+  </ul>
+  <div class="content-container">
+    <div id="model_python">
+      <code><strong>main.py</strong></code>
+      <pre class="prettyprint">
+
+from google.appengine.api import users
+from google.appengine.ext import webapp
+from google.appengine.ext.webapp.util import run_wsgi_app
+
+providers = {
+    'Google'   : 'www.google.com/accounts/o8/id', # shorter alternative: "Gmail.com"
+    'Yahoo'    : 'yahoo.com',
+    'MySpace'  : 'myspace.com',
+    'AOL'      : 'aol.com',
+    'MyOpenID' : 'myopenid.com'
+    # add more here
+}
+
+class MainHandler(webapp.RequestHandler):
+    def get(self):
+        user = users.get_current_user()
+        if user:  # signed in already
+            self.response.out.write('Hello &lt;em&gt;%s&lt;/em&gt;! [&lt;a href="%s"&gt;sign out&lt;/a&gt;]' % (
+                user.nickname(), users.create_logout_url(self.request.uri)))
+        else:     # let user choose authenticator
+            self.response.out.write('Hello world! Sign in at: ')
+            for name, uri in providers.items():
+                self.response.out.write('[&lt;a href="%s"&gt;%s&lt;/a&gt;]' % (
+                    users.create_login_url(federated_identity=uri), name))
+
+application = webapp.WSGIApplication([
+    ('/', MainHandler),
+], debug=True)
+
+def main():
+    run_wsgi_app(application)
+
+if __name__ == '__main__':
+    main()
+
+      </pre>
+    </div>
+
+    <div id="model_java">
+      <code><strong>main.java</strong></code>
+      <pre class="prettyprint">
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.google.appengine.api.users.User;
+import com.google.appengine.api.users.UserService;
+import com.google.appengine.api.users.UserServiceFactory;
+
+@SuppressWarnings("serial")
+public class OpenIdDemoServlet extends HttpServlet {
+
+    private static final Map&lt;String, String&gt; openIdProviders;
+    static {
+        openIdProviders = new HashMap&lt;String, String&gt;();
+        openIdProviders.put("Google", "www.google.com/accounts/o8/id");
+        openIdProviders.put("Yahoo", "yahoo.com");
+        openIdProviders.put("MySpace", "myspace.com");
+        openIdProviders.put("AOL", "aol.com");
+        openIdProviders.put("MyOpenId.com", "myopenid.com");
+    }
+
+    @Override
+    public void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        UserService userService = UserServiceFactory.getUserService();
+        User user = userService.getCurrentUser(); // or req.getUserPrincipal()
+        Set&lt;String&gt; attributes = new HashSet();
+
+        resp.setContentType("text/html");
+        PrintWriter out = resp.getWriter();
+
+        if (user != null) {
+            out.println("Hello &lt;i&gt;" + user.getNickname() + "&lt;/i&gt;!");
+            out.println("[&lt;a href=\""
+                    + userService.createLogoutURL(req.getRequestURI())
+                    + "\"&gt;sign out&lt;/a&gt;]");
+        } else {
+            out.println("Hello world! Sign in at: ");
+            for (String providerName : openIdProviders.keySet()) {
+                String providerUrl = openIdProviders.get(providerName);
+                String loginUrl = userService.createLoginURL(req
+                        .getRequestURI(), null, providerUrl, attributes);
+                out.println("[&lt;a href=\"" + loginUrl + "\"&gt;" + providerName + "&lt;/a&gt;] ");
+            }
+        }
+    }
+}
+      </pre>
+    </div>
+  </div>
+</div>
+</p>
+
+<p>
+The way this simple app works in either language is that you get a simple login screen like the below:
+</p>
+
+<p>
+<img src="img/openid-signin.png">
+</p>
+
+<p>
+<b>Figure 3.</b> Sample app offering multiple login links.
+</p>
+
+<p>
+Users will then select a provider. Let's randomly choose a few so you can see what each login screen looks like:
+</p>
+
+<p>
+<img src="img/openid-goog.png">
+<img src="img/openid-yhoo.png">
+<img src="img/openid-mysp.png">
+</p>
+
+<p>
+<b>Figure 4.</b> Login experience with: a) Google, b), Yahoo!, c) MySpace
+</p>
+
+<p>
+After logging in, you can verify the user's OpenID username as presented in our sample app above via the <code>user.getNickname()</code> (Java) and <code>user.nickname()</code> (Python).
+</p>
+
+<p>
+<img src="img/openid-goog-in.png">
+<img src="img/openid-yhoo-in.png">
+<img src="img/openid-mysp-in.png">
+</p>
+
+<p>
+<b>Figure 5.</b> Various output from app after logging in with different OpenID providers.
+</p>
+
+<p>
+Remember that these are just ultra-simplistic login screens. We linked you to more complex ones in the <a href="#ui">UI Presentation</a> section above, but here is an example of a simple login selector box with pre-made links for users:
+</p>
+
+<p>
+<img src="img/openid-ux.png">
+</p>
+
+<p>
+<b>Figure 6.</b> Graphically-oriented OpenID selector
+</p>
+
+<p>
+It is important to note that App Engine's SDK does not provide a login screen.  Building a login screen is your responsibility as the developer. The sample code above is sufficient for a basic authentication mechanism, but be aware that this only logs users into your application via their identity provider of choice and nothing more.
+</p>
+
+
+<h2 id="au">Authorization</h2>
+
+<p>
+As mentioned at the beginning of this article, authentication and authorization are often confused. The topic of our discussion here is purely authentication &ndash; the concept of user identities &ndash; usually controlled or distinguished by a username and password. Although authorization is out of the scope of this article, we must mention that it is also possible to roll-in authorization with authentication, such as with services like Twitter or open APIs using <a href="http://oauth.net">OAuth</a>, which App Engine also supports (<a href="../docs/python/oauth/index.html">Python</a> | <a href="../docs/java/oauth/index.html">Java</a>). You can also find out more about the general hybrid approach using <a href="http://code.google.com/apis/accounts/docs/OpenID.html#oauth">OpenID for authentication</a> combined with <a href="http://code.google.com/apis/accounts/docs/OAuth.html">OAuth for data access</a> through Google APIs.
+</p>
+
+
+<h2 id="uf">Unsupported features</h2>
+
+<p>
+Although we're happy to introduce federated login, we would also like to emphasize that this is just the beginning: at the time of this writing, App Engine does not support other OpenID features such as Attribute Exchange (AX), AX Trust, Provider Auth Policy Extension (PAPE), OpenID User Interface Extension (UIEX), Remote API, nor secure/HTTPS service. Keep an eye on <a href="../docs/roadmap.html">our public roadmap</a> as well as our frequent release cycle for new features.
+</p>
+
+
+<h2 id="cc">Conclusion</h2>
+
+<p>
+Federated authentication gives developers a fourth option of providing authentication services to their applications. Now, in addition to either requiring your users to have Google Accounts or be part of a Google Apps domain, you can offer them the ability to authenticate through a third-party OpenID provider such as Yahoo!, MySpace, and of course, Google. A federated login service brings universal single-sign on closer to reality and ultimately offers developers more choices and a more flexible and convenient user experience.
+</p>
+
+</div>
+</div>
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

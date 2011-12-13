@@ -1,0 +1,1917 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/java/datastore/queries.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Queries and Indexes - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../../downloads.html">Downloads</a></li>
+  <li><a href="../../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../overview.html">Overview</a></li>
+    <li><a href="../runtime.html">Servlet Environment</a></li>
+    <li><a href="../backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../backends/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="index.html">Storing Data</a>
+      <ul>
+            <li><a href="overview.html">Overview</a></li>
+    <li><a href="entities.html">Entities</a></li>
+    <li><a href="queries.html">Queries</a></li>
+    <li><a href="transactions.html">Transactions</a></li>
+    <li><a href="hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="stats.html">Statistics</a></li>
+    <li><a href="async.html">Async API</a></li>
+    <li><a href="callbacks.html">Callbacks</a></li>
+    <li><a href="jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="jdo/overview.html">Overview</a></li>
+    <li><a href="jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../apis.html">Services</a>
+      <ul>
+        <li><a href="../appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../appidentity/overview.html">Overview</a></li>
+
+<li><a href="../javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../googlestorage/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../capabilities/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../conversion/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../channel/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../images/index.html">Images</a>
+          <ul>
+                <li><a href="../images/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../mail/overview.html">Overview</a></li>
+    <li><a href="../mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../memcache/overview.html">Overview</a></li>
+    <li><a href="../memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../multitenancy/overview.html">Overview</a></li>
+    <li><a href="../multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../oauth/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../taskqueue/overview.html">Overview</a></li>
+     <li><a href="../taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../urlfetch/overview.html">Overview</a></li>
+    <li><a href="../urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../users/index.html">Users</a>
+          <ul>
+                <li><a href="../users/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../xmpp/overview.html">Overview</a></li>
+     <li><a href="../javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../config/appconfig.html">App Config</a></li>
+    <li><a href="../config/backends.html">Backends Config</a></li>
+    <li><a href="../config/indexconfig.html">Index Config</a></li>
+    <li><a href="../config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../config/queue.html">Task Queue Config</a></li>
+    <li><a href="../config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../tools/devserver.html">Development Server</a></li>
+    <li><a href="../tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../tools/appstats.html">Appstats</a></li>
+    <li><a href="../tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../../python/overview.html">Overview</a></li>
+    <li><a href="../../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/channel/functions.html">Functions</a></li>
+    <li><a href="../../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../../python/images/overview.html">Overview</a></li>
+     <li><a href="../../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/images/imageclass.html">Image</a></li>
+         <li><a href="../../python/images/functions.html">Functions</a></li>
+         <li><a href="../../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../python/mail/overview.html">Overview</a></li>
+     <li><a href="../../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../../python/mail/functions.html">Functions</a></li>
+         <li><a href="../../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../python/users/overview.html">Overview</a></li>
+     <li><a href="../../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/users/userclass.html">User</a></li>
+         <li><a href="../../python/users/functions.html">Functions</a></li>
+         <li><a href="../../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../../go/overview.html">Overview</a></li>
+    <li><a href="../../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../go/backends/overview.html">Overview</a></li>
+<li><a href="../../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../go/channel/overview.html">Overview</a></li>
+<li><a href="../../go/channel/reference.html">Reference</a></li>
+<li><a href="../../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../go/mail/overview.html">Overview</a></li>
+     <li><a href="../../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../go/users/overview.html">Overview</a></li>
+     <li><a href="../../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../../adminconsole/instances.html">Instances</a></li>
+<li><a href="../../adminconsole/roles.html">Roles</a></li>
+<li><a href="../../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../quotas.html">Quotas</a></li>
+      <li><a href="../../billing.html">Billing</a></li>
+      <li><a href="../../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../../kb/index.html">FAQ</a></li>
+      <li><a href="../../../articles/index.html">Articles</a></li>
+      <li><a href="../../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Queries and Indexes</h1>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ul>
+  <li><a href="#Overview">Overview</a></li>
+  <li><a href="#Restrictions_on_Queries">Restrictions on Queries</a></li>
+  <li><a href="#Fetching_Results">Fetching Results</a></li>
+  <li><a href="#Introduction_to_Indexes">Introduction to Indexes</a></li>
+  <li><a href="#Big_Entities_and_Exploding_Indexes">Big Entities and Exploding Indexes</a></li>
+
+  <li><a href="#Query_Cursors">Query Cursors</a></li>
+  <li><a href="#Setting_the_Read_Policy_and_Datastore_Call_Deadline">Setting the Read Policy and Datastore Call Deadline</a></li>
+</ul>
+
+<h2 id="Overview">Overview</h2>
+
+<p>A query retrieves datastore entities that meet a specified set of conditions. The query specifies an entity kind, zero or more conditions based on entity property values (sometimes called "filters"), and zero or more sort order descriptions. When the query is executed, it fetches all entities of the given kind that meet all of the given conditions, sorted in the order described.</p>
+
+<p>The <a href="hr/index.html">Master/Slave Datastore and the High Replication Datastore</a> have different guarantees when it comes to query consistency. By default:</p>
+<ul>
+  <li>The Master/Slave datastore is strongly consistent for all queries.</li>
+  <li>The High Replication datastore is strongly consistent by default for queries within an <a href="entities.html#Entity_Groups_and_Ancestor_Paths">entity group.</a> With the High Replication Datastore, non-ancestor queries are always eventually consistent.</li>
+</ul>
+<p>For more information, see <a href="#Setting_the_Read_Policy_and_Datastore_Call_Deadline">Setting the Read Policy and Datastore Call Deadline</a>.</p>
+
+
+<p>The low-level Java API provides a <a href="../javadoc/com/google/appengine/api/datastore/Query.html">Query</a> class for constructing queries and a <a href="../javadoc/com/google/appengine/api/datastore/PreparedQuery.html">PreparedQuery</a> class for fetching and returning entities from the datastore.</p>
+<pre class="prettyprint">
+import com.google.appengine.api.datastore.DatastoreService;
+import com.google.appengine.api.datastore.DatastoreServiceFactory;
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+
+// ...
+// Get the Datastore Service
+DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+
+// The Query interface assembles a query
+Query q = new Query("Person");
+q.addFilter("lastName", Query.FilterOperator.EQUAL, lastNameParam);
+q.addFilter("height", Query.FilterOperator.LESS_THAN, maxHeightParam);
+
+// PreparedQuery contains the methods for fetching query results
+// from the datastore
+PreparedQuery pq = datastore.prepare(q);
+
+for (Entity result : pq.asIterable()) {
+  String firstName = (String) result.getProperty("firstName");
+  String lastName = (String) result.getProperty("lastName");
+  Long height = (Long) result.getProperty("height");
+  System.out.println(lastName + " " + firstName + ", " + height.toString() + " inches tall");
+}</pre>
+
+<p>A filter includes a property name, a comparison operator, and a value. An entity passes the filter if it has a property of the given name and its value compares to the given filter value as described by the operator. The entity is a result for the query if it passes all of the query's filters.</p>
+
+<p>The filter operator can be any of the following:</p>
+<ul>
+  <li><code>Query.FilterOperator.LESS_THAN</code></li>
+  <li><code>Query.FilterOperator.LESS_THAN_OR_EQUAL</code></li>
+  <li><code>Query.FilterOperator.EQUAL</code></li>
+  <li><code>Query.FilterOperator.GREATER_THAN</code></li>
+  <li><code>Query.FilterOperator.GREATER_THAN_OR_EQUAL</code></li>
+  <li><code>Query.FilterOperator.NOT_EQUAL</code></li>
+  <li><code>Query.FilterOperator.IN</code> (equal to any of the values in the provided list)</li>
+</ul>
+
+<p>The <code>NOT_EQUAL</code> operator actually performs two queries: one where all other filters are the same and the not-equal filter is replaced with a less-than filter, and one where the not-equal filter is replaced with a greater-than filter. The results are merged, in order. As described below in the discussion of inequality filters, a query can only have one not-equal filter, and such a query cannot have other inequality filters.</p>
+
+<p>The <code>IN</code> operator also performs multiple queries, one for each item in the provided list value where all other filters are the same and the <code>IN</code> filter is replaced with an equal-to filter. The results are merged, in the order of the items in the list. If a query has more than one <code>IN</code> filter, the query is performed as multiple queries, one for each combination of values in the <code>IN</code> filters.</p>
+
+<p>A single query containing <code>NOT_EQUAL</code> or <code>IN</code> operators is limited to 30 sub-queries.</p>
+
+<p>For more information about how <code>NOT_EQUAL</code> and <code>IN</code> queries translate to multiple queries in a JDO/JPA framework, check out <a href="http://gae-java-persistence.blogspot.com/2009/12/queries-with-and-in-filters.html">Queries with <code>NOT_EQUAL</code> and <code>IN</code> filters</a>. </p>
+
+
+<p>A query can also return just the keys of the result entities instead of the entities themselves.</p>
+
+
+
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;).setKeysOnly();</pre>
+
+
+<h3 id="Kindless_Queries">Kindless Queries</h3>
+
+<p>A query with no kind and no ancestor or key filters returns every entity in the datastore for the application. This includes entities created and managed by other App Engine features, including <a href="stats.html">statistics entities</a> (which exist for all apps) and <a href="../javadoc/com/google/appengine/api/blobstore/package-summary.html">Blobstore metadata entities</a> (if any). Kindless queries cannot include filters on properties. They can, however, filter by Entity Key by passing <a href="../javadoc/com/google/appengine/api/datastore/Entity.html#KEY_RESERVED_PROPERTY">Entity.KEY_RESERVED_PROPERTY</a> as the property name for the filter. Ascending sorts on Entity.KEY_RESERVED_PROPERTY are also supported.</p>
+
+
+<h3 id="Ancestor_Queries">Ancestor Queries</h3>
+
+<p>You can filter your datastore queries to a specified ancestor, so that the result set only includes entities descended from the specified ancestor. In other words, all of the results will have the ancestor as their parent, or parent's parent, or etc.</p>
+
+<p class="note">Passing null as a parameter to
+<a href="../javadoc/com/google/appengine/api/datastore/Query.html#setAncestor(com.google.appengine.api.datastore.Key)">Query.setAncestor(String ancestor)</a> does not query for entities without ancestors (this type of query is not currently supported).</p>
+<pre class="prettyprint">
+DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+Entity person = new Entity("Person", "tom");
+
+Entity weddingPhoto = new Entity("Photo", person.getKey());
+weddingPhoto.setProperty("imageUrl",
+    "http://domain.com/some/path/to/wedding_photo.jpg");
+
+Entity babyPhoto = new Entity("Photo", person.getKey());
+babyPhoto.setProperty("imageUrl",
+    "http://domain.com/some/path/to/baby_photo.jpg");
+
+Entity dancePhoto = new Entity("Photo", person.getKey());
+dancePhoto.setProperty("imageUrl",
+    "http://domain.com/some/path/to/dance_photo.jpg");
+
+Entity campingPhoto = new Entity("Photo");
+campingPhoto.setProperty("imageUrl",
+    "http://domain.com/some/path/to/camping_photo.jpg");
+
+datastore.put(Arrays.asList(person, weddingPhoto, babyPhoto, dancePhoto,
+    campingPhoto));
+
+Query userPhotosQuery = new Query("Photo");
+userPhotosQuery.setAncestor(person.getKey());
+
+// This returns weddingPhoto, babyPhoto and dancePhoto, but
+// not campingPhoto because tom is not an ancestor.
+List&lt;Entity&gt; results = datastore.prepare(userPhotosQuery).asList(
+    FetchOptions.Builder.withDefaults());</pre>
+
+
+<h3 id="Kindless_Ancestor_Queries">Kindless Ancestor Queries</h3>
+
+
+<p>You can also perform queries for entities with a given ancestor regardless of kind. Such queries can also include filters, equality or inequality, on <a href="../javadoc/com/google/appengine/api/datastore/Entity.html#KEY_RESERVED_PROPERTY">Entity.KEY_RESERVED_PROPERTY</a>. Kindless queries cannot include filters on properties. They can, however, filter by Entity Key by passing Entity.KEY_RESERVED_PROPERTY as the property name for the filter. Ascending sorts on Entity.KEY_RESERVED_PROPERTY are also supported.</p>
+<p>Notably, a kindless ancestor query without any additional filters always returns the entity uniquely identified by the ancestor (assuming that entity exists). The name "ancestor" implies that queries return only children of an entity; but in fact, ancestor queries can return the entity itself. The following code sample demonstrates this point.</p>
+<p>Kindless ancestor queries do not require custom indexes.</p>
+<p>To perform a kindless ancestor query using the <code>Query</code> class, call the constructor without a kind:</p>
+
+<pre class="prettyprint">
+Query q =  new Query();
+
+q.setAncestor(ancestorKey);
+q.addFilter(Entity.KEY_RESERVED_PROPERTY, Query.FilterOperator.GREATER_THAN, lastKeyParam)
+</pre>
+
+<p>The following code sample demonstrates how to iterate over all Entities belonging to a given User:</p>
+<pre class="prettyprint">
+DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+Entity person = new Entity("Person", "tom");
+
+Entity weddingPhoto = new Entity("Photo", person.getKey());
+weddingPhoto.setProperty("imageUrl",
+    "http://domain.com/some/path/to/wedding_photo.jpg");
+
+Entity weddingVideo = new Entity("Video", person.getKey());
+weddingVideo.setProperty("videoUrl",
+    "http://domain.com/some/path/to/wedding.avi");
+
+datastore.put(Arrays.asList(person, weddingPhoto, weddingVideo));
+
+Query userMediaQuery = new Query();
+userMediaQuery.setAncestor(person.getKey());
+    
+// Ancestor queries return ancestors by default. This filter
+// excludes the ancestor from query results.
+userMediaQuery.addFilter(Entity.KEY_RESERVED_PROPERTY, Query.FilterOperator.GREATER_THAN,
+    person.getKey());
+
+// Returns both weddingPhoto and weddingVideo even though they are
+// different entity kinds.
+List&lt;Entity&gt; results = datastore.prepare(userMediaQuery).asList(
+    FetchOptions.Builder.withDefaults());</pre>
+
+
+<h2 id="Restrictions_on_Queries">Restrictions on Queries</h2>
+
+<p>The nature of the index query mechanism imposes a few restrictions on what a query can do. These restrictions are described in this section.</p>
+
+<h3 id="Filtering_Or_Sorting_On_a_Property_Requires_That_the_Property_Exists">
+ Filtering Or Sorting On a Property Requires That the Property Exists</h3>
+
+<p>If a property has a query filter condition or sort order, the query returns only those datastore entities that have a value (including null) for that property.</p>
+
+<p>Entities of a kind need not have the same properties. A filter on a property can only match an entity with a value for that property. If an entity has no value for a property used in a filter or sort order, that entity is omitted from the index built for the query.</p>
+
+
+
+<h3 id="Inequality_Filters_Are_Allowed_on_One_Property_Only">Inequality Filters Are Allowed on One Property Only</h3>
+
+<p>A query may only use inequality filters (<code>&lt;</code>, <code>&lt;=</code>, <code>&gt;=</code>, <code>&gt;</code>, <code>!=</code>) on one property across all of its filters.</p>
+
+<p>For example, this query is allowed:</p>
+
+
+<pre class="prettyprint">
+import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.Query.FilterOperator;
+import com.google.appengine.api.datastore.Query.SortDirection;
+
+Query q = new Query("Person");
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.LESS_THAN_OR_EQUAL, maxBirthYearParam);</pre>
+
+
+<p>However, the following query is <i>not</i> allowed, because it uses inequality filters on two different properties in the same query:</p>
+
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);
+// Error
+q.addFilter(&quot;height&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minHeightParam);</pre>
+
+
+<p>Filters can combine equal (<code>==</code>) comparisons for different properties in the same query, including queries with one or more inequality conditions on a property. This is allowed:</p>
+
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;);
+q.addFilter(&quot;lastName&quot;, FilterOperator.EQUAL, lastNameParam);
+q.addFilter(&quot;city&quot;, FilterOperator.EQUAL, cityParam);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);</pre>
+
+
+<p>The query mechanism relies on all results for a query to be adjacent to one another in the index table, to avoid having to scan the entire table for results. A single index table cannot represent multiple inequality filters on multiple properties while maintaining that all results are consecutive in the table.</p>
+
+
+<h3 id="Properties_in_Inequality_Filters_Must_Be_Sorted_before_Other_Sort_Orders">
+ Properties in Inequality Filters Must Be Sorted before Other Sort Orders</h3>
+
+<p>If a query has both a filter with an inequality comparison and one or more sort orders, the query must include a sort order for the property used in the inequality, and the sort order must appear <i>before</i> sort orders on other properties.</p>
+
+<p>This query is <i>not</i> valid, because it uses an inequality filter and does not order by the filtered property:</p>
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);
+q.addSort(&quot;lastName&quot;, SortDirection.ASCENDING); // ERROR</pre>
+</pre>
+
+
+<p>Similarly, the following query is not valid because it does not order by the filtered property before ordering by other properties:</p>
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);
+q.addSort(&quot;lastName&quot;, SortDirection.ASCENDING); // ERROR
+q.addSort(&quot;birthYear&quot;, SortDirection.ASCENDING);</pre>
+
+
+<p>This query is valid:</p>
+
+<pre class="prettyprint">
+Query q = new Query(&quot;Person&quot;);
+q.addFilter(&quot;birthYear&quot;, FilterOperator.GREATER_THAN_OR_EQUAL, minBirthYearParam);
+q.addSort(&quot;birthYear&quot;, SortDirection.ASCENDING);
+q.addSort(&quot;lastName&quot;, SortDirection.ASCENDING);</pre>
+
+
+<p>To get all results that match an inequality filter, a query scans the index table for the first matching row, then returns all consecutive results until it finds a row that doesn't match. For the consecutive rows to represent the complete result set, the rows must be ordered by the inequality filter before other sort orders.</p>
+
+<h3 id="Properties_With_Multiple_Values_Can_Have_Surprising_Behaviors">Properties With Multiple Values Can Have Surprising Behaviors</h3>
+
+<p>Due to the way they're indexed, properties with multiple values interact with query filters and sort orders in specific and sometimes surprising ways.</p>
+
+<p>First, if a query has multiple inequality filters on a given property, an entity matches the query only if it has an individual value for that property that matches <i>all</i> of the inequality filters. For example, if an entity has the values <code>[1, 2]</code> for property <code>x</code>, it will not match the query <code>WHERE x > 1 AND x < 2</code>. Each filter does match one of <code>x</code>'s values, but no single value matches both filters.</p>
+
+<p>(Note that this does not apply to <code>=</code> filters. For example, the
+query <code>WHERE x = 1 AND x = 2</code> will return the above entity.)</p>
+
+<p>The <code>!=</code> operator works as "value is other than" test. So, for example, the filter <code>x != 1</code> matches an entity with value greater than or less than 1. In Java only, you can use a filter like <code>x != 1 AND x != 2</code>, which acts like "a &lt; 1 OR (a &gt; 1 and a &lt; 2) OR a &gt; 2", so <code>[1, 2]</code> matches, but <code>[1, 2, 3]</code> does not.</p>
+
+<p>Similarly, the sort order for multiply valued properties is unusual:</p>
+
+<ul class="doublespace">
+  <li>If the entities are sorted by a multi-valued property in ascending order, the smallest value is used for ordering.</li>
+  <li>If the entities are sorted by a multi-valued property in descending order, the greatest value is used for ordering.</li>
+  <li>Other values do not affect the sort order, nor does the number of values.</li>
+</ul>
+
+<p>This ordering takes place because multivalued properties appear in an index once for each unique value they contain, but the datastore removes duplicate values from the index, so the first value seen in the index determines its sort order.</p>
+
+<p>This sort order has the unusual consequence that <code>[1, 9]</code> comes before <code>[4, 5, 6, 7]</code> in both ascending <i>and</i> descending order.</p>
+
+<h3 id="Sort_Orders_Are_Ignored_on_Properties_with_Equality_Filters">Sort Orders Are Ignored on Properties With Equality Filters</h3>
+
+<p>One important caveat is queries with both an equality filter and a sort
+order on a multi-valued property. In those queries, the sort order is disregarded.
+For single-valued properties, this is a simple optimization. Every result would
+have the same value for the property, so the results do not need to be sorted
+further.</p>
+
+<p>However, multi-valued properties may have additional values. Since the sort order
+is disregarded, the query results may be returned in a different order than if
+the sort order were applied. (Restoring the dropped sort order would be
+expensive and require extra indices, and this use case is rare, so the query
+planner leaves it off.)</p>
+
+<h3 id="Query_Ordering_when_Sort_Order_Is_Unspecified">Query Ordering when Sort Order Is Unspecified</h3>
+
+<p>When a query does not specify an order, the datastore returns the results in the order of retrieval. As we make changes to the datastore implementation, the order of results in an unordered query may change as well. Therefore, if you require a specific sort ordering for your query results, be sure to specify it in the query. If you don't specify a sort order, the ordering of results is undefined and may change over time.</p>
+
+<h3 id="Queries_Inside_Transactions_Must_Include_Ancestor_Filters">Queries Inside Transactions Must Include Ancestor Filters</h3>
+
+<p>Queries are only supported inside
+<a href="transactions.html">transactions</a> if they include an ancestor filter. The query's ancestor must be in the same
+<a href="transactions.html#Entity_Groups">entity group</a> as the other operations in the transaction. This preserves the restriction that a transaction can only operate on entities in a single entity group.</p>
+
+<h2 id="Fetching_Results">Fetching Results</h2>
+
+<p>After constructing your query, you can specify a number of fetch options to control which results get returned for your query.</p>
+
+<p>If you want to return only a single entity matching your query, you can use the
+
+
+<code>PreparedQuery.asSingleEntity()</code> method.
+
+This will return the first result that matches the query. If there is more than one matching result, the system throws a <a href="../javadoc/com/google/appengine/api/datastore/PreparedQuery.TooManyResultsException.html">TooManyResultsException</a> exception.</p>
+
+<p>Key-only queries return just the keys to the entities that match your query from the datastore. Key-only queries run faster than queries that return complete entities. To return only the keys,
+
+
+use the <code>Query.setKeysOnly()</code> method.
+</p>
+
+<p>You can specify a limit and offset with your query to control the number and range of results returned in one batch. Specifying an integer limit returns up to that number of results that match the query. Using an integer offset will skip that number of results and return the rest, up to the limit specified.
+
+
+For example, to fetch the tallest five people from your datastore, you would construct your query as:
+<pre class="prettyprint">// Construct then prepare your query
+List&lt;Entity&gt; get5TallestPeople() {
+    DatastoreService ds = DatastoreServiceFactory.getDatastoreService();
+    Query q = new Query(&quot;Person&quot;);
+    q.addSort(&quot;height&quot;, SortDirection.DESCENDING);
+    PreparedQuery pq = ds.prepare(q);
+    return pq.asList(FetchOptions.Builder.withLimit(5));
+}
+</pre></p>
+<p>If you wanted the 6th through 10th tallest people, you would instead use:
+<pre class="prettyprint">return pq.asList(FetchOptions.Builder.withLimit(5).offset(5)));</pre>
+</p>
+
+
+<p>When iterating through the results using PreparedQuery.asIterable() and PreparedQuery.asIterator(), the datastore fetches the results in batches. By default, each batch contains 20 results, but you can change this value using <a href="../javadoc/com/google/appengine/api/datastore/FetchOptions.html#chunkSize(int)">FetchOptions.chunkSize(int)</a>. You can continue iterating through query results until all are returned or the request times out.</p>
+
+
+
+<h2 id="Introduction_to_Indexes">Introduction to Indexes</h2>
+<p class="note"><strong>Note:</strong> For an in-depth discussion of indexes and querying, see the article <a href="../../../articles/indexselection.html">Index Selection and Advanced Search</a>.</p>
+<p>Every datastore query uses an index, a table containing the results for the query in the desired order. An App Engine application defines its indexes in a configuration file named <code>datastore-indexes.xml</code>. The development web server automatically adds suggestions to this file as it encounters queries that do not yet have indexes configured. You can tune indexes manually by editing the file before uploading the application.</p>
+
+<p class="note"><strong>Note:</strong> You can get the list of indexes for your application at runtime by calling the<a href="../javadoc/com/google/appengine/api/datastore/DatastoreService.html#getIndexes()"> getIndexes()</a> method of the <a href="../javadoc/com/google/appengine/api/datastore/DatastoreService.html"> DatastoreService</a> class or the <a href="../javadoc/com/google/appengine/api/datastore/AsyncDatastoreService.html#getIndexes()">getIndexes()</a> method of the <a href="../javadoc/com/google/appengine/api/datastore/AsyncDatastoreService.html">AsyncDatastoreService</a> class. 
+
+<p>The index-based query mechanism supports most common kinds of queries, but it does not support some queries common in other database technologies. Restrictions on queries, and their explanations, are described below.</p>
+
+<p>The datastore maintains an index for every query an application intends to make. As the application makes changes to datastore entities, the datastore updates the indexes with the correct results. When the application executes a query, the datastore fetches the results directly from the corresponding index.</p>
+
+<p>The datastore executes a query using the following steps:</p>
+
+<ol>
+  <li>The datastore identifies the index that corresponds with the query's kind, filter properties, filter operators, and sort orders.</li>
+  <li>The datastore starts scanning the index at the first entity that meets all of the filter conditions using the query's filter values.</li>
+  <li>The datastore continues to scan the index, returning each entity, until it finds the next entity that does not meet the filter conditions, reaches the end of the index, or has collected the maximum number of results requested by the query.</li>
+</ol>
+
+<p>An index table contains columns for every property used in a filter or sort order. The rows are sorted by the following aspects, in order:</p>
+
+<ul>
+  <li>ancestors</li>
+  <li>property values used in equality filters</li>
+  <li>property values used in inequality filters</li>
+  <li>property values used in sort orders</li>
+</ul>
+
+<p>This puts all results for every possible query that uses this index in consecutive rows in the table.</p>
+
+<p>An index contains an entity only if the index refers to every property in the entity. If the index does not reference a property of the entity, that entity will not appear in the index, and will never be a result for the query that uses the index.</p>
+
+<p>Note that the App Engine datastore makes a distinction between an entity that does not possess a property and an entity that possesses a property with a value of  <code>null</code>. If you want every entity of a kind to be a potential result for a query, you can use a JDO or JPA data class, which always assigns a value to every property that corresponds to a field in the class.</p>
+
+<h3>Unindexed Properties</h3>
+
+<p>Queries can't find property values that aren't indexed. This includes properties that are marked as not indexed, as well as properties with values of the long text value type (<code>Text</code>) or the long binary value type (<code>Blob</code>).</p>
+
+<p>A query with a filter or sort order on a property will never match an entity whose value for the property is a <code>Text</code> or <code>Blob</code>, or which was written with that property marked as not indexed. Properties with such values behave as if the property is not set with regard to query filters and sort orders.</p>
+
+
+<p>If you have a property that you know you will not need to filter or sort by, make it an unindexed property. This will decrease the number of datastore writes needed, because the datastore will not need to maintain index entries for the property. To specify that a property not be indexed, 
+
+use <a href="../javadoc/com/google/appengine/api/datastore/Entity.html#setUnindexedProperty(java.lang.String,%20java.lang.Object)">Entity.setUnindexedProperty()</a>:</p>
+<pre class="prettyprint">DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+Key acmeKey = KeyFactory.createKey(&quot;Company&quot;, &quot;acme&quot;);
+Entity tom = new Entity(&quot;Person&quot;, &quot;tom&quot;, acme);
+tom.setProperty(&quot;age&quot;, 32);
+
+Entity lucy = new Entity(&quot;Person&quot;, &quot;lucy&quot;, acmeKey);
+lucy.setUnindexedProperty(&quot;age&quot;, 29);
+
+datastore.put(Arrays.asList(tom, lucy));
+
+Query query = new Query(&quot;Person&quot;);
+query.setAncestor(acmeKey);
+query.addFilter(&quot;age&quot;, FilterOperator.GREATER_THAN, 25);
+
+// Returns tom but not lucy because her age is unindexed
+List&lt;Entity&gt; results = datastore.prepare(query).asList(FetchOptions.Builder.withDefaults());
+</pre>
+
+<h3>Mixed Types</h3>
+
+<p>When two entities have properties of the same name but of different value types, an index of the property sorts the entities first by value type, then by an order appropriate to the type. For example, if two entities each have a property named "age," one with an integer value and one with a string value, the entity with the integer value always appears before the entity with the string value when sorted by the "Age" property, regardless of the values themselves.</p>
+
+<p>This is especially worth noting in the case of integers and floating point numbers, which are treated as separate types by the datastore. A property with the integer value <code>38</code> is sorted before a property with the floating point value <code>37.5</code>, because all integers are sorted before floats.</p>
+
+<a name="which_queries_need_indexes"></a>
+<h3>Which Queries Need Indexes</h3>
+
+<p>App Engine builds indexes for several simple queries by default. For other queries, the application must specify the indexes it needs in a configuration file named <code>datastore-indexes.xml</code>. If the application running under App Engine tries to perform a query for which there is no corresponding index (either provided by default or described in <code>datastore-indexes.xml</code>), the query will fail with a <a href="../javadoc/com/google/appengine/api/datastore/DatastoreNeedIndexException.html">DatastoreNeedIndexException</a>.</p>
+
+
+
+<p>App Engine suggests automatic indexes for the following forms of queries:</p>
+<ul>
+  <li>queries using only equality and ancestor filters</li>
+  <li>queries using only inequality filters (which can only be on a single property)</li>
+  <li>kindless queries using only ancestor/key filters</li>
+  <li>queries with no filters and only one sort order on a property, either ascending or descending</li>
+  <li>queries using only equality filters on properties, and inequality filters on keys and ancestor filters</li>
+</ul>
+
+
+
+<p>Other forms of queries require their indexes to be specified in <code>datastore-indexes.xml</code>, including:</p>
+<ul>
+  <li>queries with multiple sort orders</li>
+  <li>queries with a sort order on keys in descending order</li>
+  <li>queries with one or more inequality filters on a property and one or more equality filters over other properties</li>
+  <li>queries with inequality filters and ancestor filters</li>
+</ul>
+
+<p class="note"><strong>Note:</strong> The App Engine SDK suggests indexes that are appropriate for most applications. Depending on your application's use of the datastore and the size and shape of your application's data, manual adjustments to your indexes may be warranted. For example, writing entities with multiple property values may result in an <a href="#Big_Entities_and_Exploding_Indexes">exploding index</a> with high write costs. For more information, see <a href="#Big_Entities_and_Exploding_Indexes">Big Entities and Exploding Indexes</a>.</p>
+
+<p>The development web server makes managing index configuration easy: Instead of failing to execute a query that does not have an index and requires it, the development web server can generate configuration for an index that would allow the query to succeed. If your local testing of an application calls every possible query the application will make, using every combination of filter and sort order, the generated entries will represent a complete set of indexes. If your testing does not exercise every possible query form, you can review and adjust the index configuration before uploading the application.</p>
+
+
+<h2 id="Big_Entities_and_Exploding_Indexes">Big Entities and Exploding Indexes</h2>
+
+<p class="note"><strong>Note:</strong> One way to avoid big entities and exploding indexes is described in detail in the article <a href="../../../articles/indexselection.html">Index Selection and Advanced Search</a>.</p>
+
+<p>As described above, every property (that doesn't have a <code>Text</code> or <code>Blob</code> value) of every entity is added to at least one index table, including a simple index provided by default, and any indexes described in the application's <code>datastore-indexes.xml</code> file that refer to the property. For an entity that has one value for each property, App Engine stores a property value once in its simple index, and once for each time the property is referred to in a custom index. Each of these index entries must be updated every time the value of the property changes.</p>
+
+<p>The datastore limits the number of index entries that a single entity can have. The <a href="../../python/datastore/overview.html#Quotas_and_Limits">index entry limit</a> is large, and most applications are not affected. However, there are some circumstances where you might encounter the limit. For example, an entity with a large number of single-value properties can exceed the index entry limit.</p>
+
+<p>Properties with multiple values store each value as a separate entry in an index. An entity with a single property with a large number of values can exceed the index entry limit.</p>
+
+<p>Custom indexes that refer to multiple properties with multiple values can get very large with only a few values. To completely record such properties, the index table must include a row for <i>every permutation of the values</i> of every property for the index.</p>
+
+<p>For example, consider the following query:</p>
+
+<pre>SELECT * FROM MyModel WHERE x=1 AND y=2 ORDER BY date</pre>
+
+<p>This query causes the SDK to suggest the following index:</p>
+
+
+
+<pre class="prettyprint">
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;datastore-indexes&gt;
+    &lt;datastore-index kind="MyModel"&gt;
+        &lt;property name="x" direction="asc" /&gt;
+        &lt;property name="y" direction="asc" /&gt;
+        &lt;property name="date" direction="asc" /&gt;
+    &lt;/datastore-index&gt;
+&lt;/datastore-indexes&gt;
+</pre>
+
+
+<p>The following code creates an entity with four values for the property <code>x</code>, three values for the property <code>y</code>, and sets the <code>date</code> to the current date:</p>
+
+
+<pre class="prettyprint">
+Entity myModel = new Entity("Model");
+myModel.setProperty("x", Arrays.asList("one", "two", "three", "four"));
+myModel.setProperty("y", Arrays.asList("red", "green", "blue"));
+myModel.setProperty("date", new Date());
+ds.put(myModel);
+</pre>
+
+
+<p>To accurately represent multiple properties with multiple values, the index must store a value for each permutation of values contained in the properties <code>x</code>, <code>y</code>, and <code>date</code>, as modeled by the following equation:</p>
+
+<pre>index_value_count = |x| * |y| * |date|</pre>
+
+<p>These indexes are called "exploding indexes" because they can become very large with just a few values. Exploding indexes cause entity writes to cost more because you're writing more data. They can also very easily cause an entity to exceed the <a href="../../python/datastore/overview.html#Quotas_and_Limits">per-entity index value limit</a>.</p>
+
+<p>For example, the code snippet above generates the following values for <code>x</code>, <code>y</code>, and <code>date</code>:</p>
+
+<pre>
+x = [1, 2, 3, 4]
+y = ['red', 'green', 'blue']
+date = &lt;now&gt;
+</pre>
+
+<p>This index stores the following permutations:</p>
+
+<p><strong>Table 1.</strong> Property values saved to the datastore in an exploding index defined by the SDK.</p>
+<table>
+  <tr>
+    <th><code>x</code> value</th>
+    <th><code>y</code> value</th>
+    <th><code>date</code> value</th>
+  </tr>
+  <tr>
+    <td><code>1</code></td>
+    <td><code>'blue'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>1</code></td>
+    <td><code>'green'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>1</code></td>
+    <td><code>'red'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>2</code></td>
+    <td><code><code>'blue'</code></code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>2</code></td>
+    <td><code>'green'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>2</code></td>
+    <td><code>'red'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>3</code></td>
+    <td><code><code>'blue'</code></code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>3</code></td>
+    <td><code>'green'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>3</code></td>
+    <td><code>'red'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>4</code></td>
+    <td><code><code>'blue'</code></code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>4</code></td>
+    <td><code>'green'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td><code>4</code></td>
+    <td><code>'red'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td colspan="3"><strong>Total:</strong> 12 values saved to the datastore.</td>
+  </tr>
+</table>
+
+<p>You can avoid exploding indexes by defining these indexes instead in <code>datastore-indexes.xml</code>:</p>
+
+<pre class="prettyprint">
+&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;datastore-indexes&gt;
+    &lt;datastore-index kind="MyModel"&gt;
+        &lt;property name="x" direction="asc" /&gt;
+        &lt;property name="date" direction="asc" /&gt;
+    &lt;/datastore-index&gt;
+    &lt;datastore-index kind="MyModel"&gt;
+        &lt;property name="y" direction="asc" /&gt;
+        &lt;property name="date" direction="asc" /&gt;
+    &lt;/datastore-index&gt;
+&lt;/datastore-indexes&gt;
+</pre>
+
+
+
+<p>With the above index, the number of values stored for the same query is <em>additive</em>:</p>
+
+<pre>index_value_count = |x| * |date| + |y| * |date|</pre>
+
+
+<p><strong>Table 2.</strong> Property values saved to the datastore in a normal index defined in <code>datastore-indexes.xml</code>.</p>
+
+<table>
+  <tr>
+    <th><code>x</code> value</th>
+    <th><code>date</code> value</th>
+    <th style="border-left:solid 3px #888;"><code>y</code> value</th>
+    <th><code>date</code> value</th>
+  </tr>
+  <tr>
+    <td><code>1</code></td>
+    <td><code>&lt;now&gt;</code></td>
+    <td style="border-left:solid 3px #888;"><code>'red'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><code>&lt;now&gt;</code></td>
+    <td style="border-left:solid 3px #888;"><code>'green'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><code>&lt;now&gt;</code></td>
+    <td style="border-left:solid 3px #888;"><code>'blue'</code></td>
+    <td><code>&lt;now&gt;</code></td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><code>&lt;now&gt;</code></td>
+    <td style="border-left:solid 3px #888;">&nbsp;</td>
+    <td>&nbsp;</td>
+  </tr>
+  <tr>
+    <td colspan="4"><strong>Total:</strong> 7 values saved to the datastore.</td>
+  </tr>
+</table>
+
+<p>The App Engine SDK can only detect exploding indexes when the same property is repeated multiple times. In this case, the SDK suggests an alternative index. However, in all other circumstances (such as indexes generated for queries like the one in this example), the SDK generates an exploding index. In this circumstance, you can manually configure an index in <code>datastore-indexes.xml</code> to circumvent the exploding index.</p>
+
+<p>If a <code>put()</code> would result in a number of index entries that exceeds the limit, the call fails with an exception. If you create a new index that would contain a number of index entries that exceeds the limit for any entity when built, queries against the index fail, and the index appears in the "Error" state in the Admin Console.</p>
+
+
+
+<p>You can avoid exploding indexes by avoiding queries that would require a custom index using a list property. As described above, this includes queries with multiple sort orders or queries with a mix of equality and inequality filters.</p>
+
+
+ does. As with all queries, the development server creates appropriate configuration entries in this file when a query that needs a custom index is tested.</p>
+
+
+<h2 id="Query_Cursors">Query Cursors</h2>
+
+<p>Query cursors allow an app to perform a query and retrieve a batch of results, then fetch additional results for the same query in a subsequent web request without the overhead of a query offset. After the app fetches some results for a query, it can ask for an encoded string that represents the location in the result set after the last result fetched (the "cursor"). The app can use the cursor to fetch additional results starting from that point at a later time.</p>
+
+<p>A cursor is an opaque base64-encoded string that represents the next starting position of a query after a fetch operation. The app can embed the cursor in web pages as HTTP GET or POST parameters, or it can store the cursor in the datastore or memcache, or in a task queue task payload. A future request handler can perform the same query and include the cursor with the query to tell the datastore to start returning results from the location represented by the cursor. A cursor can only be used by the app that performed the original query, and can only be used to continue the same query.</p>
+
+<p class="note"><b>Tip:</b> It is generally safe to pass a datastore cursor to a client, such as in a web form, and accept a cursor value from a client. A client cannot change the cursor value to access results outside of the original query. However, the base64-encoded value can be decoded to expose information about result entities, such as the key (app ID, kind, key name or ID, and all ancestor keys) and properties used in the query (including filters and sort orders). If you don't want users to have access to that information, you can encrypt the cursor, or store it and provide the user with an opaque key.</p>
+
+<h3>Cursors and Data Updates</h3>
+
+<p>The cursor's position is defined as the location in the result list after the last result returned. A cursor is not a relative position in the list (it's not an offset); it's a marker to which the datastore can jump when starting an index scan for results. If the results for a query change between uses of a cursor, the query notices only changes that occur in results after the cursor. If a new result appears before the cursor's position for the query, it will not be returned when the results after the cursor are fetched. Similarly, if an entity is no longer a result for a query but had appeared before the cursor, the results that appear after the cursor do not change. If the last result returned is removed from the result set, the cursor still knows how to locate the next result.</p>
+
+<p>An interesting application of cursors is to monitor entities for unseen changes. If the app sets a timestamp property with the current date and time every time an entity changes, the app can use a query sorted by the timestamp property, ascending, with a datastore cursor to check when entities are moved to the end of the result list. If an entity's timestamp is updated, the query with the cursor returns the updated entity. If no entities were updated since the last time the query was performed, no results are returned, and the cursor does not move.</p>
+
+<p>When retrieving query results, you can use both a start cursor and an end cursor to return a continuous group of results from the datastore. When using a start and end cursor to retrieve the results, you are not guaranteed that the size of the results will be the same as when you generated the cursors. Entities may be added or deleted from the datastore between the time the cursors are generated and when they are used in a query.</p>
+
+<p>In the low-level Java API, the app can use cursors via the <a href="../javadoc/com/google/appengine/api/datastore/QueryResultList.html">QueryResultList</a>, <a href="../javadoc/com/google/appengine/api/datastore/QueryResultIterable.html">QueryResultIterable</a>, and <a href="../javadoc/com/google/appengine/api/datastore/QueryResultIterator.html">QueryResultIterator</a> interfaces, which are returned by methods of a <a href="../javadoc/com/google/appengine/api/datastore/PreparedQuery.html">PreparedQuery</a> (<code>asQueryResultList()</code>, <code>asQueryResultIterable()</code>, and <code>asQueryResultIterator()</code>, respectively). These result objects provide a <code>getCursor()</code> method, which returns <a href="../javadoc/com/google/appengine/api/datastore/Cursor.html">Cursor</a> object. The app can get a web-safe string by calling the <code>Cursor</code> object's <code>toWebSafeString()</code> method, and can create a <code>Cursor</code> object from a web-safe string using the <code>Cursor.fromWebSafeString()</code> static method. The following example demonstrates the use of cursors for pagination.</p>
+
+<pre class="prettyprint">
+import java.io.IOException;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.google.appengine.api.datastore.Cursor;
+import com.google.appengine.api.datastore.DatastoreService;
+import com.google.appengine.api.datastore.DatastoreServiceFactory;
+import com.google.appengine.api.datastore.Entity;
+import com.google.appengine.api.datastore.FetchOptions;
+import com.google.appengine.api.datastore.PreparedQuery;
+import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.QueryResultList;
+
+public class ListPeopleServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+          throws ServletException, IOException {
+
+        DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+        Query q = new Query("Person");
+        PreparedQuery pq = datastore.prepare(q);
+        int pageSize = 15;
+
+        resp.setContentType("text/html");
+        resp.getWriter().println("&lt;ul&gt;");
+
+        FetchOptions fetchOptions = FetchOptions.Builder.withLimit(pageSize);
+        String startCursor = req.getParameter("cursor");
+
+        // If this servlet is passed a cursor parameter, let's use it
+        if (startCursor != null) {
+            fetchOptions.startCursor(Cursor.fromWebSafeString(startCursor));
+        }
+
+        QueryResultList&lt;Entity&gt; results = pq.asQueryResultList(fetchOptions);
+        for (Entity entity : results) {
+            resp.getWriter().println("&lt;li&gt;" + entity.getProperty("name") + "&lt;/li&gt;");
+        }
+        resp.getWriter().println("&lt;/ul&gt;");
+
+        String cursor = results.getCursor().toWebSafeString();
+
+        // Assuming this servlet lives at '/people'
+        resp.getWriter().println(
+            "&lt;a href='/people?cursor=" + cursor + "'&gt;Next page&lt;/a&gt;");
+    }
+}</pre>
+
+
+<h3>Limitations of Cursors</h3>
+
+<p>A few things to know about cursors:</p>
+
+<ul>
+  <li>You cannot use cursors with queries that use the <code>IN</code> or <code>!=</code> filter operators.</li>
+  <li>To use a cursor, the app must perform the same query that provided the cursor, including the same kind, filters and filter values, ancestor filter, and sort orders. There is no way to fetch results using a cursor without setting up the same query.</li>
+  <li>A query with a cursor does not always work as expected when the query uses an inequality filter or a sort order on a property with multiple values. Logic that de-duplicates the multivalued property for the query does not persist between queries, and may return a result more than once.</li>
+  <li>Cursors depend on the index configuration that supports the query. In cases where multiple index configurations can support the same query, changing the index configuration for the query will invalidate cursors for that query. (For example, a query of only equality filters and no sort orders can be supported by the built-in indexes in most cases, and can also use a custom index if one is provided.)  Cursors also depend on implementation details that may change with a new App Engine release that invalidates them. If an app attempts to use a cursor that is no longer valid, the datastore raises an exception. In Java, it raises an <code>IllegalArgumentException</code> (low-level API), a <code>JDOFatalUserException</code> (JDO), or a <code>PersistenceException</code> (JPA).</li>
+</ul>
+
+<h2 id="Setting_the_Read_Policy_and_Datastore_Call_Deadline">Setting the Read Policy and Datastore Call Deadline</h2>
+
+<p>In order to increase data availability, you can set the datastore read policy so that all reads and queries are eventually consistent. While the API also allows you to explicitly set a strong consistency policy, in the High Replication Datastore non-ancestor queries are always eventually consistent. Setting the read policy to strong consistency for a non-ancestor query in the High Replication Datastore will have no effect.</p>
+<p>When you select eventual consistency for a datastore query, the indexes used by the query to gather results are also accessed with eventual consistency. Eventual consistency queries occasionally return entities that don't match the query criteria, while strong consistency queries are always transactionally consistent. (You can use <a href="transactions.html">transactions</a> to ensure a consistent result set if the query uses an ancestor filter.)  See <a href="../../../articles/transaction_isolation.html">Transaction Isolation in App Engine</a> for more information on how entities and indexes are updated.</p>
+
+
+<p>Specifying a <a href="../javadoc/com/google/appengine/api/datastore/DatastoreServiceConfig.html">DatastoreServiceConfig</a> allows you to choose between two options for read consistency. The choices are <code>"EVENTUAL"</code> (for reads with eventual consistency) and <code>"STRONG"</code> (for reads with strong consistency). The default is <code>"STRONG"</code>. Choosing strong consistency selects for freshness of data, but will timeout more frequently than eventually consistent reads. Eventually consistent reads timeout less frequently, but occasionally return stale results. You can construct a DatastoreServiceConfig using the <a href="../javadoc/com/google/appengine/api/datastore/DatastoreServiceConfig.Builder.html">DatastoreServiceConfig.Builder</a> class. The following code snippet demonstrates how to set the read policy, how to set the call deadline, and how to set both:</p>
+<pre class="prettyprint">
+double deadline = 5.0;
+
+// Set the read policy with eventual consistency.
+ReadPolicy policy = new ReadPolicy(ReadPolicy.Consistency.EVENTUAL);
+
+DatastoreServiceConfig eventuallyConsistentConfig = DatastoreServiceConfig.Builder.withReadPolicy(policy);
+
+// Set the call deadline.
+DatastoreServiceConfig deadlineConfig = DatastoreServiceConfig.Builder.withDeadline(5);
+
+// Set both the read policy and the call deadline.
+DatastoreServiceConfig datastoreConfig = DatastoreServiceConfig.Builder.withDeadline(deadline).readPolicy(policy);
+
+DatastoreService datastore = DatastoreServiceFactory.getDatastoreService(datastoreConfig);</pre>
+
+<p>The default datastore call deadline is 30 seconds. It is not currently possible to set the deadline to be higher, but you can adjust it downward if you want to ensure a particular operation fails fast.</p>
+
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

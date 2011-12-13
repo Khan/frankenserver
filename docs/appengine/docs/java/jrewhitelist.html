@@ -1,0 +1,2696 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/java/jrewhitelist.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>The JRE Class White List - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../downloads.html">Downloads</a></li>
+  <li><a href="../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="overview.html">Overview</a></li>
+    <li><a href="runtime.html">Servlet Environment</a></li>
+    <li><a href="backends/index.html">Backends</a>
+      <ul>
+        <li><a href="backends/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="datastore/overview.html">Overview</a></li>
+    <li><a href="datastore/entities.html">Entities</a></li>
+    <li><a href="datastore/queries.html">Queries</a></li>
+    <li><a href="datastore/transactions.html">Transactions</a></li>
+    <li><a href="datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="datastore/stats.html">Statistics</a></li>
+    <li><a href="datastore/async.html">Async API</a></li>
+    <li><a href="datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="apis.html">Services</a>
+      <ul>
+        <li><a href="appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="appidentity/overview.html">Overview</a></li>
+
+<li><a href="javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="googlestorage/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="capabilities/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="conversion/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="channel/index.html">Channel</a>
+          <ul>
+            <li><a href="channel/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="images/index.html">Images</a>
+          <ul>
+                <li><a href="images/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="mail/index.html">Mail</a>
+          <ul>
+                <li><a href="mail/overview.html">Overview</a></li>
+    <li><a href="mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="memcache/overview.html">Overview</a></li>
+    <li><a href="memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="multitenancy/overview.html">Overview</a></li>
+    <li><a href="multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="oauth/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="prospectivesearch/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="taskqueue/overview.html">Overview</a></li>
+     <li><a href="taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="urlfetch/overview.html">Overview</a></li>
+    <li><a href="urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="users/index.html">Users</a>
+          <ul>
+                <li><a href="users/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="xmpp/overview.html">Overview</a></li>
+     <li><a href="javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="config/index.html">Configuration</a>
+      <ul>
+            <li><a href="config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="config/appconfig.html">App Config</a></li>
+    <li><a href="config/backends.html">Backends Config</a></li>
+    <li><a href="config/indexconfig.html">Index Config</a></li>
+    <li><a href="config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="config/queue.html">Task Queue Config</a></li>
+    <li><a href="config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="configyaml/backends.html">Backends Config</a></li>
+        <li><a href="configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="tools/index.html">Tools</a>
+      <ul>
+            <li><a href="tools/devserver.html">Development Server</a></li>
+    <li><a href="tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="tools/appstats.html">Appstats</a></li>
+    <li><a href="tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="howto/index.html">How-To</a>
+      <ul>
+              <li><a href="howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../python/overview.html">Overview</a></li>
+    <li><a href="../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/channel/functions.html">Functions</a></li>
+    <li><a href="../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../python/images/overview.html">Overview</a></li>
+     <li><a href="../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/images/imageclass.html">Image</a></li>
+         <li><a href="../python/images/functions.html">Functions</a></li>
+         <li><a href="../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../python/mail/overview.html">Overview</a></li>
+     <li><a href="../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../python/mail/functions.html">Functions</a></li>
+         <li><a href="../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../python/users/overview.html">Overview</a></li>
+     <li><a href="../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/users/userclass.html">User</a></li>
+         <li><a href="../python/users/functions.html">Functions</a></li>
+         <li><a href="../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../go/overview.html">Overview</a></li>
+    <li><a href="../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../go/backends/overview.html">Overview</a></li>
+<li><a href="../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../go/channel/overview.html">Overview</a></li>
+<li><a href="../go/channel/reference.html">Reference</a></li>
+<li><a href="../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../go/mail/overview.html">Overview</a></li>
+     <li><a href="../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../go/users/overview.html">Overview</a></li>
+     <li><a href="../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../adminconsole/instances.html">Instances</a></li>
+<li><a href="../adminconsole/roles.html">Roles</a></li>
+<li><a href="../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../quotas.html">Quotas</a></li>
+      <li><a href="../billing.html">Billing</a></li>
+      <li><a href="../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../kb/index.html">FAQ</a></li>
+      <li><a href="../../articles/index.html">Articles</a></li>
+      <li><a href="../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">The JRE Class White List</h1>
+
+
+
+
+
+<p>A Java App Engine application's access to the classes in the Java standard library (the Java Runtime Environment, or JRE) is limited to the following classes:</p>
+
+<ul>
+  <li>java.awt.datatransfer.DataFlavor</li>
+  <li>java.awt.datatransfer.MimeType</li>
+  <li>java.awt.datatransfer.Transferable</li>
+  <li>java.beans.AppletInitializer</li>
+  <li>java.beans.BeanDescriptor</li>
+  <li>java.beans.BeanInfo</li>
+  <li>java.beans.Beans</li>
+  <li>java.beans.ConstructorProperties</li>
+  <li>java.beans.Customizer</li>
+  <li>java.beans.DefaultPersistenceDelegate</li>
+  <li>java.beans.DesignMode</li>
+  <li>java.beans.Encoder</li>
+  <li>java.beans.EnumPersistenceDelegate</li>
+  <li>java.beans.EventSetDescriptor</li>
+  <li>java.beans.ExceptionListener</li>
+  <li>java.beans.FeatureDescriptor</li>
+  <li>java.beans.IndexedPropertyChangeEvent</li>
+  <li>java.beans.IndexedPropertyDescriptor</li>
+  <li>java.beans.IntrospectionException</li>
+  <li>java.beans.Introspector</li>
+  <li>java.beans.MethodDescriptor</li>
+  <li>java.beans.ParameterDescriptor</li>
+  <li>java.beans.PersistenceDelegate</li>
+  <li>java.beans.PropertyChangeEvent</li>
+  <li>java.beans.PropertyChangeListener</li>
+  <li>java.beans.PropertyChangeListenerProxy</li>
+  <li>java.beans.PropertyChangeSupport</li>
+  <li>java.beans.PropertyDescriptor</li>
+  <li>java.beans.PropertyEditor</li>
+  <li>java.beans.PropertyEditorManager</li>
+  <li>java.beans.PropertyEditorSupport</li>
+  <li>java.beans.PropertyVetoException</li>
+  <li>java.beans.SimpleBeanInfo</li>
+  <li>java.beans.VetoableChangeListener</li>
+  <li>java.beans.VetoableChangeListenerProxy</li>
+  <li>java.beans.VetoableChangeSupport</li>
+  <li>java.beans.Visibility</li>
+  <li>java.beans.XMLDecoder</li>
+  <li>java.beans.XMLEncoder</li>
+  <li>java.beans.beancontext.BeanContext</li>
+  <li>java.beans.beancontext.BeanContextChild</li>
+  <li>java.beans.beancontext.BeanContextChildComponentProxy</li>
+  <li>java.beans.beancontext.BeanContextChildSupport</li>
+  <li>java.beans.beancontext.BeanContextContainerProxy</li>
+  <li>java.beans.beancontext.BeanContextEvent</li>
+  <li>java.beans.beancontext.BeanContextMembershipEvent</li>
+  <li>java.beans.beancontext.BeanContextMembershipListener</li>
+  <li>java.beans.beancontext.BeanContextProxy</li>
+  <li>java.beans.beancontext.BeanContextServiceAvailableEvent</li>
+  <li>java.beans.beancontext.BeanContextServiceProvider</li>
+  <li>java.beans.beancontext.BeanContextServiceProviderBeanInfo</li>
+  <li>java.beans.beancontext.BeanContextServiceRevokedEvent</li>
+  <li>java.beans.beancontext.BeanContextServiceRevokedListener</li>
+  <li>java.beans.beancontext.BeanContextServices</li>
+  <li>java.beans.beancontext.BeanContextServicesListener</li>
+  <li>java.beans.beancontext.BeanContextServicesSupport</li>
+  <li>java.beans.beancontext.BeanContextSupport</li>
+  <li>java.io.BufferedInputStream</li>
+  <li>java.io.BufferedOutputStream</li>
+  <li>java.io.BufferedReader</li>
+  <li>java.io.BufferedWriter</li>
+  <li>java.io.ByteArrayInputStream</li>
+  <li>java.io.ByteArrayOutputStream</li>
+  <li>java.io.CharArrayReader</li>
+  <li>java.io.CharArrayWriter</li>
+  <li>java.io.CharConversionException</li>
+  <li>java.io.Closeable</li>
+  <li>java.io.DataInput</li>
+  <li>java.io.DataInputStream</li>
+  <li>java.io.DataOutput</li>
+  <li>java.io.DataOutputStream</li>
+  <li>java.io.EOFException</li>
+  <li>java.io.Externalizable</li>
+  <li>java.io.File</li>
+  <li>java.io.FileDescriptor</li>
+  <li>java.io.FileFilter</li>
+  <li>java.io.FileInputStream</li>
+  <li>java.io.FileNotFoundException</li>
+  <li>java.io.FilePermission</li>
+  <li>java.io.FileReader</li>
+  <li>java.io.FilenameFilter</li>
+  <li>java.io.FilterInputStream</li>
+  <li>java.io.FilterOutputStream</li>
+  <li>java.io.FilterReader</li>
+  <li>java.io.FilterWriter</li>
+  <li>java.io.Flushable</li>
+  <li>java.io.IOError</li>
+  <li>java.io.IOException</li>
+  <li>java.io.InputStream</li>
+  <li>java.io.InputStreamReader</li>
+  <li>java.io.InterruptedIOException</li>
+  <li>java.io.InvalidClassException</li>
+  <li>java.io.InvalidObjectException</li>
+  <li>java.io.LineNumberInputStream</li>
+  <li>java.io.LineNumberReader</li>
+  <li>java.io.NotActiveException</li>
+  <li>java.io.NotSerializableException</li>
+  <li>java.io.ObjectInput</li>
+  <li>java.io.ObjectInputStream</li>
+  <li>java.io.ObjectInputValidation</li>
+  <li>java.io.ObjectOutput</li>
+  <li>java.io.ObjectOutputStream</li>
+  <li>java.io.ObjectStreamClass</li>
+  <li>java.io.ObjectStreamConstants</li>
+  <li>java.io.ObjectStreamException</li>
+  <li>java.io.ObjectStreamField</li>
+  <li>java.io.OptionalDataException</li>
+  <li>java.io.OutputStream</li>
+  <li>java.io.OutputStreamWriter</li>
+  <li>java.io.PipedInputStream</li>
+  <li>java.io.PipedOutputStream</li>
+  <li>java.io.PipedReader</li>
+  <li>java.io.PipedWriter</li>
+  <li>java.io.PrintStream</li>
+  <li>java.io.PrintWriter</li>
+  <li>java.io.PushbackInputStream</li>
+  <li>java.io.PushbackReader</li>
+  <li>java.io.RandomAccessFile</li>
+  <li>java.io.Reader</li>
+  <li>java.io.SequenceInputStream</li>
+  <li>java.io.Serializable</li>
+  <li>java.io.SerializablePermission</li>
+  <li>java.io.StreamCorruptedException</li>
+  <li>java.io.StreamTokenizer</li>
+  <li>java.io.StringBufferInputStream</li>
+  <li>java.io.StringReader</li>
+  <li>java.io.StringWriter</li>
+  <li>java.io.SyncFailedException</li>
+  <li>java.io.UTFDataFormatException</li>
+  <li>java.io.UnsupportedEncodingException</li>
+  <li>java.io.WriteAbortedException</li>
+  <li>java.io.Writer</li>
+  <li>java.lang.AbstractMethodError</li>
+  <li>java.lang.AbstractStringBuilder</li>
+  <li>java.lang.Appendable</li>
+  <li>java.lang.ArithmeticException</li>
+  <li>java.lang.ArrayIndexOutOfBoundsException</li>
+  <li>java.lang.ArrayStoreException</li>
+  <li>java.lang.AssertionError</li>
+  <li>java.lang.Boolean</li>
+  <li>java.lang.Byte</li>
+  <li>java.lang.CharSequence</li>
+  <li>java.lang.Character</li>
+  <li>java.lang.Class</li>
+  <li>java.lang.ClassCastException</li>
+  <li>java.lang.ClassCircularityError</li>
+  <li>java.lang.ClassFormatError</li>
+  <li>java.lang.ClassLoader</li>
+  <li>java.lang.ClassNotFoundException</li>
+  <li>java.lang.CloneNotSupportedException</li>
+  <li>java.lang.Cloneable</li>
+  <li>java.lang.Comparable</li>
+  <li>java.lang.Deprecated</li>
+  <li>java.lang.Double</li>
+  <li>java.lang.Enum</li>
+  <li>java.lang.EnumConstantNotPresentException</li>
+  <li>java.lang.Error</li>
+  <li>java.lang.Exception</li>
+  <li>java.lang.ExceptionInInitializerError</li>
+  <li>java.lang.Float</li>
+  <li>java.lang.IllegalAccessError</li>
+  <li>java.lang.IllegalAccessException</li>
+  <li>java.lang.IllegalArgumentException</li>
+  <li>java.lang.IllegalMonitorStateException</li>
+  <li>java.lang.IllegalStateException</li>
+  <li>java.lang.IllegalThreadStateException</li>
+  <li>java.lang.IncompatibleClassChangeError</li>
+  <li>java.lang.IndexOutOfBoundsException</li>
+  <li>java.lang.InheritableThreadLocal</li>
+  <li>java.lang.InstantiationError</li>
+  <li>java.lang.InstantiationException</li>
+  <li>java.lang.Integer</li>
+  <li>java.lang.InternalError</li>
+  <li>java.lang.InterruptedException</li>
+  <li>java.lang.Iterable</li>
+  <li>java.lang.LinkageError</li>
+  <li>java.lang.Long</li>
+  <li>java.lang.Math</li>
+  <li>java.lang.NegativeArraySizeException</li>
+  <li>java.lang.NoClassDefFoundError</li>
+  <li>java.lang.NoSuchFieldError</li>
+  <li>java.lang.NoSuchFieldException</li>
+  <li>java.lang.NoSuchMethodError</li>
+  <li>java.lang.NoSuchMethodException</li>
+  <li>java.lang.NullPointerException</li>
+  <li>java.lang.Number</li>
+  <li>java.lang.NumberFormatException</li>
+  <li>java.lang.Object</li>
+  <li>java.lang.OutOfMemoryError</li>
+  <li>java.lang.Override</li>
+  <li>java.lang.Package</li>
+  <li>java.lang.Process</li>
+  <li>java.lang.Readable</li>
+  <li>java.lang.Runnable</li>
+  <li>java.lang.Runtime</li>
+  <li>java.lang.RuntimeException</li>
+  <li>java.lang.RuntimePermission</li>
+  <li>java.lang.SecurityException</li>
+  <li>java.lang.SecurityManager</li>
+  <li>java.lang.Short</li>
+  <li>java.lang.StackOverflowError</li>
+  <li>java.lang.StackTraceElement</li>
+  <li>java.lang.StrictMath</li>
+  <li>java.lang.String</li>
+  <li>java.lang.StringBuffer</li>
+  <li>java.lang.StringBuilder</li>
+  <li>java.lang.StringIndexOutOfBoundsException</li>
+  <li>java.lang.SuppressWarnings</li>
+  <li>java.lang.System</li>
+  <li>java.lang.Thread</li>
+  <li>java.lang.ThreadDeath</li>
+  <li>java.lang.ThreadGroup</li>
+  <li>java.lang.ThreadLocal</li>
+  <li>java.lang.Throwable</li>
+  <li>java.lang.TypeNotPresentException</li>
+  <li>java.lang.UnknownError</li>
+  <li>java.lang.UnsatisfiedLinkError</li>
+  <li>java.lang.UnsupportedClassVersionError</li>
+  <li>java.lang.UnsupportedOperationException</li>
+  <li>java.lang.VerifyError</li>
+  <li>java.lang.VirtualMachineError</li>
+  <li>java.lang.Void</li>
+  <li>java.lang.annotation.Annotation</li>
+  <li>java.lang.annotation.AnnotationFormatError</li>
+  <li>java.lang.annotation.AnnotationTypeMismatchException</li>
+  <li>java.lang.annotation.Documented</li>
+  <li>java.lang.annotation.ElementType</li>
+  <li>java.lang.annotation.IncompleteAnnotationException</li>
+  <li>java.lang.annotation.Inherited</li>
+  <li>java.lang.annotation.Retention</li>
+  <li>java.lang.annotation.RetentionPolicy</li>
+  <li>java.lang.annotation.Target</li>
+  <li>java.lang.ref.PhantomReference</li>
+  <li>java.lang.ref.Reference</li>
+  <li>java.lang.ref.ReferenceQueue</li>
+  <li>java.lang.ref.SoftReference</li>
+  <li>java.lang.ref.WeakReference</li>
+  <li>java.lang.reflect.AccessibleObject</li>
+  <li>java.lang.reflect.AnnotatedElement</li>
+  <li>java.lang.reflect.Array</li>
+  <li>java.lang.reflect.Constructor</li>
+  <li>java.lang.reflect.Field</li>
+  <li>java.lang.reflect.GenericArrayType</li>
+  <li>java.lang.reflect.GenericDeclaration</li>
+  <li>java.lang.reflect.GenericSignatureFormatError</li>
+  <li>java.lang.reflect.InvocationHandler</li>
+  <li>java.lang.reflect.InvocationTargetException</li>
+  <li>java.lang.reflect.MalformedParameterizedTypeException</li>
+  <li>java.lang.reflect.Member</li>
+  <li>java.lang.reflect.Method</li>
+  <li>java.lang.reflect.Modifier</li>
+  <li>java.lang.reflect.ParameterizedType</li>
+  <li>java.lang.reflect.Proxy</li>
+  <li>java.lang.reflect.ReflectPermission</li>
+  <li>java.lang.reflect.Type</li>
+  <li>java.lang.reflect.TypeVariable</li>
+  <li>java.lang.reflect.UndeclaredThrowableException</li>
+  <li>java.lang.reflect.WildcardType</li>
+  <li>java.math.BigDecimal</li>
+  <li>java.math.BigInteger</li>
+  <li>java.math.MathContext</li>
+  <li>java.math.RoundingMode</li>
+  <li>java.net.Authenticator</li>
+  <li>java.net.BindException</li>
+  <li>java.net.CacheRequest</li>
+  <li>java.net.CacheResponse</li>
+  <li>java.net.ConnectException</li>
+  <li>java.net.ContentHandler</li>
+  <li>java.net.ContentHandlerFactory</li>
+  <li>java.net.CookieHandler</li>
+  <li>java.net.DatagramSocketImplFactory</li>
+  <li>java.net.FileNameMap</li>
+  <li>java.net.HttpCookie</li>
+  <li>java.net.HttpRetryException</li>
+  <li>java.net.HttpURLConnection</li>
+  <li>java.net.IDN</li>
+  <li>java.net.Inet4Address</li>
+  <li>java.net.Inet6Address</li>
+  <li>java.net.InetAddress</li>
+  <li>java.net.JarURLConnection</li>
+  <li>java.net.MalformedURLException</li>
+  <li>java.net.NetPermission</li>
+  <li>java.net.NetworkInterface</li>
+  <li>java.net.NoRouteToHostException</li>
+  <li>java.net.PasswordAuthentication</li>
+  <li>java.net.PortUnreachableException</li>
+  <li>java.net.ProtocolException</li>
+  <li>java.net.SocketException</li>
+  <li>java.net.SocketImplFactory</li>
+  <li>java.net.SocketOptions</li>
+  <li>java.net.SocketPermission</li>
+  <li>java.net.SocketTimeoutException</li>
+  <li>java.net.URI</li>
+  <li>java.net.URISyntaxException</li>
+  <li>java.net.URL</li>
+  <li>java.net.URLClassLoader</li>
+  <li>java.net.URLConnection</li>
+  <li>java.net.URLDecoder</li>
+  <li>java.net.URLEncoder</li>
+  <li>java.net.URLStreamHandlerFactory</li>
+  <li>java.net.UnknownHostException</li>
+  <li>java.net.UnknownServiceException</li>
+  <li>java.nio.Buffer</li>
+  <li>java.nio.BufferOverflowException</li>
+  <li>java.nio.BufferUnderflowException</li>
+  <li>java.nio.ByteBuffer</li>
+  <li>java.nio.ByteOrder</li>
+  <li>java.nio.CharBuffer</li>
+  <li>java.nio.DoubleBuffer</li>
+  <li>java.nio.FloatBuffer</li>
+  <li>java.nio.IntBuffer</li>
+  <li>java.nio.InvalidMarkException</li>
+  <li>java.nio.LongBuffer</li>
+  <li>java.nio.ReadOnlyBufferException</li>
+  <li>java.nio.ShortBuffer</li>
+  <li>java.nio.channels.AlreadyConnectedException</li>
+  <li>java.nio.channels.AsynchronousCloseException</li>
+  <li>java.nio.channels.ByteChannel</li>
+  <li>java.nio.channels.CancelledKeyException</li>
+  <li>java.nio.channels.Channel</li>
+  <li>java.nio.channels.Channels</li>
+  <li>java.nio.channels.ClosedByInterruptException</li>
+  <li>java.nio.channels.ClosedChannelException</li>
+  <li>java.nio.channels.ClosedSelectorException</li>
+  <li>java.nio.channels.ConnectionPendingException</li>
+  <li>java.nio.channels.FileChannel</li>
+  <li>java.nio.channels.FileLockInterruptionException</li>
+  <li>java.nio.channels.GatheringByteChannel</li>
+  <li>java.nio.channels.IllegalBlockingModeException</li>
+  <li>java.nio.channels.IllegalSelectorException</li>
+  <li>java.nio.channels.InterruptibleChannel</li>
+  <li>java.nio.channels.NoConnectionPendingException</li>
+  <li>java.nio.channels.NonReadableChannelException</li>
+  <li>java.nio.channels.NonWritableChannelException</li>
+  <li>java.nio.channels.NotYetBoundException</li>
+  <li>java.nio.channels.NotYetConnectedException</li>
+  <li>java.nio.channels.OverlappingFileLockException</li>
+  <li>java.nio.channels.ReadableByteChannel</li>
+  <li>java.nio.channels.ScatteringByteChannel</li>
+  <li>java.nio.channels.SelectableChannel</li>
+  <li>java.nio.channels.SelectionKey</li>
+  <li>java.nio.channels.Selector</li>
+  <li>java.nio.channels.UnresolvedAddressException</li>
+  <li>java.nio.channels.UnsupportedAddressTypeException</li>
+  <li>java.nio.channels.WritableByteChannel</li>
+  <li>java.nio.channels.spi.AbstractInterruptibleChannel</li>
+  <li>java.nio.channels.spi.AbstractSelectableChannel</li>
+  <li>java.nio.channels.spi.AbstractSelectionKey</li>
+  <li>java.nio.channels.spi.AbstractSelector</li>
+  <li>java.nio.charset.CharacterCodingException</li>
+  <li>java.nio.charset.Charset</li>
+  <li>java.nio.charset.CharsetDecoder</li>
+  <li>java.nio.charset.CharsetEncoder</li>
+  <li>java.nio.charset.CoderMalfunctionError</li>
+  <li>java.nio.charset.CoderResult</li>
+  <li>java.nio.charset.CodingErrorAction</li>
+  <li>java.nio.charset.IllegalCharsetNameException</li>
+  <li>java.nio.charset.MalformedInputException</li>
+  <li>java.nio.charset.UnmappableCharacterException</li>
+  <li>java.nio.charset.UnsupportedCharsetException</li>
+  <li>java.nio.charset.spi.CharsetProvider</li>
+  <li>java.rmi.RemoteException</li>
+  <li>java.security.AccessControlContext</li>
+  <li>java.security.AccessControlException</li>
+  <li>java.security.AccessController</li>
+  <li>java.security.AlgorithmParameterGenerator</li>
+  <li>java.security.AlgorithmParameterGeneratorSpi</li>
+  <li>java.security.AlgorithmParameters</li>
+  <li>java.security.AlgorithmParametersSpi</li>
+  <li>java.security.AllPermission</li>
+  <li>java.security.AuthProvider</li>
+  <li>java.security.BasicPermission</li>
+  <li>java.security.Certificate</li>
+  <li>java.security.CodeSigner</li>
+  <li>java.security.CodeSource</li>
+  <li>java.security.DigestException</li>
+  <li>java.security.DigestInputStream</li>
+  <li>java.security.DigestOutputStream</li>
+  <li>java.security.DomainCombiner</li>
+  <li>java.security.GeneralSecurityException</li>
+  <li>java.security.Guard</li>
+  <li>java.security.GuardedObject</li>
+  <li>java.security.Identity</li>
+  <li>java.security.IdentityScope</li>
+  <li>java.security.InvalidAlgorithmParameterException</li>
+  <li>java.security.InvalidKeyException</li>
+  <li>java.security.InvalidParameterException</li>
+  <li>java.security.Key</li>
+  <li>java.security.KeyException</li>
+  <li>java.security.KeyFactory</li>
+  <li>java.security.KeyFactorySpi</li>
+  <li>java.security.KeyManagementException</li>
+  <li>java.security.KeyPair</li>
+  <li>java.security.KeyPairGenerator</li>
+  <li>java.security.KeyPairGeneratorSpi</li>
+  <li>java.security.KeyRep</li>
+  <li>java.security.KeyStore</li>
+  <li>java.security.KeyStoreException</li>
+  <li>java.security.KeyStoreSpi</li>
+  <li>java.security.MessageDigest</li>
+  <li>java.security.MessageDigestSpi</li>
+  <li>java.security.NoSuchAlgorithmException</li>
+  <li>java.security.NoSuchProviderException</li>
+  <li>java.security.Permission</li>
+  <li>java.security.PermissionCollection</li>
+  <li>java.security.Permissions</li>
+  <li>java.security.Policy</li>
+  <li>java.security.PolicySpi</li>
+  <li>java.security.Principal</li>
+  <li>java.security.PrivateKey</li>
+  <li>java.security.PrivilegedAction</li>
+  <li>java.security.PrivilegedActionException</li>
+  <li>java.security.PrivilegedExceptionAction</li>
+  <li>java.security.ProtectionDomain</li>
+  <li>java.security.Provider</li>
+  <li>java.security.ProviderException</li>
+  <li>java.security.PublicKey</li>
+  <li>java.security.SecureClassLoader</li>
+  <li>java.security.SecureRandom</li>
+  <li>java.security.SecureRandomSpi</li>
+  <li>java.security.Security</li>
+  <li>java.security.SecurityPermission</li>
+  <li>java.security.Signature</li>
+  <li>java.security.SignatureException</li>
+  <li>java.security.SignatureSpi</li>
+  <li>java.security.SignedObject</li>
+  <li>java.security.Signer</li>
+  <li>java.security.Timestamp</li>
+  <li>java.security.URIParameter</li>
+  <li>java.security.UnrecoverableEntryException</li>
+  <li>java.security.UnrecoverableKeyException</li>
+  <li>java.security.UnresolvedPermission</li>
+  <li>java.security.acl.Acl</li>
+  <li>java.security.acl.AclEntry</li>
+  <li>java.security.acl.AclNotFoundException</li>
+  <li>java.security.acl.Group</li>
+  <li>java.security.acl.LastOwnerException</li>
+  <li>java.security.acl.NotOwnerException</li>
+  <li>java.security.acl.Owner</li>
+  <li>java.security.acl.Permission</li>
+  <li>java.security.cert.CRL</li>
+  <li>java.security.cert.CRLException</li>
+  <li>java.security.cert.CRLSelector</li>
+  <li>java.security.cert.CertPath</li>
+  <li>java.security.cert.CertPathBuilder</li>
+  <li>java.security.cert.CertPathBuilderException</li>
+  <li>java.security.cert.CertPathBuilderResult</li>
+  <li>java.security.cert.CertPathBuilderSpi</li>
+  <li>java.security.cert.CertPathParameters</li>
+  <li>java.security.cert.CertPathValidator</li>
+  <li>java.security.cert.CertPathValidatorException</li>
+  <li>java.security.cert.CertPathValidatorResult</li>
+  <li>java.security.cert.CertPathValidatorSpi</li>
+  <li>java.security.cert.CertSelector</li>
+  <li>java.security.cert.CertStore</li>
+  <li>java.security.cert.CertStoreException</li>
+  <li>java.security.cert.CertStoreParameters</li>
+  <li>java.security.cert.CertStoreSpi</li>
+  <li>java.security.cert.Certificate</li>
+  <li>java.security.cert.CertificateEncodingException</li>
+  <li>java.security.cert.CertificateException</li>
+  <li>java.security.cert.CertificateExpiredException</li>
+  <li>java.security.cert.CertificateFactory</li>
+  <li>java.security.cert.CertificateFactorySpi</li>
+  <li>java.security.cert.CertificateNotYetValidException</li>
+  <li>java.security.cert.CertificateParsingException</li>
+  <li>java.security.cert.CollectionCertStoreParameters</li>
+  <li>java.security.cert.LDAPCertStoreParameters</li>
+  <li>java.security.cert.PKIXBuilderParameters</li>
+  <li>java.security.cert.PKIXCertPathBuilderResult</li>
+  <li>java.security.cert.PKIXCertPathChecker</li>
+  <li>java.security.cert.PKIXCertPathValidatorResult</li>
+  <li>java.security.cert.PKIXParameters</li>
+  <li>java.security.cert.PolicyNode</li>
+  <li>java.security.cert.PolicyQualifierInfo</li>
+  <li>java.security.cert.TrustAnchor</li>
+  <li>java.security.cert.X509CRL</li>
+  <li>java.security.cert.X509CRLEntry</li>
+  <li>java.security.cert.X509CRLSelector</li>
+  <li>java.security.cert.X509CertSelector</li>
+  <li>java.security.cert.X509Certificate</li>
+  <li>java.security.cert.X509Extension</li>
+  <li>java.security.interfaces.DSAKey</li>
+  <li>java.security.interfaces.DSAKeyPairGenerator</li>
+  <li>java.security.interfaces.DSAParams</li>
+  <li>java.security.interfaces.DSAPrivateKey</li>
+  <li>java.security.interfaces.DSAPublicKey</li>
+  <li>java.security.interfaces.ECKey</li>
+  <li>java.security.interfaces.ECPrivateKey</li>
+  <li>java.security.interfaces.ECPublicKey</li>
+  <li>java.security.interfaces.RSAKey</li>
+  <li>java.security.interfaces.RSAMultiPrimePrivateCrtKey</li>
+  <li>java.security.interfaces.RSAPrivateCrtKey</li>
+  <li>java.security.interfaces.RSAPrivateKey</li>
+  <li>java.security.interfaces.RSAPublicKey</li>
+  <li>java.security.spec.AlgorithmParameterSpec</li>
+  <li>java.security.spec.DSAParameterSpec</li>
+  <li>java.security.spec.DSAPrivateKeySpec</li>
+  <li>java.security.spec.DSAPublicKeySpec</li>
+  <li>java.security.spec.ECField</li>
+  <li>java.security.spec.ECFieldF2m</li>
+  <li>java.security.spec.ECFieldFp</li>
+  <li>java.security.spec.ECGenParameterSpec</li>
+  <li>java.security.spec.ECParameterSpec</li>
+  <li>java.security.spec.ECPoint</li>
+  <li>java.security.spec.ECPrivateKeySpec</li>
+  <li>java.security.spec.ECPublicKeySpec</li>
+  <li>java.security.spec.EllipticCurve</li>
+  <li>java.security.spec.EncodedKeySpec</li>
+  <li>java.security.spec.InvalidKeySpecException</li>
+  <li>java.security.spec.InvalidParameterSpecException</li>
+  <li>java.security.spec.KeySpec</li>
+  <li>java.security.spec.MGF1ParameterSpec</li>
+  <li>java.security.spec.PKCS8EncodedKeySpec</li>
+  <li>java.security.spec.PSSParameterSpec</li>
+  <li>java.security.spec.RSAKeyGenParameterSpec</li>
+  <li>java.security.spec.RSAMultiPrimePrivateCrtKeySpec</li>
+  <li>java.security.spec.RSAOtherPrimeInfo</li>
+  <li>java.security.spec.RSAPrivateCrtKeySpec</li>
+  <li>java.security.spec.RSAPrivateKeySpec</li>
+  <li>java.security.spec.RSAPublicKeySpec</li>
+  <li>java.security.spec.X509EncodedKeySpec</li>
+  <li>java.sql.Array</li>
+  <li>java.sql.BatchUpdateException</li>
+  <li>java.sql.Blob</li>
+  <li>java.sql.CallableStatement</li>
+  <li>java.sql.ClientInfoStatus</li>
+  <li>java.sql.Clob</li>
+  <li>java.sql.Connection</li>
+  <li>java.sql.DataTruncation</li>
+  <li>java.sql.DatabaseMetaData</li>
+  <li>java.sql.Date</li>
+  <li>java.sql.Driver</li>
+  <li>java.sql.DriverManager</li>
+  <li>java.sql.DriverPropertyInfo</li>
+  <li>java.sql.NClob</li>
+  <li>java.sql.ParameterMetaData</li>
+  <li>java.sql.PreparedStatement</li>
+  <li>java.sql.Ref</li>
+  <li>java.sql.ResultSet</li>
+  <li>java.sql.ResultSetMetaData</li>
+  <li>java.sql.RowId</li>
+  <li>java.sql.RowIdLifetime</li>
+  <li>java.sql.SQLClientInfoException</li>
+  <li>java.sql.SQLData</li>
+  <li>java.sql.SQLDataException</li>
+  <li>java.sql.SQLException</li>
+  <li>java.sql.SQLFeatureNotSupportedException</li>
+  <li>java.sql.SQLInput</li>
+  <li>java.sql.SQLIntegrityConstraintViolationException</li>
+  <li>java.sql.SQLInvalidAuthorizationSpecException</li>
+  <li>java.sql.SQLNonTransientConnectionException</li>
+  <li>java.sql.SQLNonTransientException</li>
+  <li>java.sql.SQLOutput</li>
+  <li>java.sql.SQLPermission</li>
+  <li>java.sql.SQLRecoverableException</li>
+  <li>java.sql.SQLSyntaxErrorException</li>
+  <li>java.sql.SQLTimeoutException</li>
+  <li>java.sql.SQLTransactionRollbackException</li>
+  <li>java.sql.SQLTransientConnectionException</li>
+  <li>java.sql.SQLTransientException</li>
+  <li>java.sql.SQLWarning</li>
+  <li>java.sql.SQLXML</li>
+  <li>java.sql.Savepoint</li>
+  <li>java.sql.Statement</li>
+  <li>java.sql.Struct</li>
+  <li>java.sql.Time</li>
+  <li>java.sql.Timestamp</li>
+  <li>java.sql.Types</li>
+  <li>java.sql.Wrapper</li>
+  <li>java.text.Annotation</li>
+  <li>java.text.AttributedCharacterIterator</li>
+  <li>java.text.AttributedString</li>
+  <li>java.text.Bidi</li>
+  <li>java.text.BreakIterator</li>
+  <li>java.text.CharacterIterator</li>
+  <li>java.text.ChoiceFormat</li>
+  <li>java.text.CollationElementIterator</li>
+  <li>java.text.CollationKey</li>
+  <li>java.text.Collator</li>
+  <li>java.text.DateFormat</li>
+  <li>java.text.DateFormatSymbols</li>
+  <li>java.text.DecimalFormat</li>
+  <li>java.text.DecimalFormatSymbols</li>
+  <li>java.text.FieldPosition</li>
+  <li>java.text.Format</li>
+  <li>java.text.MessageFormat</li>
+  <li>java.text.Normalizer</li>
+  <li>java.text.NumberFormat</li>
+  <li>java.text.ParseException</li>
+  <li>java.text.ParsePosition</li>
+  <li>java.text.RuleBasedCollator</li>
+  <li>java.text.SimpleDateFormat</li>
+  <li>java.text.StringCharacterIterator</li>
+  <li>java.util.AbstractCollection</li>
+  <li>java.util.AbstractList</li>
+  <li>java.util.AbstractMap</li>
+  <li>java.util.AbstractQueue</li>
+  <li>java.util.AbstractSequentialList</li>
+  <li>java.util.AbstractSet</li>
+  <li>java.util.ArrayDeque</li>
+  <li>java.util.ArrayList</li>
+  <li>java.util.Arrays</li>
+  <li>java.util.BitSet</li>
+  <li>java.util.Calendar</li>
+  <li>java.util.Collection</li>
+  <li>java.util.Collections</li>
+  <li>java.util.Comparator</li>
+  <li>java.util.ConcurrentModificationException</li>
+  <li>java.util.Currency</li>
+  <li>java.util.Date</li>
+  <li>java.util.Deque</li>
+  <li>java.util.Dictionary</li>
+  <li>java.util.DuplicateFormatFlagsException</li>
+  <li>java.util.EmptyStackException</li>
+  <li>java.util.EnumMap</li>
+  <li>java.util.EnumSet</li>
+  <li>java.util.Enumeration</li>
+  <li>java.util.EventListener</li>
+  <li>java.util.EventListenerProxy</li>
+  <li>java.util.EventObject</li>
+  <li>java.util.FormatFlagsConversionMismatchException</li>
+  <li>java.util.Formattable</li>
+  <li>java.util.FormattableFlags</li>
+  <li>java.util.Formatter</li>
+  <li>java.util.FormatterClosedException</li>
+  <li>java.util.GregorianCalendar</li>
+  <li>java.util.HashMap</li>
+  <li>java.util.HashSet</li>
+  <li>java.util.Hashtable</li>
+  <li>java.util.IdentityHashMap</li>
+  <li>java.util.IllegalFormatCodePointException</li>
+  <li>java.util.IllegalFormatConversionException</li>
+  <li>java.util.IllegalFormatException</li>
+  <li>java.util.IllegalFormatFlagsException</li>
+  <li>java.util.IllegalFormatPrecisionException</li>
+  <li>java.util.IllegalFormatWidthException</li>
+  <li>java.util.InputMismatchException</li>
+  <li>java.util.InvalidPropertiesFormatException</li>
+  <li>java.util.Iterator</li>
+  <li>java.util.LinkedHashMap</li>
+  <li>java.util.LinkedHashSet</li>
+  <li>java.util.LinkedList</li>
+  <li>java.util.List</li>
+  <li>java.util.ListIterator</li>
+  <li>java.util.ListResourceBundle</li>
+  <li>java.util.Locale</li>
+  <li>java.util.Map</li>
+  <li>java.util.MissingFormatArgumentException</li>
+  <li>java.util.MissingFormatWidthException</li>
+  <li>java.util.MissingResourceException</li>
+  <li>java.util.NavigableMap</li>
+  <li>java.util.NavigableSet</li>
+  <li>java.util.NoSuchElementException</li>
+  <li>java.util.Observable</li>
+  <li>java.util.Observer</li>
+  <li>java.util.PriorityQueue</li>
+  <li>java.util.Properties</li>
+  <li>java.util.PropertyPermission</li>
+  <li>java.util.PropertyResourceBundle</li>
+  <li>java.util.Queue</li>
+  <li>java.util.Random</li>
+  <li>java.util.RandomAccess</li>
+  <li>java.util.ResourceBundle</li>
+  <li>java.util.Scanner</li>
+  <li>java.util.ServiceConfigurationError</li>
+  <li>java.util.ServiceLoader</li>
+  <li>java.util.Set</li>
+  <li>java.util.SimpleTimeZone</li>
+  <li>java.util.SortedMap</li>
+  <li>java.util.SortedSet</li>
+  <li>java.util.Stack</li>
+  <li>java.util.StringTokenizer</li>
+  <li>java.util.TimeZone</li>
+  <li>java.util.Timer</li>
+  <li>java.util.TimerTask</li>
+  <li>java.util.TooManyListenersException</li>
+  <li>java.util.TreeMap</li>
+  <li>java.util.TreeSet</li>
+  <li>java.util.UUID</li>
+  <li>java.util.UnknownFormatConversionException</li>
+  <li>java.util.UnknownFormatFlagsException</li>
+  <li>java.util.Vector</li>
+  <li>java.util.WeakHashMap</li>
+  <li>java.util.concurrent.AbstractExecutorService</li>
+  <li>java.util.concurrent.ArrayBlockingQueue</li>
+  <li>java.util.concurrent.BlockingDeque</li>
+  <li>java.util.concurrent.BlockingQueue</li>
+  <li>java.util.concurrent.BrokenBarrierException</li>
+  <li>java.util.concurrent.Callable</li>
+  <li>java.util.concurrent.CancellationException</li>
+  <li>java.util.concurrent.CompletionService</li>
+  <li>java.util.concurrent.ConcurrentHashMap</li>
+  <li>java.util.concurrent.ConcurrentLinkedQueue</li>
+  <li>java.util.concurrent.ConcurrentMap</li>
+  <li>java.util.concurrent.ConcurrentNavigableMap</li>
+  <li>java.util.concurrent.ConcurrentSkipListMap</li>
+  <li>java.util.concurrent.ConcurrentSkipListSet</li>
+  <li>java.util.concurrent.CopyOnWriteArrayList</li>
+  <li>java.util.concurrent.CopyOnWriteArraySet</li>
+  <li>java.util.concurrent.CountDownLatch</li>
+  <li>java.util.concurrent.CyclicBarrier</li>
+  <li>java.util.concurrent.DelayQueue</li>
+  <li>java.util.concurrent.Delayed</li>
+  <li>java.util.concurrent.Exchanger</li>
+  <li>java.util.concurrent.ExecutionException</li>
+  <li>java.util.concurrent.Executor</li>
+  <li>java.util.concurrent.ExecutorCompletionService</li>
+  <li>java.util.concurrent.ExecutorService</li>
+  <li>java.util.concurrent.Executors</li>
+  <li>java.util.concurrent.Future</li>
+  <li>java.util.concurrent.FutureTask</li>
+  <li>java.util.concurrent.LinkedBlockingDeque</li>
+  <li>java.util.concurrent.LinkedBlockingQueue</li>
+  <li>java.util.concurrent.PriorityBlockingQueue</li>
+  <li>java.util.concurrent.RejectedExecutionException</li>
+  <li>java.util.concurrent.RejectedExecutionHandler</li>
+  <li>java.util.concurrent.RunnableFuture</li>
+  <li>java.util.concurrent.RunnableScheduledFuture</li>
+  <li>java.util.concurrent.ScheduledExecutorService</li>
+  <li>java.util.concurrent.ScheduledFuture</li>
+  <li>java.util.concurrent.ScheduledThreadPoolExecutor</li>
+  <li>java.util.concurrent.Semaphore</li>
+  <li>java.util.concurrent.SynchronousQueue</li>
+  <li>java.util.concurrent.ThreadFactory</li>
+  <li>java.util.concurrent.ThreadPoolExecutor</li>
+  <li>java.util.concurrent.TimeUnit</li>
+  <li>java.util.concurrent.TimeoutException</li>
+  <li>java.util.concurrent.atomic.AtomicBoolean</li>
+  <li>java.util.concurrent.atomic.AtomicInteger</li>
+  <li>java.util.concurrent.atomic.AtomicIntegerArray</li>
+  <li>java.util.concurrent.atomic.AtomicIntegerFieldUpdater</li>
+  <li>java.util.concurrent.atomic.AtomicLong</li>
+  <li>java.util.concurrent.atomic.AtomicLongArray</li>
+  <li>java.util.concurrent.atomic.AtomicLongFieldUpdater</li>
+  <li>java.util.concurrent.atomic.AtomicMarkableReference</li>
+  <li>java.util.concurrent.atomic.AtomicReference</li>
+  <li>java.util.concurrent.atomic.AtomicReferenceArray</li>
+  <li>java.util.concurrent.atomic.AtomicReferenceFieldUpdater</li>
+  <li>java.util.concurrent.atomic.AtomicStampedReference</li>
+  <li>java.util.concurrent.locks.AbstractOwnableSynchronizer</li>
+  <li>java.util.concurrent.locks.AbstractQueuedLongSynchronizer</li>
+  <li>java.util.concurrent.locks.AbstractQueuedSynchronizer</li>
+  <li>java.util.concurrent.locks.Condition</li>
+  <li>java.util.concurrent.locks.Lock</li>
+  <li>java.util.concurrent.locks.LockSupport</li>
+  <li>java.util.concurrent.locks.ReadWriteLock</li>
+  <li>java.util.concurrent.locks.ReentrantLock</li>
+  <li>java.util.concurrent.locks.ReentrantReadWriteLock</li>
+  <li>java.util.jar.Attributes</li>
+  <li>java.util.jar.JarEntry</li>
+  <li>java.util.jar.JarException</li>
+  <li>java.util.jar.JarFile</li>
+  <li>java.util.jar.JarInputStream</li>
+  <li>java.util.jar.JarOutputStream</li>
+  <li>java.util.jar.Manifest</li>
+  <li>java.util.logging.ErrorManager</li>
+  <li>java.util.logging.Filter</li>
+  <li>java.util.logging.Formatter</li>
+  <li>java.util.logging.Handler</li>
+  <li>java.util.logging.Level</li>
+  <li>java.util.logging.LogRecord</li>
+  <li>java.util.logging.Logger</li>
+  <li>java.util.logging.LoggingMXBean</li>
+  <li>java.util.logging.LoggingPermission</li>
+  <li>java.util.logging.MemoryHandler</li>
+  <li>java.util.logging.SimpleFormatter</li>
+  <li>java.util.logging.StreamHandler</li>
+  <li>java.util.logging.XMLFormatter</li>
+  <li>java.util.regex.MatchResult</li>
+  <li>java.util.regex.Matcher</li>
+  <li>java.util.regex.Pattern</li>
+  <li>java.util.regex.PatternSyntaxException</li>
+  <li>java.util.zip.Adler32</li>
+  <li>java.util.zip.CRC32</li>
+  <li>java.util.zip.CheckedInputStream</li>
+  <li>java.util.zip.CheckedOutputStream</li>
+  <li>java.util.zip.Checksum</li>
+  <li>java.util.zip.DataFormatException</li>
+  <li>java.util.zip.Deflater</li>
+  <li>java.util.zip.DeflaterInputStream</li>
+  <li>java.util.zip.DeflaterOutputStream</li>
+  <li>java.util.zip.GZIPInputStream</li>
+  <li>java.util.zip.GZIPOutputStream</li>
+  <li>java.util.zip.Inflater</li>
+  <li>java.util.zip.InflaterInputStream</li>
+  <li>java.util.zip.InflaterOutputStream</li>
+  <li>java.util.zip.ZipConstants</li>
+  <li>java.util.zip.ZipEntry</li>
+  <li>java.util.zip.ZipError</li>
+  <li>java.util.zip.ZipException</li>
+  <li>java.util.zip.ZipFile</li>
+  <li>java.util.zip.ZipInputStream</li>
+  <li>java.util.zip.ZipOutputStream</li>
+  <li>javax.accessibility.Accessible</li>
+  <li>javax.accessibility.AccessibleAction</li>
+  <li>javax.accessibility.AccessibleAttributeSequence</li>
+  <li>javax.accessibility.AccessibleBundle</li>
+  <li>javax.accessibility.AccessibleComponent</li>
+  <li>javax.accessibility.AccessibleContext</li>
+  <li>javax.accessibility.AccessibleEditableText</li>
+  <li>javax.accessibility.AccessibleExtendedComponent</li>
+  <li>javax.accessibility.AccessibleExtendedTable</li>
+  <li>javax.accessibility.AccessibleExtendedText</li>
+  <li>javax.accessibility.AccessibleHyperlink</li>
+  <li>javax.accessibility.AccessibleHypertext</li>
+  <li>javax.accessibility.AccessibleIcon</li>
+  <li>javax.accessibility.AccessibleKeyBinding</li>
+  <li>javax.accessibility.AccessibleRelation</li>
+  <li>javax.accessibility.AccessibleRelationSet</li>
+  <li>javax.accessibility.AccessibleResourceBundle</li>
+  <li>javax.accessibility.AccessibleRole</li>
+  <li>javax.accessibility.AccessibleSelection</li>
+  <li>javax.accessibility.AccessibleState</li>
+  <li>javax.accessibility.AccessibleStateSet</li>
+  <li>javax.accessibility.AccessibleStreamable</li>
+  <li>javax.accessibility.AccessibleTable</li>
+  <li>javax.accessibility.AccessibleTableModelChange</li>
+  <li>javax.accessibility.AccessibleText</li>
+  <li>javax.accessibility.AccessibleTextSequence</li>
+  <li>javax.accessibility.AccessibleValue</li>
+  <li>javax.activation.ActivationDataFlavor</li>
+  <li>javax.activation.CommandInfo</li>
+  <li>javax.activation.CommandMap</li>
+  <li>javax.activation.CommandObject</li>
+  <li>javax.activation.DataContentHandler</li>
+  <li>javax.activation.DataContentHandlerFactory</li>
+  <li>javax.activation.DataHandler</li>
+  <li>javax.activation.DataHandlerDataSource</li>
+  <li>javax.activation.DataSource</li>
+  <li>javax.activation.DataSourceDataContentHandler</li>
+  <li>javax.activation.FileDataSource</li>
+  <li>javax.activation.FileTypeMap</li>
+  <li>javax.activation.MailcapCommandMap</li>
+  <li>javax.activation.MimeType</li>
+  <li>javax.activation.MimeTypeParameterList</li>
+  <li>javax.activation.MimeTypeParseException</li>
+  <li>javax.activation.MimetypesFileTypeMap</li>
+  <li>javax.activation.ObjectDataContentHandler</li>
+  <li>javax.activation.SecuritySupport</li>
+  <li>javax.activation.URLDataSource</li>
+  <li>javax.activation.UnsupportedDataTypeException</li>
+  <li>javax.activity.ActivityCompletedException</li>
+  <li>javax.activity.ActivityRequiredException</li>
+  <li>javax.activity.InvalidActivityException</li>
+  <li>javax.annotation.Generated</li>
+  <li>javax.annotation.PostConstruct</li>
+  <li>javax.annotation.PreDestroy</li>
+  <li>javax.annotation.Resource</li>
+  <li>javax.annotation.Resources</li>
+  <li>javax.annotation.processing.AbstractProcessor</li>
+  <li>javax.annotation.processing.Completion</li>
+  <li>javax.annotation.processing.Completions</li>
+  <li>javax.annotation.processing.Filer</li>
+  <li>javax.annotation.processing.FilerException</li>
+  <li>javax.annotation.processing.Messager</li>
+  <li>javax.annotation.processing.ProcessingEnvironment</li>
+  <li>javax.annotation.processing.Processor</li>
+  <li>javax.annotation.processing.RoundEnvironment</li>
+  <li>javax.annotation.processing.SupportedAnnotationTypes</li>
+  <li>javax.annotation.processing.SupportedOptions</li>
+  <li>javax.annotation.processing.SupportedSourceVersion</li>
+  <li>javax.crypto.BadPaddingException</li>
+  <li>javax.crypto.Cipher</li>
+  <li>javax.crypto.CipherInputStream</li>
+  <li>javax.crypto.CipherOutputStream</li>
+  <li>javax.crypto.CipherSpi</li>
+  <li>javax.crypto.EncryptedPrivateKeyInfo</li>
+  <li>javax.crypto.ExemptionMechanism</li>
+  <li>javax.crypto.ExemptionMechanismException</li>
+  <li>javax.crypto.ExemptionMechanismSpi</li>
+  <li>javax.crypto.IllegalBlockSizeException</li>
+  <li>javax.crypto.KeyAgreement</li>
+  <li>javax.crypto.KeyAgreementSpi</li>
+  <li>javax.crypto.KeyGenerator</li>
+  <li>javax.crypto.KeyGeneratorSpi</li>
+  <li>javax.crypto.Mac</li>
+  <li>javax.crypto.MacSpi</li>
+  <li>javax.crypto.NoSuchPaddingException</li>
+  <li>javax.crypto.NullCipher</li>
+  <li>javax.crypto.SealedObject</li>
+  <li>javax.crypto.SecretKey</li>
+  <li>javax.crypto.SecretKeyFactory</li>
+  <li>javax.crypto.SecretKeyFactorySpi</li>
+  <li>javax.crypto.ShortBufferException</li>
+  <li>javax.crypto.interfaces.DHKey</li>
+  <li>javax.crypto.interfaces.DHPrivateKey</li>
+  <li>javax.crypto.interfaces.DHPublicKey</li>
+  <li>javax.crypto.interfaces.PBEKey</li>
+  <li>javax.crypto.spec.DESKeySpec</li>
+  <li>javax.crypto.spec.DESedeKeySpec</li>
+  <li>javax.crypto.spec.DHGenParameterSpec</li>
+  <li>javax.crypto.spec.DHParameterSpec</li>
+  <li>javax.crypto.spec.DHPrivateKeySpec</li>
+  <li>javax.crypto.spec.DHPublicKeySpec</li>
+  <li>javax.crypto.spec.IvParameterSpec</li>
+  <li>javax.crypto.spec.OAEPParameterSpec</li>
+  <li>javax.crypto.spec.PBEKeySpec</li>
+  <li>javax.crypto.spec.PBEParameterSpec</li>
+  <li>javax.crypto.spec.PSource</li>
+  <li>javax.crypto.spec.RC2ParameterSpec</li>
+  <li>javax.crypto.spec.RC5ParameterSpec</li>
+  <li>javax.crypto.spec.SecretKeySpec</li>
+  <li>javax.jws.HandlerChain</li>
+  <li>javax.jws.Oneway</li>
+  <li>javax.jws.WebMethod</li>
+  <li>javax.jws.WebParam</li>
+  <li>javax.jws.WebResult</li>
+  <li>javax.jws.WebService</li>
+  <li>javax.jws.soap.InitParam</li>
+  <li>javax.jws.soap.SOAPBinding</li>
+  <li>javax.jws.soap.SOAPMessageHandler </li>
+  <li>javax.jws.soap.SOAPMessageHandlers</li>
+  <li>javax.lang.model.SourceVersion</li>
+  <li>javax.lang.model.element.AnnotationMirror</li>
+  <li>javax.lang.model.element.AnnotationValue</li>
+  <li>javax.lang.model.element.AnnotationValueVisitor</li>
+  <li>javax.lang.model.element.Element</li>
+  <li>javax.lang.model.element.ElementKind</li>
+  <li>javax.lang.model.element.ElementVisitor</li>
+  <li>javax.lang.model.element.ExecutableElement</li>
+  <li>javax.lang.model.element.Modifier</li>
+  <li>javax.lang.model.element.Name</li>
+  <li>javax.lang.model.element.NestingKind</li>
+  <li>javax.lang.model.element.PackageElement</li>
+  <li>javax.lang.model.element.TypeElement</li>
+  <li>javax.lang.model.element.TypeParameterElement</li>
+  <li>javax.lang.model.element.UnknownAnnotationValueException</li>
+  <li>javax.lang.model.element.UnknownElementException</li>
+  <li>javax.lang.model.element.VariableElement</li>
+  <li>javax.lang.model.type.ArrayType</li>
+  <li>javax.lang.model.type.DeclaredType</li>
+  <li>javax.lang.model.type.ErrorType</li>
+  <li>javax.lang.model.type.ExecutableType</li>
+  <li>javax.lang.model.type.MirroredTypeException</li>
+  <li>javax.lang.model.type.MirroredTypesException</li>
+  <li>javax.lang.model.type.NoType</li>
+  <li>javax.lang.model.type.NullType</li>
+  <li>javax.lang.model.type.PrimitiveType</li>
+  <li>javax.lang.model.type.ReferenceType</li>
+  <li>javax.lang.model.type.TypeKind</li>
+  <li>javax.lang.model.type.TypeMirror</li>
+  <li>javax.lang.model.type.TypeVariable</li>
+  <li>javax.lang.model.type.TypeVisitor</li>
+  <li>javax.lang.model.type.UnknownTypeException</li>
+  <li>javax.lang.model.type.WildcardType</li>
+  <li>javax.lang.model.util.AbstractAnnotationValueVisitor6</li>
+  <li>javax.lang.model.util.AbstractElementVisitor6</li>
+  <li>javax.lang.model.util.AbstractTypeVisitor6</li>
+  <li>javax.lang.model.util.ElementFilter</li>
+  <li>javax.lang.model.util.ElementKindVisitor6</li>
+  <li>javax.lang.model.util.ElementScanner6</li>
+  <li>javax.lang.model.util.Elements</li>
+  <li>javax.lang.model.util.SimpleAnnotationValueVisitor6</li>
+  <li>javax.lang.model.util.SimpleElementVisitor6</li>
+  <li>javax.lang.model.util.SimpleTypeVisitor6</li>
+  <li>javax.lang.model.util.TypeKindVisitor6</li>
+  <li>javax.lang.model.util.Types</li>
+  <li>javax.script.AbstractScriptEngine</li>
+  <li>javax.script.Bindings</li>
+  <li>javax.script.Compilable</li>
+  <li>javax.script.CompiledScript</li>
+  <li>javax.script.Invocable</li>
+  <li>javax.script.ScriptContext</li>
+  <li>javax.script.ScriptEngine</li>
+  <li>javax.script.ScriptEngineFactory</li>
+  <li>javax.script.ScriptEngineManager</li>
+  <li>javax.script.ScriptException</li>
+  <li>javax.script.SimpleBindings</li>
+  <li>javax.script.SimpleScriptContext</li>
+  <li>javax.security.auth.AuthPermission</li>
+  <li>javax.security.auth.DestroyFailedException</li>
+  <li>javax.security.auth.Destroyable</li>
+  <li>javax.security.auth.Policy</li>
+  <li>javax.security.auth.PrivateCredentialPermission</li>
+  <li>javax.security.auth.RefreshFailedException</li>
+  <li>javax.security.auth.Refreshable</li>
+  <li>javax.security.auth.Subject</li>
+  <li>javax.security.auth.SubjectDomainCombiner</li>
+  <li>javax.security.auth.callback.Callback</li>
+  <li>javax.security.auth.callback.CallbackHandler</li>
+  <li>javax.security.auth.callback.ChoiceCallback</li>
+  <li>javax.security.auth.callback.ConfirmationCallback</li>
+  <li>javax.security.auth.callback.LanguageCallback</li>
+  <li>javax.security.auth.callback.NameCallback</li>
+  <li>javax.security.auth.callback.PasswordCallback</li>
+  <li>javax.security.auth.callback.TextInputCallback</li>
+  <li>javax.security.auth.callback.TextOutputCallback</li>
+  <li>javax.security.auth.callback.UnsupportedCallbackException</li>
+  <li>javax.security.auth.kerberos.DelegationPermission</li>
+  <li>javax.security.auth.kerberos.KerberosKey</li>
+  <li>javax.security.auth.kerberos.KerberosPrincipal</li>
+  <li>javax.security.auth.kerberos.KerberosTicket</li>
+  <li>javax.security.auth.kerberos.ServicePermission</li>
+  <li>javax.security.auth.login.AccountException</li>
+  <li>javax.security.auth.login.AccountExpiredException</li>
+  <li>javax.security.auth.login.AccountLockedException</li>
+  <li>javax.security.auth.login.AccountNotFoundException</li>
+  <li>javax.security.auth.login.AppConfigurationEntry</li>
+  <li>javax.security.auth.login.Configuration</li>
+  <li>javax.security.auth.login.ConfigurationSpi</li>
+  <li>javax.security.auth.login.CredentialException</li>
+  <li>javax.security.auth.login.CredentialExpiredException</li>
+  <li>javax.security.auth.login.CredentialNotFoundException</li>
+  <li>javax.security.auth.login.FailedLoginException</li>
+  <li>javax.security.auth.login.LoginContext</li>
+  <li>javax.security.auth.login.LoginException</li>
+  <li>javax.security.auth.spi.LoginModule</li>
+  <li>javax.security.auth.x500.X500Principal</li>
+  <li>javax.security.auth.x500.X500PrivateCredential</li>
+  <li>javax.security.cert.Certificate</li>
+  <li>javax.security.cert.CertificateEncodingException</li>
+  <li>javax.security.cert.CertificateException</li>
+  <li>javax.security.cert.CertificateExpiredException</li>
+  <li>javax.security.cert.CertificateNotYetValidException</li>
+  <li>javax.security.cert.CertificateParsingException</li>
+  <li>javax.security.cert.X509Certificate</li>
+  <li>javax.security.sasl.AuthenticationException</li>
+  <li>javax.security.sasl.AuthorizeCallback</li>
+  <li>javax.security.sasl.RealmCallback</li>
+  <li>javax.security.sasl.RealmChoiceCallback</li>
+  <li>javax.security.sasl.Sasl</li>
+  <li>javax.security.sasl.SaslClient</li>
+  <li>javax.security.sasl.SaslClientFactory</li>
+  <li>javax.security.sasl.SaslException</li>
+  <li>javax.security.sasl.SaslServer</li>
+  <li>javax.security.sasl.SaslServerFactory</li>
+  <li>javax.sql.CommonDataSource</li>
+  <li>javax.sql.ConnectionEvent</li>
+  <li>javax.sql.ConnectionEventListener</li>
+  <li>javax.sql.ConnectionPoolDataSource</li>
+  <li>javax.sql.DataSource</li>
+  <li>javax.sql.PooledConnection</li>
+  <li>javax.sql.RowSet</li>
+  <li>javax.sql.RowSetEvent</li>
+  <li>javax.sql.RowSetInternal</li>
+  <li>javax.sql.RowSetListener</li>
+  <li>javax.sql.RowSetMetaData</li>
+  <li>javax.sql.RowSetReader</li>
+  <li>javax.sql.RowSetWriter</li>
+  <li>javax.sql.StatementEvent</li>
+  <li>javax.sql.StatementEventListener</li>
+  <li>javax.sql.XAConnection</li>
+  <li>javax.sql.XADataSource</li>
+  <li>javax.sql.rowset.BaseRowSet</li>
+  <li>javax.sql.rowset.CachedRowSet</li>
+  <li>javax.sql.rowset.FilteredRowSet</li>
+  <li>javax.sql.rowset.JdbcRowSet</li>
+  <li>javax.sql.rowset.JoinRowSet</li>
+  <li>javax.sql.rowset.Joinable</li>
+  <li>javax.sql.rowset.Predicate</li>
+  <li>javax.sql.rowset.RowSetMetaDataImpl</li>
+  <li>javax.sql.rowset.RowSetWarning</li>
+  <li>javax.sql.rowset.WebRowSet</li>
+  <li>javax.sql.rowset.serial.SQLInputImpl</li>
+  <li>javax.sql.rowset.serial.SQLOutputImpl</li>
+  <li>javax.sql.rowset.serial.SerialArray</li>
+  <li>javax.sql.rowset.serial.SerialBlob</li>
+  <li>javax.sql.rowset.serial.SerialClob</li>
+  <li>javax.sql.rowset.serial.SerialDatalink</li>
+  <li>javax.sql.rowset.serial.SerialException</li>
+  <li>javax.sql.rowset.serial.SerialJavaObject</li>
+  <li>javax.sql.rowset.serial.SerialRef</li>
+  <li>javax.sql.rowset.serial.SerialStruct</li>
+  <li>javax.sql.rowset.spi.SyncFactory</li>
+  <li>javax.sql.rowset.spi.SyncFactoryException</li>
+  <li>javax.sql.rowset.spi.SyncProvider</li>
+  <li>javax.sql.rowset.spi.SyncProviderException</li>
+  <li>javax.sql.rowset.spi.SyncResolver</li>
+  <li>javax.sql.rowset.spi.TransactionalWriter</li>
+  <li>javax.sql.rowset.spi.XmlReader</li>
+  <li>javax.sql.rowset.spi.XmlWriter</li>
+  <li>javax.transaction.InvalidTransactionException</li>
+  <li>javax.transaction.TransactionRequiredException</li>
+  <li>javax.transaction.TransactionRolledbackException</li>
+  <li>javax.transaction.xa.XAException</li>
+  <li>javax.transaction.xa.XAResource</li>
+  <li>javax.transaction.xa.Xid</li>
+  <li>javax.xml.XMLConstants</li>
+  <li>javax.xml.bind.Binder</li>
+  <li>javax.xml.bind.DataBindingException</li>
+  <li>javax.xml.bind.DatatypeConverter</li>
+  <li>javax.xml.bind.DatatypeConverterInterface</li>
+  <li>javax.xml.bind.Element</li>
+  <li>javax.xml.bind.JAXB</li>
+  <li>javax.xml.bind.JAXBContext</li>
+  <li>javax.xml.bind.JAXBElement</li>
+  <li>javax.xml.bind.JAXBException</li>
+  <li>javax.xml.bind.JAXBIntrospector</li>
+  <li>javax.xml.bind.MarshalException</li>
+  <li>javax.xml.bind.Marshaller</li>
+  <li>javax.xml.bind.NotIdentifiableEvent</li>
+  <li>javax.xml.bind.ParseConversionEvent</li>
+  <li>javax.xml.bind.PrintConversionEvent</li>
+  <li>javax.xml.bind.PropertyException</li>
+  <li>javax.xml.bind.SchemaOutputResolver</li>
+  <li>javax.xml.bind.TypeConstraintException</li>
+  <li>javax.xml.bind.UnmarshalException</li>
+  <li>javax.xml.bind.Unmarshaller</li>
+  <li>javax.xml.bind.UnmarshallerHandler</li>
+  <li>javax.xml.bind.ValidationEvent</li>
+  <li>javax.xml.bind.ValidationEventHandler</li>
+  <li>javax.xml.bind.ValidationEventLocator</li>
+  <li>javax.xml.bind.ValidationException</li>
+  <li>javax.xml.bind.Validator</li>
+  <li>javax.xml.bind.annotation.DomHandler</li>
+  <li>javax.xml.bind.annotation.W3CDomHandler</li>
+  <li>javax.xml.bind.annotation.XmlAccessOrder</li>
+  <li>javax.xml.bind.annotation.XmlAccessType</li>
+  <li>javax.xml.bind.annotation.XmlAccessorOrder</li>
+  <li>javax.xml.bind.annotation.XmlAccessorType</li>
+  <li>javax.xml.bind.annotation.XmlAnyAttribute</li>
+  <li>javax.xml.bind.annotation.XmlAnyElement</li>
+  <li>javax.xml.bind.annotation.XmlAttachmentRef</li>
+  <li>javax.xml.bind.annotation.XmlAttribute</li>
+  <li>javax.xml.bind.annotation.XmlElement</li>
+  <li>javax.xml.bind.annotation.XmlElementDecl</li>
+  <li>javax.xml.bind.annotation.XmlElementRef</li>
+  <li>javax.xml.bind.annotation.XmlElementRefs</li>
+  <li>javax.xml.bind.annotation.XmlElementWrapper</li>
+  <li>javax.xml.bind.annotation.XmlElements</li>
+  <li>javax.xml.bind.annotation.XmlEnum</li>
+  <li>javax.xml.bind.annotation.XmlEnumValue</li>
+  <li>javax.xml.bind.annotation.XmlID</li>
+  <li>javax.xml.bind.annotation.XmlIDREF</li>
+  <li>javax.xml.bind.annotation.XmlInlineBinaryData</li>
+  <li>javax.xml.bind.annotation.XmlList</li>
+  <li>javax.xml.bind.annotation.XmlMimeType</li>
+  <li>javax.xml.bind.annotation.XmlMixed</li>
+  <li>javax.xml.bind.annotation.XmlNs</li>
+  <li>javax.xml.bind.annotation.XmlNsForm</li>
+  <li>javax.xml.bind.annotation.XmlRegistry</li>
+  <li>javax.xml.bind.annotation.XmlRootElement</li>
+  <li>javax.xml.bind.annotation.XmlSchema</li>
+  <li>javax.xml.bind.annotation.XmlSchemaType</li>
+  <li>javax.xml.bind.annotation.XmlSchemaTypes</li>
+  <li>javax.xml.bind.annotation.XmlSeeAlso</li>
+  <li>javax.xml.bind.annotation.XmlTransient</li>
+  <li>javax.xml.bind.annotation.XmlType</li>
+  <li>javax.xml.bind.annotation.XmlValue</li>
+  <li>javax.xml.bind.annotation.adapters.CollapsedStringAdapter</li>
+  <li>javax.xml.bind.annotation.adapters.HexBinaryAdapter</li>
+  <li>javax.xml.bind.annotation.adapters.NormalizedStringAdapter</li>
+  <li>javax.xml.bind.annotation.adapters.XmlAdapter</li>
+  <li>javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter</li>
+  <li>javax.xml.bind.annotation.adapters.XmlJavaTypeAdapters</li>
+  <li>javax.xml.bind.attachment.AttachmentMarshaller</li>
+  <li>javax.xml.bind.attachment.AttachmentUnmarshaller</li>
+  <li>javax.xml.bind.helpers.AbstractMarshallerImpl</li>
+  <li>javax.xml.bind.helpers.AbstractUnmarshallerImpl</li>
+  <li>javax.xml.bind.helpers.DefaultValidationEventHandler</li>
+  <li>javax.xml.bind.helpers.NotIdentifiableEventImpl</li>
+  <li>javax.xml.bind.helpers.ParseConversionEventImpl</li>
+  <li>javax.xml.bind.helpers.PrintConversionEventImpl</li>
+  <li>javax.xml.bind.helpers.ValidationEventImpl</li>
+  <li>javax.xml.bind.helpers.ValidationEventLocatorImpl</li>
+  <li>javax.xml.bind.util.JAXBResult</li>
+  <li>javax.xml.bind.util.JAXBSource</li>
+  <li>javax.xml.bind.util.ValidationEventCollector</li>
+  <li>javax.xml.crypto.AlgorithmMethod</li>
+  <li>javax.xml.crypto.Data</li>
+  <li>javax.xml.crypto.KeySelector</li>
+  <li>javax.xml.crypto.KeySelectorException</li>
+  <li>javax.xml.crypto.KeySelectorResult</li>
+  <li>javax.xml.crypto.MarshallException</li>
+  <li>javax.xml.crypto.NoSuchMechanismException</li>
+  <li>javax.xml.crypto.NodeSetData</li>
+  <li>javax.xml.crypto.OctetStreamData</li>
+  <li>javax.xml.crypto.URIDereferencer</li>
+  <li>javax.xml.crypto.URIReference</li>
+  <li>javax.xml.crypto.URIReferenceException</li>
+  <li>javax.xml.crypto.XMLCryptoContext</li>
+  <li>javax.xml.crypto.XMLStructure</li>
+  <li>javax.xml.crypto.dom.DOMCryptoContext</li>
+  <li>javax.xml.crypto.dom.DOMStructure</li>
+  <li>javax.xml.crypto.dom.DOMURIReferecne</li>
+  <li>javax.xml.crypto.dsig.CanonicalizationMethod</li>
+  <li>javax.xml.crypto.dsig.DigestMethod</li>
+  <li>javax.xml.crypto.dsig.Manifest</li>
+  <li>javax.xml.crypto.dsig.Reference</li>
+  <li>javax.xml.crypto.dsig.SignatureMethod</li>
+  <li>javax.xml.crypto.dsig.SignatureProperties</li>
+  <li>javax.xml.crypto.dsig.SignatureProperty</li>
+  <li>javax.xml.crypto.dsig.SignedInfo</li>
+  <li>javax.xml.crypto.dsig.Transform</li>
+  <li>javax.xml.crypto.dsig.TransformException</li>
+  <li>javax.xml.crypto.dsig.TransformService</li>
+  <li>javax.xml.crypto.dsig.XMLObject</li>
+  <li>javax.xml.crypto.dsig.XMLSignContext</li>
+  <li>javax.xml.crypto.dsig.XMLSignature</li>
+  <li>javax.xml.crypto.dsig.XMLSignatureException</li>
+  <li>javax.xml.crypto.dsig.XMLSignatureFactory</li>
+  <li>javax.xml.crypto.dsig.XMLValidateContext</li>
+  <li>javax.xml.crypto.dsig.dom.DOMSignContext</li>
+  <li>javax.xml.crypto.dsig.dom.DOMValidateContext</li>
+  <li>javax.xml.crypto.dsig.keyinfo.KeyInfo</li>
+  <li>javax.xml.crypto.dsig.keyinfo.KeyInfoFactory</li>
+  <li>javax.xml.crypto.dsig.keyinfo.KeyName</li>
+  <li>javax.xml.crypto.dsig.keyinfo.KeyValue</li>
+  <li>javax.xml.crypto.dsig.keyinfo.PGPData</li>
+  <li>javax.xml.crypto.dsig.keyinfo.RetrievalMethod</li>
+  <li>javax.xml.crypto.dsig.keyinfo.X509Data</li>
+  <li>javax.xml.crypto.dsig.keyinfo.X509IssuerSerial</li>
+  <li>javax.xml.crypto.dsig.spec.C14NMethodParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.DigestMethodParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.ExcC14NParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.HMACParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.SignatureMethodParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.TransformParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.XPathFilter2ParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.XPathFilterParameterSpec</li>
+  <li>javax.xml.crypto.dsig.spec.XPathType</li>
+  <li>javax.xml.crypto.dsig.spec.XPathType.Filter</li>
+  <li>javax.xml.crypto.dsig.spec.XSLTTransformParameterSpec</li>
+  <li>javax.xml.datatype.DatatypeConfigurationException</li>
+  <li>javax.xml.datatype.DatatypeConstants</li>
+  <li>javax.xml.datatype.DatatypeFactory</li>
+  <li>javax.xml.datatype.Duration</li>
+  <li>javax.xml.datatype.XMLGregorianCalendar</li>
+  <li>javax.xml.namespace.NamespaceContext</li>
+  <li>javax.xml.namespace.QName</li>
+  <li>javax.xml.parsers.DocumentBuilder</li>
+  <li>javax.xml.parsers.DocumentBuilderFactory</li>
+  <li>javax.xml.parsers.FactoryConfigurationError</li>
+  <li>javax.xml.parsers.ParserConfigurationException</li>
+  <li>javax.xml.parsers.SAXParser</li>
+  <li>javax.xml.parsers.SAXParserFactory</li>
+  <li>javax.xml.soap.AttachmentPart</li>
+  <li>javax.xml.soap.Detail</li>
+  <li>javax.xml.soap.DetailEntry</li>
+  <li>javax.xml.soap.MessageFactory</li>
+  <li>javax.xml.soap.MimeHeader</li>
+  <li>javax.xml.soap.MimeHeaders</li>
+  <li>javax.xml.soap.Name</li>
+  <li>javax.xml.soap.Node</li>
+  <li>javax.xml.soap.SAAJMetaFactory</li>
+  <li>javax.xml.soap.SAAJResult</li>
+  <li>javax.xml.soap.SOAPBody</li>
+  <li>javax.xml.soap.SOAPBodyElement</li>
+  <li>javax.xml.soap.SOAPConnection</li>
+  <li>javax.xml.soap.SOAPConnectionFactory</li>
+  <li>javax.xml.soap.SOAPConstants</li>
+  <li>javax.xml.soap.SOAPElement</li>
+  <li>javax.xml.soap.SOAPElementFactory</li>
+  <li>javax.xml.soap.SOAPEnvelope</li>
+  <li>javax.xml.soap.SOAPException</li>
+  <li>javax.xml.soap.SOAPFactory</li>
+  <li>javax.xml.soap.SOAPFault</li>
+  <li>javax.xml.soap.SOAPFaultElement</li>
+  <li>javax.xml.soap.SOAPHeader</li>
+  <li>javax.xml.soap.SOAPHeaderElement</li>
+  <li>javax.xml.soap.SOAPMessage</li>
+  <li>javax.xml.soap.SOAPPart</li>
+  <li>javax.xml.soap.Text</li>
+  <li>javax.xml.stream.EventFilter</li>
+  <li>javax.xml.stream.FactoryConfigurationError</li>
+  <li>javax.xml.stream.FactoryFinder</li>
+  <li>javax.xml.stream.Location</li>
+  <li>javax.xml.stream.SecuritySupport</li>
+  <li>javax.xml.stream.StreamFilter</li>
+  <li>javax.xml.stream.XMLEventFactory</li>
+  <li>javax.xml.stream.XMLEventReader</li>
+  <li>javax.xml.stream.XMLEventWriter</li>
+  <li>javax.xml.stream.XMLInputFactory</li>
+  <li>javax.xml.stream.XMLOutputFactory</li>
+  <li>javax.xml.stream.XMLReporter</li>
+  <li>javax.xml.stream.XMLResolver</li>
+  <li>javax.xml.stream.XMLStreamConstants</li>
+  <li>javax.xml.stream.XMLStreamException</li>
+  <li>javax.xml.stream.XMLStreamReader</li>
+  <li>javax.xml.stream.XMLStreamWriter</li>
+  <li>javax.xml.stream.events.Attribute</li>
+  <li>javax.xml.stream.events.Characters</li>
+  <li>javax.xml.stream.events.Comment</li>
+  <li>javax.xml.stream.events.DTD</li>
+  <li>javax.xml.stream.events.EndDocument</li>
+  <li>javax.xml.stream.events.EndElement</li>
+  <li>javax.xml.stream.events.EntityDeclaration</li>
+  <li>javax.xml.stream.events.EntityReference</li>
+  <li>javax.xml.stream.events.Namespace</li>
+  <li>javax.xml.stream.events.NotationDeclaration</li>
+  <li>javax.xml.stream.events.ProcessingInstruction</li>
+  <li>javax.xml.stream.events.StartDocument</li>
+  <li>javax.xml.stream.events.StartElement</li>
+  <li>javax.xml.stream.events.XMLEvent</li>
+  <li>javax.xml.stream.util.EventReaderDelegate</li>
+  <li>javax.xml.stream.util.StreamReaderDelegate</li>
+  <li>javax.xml.stream.util.XMLEventAllocator</li>
+  <li>javax.xml.stream.util.XMLEventConsumer</li>
+  <li>javax.xml.transform.ErrorListener</li>
+  <li>javax.xml.transform.OutputKeys</li>
+  <li>javax.xml.transform.Result</li>
+  <li>javax.xml.transform.Source</li>
+  <li>javax.xml.transform.SourceLocator</li>
+  <li>javax.xml.transform.Templates</li>
+  <li>javax.xml.transform.Transformer</li>
+  <li>javax.xml.transform.TransformerConfigurationException</li>
+  <li>javax.xml.transform.TransformerException</li>
+  <li>javax.xml.transform.TransformerFactory</li>
+  <li>javax.xml.transform.TransformerFactoryConfigurationError</li>
+  <li>javax.xml.transform.URIResolver</li>
+  <li>javax.xml.transform.dom.DOMLocator</li>
+  <li>javax.xml.transform.dom.DOMResult</li>
+  <li>javax.xml.transform.dom.DOMSource</li>
+  <li>javax.xml.transform.sax.SAXResult</li>
+  <li>javax.xml.transform.sax.SAXSource</li>
+  <li>javax.xml.transform.sax.SAXTransformerFactory</li>
+  <li>javax.xml.transform.sax.TemplatesHandler</li>
+  <li>javax.xml.transform.sax.TransformerHandler</li>
+  <li>javax.xml.transform.stream.StreamResult</li>
+  <li>javax.xml.transform.stream.StreamSource</li>
+  <li>javax.xml.validation.Schema</li>
+  <li>javax.xml.validation.SchemaFactory</li>
+  <li>javax.xml.validation.SchemaFactoryLoader</li>
+  <li>javax.xml.validation.TypeInfoProvider</li>
+  <li>javax.xml.validation.Validator</li>
+  <li>javax.xml.validation.ValidatorHandler</li>
+  <li>javax.xml.ws.Action</li>
+  <li>javax.xml.ws.AsyncHandler</li>
+  <li>javax.xml.ws.Binding</li>
+  <li>javax.xml.ws.BindingProvider</li>
+  <li>javax.xml.ws.BindingType</li>
+  <li>javax.xml.ws.Dispatch</li>
+  <li>javax.xml.ws.Endpoint</li>
+  <li>javax.xml.ws.EndpointReference</li>
+  <li>javax.xml.ws.FaultAction</li>
+  <li>javax.xml.ws.Holder</li>
+  <li>javax.xml.ws.LogicalMessage</li>
+  <li>javax.xml.ws.ProtocolException</li>
+  <li>javax.xml.ws.Provider</li>
+  <li>javax.xml.ws.RequestWrapper</li>
+  <li>javax.xml.ws.RespectBinding</li>
+  <li>javax.xml.ws.RespectBindingFeature</li>
+  <li>javax.xml.ws.Response</li>
+  <li>javax.xml.ws.ResponseWrapper</li>
+  <li>javax.xml.ws.Service</li>
+  <li>javax.xml.ws.ServiceMode</li>
+  <li>javax.xml.ws.WebEndpoint</li>
+  <li>javax.xml.ws.WebFault</li>
+  <li>javax.xml.ws.WebServiceClient</li>
+  <li>javax.xml.ws.WebServiceContext</li>
+  <li>javax.xml.ws.WebServiceException</li>
+  <li>javax.xml.ws.WebServiceFeature</li>
+  <li>javax.xml.ws.WebServicePermission</li>
+  <li>javax.xml.ws.WebServiceProvider</li>
+  <li>javax.xml.ws.WebServiceRef</li>
+  <li>javax.xml.ws.WebServiceRefs</li>
+  <li>javax.xml.ws.handler.Handler</li>
+  <li>javax.xml.ws.handler.HandlerResolver</li>
+  <li>javax.xml.ws.handler.LogicalHandler</li>
+  <li>javax.xml.ws.handler.LogicalMessageContext</li>
+  <li>javax.xml.ws.handler.MessageContext</li>
+  <li>javax.xml.ws.handler.MessageContext.Scope</li>
+  <li>javax.xml.ws.handler.PortInfo</li>
+  <li>javax.xml.ws.handler.soap.SOAPHandler</li>
+  <li>javax.xml.ws.handler.soap.SOAPMessageContext</li>
+  <li>javax.xml.ws.soap.Addressing</li>
+  <li>javax.xml.ws.soap.AddressingFeature</li>
+  <li>javax.xml.ws.soap.MTOM</li>
+  <li>javax.xml.ws.soap.MTOMFeature</li>
+  <li>javax.xml.ws.soap.SOAPBinding</li>
+  <li>javax.xml.ws.soap.SOAPFaultException</li>
+  <li>javax.xml.ws.spi.Provider</li>
+  <li>javax.xml.ws.spi.ServiceDelegate</li>
+  <li>javax.xml.ws.spi.WebServiceFeatureAnnotation</li>
+  <li>javax.xml.ws.wsaddressing.W3CEndpointReference</li>
+  <li>javax.xml.ws.wsaddressing.W3CEndpointReferenceBuilder</li>
+  <li>javax.xml.xpath.XPath</li>
+  <li>javax.xml.xpath.XPathConstants</li>
+  <li>javax.xml.xpath.XPathException</li>
+  <li>javax.xml.xpath.XPathExpression</li>
+  <li>javax.xml.xpath.XPathExpressionException</li>
+  <li>javax.xml.xpath.XPathFactory</li>
+  <li>javax.xml.xpath.XPathFactoryConfigurationException</li>
+  <li>javax.xml.xpath.XPathFunction</li>
+  <li>javax.xml.xpath.XPathFunctionException</li>
+  <li>javax.xml.xpath.XPathFunctionResolver</li>
+  <li>javax.xml.xpath.XPathVariableResolver</li>
+  <li>org.w3c.dom.Attr</li>
+  <li>org.w3c.dom.CDATASection</li>
+  <li>org.w3c.dom.CharacterData</li>
+  <li>org.w3c.dom.Comment</li>
+  <li>org.w3c.dom.DOMConfiguration</li>
+  <li>org.w3c.dom.DOMError</li>
+  <li>org.w3c.dom.DOMErrorHandler</li>
+  <li>org.w3c.dom.DOMException</li>
+  <li>org.w3c.dom.DOMImplementation</li>
+  <li>org.w3c.dom.DOMImplementationList</li>
+  <li>org.w3c.dom.DOMImplementationSource</li>
+  <li>org.w3c.dom.DOMLocator</li>
+  <li>org.w3c.dom.DOMStringList</li>
+  <li>org.w3c.dom.Document</li>
+  <li>org.w3c.dom.DocumentFragment</li>
+  <li>org.w3c.dom.DocumentType</li>
+  <li>org.w3c.dom.Element</li>
+  <li>org.w3c.dom.Entity</li>
+  <li>org.w3c.dom.EntityReference</li>
+  <li>org.w3c.dom.NameList</li>
+  <li>org.w3c.dom.NamedNodeMap</li>
+  <li>org.w3c.dom.Node</li>
+  <li>org.w3c.dom.NodeList</li>
+  <li>org.w3c.dom.Notation</li>
+  <li>org.w3c.dom.ProcessingInstruction</li>
+  <li>org.w3c.dom.Text</li>
+  <li>org.w3c.dom.TypeInfo</li>
+  <li>org.w3c.dom.UserDataHandler</li>
+  <li>org.w3c.dom.bootstrap.DOMImplementationRegistry</li>
+  <li>org.w3c.dom.css.CSS2Properties</li>
+  <li>org.w3c.dom.css.CSSCharsetRule</li>
+  <li>org.w3c.dom.css.CSSFontFaceRule</li>
+  <li>org.w3c.dom.css.CSSImportRule</li>
+  <li>org.w3c.dom.css.CSSMediaRule</li>
+  <li>org.w3c.dom.css.CSSPageRule</li>
+  <li>org.w3c.dom.css.CSSPrimitiveValue</li>
+  <li>org.w3c.dom.css.CSSRule</li>
+  <li>org.w3c.dom.css.CSSRuleList</li>
+  <li>org.w3c.dom.css.CSSStyleDeclaration</li>
+  <li>org.w3c.dom.css.CSSStyleRule</li>
+  <li>org.w3c.dom.css.CSSStyleSheet</li>
+  <li>org.w3c.dom.css.CSSUnknownRule</li>
+  <li>org.w3c.dom.css.CSSValue</li>
+  <li>org.w3c.dom.css.CSSValueList</li>
+  <li>org.w3c.dom.css.Counter</li>
+  <li>org.w3c.dom.css.DOMImplementationCSS</li>
+  <li>org.w3c.dom.css.DocumentCSS</li>
+  <li>org.w3c.dom.css.ElementCSSInlineStyle</li>
+  <li>org.w3c.dom.css.RGBColor</li>
+  <li>org.w3c.dom.css.Rect</li>
+  <li>org.w3c.dom.css.ViewCSS</li>
+  <li>org.w3c.dom.events.DocumentEvent</li>
+  <li>org.w3c.dom.events.Event</li>
+  <li>org.w3c.dom.events.EventException</li>
+  <li>org.w3c.dom.events.EventListener</li>
+  <li>org.w3c.dom.events.EventTarget</li>
+  <li>org.w3c.dom.events.MouseEvent</li>
+  <li>org.w3c.dom.events.MutationEvent</li>
+  <li>org.w3c.dom.events.UIEvent</li>
+  <li>org.w3c.dom.html.HTMLAnchorElement</li>
+  <li>org.w3c.dom.html.HTMLAppletElement</li>
+  <li>org.w3c.dom.html.HTMLAreaElement</li>
+  <li>org.w3c.dom.html.HTMLBRElement</li>
+  <li>org.w3c.dom.html.HTMLBaseElement</li>
+  <li>org.w3c.dom.html.HTMLBaseFontElement</li>
+  <li>org.w3c.dom.html.HTMLBodyElement</li>
+  <li>org.w3c.dom.html.HTMLButtonElement</li>
+  <li>org.w3c.dom.html.HTMLCollection</li>
+  <li>org.w3c.dom.html.HTMLDListElement</li>
+  <li>org.w3c.dom.html.HTMLDOMImplementation</li>
+  <li>org.w3c.dom.html.HTMLDirectoryElement</li>
+  <li>org.w3c.dom.html.HTMLDivElement</li>
+  <li>org.w3c.dom.html.HTMLDocument</li>
+  <li>org.w3c.dom.html.HTMLElement</li>
+  <li>org.w3c.dom.html.HTMLFieldSetElement</li>
+  <li>org.w3c.dom.html.HTMLFontElement</li>
+  <li>org.w3c.dom.html.HTMLFormElement</li>
+  <li>org.w3c.dom.html.HTMLFrameElement</li>
+  <li>org.w3c.dom.html.HTMLFrameSetElement</li>
+  <li>org.w3c.dom.html.HTMLHRElement</li>
+  <li>org.w3c.dom.html.HTMLHeadElement</li>
+  <li>org.w3c.dom.html.HTMLHeadingElement</li>
+  <li>org.w3c.dom.html.HTMLHtmlElement</li>
+  <li>org.w3c.dom.html.HTMLIFrameElement</li>
+  <li>org.w3c.dom.html.HTMLImageElement</li>
+  <li>org.w3c.dom.html.HTMLInputElement</li>
+  <li>org.w3c.dom.html.HTMLIsIndexElement</li>
+  <li>org.w3c.dom.html.HTMLLIElement</li>
+  <li>org.w3c.dom.html.HTMLLabelElement</li>
+  <li>org.w3c.dom.html.HTMLLegendElement</li>
+  <li>org.w3c.dom.html.HTMLLinkElement</li>
+  <li>org.w3c.dom.html.HTMLMapElement</li>
+  <li>org.w3c.dom.html.HTMLMenuElement</li>
+  <li>org.w3c.dom.html.HTMLMetaElement</li>
+  <li>org.w3c.dom.html.HTMLModElement</li>
+  <li>org.w3c.dom.html.HTMLOListElement</li>
+  <li>org.w3c.dom.html.HTMLObjectElement</li>
+  <li>org.w3c.dom.html.HTMLOptGroupElement</li>
+  <li>org.w3c.dom.html.HTMLOptionElement</li>
+  <li>org.w3c.dom.html.HTMLParagraphElement</li>
+  <li>org.w3c.dom.html.HTMLParamElement</li>
+  <li>org.w3c.dom.html.HTMLPreElement</li>
+  <li>org.w3c.dom.html.HTMLQuoteElement</li>
+  <li>org.w3c.dom.html.HTMLScriptElement</li>
+  <li>org.w3c.dom.html.HTMLSelectElement</li>
+  <li>org.w3c.dom.html.HTMLStyleElement</li>
+  <li>org.w3c.dom.html.HTMLTableCaptionElement</li>
+  <li>org.w3c.dom.html.HTMLTableCellElement</li>
+  <li>org.w3c.dom.html.HTMLTableColElement</li>
+  <li>org.w3c.dom.html.HTMLTableElement</li>
+  <li>org.w3c.dom.html.HTMLTableRowElement</li>
+  <li>org.w3c.dom.html.HTMLTableSectionElement</li>
+  <li>org.w3c.dom.html.HTMLTextAreaElement</li>
+  <li>org.w3c.dom.html.HTMLTitleElement</li>
+  <li>org.w3c.dom.html.HTMLUListElement</li>
+  <li>org.w3c.dom.ls.DOMImplementationLS</li>
+  <li>org.w3c.dom.ls.LSException</li>
+  <li>org.w3c.dom.ls.LSInput</li>
+  <li>org.w3c.dom.ls.LSLoadEvent</li>
+  <li>org.w3c.dom.ls.LSOutput</li>
+  <li>org.w3c.dom.ls.LSParser</li>
+  <li>org.w3c.dom.ls.LSParserFilter</li>
+  <li>org.w3c.dom.ls.LSProgressEvent</li>
+  <li>org.w3c.dom.ls.LSResourceResolver</li>
+  <li>org.w3c.dom.ls.LSSerializer</li>
+  <li>org.w3c.dom.ls.LSSerializerFilter</li>
+  <li>org.w3c.dom.ranges.DocumentRange</li>
+  <li>org.w3c.dom.ranges.Range</li>
+  <li>org.w3c.dom.ranges.RangeException</li>
+  <li>org.w3c.dom.stylesheets.DocumentStyle</li>
+  <li>org.w3c.dom.stylesheets.LinkStyle</li>
+  <li>org.w3c.dom.stylesheets.MediaList</li>
+  <li>org.w3c.dom.stylesheets.StyleSheet</li>
+  <li>org.w3c.dom.stylesheets.StyleSheetList</li>
+  <li>org.w3c.dom.traversal.DocumentTraversal</li>
+  <li>org.w3c.dom.traversal.NodeFilter</li>
+  <li>org.w3c.dom.traversal.NodeIterator</li>
+  <li>org.w3c.dom.traversal.TreeWalker</li>
+  <li>org.w3c.dom.views.AbstractView</li>
+  <li>org.w3c.dom.views.DocumentView</li>
+  <li>org.xml.sax.AttributeList</li>
+  <li>org.xml.sax.Attributes</li>
+  <li>org.xml.sax.ContentHandler</li>
+  <li>org.xml.sax.DTDHandler</li>
+  <li>org.xml.sax.DocumentHandler</li>
+  <li>org.xml.sax.EntityResolver</li>
+  <li>org.xml.sax.ErrorHandler</li>
+  <li>org.xml.sax.HandlerBase</li>
+  <li>org.xml.sax.InputSource</li>
+  <li>org.xml.sax.Locator</li>
+  <li>org.xml.sax.Parser</li>
+  <li>org.xml.sax.SAXException</li>
+  <li>org.xml.sax.SAXNotRecognizedException</li>
+  <li>org.xml.sax.SAXNotSupportedException</li>
+  <li>org.xml.sax.SAXParseException</li>
+  <li>org.xml.sax.XMLFilter</li>
+  <li>org.xml.sax.XMLReader</li>
+  <li>org.xml.sax.ext.Attributes2</li>
+  <li>org.xml.sax.ext.Attributes2Impl</li>
+  <li>org.xml.sax.ext.DeclHandler</li>
+  <li>org.xml.sax.ext.DefaultHandler2</li>
+  <li>org.xml.sax.ext.EntityResolver2</li>
+  <li>org.xml.sax.ext.LexicalHandler</li>
+  <li>org.xml.sax.ext.Locator2</li>
+  <li>org.xml.sax.ext.Locator2Impl</li>
+  <li>org.xml.sax.helpers.AttributeListImpl</li>
+  <li>org.xml.sax.helpers.AttributesImpl</li>
+  <li>org.xml.sax.helpers.DefaultHandler</li>
+  <li>org.xml.sax.helpers.LocatorImpl</li>
+  <li>org.xml.sax.helpers.NamespaceSupport</li>
+  <li>org.xml.sax.helpers.ParserAdapter</li>
+  <li>org.xml.sax.helpers.ParserFactory</li>
+  <li>org.xml.sax.helpers.XMLFilterImpl</li>
+  <li>org.xml.sax.helpers.XMLReaderAdapter</li>
+  <li>org.xml.sax.helpers.XMLReaderFactory</li>
+
+</ul>
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

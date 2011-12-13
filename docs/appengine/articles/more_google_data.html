@@ -1,0 +1,1508 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/more_google_data.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Using Google Data APIs on App Engine - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">Using Google Data APIs on App Engine</h1>
+
+
+<i>Jeff Scudder</i><br>
+<i>December 9, 2008</i>
+
+<div id="jd-content">
+<div class="jd-descr">
+
+
+<p>I'd like to expand on my earlier article entitled <a href="gdata.html">Retrieving Authenticated Google Data Feeds with Google App Engine</a> by exploring how your app can read,  write, and sync data to from <a href="http://code.google.com/apis/gdata">Google services</a>. For this article, I've written an app that allows you to invite your friends to events, like birthday parties! This app features integration with <a href="http://www.google.com/calendar">Google Calendar</a>, using the <a href="http://code.google.com/apis/calendar">Google Calendar Data API</a>.</p>
+
+<p>Once you have created an event, you can choose to add it to Google Calendar, and it will appear on your default calendar and the calendars of everyone who is invited. Once the event is associated with Google Calendar, any changes you make in the invitation app will be mirrored in Google Calendar.</p>
+
+<p>We'll explore this design in the following sections:</p>
+<ul>
+  <li><a href="#datastore_event">Creating an Event in the Datastore</a></li>
+  <li><a href="#list">Listing Events From the Datastore</a></li>
+  <li><a href="#gcal">Using the Google Calendar Data API</a></li>
+  <li><a href="#auth">Obtaining the User's Authorization</a></li>
+  <li><a href="#create">Creating an Event in Google Calendar</a></li>
+  <li><a href="#delete">Deleting Events</a></li>
+  <li><a href="#edit">Editing Events</a></li>
+  <li><a href="#ideas">Suggestions and Ideas</a></li>
+</ul>
+
+<h2 id="datastore_event">Creating an Event in the Datastore</h2>
+<p>We begin by creating a data model to store an event.</p>
+<pre class="prettyprint">from google.appengine.ext import db
+
+
+class Event(db.Model):
+    title = db.StringProperty(required=True)
+    description = db.TextProperty()
+    time = db.DateTimeProperty()
+    location = db.TextProperty()
+    creator = db.UserProperty()
+</pre>
+
+<p>And we need to track the attendees for each event, so we create an Attendee model:</p>
+<pre class="prettyprint">class Attendee(db.Model):
+    email = db.StringProperty()
+    event = db.ReferenceProperty(Event)
+</pre>
+
+<p>When one of our users wants to create an event, they fill out a form on the event creation page. The essential part of this form handler creates attendees and events and stores them in the datastore.</p>
+<pre class="prettyprint">import datetime
+from google.appengine.ext import webapp
+from google.appengine.ext.webapp.util import run_wsgi_app
+from google.appengine.api import users
+
+
+class CreateEvent(webapp.RequestHandler):
+    ...
+
+    def post(self):
+        # Create an event in the datastore.
+        new_event = Event(title=self.request.get('name'),
+                          creator=users.get_current_user(),
+                          # Take the time string passing in by JavaScript in the
+                          # form and convert to a datetime object.
+                          time=datetime.datetime.strptime(
+                              self.request.get('datetimestamp'), '%d/%m/%Y %H:%M'),
+                          description=self.request.get('description'),
+                          location=self.request.get('location'))
+        new_event.put()
+
+        # Associate each of the attendees with the event in the datastore.
+        attendee_list = []
+        if self.request.get('attendees'):
+            attendee_list = self.request.get('attendees').split(',')
+            if attendee_list:
+                for attendee in attendee_list:
+                    new_attendee = Attendee(email=attendee.strip(), event=new_event)
+                    new_attendee.put()
+      ...
+</pre>
+
+<h2 id="list">Listing Events From the Datastore</h2>
+<p>Now that the event is in the datastore, we can display a list of the events which a user has created or has been invited to attend. An HTTP GET request for the event list page will search for some of the users events:</p>
+
+<pre class="prettyprint">class EventsPage(webapp.RequestHandler):
+    def get(self):
+        """Displays the events the user has created or is invited to."""
+        # Find the events which were created by this user and those which the user
+        # is invited to.
+        invited_events = []
+        owned_events = []
+        ...
+
+        if users.get_current_user():t = Thread(target=threadproc)
+            t.start()
+            threads.append(t)
+            time.sleep(DELAY_BETWEEN_THREAD_START)
+            owned_query = Event.gql('WHERE creator = :1 ORDER BY time',
+                users.get_current_user())
+            owned_events = owned_query.fetch(5)
+
+            invited_query = Attendee.gql('WHERE email = :1',
+                users.get_current_user().email())
+            for invitation in invited_query.fetch(5):
+                invited_events.append(invitation.event)
+      ...
+</pre>
+<p>You can see in the above code that we request five events that the user has created and five to which they have been invited. To show more events, this app could add paging but paging is beyond the scope of this article, so we will leave it out for now.</p>
+<h2 id="gcal">Using the Google Calendar Data API</h2>
+<p>Now that we can create and display events, we can hook up our app to Google Calendar using the Google Calendar Data API. The data API allows us to create, edit, and delete events (as well as other things which we won't be using like creating calendars).</p>
+
+<p>In order for our app to modify the user's Google Calendar, the app needs to request their permission. If the user grants permission for this app to edit the user's calendar, our application will receive an <a href="http://code.google.com/apis/accounts/docs/AuthSub.html">AuthSub token</a> which will be included in requests to the Google Calendar API. All of this is handled for you by the <a href="http://code.google.com/p/gdata-python-client">Google Data Python Client library</a>.</p>
+
+<p>To use the <code>gdata-python-client</code> in your app, you'll need to copy the <code>atom</code> and <code>gdata</code> directories from this client package into the root directory of your app. The <code>atom</code> and <code>gdata</code> directories are found under <code>src</code>. Once those directories are included, you'll need to add the following imports to the app:</p>
+
+<pre class="prettyprint">import atom
+import gdata.service
+import gdata.auth
+import gdata.alt.appengine
+import gdata.calendar
+import gdata.calendar.service
+</pre>
+<h2 id="auth">Obtaining the User's Authorization</h2>
+
+<p>Now we are ready to ask the user to <a href="http://code.google.com/apis/accounts/docs/AuthSub.html#AuthProcess">authorize our app to access Google Calendar</a>. This will only need to be done the first time that the user tries to post to Google Calendar. The auth token which the app receives can be used over and over (until the user revokes it) so the app automatically stores the token in the datastore for future reuse.</p>
+
+<p>In this app, I've added the auth token management logic to the page which displays the user's events.</p>
+
+<p>If there is no auth token which belongs to this user, we create a token_request_url which the user must visit if they want to post to Google Calendar. Once the user visits this URL and grants the app access to their calendar, they are redirected back to this events list page.</p>
+
+<p>If the user has been redirected to this page after granting access, there will be an auth token in the page's URL, so we extract this token if it is present, upgrade it to a multi-use token, and store it in the datastore. For an explanation on the AuthSub protocol, tokens, and redirects, refer to the documentation for the <a href="http://code.google.com/apis/accounts/docs/AuthSub.html#AuthProcess">AuthSub authorization protocol</a>.</p>
+
+<pre class="prettyprint">class EventsPage(webapp.RequestHandler):
+
+    def __init__(self):
+        # Create a Google Calendar client to talk to the Google Calendar service.
+        self.calendar_client = gdata.calendar.service.CalendarService()
+        # Modify the client to search for auth tokens in the datastore and use
+        # urlfetch instead of httplib to make HTTP requests to Google Calendar.
+        gdata.alt.appengine.run_on_appengine(self.calendar_client)
+
+    def get(self):
+        """Displays the events the user has created or is invited to."""
+        # For brevity, left out the code from above which found events in the datastore.
+        ...
+        token_request_url = None
+
+        # Find an AuthSub token in the current URL if we arrived at this page from
+        # an AuthSub redirect.
+        auth_token = gdata.auth.extract_auth_sub_token_from_url(self.request.uri)
+        if auth_token:
+            self.calendar_client.SetAuthSubToken(
+                self.calendar_client.upgrade_to_session_token(auth_token))
+
+        # Check to see if the app has permission to write to the user's
+        # Google Calendar.
+        if not isinstance(self.calendar_client.token_store.find_token(
+                'http://www.google.com/calendar/feeds/'),
+                gdata.auth.AuthSubToken):
+            token_request_url = gdata.auth.generate_auth_sub_url(self.request.uri,
+               ('http://www.google.com/calendar/feeds/default/',))
+</pre>
+<h2 id="create">Creating an Event in Google Calendar</h2>
+<p>Now that the app has permission to access Google Calendar, we can create a Google Calendar event using the data for an event which the user has already created. The app will display a link to the event in Google Calendar once it is added, so we need to add a new property to our <code>Event</code> model to store the URL of the Google Calendar event.</p>
+
+<p>When the app edits a Google Calendar event, it needs to send the updated information to the event's edit URL. The edit URL has version information, so that the Google server can detect if someone has edited the entry since you last saw it. If you are updating from an outdated version of the Google Calendar event, the server will alert you. Since the app needs this edit URL to make changes to the event, we need to add a property to store it as well.</p>
+
+<p>The new event model for the app looks like this:</p>
+
+<pre class="prettyprint">class Event(db.Model):
+    title = db.StringProperty(required=True)
+    description = db.TextProperty()
+    time = db.DateTimeProperty()
+    location = db.TextProperty()
+    creator = db.UserProperty()
+    edit_link = db.TextProperty()
+    gcal_event_link = db.TextProperty()
+    gcal_event_xml = db.TextProperty()
+</pre>
+
+<p>Now that the app can save the links to edit the Google Calendar event and display it, we add a form handler to create a new event in Google Calendar.</p>
+
+<pre class="prettyprint">class EventsPage(webapp.RequestHandler):
+    ...
+
+    def post(self):
+        """Adds an event to Google Calendar."""
+        event_id = self.request.get('event_id')
+
+        # Fetch the event from the datastore and make sure that the current user
+        # is an owner since only event owners are allowed to create a calendar
+        # event.
+        event = Event.get_by_id(long(event_id))
+
+        if users.get_current_user() == event.creator:
+            # Create a new Google Calendar event.
+            event_entry = gdata.calendar.CalendarEventEntry()
+            event_entry.title = atom.Title(text=event.title)
+            event_entry.content = atom.Content(text=event.description)
+            start_time = '%s.000Z' % event.time.isoformat()
+            event_entry.when.append(gdata.calendar.When(start_time=start_time))
+            event_entry.where.append(
+                gdata.calendar.Where(value_string=event.location))
+            # Add a who element for each attendee.
+            attendee_list = event.attendee_set
+            if attendee_list:
+                for attendee in attendee_list:
+                  new_attendee = gdata.calendar.Who()
+                  new_attendee.email = attendee.email
+                  event_entry.who.append(new_attendee)
+
+            # Send the event information to Google Calendar and receive a
+            # Google Calendar event.
+            try:
+                cal_event = self.calendar_client.InsertEvent(event_entry,
+                    'http://www.google.com/calendar/feeds/default/private/full')
+                edit_link = cal_event.GetEditLink()
+                if edit_link and edit_link.href:
+                    # Add the edit link to the event to use for making changes.
+                    event.edit_link = edit_link.href
+                alternate_link = cal_event.GetHtmlLink()
+                if alternate_link and alternate_link.href:
+                    # Add a link to the event in the Google Calendar HTML web UI.
+                    event.gcal_event_link = alternate_link.href
+                    event.gcal_event_xml = str(cal_event)
+                event.put()
+            # If adding the event to Google Calendar failed due to a bad auth token,
+            # remove the user's auth tokens from the datastore so that they can
+            # request a new one.
+            except gdata.service.RequestError, request_exception:
+                request_error = request_exception[0]
+                if request_error['status'] == 401 or request_error['status'] == 403:
+                    gdata.alt.appengine.save_auth_tokens({})
+                # If the request failure was not due to a bad auth token, reraise the
+                # exception for handling elsewhere.
+                else:
+                    raise
+        else:
+            self.response.out.write('I\'m sorry, you don\'t have permission to add'
+                                    ' this event to Google Calendar.')
+</pre>
+<p>The app can now take an existing entry from the datastore, and create a corresponding Google Calendar event!</p>
+
+<p>Note the creation of the When element which uses a date format as described <a href="http://code.google.com/apis/gdata/elements.html#gdWhen">here</a>.</p>
+<h2 id="delete">Deleting Events</h2>
+<p>We can also allow the application to delete the Google Calendar event when the user chooses to delete their event in this app. The deletion handler will display a confirmation page and delete the event if the user posts by pressing the "yes" button.</p>
+
+<pre class="prettyprint">class DeleteEvent(webapp.RequestHandler):
+    def get(self):
+        event_id = self.request.get('event_id')
+        self.response.out.write('Are you sure?')
+        self.response.out.write('&lt;form action="/delete_event" method="post"&gt;'
+            '&lt;input name="event_id" value="%s" type="hidden"&gt;'
+            '&lt;input value="Yes, Delete this event." type="submit"&gt;&lt;/form&gt;' % (
+                event_id))
+
+    def post(self):
+        event_id = self.request.get('event_id')
+        if event_id:
+            event = Event.get_by_id(int(event_id))
+            if event and users.get_current_user() == event.creator:
+                # Create a Google Calendar client to use the Google Calendar service.
+                calendar_client = gdata.calendar.service.CalendarService()
+                # Modify the client to search for auth tokens in the datastore and use
+                # urlfetch instead of httplib to make HTTP requests to Google Calendar.
+                gdata.alt.appengine.run_on_appengine(calendar_client)
+                # If we have an edit link, delete the event from Google Calendar.
+                if event.edit_link:
+                    calendar_client.DeleteEvent(str(event.edit_link))
+                # Delete the event object from the datastore.
+                event.delete()
+        self.response.out.write('Deleted %s' % event_id)
+</pre>
+<h2 id="edit">Editing Events</h2>
+<p>In the same way we can copy any changes made to the event entity over to the Google Calendar event.</p>
+
+<p>The application has an edit page which allows a user to change the details of an event which they own. If the event has been added to Google Calendar, we should update the Google Calendar event as well.</p>
+
+<pre class="prettyprint">class EditEvent(webapp.RequestHandler):
+    ...
+
+    def post(self):
+        """Changes the details of an event and updates Google Calendar."""
+        ...
+        event_id = self.request.get('event_id')
+        if event_id:
+            event = Event.get_by_id(int(event_id))
+            if event and users.get_current_user() == event.creator:
+                calendar_client = gdata.calendar.service.CalendarService()
+                gdata.alt.appengine.run_on_appengine(calendar_client)
+                # If this Event is in Google Calendar, send an update to Google Calendar
+                if event.edit_link and event.gcal_event_xml:
+                    # Reconstruct the Calendar entry, and update the information.
+                    cal_event = gdata.calendar.CalendarEventEntryFromString(
+                        str(event.gcal_event_xml))
+                    # Modify the event's Google Calendar entry
+                    cal_event.title = atom.Title(text=self.request.get('name'))
+                    cal_event.content = atom.Content(text=self.request.get('description'))
+                    start_time = '%s.000Z' % datetime.datetime.strptime(
+                        self.request.get('datetimestamp'), '%d/%m/%Y %H:%M').isoformat()
+                    cal_event.when = [gdata.calendar.When(start_time=start_time)]
+                    cal_event.where = [gdata.calendar.Where(
+                        value_string=self.request.get('location'))]
+                    # Add a who element for each attendee.
+                    if self.request.get('attendees'):
+                        attendee_list = self.request.get('attendees').split(',')
+                        if attendee_list:
+                            cal_event.who = []
+                            for attendee in attendee_list:
+                                cal_event.who.append(gdata.calendar.Who(email=attendee))
+                    # Send the updated Google Calendar entry to the Google server.
+                    try:
+                        updated_entry = calendar_client.UpdateEvent(str(event.edit_link),
+                                                                    cal_event)
+                        # Change the properties of the Event object.
+                        event.edit_link = updated_entry.GetEditLink().href
+                        event.gcal_event_xml = str(updated_entry)
+                        event.title = self.request.get('name')
+                        event.time = datetime.datetime.strptime(
+                            self.request.get('datetimestamp'), '%d/%m/%Y %H:%M')
+                        event.description = self.request.get('description')
+                        event.location = self.request.get('location')
+                        event.put()
+                        self.response.out.write('Done')
+                        # Continued below.
+      ...
+</pre>
+
+<p>In the above, the app assumes that the datastore contains the most recent version of the Google Calendar entry. However, it is possible that the event has been changed in Google Calendar so we risk overwriting changes with our edit form.</p>
+
+<p>Google Calendar has a <a href="http://code.google.com/apis/gdata/docs/1.0/reference.html#Optimistic-concurrency">mechanism</a> in place to prevent silently overwriting new data from a stale entry (as do other Google Data APIs.) If Google Calendar detects that we are using an outdated versison of the data, the server will send a 409 Conflict message. The HTTP 409 response code is defined in <a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html">RFC 2616</a> as:<blockquote>The request could not be completed due to a conflict with the current state of the resource. This code is only allowed in situations where it is expected that the user might be able to resolve the conflict and resubmit the request. The response body SHOULD include enough information for the user to recognize the source of the conflict. Ideally, the response entity would include enough information for the user or user agent to fix the problem;...</blockquote></p>
+
+<p>When the client library sees a 409 Conflict message, the client raises an exception which we can catch and update the event with fresh data from Google Calendar.</p>
+
+<p>When an editing conflict arises, this app will update the event in the datastore to hold that latest values from Google Calendar, and the user will need to re-edit the event. Now they will see the most recent information when editing the event.</p>
+
+<pre class="prettyprint">                   except gdata.service.RequestError, request_exception:
+                      request_error = request_exception[0]
+                      # If the update failed because someone changed the Google Calendar
+                      # event since creation, update the event and ask the user to
+                      # repeat the edit.
+                      if request_error['status'] == 409:
+                          # Get the updated event information from Google Calendar.
+                          updated_entry = gdata.calendar.CalendarEventEntryFromString(
+                              request_error['body'])
+                          # Change the properties of the Event object so that the next edit
+                          # will begin with the new values.
+                          event.edit_link = updated_entry.GetEditLink().href
+                          event.gcal_event_xml = request_error['body']
+                          event.title = updated_entry.title.text
+                          event.description = updated_entry.content.text
+                          event.location = updated_entry.where[0].value_string
+                          # Edit time and attendees
+                          ...
+                          event.put()
+                          self.response.out.write('Could not update because the event '
+                                                  'has been edited in Google Calendar. '
+                                                  'Event details have now been updated '
+                                                  'with the latest values from Google '
+                                                  'Calendar. Try again.')
+                      # If the request failure was not due to an optimistic concurrency
+                      # conflict reraise exception for handling elsewhere.
+                      else:
+                          raise
+    ...
+</pre>
+
+<p>You may choose to use a different approach than the above, as you are free to handle these edit conflict errors however you like.</p>
+
+<p>We could also reduce the chances of such a conflict by periodically checking our events to see if there have been any updated made in Google Calendar. The app could check the events when they are being displayed to see if there is a Calendar entry associated with the event, and check to see if there have been any modifications since the last saved version.</p>
+<h2 id="ideas">Suggestions and Ideas</h2>
+<p>In this article I've shown integrating with one Google Data service, but there are a host of Google Data APIs available and your app can use any and all of these at once. For example, our event invitation app could also modify a Google Spreadsheet which lists all of a users events. It could post on the user's blog using the Blogger API to promote an event which they have just created. Or, it could read a list of the user's contacts using the Google Contacts API to give them a list of people to pick from when inviting attendees.</p>
+
+<p>For an example of a similar application, see: <a href="http://gdata-samples-calendar-contacts.appspot.com/">gdata-samples-calendar-contacts.appspot.com</a></p>
+</div></div>
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

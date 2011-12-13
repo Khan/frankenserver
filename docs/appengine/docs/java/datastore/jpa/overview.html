@@ -1,0 +1,1551 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/java/datastore/jpa/overview.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Using JPA with App Engine - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../../../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../../../downloads.html">Downloads</a></li>
+  <li><a href="../../../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../../../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../../../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../../gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../../gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../../gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../../gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../../gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../../gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../../gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../../gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../../gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../../../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../../../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../../../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../../../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../../../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../../../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../../../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../../../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../../../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../../overview.html">Overview</a></li>
+    <li><a href="../../runtime.html">Servlet Environment</a></li>
+    <li><a href="../../backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../backends/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../index.html">Storing Data</a>
+      <ul>
+            <li><a href="../overview.html">Overview</a></li>
+    <li><a href="../entities.html">Entities</a></li>
+    <li><a href="../queries.html">Queries</a></li>
+    <li><a href="../transactions.html">Transactions</a></li>
+    <li><a href="../hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../stats.html">Statistics</a></li>
+    <li><a href="../async.html">Async API</a></li>
+    <li><a href="../callbacks.html">Callbacks</a></li>
+    <li><a href="../jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../jdo/overview.html">Overview</a></li>
+    <li><a href="../jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="index.html">JPA</a>
+      <ul>
+            <li><a href="overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../apis.html">Services</a>
+      <ul>
+        <li><a href="../../appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../appidentity/overview.html">Overview</a></li>
+
+<li><a href="../../javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../googlestorage/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../capabilities/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../conversion/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../channel/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../../channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../images/index.html">Images</a>
+          <ul>
+                <li><a href="../../images/overview.html">Overview</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../../mail/overview.html">Overview</a></li>
+    <li><a href="../../mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../../mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../../memcache/overview.html">Overview</a></li>
+    <li><a href="../../memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../../oauth/overview.html">Overview</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../../javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../../taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../../javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../../taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../../urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../../urlfetch/overview.html">Overview</a></li>
+    <li><a href="../../urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../users/index.html">Users</a>
+          <ul>
+                <li><a href="../../users/overview.html">Overview</a></li>
+    <li><a href="../../javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../xmpp/overview.html">Overview</a></li>
+     <li><a href="../../javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../../jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../../config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../../config/appconfig.html">App Config</a></li>
+    <li><a href="../../config/backends.html">Backends Config</a></li>
+    <li><a href="../../config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../../configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../../configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../../configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../../configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../../configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../../configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../../tools/devserver.html">Development Server</a></li>
+    <li><a href="../../tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../../tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../../tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../../tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../../tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../../tools/appstats.html">Appstats</a></li>
+    <li><a href="../../tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../../../python/overview.html">Overview</a></li>
+    <li><a href="../../../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../../../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../../../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../../../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../../../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../../../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../../../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../../../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../../../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../../../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../../../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../../../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../../../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../../../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../../../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../../../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../../../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../../../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../../../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../../../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../../../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../../../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../../../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../../../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../../../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../../../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../../../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../../../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../../../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../../../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../../../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../../../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../../../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../../../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../../../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../../../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../../../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../../../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../../../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../../../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../../../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../../../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../../../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../../../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../../../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/channel/functions.html">Functions</a></li>
+    <li><a href="../../../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../../../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../../../python/images/overview.html">Overview</a></li>
+     <li><a href="../../../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../../../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/images/imageclass.html">Image</a></li>
+         <li><a href="../../../python/images/functions.html">Functions</a></li>
+         <li><a href="../../../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../../python/mail/overview.html">Overview</a></li>
+     <li><a href="../../../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../../../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../../../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../../../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../../../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../../../python/mail/functions.html">Functions</a></li>
+         <li><a href="../../../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../../../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../../../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../../../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../../../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../../../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../../../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../../../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../../../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../../../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../../../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../../../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../../../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../../../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../../../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../../../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../../../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../../../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../../python/users/overview.html">Overview</a></li>
+     <li><a href="../../../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../../../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../../../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/users/userclass.html">User</a></li>
+         <li><a href="../../../python/users/functions.html">Functions</a></li>
+         <li><a href="../../../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../../../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../../../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../../../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../../../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../../../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../../../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../../../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../../../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../../../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../../../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../../../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../../../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../../../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../../../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../../../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../../../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../../../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../../../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../../../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../../../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../../../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../../../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../../../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../../../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../../../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../../../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../../../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../../../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../../../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../../../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../../../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../../../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../../../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../../../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../../../go/overview.html">Overview</a></li>
+    <li><a href="../../../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../../../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../../../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../../go/backends/overview.html">Overview</a></li>
+<li><a href="../../../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../../../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../../../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../../../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../../../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../../../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../../../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../../go/channel/overview.html">Overview</a></li>
+<li><a href="../../../go/channel/reference.html">Reference</a></li>
+<li><a href="../../../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../../go/mail/overview.html">Overview</a></li>
+     <li><a href="../../../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../../../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../../../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../../../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../../go/users/overview.html">Overview</a></li>
+     <li><a href="../../../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../../../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../../../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../../../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../../../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../../../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../../../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../../../adminconsole/instances.html">Instances</a></li>
+<li><a href="../../../adminconsole/roles.html">Roles</a></li>
+<li><a href="../../../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../../../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../../../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../../quotas.html">Quotas</a></li>
+      <li><a href="../../../billing.html">Billing</a></li>
+      <li><a href="../../../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../../../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../../../kb/index.html">FAQ</a></li>
+      <li><a href="../../../../articles/index.html">Articles</a></li>
+      <li><a href="../../../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../../../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../../../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Using JPA with App Engine</h1>
+
+
+
+<p>Java Persistence API (JPA) is a standard interface for storing objects containing data into a relational database. The standard defines interfaces for annotating Java objects, retrieving objects using queries, and interacting with a database using transactions. An application that uses the JPA interface can work with different databases without using any vendor-specific database code. JPA simplifies porting your application between different database vendors.</p>
+
+<p>The App Engine Java SDK includes an implementation of JPA 1.0 for the App Engine datastore. The implementation is based on DataNucleus Access Platform. JPA presents a standard interface for interacting with relational databases, but the App Engine datastore is not a relational database. As a result, there are features of JPA that the App Engine implementation simply cannot support. We have done our best to call attention to these features wherever possible.</p>
+
+<p>See <a href="http://www.datanucleus.org/products/accessplatform_1_1/index.html">the Access Platform 1.1 documentation</a> for more information about JPA. In particular, see <a href="http://www.datanucleus.org/products/accessplatform_1_1/jpa/index.html">"JPA Mapping"</a> and <a href="http://www.datanucleus.org/products/accessplatform_1_1/jpa/api.html">"JPA API"</a>.</p>
+
+
+<p class="note"><strong>Note:</strong> The instructions on this page apply to version 1.0 of the App Engine DataNucleus plugin. They also generally apply to version 2.0 of the plugin, which supports DataNucleus v3.x with the differences listed under <a href="#Using_or_Migrating_to_DataNucleus_2.0">Using or Migrating to DataNucleus Plugin 2.0</a>.</p>
+
+<ul>
+  <li><a href="#Setting_Up_JPA">Setting Up JPA</a></li>
+  <li><a href="#Enhancing_Data_Classes">Enhancing Data Classes</a></li>
+  <li><a href="#Getting_an_EntityManager_Instance">Getting an EntityManager Instance</a></li>
+  <li><a href="#Class_and_Field_Annotations">Class and Field Annotations</a></li>
+  <li><a href="#Inheritance">Inheritance</a></li>
+  <li><a href="#Unsupported_Features_of_JPA">Unsupported Features of JPA</a></li>
+  <li><a href="#Using_or_Migrating_to_DataNucleus_2.0">Using or Migrating to GAE DataNucleus Plugin 2.0</a></li>
+</ul>
+
+<h2 id="Setting_Up_JPA">Setting Up JPA</h2>
+
+<p>To use JPA to access the datastore, an App Engine app needs the following:</p>
+
+<ul>
+  <li>The JPA and datastore JARs must be in the app's <code>war/WEB-INF/lib/</code> directory.</li>
+  <li>A configuration file named <code>persistence.xml</code> must be in the app's <code>war/WEB-INF/classes/META-INF/</code> directory, with configuration that tells JPA to use the App Engine datastore.</li>
+  <li>The project's build process must perform a post-compilation "enhancement" step on the compiled data classes to associate them with the JPA implementation.</li>
+</ul>
+
+<p>If you are using <a href="../../tools/eclipse.html">the Google Plugin for Eclipse</a>, the first and third items are taken care of for you. The new project wizard puts the JPA and datastore JARs in the correct location and the build process performs the "enhancement" step automatically. You must still manually create <code>persistence.xml</code> and put it in <code>war/WEB-INF/classes/META-INF/</code>. The plugin will be updated soon to do this automatically as well.</p>
+
+<p>If you are using Apache Ant to build your project, you can use an Ant task included with the SDK to perform the enhancement step. You must copy the JARs and create the configuration file when you set up your project. See <a href="../../tools/ant.html">Using Apache Ant</a> for more information about the Ant task.</p>
+
+<h3>Copying the JARs</h3>
+
+<p>The JPA and datastore JARs are included with the App Engine Java SDK. You can find them in the <code>appengine-java-sdk/lib/user/orm/</code> directory.</p>
+
+<p>Copy the JARs to your application's <code>war/WEB-INF/lib/</code> directory.</p>
+
+<p>Make sure the <code>appengine-api.jar</code> is also in the <code>war/WEB-INF/lib/</code> directory. (You may have already copied this when creating your project.)  The App Engine DataNucleus plugin uses this JAR to access the datastore.</p>
+
+<h3>Creating the persistence.xml File</h3>
+
+<p>The JPA interface needs a configuration file named <code>persistence.xml</code> in the application's <code>war/WEB-INF/classes/META-INF/</code> directory. You can create this file in this location directly, or have your build process copy this file from a source directory.</p>
+
+<p>Create the file with the following contents:</p>
+
+<pre class="prettyprint">
+&lt;?xml version="1.0" encoding="UTF-8" ?&gt;
+&lt;persistence xmlns="http://java.sun.com/xml/ns/persistence"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+        http://java.sun.com/xml/ns/persistence/persistence_1_0.xsd" version="1.0"&gt;
+
+    &lt;persistence-unit name="transactions-optional"&gt;
+        &lt;provider&gt;org.datanucleus.store.appengine.jpa.DatastorePersistenceProvider&lt;/provider&gt;
+        &lt;properties&gt;
+            &lt;property name="datanucleus.NontransactionalRead" value="true"/&gt;
+            &lt;property name="datanucleus.NontransactionalWrite" value="true"/&gt;
+            &lt;property name="datanucleus.ConnectionURL" value="appengine"/&gt;
+        &lt;/properties&gt;
+    &lt;/persistence-unit&gt;
+
+&lt;/persistence&gt;
+</pre>
+
+<h3>Setting the Read Policy and Datastore Call Deadline</h3>
+
+<p>As described in the <a href="../queries.html#Setting_the_Read_Policy_and_Datastore_Call_Deadline">Queries documentation</a>, you can set the read policy (strong consistency vs. eventual consistency) and the datastore call deadline for a <code>EntityManagerFactory</code> in the <code>persistence.xml</code> file. These settings go in the <code>&lt;persistence-unit&gt;</code> element. All calls made with a given <code>EntityManager</code> instance use the configuration selected when the manager was created by the <code>EntityManagerFactory</code>. You can also override these options for an individual <code>Query</code> (described below).</p>
+
+<p>To set the read policy, include a property named <code>datanucleus.appengine.datastoreReadConsistency</code>. Its possible values are <code>EVENTUAL</code> (for reads with eventual consistency) and <code>STRONG</code> (for reads with strong consistency). If not specified, the default is <code>STRONG</code>.</p>
+
+<pre class="prettyprint">
+            &lt;property name="datanucleus.appengine.datastoreReadConsistency" value="EVENTUAL" /&gt;
+</pre>
+
+<p>You can set separate datastore call deadlines for reads and for writes. For reads, use the JPA standard property <code>javax.persistence.query.timeout</code>. For writes, use <code>datanucleus.datastoreWriteTimeout</code>. The value is an amount of time, in milliseconds.</p>
+
+<pre class="prettyprint">
+            &lt;property name="javax.persistence.query.timeout" value="5000" /&gt;
+            &lt;property name="datanucleus.datastoreWriteTimeout" value="10000" /&gt;
+</pre>
+
+<p>You can have multiple <code>&lt;persistence-unit&gt;</code> elements in the same <code>persistence.xml</code> file, using different <code>name</code> attributes, to use <code>EntityManager</code> instances with different configurations in the same app. For example, the following <code>persistence.xml</code> file establishes two sets of configuration, one named <code>"transactions-optional"</code> and another named <code>"eventual-reads-short-deadlines"</code>:</p>
+
+<pre class="prettyprint">
+&lt;?xml version="1.0" encoding="UTF-8" ?&gt;
+&lt;persistence xmlns="http://java.sun.com/xml/ns/persistence"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence
+        http://java.sun.com/xml/ns/persistence/persistence_1_0.xsd" version="1.0"&gt;
+
+    &lt;persistence-unit name="transactions-optional"&gt;
+        &lt;provider&gt;org.datanucleus.store.appengine.jpa.DatastorePersistenceProvider&lt;/provider&gt;
+        &lt;properties&gt;
+            &lt;property name="datanucleus.NontransactionalRead" value="true"/&gt;
+            &lt;property name="datanucleus.NontransactionalWrite" value="true"/&gt;
+            &lt;property name="datanucleus.ConnectionURL" value="appengine"/&gt;
+        &lt;/properties&gt;
+    &lt;/persistence-unit&gt;
+
+    &lt;persistence-unit name="eventual-reads-short-deadlines"&gt;
+        &lt;provider&gt;org.datanucleus.store.appengine.jpa.DatastorePersistenceProvider&lt;/provider&gt;
+        &lt;properties&gt;
+            &lt;property name="datanucleus.NontransactionalRead" value="true"/&gt;
+            &lt;property name="datanucleus.NontransactionalWrite" value="true"/&gt;
+            &lt;property name="datanucleus.ConnectionURL" value="appengine"/&gt;
+
+            &lt;property name="datanucleus.appengine.datastoreReadConsistency" value="EVENTUAL" /&gt;
+            &lt;property name="javax.persistence.query.timeout" value="5000" /&gt;
+            &lt;property name="datanucleus.datastoreWriteTimeout" value="10000" /&gt;
+        &lt;/properties&gt;
+    &lt;/persistence-unit&gt;
+&lt;/persistence&gt;
+</pre>
+<p>For more information, please refer to the <a href="../queries.html#Setting_the_Read_Policy_and_Datastore_Call_Deadline">Queries documentation</a>.</p>
+
+<p>See <a href="#Getting_an_EntityManager_Instance">Getting an EntityManager Instance</a> below for information on creating an <code>EntityManager</code> with a named configuration set.</p>
+
+<p>You can override the read policy and call deadline for an individual <code>Query</code> object. To override the read policy for a <code>Query</code>, call its <code>setHint()</code> method as follows:</p>
+
+<pre class="prettyprint">
+        Query q = em.createQuery("select from " + Book.class.getName());
+        q.setHint("datanucleus.appengine.datastoreReadConsistency", "EVENTUAL");
+</pre>
+
+<p>As above, the possible values are <code>"EVENTUAL"</code> and <code>"STRONG"</code>.</p>
+
+<p>To override the read timeout, call <code>setHint()</code> as follows:</p>
+
+<pre class="prettyprint">
+        q.setHint("javax.persistence.query.timeout", 3000);
+</pre>
+
+<p>There is no way to override the configuration for these options when you fetch entities by key.</p>
+
+
+<h2 id="Enhancing_Data_Classes">Enhancing Data Classes</h2>
+
+<p>The DataNucleus implementation of JPA uses a post-compilation "enhancement" step in the build process to associate data classes with the JPA implementation.</p>
+
+<p>If you are using Apache Ant, the SDK includes an Ant task to perform this step. See <a href="../../tools/ant.html">Using Apache Ant</a> for more information on using the Ant task.</p>
+
+<p>You can perform the enhancement step on compiled classes from the command line with the following command:</p>
+
+<pre>java -cp <i>classpath</i> org.datanucleus.enhancer.DataNucleusEnhancer <i>class-files</i></pre>
+
+<p>The <i>classpath</i> must contain the JARs <code>datanucleus-core-*.jar</code>, <code>datanucleus-jpa-*</code>, <code>datanucleus-enhancer-*.jar</code>, <code>asm-*.jar</code>, and <code>geronimo-jpa-*.jar</code> (where <code>*</code> is the appropriate version number of each JAR) from the <code>appengine-java-sdk/lib/tools/</code> directory, as well as all of your data classes.</p>
+
+<p>For more information on the DataNucleus bytecode enhancer, see <a href="http://www.datanucleus.org/products/accessplatform/enhancer.html">the DataNucleus documentation</a>.</p>
+
+
+<h2 id="Getting_an_EntityManager_Instance">Getting an EntityManager Instance</h2>
+
+<p>An app interacts with JPA using an instance of the EntityManager class. You get this instance by instantiating and calling a method on an instance of the EntityManagerFactory class. The factory uses the JPA configuration (identified by the name <code>"transactions-optional"</code>) to create EntityManager instances.</p>
+
+<p>Because an EntityManagerFactory instance takes time to initialize, it's a good idea to reuse a single instance as much as possible. An easy way to do this is to create a singleton wrapper class with a static instance, as follows:</p>
+
+<p><code><b>EMF.java</b></code></p>
+<pre class="prettyprint">
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+
+public final class EMF {
+    private static final EntityManagerFactory emfInstance =
+        Persistence.createEntityManagerFactory("transactions-optional");
+
+    private EMF() {}
+
+    public static EntityManagerFactory get() {
+        return emfInstance;
+    }
+}
+</pre>
+
+<p class="note"><b>Tip:</b> <code>"transactions-optional"</code> refers to the name of the configuration set in the <code>persistence.xml</code> file. If your app uses multiple configuration sets, you'll have to extend this code to call <code>Persistence.createEntityManagerFactory()</code> as desired. Your code should cache a singleton instance of each <code>EntityManagerFactory</code>.</p>
+
+<p>The app uses the factory instance to create one EntityManager instance for each request that accesses the datastore.</p>
+
+<pre class="prettyprint">
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+
+import EMF;
+
+// ...
+    EntityManager em = EMF.get().createEntityManager();
+</pre>
+
+<p>You use the EntityManager to store, update, and delete data objects, and to perform datastore queries.</p>
+
+<p>When you are done with the EntityManager instance, you must call its <code>close()</code> method. It is an error to use the EntityManager instance after calling its <code>close()</code> method.</p>
+
+<pre class="prettyprint">
+    try {
+        // ... do stuff with em ...
+    } finally {
+        em.close();
+    }
+</pre>
+
+
+<h2 id="Class_and_Field_Annotations">Class and Field Annotations</h2>
+
+<p>Each object saved by JPA becomes an entity in the App Engine datastore. The entity's kind is derived from the simple name of the class (without the package name). Each persistent field of the class represents a property of the entity, with the name of the property equal to the name of the field (with case preserved).</p>
+
+<p>To declare a Java class as capable of being stored and retrieved from the datastore with JPA, give the class a <code>@Entity</code> annotation. For example:</p>
+
+<pre class="prettyprint">
+import javax.persistence.Entity;
+
+@Entity
+public class Employee {
+    // ...
+}
+</pre>
+
+<p>Fields of the data class that are to be stored in the datastore must either be of a type that is persisted by default or expliclty declared as persistent. You can find a chart detailing JPA default persistence behavior on <a href="http://www.datanucleus.org/products/accessplatform_1_1/jpa/types.html">the DataNucleus website</a>. To explicitly declare a field as persistent, you give it an <code>@Basic</code> annotation:</p>
+
+<pre class="prettyprint">
+import java.util.Date;
+import javax.persistence.Enumerated;
+
+import com.google.appengine.api.datastore.ShortBlob;
+
+// ...
+    @Basic
+    private ShortBlob data;
+</pre>
+
+<p>The type of a field can be any of the following:</p>
+
+<ul>
+  <li>one of the core types supported by the datastore</li>
+  <li>a Collection (such as a <code>java.util.List&lt;...&gt;</code>) of values of a core datastore type</li>
+  <li>an instance or Collection of instances of a <code>@Entity</code> class</li>
+  <li>an embedded class, stored as properties on the entity</li>
+</ul>
+
+<p>A data class must have a public or protected default constructor and one field dedicated to storing the primary key of the corresponding datastore entity. You can choose between four different kinds of key fields, each using a different value type and annotations. (See <a href="../jdo/creatinggettinganddeletingdata.html#Keys">Creating Data: Keys</a> for more information.)  The simplest key field is a long integer value that is automatically populated by JPA with a value unique across all other instances of the class when the object is saved to the datastore for the first time. Long integer keys use a <code>@Id</code> annotation, and a <code>@GeneratedValue(strategy = GenerationType.IDENTITY)</code> annotation:</p>
+
+<pre class="prettyprint">
+import com.google.appengine.api.datastore.Key;
+
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+// ...
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Key key;
+</pre>
+
+<p>Here is an example data class:</p>
+
+<pre class="prettyprint">
+import com.google.appengine.api.datastore.Key;
+
+import java.util.Date;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+
+@Entity
+public class Employee {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Key key;
+
+    private String firstName;
+
+    private String lastName;
+
+    private Date hireDate;
+
+    // Accessors for the fields. JPA doesn't use these, but your application does.
+
+    public Key getKey() {
+        return key;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    } 
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    } 
+
+    public String getLastName() {
+        return lastName;
+    } 
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    } 
+
+    public String getHireDate() {
+        return hireDate;
+    } 
+    public void setHireDate(Date hireDate) {
+        this.hireDate = hireDate;
+    } 
+}
+</pre>
+
+<h2 id="Inheritance">Inheritance</h2>
+
+<p>JPA supports creating data classes that use inheritance. Before we talk about how JPA inheritance works on App Engine, we recommend you read <a href="http://www.datanucleus.org/products/accessplatform/jpa/orm/inheritance.html">the DataNucleus documentation</a> on this subject and then come back. Done?  Ok. JPA inheritance on App Engine works as described in the DataNucleus documentation with some additional restrictions. We'll discuss these restrictions and then give some concrete examples.</p>
+
+<p>The "JOINED" inheritance strategy allows you to split the data for a single data object across multiple "tables," but since the App Engine datastore does not support joins, operating on a data object with this inheritance strategy  requires a remote procedure call for each level of inheritance. This is potentially very inefficient, so the "JOINED" inheritance strategy is not supported on data classes.</p>
+
+<p>Second, the "SINGLE_TABLE" inheritance strategy allows you to store the data for a data object in a single "table" associated with the persistent class at the root of your inheritance hierarchy. Although there are no inherent inefficiencies in this strategy, it is not currently supported. We may revisit this in future releases.</p>
+
+<p>Now the good news: The "TABLE_PER_CLASS" and "MAPPED_SUPERCLASS" strategies work as described in the DataNucleus documentation. Let's look at an example:</p>
+
+<p><b><code>Worker.java</code></b></p>
+<pre class="prettyprint">
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.MappedSuperclass;
+
+@Entity
+@MappedSuperclass
+public abstract class Worker {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Key key;
+
+    private String department;
+}
+</pre>
+
+<p><b><code>Employee.java</code></b></p>
+<pre class="prettyprint">
+// ... imports ...
+
+@Entity
+public class Employee extends Worker {
+    private int salary;
+}
+</pre>
+
+<p><b><code>Intern.java</code></b></p>
+<pre class="prettyprint">
+import java.util.Date;
+// ... imports ...
+
+@Entity
+public class Intern extends Worker {
+    private Date internshipEndDate;
+}
+</pre>
+
+<p>In this example we've added an <code>@MappedSuperclass</code> annotation to the <code>Worker</code> class declaration. This tells JPA to store all persistent fields of the <code>Worker</code> in the datastore entities of its subclasses. The datastore entity created as the result of calling <code>persist()</code> with an <code>Employee</code> instance will have two properties named "department" and "salary". The datastore entity created as the result of calling <code>persist()</code> with an <code>Intern</code> instance will have two properties named "department" and "inernshipEndDate". There will not be any entities of kind "Worker" in the datastore.</p>
+
+<p>Now let's make things a little more interesting. Suppose, in addition to having <code>Employee</code> and <code>Intern</code>, we also want a specialization of <code>Employee</code> that describes employees who have left the company:</p>
+
+<p><b><code>FormerEmployee.java</code></b></p>
+<pre class="prettyprint">
+import java.util.Date;
+import javax.persistence.Inheritance;
+import javax.persistence.InheritanceType;
+// ... imports ...
+
+@Entity
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+public class FormerEmployee extends Employee {
+    private Date lastDay;
+}
+</pre>
+
+<p>In this example we've added an <code>@Inheritance</code> annotation to the <code>FormerEmployee</code> class declaration with its <code>strategy</code> attribute set to <code>InheritanceType.TABLE_PER_CLASS</code>. This tells JPA to store all persistent fields of the <code>FormerEmployee</code> and its superclasses in datastore entities corresponding to <code>FormerEmployee</code> instances. The datastore entity created as the result of calling <code>persist()</code> with an <code>FormerEmployee</code> instance will have three properties named "department", "salary", and "lastDay". There will never be an entity of kind "Employee" that corresponds to a <code>FormerEmployee</code>, but if you call <code>persist()</code> with a object whose runtime type is <code>Employee</code> you will create an entity of kind "Employee</code>.</p>
+
+<p>Mixing relationships with inheritance works so long as the declared types of your relationship fields match the runtime types of the objects you are assigning to those fields. Please refer to the section on <a href="../jdo/relationships.html#Polymorphic_Relationships">Polymorphic Relationships</a> for more information. This section contains JDO examples, but the concepts and the restrictions are the same for JPA.
+
+<h2 id="Unsupported_Features_of_JPA">Unsupported Features of JPA</h2>
+
+<p>The following features of the JPA interface are not supported by the App Engine implementation:</p>
+
+<ul class="doublespace">
+  <li>Owned many-to-many relationships, and unowned relationships. You can implement unowned relationships using explicit Key values, though type checking is not enforced in the API.</li>
+  <li>"Join" queries. You cannot use a field of a child entity in a filter when performing a query on the parent kind. Note that you can test the parent's relationship field directly in a query using a key.</li>
+  <li>Aggregation queries (group by, having, sum, avg, max, min)</li>
+  <li>Polymorphic queries. You cannot perform a query of a class to get instances of a subclass. Each class is represented by a separate entity kind in the datastore.</li>
+</ul>
+
+
+<h2 id="Using_or_Migrating_to_DataNucleus_2.0">Using or Migrating to DataNucleus Plugin 2.0</h2>
+<p class="warning"><strong>Warning:</strong> App Engine DataNucleus plugin 2.0 uses DataNucleus v3.x. This new plugin is not a drop-in replacement for the previous plugin. If you rebuild an application using version 2.0 of the plugin, that may require you to update and retest your code.</p>
+
+<p>App Engine DataNucleus plugin 2.0 has the following differences from version 1.0:</p>
+
+<ul>
+<li>JPA "persistence provider" is now <code>org.datanucleus.api.jpa.PersistenceProviderImpl</code>.</li>
+<li>Level2 Caching is enabled by default. To get the previous default behavior, set the persistence property <code>datanucleus.cache.level2.type</code> to <em>none</em>. (Alternatively include the datanucleus-cache plugin in the classpath, and set the persistence property <code>datanucleus.cache.level2.type</code> to <em>javax.cache</em> to use Memcache for L2 caching.</li>
+<li>Datastore <code>IdentifierFactory</code> now defaults to <em>datanucleus2</em>. To get the previous behavior, set the persistence property <code>datanucleus.identifierFactory</code> to <em>datanucleus1</em>.</li>
+<li>Non-transactional calls to <code>EntityManager.persist()</code>, <code>EntityManager.merge()</code>, and <code>EntityManager.remove()</code> are now executed atomically. (Previously, execution occurred at the next transaction or upon <code>EntityManager.close()</code>.</li>
+
+<li>JPA has <code>retainValues</code> enabled, which means the values of loaded fields are retained in objects after a commit.</li>
+
+<li><code>javax.persistence.query.chunkSize</code> is no longer used. Use <code>datanucleus.query.fetchSize</code> instead.</li>
+
+<li>There is now no longer an exception on duplicate EMF allocation. If you have the persistence property <code>datanucleus.singletonEMFForName</code> set to <em>true</em>, then it will return the currently allocated singleton EMF for that name.</li>
+
+<li>Primary Keys can now also be of type <code>long</code>.</li>
+
+<li>Unowned relations are now supported.</li>
+
+<li>Datastore Identity is now supported.</li>
+</ul>
+
+<p>You can download App Engine DataNucleus plugin 2.0 at the <a href="http://code.google.com/p/datanucleus-appengine/downloads/list">datanucleus-appengine</a> downloads page.</p> 
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

@@ -1,0 +1,1471 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/java/prospectivesearch/overview.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Prospective Search Overview (Java) - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../../downloads.html">Downloads</a></li>
+  <li><a href="../../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../overview.html">Overview</a></li>
+    <li><a href="../runtime.html">Servlet Environment</a></li>
+    <li><a href="../backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../backends/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../datastore/overview.html">Overview</a></li>
+    <li><a href="../datastore/entities.html">Entities</a></li>
+    <li><a href="../datastore/queries.html">Queries</a></li>
+    <li><a href="../datastore/transactions.html">Transactions</a></li>
+    <li><a href="../datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../datastore/stats.html">Statistics</a></li>
+    <li><a href="../datastore/async.html">Async API</a></li>
+    <li><a href="../datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../apis.html">Services</a>
+      <ul>
+        <li><a href="../appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../appidentity/overview.html">Overview</a></li>
+
+<li><a href="../javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../googlestorage/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../capabilities/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../conversion/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../channel/overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../images/index.html">Images</a>
+          <ul>
+                <li><a href="../images/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../mail/overview.html">Overview</a></li>
+    <li><a href="../mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../memcache/overview.html">Overview</a></li>
+    <li><a href="../memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../multitenancy/overview.html">Overview</a></li>
+    <li><a href="../multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../oauth/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="index.html">Prospective Search</a>
+          <ul>
+            <li><a href="overview.html">Overview</a></li>
+<li><a href="../javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../taskqueue/overview.html">Overview</a></li>
+     <li><a href="../taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../urlfetch/overview.html">Overview</a></li>
+    <li><a href="../urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../users/index.html">Users</a>
+          <ul>
+                <li><a href="../users/overview.html">Overview</a></li>
+    <li><a href="../javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../xmpp/overview.html">Overview</a></li>
+     <li><a href="../javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../config/appconfig.html">App Config</a></li>
+    <li><a href="../config/backends.html">Backends Config</a></li>
+    <li><a href="../config/indexconfig.html">Index Config</a></li>
+    <li><a href="../config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../config/queue.html">Task Queue Config</a></li>
+    <li><a href="../config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../tools/devserver.html">Development Server</a></li>
+    <li><a href="../tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../tools/appstats.html">Appstats</a></li>
+    <li><a href="../tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../../python/overview.html">Overview</a></li>
+    <li><a href="../../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/channel/functions.html">Functions</a></li>
+    <li><a href="../../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../../python/images/overview.html">Overview</a></li>
+     <li><a href="../../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/images/imageclass.html">Image</a></li>
+         <li><a href="../../python/images/functions.html">Functions</a></li>
+         <li><a href="../../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../python/mail/overview.html">Overview</a></li>
+     <li><a href="../../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../../python/mail/functions.html">Functions</a></li>
+         <li><a href="../../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../python/users/overview.html">Overview</a></li>
+     <li><a href="../../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/users/userclass.html">User</a></li>
+         <li><a href="../../python/users/functions.html">Functions</a></li>
+         <li><a href="../../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../../go/overview.html">Overview</a></li>
+    <li><a href="../../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../go/backends/overview.html">Overview</a></li>
+<li><a href="../../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../go/channel/overview.html">Overview</a></li>
+<li><a href="../../go/channel/reference.html">Reference</a></li>
+<li><a href="../../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../go/mail/overview.html">Overview</a></li>
+     <li><a href="../../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../go/users/overview.html">Overview</a></li>
+     <li><a href="../../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../../adminconsole/instances.html">Instances</a></li>
+<li><a href="../../adminconsole/roles.html">Roles</a></li>
+<li><a href="../../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../quotas.html">Quotas</a></li>
+      <li><a href="../../billing.html">Billing</a></li>
+      <li><a href="../../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../../kb/index.html">FAQ</a></li>
+      <li><a href="../../../articles/index.html">Articles</a></li>
+      <li><a href="../../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Prospective Search Overview (Java)</h1>
+
+
+
+
+
+<div class="special">
+<h4>Experimental!</h4>
+<p>Prospective Search is an experimental, innovative, and rapidly changing new feature for App Engine. Unfortunately, being on the bleeding edge means that we may make backwards-incompatible changes to Prospective Search. We will inform the community once Prospective Search is no longer experimental.</p>
+</div>
+
+
+
+
+<ul>
+  <li><a href="#Overview">Overview</a></li>
+  <li><a href="#Using_Prospective_Search">Using Prospective Search</a></li>
+  <li><a href="#Topics_and_Result_Keys">Topics and Result Keys</a></li>
+  <li><a href="#Creating_Documents">Creating Documents</a></li>
+  <li><a href="#Supported_Types_in_dbModel">Supported Types in db.Model</a></li>
+  <li><a href="#Query_Language_Overview">Query Language Overview</a>
+    <ul>
+      <li><a href="#Simple_Queries">Simple Queries</a></li>
+      <li><a href="#Queries_on_Fields">Queries on Fields</a></li>
+      <li><a href="#Boolean_Operators_and_Grouping">Boolean Operators and Grouping</a></li>
+      <li><a href="#Numeric_Operators">Numeric Operators</a></li>
+    </ul>
+  </li>
+  
+  <li><a href="#Handling_Matches">Handling Matches</a>
+    <ul>
+      <li><a href="#Receiving_Match_Responses">Receiving Match Responses</a></li>
+    </ul>
+  </li>
+  <li><a href="#Development_Server">Development Server</a></li>
+  
+  
+   </ul>
+  </li>
+</ul>
+
+<h2 id="Overview">Overview</h2>
+
+<p>Prospective search is a querying service that allows your application to match search queries against real-time data streams. For every document presented, prospective search returns the ID of every registered query that matches the document. </p>
+
+<p>Prospective search allows you to register a large set of queries and simultaneously match the queries against a single document. It is particularly useful for applications that process streaming data, for example:</p>
+
+<ul>
+  <li>Applications that match against all the updates on a social networking service, or against high-frequency comments in a chat room. </li>
+  <li>Applications that process data sources that provide notification, monitoring, or filtering services.</li>
+</ul>
+
+<p>To understand prospective search, it's helpful to compare it to the
+conventional retrospective search model. In a retrospective search application,
+such as Google search, the application must build, or have access to, an index
+of the data to be searched. Needing to pre-index the data makes it difficult and
+expensive to create real-time applications, because each query must be executed
+separately against a potentially large index.</p>
+
+<p>In a prospective search application, such as <a href="http://www.google.com/alerts">Google Alerts</a>, you register search queries and match them against new documents in real time, as the documents are inserted into your application. This allows you to create applications that efficiently monitor incoming live data. You are not limited to using existing, indexed data.</p>
+
+<p>Applications often use both retrospective and prospective search capabilities to get the best of both worlds. For example, an application can use retrospective search to find matching documents indexed in the past while using prospective search to find matching documents as soon as they arrive.</p>
+
+<h2 id="Using_Prospective_Search">Using Prospective Search</h2>
+
+<p>The life of a typical prospective search application looks something like this:</p>
+
+<ol>
+  <li>You decide on the appropriate <a href="#Creating_Documents">document schema</a>. Your choice will depend on the type of source data that the application is designed to handle.</li>
+  <li>The application uses the <a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#subscribe(java.lang.String, java.lang.String, long, java.lang.String, java.util.Map)">subscribe()</a> call to register query subscriptions with prospective search using the <a href="#Query_Language_Overview">query language</a>.</li>
+  <li>The application converts items in the streaming source data into <em>documents</em>, which are instances of Entity or subclasses. Subclasses are not required (or even typical for this use in Java).</li>
+  <li>The application uses the <a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#match(com.google.appengine.api.datastore.Entity, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, boolean)">match()</a> call to present documents to prospective search for matching against subscribed queries.</li>
+  <li>Prospective search returns matching subscription IDs and documents in the task queue. These results are subject to the usual <a href="../../quotas.html">Quotas and Limits</a>.</li>
+</ol>
+
+<p>Here's a summary of the essential function calls:</p>
+
+<table>
+  <tr>
+    <th>Function</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#getSubscription(java.lang.String, java.lang.String)">getSubscription()</a></td>
+    <td><p>Returns information about a single subscription such as the state, the query, the expiration time, and the subscription ID.</p></td>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#listSubscriptions(java.lang.String, java.lang.String, int, long)">listSubscriptions()</a></td>
+    <td>Returns information about a specified number of subscriptions, such as the state, the query, the expiration time, and the subscription ID.</td>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#listTopics(java.lang.String, long)">listTopics()</a></td>
+    <td><p>Lists all topics currently in existence.</p></td>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#match(com.google.appengine.api.datastore.Entity, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, boolean)">match()</a></td>
+    <td><p>Matches all subscriptions within a topic. Returns results in the Task Queue rather than returning them directly, to ensure that the application can scale.</p></td>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html">subscribe()</a></td>
+    <td><p>Registers subscriptions made up of a subscription ID and a query for a given topic. Expect a delay of a few seconds between when <code>subscribe()</code> returns successfully and when the subscription becomes registered and active. A successful subscribe call guarantees that the subscription will eventually be registered.</p></td>
+  </tr>
+  <tr>
+    <td><a href="../javadoc/com/google/appengine/api/prospectivesearch/ProspectiveSearchService.html#unsubscribe(java.lang.String, java.lang.String)">unsubscribe()</a></td>
+    <td><p>Removes a subscription.</p></td>
+  </tr>
+</table>
+
+<p class="note"><strong>Note:</strong> Subscriptions may not serve immediately after the <code>subscribe()</code> call. Once the subscription has an OK status, it is guaranteed to serve. Typically, the delay is within a couple of seconds. Check the status with <code>getSubscription()</code> or <code>listSubscriptions()</code>.</p>
+
+<h2 id="Topics_and_Result_Keys">Topics and Result Keys</h2>
+
+<p>Prospective search applications may match queries against one or more streams of documents. Developers separate streams of documents by assigning a unique topic to documents they want grouped together and matched against a given set of queries. Generally, developers assign the same topic to documents of the same schema or format, but this convention is not enforced.</p>
+
+<p>Topics are not defined as a separate step; instead, topics are created as a side effect of the <code>subscribe()</code> call. As soon as a new topic is passed to <code>subscribe()</code>, the topic exists. As soon as the last subscription using a given topic is deleted, the topic ceases to exist.</p>
+
+<p>Documents are assigned to a particular topic when calling <code>match()</code>. 
+
+
+<p>Use <code>listTopics()</code> to list all topics that currently exist.</p>
+
+<p>You may also specify a <code>resultKey</code> argument in the <code>match()</code> call that is returned with the matching results. A <code>resultKey</code> can be useful if you know, for example, that returned documents are too large for the task queue. In this case, you can choose to store the documents in a database and use the identifying <code>resultKey</code> to retrieve them later.</p>
+
+
+<h2 id="Creating_Documents">Creating Documents</h2>
+
+
+
+
+<p>Classes of type <a href="../javadoc/com/google/appengine/api/datastore/Entity.html">com.google.appengine.api.datastore.Entity</a> or its subclasses are used to represent data to be matched against subscribed queries:</p>
+
+<pre class="prettyprint">
+Entity comment = new Entity("comment", "example");
+
+comment.setProperty("author", "Rose Jones");
+
+// Use Text to store long strings in the datastore.
+String bodyStr = "A rose by any other name would smell as sweet.";
+comment.setProperty("body", new Text(bodyStr));
+comment.setProperty("length", bodyStr.length());
+
+List&lt;String&gt; labels = list("poetry", "trite");
+comment.setProperty("labels", labels);
+</pre>
+
+<p>Unlike the Python API, document types are not used to automatically infer topic names: you need to explicitly specify topic names to the match call.</p>
+
+<h2 id="Supported_Types_for_Entity_Property_Values">Supported Types for Entity Property Values</h2>
+
+<p>Prospective Search accepts the following Entity property values:</p>
+
+<ul>
+  <li><code>java.lang.Boolean</code></li>
+  <li><code>java.lang.Double</code></li>
+  <li><code>java.lang.Integer</code></li>
+  <li><code>java.lang.String</code></li>
+  <li><code>com.google.appengine.api.datastore.Text</code></li>
+</ul>
+
+<p>Prospective search also supports properties with <code>java.util.List</code> collections of the above types. Conditions on list properties check all values in the list and match any matching value in the list.</p>
+
+<p class="note"><strong>Note:</strong> Integer values are not automatically  widened to double values during matching. In particular, if the subscription schema specifies that a field X is a double, a subsequent match of an entity with field X set to an integer type will not be considered for matching against the subscribed query.</p>
+
+
+<h2 id="Query_Language_Overview">Query Language Overview</h2>
+
+<p>Prospective search uses a simple query language allowing you to query the contents of a document's fields. This query language supports numeric and text expressions and uses a <code>field:value</code> syntax. The <em>field</em> identifies the name of a property defined as part of the <code>Entity</code> or derived document class. The <em>value</em> defines the query on the specified field&mdash;a string or numerical value. </p>
+
+<p>Prospective search supports all space-delimited languages. Prospective search supports some languages not segmented by spaces (specifically, Chinese, Japanese, Korean, and Thai). For these languages, prospective search segments the text automatically.</p>
+
+<h3 id="Simple_Queries">Simple Queries</h3>
+
+<p>The simplest type of query consists only of a string or text type <em>value</em>. The <em>value</em> can be a word or phrase to be matched against any supported string or text fields in the document. Queries are not case sensitive.</p>
+
+<p>For example, to find all documents with the word "rose" (regardless of case) in any string or text field in the document, use a query like the following:</p>
+
+<pre>
+rose
+</pre>
+
+<p>This simple query matches against any supported string or text field in the document. If your documents are "Comments" as defined in the <a href="#Creating_Documents">Creating Documents</a> section, the query matches if the word "rose" appears in the <em>author</em> or <em>body</em> fields. If the schema defines additional string or text fields, such as a <em>subject</em> or <em>email</em>, <code>rose</code> also matches the contents of those fields.</p>
+
+<p>To match a phrase, surround the query in quotes as follows:</p>
+
+<pre>
+&quot;any other name&quot;
+</pre>
+
+<p class="note"><strong>Note:</strong> Queries built with the <em>value</em> by itself <strong>only</strong> match against string or text type fields.</p>
+
+<h3 id="Queries_on_Fields">Queries on Fields</h3>
+
+<p>To create more complex queries that reference specific fields, use both the <em>field</em> and <em>value</em> in your query. Use a colon to delineate the two as follows:</p>
+
+<pre>
+field:value
+</pre>
+
+<p>This syntax allows you to reference any supported field defined in a schema by name. For example, to search for "Rose" only within the <em>author</em> field of a comment document as defined in <a href="#Creating_Documents">Creating Documents</a>, use the following query:</p>
+
+<pre>
+author:rose
+</pre>
+
+<p>To search the <em>body</em> field for the phrase "any other name", use the following query:</p>
+
+<pre>
+body:"any other name"
+</pre>
+
+<p>To match against multiple fields at the same time, list a series of <code>field:value</code> pairs together with a space between them as follows:</p>
+
+<pre>
+author:"Rose Jones" body:rose
+</pre>
+
+<h3 id="Boolean_Operators_and_Grouping">Boolean Operators and Grouping</h3>
+
+<p>The query language supports a number of Boolean operators as well as parentheses for grouping parts of the query together. The supported Boolean operators are <code>AND</code>, <code>OR</code>, and <code>NOT</code>. Always use uppercase for Boolean operators. Lowercase words are treated as part of the <em>field</em> or <em>value</em> portions of the query.</p>
+
+<p>By default, when you create queries that match multiple fields at the same time, each <code>value</code> is combined with a Boolean <code>AND</code>. For the query as a whole to match, all the specified values must match.</p>
+
+<p>You can also explicitly specify this by using the <code>AND</code> Boolean operator. The following two queries are equivalent:</p>
+
+<pre>
+author:rose body:"any other name"
+author:rose AND body:"any other name"
+</pre>
+
+<p>Use the <code>OR</code> operator if you only want to know if any of the two values matches. You can use more than one OR in a query. For example:</p>
+
+<pre>
+author:("bob" OR ("rose" OR "tom") AND "jones")
+</pre>
+
+<p>This example matches any document whose <code>author</code> field contains either "Rose Jones", "Tom Jones", or "Bob".</p>
+
+<p>For an example of Boolean <code>NOT</code>, see the following:</p>
+
+<pre>
+author:rose NOT body:filligree</pre>
+
+<p>This example matches any document whose <code>author</code> field contains "rose" but whose <code>body</code> field does not contain "filligree".</p>
+
+<p>Use parentheses to create more complex queries combining supported Boolean operators.</p>
+
+<p>For example:</p>
+
+<pre>
+(author:Thomas OR author:Jones) AND (NOT body:rose)
+</pre>
+
+<p>This example matches documents with author "Thomas" or "Jones" only if the <code>body</code> field of the comment does not contain "rose".</p>
+
+<h3 id="Numeric_Operators">Numeric Operators</h3>
+
+<p>Numeric operators only match against numeric fields. Supported numeric operators are as follows:</p>
+
+<pre>
+&lt;
+&gt;
+&lt;=
+&gt;=
+=
+</pre>
+
+<p>For "not equal to", use the Boolean NOT with a numeric field name such as <code>length</code>. For example:</p>
+
+<pre>NOT length = 15</pre>
+
+<p>This example returns documents whose <code>length</code> is not 15.</p>
+
+<p>You can combine numeric operators with text and Boolean operators. For example: </p>
+
+<pre>
+author:"Rose Jones" length > 15
+</pre>
+
+<p>This query matches comments whose <code>body</code> field is longer than 15 characters in length and whose <code>author</code> field is "Rose Jones".</p>
+
+
+<h2 id="Handling_Matches">Handling Matches</h2>
+
+<p>Match notifications are delivered to the TaskQueue that was specified during subscription.</p>
+
+<p>The callback contains repeated <code>id</code> parameters, one for each matching subscription.  The value of the parameter is the subscription ID of a matching subscription.</p>
+
+<p>If the number of matching subscriptions exceeds the batch size specified in the match request, multiple callbacks covering the entire set of subscription IDs will be enqueued.  Two request parameters, <code>results_offset</code> and <code>results_count</code>, will be set to indicate which part of the result set each callback contains.</p>
+
+<p>For an example of how to handle these callbacks, see the handler in the Prospective Search demo at: <code>com.google.appengine.demos.prospectivesearch.MatchResponseServlet</code>.
+
+
+<h3 id="Receiving_Match_Responses">Receiving Match Responses</h3>
+<p>To receive the resulting matching subscription ids, define a servlet-mapping:</p>
+
+<pre class="prettyprint">
+  &lt;servlet&gt;
+    &lt;servlet-name&gt;matches&lt;/servlet-name&gt;
+    &lt;servlet-class&gt;
+      com.google.appengine.demos.prospectivesearch.MatchResponseServlet
+    &lt;/servlet-class&gt;
+  &lt;/servlet&gt;
+  &lt;servlet-mapping&gt;
+    &lt;servlet-name&gt;matches&lt;/servlet-name&gt;
+    &lt;url-pattern&gt;/_ah/prospective_search&lt;/url-pattern&gt;
+  &lt;/servlet-mapping&gt;
+</pre>
+
+<p>In MatchResponseServlet you can access parameters of the POST request which includes the matching subscription IDs and the document sent for matching:</p>
+
+<pre class="prettyprint">
+class MatchResponseServlet extends HttpServlet {
+  /**                                                                                                                           
+   * Handle Prospective Search match callbacks.                                                                                 
+   */
+  @Override
+  public void doPost(final HttpServletRequest req, final HttpServletResponse rsp)
+    throws ServletException, IOException {
+    int resultsOffset = Integer.parseInt(req.getParameter("results_offset"));
+    int resultsCount = Integer.parseInt(req.getParameter("results_count"));
+    String [] reqSubIDs = req.getParameterValues("id");
+    // Optional inclusion of matched entity if requested in original match(...) request:
+    Entity matchedEntity = null;
+    if (req.hasParameter("document")) {
+      matchedEntity =
+        ProspectiveSearchServiceFactory.getProspectiveSearchService().getDocument(req);
+    }
+
+    // Do something based on match...
+  }
+}</pre>
+
+<h2 id="Development_Server">Development Server</h2>
+
+<p>The local Prospective Search implementation stores subscriptions in the local datastore. By default, modifications to subscriptions are persisted directly after calls to subscribe or unsubscribe or when triggered by subscription expiration. This behavior can be disabled and re-enabled with the boolean system property <code>prospectivesearch.autocommit</code>. This is useful for fast batch creation or modification of subscription state.</p>
+
+
+
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

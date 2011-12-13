@@ -1,0 +1,1807 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/revision_history.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Revision History - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="java/overview.html">Overview</a></li>
+    <li><a href="java/runtime.html">Servlet Environment</a></li>
+    <li><a href="java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="java/backends/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="java/datastore/overview.html">Overview</a></li>
+    <li><a href="java/datastore/entities.html">Entities</a></li>
+    <li><a href="java/datastore/queries.html">Queries</a></li>
+    <li><a href="java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="java/datastore/stats.html">Statistics</a></li>
+    <li><a href="java/datastore/async.html">Async API</a></li>
+    <li><a href="java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/apis.html">Services</a>
+      <ul>
+        <li><a href="java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="java/googlestorage/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="java/capabilities/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="java/conversion/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="java/channel/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/images/index.html">Images</a>
+          <ul>
+                <li><a href="java/images/overview.html">Overview</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="java/mail/overview.html">Overview</a></li>
+    <li><a href="java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="java/memcache/overview.html">Overview</a></li>
+    <li><a href="java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="java/oauth/overview.html">Overview</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/users/index.html">Users</a>
+          <ul>
+                <li><a href="java/users/overview.html">Overview</a></li>
+    <li><a href="java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="java/xmpp/overview.html">Overview</a></li>
+     <li><a href="java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="java/config/appconfig.html">App Config</a></li>
+    <li><a href="java/config/backends.html">Backends Config</a></li>
+    <li><a href="java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="java/tools/devserver.html">Development Server</a></li>
+    <li><a href="java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="java/tools/appstats.html">Appstats</a></li>
+    <li><a href="java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="python/overview.html">Overview</a></li>
+    <li><a href="python/runtime.html">Runtime Environment</a></li>
+    <li><a href="python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="python/datastore/entities.html">Entities</a></li>
+      <li><a href="python/datastore/queries.html">Queries</a></li>
+      <li><a href="python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="python/datastore/stats.html">Statistics</a></li>
+      <li><a href="python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="python/datastore/modelclass.html">Model</a></li>
+          <li><a href="python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="python/datastore/queryclass.html">Query</a></li>
+          <li><a href="python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="python/datastore/keyclass.html">Key</a></li>
+          <li><a href="python/datastore/functions.html">Functions</a></li>
+          <li><a href="python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="python/apis.html">Services</a>
+      <ul>
+        <li><a href="python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/appidentity/functions.html">Functions</a></li>
+    <li><a href="python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="python/blobstore/functions.html">Functions</a></li>
+    <li><a href="python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="python/conversion/functions.html">Functions</a></li>
+    <li><a href="python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/channel/functions.html">Functions</a></li>
+    <li><a href="python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="python/images/overview.html">Overview</a></li>
+     <li><a href="python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/images/imageclass.html">Image</a></li>
+         <li><a href="python/images/functions.html">Functions</a></li>
+         <li><a href="python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="python/mail/overview.html">Overview</a></li>
+     <li><a href="python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="python/mail/attachments.html">Attachments</a></li>
+     <li><a href="python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="python/mail/functions.html">Functions</a></li>
+         <li><a href="python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="python/memcache/overview.html">Overview</a></li>
+      <li><a href="python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/memcache/clientclass.html">Client</a></li>
+         <li><a href="python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/oauth/functions.html">Functions</a></li>
+         <li><a href="python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="python/googlestorage/overview.html">Overview</a></li>
+<li><a href="python/googlestorage/functions.html">Functions</a></li>
+<li><a href="python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="python/users/overview.html">Overview</a></li>
+     <li><a href="python/users/userobjects.html">User Objects</a></li>
+     <li><a href="python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/users/userclass.html">User</a></li>
+         <li><a href="python/users/functions.html">Functions</a></li>
+         <li><a href="python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/xmpp/functions.html">Functions</a></li>
+         <li><a href="python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="python/config/appconfig.html">App Config</a></li>
+    <li><a href="python/config/backends.html">Backends Config</a></li>
+    <li><a href="python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="python/tools/devserver.html">Development Server</a></li>
+    <li><a href="python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="python/tools/appstats.html">Appstats</a></li>
+    <li><a href="python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="go/overview.html">Overview</a></li>
+    <li><a href="go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="go/backends/overview.html">Overview</a></li>
+<li><a href="go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="go/datastore/overview.html">Overview</a></li>
+     <li><a href="go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="go/apis.html">Services</a>
+      <ul>
+        <li><a href="go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="go/blobstore/overview.html">Overview</a></li>
+<li><a href="go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="go/capabilities/overview.html">Overview</a></li>
+<li><a href="go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="go/channel/overview.html">Overview</a></li>
+<li><a href="go/channel/reference.html">Reference</a></li>
+<li><a href="go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="go/mail/overview.html">Overview</a></li>
+     <li><a href="go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="go/memcache/overview.html">Overview</a></li>
+     <li><a href="go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="go/users/overview.html">Overview</a></li>
+     <li><a href="go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="go/config/appconfig.html">App Config</a></li>
+    <li><a href="go/config/backends.html">Backends Config</a></li>
+    <li><a href="go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="go/tools/devserver.html">Development Server</a></li>
+    <li><a href="go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="adminconsole/instances.html">Instances</a></li>
+<li><a href="adminconsole/roles.html">Roles</a></li>
+<li><a href="adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="quotas.html">Quotas</a></li>
+      <li><a href="billing.html">Billing</a></li>
+      <li><a href="premier/index.html">Premier Accounts</a></li>
+      <li><a href="domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="../articles/index.html">Articles</a></li>
+      <li><a href="videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Revision History</h1>
+
+
+
+<p>The documentation for Google App Engine available on this website is revised regularly.  This page describes notable changes made to the documentation.</p>
+
+<p>For information about changes to the App Engine API, the runtime environment, or the SDK, see <a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">the release notes</a>.</p>
+
+<p><b>2011-05-10</b></p>
+<ul>
+  <li>App Engine 1.5.0 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>New Default Datastore: App Engine now uses the High Replication datastore by default.</li>
+  <li>New Runtime! App Engine now supports several services implemented in the <a href="http://golang.org">Go programming language</a>.</li>
+  <li>New Feature: App Engine Backends allow you to run larger jobs on configurable instances.</li>
+  <li>New Feature: Pull Queues allow you to lease tasks from within your app or from code outside your app using the Task Queue REST API.</li>
+  <li>New Feature: Asynchronous Datastore API for Python allows you to make parallel, non-blocking calls to the datastore and to retrieve the results of these calls at a later point in the handling of the request.</li>
+  <li>Updated several quotas.</li>
+</ul>
+
+<p><b>2011-03-30</b></p>
+<ul>
+  <li>App Engine 1.4.3 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>New feature: Prospective Search API. Prospective Search allows your application to match a large number of queries over a stream of input documents.</li>
+  <li>New feature: Java Remote API. The Java SDK includes a library called Remote API that lets you transparently access App Engine services from any Java application.</li>
+  <li>New feature: New unit testing capabilities for Python.</li>
+  <li>New feature: Java support for concurrent requests.</li>
+  <li>New feature: Deferred API for Java uses Java serialization to packagea unit of work into the task queue.</li>
+  <li>New feature: Blobstore writing allows you to programmatically write blobs to the blobstore.</li>
+  <li>New docs for an existing feature: We now provide documentation of roles in the admin console.</li>
+  <li>Bug fixes: Fixed documentation issues related to inconsistent parameter naming, missing or incorrect quotas, broken code samples, broken links, and more.</li> 
+</ul>
+
+<p><b>2011-02-10</b></p>
+<ul>
+  <li>App Engine 1.4.2 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>New feature: Capabilities API. The Capabilities API allows you to detect when an App Engine capability is unavailable, so you can avoid latency in your application.</li>
+  <li>New feature: XMPP v2. The XMPP service provides new methods to handle presence and send the application's chat status.</li>
+  <li>New feature: You can now clear tasks from the task queue programmatically.</li>
+  <li>New feature: Task Queue configuration includes a new parameter allowing you to limit the number of tasks being performed in a queue at a given time.</li>
+  <li>New feature: <code>app.yaml</code> includes a <code>deferred</code> builtin handler that allows developers to simplify the creation of task queue tasks.</li>
+  <li>New feature: The Java SDK supports vacuum indexes.</li>
+  <li>New feature: The low-level Memcache API includes additional functions for the Memcache service.</li>
+  <li>New feature: URL Fetch includes a new method allowing you to validate certificates.</li>
+  <li>New feature: Django 1.2.5 is now available in the Python SDK.</li>
+</ul>
+
+
+<p><b>2011-01-04</b></p>
+<ul>
+  <li>The App Engine 1.4.1 Python SDK is <a href="../downloads.html">now available</a>. There is no Java SDK in this release.</li>
+  <li>New feature: High replication datastore. The High Replication Datastore provides higher availability of reads and writes, at the cost of increased latency for writes, higher cost, and changes in consistency guarantees in the API.</li>
+  <li>New feature: Use the Admin Console to disable writes to your datastore.</li>
+  <li>New feature: In the Python runtime, copy application data between App Engine applications.</li>
+  <li>Limit increase: 10 minute offline URL fetches.</li>
+</ul>
+
+<p><b>2010-12-03</b></p>
+<ul>
+  <li>App Engine 1.4.0 SDKs are <a href="../downloads.html">now available</a> for Python and Java. (This is a major release, so version numbers increased from 1.3.8 directly to 1.4.0.)</li>
+  <li>New feature: Using Always On, you can pay to keep 3 instances of your application always running, which can significantly reduce application latency.</li>
+  <li>New feature: Reduce latency using warmup requests.</li>
+  <li>New Feature: Use the Channel API to create a persistent connection between your application and Google servers, allowing your application to send messages to JavaScript clients in real time without the use of polling.</li>
+  <li>New feature: Configure custom retry parameters from queue.yaml.</li>
+  <li>Limit increase: Deadline for tasks increased from 30s to 2m.</li>
+  <li>Limit increase: Apps that have enabled billing are allowed up to 100 queues with the Task Queue API.
+  <li>New feature: Run metadata queries on your datastore data.</li>
+
+  <li>Quotas increased for URL fetch, task queue, images, mail, and memcache.</li>
+  <li>New feature: Download previously updated code, and lock code so it can't be downloaded.</li>
+  <li>Task queues is now out of labs.</li>
+</ul>
+
+
+<p><b>2010-10-14</b></p>
+<ul>
+  <li>App Engine 1.3.8 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>New feature: Run tasks from the Admin Console.</li>
+  <li>New feature: Include standard libraries in your application using builtin handlers.</li>
+  <li>New feature (experimental): From the Admin console, delete all entities of a kind, or all entities of all kinds, in the default namespace.</li>
+  <li>The imageclass now provides a <code>quality</code> argument to <code>execute_transforms</code> and <code>composite</code>.</li>
+  <li>Python precompilation is now enabled by default.</li>
+</ul>
+
+
+<p><b>2010-08-17</b></p>
+<ul>
+  <li>App Engine 1.3.6 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>New feature: The Namespaces API for Java and Python. With namespaces, you can easily compartmentalize your Google App Engine data. Namespaces make it easy to create multitenant applications.</li>
+  <li>New feature: YAML configuration is now available in the Java runtime.</li>
+  <li>The Image Service API now includes a new, high-performance image serving system for your applications, based on the same infrastructure we use to serve images for Picasa. This feature allows you to generate thumbnails and cropped thumbnails from the same source image, so you only need to store one version of the image.</li>
+  <li>You can configure custom error handlers in your <code>app.yaml</code> or <code>appengine-web.xml</code> file.</li>
+  <li>The datastore no longer enforces a 1000 entity limit on for <code>count</code> and <code>offset</code>.</li>
+  <li>We have raised nearly all of the burst quotas for free apps to the same level as the burst quotas for billed apps.</li>
+  <li>Content-Range headers are now supported with the Blobstore API.</li>
+</ul>
+
+
+<p><b>2010-06-20</b></p>
+<ul>
+  <li>App Engine 1.3.5 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>Apps can now read Blobstore values using file-like interfaces in both Python and Java.  These interfaces use multiple service calls behind the scenes to access values larger than 1 megabyte.  (Apps still cannot create or modify Blobstore values directly.)</li>
+  <li>Task Queue maximum throughput has been upgraded to 50 qps per queue.  (Previously it was limited to 50 qps for the entire app.)</li>
+  <li>The Python runtime environment now supports "precompilation," a feature which improves load time and per-request CPU utilization for Python applications.  For now, it is disabled by default.  You can enable it with <a href="python/config/appconfig.html#Precompilation">a configuration change</a>.  This will be made the default in a future release.</li>
+  <li>Python: The development server now drives task queues automatically.  You no longer need to use the developer console to run queued tasks.</li>
+  <li>Python: <code>db.delete()</code> now accepts an iterable of keys or models.</li>
+  
+</ul>
+
+
+<p><b>2010-05-19</b></p>
+<ul>
+  <li>App Engine 1.3.4 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>You can now use Google Accounts to build apps that act as OAuth service providers.</li>
+  <li>App Engine now supports federated logins with any OpenID identity provider.  Google Accounts is an OpenID identity provider, so upgrading your app to use OpenID supports existing Google Accounts users.</li>
+  <li>We are pleased to announce <a href="../business/index.html">App Engine for Business</a>, a new pricing plan and feature set for App Engine designed for business use.</li>
+  <li>Blobstore is no longer an experimental API and now supports blobs up to 2GB in size</li>
+</ul>
+
+<p><b>2010-04-21</b></p>
+<ul>
+  <li>App Engine 1.3.3 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>The Blobstore now supports serving part of a Blobstore value to the client, specified as a range of bytes in a response header.  The Python helper classes make it easy to set this header, and to allow the user to request a byte range using a request header.</li>
+  <li>The datastore now supports pre-allocating system IDs in application-defined ranges.  This is useful for preserving system IDs when importing entities exported from another app.</li>
+  <li>You can now configure the total amount of storage pending tasks in a task queue can consume.  If adding a task would cause the queue to exceed its storage limit, the call to add the task will fail.  The default limit is <code>100M</code> per queue.</li>
+</ul>
+
+<p><b>2010-03-29</b></p>
+<ul>
+  <li>Documentation for the two new datastore features in the 1.3.2 release is now on the site.  See below for details.</li>
+</ul>
+
+<p><b>2010-03-25</b></p>
+<ul>
+  <li>App Engine 1.3.2 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>The datastore now has two modes of reading entities and performing queries: <i>strong consistency</i> (the original behavior, and the default) and <i>eventual consistency</i>.  With strong consistency, all reads and queries wait for pending changes (changes that have been committed but not yet applied to distributed storage) to be applied before reading.  With eventual consistency, reads and queries will use the version of the data already available in distributed storage, even if there are pending changes.  You can use eventual consistency for faster reads in cases where speed is more important than having up-to-date data.</li>
+  <li>The datastore now supports setting a deadline for most operations.  If the datastore does not complete an operation before the deadline supplied by the app, the call is aborted and control returns to the application.  The default behavior is to wait for the datastore until it returns or until the runtime environment's own deadline elapses.</li>
+  </li>
+  <li>You can now use the Denial of Service (DoS) Protection service to prevent clients from specific IP addresses and subnets from accessing your app.  See the <a href="java/config/dos.html">Java DoS configuration</a> and <a href="python/config/dos.html">Python DoS configuration</a> documentation.</li>
+  <li>The Appstats utility is now <a href="java/tools/appstats.html">available for Java</a>.</li>
+  <li>You can now access data in a Blobstore value from the application.  The app can retrieve bytes from a Blobstore value in a given byte range, up to approximately one megabyte's worth of data at a time.</li>
+  <li>You can now add multiple tasks to a queue in a single batch API call.</li>
+  <li>The maximum task queue refill rate has been raised to 50/second.</li>
+  <li>URL Fetch can now access ports on remote hosts other than 80 and 443.  The allowed remote port ranges are 80-90, 440-450, and 1024-65535.</li>
+  <li>The list of allowed email attachment types now includes several office document types, including Microsoft Word (<code>.doc</code>).</li>
+  <li>The Python interface for accessing attachments on incoming email messages has changed slightly: <code>InboundEmailMessage</code>'s <code>attachments</code> property is now always a list of tuples, and is no longer set to a non-list value when there is only one attachment.</li>
+  <li>The description of <a href="../kb/general.html#activerequests">how simultaneous requests are managed</a> has been updated.</li>
+  <li>Be sure to check out the updated <a href="roadmap.html">Product Roadmap</a>!</li>
+</ul>
+
+<p><b>2010-03-03</b></p>
+<ul>
+  <li>To clean up the appearance of the sidebar navigation, we've removed the word "(Experimental)" from the sidebar for the sections on the Blobstore and Task Queues.  Note that these features are still considered "experimental"&mdash;and are noted as such in the documentation&mdash;and the APIs may still change.</li>
+</ul>
+
+<p><b>2010-02-09</b></p>
+<ul>
+  <li>App Engine 1.3.1 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>Datastore queries now have persistent cursors that let you fetch some results during one web request, store a cursor, then use the cursor to fetch additional results from where the last query left off.  This is now the most efficient way to implement pagination, and can also be used for maintaining checkpoints and querying for "new" results.</li>
+  <li>The Java URL Fetch low-level interface now supports asynchronous calls, using <code>java.util.concurrent.Future</code>.</li>
+  <li>The Java SDK now includes helper classes for writing unit tests that use local services.  Added <a href="java/tools/localunittesting.html">Local Unit Testing</a> describing how to use these new classes and updated <a href="java/howto/unittesting.html">the original unit testing article</a> to point to this new page.</li>
+  <li>The Python SDK now includes Appstats, a suite of tools for profiling the performance of an application.  See the <a href="python/tools/appstats.html">Appstats documentation</a>.</li>
+  <li>The JCache interface is now implemented in the package <code>net.sf.jsr107</code>, instead of <code>javax.cache</code>, to avoid confusion about the status of this proposed standard.  <code>javax.cache</code> will continue to be supported throughout this major version (1.x.x) of the Java runtime environment, but the documentation now recommends <code>net.sf.jsr107</code>.  (You may find <a href="java/javadoc/com/google/appengine/api/memcache/package-summary.html">the low-level memcache API</a> more to your liking.)</li>
+  <li>Schedule task configuration now supports "synchronized" interval scheduling, which starts a job on an interval synchronized from midnight of the current day regardless of how long it takes the previous job to finish, as in <code>every 2 hours synchronized</code>.  It also now supports calendar scheduling for specific days of every month, as in <code>1,8,15,22 of month 09:00</code>.</li>
+  <li>Java AppCfg now supports an <code>--append</code> option for the <code>request_logs</code> action, which appends the requested log data to the end of the log file instead of overwriting the file.</li>
+  <li>The quotas documentation has been updated to clarify that URL Fetch is limited by the incoming and outgoing bandwidth limits.  Previously, the documentation indicated a limit of 4 GB for URL Fetch bandwidth, but this is higher than the incoming and outgoing bandwidth limits (currently 1 GB).</li>
+  <li>App Engine now uses a "precompilation" process to enhance the performance of Java bytecode.  If you prefer that precompilation not be used with your app, you can turn this off in your <code>appengine-web.xml</code> file.</li>
+  <li>All Python examples now recommend using the <code>run_wsgi_app()</code> function from the <code>google.appengine.ext.webapp.util</code> module to start a WSGI app.  Older versions of the docs used the <code>CGIHandler</code> class from the <code>wsgiref</code> module in the standard library, but this class doesn't fully accommodate long running processes and may leak data between requests through environment variables.  <code>run_wsgi_app()</code> properly resets the environment between requests, and is the recommended way to start a WSGI app on App Engine.</li>
+  <li>The bulk loader tools can now download all entities of all kinds.  It uses the datastore statistics entities to determine the kinds to download.  The bulk loader documentation has also been clarified to mention the Java remote API servlet, remove the sqlite3 installation instructions (this was only required for Python 2.4), and to correct the <code>bulkloader.py</code> command line.</li>
+  <li>Datastore queries can now return as many results as the app can fetch within the 30 second request handler limit.  A query is no longer constrained to returning 1,000 results.</li>
+</ul>
+
+<p><b>2010-02-01</b></p>
+<ul>
+  <li>Corrected documentation that described the ordering of datastore query results when no ordering is specified.  Previously, the documentation said that the order was key by default which is not always correct.  The documenation now states that when no sort order is specified, the datastore ordering is undefined and may change over time.</li>
+</ul>
+
+<p><b>2010-01-19</b></p>
+<ul>
+  <li>Added instructions on <a href="../kb/adminconsole.html#maintenance">how to gracefully degrade memcache and datastore operations during a scheduled outage</a>.</li>
+</ul>
+
+<p><b>2009-12-14</b></p>
+<ul>
+  <li>App Engine 1.3.0 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>The new Blobstore service lets your app serve files up to 50 megabytes in size, and accept large files as uploads from users. While the app cannot manipulate Blobstore values directly, it can process forms with file upload fields, and can serve a Blobstore value as a response from any request handler.  This is an experimental feature and is subject to change.  Let us know what you think!</li>
+  <li>The Images service has limited support for processing image files stored in the Blobstore.  The source can be larger than 1 megabyte, but the result of the transformation must be smaller than 1 megabyte.  This is useful for making thumbnail images of large photographs uploaded by users.</li>
+  <li>An app can now configure what happens when a URL restricted by Google Accounts in the app configuration is visited by a user who is not signed in.  By default, the user is redirected to a sign-in page.  You can now configure the app to simply reject requests from unauthenticated clients.</li>
+  <li>Java Unit Testing How-to updated with information on testing Task Queue tasks.</li>
+  <li>Incoming and Outgoing Bandwidth quotas have new default maximum rates of 10 gigabytes/minute, up from 740 megabytes/minute.</li>
+</ul>
+
+<p><b>2009-12-11</b></p>
+<ul>
+  <li>Clarified <a href="python/datastore/queries.html#Properties_With_Multiple_Values_Can_Have_Surprising_Behaviors">how query filters interact with list properties.</a></li>
+</ul>
+
+<p><b>2009-12-03</b></p>
+<ul>
+  <li>App Engine 1.2.8 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>The Memcache APIs (Python and Java) have a new function which lets you increment or decrement multiple integer values in a single API call.  For Python, see <a href="python/memcache/functions.html#Client_offset_multi">Memcache Functions: offset_multi()</a>.  For Java, see the Javadoc.</li>
+  <li>The URL Fetch APIs (Python and Java low-level) have a new attribute on the response object equal to the actual URL that returned the response.  This may differ from the requested URL if the fetch followed redirects.  For Python, see <a href="python/urlfetch/responseobjects.html">URL Fetch: Response Objects</a>.  For Java low-level, see the Javadoc.</li>
+  <li>Task queues now consider any HTTP status code in the range 200-299 returned by a task's request handler to represent the successful completion of the task.</li>
+  <li>You can now manage task queues from the Administration Console.  You can inspect queues, delete individual tasks, and delete every task on a queue.</li>
+  <li>The Java JDO and JPA interfaces now have partial support for data class inheritance.</li>
+  
+  <li>Outgoing mail messages now support attachments that are MPEG, MPEG-4, Quicktime and AVI video files and FLAC, MIDI, MPEG-3, Ogg Vorbis, AIFF and WAV audio files.</li>
+  <li>The <code>SERVER_SOFTWARE</code> environment variable is now set to a useful value when running on App Engine.  (Previously it was only set in the Python development server.)</li>
+</ul>
+
+<p><b>2009-11-06</b></p>
+<ul>
+  <li>Expanded and clarified <a href="python/datastore/modelclass.html#Model_get_or_insert">Model.get_or_insert()</a>.</li>
+  <li>Mentioned kindless queries in the <a href="python/datastore/queryclass.html">Query class reference</a>.</li>
+  <li>Added a caveat to <a href="python/datastore/typesandpropertyclasses.html#list">list properties</a>: value order is not preserved between <code>Blob/Text</code> and non-<code>Blob/Text</code> values.</li>
+  <li>Python code samples now use 4-space indentation widths throughout the documentation.</li>
+</ul>
+
+<p><b>2009-10-26</b></p>
+<ul>
+  <li>The Java Getting Started Guide and JDO documentation have been updated to use the <code>Key</code> class instead of a Long integer ID.  This change was made to reduce confusion caused by the inability to use Long IDs for "child" classes in a relationship.</li>
+</ul>
+
+<p><b>2009-10-15</b></p>
+<ul>
+  <li>We've done a new bug-fix release of the Python runtime environment and SDK, known as release 1.2.7, to fix two problems with the 1.2.6 release.  First, the 1.2.6 release added a <code>key</code> argument to the <code>Model</code> class constructor that broke subclasses who were calling the constructor's private arguments with positional (not named) values.  The fix is to restore the original ordering, and require that the new <code>key</code> argument be specified as a named argument only.  The documentation has been adjusted accordingly.  Second, 1.2.6 broke an interaction between remote_api and the development server.  This has been fixed.  You can <a href="../downloads.html">download the Python 1.2.7 SDK</a>.  The Java runtime and SDK are unchanged.</li>
+</ul>
+
+<p><b>2009-10-07</b></p>
+<ul>
+  <li>App Engine 1.2.6 SDKs are <a href="../downloads.html">now available</a> for Python and Java.</li>
+  <li>Java AppCfg now supports the <code>update_queues</code> and <code>cron_info</code> actions.</li>
+  <li>You can now pre-allocate system IDs for datastore entities in the Python and Java low-level APIs.  Among other things, this is useful for storing references between two newly created entities without having to save one of them twice, such as within a single transaction.  See the Python docs for <a href="python/datastore/functions.html#allocate_ids">db.allocate_ids()</a> and the Javadoc for <a href="java/javadoc/com/google/appengine/api/datastore/DatastoreService.html#allocateIds(com.google.appengine.api.datastore.Key,%20java.lang.String,%20long)">DatastoreService.allocateIds()</a>.</li>
+  <li>The Python <code>bulkloader.py --restore</code> feature now preserves numeric system IDs and reference properties correctly in all cases.  You can now upload a data dump to an app that is different from the app that originally contained the data.</li>
+  <li>HTTPS is now enabled for all URL paths by default, in both the Java and Python runtime environments.  In Java, you no longer need to enable SSL with configuration, though you can disable it this way if you want to.  URLs that are not restrictd to HTTPS only in the deployment descriptor support both HTTP and HTTPS by default.  In Python, <code>secure: optional</code> is now the default (was <code>secure: never</code>); you can explicitly configure URLs to be <code>secure: never</code>.  Note that the new default will not take effect until the next time you deploy your app.</li>
+  <li>You can now view statistics about how your application's datastore data in the Administration Console.  You can also access these statistics programmatically using specially named datastore entities.</li>
+</ul>
+
+<p><b>2009-09-09</b></p>
+<ul>
+  <li>Task queues: added docs for <code>appcfg.py update_queues</code> action.</li>
+  <li>Task queues: added docs about headers included with the task web hook request, including the queue name, the task name and the task retry count.</li>
+  <li>Task queues: added a note about testing task queues in the development server.  (The dev server does not drive task queues, but you can do it manually from the Console.)</li>
+  <li>Task queues: added the maximum countdown/ETA to the limits table (30 days).</li>
+  <li>Task queues: added a note about how task web hooks are accessed with admin credentials, so you can restrict web hook URLs to be admin-only.</li>
+  <li>Task queues: clarified explanation of rate and bucket size parameters.</li>
+  <li>Fixed the XMPP Java example code.</li>
+  <li>The Java Users interface exposes user IDs as of release 1.2.5, tweaked docs to represent this.</li>
+  <li>Added a note about the need to obscure user IDs in public data.  (User IDs are global to all apps.)</li>
+  <li>Added reference entry for <code>appcfg.sh update_cron</code>.</li>
+  <li>Added a link to the JDO/JPA implementation open source project to the Resources section of the nav bar.</li>
+  <li>Added a note to the memcache limits table about key size: keys over 250 bytes are hashed to 250 bytes.</li>
+  <li>Corrected misleading statement about Java static files: files in <code>WEB-INF/</code> can never be static files, and are always resource files.</li>
+  <li>Documented Python datastore methods for serializing and deserializing Model objects as Google protocol buffers.  (These were added to the SDK in the 1.2.5 release, but had not been documented.)</li>
+</ul>
+
+<p><b>2009-09-03</b></p>
+<ul>
+  <li>New SDKs for both Python and Java, version 1.2.5, are <a href="../downloads.html">now available</a>.  Starting with this release, both SDKs will be released together and with identical version numbers.  (Java is skipping 1.2.3 and 1.2.4 to be in sync with Python.)</i>
+  <li>App Engine applications can now send and receive instant messages via the XMPP protocol to and from instant messaging services that support it, such as Jabber servers and Google Talk.  The service API is available for both Python and Java applications.</li>
+  <li>Java now has an API for the experimental Task Queue service.</li>
+  <li>Java now supports all of the native datastore types, including the GData types such as GeoPt.</li>
+  <li>JDO and JPA now support deleting entities using queries.</li>
+  <li>JDO now uses datastore batch operations for <code>makePersistentAll()</code> and <code>deletePersistentAll()</code>.</li>
+  <li>Datastore entity key names may now begin with a digit.  It is no longer necessary to prefix user IDs with non-digits to use them as entity key names.</li>
+  <li>Datastore <a href="python/datastore/transactions.html">transactions</a> now support writing or deleting the same entity multiple times in a single transaction.
+  <li>URL Fetch requests can now set the <code>Referer</code> header.  If the app doesn't set this header, it isn't included in the request headers.  Previously, App Engine forced this header to be something App Engine specific.  This is no longer the case, it now behaves like any other non-restricted header.</li>
+  <li>Java apps can now set the deadline on URL Fetch requests using the java.net.URLConnection interface, with the <code>setConnectTimeout()</code> method.</li>
+  <li>Java apps can adjust the MIME types used with static files using <code>&lt;mime-mapping&gt;</code> elements in the deployment descriptor (<code>web.xml</code>).</li>
+  <li>Java apps can control the browser cache expiration duration of static files using a setting in the <code>appengine-web.xml</code> file.</li>
+  <li>The bulkloader has an experimental feature that can dump and restore every entity of a kind without any additional code or configuration (beyond installing remote_api).  Currently, this feature is only available on the <code>bulkloader.py</code> tool; it will be moved to <code>appcfg.py</code> when the feature is stable.  Let us know what you think!</li>
+  <li>The Python SDK for Windows now includes a Launcher application that provides a graphical interface for creating, testing and deploying projects.  This is similar to the Mac version of the Launcher included with the Mac Python SDK.  Also, both Launchers are now open source projects.  You can find links to the source code in the "Resources" section of the doc sidebar.  The Windows Launcher is written in Python and uses wxWidgets, so Linux users can use it by downloading the source.</li>
+  <li>With the Python <code>appcfg.py request_logs</code> command, you can now adjust the end date of the log data to download with the <code>--end_date</code> option.  Also, documentation has been added for the the <code>--include_vhost</code> option, which was introduced in a previous release.</li>
+</ul>
+
+<p><b>2009-08-05</b></p>
+<ul>
+  <li>Python SDK 1.2.4 is <a href="../downloads.html">now available</a>.</li>
+  <li>You can now include a displayable name with the email address of the sender of an email message.  Previously, you could only use the address without a name.</li>
+  <li>The Python Memcache <code>incr()</code> and <code>decr()</code> functions can now set an initial value for a counter if the key does not exist.  Previously, incrementing or decrementing a value that didn't exist did nothing.</li>
+  <li>If you access your site while signed in as an administrator, App Engine now includes resource usage information for the request in the response headers, as <code>X-AppEngine-Estimated-CPM-US-Dollars</code> and <code>X-AppEngine-Resource-Usage</code>.</li>
+  <li><code>appspot.com</code> domains now support subdomains.  A request whose domain name matches the pattern <code>http://<i>subdomain</i>.<i>your_app_id</i>.appspot.com</code>, where <i>subdomain</i> is any string allowed as a part of a domain name (not a <code>.</code>), is routed to the application with the given ID.</li>
+  <li>Indexes for queries on keys have been improved, requiring custom indexes in fewer cases.  Descending sort orders on keys still require a custom index.</li>
+  <li>You can now use GQL or the Python query interface to retrieve all entities of a given ancestor of all kinds.  Such queries can also include filters (equality or inequality) on <code>__key__</code>.</li>
+  <li>PolyModel now supports multiple inheritance and diamond inheritance.</p>
+</ul>
+
+<p><b>2009-07-14</b></p>
+<ul>
+  <li>Updated the Java unit testing how-to sample code to reflect changes to the TestEnvironment class.</li>
+</ul>
+
+<p><b>2009-07-13</b></p>
+<ul>
+  <li>SDK verison 1.2.2 for Java <a href="../downloads.html">now available</a>.</li>
+  <li>The Java AppCfg command now supports HTTP and HTTPS proxies.</li>
+  <li>The Java ORM now supports declaring properties as non-indexed using JDO and JPA.</li>
+  <li>The Java ORM now supports ancestor queries within datastore transactions, using the same entity group that is the subject of the transaction.</li>
+  <li>The maximum number of files an app can have is now 3,000.  This is the total count of application files (code, configuration) and static files.</li>
+  <li>The description of the <code>--max_size</code> argument to the Python <code>appcfg.py</code> has been updated to reflect the increase of the maximum file size to 10 megabytes.  This was changed with Python release 1.1.9.</li>
+  <li>The article "Using Django 1.0 on App Engine with Zipimport" has been updated with a note about the latest file size and file count maximums, and the fact that Django 1.0 is now included as an option in the Python runtime environment.</li>
+  <li>The docs incorrectly stated that secure connections consume more CPU quota than non-secure connections.  Secure requests do not consume additional CPU quota.  The docs have been fixed.</li>
+  <li>Python docs clarified to state that long integers are limited to 64 bits.</li>
+  <li>Python docs clarified to state that if a ByteStringProperty, StringProperty or TextProperty is required, its value cannot be the empty string.</li>
+  <li>Added a note on JSPs regarding how a <code>&lt;jsp-file&gt;</code> value must start with a slash if the JSP file is in the root directory.</li>
+  <li>Added a note suggesting that when using a user ID as a datastore key, the value should be prefixed with a letter.  Datastore keys cannot start with a digit. <i>(No longer true as of release 1.2.5.)</i></li>
+  <li>Added more information on the Python tools <code>appcfg.py update_cron</code> and <code>appcfg.py cron_info</code>.</li>
+</ul>
+
+<p><b>2009-06-11</b></p>
+<ul>
+  <li>SDK version 1.2.3 for Python <a href="../downloads.html">now available</a>.</li>
+  <li>The Python interface for URL Fetch now supports fetching URLs asynchronously.  An app can create an RPC object, initiate a URL fetch, then do other things while the service fetches the URL.  When it is ready, the app calls a method on the RPC object to get the results of the fetch.</li>
+  <li>Task Queues, our first experimental release, are now available for Python.  Task queues let you set up work to be done outside of the scope of a user-initiated request.  App Engine performs a task by calling a request handler with data specified as part of the task.  This is an experimental release, which means the API and implementation details of the feature are not final and may change in a future release.</li>
+  <li>The Python runtime environment now includes Django 1.0.2 as an option.  Django 0.9.6 is still the default version.  See <a href="python/tools/libraries.html#Django">Third-party Python Libraries</a> for instructions.</li>
+  <li>You can now perform an ancestor query within a datastore transaction.  An ancestor query returns all entities with a common entity group parent.  The ancestor must be in the same entity group that is the subject of the transaction, and must not use any other query filters.</li>
+  <li>The datastore overview has been extended with a brief explanation of isolation and consistency, and an example of read-only transactions.</li>
+  <li>The article on Transaction Isolation has been updated with additional information on queries, and on isolation inside and outside of transactions.</li>
+  <li>Docs updated to reflect the fact that all developers can now upload apps that use the Java runtime environment.</li>
+  <li>The Javadoc on the site has been brought up to date with the Java 1.2.1 release.  (Apologies for the delay.)</li>
+  <li>Instructions for sending mail to app administrators using the JavaMail interface have been corrected.</li>
+  <li>A package name in the code sample of the JCache docs has been corrected.</li>
+  <li>The example <code>datastore-indexes.xml</code> file in the Java documentation has been corrected to not use a namespace.  (Starting with the 1.2.1 release, validation is enforced, but the schema does not use a namespace.)</li>
+</ul>
+
+<p><b>2009-05-08</b></p>
+<ul>
+  <li>SDK version 1.2.2 for Python <a href="../downloads.html">now available</a>.</li>
+  <li>Python apps and GQL queries in the Admin Console can now retrieve just the keys for entities in query results, instead of full entities.</li>
+  <li>A Python datastore model can now specify that a property should not be indexed, regardless of its value.  This saves space and write time by turning off the automatic single-property indexes for those properties.</li>
+  <li>The Python API for the URL Fetch service can now set a deadline, a maximum amount of time to wait for the remote host to respond.</li>
+  <li>Python apps can call a new API to determine how much CPU time has been spent so far during the current request.</li>
+  <li>A bulk data downloader has been added to <code>appcfg.py</code>, similar to the bulk data uploader.</li>
+  <li><code>appcfg.py request_logs</code> now supports querying logs by the app hostname with the <code>--vhost</code> option, so you can download logs separately for a Google Apps domain, and <code>appspot.com</code> test domains.</li>
+  <li>The cron schedule syntax has been updated to support "every day 09:00" (equivalent to "every mon,tue,wed,thu,fri,sat,sun 09:00") and "every monday 09:00" (instead of "every monday of month 09:00").</li>
+</ul>
+
+<p><b>2009-04-22</b></p>
+<ul>
+  <li>SDK version 1.2.1 for Python <a href="../downloads.html">now available</a>.</li>
+  <li>The Users service now provides a unique ID for each user that stays the same even if a user changes her email address.  Note that the User object itself still does not yet possess this stability property, so if you need a datastore value to refer to a stable user ID, you must store the unique ID separately.</li>
+  <li>The Images service can now produce a composite image from multiple images, and can calculate a color histogram for an image.</li>
+  <li>The Memcache service now supports namespaces for keys.</li>
+  <li>The bulk data uploader is now an official feature of the <code>appcfg.py</code> command in the Python SDK.  It now includes the ability to skip a header row in CSV files, and the ability to sign in using a Google Apps domain account.  <b>Note:</b> The Loader class API has changed; please update your Loader class files.</li>
+  <li>URL Fetch requests can now have custom <code>User-Agent</code> and <code>User-Specified</code> headers.</li>
+  <li>Email messages can now have attachments that are <code>.ics</code> calendar invitations or <code>.vcf</code> V-Card contact information cards.</li>
+  <li>An App Engine-specific version of the Python PyCrypto cryptography library is now available to Python applications.  The documentation has a <a href="python/tools/libraries.html">new page</a> describing the third-party libraries included in the Python runtime environment, with notes about App Engine-specific differences and usage.</li>
+</ul>
+
+<p><b>2009-04-07</b></p>
+<ul>
+  <li>An "early look" of Google App Engine for Java is now available.  You can download the Java SDK, and sign up to try uploading Java apps to App Engine.  The documentation includes all new sections on the Java runtime environment and APIs, and the existing documentation has been restructured and extended.</li>
+  <li>This release also includes scheduled tasks, aka "cron jobs," for both Java and Python.</li>
+  <li>SDK version 1.2.0 for Python and SDK version 1.2.0 for Java are <a href="../downloads.html">now available</a>.</li>
+  <li>Java developers, don't forget to check out the new <a href="http://code.google.com/eclipse">Google Plugin for Eclipse</a>, with features for both App Engine and <a href="http://code.google.com/webtoolkit">Google Web Toolkit</a>.</li>
+  <li>Also check out the new <a href="http://code.google.com/securedataconnector">Secure Data Connector</a>, which allows you to develop App Engine applications and gadgets for your company's intranet.  See <a href="http://code.google.com/googleapps">the Google Apps developer tools documentation</a> for an overview.</li>
+</ul>
+
+<p><b>2009-03-17</b></p>
+<ul>
+  <li>Corrected <a href="../kb/billing.html#indexes">billing FAQ item</a> to indicate that datastore indexes <strong>do</strong> count against an application's billable storage quota.</li>
+</ul>
+
+<p><b>2009-03-05</b></p>
+<ul>
+  <li>Minor revision of billing-related text for clarification.  What the docs originally called "adjustable" quotas are now known as "billable" quotas.</li>
+</ul>
+
+<p><b>2009-02-24</b></p>
+<ul>
+  <li>You can now establish a billing account and a daily budget for your application, and allocate additional quotas for CPU, bandwidth, data storage and email messages.</li>
+  <li>Updated the <a href="quotas.html">Quotas</a> page to include information about billable quotas, the free quota levels, and the per-minute quotas. Also added a notice about an upcoming reduction in the free quota levels.</li>
+  <li>Added a page discussing how to <a href="billing.html">purchase additional quota</a>, which includes a walkthrough of how to enable billing for an application, set a daily budget, and check billing status and history.</li>
+  <li>Added a new FAQ page for common <a href="../kb/billing.html">billing questions</a>.</li>
+  <li>Updated the <a href="../terms.html">Terms of Service</a>, revising sections 4 and 10 of the terms to include language around payments, fees, and disallowing the use of multiple applications to avoid incurring fees.</li>
+</ul>
+
+<p><b>2009-02-18</b></p>
+<ul>
+  <li>The <a href="python/datastore/gqlreference.html">GQL
+    <code>KEY</code> literal</a> accepts string-encoded keys as well as paths.</li>
+</ul>
+
+<p><b>2009-02-04</b></p>
+<ul>
+  <li>SDK version 1.1.9 <a href="../downloads.html">now available</a>.</li>
+  <li>The file size limit has increased from 1 MB to 10 MB.  The article on zipimport has been updated with this information.  You can now create a simpler zipimport bundle of all of Django 1.0 without having to leave out parts to reduce the archive file size.  The app request and response size limit has also increased from 1 MB to 10 MB.</li>
+  <li>The datastore now creates single property indexes in both ascending and descending order automatically.  Previously, the datastore only made single property indexes in ascending order automatically.  Queries that use an index of a single property in descending order no longer require a custom index.  If you have such an index, you can remove it from your <code>index.yaml</code> and run <code>appcfg.py vacuum_indexes</code> to delete the extraneous custom indexes.  The documentation on indexes has been updated accordingly.</li>
+  <li>The Query class now supports the <code>!=</code> and <code>IN</code> operators, similar to the GqlQuery class.  The reference has been updated, and an introduction to query filter operators has been added.</li>
+  <li>You can now specify the number of times a transaction will be retried in the event of contention using <a href="python/datastore/functions.html#run_in_transaction_custom_retries">db.run_in_transaction_custom_retries()</a>.</li>
+  <li>You can now use the Python standard libraries <a href="http://www.python.org/doc/2.5.2/lib/module-urllib.html">urllib</a>, <a href="http://www.python.org/doc/2.5.2/lib/module-urllib2.html">urllib2</a> and <a href="http://www.python.org/doc/2.5.2/lib/module-httplib.html">httplib</a> to access the URL fetch service.</li>
+  <li>You can now upload data into the datastore from CSV files on your computer using <code>appcfg.py</code>.  An experimental and undocumented version of this feature was originally included with the SDK as the "bulk data uploader."  A newer, faster implementation of this feature is now provided as the <code>bulkuploader.py</code> command.  <a href="python/tools/uploadingdata.html">The documentation</a> describes this feature in full.</li>
+  <li>The <code>skip_files</code> property in an <code>app.yaml</code> file now accepts either a single regular expression, or a list of regular expressions.  If a file path matches any of the regular expressions, the file is skipped.</li>
+</ul>
+
+<p><b>2009-01-15</b></p>
+<ul>
+  <li>SDK version 1.1.8 <a href="../downloads.html">now available</a>.</li>
+  <li>New feature: <code>PolyModel</code> and polymorphic queries.</li>
+  <li>New feature: <code>UserProperty</code> now supports <code>auto_current_user</code> and <code>auto_current_user_add</code> attributes.</li>
+  <li>New feature: New <code>ByteString</code> datastore value type, a short indexed unencoded (non-text) string of bytes.  Also, a new <code>ByteStringProperty</code> class for modeling byte string values.</li>
+  <li>New feature: Images API now exposes the current width and height of an image.</li>
+  <li>Major re-organization of the docs, primarily to move Python-specific material to its own section in preparation for upcoming support for a second language.  External links to old pages on code.google.com will resolve using redirects.  (Our apologies to anyone with links to individual pages of the docs hosted elsewhere.)  Please <a href="http://code.google.com/p/googleappengine/issues/entry">file an issue</a> if you find any unresolved broken links or broken pages in the documentation.</li>
+</ul>
+
+<p><b>2008-11-24</b></p>
+<ul>
+  <li>New article: <a href="../articles/index_building.html">How Index Building Works</a></li>
+  <li>New FAQ: "<a href="../kb/general.html#error_indexes">Why were my indexes marked as <i>Error</i>?</a>"</li>
+  <li>New FAQ: "<a href="../kb/general.html#stuck_indexes">Why do my indexes stay <i>Building</i> or <i>Deleting</i> for long periods of time?</a>"</li>
+</ul>
+
+<p><b>2008-11-20</b></p>
+<ul>
+  <li>SDK version 1.1.6 <a href="../downloads.html">now available</a>.</li>
+  <li>New feature: You can now perform queries, including filters and sort orders, on datastore entity keys, using the special property name <code>__key__</code>.  See <a href="python/datastore/queries.html">the documentation</a>.</li>
+</ul>
+
+<p><b>2008-10-28</b></p>
+<ul>
+  <li><code>Model</code> class constructor now accepts a <code>Key</code> instance for the <code>parent</code> argument.</li>
+  <li>Added Windows appcfg.py proxy instructions.</li>
+  <li>Documented <code>google.appengine.runtime.DeadlineExceededError</code>.</li>
+  <li>Documented the fact that entities with a property of a common name but with values of mixed types are sorted by types first, then by values as per type. In particular, all integers &lt; all floats.</li>
+  <li>Added whole-file example to top of datastore page of the Getting Started Guide.</li>
+  <li>Added a note about requiring a space between the name and operator in Query.filter().</li>
+  <li>Updated string prefix search tip to use <code>u'\ufffd'</code>.</li>
+  <li>Documented GQL value literal syntax for dates, keys, users, and GeoPt values.</li>
+  <li>Added db.Timeout to list of datastore API exceptions.</li>
+  <li>Added note to "Configure an App" about how using HTTPS with the versioned testing URL, such as <code>https://1.latest.<i>your_app_id</i>.appspot.com/</code>, causes browsers to warn about certificates.  This is harmless, and users will not see the warning.</li>
+  <li>In the article "Using Django 1.0 on App Engine with Zipimport," improved wording about updating existing Django helper projects.</li>
+  <li>In the article "Extending Model Properties," fixed several errors in the code samples.</li>
+  <li>Mentioned the specific version of Python that App Engine uses: Python 2.5.2.</li>
+</ul>
+
+<p><b>2008-10-23</b></p>
+<ul>
+  <li>Added the <a href="roadmap.html">App Engine Product Roadmap</a>.</li>
+  <li>Added documentation for the <a href="python/tools/uploadinganapp.html">update_indexes command</a> with appcfg.py.</li>
+</ul>
+
+
+<p><b>2008-10-22</b></p>
+<ul>
+  <li>Updated the "<a href="../articles/gdata.html">Retrieving Authenticated Google Data Feeds with Google App Engine</a>" article to use <a href="http://code.google.com/p/gdata-python-client/">gdata-python-client</a> version 1.2.2 and higher. Token storage code has been greatly simplified.</li>
+</ul>
+
+<p><b>2008-10-16</b></p>
+<ul>
+  <li>Support for handling secure HTTPS connections for <code>*.appspot.com</code> domains, with a new handler configuration option.</li>
+</ul>
+
+<p><b>2008-10-14</b></p>
+<ul>
+  <li>Removed a note from the <i>What Can Be Done In a Transaction</i> section
+  of the <i>Transactions</i> page about a bug that prevented creating both a
+  new root entity and descendants of the entity in a single transaction. That
+  bug was fixed in 1.0.2.</li>
+</ul>
+
+<p><b>2008-09-30</b></p>
+<ul>
+  <li>SDK version 1.1.5 <a href="../downloads.html">now available</a>.</li>
+  <li>Doc updates for releases 1.1.3 through 1.1.5:
+    <ul>
+      <li>URL Fetch can be instructed not to follow redirects, using a new parameter.</li>
+      <li>URL Fetch is now restricted from fetching the request's own URL, to help prevent infinite loops.</li>
+      <li>New Memcache methods: <code>add_multi()</code> and <code>replace_multi()</code>.</li>
+      <li><code>ListProperty(str)</code> gets special treatment as <code>ListProperty(basestring)</code> because the datastore stores <code>str</code> values as ASCII-encoded Unicode, and returns such values as <code>unicode</code>.  Previously, this would break <code>ListProperty(str)</code> models, now they succeed.</li>
+      <li><code>StringListProperty</code> is now a proper class, with additional support for Django forms.</li>
+    </ul>
+  </li>
+  <li>New article: <a href="../articles/django10_zipimport.html">Using Django 1.0 with App Engine and zipimport</a></li>
+  <li>New version of downloadable docs <a href="../downloads.html">now available</a>.  Includes a fix for an issue with the index.html file and Internet Explorer.</li>
+</ul>
+
+<p><b>2008-09-26</b></p>
+<ul>
+  <li>SDK version 1.1.4 <a href="../downloads.html">now available</a>.</li>
+</ul>
+
+<p><b>2008-08-23</b></p>
+<ul>
+  <li>Added a <a href="python/datastore/queries.html">
+  Sort Orders and List Properties</a> section to 
+  <a href="python/datastore/queries.html">Queries and
+  Indexes</a> with details on how list properties and sort orders interact.</li>
+</ul>
+
+<p><b>2008-08-22</b></p>
+<ul>
+  <li>SDK version 1.1.2 <a href="../downloads.html">now available</a>.</li>
+  <li>Documentation for new features in SDK version 1.1.2:
+    <ul>
+      <li><a href="python/datastore/functions.html#put"><code>db.put()</code></a>
+          and <a href="python/datastore/functions.html#delete"><code>db.delete()</code></a>
+          are no longer limited to a single entity group per call.</li>
+    </ul>
+  </li>
+</ul>
+
+<p><b>2008-08-13</b></p>
+<ul>
+  <li>Added section about using GData services in App Engine application.</li>
+</ul>
+
+<p><b>2008-08-12</b></p>
+<ul>
+  <li>All Google App Engine documentation is now released under <a href="http://creativecommons.org/licenses/by/2.5/">a Creative Commons license</a>.  Example code in the documentation is released under <a href="http://www.apache.org/licenses/LICENSE-2.0">an Apache license</a>.</li>
+  <li>Links outside of the documentation now go directly to the destination, instead of through Google's URL redirect mechanism.</li>
+  <li>Anchors in content now use element IDs instead of anchor tags.</li>
+</ul>
+
+<p><b>2008-07-25</b></p>
+<ul>
+  <li>Documentation for new features in SDK version 1.1.1:
+    <ul>
+      <li>You can now query and download log data using appcfg.py: appcfg.py request_logs</li>
+      <li>The mail service can now use the current user's email address in the "From" field (the sender) of an email message.</li>
+      <li>New environment variable: CURRENT_VERSION_ID</li>
+      <li>The URL fetch service can now customize the Date HTTP header (was previously disallowed).</li>
+      <li>The URL fetch service now uses a default Content-Type header of x-www-form-urlencoded for POST requests (which can be overridden).</li>
+    </ul>
+  </li>
+  <li>Added section about the new limit on index entries, and how to avoid it; big entities, exploding indexes, and the "Error" index state.</li>
+  <li>Documented webapp.util.run_wsgi_app() (previously undocumented), a better way to run WSGI applications in App Engine.  Code samples have been updated to recommend run_wsgi_app() over wsgiref as a best practice.</li>
+  <li>Revised code samples to instantiate webapp.WSGIApplication outside of the main() routine, a best practice for performance.</li>
+  <li>Documented the webapp.util.login_required annotation for webapp get() handler methods (previously undocumented).</li>
+  <li>Added documentation for environment variables.</li>
+  <li>Added a new section on reserved URLs.  In particular, note that <code>/form</code> is a reserved URL.</li>
+  <li>Added descriptions of how entities without a property are never results for queries the filter or order by that property.  Also added a description of how Text and Blob values are never indexed, and so behave like unset properties in queries.</li>
+  <li>Added mentions of how str values are stored and returned by the datastore as unicode values, and how this causes ListProperty(str) to not work (because the model tries to validate the value returned by the datastore as a str).  (Use ListProperty(basestring) or StringListProperty() instead.)</li>
+  <li>Added a description of how two ReferenceProperty model properties to the same kind must have unique collection_name values set to avoid the default collection_names from colliding.</li>
+  <li>Added a mention of the Google App Engine Launcher for Mac OS X in the Getting Started Guide.</li>
+  <li>Added a description of how responses are compressed automatically (using gzip) if the request headers indicate that the client can accept compressed responses.</li>
+</ul>
+
+<p><b>2008-07-24</b></p>
+<ul>
+  <li>SDK version 1.1.1 <a href="../downloads.html">now available</a>.</li>
+</ul>
+
+<p><b>2008-06-27</b></p>
+<ul>
+  <li>Corrected the <a
+  href="python/datastore/modelclass.html#Model_get_by_id">Model.get_by_id</a>
+  reference to include method arguments in the method signature.  (The arguments were
+  listed correctly in the method description.)</li>
+</ul>
+
+<p><b>2008-06-24</b></p>
+<ul>
+  <li>Added more complete documentation for the webapp.Request and webapp.Response classes.</li>
+  <li>Added documentation of disallowed HTTP headers for URL Fetch and for responses in general.</li>
+  <li>Fixed doc revision history to reflect correct release date for Images and Memcache APIs, and GQL operators.</li>
+</ul>
+
+<p><b>2008-06-23</b></p>
+<ul>
+  <li>Corrected the <a
+  href="python/datastore/modelclass.html#Model">Model constructor</a>
+  reference to say that <code>parent</code> must be a <code>Model</code>, not a
+  <code>Key</code>.</li>
+  <li>Mentioned that <a href="python/datastore/typesandpropertyclasses.html#list">List properties are order-preserving</a>.</li>
+</ul>
+
+<p><b>2008-05-30</b></p>
+<ul>
+  <li>Corrected the <a href="http://code.google.com/articles/quotas.html">Quotas article</a> to say
+  that the 1000 static file limit only applies to files, not
+  <a href="python/datastore/typesandpropertyclasses.html#Blob">datastore Blobs</a>.
+</ul>
+
+<p><b>2008-05-28</b></p>
+<ul>
+  <li>Added <a href="python/images/index.html">Image API</a> and <a href="python/memcache/index.html">Memcache API</a> documentation.</li>
+  <li>Updated "Whats is App Engine" document to include Images and Memcache services.</li>
+  <li>Added != and IN operators to GQL Documentation.</li>
+</ul>
+
+<p><b>2008-05-22</b></p>
+<ul>
+  <li>Added a note to the appcfg.py documentation about using the tool behind an HTTP proxy.</li>
+  <li>Added clarification of restrictions on datastore entity key names.</li>
+  <li>Added clarification of how the 1000-result query limit affects both fetch() and count().</li>
+  <li>Added a note about how Python <code>int</code> values stored in the datastore are stored and returned as Python <code>long</code> values.</li>
+  <li>Updated the Getting Started example to pass a sequence of up to 10 query results to the template, instead of passing the query object directly.  Passing the query object to the template works just fine, but how this works isn't clear from the example.  This also more sensibly limits the results to 10, which is what a real app would do anyway.</li>
+  <li>Added a note that the application root directory is in the module include path.</li>
+  <li>Added an example to the URL Fetch overview illustrating how to submit encoded form data with an HTTP POST action, including correct headers.</li>
+  <li>Corrected a statement in the URL Fetch overview: URL fetching does follow HTTP redirects, up to 5 times.</li>
+  <li>Corrected a statement about webapp.Response: This class does not inherit from WebOb's Response class, as webapp.Request does.  (This may be fixed in a future version.)</li>
+  <li>"Groups" in the navigation bar now goes directly to the Google App Engine discussion group.  The original "<a href="../groups.html">Discussion Groups</a>" page is still available from the sidebar, with a link to the downtime announcement list.</li>
+  <li>This documentation revision history page is now available.</li>
+</ul>
+
+<p><b>2008-05-19</b></p>
+<ul>
+  <li>Google App Engine Launcher for Mac OS X version 1.0.2 <a href="../downloads.html">now available</a>.</li>
+  <li>Article "<a href="../articles/django.html">Running Django on Google App Engine</a>" updated.</li>
+  <li>Article on quotas now includes file count and file size limits.</li>
+</ul>
+
+<p><b>2008-05-15</b></p>
+<ul>
+  <li>Google App Engine Launcher for Mac OS X version 1.0.1 <a href="../downloads.html">now available</a>.</li>
+  <li>Article "<a href="../articles/django.html">Running Django on Google App Engine</a>" updated, including a mention of how to perform App Engine deployment actions from Django's manage.py script.</li>
+</ul>
+
+<p><b>2008-05-14</b></p>
+<ul>
+  <li>Added note that the server enforces a maximum file size of 1,045,576 bytes.</li>
+</ul>
+
+<p><b>2008-05-13</b></p>
+<ul>
+  <li>New article: "<a href="../articles/transaction_isolation.html">Transaction Isolation in App Engine</a>"</li>
+</ul>
+
+<p><b>2008-05-09</b></p>
+<ul>
+  <li>SDK version 1.0.2 now available.</li>
+</ul>
+
+<p><b>2008-05-07</b></p>
+<ul>
+  <li>New article: "<a href="../articles/appengine_helper_for_django.html">Using the Google App Engine Helper for Django</a>"</li>
+</ul>
+
+<p><b>2008-05-06</b></p>
+<ul>
+  <li>New article: "<a href="../articles/rietveld.html">An Open Source App: Rietveld Code Review Tool</a>"</li>
+</ul>
+
+<p><b>2008-05-01</b></p>
+<ul>
+  <li><a href="../program_policies.html">Program policies</a> updated to clarify policy on complying with terms of service policies of other Google services, e.g. framing the Google Accounts sign-in screen.</li>
+</ul>
+
+<p><b>2008-04-30</b></p>
+<ul>
+  <li>"Powered by Google App Engine" buttons <a href="../downloads.html">now available</a>.</li>
+</ul>
+
+<p><b>2008-04-24</b></p>
+<ul>
+  <li>New article: "<a href="../articles/gdata.html">Retrieving Authenticated Google Data Feeds with Google App Engine</a>"</li>
+  <li>New FAQ: "<a href="../kb/general.html#sdk">Should I use the SDK for serving external requests?</a>"</li>
+</ul>
+
+<p><b>2008-04-14</b></p>
+<ul>
+  <li>SDK version 1.0.1 <a href="../downloads.html">now available</a>.</li>
+  <li>Many minor additions and clarifications to the documentation:
+    <ul>
+      <li>added more information about list property values</li>
+      <li>added mention of how model instance attributes that begin with an underscore are not saved with the entity</li>
+      <li>added mention that entity key names cannot begin with a number</li>
+      <li>added mention that ReferenceProperty back-references lowercase the model name in the default attribute name</li>
+      <li>added mention of how to terminate dev_appserver in Windows (Ctrl-Break)</li>
+      <li>improved the <code>tzinfo</code> example</li>
+      <li>mentioned lack of streaming ability in the CGI web server</li>
+    </ul>
+  </li>
+  <li><code>/appengine/docs/python/runtime.html#App_Caching</code> moved to <code>/appengine/docs/python/runtime.html#App_Caching</code>.</li>
+</ul>
+
+<p><b>2008-04-10</b></p>
+<ul>
+  <li><a href="../program_policies.html">Program policies</a> updated to clarify a note about putting the Admin Console in a frame.</li>
+</ul>
+
+<p><b>2008-04-07</b><p>
+<ul>
+  <li>Google App Engine launches.  The initial draft of the documentation describes App Engine, the services, the configuration files, the tools, and the Python runtime environment and APIs.  The documentation also includes a Getting Started tutorial, a FAQ and a set of articles.</li>
+  <li>Google App Engine Campfire One videos added after the Campfire completed.</li>
+</ul>
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

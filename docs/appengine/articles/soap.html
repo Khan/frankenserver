@@ -1,0 +1,1749 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/soap.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>HOW TO: Build a SOAP Server and a SOAP Client on Google App Engine - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">HOW TO: Build a SOAP Server and a SOAP Client on Google App Engine</h1>
+
+
+
+<p><em>Mitch Rudominer</em><br>
+<em>February 2011</em><br/>
+<em>SDK: 1.4.2</em>
+</p>
+
+<div id="jd-content">
+<div class="jd-descr">
+
+
+<ul>
+<li> <a href=#sm>Summary</a></li>
+<li> <a href=#sv>Building a SOAP Server on Google App Engine</a></li>
+<li> <a href=#cl>Building a SOAP Client on Google App Engine Using JAX-WS</a></li>
+</ul>
+
+<h2 id="sm">Summary</h2>
+
+<p>
+Starting in release 1.4.2 of Google App Engine, it is possible to use java.xml.soap and JAX-B to build a SOAP server, and to use JAX-WS to build a SOAP client on App Engine.
+</p>
+
+<p>
+This HOWTO walks through building a simple <em>Hello World</em> application that does this. We will build two App Engine applications: one for the server and one for the client. Building the SOAP client is easier than building the server, so if you only care about building a SOAP client you may skip ahead to the client section. But we start with the section on building the server because it is a logical prerequisite if you don't already have some other existing SOAP server.
+</p>
+
+<h2 id="sv">Building a SOAP Server on Google App Engine</h2>
+
+<p>
+<b>1.</b> Create a new App Engine Java Web Application project.
+I'm using Eclipse version 3.5 with Google Plugin version 1.3.3.
+If you are using different versions the screenshots might not match your environment exactly.
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/new-webapp.png">
+</p>
+
+<p>
+<b>Figure 1.</b> Creating a new App Engine Web Application Project.
+</p>
+
+<p>
+Name the project "HelloSOAPServer" and use "com.example" for the package.
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/name-the-project.png">
+</p>
+
+<p>
+<b>Figure 2.</b> Naming a new App Engine Web Application Project.
+</p>
+
+<p>
+You don't need to use Google Web Toolkit but you do need to use Google App Engine. Select version 1.4.2 or higher of the SDK.
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/select-sdk-version.png">
+</p>
+
+<p>
+<b>Figure 3.</b> Selecting the SDK version.
+</p>
+
+<p>
+The class com.example.<b>HelloSOAPServerServlet</b> is created for you automatically.
+</p>
+
+<p>
+<b>2.</b> Create a class with methods that you wish to expose through SOAP.
+For our example, name the class "Greeter" and put it in the package com.example:
+</p>
+
+<p>
+<img style="border:1px solid black;" src="img/new-java-class.png">
+</p>
+
+<p>
+<b>Figure 4.</b> Creating a new Java class.
+</p>
+
+<p>
+We'll keep things very simple. Our class will only expose two simple methods: sayHello() and sayGoodbye().
+</p>
+
+<p>
+<pre class="prettyprint">
+package com.example;
+public class Greeter {
+  public String sayHello(String name){
+    return "Hello, " + name+ "!";
+  }
+  public String sayGoodbye(String name){
+    return "Goodbye, " + name + "!";
+  }
+}
+ </pre>
+</p>
+
+<p>
+<b>3.</b> Add the javax.jws.<b>WebService</b> annotation to the class, and the javax.jws.<b>WebMethod</b> annotation
+to each of the methods you wish to expose through SOAP.
+</p>
+
+<p>
+<pre class="prettyprint">
+package com.example;
+import javax.jws.WebMethod;
+import javax.jws.WebService;
+
+@WebService
+public class Greeter {
+  @WebMethod
+  public String sayHello(String name){
+    return "Hello, " + name+ "!";
+  }
+  @WebMethod
+  public String sayGoodbye(String name){
+    return "Goodbye, " + name + "!";
+  }
+}
+</pre>
+</p>
+
+<p>
+As of version 1.4.2 Google App Engine does not support the use of JAX-WS in a SOAP server.
+(It is supported in a SOAP <em>client</em>.) As we'll see below, in order to complete the SOAP server we will have to directly use
+javax.xml.soap and JAX-B. So then why did we bother to add the JAX-WS annotations?
+As we'll see, we can take advantage of the the JAX-WS tool <b>wsgen</b> to generate a WSDL
+file and the JAX-B POJOs that will be of use to us in our SOAP server. The annotations are needed for that reason.
+</p>
+
+<p>
+<b>4.</b>  Run <b>wsgen</b> on the annoted class.  This tool is now included in the JDK. My JDK includes the version from JAX-WS RI 2.1.6.
+ (You can discover the version by typing wsgen -version.) Because wsgen has several command-line arguments, I have written a
+Linux shell script called runwsgen.sh to execute it. If you are not using Linux, you will have to translate this script to your
+OS scripting language. Place the following script in the root directory of the project (i.e. the parent directory of war and src)
+and execute it from there.
+</p>
+
+<p>
+<pre class="prettyprint">
+class=com.example.Greeter
+clpth='./war/WEB-INF/classes'
+resourcedir='./war'
+outsourcedir='./src'
+outdir='./war/WEB-INF/classes'
+wsgen -cp "$clpth" -wsdl -keep -r "$resourcedir" -d "$outdir" -s "$outsourcedir"  $class
+</pre>
+</p>
+
+<p>
+I'll now go through the results of executing this script while at the same time explaining
+what each of the arguments mean.
+</p>
+
+<p>
+<ul>
+<li> <code>class=com.example.Greeter</code>  &ndash; defines the main argument of the wsgen command to be our annotated class.
+<li> <code>clpth='./war/WEB-INF/classes'</code> &ndash; tells wsgen where to find com/example/Greeter.class.
+WSGEN does not operate on Java source files but rather on Java class files.
+<li> <code>resourcedir='./war'</code> &ndash; tells wsgen where to put the generated WSDL file GreeterService.wsdl
+and the associated XML schema document GreeterService_schema1.xsd. Notice the
+command line argument -wsdl was used to tell wsgen to generate a WSDL.
+I put the two files in the war directory because I want them to be included in
+the war file to be deployed on App Engine. Putting the files in that directory
+allows the SOAP client to access them from there.
+
+<br>
+<img style="border:1px solid black;" src="img/new-wsdl.png">
+<br>
+<li> <code>outsourcedir='./src'</code> &ndash; tells wsgen where to put the generated Java source files.
+Notice the command line argument <code>-keep</code>, which tells wsgen to keep the generated Java source files.
+WSGEN generated four Java classes in the package com.example.jaxws:
+<br>
+  <ol>
+  <li> SayGoodbye
+  <li> SayGoodbyeResponse
+  <li> SayHello
+  <li> SayHelloResponse
+  </ol>
+<br>
+These are POJOs with JAX-B annotations corresponding to the request and response for each of the methods in Greeter.java
+that we annoted with @WebMethod. I chose to put the generated source files into the src directory so that
+they would become part of the source code for my project.
+<br><br>
+<img style="border:1px solid black;" src="img/generated-classes.png">
+<br><br>
+<li> <code>outdir='./war/WEB-INF/classes.'</code> &ndash; tells wsgen where to put the generated class files.
+Actually I don't need the generated class files at all because Eclipse will compile the generated Java source files for me.
+But I chose to let wsgen put the class files into their proper place in WEB-INF/classes anyway.
+</ul>
+</p>
+
+<p>
+<b>5.</b> Put the SOAP request URL into the WSDL file. Take a look at the generated GreeterService.wsdl file. I'm not going to explain the
+contents of this file in any detail. The primary thing to know about the WSDL file is that it, along with the associated XML Schema document,
+describes the XML that must be sent in a SOAP request and the XML that should be expected in a SOAP response. Another role of the WSDL is to
+specify the URL to where SOAP requests should be sent. Notice that in the generated WSDL file the URL is represented by a place-holder:
+ '<b>REPLACE_WITH_ACTUAL_URL</b>'.  Replace this string with the actual URL of your SOAP server. We are going to use the
+HelloSoapServerServlet that was automatically generated by the Google Eclipse plugin to serve SOAP requests. In the automatically
+generated web.xml file this servlet has been mapped to the URL path
+/hellosoapserver. We are going to deploy our application to App Engine running on <code>appspot.com</code>.
+So the actual URL that should go into the WSDL file is <code>http://<i>your_app_id</i>.appspot.com/hellosoapserver</code>.
+For example if our app ID were <code>greeter-soap-example</code> then the actual URL would be
+<code>http://greeter-soap-example.appspot.com/hellosoapserver</code>.
+</p>
+
+<p>
+<pre class="prettyprint">
+&lt;service name="GreeterService"&gt
+  &lt;port name="GreeterPort" binding="tns:GreeterPortBinding"&gt;
+    &lt;soap:address location=<strong>"http://greeter-soap-example.appspot.com/hellosoapserver"</strong>/&gt;
+  &lt;/port&gt;
+&lt;/service&gt;
+</pre>
+</p>
+
+<p>
+<b>6.</b> Write an adapter class to adapt between a signature that uses the JAX-B POJOs that were generated by wsgen and the signature of your real business logic methods. In our case we need to adapt between one signature that uses SayHello, SayHelloResponse, SayGoodbye, and SayGoodbyeResponse&mdash;to the signature of Greeter.java that takes Strings as inputs and yields Strings as outputs. The class GreeterAdapter does that for us. This step would not be necessary if JAX-WS for SOAP servers were supported on App Engine, but it currently is not. Here is the code for GreeterAdapter. (We have not included any comments for the sake of brevity.)
+</p>
+
+<p>
+<pre class="prettyprint">
+package com.example;
+import com.example.jaxws.SayGoodbye;
+import com.example.jaxws.SayGoodbyeResponse;
+import com.example.jaxws.SayHello;
+import com.example.jaxws.SayHelloResponse;
+public class GreeterAdapter {
+  private Greeter greeter = new Greeter();
+
+  public SayHelloResponse sayHello(SayHello request){
+    String name = request.getArg0();
+    String responseGreeting = greeter.sayHello(name);
+    SayHelloResponse response = new SayHelloResponse();
+    response.setReturn(responseGreeting);
+    return response;
+  }
+
+  public SayGoodbyeResponse sayGoodbye(SayGoodbye request){
+    String name = request.getArg0();
+    String responseGreeting = greeter.sayGoodbye(name);
+    SayGoodbyeResponse response = new SayGoodbyeResponse();
+    response.setReturn(responseGreeting);
+    return response;
+  }
+}
+</pre>
+</p>
+
+<p>
+<b>7.</b> Write a SOAPHandler class that implements the following method:
+</p>
+
+<p>
+<pre class="prettyprint">
+public SOAPMessage handleSOAPRequest(SOAPMessage request);
+</pre>
+</p>
+
+<p>
+SOAPMessage is a class from javax.xml.SOAP that represents a SOAP request or response message.
+The purpose of handleSOAPRequest() is to accept a SOAPMessage representing a request for one of the
+ methods annoted with @WebMethod, either sayHello() or sayGoodbye(),  use JAX-B to generate the appropriate POJO,
+either a SayHello object or a SayGoodbye object, and forward the call on to the appropriate method in GreeterAdapter,
+either sayHello() or sayGoodbye(). Again, this step would not be necessary if JAX-WS on the server side was supported on App Engine.
+</p>
+
+<p>
+In order to be able  to distinguish whether the request is for sayHello() or sayGoodbye(),
+SOAPHandler will need to make use of the XML element names of the SOAP elements corresponding to each of these methods.
+These names may be found in one of two places. Firstly, the names may be found in the JAX-B annotations of the generated POJO classes.
+ For example if we look in SayHello.java we find the following annotation:
+</p>
+
+<p>
+<pre class="prettyprint">
+@XmlRootElement(name = "sayHello", namespace = "http://example.com/").
+</pre>
+</p>
+
+<p>
+And if we look in SayGoodby.java we find the following annotation:
+</p>
+
+<p>
+<pre class="prettyprint">
+XmlRootElement(name = "sayGoodbye", namespace = "http://example.com/").
+</pre>
+</p>
+
+<p>
+The second place where the XML element names may be found is in the generated XSD file.
+If we look in GreeterService_schema1.xsd we see:
+</p>
+
+<p>
+<pre class="prettyprint">
+&lt;xs:schema version="1.0" targetNamespace="http://example.com/"
+    xmlns:tns="http://example.com/" xmlns:xs="http://www.w3.org/2001/XMLSchema"&gt;
+  &lt;xs:element name="sayHello" type="tns:sayHello"/&gt;
+&lt;xs:element name="sayGoodbye" type="tns:sayGoodbye"/&gt;
+</pre>
+</p>
+
+<p>
+Here is the code for GreeterSOAPHandler.java. Again there are no comments for conciseness.
+</p>
+
+<p>
+<pre class="prettyprint">
+package com.example;
+import java.util.Iterator;
+import javax.xml.bind.JAXB;
+import javax.xml.namespace.QName;
+import javax.xml.soap.MessageFactory;
+import javax.xml.soap.SAAJResult;
+import javax.xml.soap.SOAPBody;
+import javax.xml.soap.SOAPElement;
+import javax.xml.soap.SOAPException;
+import javax.xml.soap.SOAPFault;
+import javax.xml.soap.SOAPMessage;
+import javax.xml.transform.dom.DOMSource;
+import com.example.jaxws.SayGoodbye;
+import com.example.jaxws.SayHello;
+
+public class GreeterSOAPHandler {
+
+  private static final String NAMESPACE_URI = "http://example.com/";
+  private static final QName SAY_HELLO_QNAME = new QName(NAMESPACE_URI, "sayHello");
+  private static final QName SAY_GOODBYE_QNAME = new QName(NAMESPACE_URI, "sayGoodbye");
+
+  private MessageFactory messageFactory;
+  private GreeterAdapter greeterAdapter;
+
+  public GreeterSOAPHandler() throws SOAPException {
+    messageFactory = MessageFactory.newInstance();
+    greeterAdapter = new GreeterAdapter();
+  }
+
+  public SOAPMessage handleSOAPRequest(SOAPMessage request) throws SOAPException {
+    SOAPBody soapBody = request.getSOAPBody();
+    Iterator iterator = soapBody.getChildElements();
+    Object responsePojo = null;
+    while (iterator.hasNext()) {
+      Object next = iterator.next();
+      if (next instanceof SOAPElement) {
+        SOAPElement soapElement = (SOAPElement) next;
+        QName qname = soapElement.getElementQName();
+          if (SAY_HELLO_QNAME.equals(qname)) {
+            responsePojo = handleSayHelloRequest(soapElement);
+            break;
+          } else if (SAY_GOODBYE_QNAME.equals(qname)) {
+            responsePojo = handleSayGoodbyeRequest(soapElement);
+            break;
+          }
+      }
+    }
+    SOAPMessage soapResponse = messageFactory.createMessage();
+    soapBody = soapResponse.getSOAPBody();
+    if (responsePojo != null) {
+      JAXB.marshal(responsePojo, new SAAJResult(soapBody));
+    } else {
+      SOAPFault fault = soapBody.addFault();
+      fault.setFaultString("Unrecognized SOAP request.");
+    }
+    return soapResponse;
+  }
+
+  private Object handleSayHelloRequest(SOAPElement soapElement) {
+    SayHello sayHelloRequest = JAXB.unmarshal(new DOMSource(soapElement), SayHello.class);
+    return greeterAdapter.sayHello(sayHelloRequest);
+  }
+
+  private Object handleSayGoodbyeRequest(SOAPElement soapElement) {
+    SayGoodbye sayGoodbyeRequest =
+        JAXB.unmarshal(new DOMSource(soapElement), SayGoodbye.class);
+    return greeterAdapter.sayGoodbye(sayGoodbyeRequest);
+  }
+}
+</pre>
+</p>
+
+<p>
+<b>8.</b> Write a <b>doPost(HttpServletRequest req, HttpServletResponse resp)</b> method in HelloSOAPServerServlet.java.
+This method will do the following things:
+</p>
+
+<ol>
+<li> Construct a SOAPMessage from the XML in the HTTP request.
+<li> Pass the SOAPMessage to  handleSOAPRequest(SOAPMessage request) and obtain a SOAPMessage response.
+<li> Serialize the SOAPMessage response to the HTTP response
+</ol>
+
+<p>
+Here is the code for HelloSOAPServerServlet.java.
+</p>
+
+<p>
+<pre class="prettyprint">
+package com.example;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Enumeration;
+import java.util.StringTokenizer;
+
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.xml.soap.MessageFactory;
+import javax.xml.soap.MimeHeaders;
+import javax.xml.soap.SOAPException;
+import javax.xml.soap.SOAPMessage;
+
+@SuppressWarnings("serial")
+public class HelloSOAPServerServlet extends HttpServlet {
+
+  static MessageFactory messageFactory;
+  static GreeterSOAPHandler soapHandler;
+
+  static {
+    try {
+      messageFactory = MessageFactory.newInstance();
+      soapHandler = new GreeterSOAPHandler();
+    } catch (Exception ex) {
+        throw new RuntimeException(ex);
+    }
+  }
+
+
+  @Override
+  public void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    try {
+      // Get all the headers from the HTTP request
+      MimeHeaders headers = getHeaders(req);
+
+      // Construct a SOAPMessage from the XML in the request body
+      InputStream is = req.getInputStream();
+      SOAPMessage soapRequest = messageFactory.createMessage(headers, is);
+
+      // Handle soapReqest
+      SOAPMessage soapResponse = soapHandler.handleSOAPRequest(soapRequest);
+
+      // Write to HttpServeltResponse
+      resp.setStatus(HttpServletResponse.SC_OK);
+      resp.setContentType("text/xml;charset=\"utf-8\"");
+      OutputStream os = resp.getOutputStream();
+      soapResponse.writeTo(os);
+      os.flush();
+    } catch (SOAPException e) {
+      throw new IOException("Exception while creating SOAP message.", e);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  static MimeHeaders getHeaders(HttpServletRequest req) {
+    Enumeration headerNames = req.getHeaderNames();
+    MimeHeaders headers = new MimeHeaders();
+    while (headerNames.hasMoreElements()) {
+      String headerName = (String) headerNames.nextElement();
+      String headerValue = req.getHeader(headerName);
+      StringTokenizer values = new StringTokenizer(headerValue, ",");
+      while (values.hasMoreTokens()) {
+        headers.addHeader(headerName, values.nextToken().trim());
+      }
+    }
+    return headers;
+  }
+}
+</pre>
+</p>
+
+<p>
+<b>9.</b>  Deploy the application to Google App Engine. Make sure to use the same app ID that was specified in the WSDL file.
+In our example this is <b>greeter-soap-example</b>.
+</p>
+
+<h2 id="cl">Building a SOAP Client on Google App Engine Using JAX-WS</h2>
+
+<p>
+In this section we walk through the steps necessary to build a SOAP client.
+If you are only interested in building a client and not a server, and if you already have some existing SOAP server,
+you can skip right to this section and use the techniques here to build a client for your server.
+We will build a client for the server we built in the previous section.
+</p>
+
+<p>
+<b>1.</b>   Create another new App Engine Java Web Application project. Name the project "HelloSOAPClient" and use
+"com.example" for the package. See the screenshots in the previous section.
+Select version 1.4.2 or higher of the Google App Engine SDK.
+The class com.example.<b>HelloSOAPClientServlet</b> is created for you automatically.
+</p>
+
+<p>
+<b>2.</b>  Run <b>wsimport</b> to generate client-side JAX-WS classes from a WSDL file.
+This tool is now included in the JDK. My JDK includes the version from JAX-WS RI 2.1.6.
+(You can discover the version by typing wsimport -version.) Because wsimport has several command-line arguments,
+I have written a Linux shell script called runwsimport.sh to execute it. If you are not using Linux,
+you will have to translate this script to your OS scripting language. Place the following script in the
+root directory of the project (i.e. the parent directory of war and src) and execute it from there.
+</p>
+
+<p>
+<pre class="prettyprint">
+wsdluri='http://greeter-soap-example.appspot.com/GreeterService.wsdl'
+gensrcdir='./src'
+targetpackage='com.example'
+genoutdir='./war/WEB-INF/classes'
+wsimport -d "$genoutdir" -s "$gensrcdir" -p $targetpackage -keep "$wsdluri"
+</pre>
+</p>
+
+<p>
+You should see output from the script that looks something like the following:
+</p>
+
+<p>
+<pre>
+parsing WSDL...
+generating code...
+compiling code...
+</pre>
+</p>
+
+<p>
+I'll now go through the results of executing this script while at the same time explaining what each of the arguments means.
+</p>
+
+<p>
+<ul>
+<li> <code>wsdluri='http://greeter-soap-example.appspot.com/GreeterService.wsdl'</code> &ndash; tells wsimport from where it should
+retrieve the WSDL. In our example, we have deployed the WSDL with the server, which is an App Engine application with app ID
+<em>greeter-soap-example</em>. You could also specify a local file path if you have the WSDL locally. But keep in mind that the WSDL
+contains the URL that JAX-WS will use to make SOAP requests. In our example the WSDL that we deployed on the server contains
+the URL http://greeter-soap-example.appspot.com/hellosoapserver which will resolve to the default App Engine servlet in the
+ greeter-soap-example application.
+<li> <code>gensrcdir='./src'</code> &ndash; tells wsimport where to put the generated Java source files.
+Notice the command line argument <code>-keep</code> which tells wsimport to keep the generated Java source files.
+I chose to put the generated source files into the src directory so that they would become part of the source code for my project.
+WSIMPORT generated eight Java classes in the package com.example. (If your version of wsimport is different than
+mine it is possible that you may not have exactly the same eight files as me.)
+<ol>
+<li> Greeter.java. This is an interface containing the methods described in the WSDL. In our case sayHello() and sayGoodbye().
+<li> GreeterService.java. This is a factory that will return instances of Greeter. Note that this class contains the URL of the WSDL.
+At runtime JAX-WS will fetch the WSDL from the location specified in this class, and then use the SOAP enpoint URL from the
+WSDL to make the SOAP request.
+<li> Several other Java classes that are used by JAX-WS but that we won't need to deal with directly.
+</ol>
+<br>
+<img style="border:1px solid black;" src="img/more-generated-classes.png">
+<br>
+<li> <code>targetpackage='com.example'</code> &ndash; tells wsimport to generate  Java classes in the com.example package.
+<li> <code>genoutdir='./war/WEB-INF/classes'</code> &ndash; tells wsimport where to put the generated class files.
+Actually I don't need the generated class files at all because Eclipse will compile the generated Java source files for me.
+But I chose to let wsimport put the class files into their proper place in WEB-INF/classes anyway.
+</ul>
+</p>
+
+<p>
+<b>3.</b> Write code in your client application that makes use of the generated classes.
+In our simple example we will modify the default servlet generated by the Google Eclipse plugin.
+Instead of just printing "Hello World", we will have the servlet take a name and a boolean as query string arguments.
+If the boolean is true then we will call sayHello(name) to print a hello message. If the boolean is false then we
+will call sayGoodbye(name) to print a goodbye message. The interesting part is that sayHello() and sayGoodbye()
+are implemented by making a SOAP request to the server. Here is the code for doGet() in HelloSOAPClientServlet.java.
+</p>
+
+<p>
+<pre class="prettyprint">
+public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+  String name = req.getParameter("name");
+  boolean isArriving = Boolean.parseBoolean(req.getParameter("arriving"));
+  resp.setContentType("text/plain");
+  Greeter greeter = new GreeterService().getGreeterPort();
+  String message;
+  if (isArriving){
+    message = greeter.sayHello(name);
+  }
+  else {
+    message = greeter.sayGoodbye(name);
+  }
+  resp.getWriter().println(message);
+}
+</pre>
+</p>
+
+<p>
+<b>4.</b> Deploy the application to Google App Engine. In our example we will use the App ID <b>greeter-soap-client</b>.
+</p>
+
+<p>
+<b>5.</b> Test the client.
+</p>
+
+<p>
+With this URL: http://greeter-client.appspot.com/hellosoapclient?name=SOAP&arriving=true
+you should see the response: <em>Hello, SOAP!</em>
+</p>
+
+<p>
+With this URL: http://greeter-client.appspot.com/hellosoapclient?name=SOAP&arriving=false
+you should see the response: <em>Goodbye, SOAP!</em>
+</p>
+
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+
+

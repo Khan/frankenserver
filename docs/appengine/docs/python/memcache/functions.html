@@ -1,0 +1,1424 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/python/memcache/functions.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Functions - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../../downloads.html">Downloads</a></li>
+  <li><a href="../../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../../java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../../java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../../java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../../java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../../java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../../java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../../java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../../java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../../java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../../java/overview.html">Overview</a></li>
+    <li><a href="../../java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../../java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../java/backends/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../../java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../../java/datastore/overview.html">Overview</a></li>
+    <li><a href="../../java/datastore/entities.html">Entities</a></li>
+    <li><a href="../../java/datastore/queries.html">Queries</a></li>
+    <li><a href="../../java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../../java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../../java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../../java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../../java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../../java/datastore/async.html">Async API</a></li>
+    <li><a href="../../java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../../java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../../java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../../java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../../java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../../java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../../java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../../java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/apis.html">Services</a>
+      <ul>
+        <li><a href="../../java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../../java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../java/capabilities/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../java/conversion/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../java/channel/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../../java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../../java/images/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../../java/mail/overview.html">Overview</a></li>
+    <li><a href="../../java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../../java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../../java/memcache/overview.html">Overview</a></li>
+    <li><a href="../../java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../../java/oauth/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../../java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../../java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../../java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../../java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../../java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../../java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../../java/users/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../../java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../../java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../../java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../../java/config/appconfig.html">App Config</a></li>
+    <li><a href="../../java/config/backends.html">Backends Config</a></li>
+    <li><a href="../../java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../../java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../../java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../../java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../../java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../../java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../../java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../../java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../../java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../../java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../../java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../../java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../../java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../overview.html">Overview</a></li>
+    <li><a href="../runtime.html">Runtime Environment</a></li>
+    <li><a href="../python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../backends/applog.html">AppLog Class</a></li>
+    <li><a href="../backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../datastore/entities.html">Entities</a></li>
+      <li><a href="../datastore/queries.html">Queries</a></li>
+      <li><a href="../datastore/transactions.html">Transactions</a></li>
+      <li><a href="../datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../datastore/stats.html">Statistics</a></li>
+      <li><a href="../datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../datastore/modelclass.html">Model</a></li>
+          <li><a href="../datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../datastore/propertyclass.html">Property</a></li>
+          <li><a href="../datastore/queryclass.html">Query</a></li>
+          <li><a href="../datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../datastore/keyclass.html">Key</a></li>
+          <li><a href="../datastore/functions.html">Functions</a></li>
+          <li><a href="../datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../apis.html">Services</a>
+      <ul>
+        <li><a href="../appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../appidentity/functions.html">Functions</a></li>
+    <li><a href="../appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../blobstore/functions.html">Functions</a></li>
+    <li><a href="../blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../conversion/functions.html">Functions</a></li>
+    <li><a href="../conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../channel/functions.html">Functions</a></li>
+    <li><a href="../channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../images/index.html">Images</a>
+          <ul>
+                 <li><a href="../images/overview.html">Overview</a></li>
+     <li><a href="../images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../images/imageclass.html">Image</a></li>
+         <li><a href="../images/functions.html">Functions</a></li>
+         <li><a href="../images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../mail/overview.html">Overview</a></li>
+     <li><a href="../mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../mail/attachments.html">Attachments</a></li>
+     <li><a href="../mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../mail/functions.html">Functions</a></li>
+         <li><a href="../mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="index.html">Memcache</a>
+          <ul>
+                 <li><a href="overview.html">Overview</a></li>
+      <li><a href="usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="clientclass.html">Client</a></li>
+         <li><a href="functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../multitenancy/overview.html">Overview</a></li>
+    <li><a href="../multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../multitenancy/functions.html">Functions</a></li>
+        <li><a href="../multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../oauth/functions.html">Functions</a></li>
+         <li><a href="../oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../googlestorage/overview.html">Overview</a></li>
+<li><a href="../googlestorage/functions.html">Functions</a></li>
+<li><a href="../googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../taskqueue/overview.html">Overview</a></li>
+     <li><a href="../taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../taskqueue/functions.html">Functions</a></li>
+         <li><a href="../taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../users/index.html">Users</a>
+          <ul>
+                 <li><a href="../users/overview.html">Overview</a></li>
+     <li><a href="../users/userobjects.html">User Objects</a></li>
+     <li><a href="../users/loginurls.html">Login URLs</a></li>
+     <li><a href="../users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../users/userclass.html">User</a></li>
+         <li><a href="../users/functions.html">Functions</a></li>
+         <li><a href="../users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../xmpp/functions.html">Functions</a></li>
+         <li><a href="../xmpp/messageclass.html">Message</a></li>
+         <li><a href="../xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../config/appconfig.html">App Config</a></li>
+    <li><a href="../config/backends.html">Backends Config</a></li>
+    <li><a href="../config/indexconfig.html">Index Config</a></li>
+    <li><a href="../config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../config/queue.html">Task Queue Config</a></li>
+    <li><a href="../config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../tools/devserver.html">Development Server</a></li>
+    <li><a href="../tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../tools/appstats.html">Appstats</a></li>
+    <li><a href="../tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../../go/overview.html">Overview</a></li>
+    <li><a href="../../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../go/backends/overview.html">Overview</a></li>
+<li><a href="../../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../go/channel/overview.html">Overview</a></li>
+<li><a href="../../go/channel/reference.html">Reference</a></li>
+<li><a href="../../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../go/mail/overview.html">Overview</a></li>
+     <li><a href="../../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../go/users/overview.html">Overview</a></li>
+     <li><a href="../../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../../adminconsole/instances.html">Instances</a></li>
+<li><a href="../../adminconsole/roles.html">Roles</a></li>
+<li><a href="../../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../quotas.html">Quotas</a></li>
+      <li><a href="../../billing.html">Billing</a></li>
+      <li><a href="../../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../../kb/index.html">FAQ</a></li>
+      <li><a href="../../../articles/index.html">Articles</a></li>
+      <li><a href="../../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Functions</h1>
+
+
+
+<p>The <code>google.appengine.api.memcache</code> package provides the following functions:</p>
+
+
+
+
+<dl class="apireference">
+  <dt id="Client_set"><span class="itemname">set</span>(<span class="argname">key</span>, <span class="argname">value</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Sets a key's value, regardless of previous contents in cache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to set. The Key can be a string or a tuple of (hash_value, string) where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">value</span></dt>
+      <dd>Value to set. The value type can be any value supported by the Python <code>pickle</code> module for serializing values. The combined size of the serialized key and value must be at most 1 megabyte.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+    </dl>
+    <p>The return value is True if set, False on error.</p>
+  </dd>
+
+  <dt id="Client_set_multi"><span class="itemname">set_multi</span>(<span class="argname">mapping</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Set multiple keys' values at once. Reduces the network latency of doing many requests in serial.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">mapping</span></dt>
+      <dd>Dictionary of keys to values.  See <a href="#Client_set">set()</a> for a description of allowed keys and values. The combined size of all keys and values must be at most 32 megabytes.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to prepend to all keys.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the keys.</dd>
+    </dl>
+    <p>The return value is a list of keys whose values were NOT set.  On total success, this list should be empty.</p>
+  </dd>
+
+
+
+  <dt id="Client_get"><span class="itemname">get</span>(<span class="argname">key</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Looks up a single key in memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>The key in memcache to look up. The Key can be a string or a tuple of (hash_value, string) where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+    </dl>
+    <p>The return value is the value of the key, if found in memcache, else None.</p>
+  </dd>
+
+
+
+  <dt id="Client_get_multi"><span class="itemname">get_multi</span>(<span class="argname">keys</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>,  <span class="argname">for_cas</span>=<span class="argdefault">False</span>)</dt>
+  <dd>
+    <p>Looks up multiple keys from memcache in one operation. This is the recommended way to do bulk loads.</p>
+    <p>The combined size of all values returned must not exceed 32 megabytes.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">keys</span></dt>
+      <dd>List of keys to look up. A Key can be a string or a tuple of (hash_value, string), where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to prepend to all keys when talking to the server;
+        not included in the returned dictionary.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the keys.</dd>
+      <dt><span class="argname">for_cas</span></dt>
+      <dd>If called in the function interface, this value must be set to false. If called as a Client instance method, supply the value True if you wish to use the <a href="overview.html#Using_Compare_and_Set_in_Python">compare and set</a> (cas) feature or supply the value False if you don't want to use that feature.</dd>
+    </dl>
+    <p>The returned value is a dictionary of the keys and values that were present in memcache. Even if the <span class="argname">key_prefix</span> is specified, that key_prefix is not included on the keys in the returned dictionary.</p>
+  </dd>
+
+  <dt id="Client_delete"><span class="itemname">delete</span>(<span class="argname">key</span>, <span class="argname">seconds</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Deletes a key from memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to delete. A Key can be a string or a tuple of (hash_value, string), where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">seconds</span></dt>
+      <dd>Optional number of seconds to make deleted items 'locked' for 'add' operations. Value can be a delta from current time (up to
+        1 month), or an absolute Unix epoch time.  Defaults to 0, which means items can be immediately added.  With or without this option, a 'set' operation will always work.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+    </dl>
+    <p>The return value is 0 (DELETE_NETWORK_FAILURE) on network failure, 1 (DELETE_ITEM_MISSING) if the server tried to delete the item but didn't have it, and 2 (DELETE_SUCCESSFUL) if the item was actually deleted.  This can be used as a boolean value, where a network failure is the only bad condition.</p>
+  </dd>
+
+  <dt id="Client_delete_multi"><span class="itemname">delete_multi</span>(<span class="argname">keys</span>, <span class="argname">seconds</span>=<span class="argdefault">0</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Delete multiple keys at once.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">keys</span></dt>
+      <dd>List of keys to delete. A Key can be a string or a tuple of (hash_value, string) where the hash_value, normally used for sharding onto a memcache instance, 
+          is instead ignored, as Google App Engine deals with the sharding transparently. </dd>
+      <dt><span class="argname">seconds</span></dt>
+      <dd>Optional number of seconds to make deleted items 'locked' for 'add' operations. Value can be a delta from current time (up to 1 month), or an absolute Unix epoch time. Defaults to 0, which means items can be immediately added.  With or without this option, a 'set' operation will always work.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to put on all keys when sending specified
+        keys to memcache.  See docs for <a href="#Client_get_multi">get_multi()</a> and <a href="#Client_set_multi">set_multi()</a></dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the keys.</dd>
+    </dl>
+    <p>The return value is True if all operations completed successfully.  False if one
+      or more failed to complete.</p>
+  </dd>
+
+  <dt id="Client_add"><span class="itemname">add</span>(<span class="argname">key</span>, <span class="argname">value</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Sets a key's value, if and only if the item is not already in memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to set. The Key can be a string or a tuple of (hash_value, string), where the hash_value, normally used for sharding onto a memcache instance is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">value</span></dt>
+      <dd>Value to set. The value type can be any value supported by the Python <code>pickle</code> module for serializing values. The combined size of the serialized key and value must be at most 1 megabyte.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+    </dl>
+    <p>The return value is True if added, False on error.</p>
+  </dd>
+
+  <dt id="Client_add_multi"><span class="itemname">add_multi</span>(<span class="argname">mapping</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Adds multiple values at once, with no effect for keys already in memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">mapping</span></dt>
+      <dd>A mapping of keys to values. See <a href="#Client_add">add()</a> for a description of allowed keys and values.  The combined size of all keys and values must be at most 32 megabytes.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to put on all keys when sending specified keys to memcache. Even if the <span class="argname">key_prefix</span> is specified, that key_prefix won't be on the keys in the returned list. See <a href="#Client_get_multi">get_multi()</a>.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the keys.</dd>
+    </dl>
+    <p>The return value is a list of keys whose values were <i>not</i> set because they were already set in memcache, or an empty list.</p>
+  </dd>
+
+  <dt id="Client_replace"><span class="itemname">replace</span>(<span class="argname">key</span>, <span class="argname">value</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Replaces a key's value, failing if item isn't already in memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to set. The Key can be a string or a tuple of (hash_value, string) 
+          where the hash_value, normally used for sharding onto a memcache instance, 
+          is instead ignored, as Google App Engine deals with the sharding transparently.</dd>
+      <dt><span class="argname">value</span></dt>
+      <dd>Value to set. The value type can be any value supported by the Python <code>pickle</code> module for serializing values. The combined size of the serialized key and value must be at most 1 megabyte.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+    </dl>
+    <p>The return value is True if replaced.  False on error or cache miss.</p>
+  </dd>
+
+  <dt id="Client_replace_multi"><span class="itemname">replace_multi</span>(<span class="argname">mapping</span>, <span class="argname">time</span>=<span class="argdefault">0</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">min_compress_len</span>=<span class="argdefault">0</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Replaces multiple values at once, with no effect for keys not in memcache.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">mapping</span></dt>
+      <dd>A mapping of keys to values. See <a href="#Client_replace">replace()</a> for a description of allowed keys and values. The combined size of all keys and values must be at most 32 megabytes.</dd>
+      <dt><span class="argname">time</span></dt>
+      <dd>Optional expiration time, either relative number of seconds from current time (up to 1 month), or an absolute Unix epoch time. By default, items never expire, though items may be evicted due to memory pressure.  Float values will be rounded up to the nearest whole second.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to put on all keys when sending specified
+        keys to memcache. Even if the <span class="argname">key_prefix</span> is specified, that key_prefix won't be on the keys in the returned list. See <a href="#Client_get_multi">get_multi()</a>.</dd>
+      <dt><span class="argname">min_compress_len</span></dt>
+      <dd>Ignored option for compatibility.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the keys.</dd>
+    </dl>
+    <p>The return value is a list of keys whose values were <i>not</i> set because they were not set in memcache, or an empty list.</p>
+  </dd>
+
+  <dt id="Client_incr"><span class="itemname">incr</span>(<span class="argname">key</span>, <span class="argname">delta</span>=<span class="argdefault">1</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>, <span class="argname">initial_value</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Atomically increments a key's value. Internally, the value is a unsigned 64-bit integer.  Memcache doesn't check 64-bit overflows.  The value, if too large, will wrap around.</p>
+    <p>If the key does not yet exist in the cache and you specify an <span class="argname">initial_value</span>, the key's value will be set to this initial value and then incremented.  If the key does not exist and no <span class="argname">initial_value</span> is specified, the key's value will not be set.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to increment, or a list of keys to increment. Each Key can be a string or a tuple of (hash_value, string) where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently. </dd>
+      <dt><span class="argname">delta</span></dt>
+      <dd>Non-negative integer value (int or long) to increment key by,
+        defaulting to 1.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+      <dt><span class="argname">initial_value</span></dt>
+      <dd>An initial value to be used if the key does not yet exist in the cache.  Ignored if the key already exists.  If <code>None</code> and the key does not exist, the key remains unset.</dd>
+    </dl>
+    <p>The return value is a new long integer value, or None if key was not in the cache or could not
+      be incremented for any other reason.</p>
+  </dd>
+
+  <dt id="Client_decr"><span class="itemname">decr</span>(<span class="argname">key</span>, <span class="argname">delta</span>=<span class="argdefault">1</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>, <span class="argname">initial_value</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+     <p>Atomically decrements a key's value. Internally, the value is a unsigned 64-bit integer.  Memcache
+    doesn't check 64-bit overflows.  The value, if too large, will
+    wrap around.</p>
+    <p>If the key does not yet exist in the cache and you specify an <span class="argname">initial_value</span>, the key's value will be set to this initial value and then decremented.  If the key does not exist and no <span class="argname">initial_value</span> is specified, the key's value will not be set.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">key</span></dt>
+      <dd>Key to decrement, or a list of keys to decrement. Each Key can be a string or a tuple of (hash_value, string), where the hash_value, normally used for sharding onto a memcache instance, is instead ignored, as Google App Engine deals with the sharding transparently. </dd>
+      <dt><span class="argname">delta</span></dt>
+      <dd>Non-negative integer value (int or long) to decrement key by,
+        defaulting to 1.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for the key.</dd>
+      <dt><span class="argname">initial_value</span></dt>
+      <dd>An initial value to be used if the key does not yet exist in the cache.  Ignored if the key already exists.  If <code>None</code> and the key does not exist, the key remains unset.</dd>
+    </dl>
+    <p>The return value is a new long integer value, or None if key was not in the cache or could not
+      be decremented for any other reason.</p>
+  </dd>
+
+  <dt id="Client_offset_multi"><span class="itemname">offset_multi</span>(<span class="argname">mapping</span>, <span class="argname">key_prefix</span>=<span class="argdefault">''</span>, <span class="argname">namespace</span>=<span class="argdefault">None</span>, <span class="argname">initial_value</span>=<span class="argdefault">None</span>)</dt>
+  <dd>
+    <p>Increments or decrements multiple keys with integer values in a single service call.  Each key can have a separate offset.  The offset can be positive or negative.</p>
+    <p>Applying an offset to a single key is atomic.  Applying an offset to multiple keys may succeed for some keys and fail for others.</p>
+    <p>Arguments:</p>
+    <dl>
+      <dt><span class="argname">mapping</span></dt>
+      <dd>Dictionary of keys to offsets.  An offset can be a positive or negative integer to be added to the key's value.</dd>
+      <dt><span class="argname">key_prefix</span></dt>
+      <dd>Prefix to prepend to all keys.</dd>
+      <dt><span class="argname">namespace</span></dt>
+      <dd>An optional namespace for all keys in the mapping.</dd>
+      <dt><span class="argname">initial_value</span></dt>
+      <dd>An initial value to be used if a key in the mapping does not yet exist in the cache.  If <code>None</code> and a key in the mapping does not exist in the cache, the key remains unset in the cache.</dd>
+    </dl>
+    <p>The return value is a mapping of the provided keys to their new values.  If there was an error applying an offset to a key, if a key doesn't exist in the cache and no <code>initial_value</code> is provided, or if a key is set with a non-integer value, its return value is <code>None</code>.</p>
+  </dd>
+
+  <dt id="Client_flush_all"><span class="itemname">flush_all</span>()</dt>
+  <dd>
+    <p>Deletes everything in memcache.</p>
+    <p>The return value is True on success, False on RPC or server error.</p>
+  </dd>
+
+  <dt id="Client_get_stats"><span class="itemname">get_stats</span>()</dt>
+  <dd>
+    <p>Gets memcache statistics for this application. All of these statistics may reset due to various transient conditions. They
+    provide the best information available at the time of being called.</p>
+    <p>The return value is a dictionary mapping statistic names to associated values. Statistics and their associated meanings:</p>
+    <dl>
+      <dt><code>hits</code></dt>
+      <dd>Number of cache get requests resulting in a cache hit.</dd>
+      <dt><code>misses</code></dt>
+      <dd>Number of cache get requests resulting in a cache miss.</dd>
+      <dt><code>byte_hits</code></dt>
+      <dd>Sum of bytes transferred on get requests. Rolls over to zero on overflow.</dd>
+      <dt><code>items</code></dt>
+      <dd>Number of key/value pairs in the cache.</dd>
+      <dt><code>bytes</code></dt>
+      <dd>Total size of all items in the cache.</dd>
+      <dt><code>oldest_item_age</code></dt>
+      <dd>How long in seconds since the oldest item in the cache was accessed. Effectively, this indicates how long a new item will survive in the cache without being accessed. This is <i>not</i> the amount of time that has elapsed since the item was created.</dd>
+    </dl>
+  </dd>
+
+
+
+
+
+</dl>
+
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

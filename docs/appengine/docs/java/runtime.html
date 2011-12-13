@@ -1,0 +1,1691 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/java/runtime.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>The Java Servlet Environment - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../downloads.html">Downloads</a></li>
+  <li><a href="../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="overview.html">Overview</a></li>
+    <li><a href="runtime.html">Servlet Environment</a></li>
+    <li><a href="backends/index.html">Backends</a>
+      <ul>
+        <li><a href="backends/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="datastore/overview.html">Overview</a></li>
+    <li><a href="datastore/entities.html">Entities</a></li>
+    <li><a href="datastore/queries.html">Queries</a></li>
+    <li><a href="datastore/transactions.html">Transactions</a></li>
+    <li><a href="datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="datastore/stats.html">Statistics</a></li>
+    <li><a href="datastore/async.html">Async API</a></li>
+    <li><a href="datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="apis.html">Services</a>
+      <ul>
+        <li><a href="appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="appidentity/overview.html">Overview</a></li>
+
+<li><a href="javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="googlestorage/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="capabilities/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="conversion/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="channel/index.html">Channel</a>
+          <ul>
+            <li><a href="channel/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="images/index.html">Images</a>
+          <ul>
+                <li><a href="images/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="mail/index.html">Mail</a>
+          <ul>
+                <li><a href="mail/overview.html">Overview</a></li>
+    <li><a href="mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="memcache/overview.html">Overview</a></li>
+    <li><a href="memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="multitenancy/overview.html">Overview</a></li>
+    <li><a href="multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="oauth/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="prospectivesearch/overview.html">Overview</a></li>
+<li><a href="javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="taskqueue/overview.html">Overview</a></li>
+     <li><a href="taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="urlfetch/overview.html">Overview</a></li>
+    <li><a href="urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="users/index.html">Users</a>
+          <ul>
+                <li><a href="users/overview.html">Overview</a></li>
+    <li><a href="javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="xmpp/overview.html">Overview</a></li>
+     <li><a href="javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="config/index.html">Configuration</a>
+      <ul>
+            <li><a href="config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="config/appconfig.html">App Config</a></li>
+    <li><a href="config/backends.html">Backends Config</a></li>
+    <li><a href="config/indexconfig.html">Index Config</a></li>
+    <li><a href="config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="config/queue.html">Task Queue Config</a></li>
+    <li><a href="config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="configyaml/backends.html">Backends Config</a></li>
+        <li><a href="configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="tools/index.html">Tools</a>
+      <ul>
+            <li><a href="tools/devserver.html">Development Server</a></li>
+    <li><a href="tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="tools/appstats.html">Appstats</a></li>
+    <li><a href="tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="howto/index.html">How-To</a>
+      <ul>
+              <li><a href="howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../python/overview.html">Overview</a></li>
+    <li><a href="../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/channel/functions.html">Functions</a></li>
+    <li><a href="../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../python/images/overview.html">Overview</a></li>
+     <li><a href="../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/images/imageclass.html">Image</a></li>
+         <li><a href="../python/images/functions.html">Functions</a></li>
+         <li><a href="../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../python/mail/overview.html">Overview</a></li>
+     <li><a href="../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../python/mail/functions.html">Functions</a></li>
+         <li><a href="../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../python/users/overview.html">Overview</a></li>
+     <li><a href="../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/users/userclass.html">User</a></li>
+         <li><a href="../python/users/functions.html">Functions</a></li>
+         <li><a href="../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../go/overview.html">Overview</a></li>
+    <li><a href="../go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../go/backends/overview.html">Overview</a></li>
+<li><a href="../go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../go/datastore/overview.html">Overview</a></li>
+     <li><a href="../go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../go/apis.html">Services</a>
+      <ul>
+        <li><a href="../go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../go/blobstore/overview.html">Overview</a></li>
+<li><a href="../go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../go/capabilities/overview.html">Overview</a></li>
+<li><a href="../go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../go/channel/overview.html">Overview</a></li>
+<li><a href="../go/channel/reference.html">Reference</a></li>
+<li><a href="../go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../go/mail/overview.html">Overview</a></li>
+     <li><a href="../go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../go/memcache/overview.html">Overview</a></li>
+     <li><a href="../go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../go/users/overview.html">Overview</a></li>
+     <li><a href="../go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../go/config/appconfig.html">App Config</a></li>
+    <li><a href="../go/config/backends.html">Backends Config</a></li>
+    <li><a href="../go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../adminconsole/instances.html">Instances</a></li>
+<li><a href="../adminconsole/roles.html">Roles</a></li>
+<li><a href="../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../quotas.html">Quotas</a></li>
+      <li><a href="../billing.html">Billing</a></li>
+      <li><a href="../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../kb/index.html">FAQ</a></li>
+      <li><a href="../../articles/index.html">Articles</a></li>
+      <li><a href="../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">The Java Servlet Environment</h1>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<p>App Engine runs your Java web application using a Java 6 JVM in a safe "sandboxed" environment. App Engine invokes your app's servlet classes to handle requests and prepare responses in this environment.</p>
+
+
+<ul>
+  <li><a href="#Selecting_the_Java_API_Version">Selecting the Java API Version</a></li>
+  <li><a href="#Requests_and_Domains">Requests and Domains</a></li>
+  <li><a href="#Requests_and_Servlets">Requests and Servlets</a></li>
+  <li><a href="#Request_Headers">Request Headers</a></li>
+  <li><a href="#Responses">Responses</a></li>
+  <li><a href="#The_Request_Timer">The Request Timer</a></li>
+  <li><a href="#The_Sandbox">The Sandbox</a></li>
+  
+  <li><a href="#The_JRE_White_List">The JRE White List</a></li>
+
+  <li><a href="#Logging">Logging</a></li>
+  <li><a href="#The_Environment">The Environment</a></li>
+  <li><a href="#Quotas_and_Limits">Limits</a></li>
+</ul>
+
+
+
+<h2 id="Selecting_the_Java_API_Version">Selecting the Java API Version</h2>
+
+<p>App Engine knows to use the Java runtime environment for your application when you use the AppCfg tool from the Java SDK to upload the app.</p>
+
+<p>There is only one version of the App Engine Java API. This API is represented by the <code>appengine-api-*.jar</code> included with the SDK (where <code>*</code> represents the version of the API and the SDK). You select the version of the API your application uses by including this JAR in the application's <code>WEB-INF/lib/</code> directory. If a new version of the Java runtime environment is released that introduces changes that are not compatible with existing apps, that environment will have a new version number. Your application will continue to use the previous version until you replace the JAR with the new version (from a newer SDK) and re-upload the app.</p>
+
+
+
+
+<h2 id="Requests_and_Domains">Requests and Domains</h2>
+
+<p>App Engine determines that an incoming request is intended for your application using the domain name of the request. A request whose domain name is <code>http://<i>your_app_id</i>.appspot.com</code> is routed to the application whose ID is <code><i>your_app_id</i></code>. Every application gets an <code>appspot.com</code> domain name for free.</p>
+
+<p><code>appspot.com</code> domains also support subdomains of the form <code><i>subdomain</i>.<i>your_app_id</i>.appspot.com</code>, where <code><i>subdomain</i></code> can be any string allowed in one part of a domain name (not <code>.</code>). Requests sent to any subdomain in this way are routed to your application.</p>
+
+<p>You can set up a custom top-level domain using Google Apps. With Google Apps, you assign subdomains of your business's domain to various applications, such as Google Mail or Sites. You can also associate an App Engine application with a subdomain. For convenience, you can set up a Google Apps domain when you register your application ID, or later from the Administrator Console. See <a href="../../articles/domains.html">Deploying your Application on your Google Apps URL</a> for more information.</p>
+
+<p>Requests for these URLs all go to the version of your application that you have selected as the default version in the Administration Console. Each version of your application also has its own URL, so you can deploy and test a new version before making it the default version. The version-specific URL uses the version identifier from your app's configuration file in addition to the <code>appspot.com</code> domain name, in this pattern: <code>http://<i>version_id</i>.latest.<i>your_app_id</i>.appspot.com</code>  You can also use subdomains with the version-specific URL: <code>http://<i>subdomain</i>.<i>version_id</i>.latest.<i>your_app_id</i>.appspot.com</code></p>
+
+
+
+<p>The domain name used for the request is included in the request data passed to the application. If you want your app to respond differently depending on the domain name used to access it (such as to restrict access to certain domains, or redirect to an official domain), you can check the request data (such as the <code>Host</code> request header) for the domain from within the application code and respond accordingly.</p>
+
+<p>If your app uses <a href="backends/index.html">backends</a>, you can address requests to a specific backend and a specific instance with that backend. For more information about backend addressability, please see <a href="backends/overview.html#Properties_of_Backends">Properties of Backends</a>.</p>
+
+
+<h2 id="Requests_and_Servlets">Requests and Servlets</h2>
+
+<p>When App Engine receives a web request for your application, it invokes the servlet that corresponds to the URL, as described in the application's <a href="config/webxml.html">deployment descriptor</a> (the <code>web.xml</code> file in the <code>WEB-INF/</code> directory). It uses the <a href="http://java.sun.com/products/servlet/">Java Servlet API</a> to provide the request data to the servlet, and accept the response data. If your application uses <a href="backends/index.html">backends</a>, it invokes the servlet defined in <code>backends.xml</code> or <code>backends.yaml</code>, depending on which configuration file your application uses. See <a href="config/backends.html">Backend Configuration</a> for more information.</p>
+
+<p>App Engine uses multiple web servers to run your application, and automatically adjusts the number of servers it is using to handle requests reliably. A given request may be routed to any server, and it may not be the same server that handled a previous request from the same user.</p>
+
+<p>By default, each web server processes only one request at a time. If you mark your application as thread-safe, App Engine may dispatch multiple requests to each web server in parallel. To do so, simply add a <code>&lt;threadsafe&gt;true&lt;/threadsafe&gt;</code> element to <code>appengine-web.xml</code> as described in <a href="config/appconfig.html#Using_Concurrent_Requests">Using Concurrent Requests</a>.</p>
+
+<p>The following example servlet class displays a simple message on the user's browser.</p>
+
+<pre class="prettyprint">
+import java.io.IOException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+public class MyServlet extends HttpServlet {
+    public void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+        resp.setContentType("text/plain");
+        resp.getWriter().println("Hello, world");
+    }
+}
+</pre>
+
+
+<h2 id="Request_Headers">Request Headers</h2>
+<p>An incoming HTTP request includes the HTTP headers sent by the client. For security purposes, some headers are sanitized or amended by intermediate proxies before they reach the application.</p>
+
+<p>As a service to the app, App Engine adds an additional header: <code>X-AppEngine-Country</code>  This header's value represents the country from which the request originated, as an <a href="http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">ISO 3166-1 alpha-2</a> country code. App Engine determines this code from the client's IP address.</p>
+
+<h2 id="Responses">Responses</h2>
+
+
+<p>App Engine calls the servlet with a request object and a response object, then waits for the servlet to populate the response object and return. When the servlet returns, the data on the response object is sent to the user.</p>
+
+<p>App Engine does not support sending data to the client, performing more calculations in the application, then sending more data. In other words, App Engine does not support "streaming" data in response to a single request.</p>
+
+
+<p>If the client sends HTTP headers with the request indicating that the client can accept compressed (gzipped) content, App Engine compresses the response data automatically and attaches the appropriate response headers. It uses both the <code>Accept-Encoding</code> and <code>User-Agent</code> request headers to determine if the client can reliably receive compressed responses. Custom clients can force content to be compressed by specifying both <code>Accept-Encoding</code> and <code>User-Agent</code> headers with a value of "gzip".</p>
+
+<p>If you access your site while signed in using an administrator account, App Engine includes per-request statistics in the response headers. The header <code>X-AppEngine-Estimated-CPM-US-Dollars</code> represents an estimate of what 1,000 requests similar to this request would cost in US dollars. The header <code>X-AppEngine-Resource-Usage</code> represents the resources used by the request, including server-side time as a number of milliseconds.</p>
+
+
+<h2 id="The_Request_Timer">The Request Timer</h2>
+
+<p>A request handler has a limited amount of time to generate and return a response to a request, typically around 60 seconds. Once the deadline has been reached, the request handler is interrupted.</p>
+
+
+<p>The Java runtime environment interrupts the servlet by throwing a <code>com.google.apphosting.api.DeadlineExceededException</code>. If the request handler does not catch this exception, as with all uncaught exceptions, the runtime environment will return an HTTP 500 server error to the client.</p>
+
+<p>The request handler can catch this error to customize the response. The runtime environment gives the request handler a little bit more time (less than a second) after raising the exception to prepare a custom response.</p>
+
+
+
+<p>While a request can take as long as 60 seconds to respond, App Engine is optimized for applications with short-lived requests, typically those that take a few hundred milliseconds. An efficient app responds quickly for the majority of requests. An app that doesn't will not scale well with App Engine's infrastructure.</p>
+
+
+<p><a href="backends/index.html">Backends</a> allow you to avoid this request timer; with backends, there is no time limit for generating and returning a request.</p>
+
+
+<h2 id="The_Sandbox">The Sandbox</h2>
+
+<p>To allow App Engine to distribute requests for applications across multiple web servers, and to prevent one application from interfering with another, the application runs in a restricted "sandbox" environment. In this environment, the application can execute code, store and query data in the App Engine datastore, use the App Engine mail, URL fetch and users services, and examine the user's web request and prepare the response.</p>
+
+<p>An App Engine application cannot:</p>
+<ul class="doublespace">
+
+<li>write to the filesystem. Applications must use <a href="datastore/index.html">the App Engine datastore</a> for storing persistent data. Reading from the filesystem is allowed, and all application files uploaded with the application are available.</li>
+<li>open a socket or access another host directly. An application can use <a href="urlfetch/index.html">the App Engine URL fetch service</a> to make HTTP and HTTPS requests to other hosts on ports 80 and 443, respectively.</li>
+<li>spawn a sub-process or thread. A web request to an application must be handled in a single process within a few seconds. Processes that take a very long time to respond are terminated to avoid overloading the web server.</li>
+<li>make other kinds of system calls.</li>
+
+</ul>
+
+
+
+<h3>Threads</h3>
+
+<p>A Java application cannot create a new <code>java.lang.ThreadGroup</code> nor a new <code>java.lang.Thread</code>. These restrictions also apply to JRE classes that make use of threads. For example, an application cannot create a new <code>java.util.concurrent.ThreadPoolExecutor</code>, or a <code>java.util.Timer</code>. An application <em>can</em> perform operations against the current thread, such as <code>Thread.currentThread().dumpStack()</code>.</p>
+
+<h3>The Filesystem</h3>
+
+<p>A Java application cannot use any classes used to write to the filesystem, such as <code>java.io.FileWriter</code>. An application can read its own files from the filesystem using classes such as <code>java.io.FileReader</code>. An application can also access its own files as "resources", such as with <code>Class.getResource()</code> or <code>ServletContext.getResource()</code>.</p>
+
+<p>Only files that are considered "resource files" are accessible to the application via the filesystem. By default, all files in the WAR are "resource files."  You can exclude files from this set using the <a href="config/appconfig.html">appengine-web.xml</a> file.</p>
+
+<h3>java.lang.System</h3>
+
+<p>Features of the <code>java.lang.System</code> class that do not apply to App Engine are disabled.</p>
+
+<p>The following <code>System</code> methods do nothing in App Engine: <code>exit()</code>, <code>gc()</code>, <code>runFinalization()</code>, <code>runFinalizersOnExit()</code></p>
+
+<p>The following <code>System</code> methods return <code>null</code>: <code>inheritedChannel()</code>, <code>console()</code></p>
+
+<p>An app cannot provide or directly invoke any native JNI code. The following <code>System</code> methods raise a <code>java.lang.SecurityException</code>: <code>load()</code>, <code>loadLibrary()</code>, <code>setSecurityManager()</code></p>
+
+<h3>Reflection</h3>
+
+<p>An application is allowed full, unrestricted, reflective access to its own classes. It may query any private members, use <code>java.lang.reflect.AccessibleObject.setAccessible()</code>, and read/set private members.</p>
+
+<p>An application can also also reflect on JRE and API classes, such as <code>java.lang.String</code> and <code>javax.servlet.http.HttpServletRequest</code>. However, it can only access public members of these classes, not protected or private.</p>
+
+<p>An application cannot reflect against any other classes not belonging to itself, and it can not use the <code>setAccessible()</code> method to circumvent these restrictions.</p>
+
+<h3>Custom Class Loading</h3>
+
+<p>Custom class loading is fully supported under App Engine. Please be aware, though, that App Engine overrides all ClassLoaders to assign the same permissions to all classes loaded by your application. If you perform custom class loading, be cautious when loading untrusted third-party code.</p>
+
+
+
+
+
+<h2 id="The_JRE_White_List">The JRE White List</h2>
+
+<p>Access to the classes in the Java standard library (the Java Runtime Environment, or JRE) is limited to the classes in <a href="jrewhitelist.html">the App Engine JRE White List</a>.</p>
+
+
+
+
+<h2 id="Logging">Logging</h2>
+
+
+<p>Your application can write information to the application logs using <a href="http://java.sun.com/javase/6/docs/api/java/util/logging/Logger.html">java.util.logging.Logger</a>. Log data for your application can be viewed and analyzed using <a href="../adminconsole/index.html">the Administration Console</a>, or downloaded using <a href="tools/uploadinganapp.html#Downloading_Logs">appcfg.sh request_logs</a>. The Admin Console can recognize the <code>Logger</code> class's log levels, and interactively display messages at different levels.</p>
+
+<p>Everything the servlet writes to the standard output stream (<code>System.out</code>) and standard error stream (<code>System.err</code>) is captured by App Engine and recorded in the application logs. Lines written to the standard output stream are logged at the "INFO" level, and lines written to the standard error stream are logged at the "WARNING" level. Any logging framework (such as log4j) that logs to the output or error streams will work. However, for more fine-grained control of the Admin Console's log level display, the logging framework must use a <code>java.util.logging</code> adapter.</p>
+
+<pre class="prettyprint">
+import java.util.logging.Logger;
+// ...
+
+public class MyServlet extends HttpServlet {
+    private static final Logger log = Logger.getLogger(MyServlet.class.getName());
+
+    public void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws IOException {
+
+        log.info("An informational message.");
+
+        log.warning("A warning message.");
+
+        log.severe("An error message.");
+    }
+}
+</pre>
+
+<p>The App Engine Java SDK includes a template <code>logging.properties</code> file, in the <code>appengine-java-sdk/config/user/</code> directory. To use it, copy the file to your <code>WEB-INF/classes</code> directory (or elsewhere in the WAR), then the system property <code>java.util.logging.config.file</code> to <code>"WEB-INF/logging.properties"</code> (or whichever path you choose, relative to the application root). You can set system properties in the <a href="config/appconfig.html"><code>appengine-web.xml</code> file</a>, as follows:</p>
+
+<pre class="prettyprint">
+&lt;appengine-web-app xmlns="http://appengine.google.com/ns/1.0"&gt;
+    ...
+
+    <strong>&lt;system-properties&gt;
+        &lt;property name="java.util.logging.config.file" value="WEB-INF/logging.properties" /&gt;
+    &lt;/system-properties&gt;</strong>
+
+&lt;/appengine-web-app&gt;
+</pre>
+
+<p>The Google Plugin for Eclipse new project wizard creates these logging configuration files for you, and copies them to <code>WEB-INF/classes/</code> automatically. For <code>java.util.logging</code>, you must set the system property to use this file.</p>
+
+
+
+
+<h2 id="The_Environment">The Environment</h2>
+
+
+
+<p>All system properties and environment variables are private to your application. Setting a system property only affects your application's view of that property, and not the JVM's view.</p>
+
+<p>You can set system properties and environment variables for your app in the <a href="config/webxml.html">deployment descriptor</a>.</p>
+
+<p>App Engine sets several system properties that identify the runtime environment:</p>
+
+<ol>
+  <li><code>com.google.appengine.runtime.environment</code> is <code>"Production"</code> when running on App Engine, and <code>"Development"</code> when running in the development server.<p>In addition to using <code>System.getProperty()</code>, you can access system properties using our <a href="javadoc/com/google/appengine/api/utils/SystemProperty.html">type-safe API</a>. For example:</p>
+
+<pre class="prettyprint">
+if (SystemProperty.environment.value() ==
+    SystemProperty.Environment.Value.Production) {
+    // The app is running on App Engine...
+}
+</pre> </li>
+  <li><code>com.google.appengine.runtime.version</code> is the version ID of the runtime environment, such as <code>"1.3.0"</code>. You can get the version by invoking the following: <code>String version = SystemProperty.version.get();</code></li>
+<li><code>com.google.appengine.application.id</code> is the application's ID. You can get the ID by invoking the following: <code>String ID = SystemProperty.applicationId.get();</code></li>
+</ol>
+
+
+
+<p>App Engine also sets the following system properties when it initializes the JVM on an app server:</p>
+
+<ul>
+  <li><code>file.separator</code></li>
+  <li><code>path.separator</code></li>
+  <li><code>line.separator</code></li>
+  <li><code>java.version</code></li>
+  <li><code>java.vendor</code></li>
+  <li><code>java.vendor.url</code></li>
+  <li><code>java.class.version</code></li>
+  <li><code>java.specification.version</code></li>
+  <li><code>java.specification.vendor</code></li>
+  <li><code>java.specification.name</code></li>
+  <li><code>java.vm.vendor</code></li>
+  <li><code>java.vm.name</code></li>
+  <li><code>java.vm.specification.version</code></li>
+  <li><code>java.vm.specification.vendor</code></li>
+  <li><code>java.vm.specification.name</code></li>
+  <li><code>user.dir</code></li>
+</ul>
+
+
+
+
+
+
+<h2 id="Quotas_and_Limits">Quotas</h2>
+
+<p>Google App Engine allocates resources to your application automatically as traffic increases to support many simultaneous requests. However, App Engine reserves automatic scaling capacity for applications with low latency, where the application responds to requests in less than one second. Applications with very high latency (over one second per request for many requests) are limited by the system, and require a special exemption in order to have a large number of simultaneous dynamic requests. If your application has a strong need for a high throughput of long-running requests, you can <a href="http://code.google.com/support/bin/request.py?contact_type=AppEngineCPURequest">request an exemption</a> from the simultaneous dynamic request limit. The vast majority of applications do not require any exemption.</p>
+
+<p>Applications that are heavily CPU-bound may also incur some additional latency in order to efficiently share resources with other applications on the same servers. Requests for static files are exempt from these latency limits.</p>
+
+<p>Each incoming request to the application counts toward the <b>Requests</b> limit.</p>
+
+<p>Data sent in response to a request counts toward the <b>Outgoing Bandwidth (billable)</b> limit.</p>
+
+<p>Both HTTP and HTTPS (secure) requests count toward the <b>Requests</b>, <b>Incoming Bandwidth (billable)</b>, and <b>Outgoing Bandwidth (billable)</b> limits. The Quota Details page of the Admin Console also reports <b>Secure Requests</b>, <b>Secure Incoming Bandwidth</b>, and <b>Secure Outgoing Bandwidth</b> as separate values for informational purposes. Only HTTPS requests count toward these values.</p>
+
+<p>For more information on system-wide safety limits, see <a href="../quotas.html">Limits</a>, and the "Quota Details" section of <a href="../adminconsole/index.html">the Admin Console</a>.</p>
+
+<p>In addition to system-wide safety limits, the following limits apply specifically to the use of request handlers:</p>
+
+<table>
+  <tr>
+    <th>Limit</th>
+    <th>Amount</th>
+  </tr>
+  <tr>
+    <td>request size</td>
+    <td>32 megabytes</td>
+  </tr>
+  <tr>
+    <td>response size</td>
+    <td>32 megabytes</td>
+  </tr>
+  <tr>
+    <td>request duration</td>
+    <td>60 seconds</td>
+  </tr>
+  <tr>
+    <td>maximum total number of files (app files and static files)</td>
+    <td>10,000 total<br>1,000 per directory</td>
+  </tr>
+  <tr>
+    <td>maximum size of an application file</td>
+    <td>32 megabytes</td>
+  </tr>
+  <tr>
+    <td>maximum size of a static file</td>
+    <td>32 megabytes</td>
+  </tr>
+  <tr>
+    <td>maximum total size of all application and static files</td>
+    <td>32 megabytes</td>
+  </tr>
+</table>
+
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

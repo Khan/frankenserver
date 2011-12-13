@@ -1,0 +1,1451 @@
+  
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/index.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Google App Engine Articles  - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">Google App Engine Articles </h1>
+
+
+
+<style type="text/css">
+  .article-list {
+    list-style: none;
+    padding: 0px;
+    margin: 0px;
+  }
+  .article-item {
+    padding-bottom: 15px;
+    margin: 0px;
+  }
+  .article-date {
+    font-style: italic;
+  }
+  .article-desc {
+  }
+  #featuredTable {
+    border: none;
+    margin-left: 10px;
+  }
+  #featuredTable td {
+    border: none;
+    padding-bottom: 15px;
+    padding-right: 5px;
+  }
+</style>
+
+<div id="jd-content">
+<div class="jd-descr">
+
+<div style="margin-top: 30px; margin-bottom: 5px">
+  <img src="../images/appengine_lowres.png" style="float:left; width:120px; margin-right:15px" height="100" width="100"/>
+  <div style="margin-left: 112px; margin-top: 10px;">
+    <div style="font-size: 140%; font-weight: bold; padding-top: 5px;">Featured: <a href="indexselection.html">Datastore Index Selection and Advanced Search</a></div>
+    <div style="padding-top: 12px; line-height: 125%;">This article describes recent improvements to the Datastore query planner that makes exploding indexes a thing of the past. We go through a specific example which illustrates how these improvements make it possible to implement an "advanced search" function in your application.</div>
+    <p>
+      <em>Tags:</em>
+      Datastore, Indexes
+    </p>
+  </div>
+</div>
+
+<p>
+<h4 style="margin-bottom:10px">Recently featured:</h4>
+
+<table id="featuredTable">
+  <tr>
+    <td><img src="icons/paperpencil-40.gif"/></td>
+    <td>
+      <div style="font-weight:bold"><a href="managing-resources.html">Managing Your App's Resource Usage</a></div>
+      <p>
+        This article provides tips and strategies for managing your application's resources efficiently. We go through the resources listed in your app's usage report and discuss strategies for optimizing your application.
+        <span style="color:gray">(<em>Tags:</em> Java runtime, Python runtime, Datastore)</span>
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td><img src="icons/database-40.jpg"/></td>
+    <td>
+      <div style="font-weight:bold"><a href="datastore/overview.html">Mastering the Datastore</a></div>
+      <p>This article series provides in-depth information on how App Engine's unique datastore operates. It includes articles that detail how entity and index data is stored, explain how indexes are built and writes are committed, and discuss error handling. This series also features articles on modeling entity relationships and updating schemas.
+        <span style="color:gray">(<em>Tags:</em>Datastore, Indexes, Python runtime, Java runtime)</span>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</p>
+
+<h2>Archive</h2>
+
+<table id="articlesArchiveTable" style="border:none">
+  <tr>
+    <td style="border:none" valign="top" width="150">
+      <p><a id="viewAllLink" href="javascript:void(0)" style="font-size:12pt" onclick="gaearticles.showAllArticles(this)">View all</a></p>
+      <p><b>Filter by tag</b></p>
+      <div id="tagListWrapper"><span>Your browser must have JavaScript enabled in order to filter by tag</span></div>
+    </td>
+    <td style="border:none" valign="top">
+      <div id="articlesWrapper">
+
+<!-- 
+  Note to editors of this list!
+  The id attribute for each article-item is an md5 hash of the article.
+  You can generate this value by executing: openssl dgst -sha1 <file>
+  You will also need to update articles.js, adding the hash to the
+  arrays associated with the appropriate tags for the article.
+-->
+<ul class="article-list">
+  <li class="article-item" id="83afad2194929152784842624eddd7d88f05ab92">
+    <div><a href="indexselection.html">Datastore Index Selection and Advanced Search</a> - <span class="article-date">September 2011</span></div>
+    <span class="article-desc">Learn how recent improvements to the query planner have made exploding indexes a thing of the past and how to implement an "advanced search" function in your application.</span>
+  </li>
+
+  <li class="article-item" id="aa7d6fb1ac292403a80b380306de22f7cda13e53">
+    <div><a href="managing-resources.html">Managing Your App's Resource Usage</a> - <span class="article-date">August 2011</span></div>
+    <span class="article-desc">Describes strategies for managing the resources consumed by your application.</span>
+  </li>
+
+  <li class="article-item" id="358de5ce2017c9fd3717afcc538ba19d3f879e37">
+    <div><a href="fantasm.html">Implementing Workflows on Google App Engine with Fantasm</a> - <span class="article-date">March 2011</span></div>
+    <span class="article-desc">Describes Fantasm, an open source system for Python App Engine, introducing readers to workflow management using the Task Queue API.</span>
+  </li>
+
+  <li class="article-item" id="572378e7f337019618f07cb90a8d18009cea2663">
+    <div><a href="soap.html">HOW TO: Build a SOAP Server and a SOAP Client on Google App Engine</a> - <span class="article-date">February 2011</span></div>
+    <span class="article-desc">Discusses how to use javax.xml.soap and JAXB to write a SOAP server, and how to use JAX-WS to write a SOAP client on App Engine.</span>
+  </li>
+
+  <li class="article-item" id="7f508b242272025d39aa6cad6072f65c081cd14d">
+    <div><a href="django-nonrel.html">Running Pure Django Projects on Google App Engine</a> - <span class="article-date">November 2010</span></div>
+    <span class="article-desc">Discusses how Django-nonrel lets users run pre Django projects natively on Google App Engine. Describes in-depth how to port existing apps based on App Engine's 'webapp' framework to pure Django (to run on App Engine or via traditional hosting).</span>
+  </li>
+
+  <li class="article-item" id="5d610542a50ec20e4f8846ea7c9f61c3f56c1226">
+    <div><a href="mr/mapper.html">Modern Funnel Analytics Using Mapper</a> - <span class="article-date">August 2010</span></div>
+    <span class="article-desc">Provides an introduction to the Mapper to create rollup statistics. Includes sample code.</span>
+  </li>
+
+  <li class="article-item" id="475e1cc13ece89dfb3e33a2b172c01fedc75aa4b">
+    <div><a href="openid.html">Using Federated Authentication in Google App Engine</a> - <span class="article-date">July 2010</span></div>
+    <span class="article-desc">Provides background and usage information as well as sample code that performs simple federated login.</span>
+  </li>
+
+  <li class="article-item" id="32ecf9ae0b3b1774d21c120a463fc3f436b5544f">
+    <div><a href="python/recording_exceptions_with_ereporter.html">Recording Exceptions with ereporter</a> - <span class="article-date">April 2010</span></div>
+    <span class="article-desc">Explains how to set up the <code>ereporter</code> package to automatically email you when exceptions occur</span>
+  </li>
+
+  <li class="article-item" id="233f7ad1b1fab23a96bd37d0b3659826d444497d">
+    <div><a href="life_of_write.html">Datastore series: Life of a Datastore Write</a> - <span class="article-date">December 2009</span></div>
+    <span class="article-desc">Learn everything that occurs behind-the-scenes when an entity is written to the datastore</span>
+  </li>
+  <li class="article-item" id="0b373c70c008aa414dd89b796688b088363d714e">
+    <div><a href="storage_breakdown.html">Datastore series: How Entities and Indexes are Stored</a> - <span class="article-date">December 2009</span></div>
+    <span class="article-desc">Provides detailed descriptions of the Bigtables used to store entities and indexes</span>
+  </li>
+  <li class="article-item" id="fa1677751b7e7561b1cc49b6d77b05ed9a2c483a">
+    <div><a href="handling_datastore_errors.html">Datastore series: Handling Datastore Errors</a> - <span class="article-date">December 2009</span></div>
+    <span class="article-desc">Learn why datastore errors occur and how to deal with them</span>
+  </li>
+  <li class="article-item" id="0d131a6dfb591287dc03005d84ddb2d478c50f4d">
+    <div><a href="deferred.html">Background work with the deferred library</a> - <span class="article-date">September 2009</span></div>
+    <span class="article-desc">Describes the deferred library for Python, which makes using the task queue easier than ever.</span>
+  </li>
+  <li class="article-item" id="f6914db4d87162edb9430996362501c33f5004b4">
+    <div><a href="using_xmpp.html">Using the XMPP service</a> - <span class="article-date">September 2009</span></div>
+    <span class="article-desc">Learn how to make use of the XMPP API in your app to send and receive messages over the Google Talk network and other compatible networks.</span>
+  </li>
+  <li class="article-item" id="77564b318b63d342dccfb0ee2cd1ca12e5fa587a">
+    <div><a href="polymodel.html">Effective PolyModel</a> - <span class="article-date">August 2009</span></div>
+    <span class="article-desc">This article describes how to create polymorphic class hierarchies in Python that can be queried as a single kind.</span>
+  </li>
+  <li class="article-item" id="sdjfkdsfjksdjfkfksadjfksdjfkdsafjkaskfs">
+    <div><a href="load_test.html">Getting started load testing your application</a> - <span class="article-date">August 2009</span></div>
+    <span class="article-desc">This article contains a simple Python script that is easily modifiable to get you started properly load testing your application.</span> 
+  </li>
+  <li class="article-item" id="dd35e1ef1646376de18faf8b54ea3314ed928e97">
+    <div><a href="scaling/minimize.html">Scalable apps series: Minimizing work</a> - <span class="article-date">June 2009</span></div>
+    <span class="article-desc">This article offers tips on minimizing the amount of work that your application performs and should help you fine-tune your code and take better advantage of the resources allocated for your app.</span>
+  </li>
+  <li class="article-item" id="57e8905cbff23a7c5355c3b47900ca1e3f4934ba">
+    <div><a href="scaling/contention.html">Scalable apps series: Avoiding datastore contention</a> - <span class="article-date">June 2009</span></div>
+    <span class="article-desc">Although the datastore is built to scale, you must take care when designing your data models to avoid the prospect of contention as your application grows. This article provides an overview of what contention is and tips on how to avoid it.</span>
+  </li>
+  <li class="article-item" id="c33609231c1eac38b54bb4236e7aa58ada86fa68">
+    <div><a href="scaling/memcache.html">Scalable apps series: Effective memcache</a> - <span class="article-date">June 2009</span></div>
+    <span class="article-desc">The memcache article highlights a few examples of where memcache can be used most effectively to improve efficiency and speed in your application.</span>
+  </li>
+  <li class="article-item" id="3743fbc4ca0d3bfe9d74bbcd8ce85d4c42bb64cf">
+    <div><a href="firepython.html">Realtime logging to Firebug using FirePython</a> - <span class="article-date">March 2009</span></div>
+    <span class="article-desc">Debug your application's server side code from within your browser. FirePython is a server-side Python library, which hooks into standard Python logging module and sends logging events to a client-side using a Firefox browser extension called FireLogger.</span>
+  </li>
+  <li class="article-item" id="6ff4a24392b04e77f9345c00fcc45a7abb63cb1f">
+    <div><a href="app-engine-patch.html">Unleash Django with app-engine-patch</a> - <span class="article-date">February 2009</span></div>
+    <span class="article-desc">Use the Open Source project app-engine-patch to create your Django applications on App Engine.</span>
+  </li>
+  <li class="article-item" id="6f7583182af6697683b1e32e660efe8eee33c6ed">
+    <div><a href="hooks.html">Using hooks in Google App Engine</a> - <span class="article-date">February 2009</span></div>
+    <span class="article-desc">This article demonstrates how to implement a crosscutting change in the global behavior of an application with very little risk and code.</span>
+  </li>
+  <li class="article-item" id="eba5a43a073414ae2ff46a01d806bf2e2c6a6a4b">
+    <div><a href="remote_api.html">Accessing the datastore remotely with remote_api</a> - <span class="article-date">February 2009</span></div>
+    <span class="article-desc">This article explains the operation of the remote_api module, and demonstrates how to use it to operate on the datastore remotely.</span>
+  </li>
+  <li class="article-item" id="5ab49918198d7f5b213fae2674d03beb69f3d68a">
+    <div><a href="geosearch.html">24 hours in SF: A Geolocation App</a> - <span class="article-date">February 2009</span></div>
+    <span class="article-desc">Use Google App Engine, Gears, and Maps to build a geolocation application that will help you find open businesses where you are, when you want.</span>
+  </li>
+  <li class="article-item" id="3fd526e06fc0c9bf563d6db1612344e57b94c97e">
+    <div><a href="overheard.html">Just Overheard It: An example application</a> - <span class="article-date">February 2009</span></div>
+    <span class="article-desc">Overheard is an example application for Google App Engine that demonstrates both voting and decay, using amusing quotes as the subject. It also demonstrates optimizations such as using memcache and the AJAX Libraries API.</span>
+  </li>
+  <li class="article-item" id="e8d48f6d69fdcfb1f582f9e9c90eda8463d277b9">
+    <div><a href="gae_backup_and_restore.html">Using Google App Engine Backup and Restore</a> - <span class="article-date">January 2009</span></div>
+    <span class="article-desc">Migrate the data for your App Engine Django application to and from your app using this handy utility created by Aral Balkan.</span>
+  </li>
+  <li class="article-item" id="b121881899aaf8c94f0700ab2b68e4651087b891">
+    <div><a href="shelftalkers.html">Create a Facebook App with Google App Engine and Best Buy Remix</a> - <span class="article-date">January 2009</span></div>
+    <span class="article-desc">Instructions on setting up an application for Facebook which uses the BestBuy Remix API and the iLike Developer Platform.</span>
+  </li>
+  <li class="article-item" id="5a96d4f944fcf949378b3151d6563f609634d3d2">
+    <div><a href="paging.html">Scalable apps series: Paging through large datasets</a> - <span class="article-date">December 2008</span></div>
+    <span class="article-desc">Display large datasets, one page at a time.</span>
+  </li>
+  <li class="article-item" id="992bb9d29a07f0c9cb9bc4837e957e6892578e4c">
+    <div><a href="sharding_counters.html">Scalable apps series: Sharding counters</a> - <span class="article-date">December 2008, updated August 2011</span></div>
+    <span class="article-desc">Store an accurate global count while avoiding datastore contention.</span>
+  </li>
+  <li class="article-item" id="8bf8323e020700fad5ab590ba4a5bfbd916bb229">
+    <div><a href="more_google_data.html">Using Google Data APIs on App Engine</a> - <span class="article-date">December 2008</span></div>
+    <span class="article-desc">Illustrates reading and writing data from Google Calendar as an example of how to perform create, retrieve, update, and delete operations to Google Data APIs from your app.</span>
+  </li>
+  <li class="article-item" id="05de8e4947bfafd5168af4e1c1809574316a7f5e">
+    <div><a href="index_building.html">Datastore series: How Index Building Works</a> - <span class="article-date">November 2008</span></div>
+    <span class="article-desc">Explains the back-end processes used to build and delete composite indexes</span>
+  </li>
+  <li class="article-item" id="445caff6d628529d0235c04c056e41fd86d6e0c5">
+    <div><a href="gdata.html">Retrieving Authenticated Google Data Feeds with Google App Engine</a> - <span class="article-date">October 2008</span></div>
+    <span class="article-desc">Use the Google Data Python client library to read in your application</span>
+  </li>
+  <li class="article-item" id="853dbb3d749542fb741fca1ef3eb8ce80d6bd8d1">
+    <div><a href="pure_django.html">Running App Engine Applications on Django</a> - <span class="article-date">October 2008</span></div>
+    <span class="article-desc">We explain how to run applications that were originally designed on App Engine with Django on any environment that supports Django.</span>
+  </li>
+  <li class="article-item" id="9268d2f8d299cf5b8a7c0c26e07399f110a16ad3">
+    <div><a href="http://wiki.opensocial.org/index.php?title=Building_an_OpenSocial_App_with_Google_App_Engine">Building an OpenSocial App with Google App Engine</a> - <span class="article-date">September 2008</span></div>
+    <span class="article-desc">Need to add some server side logic or data storage to your OpenSocial app? Google App Engine provides a scalable solution for your backend and you still don't need to set up and maintain your own servers.</span>
+  </li>
+  <li class="article-item" id="7a0da51cebb4ee674faec20a4256d82a065f2e4d">
+    <div><a href="django10_zipimport.html">Using Django 1.0 on App Engine with Zipimport</a> - <span class="article-date">September 2008</span></div>
+    <span class="article-desc">Explains how to use Python's zipimport feature to add Django 1.0 to an application.</span>
+  </li>
+  <li class="article-item" id="e97069d33c6f0a297dcc81b41f598d68043cebcb">
+    <div><a href="http://code.google.com/apis/desktop/articles/8.html">Desktop gadgets and App Engine</a> - <span class="article-date">August 2008</span></div>
+    <span class="article-desc">Learn how to build client/server applications using Desktop gadgets in tandem with App Engine. </span>
+  </li>
+  <li class="article-item" id="c268deeef89958210c2e8fdae46008746526a44e">
+    <div><a href="http://code.google.com/apis/youtube/articles/youtube_api_appengine.html">Using the YouTube Data API with App Engine and the Python client library</a> - <span class="article-date">August 2008</span></div>
+    <span class="article-desc">In this tutorial I will demonstrate how to use the YouTube Data API in conjunction with App Engine and the Python client library. I will cover everything from basic feed retrieval, to search and finally to video uploads.</span>
+  </li>
+  <li class="article-item" id="be5b022d66c8408b6ba64d4e348a9d0eec867d04">
+    <div><a href="extending_models.html">Extending Model Properties</a> - <span class="article-date">August 2008</span></div>
+    <span class="article-desc">This article will tell you what you need to know to get started making your own properties.</span>
+  </li>
+  <li class="article-item" id="b9297c10a83ffbde05093e681dc5abf7df9d452a">
+    <div><a href="modeling.html">Datastore series: Modeling Entity Relationships</a> - <span class="article-date">June 2008</span></div>
+    <span class="article-desc">Explains the basics of modeling entity relationships</span>
+  </li>
+  <li class="article-item" id="d0825510053aec2ebdccd38d34a222a937b3c739">
+    <div><a href="eclipse.html">Configuring Eclipse on Windows to Use With Google App Engine</a> - <span class="article-date">June 2008</span></div>
+    <span class="article-desc">Takes you through the steps to configure Eclipse on Windows using PyDev</span>
+  </li>
+  <li class="article-item" id="4584f5cba6bbdeafce7ae2e491ddf148b7465347">
+    <div><a href="update_schema.html">Datastore series: Updating Your Model's Schema</a> - <span class="article-date">June 2008</span></div>
+    <span class="article-desc">Discusses strategies for updating datastore schemas</span>
+  </li>
+  <li class="article-item" id="2232cbb5b5c441bd48bd983da5bd19a003aeace5">
+    <div><a href="appengine_helper_for_django.html">Using the Google App Engine Helper for Django</a> - <span class="article-date">May 2008</span></div>
+    <span class="article-desc">Details how to start a larger Django project using the Google App Engine Helper for Django</span>
+  </li>
+  <li class="article-item" id="c2b0d2f168dcd0e0d95ad6ae968807878fe5cfa9">
+    <div><a href="rietveld.html">An Open Source App: Rietveld Code Review Tool</a> - <span class="article-date">May 2008</span></div>
+    <span class="article-desc">An open source app for managing Subversion code reviews</span>
+  </li>
+  <li class="article-item" id="29e91f011545ed4736c28030069daed8a83c9968">
+    <div><a href="rpc.html">Using AJAX to Enable Client RPC Requests</a> - <span class="article-date">May 2008</span></div>
+    <span class="article-desc">Outlines steps needed to implement RPC requests with App Engine</span>
+  </li>
+  <li class="article-item" id="4f683f420059a9b4bf7efeeb0d7ba6452249df41">
+    <div><a href="transaction_isolation.html">Datastore series: Transaction Isolation in App Engine</a> - <span class="article-date">May 2008, updated March 2011</span></div>
+    <span class="article-desc">Explains how concurrent reads and writes behave both in and outside of transactions</span>
+  </li>
+  <li class="article-item" id="39f2a0dd4a78dec0f86f1fa32bd66c36128ce954">
+    <div><a href="auth.html">Configuring Your App's Authentication</a> - <span class="article-date">August 2008</span></div>
+    <span class="article-desc">Gives instructions on how to set up authentication options for your application</span>
+  </li>
+  <li class="article-item" id="799d581383baa030555d77a7736f889fb6c03f08">
+    <div><a href="domains.html">Deploying Your Application on a Google Apps Domain</a> - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Gives instructions on how to set up your application to be deployed on a Google Apps domain</span>
+  </li>
+  <li class="article-item" id="cecfc81f689dee8da589df46eec11384678d1aee">
+    <div><a href="python/serving_dynamic_images.html">Serving Dynamic Images with Google App Engine</a> (<a href="python/serving_dynamic_images.html">Python</a> | <a href="java/serving_dynamic_images.html">Java</a>) - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Details how to dynamically store and serve images with Google App Engine</span>
+  </li>
+  <li class="article-item" id="1955ab5899645f932732e94415b964aed5900ddb">
+    <div><a href="logging.html">Logging Events in Your Application</a> - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Details how to use the Python logging module to record application events and later review those logs in the admin console</span>
+  </li>
+  <li class="article-item" id="96ee58635388a3283b9c4570a9367ee0b24b60a1">
+    <div><a href="djangoforms.html">The Django Form Validation Framework on Google App Engine</a> - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Constructs a Shopping List application using the Django Form Validation Framework</span>
+  </li>
+  <li class="article-item" id="31c3ad2ae29dfdc02e6cb875dda41631d4496f71">
+    <div><a href="django.html">Running Django on Google App Engine</a> - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Details how to get a simple Django project started with Google App Engine</span>
+  </li>
+  <li class="article-item" id="eccedde0959e054d2baa4853eb6c13dd87a0e5c6">
+    <div><a href="cf1-text.html">Google App Engine Campfire One</a> - <span class="article-date">April 2008</span></div>
+    <span class="article-desc">Text and video of the Campfire One summit on Google App Engine</span>
+  </li>
+</ul>
+
+      </div>
+    </td>
+  </tr>
+</table>
+</div>
+</div>
+
+<script type="text/javascript" src="articles.js"></script>
+
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

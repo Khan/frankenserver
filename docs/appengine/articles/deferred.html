@@ -1,0 +1,1514 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/deferred.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Background work with the deferred library - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">Background work with the deferred library</h1>
+
+
+<i>Nick Johnson</i><br>
+<i>October 15, 2009</i>
+
+<div id="jd-content">
+<div class="jd-descr">
+  <h2>Introduction</h2>
+
+  <p>Thanks to the <a href="../docs/python/taskqueue/index.html">Task Queue API</a>
+  released in SDK 1.2.3, it's easier than ever to do work 'offline', separate
+  from user serving requests. In some cases, however, setting up a handler for
+  each distinct task you want to run can be cumbersome, as can serializing and
+  deserializing complex arguments for the task - particularly if you have many
+  diverse but small tasks that you want to run on the queue.</p>
+
+  <p>Fortunately, a new library in release 1.2.5 of the SDK makes these ad-hoc
+  tasks much easier to write and execute. This library is found in
+  google.appengine.ext.deferred, and from here on in we'll refer to it as the
+  'deferred' library. The deferred library lets you bypass all the work of
+  setting up dedicated task handlers and serializing and deserializing your
+  parameters by exposing a simple function, <code>deferred.defer()</code>. To
+  call a function later, simply pass the function and its arguments to
+  <code>deferred.defer</code>, like this:</p>
+
+  <pre class="prettyprint">from google.appengine.ext import deferred
+
+  def do_something_expensive(a, b, c=None):
+      logging.info("Doing something expensive!")
+      # Do your work here
+
+  # Somewhere else
+  deferred.defer(do_something_expensive, "Hello, world!", 42, c=True)</pre>
+
+  <p>That's all there is to it. The deferred library will package up your
+  function call and its arguments, and add it to the task queue. When the task
+  gets executed, the deferred library will execute
+  <code>do_something_expensive("Hello, world!", 42)</code>. There's one other
+  thing you need to do to get this working - you need to add the deferred
+  library's task handler to your <code>app.yaml</code>. Just add the following entry to the
+  <a href="../docs/python/config/appconfig.html#Builtin_Handlers">builtins</a>
+  section of your <code>app.yaml</code>:</p>
+
+  <pre>- deferred: on</pre>
+
+  <p>The capabilities of the deferred library aren't limited to simple function
+  calls with straightforward arguments. In fact, you can use nearly any python
+  'callable', including functions, methods, class methods and callable objects.
+  deferred.defer supports task arguments used in the task queue API, such as
+  countdown, eta, and name, but in order to use them, you need to prefix them
+  with an underscore, to prevent them conflicting with keyword arguments to your
+  own function. For example, to run <code>do_something_expensive</code> in 30
+  seconds, with a custom queue name, you could do this:</p>
+
+  <pre class="prettyprint">deferred.defer(do_something_expensive, "Foobie bletch", 12, _countdown=30, _queue="myqueue")</pre>
+
+  <h2>Example: A datastore mapper</h2>
+
+  <p>To demonstrate how powerful the deferred library can be, we're going to
+  reprise an example from <a href="remote_api.html">the remote_api article</a> -
+  the Mapper class. Like the example in the remote_api article, this class will
+  make it easy to iterate over a large set of entities, making changes or
+  calculating totals. Unlike the remote_api version, though, our version won't
+  require an external computer to run it on, and it'll be more efficient to
+  boot!</p>
+
+  <p>Here's our example Mapper implementation:</p>
+
+  <pre class="prettyprint">from google.appengine.ext import deferred
+from google.appengine.runtime import DeadlineExceededError
+
+class Mapper(object):
+    # Subclasses should replace this with a model class (eg, model.Person).
+    KIND = None
+
+    # Subclasses can replace this with a list of (property, value) tuples to filter by.
+    FILTERS = []
+
+    def __init__(self):
+        self.to_put = []
+        self.to_delete = []
+
+    def map(self, entity):
+        """Updates a single entity.
+
+        Implementers should return a tuple containing two iterables (to_update, to_delete).
+        """
+        return ([], [])
+
+    def finish(self):
+        """Called when the mapper has finished, to allow for any final work to be done."""
+        pass
+
+    def get_query(self):
+        """Returns a query over the specified kind, with any appropriate filters applied."""
+        q = self.KIND.all()
+        for prop, value in self.FILTERS:
+            q.filter("%s =" % prop, value)
+        q.order("__key__")
+        return q
+
+    def run(self, batch_size=100):
+        """Starts the mapper running."""
+        self._continue(None, batch_size)
+
+    def _batch_write(self):
+        """Writes updates and deletes entities in a batch."""
+        if self.to_put:
+            db.put(self.to_put)
+            self.to_put = []
+        if self.to_delete:
+            db.delete(self.to_delete)
+            self.to_delete = []
+
+    def _continue(self, start_key, batch_size):
+        q = self.get_query()
+        # If we're resuming, pick up where we left off last time.
+        if start_key:
+            q.filter("__key__ >", start_key)
+        # Keep updating records until we run out of time.
+        try:
+            # Steps over the results, returning each entity and its index.
+            for i, entity in enumerate(q):
+                map_updates, map_deletes = self.map(entity)
+                self.to_put.extend(map_updates)
+                self.to_delete.extend(map_deletes)
+                # Do updates and deletes in batches.
+                if (i + 1) % batch_size == 0:
+                    self._batch_write()
+                # Record the last entity we processed.
+                start_key = entity.key()
+            self._batch_write()
+        except DeadlineExceededError:
+            # Write any unfinished updates to the datastore.
+            self._batch_write()
+            # Queue a new task to pick up where we left off.
+            deferred.defer(self._continue, start_key, batch_size)
+            return
+        self.finish()</pre>
+
+  <p>If you've read <a href="remote_api.html">the remote_api article</a>, this
+  is likely to seem very familiar. There's a couple of differences worth
+  noting.</p>
+
+  <p>First, the main loop is wrapped in a try/except clause, catching
+  <code>DeadlineExceededError</code>. This allows us to process as many results
+  as we can in the time we have available; when we're out of time, the runtime
+  throws a <code>DeadlineExceededError</code>, which gives us enough time to
+  queue the next task before returning. We're also no longer fetching results in
+  batches - instead, we iterate over the query, which lets us fetch as many
+  results as we have time to process. Updates and deletes are still batched,
+  however, and whenever we've processed enough records, we update the datastore,
+  and record the current entity as the point to continue from.</p>
+
+  <p>The other difference is that we've added a <code>finish()</code> method.
+  This gets called when every matching entity has been processed, and allows us
+  to use the Mapper class to do things like calculate totals.</p>
+
+  <h3>Using the mapper</h3>
+
+  <p>Using this class is almost identical to using the one we defined for
+  remote_api, so the examples from that article apply here, too. Here's the
+  example mapper that adds 'bar' to every guestbook entry containing 'foo',
+  rewritten for our new mapper class:</p>
+
+  <pre class="prettyprint">class GuestbookUpdater(Mapper):
+    KIND = Greeting
+
+    def map(self, entity):
+        if entity.content.lower().find('foo') != -1:
+            entity.content += ' Bar!'
+            return ([entity], [])
+       return ([], [])
+  mapper = MyMapper()
+  deferred.defer(mapper.run)</pre>
+
+  <p>As you can see, the mapper subclass itself is unchanged; the only change is
+  how we invoke it - by 'deferring' the mapper.run method.</p>
+
+  <p>The new finish method makes it easy to calculate totals, too. Suppose we
+  have a class that records files and how many times they've been downloaded,
+  and we want to count up the total number of files and the total number of
+  downloads. We could implement it like this:</p>
+
+  <pre class="prettyprint">class File(db.Model):
+      name = db.StringProperty(required=True)
+      download_count = db.IntegerProperty(required=True, count=0)
+
+  class DailyTotal(db.Model):
+      date = db.DateProperty(required=True, auto_now_add=True)
+      file_count = db.IntegerProperty(required=True)
+      download_count = db.IntegerProperty(required=True)
+
+  class DownloadCountMapper(Mapper):
+      KIND = File
+
+      def __init__(self):
+          self.file_count = 0
+          self.download_count = 0
+
+      def map(self, file):
+          self.file_count += 1
+          self.download_count += file.download_count
+
+      def finish(self):
+          total = DailyTotal(file_count=self.file_count,
+                             download_count=self.download_count)
+          total.put()
+
+     mapper = DownloadCountMapper()
+     deferred.defer(mapper.run)</pre>
+
+  <p>In just a few lines of code, we've written a mapper that can be run from a
+  cron job each day, and will count up the total number of files and downloads,
+  storing them to another entity. This will still run even if we have many more
+  File entities than we could count up in a single request, and it'll
+  automatically retry in the event of timeouts and other transient errors. And
+  at no point did we have to write a task queue handler, or map URLs. Our Mapper
+  class can be put in a library and used in multiple applications, even if they
+  use different frameworks!</p>
+
+  <p>The Mapper framework we wrote above isn't full-featured, of course, and it
+  could do with a few improvements to make it more robust and versatile, but it
+  serves to demonstrate the power of the deferred API.</p>
+
+  <h2>Deferred tips and tricks</h2>
+
+  <p>As always, there are a few tips and tricks you should be aware of in order
+  to make optimal use of the deferred library.</p>
+
+  <h3>Make tasks as small as possible</h3>
+
+  <p>Task Queue items are limited to 10kb of associated data. This means that
+  when the deferred library serializes the details of your call, it must amount
+  to less than 10 kilobytes in order to fit on the Task Queue directly. No need
+  to panic, though: If you try to enqueue a task that is too big to fit on the
+  queue by itself, the deferred library will automatically create a new Entity
+  in the datastore to hold information about the task, and will delete the
+  entity once the task has been run. This means that in practice, your function
+  call can be up to 1MB once serialized.</p>
+
+  <p>As you might expect, however, inserting and deleting datastore entities for
+  each task adds some overhead, so if you can, make the arguments to your call
+  (and the object itself, if you're calling a method) as small as possible to
+  avoid the extra overhead.</p>
+
+  <h3>Don't pass entities to deferred.defer</h3>
+
+  <p>If you're working with datastore entities, you might be tempted to do
+  something like this:</p>
+
+  <pre class="prettyprint">def do_something(entity):
+    # Do something with entity
+    entity.put()
+
+entity = MyModel.get_by_id(123)
+deferred.defer(do_something, entity, _countdown=60)</pre>
+
+  <p>This is a bad idea, because the deferred library will package up the entity
+  itself and store it to the task queue; when the time comes to execute your
+  task, it will deserialize the entity and run the code. When your code writes
+  the entity back to the datastore, it'll overwrite any changes that have
+  happened since you enqueued the task with deferred.defer!</p>
+
+  <p>Instead of passing entities around, then, you should pass keys. For
+  example:</p>
+
+  <pre class="prettyprint">def do_something_with_key(k):
+    entity = MyModel.get(k)
+    # Do something with entity
+    entity.put()
+
+k = db.Key.from_path('MyModel', 123)
+deferred.defer(do_something_with_key, k, _countdown=60)</pre>
+
+  <h3>Dealing with task failures</h3>
+
+  <p>Tasks created using deferred.defer get retried in case of failure just like
+  regular Task Queue tasks. 'Failure' in the case of a deferred task is defined
+  as your task throwing any uncaught exception. Normally, automatic retries are
+  what you want - for example, if the task does datastore operations, and the
+  datastore threw a Timeout exception. If you want to deliberately cause your
+  task to fail so it will be retried, you can simply throw an exception.</p>
+
+  <p>Sometimes, though, you know your task will never succeed, and you want it
+  to fail permanently. In such situations, you have two options:</p>
+
+  <ul>
+    <li>Return from the deferred function normally. The handler will think the
+    task executed successfully, and will not try again. This is best in the case
+    of non-critical failures - for example, when you deferred something for
+    later, and discovered it's already been done.</li>
+    <li>Raise a <code>deferred.PermanentTaskFailure</code> exception. This is a
+    special exception, and is treated as a permanent failure. It is logged as an
+    exception, so it will show up in your admin console as one, but causes the
+    task to not be retried again.</li>
+  </ul>
+
+  <h3>Handling import path manipulation</h3>
+
+  <p>Some applications, or the frameworks they use, rely on manipulating the
+  Python import path in order to make all the libraries they need available.
+  While this is a perfectly legitimate technique, the deferred library has no
+  way of knowing what path manipulations you've engaged in, so if the task
+  you're deferring relies on modules that aren't on the import path by default,
+  you need to give it a helping hand. Failing to do this can result in your
+  tasks failing to run - or worse, only failing intermittently.</p>
+
+  <p>Fortunately, handling this is easy. Make sure your code that changes the
+  import path is in a module all of its own, such as '<code>fix_path.py</code>'.
+  Such a module might look like this:</p>
+
+  <pre class="prettyprint">import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))</pre>
+
+  <p>Then, import the '<code>fix_path</code>' module along with your usual
+  imports, anywhere you rely on the modified path, such as in the module you
+  defined the functions you're calling with <code>deferred.defer</code> in.</p>
+
+  <h2>Limitations of the deferred library</h2>
+
+  <p>There are a few limitations on what you can pass to deferred.defer:</p>
+
+  <ul>
+    <li>All arguments must be picklable. That means you can't pass exotic things
+    like instances of nested classes as function arguments. If you're calling an
+    instance method, the instance must be picklable too. If you're not familiar
+    with what 'pickling' is, don't worry - most stuff that you're likely to be
+    passing to deferred.defer will work just fine.</li>
+    <li>You can't call nested functions, or methods of nested classes.</li>
+    <li>You can't call lambda functions (but you probably wouldn't want to
+    anyway).</li>
+    <li>You can't call a static method.</li>
+    <li>You can't call a method in the request handler module.</li>
+  </ul>
+
+  <p>The last point above deserves special attention: Calling a method in the
+  request handler module - the module specified as a request handler in app.yaml
+  - will not work. You can call deferred.defer from the request handler module,
+  but the function you are calling must be defined elsewhere!</p>
+
+  <h3>When to use ext.deferred</h3>
+  <p>You may be wondering when to use ext.deferred, and when to stick with the
+  built-in task queue API. Here are our suggestions.</p>
+
+  <p>You may want to use the deferred library if:</p>
+  <ul>
+    <li>You only use the task queue lightly.</li>
+    <li>You want to refactor existing code to run on the Task Queue with a
+    minimum of changes.</li>
+    <li>You're writing a one off maintenance task, such as schema migration.</li>
+    <li>Your app has many different types of background task, and writing a
+    separate handler for each would be burdensome.</li>
+    <li>Your task requires complex arguments that aren't easily serialized without
+    using Pickle.</li>
+    <li>You are writing a library for other apps that needs to do background work.</li>
+  </ul>
+
+  <p>You may want to use the Task Queue API if:</p>
+  <ul>
+    <li>You need complete control over how tasks are queued and executed.</li>
+    <li>You need better queue management or monitoring than deferred provides.</li>
+    <li>You have high throughput, and overhead is important.</li>
+    <li>You are building larger abstractions and need direct control over tasks.</li>
+    <li>You like the webhook model better than the RPC model.</li>
+  </ul>
+
+  <p>Naturally, you can use both the Task Queue API and the deferred library
+  side-by-side, if your app has requirements that fit into both groups.</p>
+
+  <p>If you've come up with your own uses for the deferred API, please let us
+  and the rest of the community know about them in the
+  <a href="../community.html">discussion groups</a>.
+</div>
+</div>
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

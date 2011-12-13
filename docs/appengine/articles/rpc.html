@@ -1,0 +1,1854 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/articles/rpc.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Using AJAX to Enable Client RPC Requests - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../css/iehacks.css"><![endif]-->
+
+    <link href="../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../css/local_extensions.css" rel="stylesheet" type="text/css" />
+    <script src="../js/customtabs.js" type="text/javascript"></script>
+    <script src="../js/ui.tabs.js" type="text/javascript"></script>
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent-anchor">Skip to page content</a>
+  <a href="#gc-toc-anchor">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="articles" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../docs/index.html" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="index.html" class="selected" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <a name="gc-toc-anchor"></a>  
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../downloads.html">Downloads</a></li>
+  <li><a href="../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../docs/glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../docs/whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../docs/java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../docs/java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../docs/java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../docs/java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../docs/java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../docs/java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../docs/java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../docs/java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../docs/java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../docs/python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../docs/python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../docs/python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../docs/python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/go/gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../docs/go/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../docs/go/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../docs/go/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../docs/go/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../docs/go/gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../docs/go/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../docs/go/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../docs/java/overview.html">Overview</a></li>
+    <li><a href="../docs/java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../docs/java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/java/backends/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../docs/java/datastore/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/entities.html">Entities</a></li>
+    <li><a href="../docs/java/datastore/queries.html">Queries</a></li>
+    <li><a href="../docs/java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../docs/java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../docs/java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../docs/java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../docs/java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../docs/java/datastore/async.html">Async API</a></li>
+    <li><a href="../docs/java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../docs/java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../docs/java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../docs/java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../docs/java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../docs/java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/java/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/java/conversion/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/java/channel/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../docs/java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../docs/java/images/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../docs/java/mail/overview.html">Overview</a></li>
+    <li><a href="../docs/java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../docs/java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../docs/java/memcache/overview.html">Overview</a></li>
+    <li><a href="../docs/java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../docs/java/oauth/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../docs/java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../docs/java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../docs/java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../docs/java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../docs/java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../docs/java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../docs/java/users/overview.html">Overview</a></li>
+    <li><a href="../docs/java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../docs/java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../docs/java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../docs/java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../docs/java/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/java/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../docs/java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../docs/java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../docs/java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../docs/java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../docs/java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../docs/java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../docs/java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../docs/java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../docs/java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../docs/java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../docs/java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../docs/java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../docs/python/overview.html">Overview</a></li>
+    <li><a href="../docs/python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../docs/python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../docs/python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../docs/python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../docs/python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../docs/python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../docs/python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../docs/python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../docs/python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../docs/python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../docs/python/datastore/entities.html">Entities</a></li>
+      <li><a href="../docs/python/datastore/queries.html">Queries</a></li>
+      <li><a href="../docs/python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../docs/python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../docs/python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../docs/python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../docs/python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../docs/python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../docs/python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../docs/python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../docs/python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../docs/python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../docs/python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../docs/python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../docs/python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../docs/python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../docs/python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../docs/python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../docs/python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../docs/python/datastore/functions.html">Functions</a></li>
+          <li><a href="../docs/python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../docs/python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../docs/python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../docs/python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../docs/python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../docs/python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../docs/python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../docs/python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../docs/python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../docs/python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../docs/python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../docs/python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../docs/python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../docs/python/conversion/functions.html">Functions</a></li>
+    <li><a href="../docs/python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/channel/functions.html">Functions</a></li>
+    <li><a href="../docs/python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../docs/python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../docs/python/images/overview.html">Overview</a></li>
+     <li><a href="../docs/python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../docs/python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/images/imageclass.html">Image</a></li>
+         <li><a href="../docs/python/images/functions.html">Functions</a></li>
+         <li><a href="../docs/python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/python/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../docs/python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../docs/python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../docs/python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../docs/python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../docs/python/mail/functions.html">Functions</a></li>
+         <li><a href="../docs/python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/python/memcache/overview.html">Overview</a></li>
+      <li><a href="../docs/python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../docs/python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../docs/python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../docs/python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../docs/python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../docs/python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../docs/python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../docs/python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/oauth/functions.html">Functions</a></li>
+         <li><a href="../docs/python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../docs/python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../docs/python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../docs/python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../docs/python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../docs/python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../docs/python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../docs/python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../docs/python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../docs/python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../docs/python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../docs/python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../docs/python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../docs/python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../docs/python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../docs/python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../docs/python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/python/users/overview.html">Overview</a></li>
+     <li><a href="../docs/python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../docs/python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../docs/python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/users/userclass.html">User</a></li>
+         <li><a href="../docs/python/users/functions.html">Functions</a></li>
+         <li><a href="../docs/python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../docs/python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../docs/python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../docs/python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../docs/python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../docs/python/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/python/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../docs/python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../docs/python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../docs/python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../docs/python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../docs/python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../docs/python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../docs/python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../docs/python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../docs/python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../docs/python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../docs/python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../docs/python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../docs/python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../docs/python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../docs/python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../docs/python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../docs/python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../docs/python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../docs/python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../docs/python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../docs/python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../docs/python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../docs/python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../docs/python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../docs/python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../docs/python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../docs/python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../docs/go/overview.html">Overview</a></li>
+    <li><a href="../docs/go/runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../docs/go/reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../docs/go/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../docs/go/backends/overview.html">Overview</a></li>
+<li><a href="../docs/go/backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../docs/go/datastore/overview.html">Overview</a></li>
+     <li><a href="../docs/go/datastore/transactions.html">Transactions</a></li>
+     <li><a href="../docs/go/datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../docs/go/apis.html">Services</a>
+      <ul>
+        <li><a href="../docs/go/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../docs/go/blobstore/overview.html">Overview</a></li>
+<li><a href="../docs/go/blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../docs/go/capabilities/overview.html">Overview</a></li>
+<li><a href="../docs/go/capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../docs/go/channel/overview.html">Overview</a></li>
+<li><a href="../docs/go/channel/reference.html">Reference</a></li>
+<li><a href="../docs/go/channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../docs/go/mail/overview.html">Overview</a></li>
+     <li><a href="../docs/go/mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../docs/go/memcache/overview.html">Overview</a></li>
+     <li><a href="../docs/go/memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../docs/go/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../docs/go/taskqueue/reference.html">Reference</a></li>
+     <li><a href="../docs/go/taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../docs/go/urlfetch/overview.html">Overview</a></li>
+     <li><a href="../docs/go/urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../docs/go/users/overview.html">Overview</a></li>
+     <li><a href="../docs/go/users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../docs/go/config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../docs/go/config/appconfig.html">App Config</a></li>
+    <li><a href="../docs/go/config/backends.html">Backends Config</a></li>
+    <li><a href="../docs/go/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../docs/go/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../docs/go/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../docs/go/config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../docs/go/tools/index.html">Tools</a>
+          <ul>
+                <li><a href="../docs/go/tools/devserver.html">Development Server</a></li>
+    <li><a href="../docs/go/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../docs/adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../docs/adminconsole/instances.html">Instances</a></li>
+<li><a href="../docs/adminconsole/roles.html">Roles</a></li>
+<li><a href="../docs/adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../docs/adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../docs/adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../docs/quotas.html">Quotas</a></li>
+      <li><a href="../docs/billing.html">Billing</a></li>
+      <li><a href="../docs/premier/index.html">Premier Accounts</a></li>
+      <li><a href="../docs/domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../kb/index.html">FAQ</a></li>
+      <li><a href="index.html">Articles</a></li>
+      <li><a href="../docs/videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../docs/roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../docs/revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+      
+      <a name="gc-pagecontent-anchor"></a>   
+      <div class="g-unit" id="gc-pagecontent">
+        <script type="text/javascript">CODESITE_docEarlyProcessing();</script>
+        <h1 class="page_title">Using AJAX to Enable Client RPC Requests</h1>
+
+
+<i>Paul Peavyhouse, Software Engineer in Test</i><br>
+<i>May 2008</i>
+
+<div id="jd-content">
+<div class="jd-descr">
+
+<h2>Introduction</h2>
+<p>Is your Google App Engine app serving only static page requests?  Would you like to learn how to make your pages more dynamic and responsive by using <a href="http://en.wikipedia.org/wiki/AJAX">AJAX</a> (Asynchronous JavaScript and XML) techniques to have the client make <a href="http://en.wikipedia.org/wiki/Remote_procedure_call">RPC</a> (Remote Procedure Call) requests to your Google App Engine server?</p>
+<p>In this article, we'll show you how to get a client to make an AJAX call, and how to have your Google App Engine server respond to that call.</p>
+<h2>AJAX: This is not your father's Internet</h2>
+<p>AJAX allows web applications to be much more dynamic and responsive than the old prehistoric static fossilized Web 1.0 pages from the previous ice age.  AJAX apps can be very rich and immersive, and if you aren't coding in this way (there are alternatives) then your web app may look a little stale.</p>
+<p>AJAX has been a hyped buzzword for many years, treated as a Holy Grail and sold like snake oil.  While the hype may have died down in recent years, AJAX and other Web 2.0 concepts are more relevant today than they ever have been.  There are scores to hundreds of articles and books on AJAX.  If you have absolutely no idea what AJAX is or how it works then go grab a cup of Joe and start Googling the web.  Once you get your feet under you, come back here and we'll show you how to apply some of what you learned to the Google App Engine.</p>
+<p>Keep in mind that this article gives simple examples of how to use AJAX.  For the sake of simplicity, a lot of error checking and other "implied" or "obvious" code is intentionally omitted.  It is beyond the scope of this example to cover all of the details that go in to writing a production quality AJAX web application.  Some areas of concern that you should look in to are:</p>
+<ul>
+<li>Security (both Server and Client)</li>
+<li>"On Error" callbacks (as opposed to just assuming "On Success")</li>
+<li>Request timeouts and canceling</li>
+<li>Optimizations and Scalability</li>
+</ul>
+<h2>Overview of this example's use of AJAX w/ the Google App Engine</h2>
+<p>As <a href="http://www.urbandictionary.com/define.php?term=swooby">swooby</a> as Google App Engine is, it has no AJAX/RPC specific features, nor does it need them.  As far as App Engine is concerned, AJAX requests are just another type of HTTP request.  App Engine handles HTTP requests via the <code>webapp.RequestHandler</code> class, and multiple instances of these handlers can be created for different paths on the server.  So, to handle AJAX requests we simply create a <code>webapp.RequestHandler</code> for an <code>/rpc</code> path on the server.  Our <code>RequestHandler</code> will parse the HTTP Request for the function name and parameters that the client wants the server to call, make the call, and then return the result as an HTTP Response.  It is important to keep in mind that the HTTP Response only returns a single result; in that single result may be a collection of multiple values expected by the client.</p>
+<p>The devil is in the details.  The client and the server are not guaranteed to be running the same language, so a light-weight language-neutral data format that represents the RPC call needs to be chosen.  The "X" in "AJAX" is for the XML that was traditionally used as this data format.  XML is grand and all, and is a logical choice to compliment HTML for many reasons, but a better data format for RPC requests is <a href="http://www.json.org">JSON</a>.  JSON is more compact and (once you get used to its implications) arguably more human readable than XML.</p>
+<p>Following is a side by side comparison of some hypothetical JSON and XML:</p>
+<div align="center">
+<table>
+<tr>
+<td>JSON</td>
+<td>XML</td>
+</tr>
+<tr>
+<td>{<br />
+&nbsp; "string",<br />
+&nbsp; 1,<br />
+&nbsp; 3.14,<br />
+&nbsp; [<br />
+&nbsp;&nbsp;&nbsp; "a",<br />
+&nbsp;&nbsp;&nbsp; "list"<br />
+&nbsp; ],<br />
+&nbsp; {<br />
+&nbsp; &nbsp; key1:"value1",<br />
+&nbsp;&nbsp;&nbsp; key2:"value2"<br />
+&nbsp; }<br />
+}<br />
+</td>
+<td>
+&lt;data&gt;<br />
+&nbsp; &lt;string&gt;"string"&lt;/string&gt;<br />
+&nbsp; &lt;int32&gt;1&lt;/int32&gt;<br />
+&nbsp; &lt;float&gt;3.14&lt;/float&gt;<br />
+&nbsp; &lt;list&gt;<br />
+&nbsp;&nbsp;&nbsp; &lt;item&gt;"a"&lt;/item&gt;<br />
+&nbsp;&nbsp;&nbsp; &lt;item&gt;"list"&lt;/item&gt;<br />
+&nbsp; &lt;/list&gt;<br />
+&nbsp; &lt;dictionary&gt;<br />
+&nbsp;&nbsp;&nbsp; &lt;key1&gt;"value1"&lt;/key1&gt;<br />
+&nbsp;&nbsp;&nbsp; &lt;key2&gt;"value2"&lt;/key2&gt;<br />
+&nbsp; &lt;/dictionary&gt;<br />
+&lt;/data&gt;<br />
+</td>
+</tr>
+</table>
+</div>
+<p>
+While XML has its advantages, in most cases JSON is lighter-weight and more conducive to RPC than XML.  JSON is also a good choice because it is supported by many of the <a href="http://www.tiobe.com/index.php/content/paperinfo/tpci/index.html">relevant programming languages</a> (though, currently not Ruby or Visual Basic [Script])</p>
+<p>This example will follow an AJAX call sequence that goes a little something like this:
+<ol>
+<li>Client invokes a method that wants to call the server (ex: Clicks a button)</li>
+<li>Client creates an <code>XMLHttpRequest</code> object</li>
+<li>Client JSON encodes the parameters for the request</li>
+<li>Server JSON decodes the request</li>
+<li>Server executes the request</li>
+<li>Server JSON encodes the response</li>
+<li>Client JSON decodes response</li>
+<li>Client processes response (ex: Updates a UI element)</li>
+</ol>
+</p>
+<p>The below example will have the Client make an AJAX RPC call to a function on the Server called <code>Add</code>, where the Server will add two numbers together and return the result to the Client.</p>
+<h2>A Few Words About Security</h2>
+<p>WARNING: RPCs are prone to security vulnerabilities!  It is a bad idea to allow anyone to make a request that can execute potentially any code on your server.  This example handles <b>some</b> security concerns by:
+<ol>
+<li>Limiting RPC calls to only the methods defined in a single class: RPCMethods</li>
+<li>Deny requests to execute any private or protected methods by checking for a leading underscore ("_") character.</li>
+</ol></p>
+<p>This is enough to to get you up and running, but it by no means covers all of the areas needed for a production quality application.  Suffice it to say, the reliability and security of your code is your own responsibility.  Code smart, code safe, and don't allow any RPCs to be called that you would not want your worst competitor or enemy to exploit.</p>
+<h2>Client Side: AJAX Request</h2>
+<p>The Client is the initiator of AJAX requests, so it is here that we will start.  Our goal is the have the Client make an RPC call to the Server as simple as this:</p>
+<pre class="prettyprint">&lt;script&gt;
+...
+
+function onAddSuccess(response) {
+  $('result').value = response;
+}
+
+function doAdd() {
+  server.Add($('num1').value, $('num2').value, onAddSuccess);
+}
+
+...
+&lt;/script&gt;
+
+&lt;body&gt;
+...
+Number 1: &lt;input id="num1" type="text" value="1" /&gt;&lt;br /&gt;
+Number 2: &lt;input id="num2" type="text" value="1" /&gt;&lt;br /&gt;
+&lt;input type="button" value="Add" onclick="doAdd()" style="width:100%" /&gt;&lt;br /&gt;
+Result: &lt;input id="result" type="text" value="" readonly="true" disabled="true" /&gt;
+...
+&lt;/body&gt;
+</pre>
+<p>In its most generic sense, an AJAX Request will have a function name followed by any optional parameters, the last of which, if it is a function, is an optional <code>OnSuccess</code> callback.  So, lets write a function that handles this:</p>
+<pre class="prettyprint">function Request(function_name, opt_argv) {
+
+
+  // If optional arguments was not provided, create it as empty
+  if (!opt_argv)
+    opt_argv = new Array();
+
+  // Find if the last arg is a callback function; save it
+  var callback = null;
+  var len = opt_argv.length;
+  if (len &gt; 0 && typeof opt_argv[len-1] == 'function') {
+    callback = opt_argv[len-1];
+    opt_argv.length--;
+  }
+  var async = (callback != null);
+
+  // Encode the arguments in to a URI
+  var query = 'action=' + encodeURIComponent(function_name);
+  for (var i = 0; i &lt; opt_argv.length; i++) {
+    var key = 'arg' + i;
+    var val = JSON.stringify(opt_argv[i]);
+    query += '&' + key + '=' + encodeURIComponent(val);
+  }
+  query += '&time=' + new Date().getTime(); // IE cache workaround
+
+  // See http://en.wikipedia.org/wiki/XMLHttpRequest to make this cross-browser compatible
+  var req = new XMLHttpRequest();
+
+  // Create a 'GET' request w/ an optional callback handler
+  req.open('GET', '/rpc?' + query, async);
+
+  if (async) {
+    req.onreadystatechange = function() {
+      if(req.readyState == 4 && req.status == 200) {
+        var response = null;
+        try {
+         response = JSON.parse(req.responseText);
+        } catch (e) {
+         response = req.responseText;
+        }
+        callback(response);
+      }
+    }
+  }
+
+  // Make the actual request
+  req.send(null);
+}
+</pre>
+<p>The above code is commented to explain what each section does.  In summary, it takes a request like this:</p>
+<pre class="prettyprint">Request('Add', [1, 2]);</pre>
+<p>And makes a <code>GET</code> request to this URL (quotes are unescaped for readability):</p>
+<pre>http://localhost:8080/rpc?action=Add&arg0="1"&arg1="2"&time=1210006014945</pre>
+<p>JavaScript has fairly relaxed rules regarding variable typecasting between strings, ints, floats, etc.  Because of this, our JavaScript JSON encoder doesn't really know (or care) if "1" and "2" are strings or integers.  Thus, "1" (*with* the quotes) is the JSON encoding for the integer "1" (without the quotes).  "2" (*with* the quotes) is the JSON encoding for the integer "2". Values more complex than integers would have more complex JSON encodings.  Again, to learn more about JSON encodings, visit <a href="http://www.json.org">http://www.json.org.</a></p>
+<p>Quotes aren't good characters to have in a URL, so the final escaped version of the URL that the server sees is:</p>
+<pre>http://localhost:8080/rpc?action=Add&arg0=%221%22&arg1=%222%22&time=1210006014945</pre>
+<p>Now that we have both the high level and the low level code, all it takes to hook the two together is this last bit of code:</p>
+<pre class="prettyprint">    function InstallFunction(obj, name) {
+      obj[name] = function() { Request(name, arguments); }
+    }
+
+    var server = {};
+    InstallFunction(server, 'Add');
+</pre>
+<p>We'll put all of this together after we take a look at what our Server needs to do.</p>
+
+<h2>Handling the AJAX Request Using Google App Engine</h2>
+<p>As mentioned in the Overview, our Server sees AJAX as just another HTTP Request.  A second <code>webapp.RequestHandler</code> is added to our Server to listen to our <code>/rpc</code> path.  The following code is just some basic boilerplate Google App Engine code with two <code>RequestHandlers</code>:</p>
+<pre class="prettyprint"># !/usr/bin/env python
+
+import os
+
+from google.appengine.ext import webapp
+from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp import util
+
+class MainPage(webapp.RequestHandler):
+    """ Renders the main template."""
+    def get(self):
+        template_values = { 'title':'AJAX Add (via GET)', }
+        path = os.path.join(os.path.dirname(__file__), "index.html")
+        self.response.out.write(template.render(path, template_values))
+
+class RPCHandler(webapp.RequestHandler):
+    """ Will handle the RPC requests."""
+    def get(self):
+        self.error(403) # under construction: access denied
+
+def main():
+    app = webapp.WSGIApplication([
+        ('/', MainPage),
+        ('/rpc', RPCHandler),
+        ], debug=True)
+    util.run_wsgi_app(app)
+
+if __name__ == '__main__':
+    main()
+</pre>
+<p>Our server has two handlers: one handler for the <code>/</code> path to serve web pages like usual, and the other handler for the <code>/rpc</code> path where we will respond to RPC <code>GET</code> requests.</p>
+<p>In the Client section we wrote code that makes the following <code>GET</code> request to the server (quotes are unescaped for readability):</p>
+<pre>http://localhost:8080/rpc?action=Add&arg0="1"&arg1="2"&time=1210006014945</pre>
+<p>Each value of the <code>arg#</code> (<code>arg0</code>, <code>arg1</code>, ...) parameters is a JSON encoded value.  Google App Engine comes with the JSON encoding/decoding module simplejson (via Django).  To use simplejson we need to add the following line to our Server:</p>
+<pre class="prettyprint">from django.utils import simplejson</pre>
+<p>Now that we can talk JSON, our <code>RPCHandler.get</code> can parse our Client's <code>GET</code> URL with the following code:</p>
+<pre class="prettyprint">   def get(self):
+       func = None
+
+       action = self.request.get('action')
+       if action:
+           func = getattr(self, action, None) # SECURITY HOLE!
+
+       if not func:
+           self.error(404) # file not found
+           return
+
+       args = ()
+       while True:
+           key = 'arg%d' % len(args)
+           val = self.request.get(key)
+           if val:
+               args += (simplejson.loads(val),)
+           else:
+               break
+       result = func(*args)
+       self.response.out.write(simplejson.dumps(result))</pre>
+<p>Here we have exposed a huge security hole.  This is Python, so imagine if a Request came in for <code>__dict__</code>, <code>__setattr__</code>, or any other private or protected function of our <code>RPCHandler</code> class or any of its Parent classes.  The attribute would be retrieved and could be executed, possibly exposing data or maliciously wreaking havoc on the server.   As mentioned in "A Few Words About Security", we will protect our Server by doing the following:
+<ol>
+<li>Limit RPC calls to only the methods defined in a single class: <code>RPCMethods</code>. This prevents any RPC from trying to execute any of <code>RPCHandlers</code> methods (get, post, error, etc).</li>
+<li>Deny requests to execute any private or protected methods (by checking for a leading underscore ["_"] character)</li>
+</ol>
+</p>
+<p>Our more secure Server code is as follows:</p>
+<pre class="prettyprint">class RPCHandler(webapp.RequestHandler):
+    """ Allows the functions defined in the RPCMethods class to be RPCed."""
+
+    def __init__(self):
+        webapp.RequestHandler.__init__(self)
+        self.methods = RPCMethods()
+
+    def get(self):
+        func = None
+
+        action = self.request.get('action')
+        if action:
+            if action[0] == '_':
+                self.error(403) # access denied
+                return
+            else:
+                func = getattr(self.methods, action, None)
+
+        if not func:
+            self.error(404) # file not found
+            return
+
+        args = ()
+        while True:
+            key = 'arg%d' % len(args)
+            val = self.request.get(key)
+            if val:
+                args += (simplejson.loads(val),)
+            else:
+                break
+        result = func(*args)
+        self.response.out.write(simplejson.dumps(result))
+
+class RPCMethods:
+    """ Defines the methods that can be RPCed.
+    NOTE: Do not allow remote callers access to private/protected "_*" methods.
+    """
+    def Add(self, *args):
+        # The JSON encoding may have encoded integers as strings.
+        # Be sure to convert args to any mandatory type(s).
+        ints = [int(arg) for arg in args]
+        return sum(ints)
+</pre>
+<p>Now we are ready to put all of this together into a simple <code>GET</code> example...</p>
+<h2>Simple GET Example</h2>
+<ul>
+<li>app.yaml</li>
+<pre>application: get
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /static
+  static_dir: static
+
+- url: /.*
+  script: main.py
+</pre>
+<li>main.py</li>
+<pre class="prettyprint"># !/usr/bin/env python
+
+
+import os
+
+from django.utils import simplejson
+from google.appengine.ext import webapp
+from google.appengine.ext.webapp import template
+from google.appengine.ext.webapp import util
+
+class MainPage(webapp.RequestHandler):
+    """ Renders the main template."""
+    def get(self):
+        template_values = { 'title':'AJAX Add (via GET)', }
+        path = os.path.join(os.path.dirname(__file__), "index.html")
+        self.response.out.write(template.render(path, template_values))
+
+
+class RPCHandler(webapp.RequestHandler):
+    """ Allows the functions defined in the RPCMethods class to be RPCed."""
+    def __init__(self):
+        webapp.RequestHandler.__init__(self)
+        self.methods = RPCMethods()
+
+    def get(self):
+        func = None
+
+        action = self.request.get('action')
+        if action:
+            if action[0] == '_':
+                self.error(403) # access denied
+                return
+            else:
+                func = getattr(self.methods, action, None)
+
+        if not func:
+            self.error(404) # file not found
+            return
+
+        args = ()
+        while True:
+            key = 'arg%d' % len(args)
+            val = self.request.get(key)
+            if val:
+                args += (simplejson.loads(val),)
+            else:
+                break
+        result = func(*args)
+        self.response.out.write(simplejson.dumps(result))
+
+
+class RPCMethods:
+    """ Defines the methods that can be RPCed.
+    NOTE: Do not allow remote callers access to private/protected "_*" methods.
+    """
+
+    def Add(self, *args):
+        # The JSON encoding may have encoded integers as strings.
+        # Be sure to convert args to any mandatory type(s).
+        ints = [int(arg) for arg in args]
+        return sum(ints)
+
+
+def main():
+    app = webapp.WSGIApplication([
+        ('/', MainPage),
+        ('/rpc', RPCHandler),
+        ], debug=True)
+    util.run_wsgi_app(app)
+
+if __name__ == '__main__':
+    main()
+</pre>
+<li>index.html (Requires json2.js from http://www.json.org/js.html)</li>
+<pre class="prettyprint">    &lt;html&gt;
+    &lt;head&gt;
+    &lt;title&gt;{{title}}&lt;/title&gt;
+
+    &lt;script type="text/javascript" src="./static/json2.js"&gt;&lt;/script&gt;
+    &lt;script type="text/javascript"&gt;
+
+    //
+    // As mentioned at http://en.wikipedia.org/wiki/XMLHttpRequest
+    //
+    if( !window.XMLHttpRequest ) XMLHttpRequest = function()
+    {
+      try{ return new ActiveXObject("Msxml2.XMLHTTP.6.0") }catch(e){}
+      try{ return new ActiveXObject("Msxml2.XMLHTTP.3.0") }catch(e){}
+      try{ return new ActiveXObject("Msxml2.XMLHTTP") }catch(e){}
+      try{ return new ActiveXObject("Microsoft.XMLHTTP") }catch(e){}
+      throw new Error("Could not find an XMLHttpRequest alternative.")
+    };
+
+    //
+    // Makes an AJAX request to a local server function w/ optional arguments
+    //
+    // functionName: the name of the server's AJAX function to call
+    // opt_argv: an Array of arguments for the AJAX function
+    //
+    function Request(function_name, opt_argv) {
+
+      if (!opt_argv)
+        opt_argv = new Array();
+
+      // Find if the last arg is a callback function; save it
+      var callback = null;
+      var len = opt_argv.length;
+      if (len > 0 && typeof opt_argv[len-1] == 'function') {
+        callback = opt_argv[len-1];
+        opt_argv.length--;
+      }
+      var async = (callback != null);
+
+      // Encode the arguments in to a URI
+      var query = 'action=' + encodeURIComponent(function_name);
+      for (var i = 0; i < opt_argv.length; i++) {
+        var key = 'arg' + i;
+        var val = JSON.stringify(opt_argv[i]);
+        query += '&' + key + '=' + encodeURIComponent(val);
+      }
+      query += '&time=' + new Date().getTime(); // IE cache workaround
+
+      // Create an XMLHttpRequest 'GET' request w/ an optional callback handler
+      var req = new XMLHttpRequest();
+      req.open('GET', '/rpc?' + query, async);
+
+      if (async) {
+        req.onreadystatechange = function() {
+          if(req.readyState == 4 && req.status == 200) {
+            var response = null;
+            try {
+             response = JSON.parse(req.responseText);
+            } catch (e) {
+             response = req.responseText;
+            }
+            callback(response);
+          }
+        }
+      }
+
+      // Make the actual request
+      req.send(null);
+    }
+
+    // Adds a stub function that will pass the arguments to the AJAX call
+    function InstallFunction(obj, functionName) {
+      obj[functionName] = function() { Request(functionName, arguments); }
+    }
+
+    &lt;/script>
+    &lt;script type="text/javascript">
+
+    // Server object that will contain the callable methods
+    var server = {};
+
+    // Insert 'Add' as the name of a callable method
+    InstallFunction(server, 'Add');
+
+
+    // Handy "macro"
+    function $(id){
+      return document.getElementById(id);
+    }
+
+    // Client function that calls a server rpc and provides a callback
+    function doAdd() {
+      server.Add($('num1').value, $('num2').value, onAddSuccess);
+    }
+
+    // Callback for after a successful doAdd
+    function onAddSuccess(response) {
+      $('result').value = response;
+    }
+
+    &lt;/script&gt;
+    &lt;/head&gt;
+
+    &lt;body&gt;
+    &lt;center&gt;
+    &lt;h1&gt;{{title}}&lt;/h1&gt;
+    &lt;table&gt;
+        &lt;tr&gt;
+            &lt;td align="right"&gt;Number 1: &lt;input id="num1" type="text" value="1" /&gt;&lt;br /&gt;
+            Number 2: &lt;input id="num2" type="text" value="2" /&gt;&lt;br /&gt;
+            &lt;input type="button" value="Add" onclick="doAdd()" style="width:100%" /&gt;&lt;br&gt;
+            Result: &lt;input id="result" type="text" value="" readonly="true" disabled="true" /&gt;&lt;/td&gt;
+        &lt;/tr&gt;
+    &lt;/table&gt;
+    &lt;/center&gt;
+    &lt;/body&gt;
+    &lt;/html&gt;
+</pre>
+</ul>
+<p>Create a new directory and copy the above three files to it.  You will also need to create a sub-directory named "static" and copy <a href="http://www.json.org/json2.js">json2.js</a> to that directory (for this demo you could just "&lt;script src='http://www.json.org/json2.js'/&gt;", but that is rude).</p>
+<p>Launch the development webserver, visit <a href-"http://localhost:8080">http://localhost:8080</a>, click "Add", and if you have <a href="https://addons.mozilla.org/en-US/firefox/addon/1843">Firebug</a> installed you can easily see the Client's Request and the Server's Response in the Console tab:</p>
+<pre>Client Request: GET http://localhost:8080/rpc?action=Add&arg0=%221%22&arg1=%222%22&time=1210092948178
+Server Response: 3</pre>
+<p>The Client's Request is the encoded URL of a <code>GET</code> RPC call to add the JSON encoded values "1"+"2".  The Server's Response is the JSON encoded result of that RPC call.  Python's JSON encoder knew that the result was an integer, so the JSON result is just the character "3" (without the quotes).  You can enter the GET URL directly in to your browser; go ahead and try it!  Notice that the response you get is just the character "3" (again, without the quotes) that represents a literal integer returned from the server (a string would have been surrounded by quotes).</p>
+<p>The Client's callback function reads this value (as req.responseText), JSON decodes the value, and processes it however it needs to.  At no point did our page ever refresh!  We can quickly see how to add many more dynamic AJAX features to our Client and Server!</p>
+
+<h2>GET versus POST</h2>
+<p>Entering the RPC's <code>GET</code> Request URL in to your browser shows how easy it is to debug and experiment with different Requests.  It's almost too easy!  If you experiment enough w/ different forms of the URL, you may get ideas about how dangerous this could be in the wrong hands.  GET requests allow easy experimentation that may either intentionally or unintentionally exploit your Server.  GET requests have several issues (as mentioned at <a href="http://www.w3.org/2001/tag/doc/whenToUseGet.html#ephemeral">w3.org</a>). The alternative to a "GET" Request is a "POST" Request (HTTP 1.1 also defines other request types, but many of these are not relevant here, so we won't discuss any of these here).</p>
+<p>W3C recommends the following well established practices about when to use GET versus POST (from <a href="http://www.w3.org/2001/tag/doc/whenToUseGet.html#checklist">http://www.w3.org/2001/tag/doc/whenToUseGet.html#checklist</a>):</p>
+<ul>
+<li>Use <code>GET</code> if:
+<ul>
+<li>The interaction is more like a question (i.e., it is a safe operation such as a query, read operation, or lookup).</li>
+</ul>
+</li>
+<li>Use <code>POST</code> if:
+<ul>
+<li>The interaction is more like an order, or</li>
+<li>The interaction changes the state of the resource in a way that the user would perceive (e.g., a subscription to a service), or</li>
+<li>The user be held accountable for the results of the interaction.</li>
+</ul>
+</li>
+</ul>
+<p>In a real-world AJAX web app, there will definitely be many times when the Client would need to <code>POST</code> a Request to the Server.  So, let's modify our simple example to use <code>POST</code> instead of <code>GET</code>.</p>
+<p>To have the Client make a <code>POST</code> takes the following code:</p>
+<pre class="prettyprint">function Request(function_name, opt_argv) {
+
+  if (!opt_argv)
+    opt_argv = new Array();
+
+  // Find if the last arg is a callback function; save it
+  var callback = null;
+  var len = opt_argv.length;
+  if (len > 0 && typeof opt_argv[len-1] == 'function') {
+    callback = opt_argv[len-1];
+    opt_argv.length--;
+  }
+  var async = (callback != null);
+
+  // Build an Array of parameters, w/ function_name being the first parameter
+  var params = new Array(function_name);
+  for (var i = 0; i < opt_argv.length; i++) {
+    params.push(opt_argv[i]);
+  }
+  var body = JSON.stringify(params);
+
+  // Create an XMLHttpRequest 'POST' request w/ an optional callback handler
+  var req = new XMLHttpRequest();
+  req.open('POST', '/rpc', async);
+
+  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  req.setRequestHeader("Content-length", body.length);
+  req.setRequestHeader("Connection", "close");
+
+  if (async) {
+    req.onreadystatechange = function() {
+      if(req.readyState == 4 && req.status == 200) {
+        var response = null;
+        try {
+         response = JSON.parse(req.responseText);
+        } catch (e) {
+         response = req.responseText;
+        }
+        callback(response);
+      }
+    }
+  }
+
+  // Make the actual request
+  req.send(body);
+}
+</pre>
+<p>Changing the Server to handle a <code>POST</code> takes the following code:</p>
+<pre class="prettyprint">class RPCHandler(webapp.RequestHandler):
+
+    ...
+
+    def post(self):
+        args = simplejson.loads(self.request.body)
+        func, args = args[0], args[1:]
+
+        if func[0] == '_':
+            self.error(403) # access denied
+            return
+
+        func = getattr(self.methods, func, None)
+        if not func:
+            self.error(404) # file not found
+            return
+
+        result = func(*args)
+        self.response.out.write(simplejson.dumps(result))
+</pre>
+
+<h2>Simple POST Example</h2>
+<p>Modify the RPCHandler class from the <code>GET</code> example above:</p>
+<pre class="prettyprint">class RPCHandler(webapp.RequestHandler):
+    """ Allows the functions defined in the RPCMethods class to be RPCed."""
+    def __init__(self):
+        webapp.RequestHandler.__init__(self)
+        self.methods = RPCMethods()
+
+    def post(self):
+        args = simplejson.loads(self.request.body)
+        func, args = args[0], args[1:]
+
+        if func[0] == '_':
+            self.error(403) # access denied
+            return
+
+        func = getattr(self.methods, func, None)
+        if not func:
+            self.error(404) # file not found
+            return
+
+        result = func(*args)
+        self.response.out.write(simplejson.dumps(result))
+</pre>
+<p>Also, modify the template_values in the <code>MainPage</code> class:</p>
+<pre class="prettyprint">class MainPage(webapp.RequestHandler):
+    ...
+    def get(self):
+        template_values = { 'title':'AJAX Add (via POST)', }
+        ...
+</pre>
+<p>Replace the Javascript Request function with the following:</p>
+<pre class="prettyprint">function Request(function_name, opt_argv) {
+
+  if (!opt_argv)
+    opt_argv = new Array();
+
+  // Find if the last arg is a callback function; save it
+  var callback = null;
+  var len = opt_argv.length;
+  if (len > 0 && typeof opt_argv[len-1] == 'function') {
+    callback = opt_argv[len-1];
+    opt_argv.length--;
+  }
+  var async = (callback != null);
+
+  // Build an Array of parameters, w/ function_name being the first parameter
+  var params = new Array(function_name);
+  for (var i = 0; i < opt_argv.length; i++) {
+    params.push(opt_argv[i]);
+  }
+  var body = JSON.stringify(params);
+
+  // Create an XMLHttpRequest 'POST' request w/ an optional callback handler
+  var req = new XMLHttpRequest();
+  req.open('POST', '/rpc', async);
+
+  req.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  req.setRequestHeader("Content-length", body.length);
+  req.setRequestHeader("Connection", "close");
+
+  if (async) {
+    req.onreadystatechange = function() {
+      if(req.readyState == 4 && req.status == 200) {
+        var response = null;
+        try {
+         response = JSON.parse(req.responseText);
+        } catch (e) {
+         response = req.responseText;
+        }
+        callback(response);
+      }
+    }
+  }
+
+  // Make the actual request
+  req.send(body);
+}
+</pre>
+<p>After launching the new application, you can see this request in Firebug's Console tab as before:</p>
+<pre>Client Request: POST http://localhost:8080/rpc
+Client Body: ["Add","1","2"]
+Server Response: 3</pre>
+<p>Notice how this <code>POST</code> Request differs from our previous <code>GET</code> Request.  Putting the RPC arguments in the body makes experimentation a bit more difficult (although still pretty easy), and allows us to avoid some of <code>GET</code>'s limitations.</p>
+<p>The vast majority of your requests will probably be queries or lookups, in which case GET should be used.  If the Request will be updating something on the Server then use POST should be used.</p>
+
+<h2>Further Improvements</h2>
+<p>Some things that we could immediately do to improve the above examples are:</p>
+<ul>
+<li>Refactor both the Client and Server to be able to handle both GET and POST Requests.</li>
+<li>Refactor the Client to handle both success and error responses</li>
+<li>Consider altering our Request's parameters to be a JSONRequest structure (http://www.json.org/JSONRequest.html).  A JSONRequest structure more verbosely defines the RPC call, allowing versioning, named parameters, and a bit more control on both the Client and the Server.  It is a good idea to consider using this approach if it will make your web app more secure and robust.</li>
+<li>Consider using GWT RPC or JSON-RPC to replace your hand written RPC code.</li>
+</ul>
+<p>These improvements and anything else you can dream are left as an exercise to the reader.</p>
+<h2>Resources</h2>
+<ul>
+<li>JSON:
+<ul>
+<li><a href="http://www.json.org">http://www.json.org/</a></li>
+<li><a href="http://www.json.org/js.html">http://www.json.org/js.html</a></li>
+<li><a href="http://www.json.org/JSONRequest.html">http://www.json.org/JSONRequest.html</a></li>
+<li><a href="http://json-rpc.org/wiki/specification">http://json-rpc.org/wiki/specification</a></li>
+</ul>
+</li>
+<li>XMLHttpRequest:
+<ul>
+<li><a href="http://en.wikipedia.org/wiki/XMLHttpRequest">http://en.wikipedia.org/wiki/XMLHttpRequest</a></li>
+<li><a href="http://en.wikipedia.org/wiki/AJAX">http://en.wikipedia.org/wiki/AJAX</a></li>
+</ul>
+</li>
+<li>Google App Engine examples that use AJAX/RPC
+<ul>
+<li>My Hangouts: <a href="http://code.google.com/p/google-app-engine-samples/source/browse/trunk/myhangouts/">http://code.google.com/p/google-app-engine-samples/source/browse/trunk/myhangouts/</a></li>
+</ul>
+</li>
+</ul>
+<h2>Conclusion</h2>
+<p>With all of the issues that we have touched on, and especially all that we haven't, you may be feeling intimidated at adding AJAX to your web app.  Remember, AJAX is just another form of an HTTP Request, so even old fashioned boring Web 1.0 Servers have to deal with most of these same issues.  AJAX does require adding some complexities to the client, but these complexities are more than manageable and more than worth it if you make smart decisions about how to implement them.</p>
+<p>Really, your imagination is the limit!  AJAX opens up a huge world of challenges and opportunities.  Run amuck, and make all of us at Google proud by developing the next "Killer App" based on the Google App Engine!</p>
+
+</div>
+</div>
+
+
+   
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+

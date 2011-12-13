@@ -1,0 +1,1520 @@
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+
+<html>
+  <head>
+    <script type="text/javascript" language="JavaScript">
+    ORIGINAL_PAGE_PATH = "/appengine/docs/go/tools/uploadinganapp.html";
+    </script>
+    
+    
+<meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<title>Uploading, Downloading, and Managing a Go App - Google App Engine - Google Code</title>
+<script type="text/javascript"><!--
+(function(){function a(){this.t={};this.tick=function(c){this.t[c]=(new Date).getTime()};this.tick("start")}var b=new a;window.jstiming={Timer:a,load:b};if(window.external&&window.external.pageT)window.jstiming.pt=window.external.pageT;})();
+
+var _tocPath_ = '/appengine/docs/_toc.ezt';
+var codesite_token = null;
+var logged_in_user_email = null;
+//--></script>
+<link href="../../../../css/codesite.pack.04102009.css" type="text/css" rel="stylesheet">
+<script src="../../../../js/codesite_head.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('bhs');</script>
+<link rel="search" type="application/opensearchdescription+xml" title="Google Code" href="http://code.google.com/osd.xml">
+
+<!--[if IE]><link rel="stylesheet" type="text/css" href="../../../../css/iehacks.css"><![endif]-->
+
+    <link href="../../../../css/semantic_headers.css" rel="stylesheet" type="text/css" />
+    <link href="../../../css/local_extensions.css" rel="stylesheet" type="text/css" />
+  </head>
+
+  <body class="gc-documentation">
+
+    
+    
+    <script type="text/javascript">
+var _gaq = _gaq || [];
+
+var cookiePath = '/appengine/';
+if (cookiePath.lastIndexOf('.html') > cookiePath.lastIndexOf('/')) {
+  cookiePath = cookiePath.substring(0, cookiePath.lastIndexOf('/') + 1);
+};
+
+_gaq.push(
+
+
+    ['siteTracker._setAccount', 'UA-18071-1'],
+    ['siteTracker._setDomainName', 'code.google.com'],
+    ['siteTracker._trackPageview']
+);
+(function() {
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript';
+  ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  (document.getElementsByTagName('head')[0] ||
+   document.getElementsByTagName('body')[0]).appendChild(ga);
+ })();
+</script>
+
+
+<div id="gb">
+ <span>
+  
+    <a id="lang-dropdown" href="http://code.google.com" onclick="return false;"><span style="text-decoration:underline">English</span> <span style="font-size:.75em;">&#9660;</span></a>
+  
+ </span>
+</div>
+
+<div class="gbh" style="left:0px;"></div>
+<div class="gbh" style="right:0px;"></div>
+
+
+<div id="gc-container">
+<a id="top"></a>
+<div id="skipto">
+  <a href="#gc-pagecontent">Skip to page content</a>
+  <a href="#gc-toc">Skip to main navigation</a>
+</div>
+
+<div id="gc-header">
+  <div id="logo"><a href="http://code.google.com">
+  
+     <img src="../../../../images/code_logo.gif" height="40" width="167" alt="Google Code" style="border:0;margin:3px 0 0 0;">
+  
+  </a></div>
+  <div id="search">
+    <div id="searchForm">
+      <form id="cse" action="http://www.google.com/cse" accept-charset="utf-8" onsubmit="executeGSearch(document.getElementById('gsearchInput').value); return false;">
+      <noscript>
+      <input type="hidden" name="cref" value="http://code.google.com/cse/googlecode-context.xml">
+      </noscript>
+      <div id="gsc-search-box">
+        <input id="gsearchInput" type="text" name="q" maxlength="2048" class="gsc-input" autocomplete="off" title="Google Code Search" style="width:345px">
+        <div id="cs-searchresults" onclick="event.cancelBubble = true;"></div>
+        <input title="Search" id="gsearchButton" class="gsc-search-button" name="sa" value="Search" type="submit">
+        <div class="greytext">e.g. "templates" or "datastore"</div>
+      </div>
+      </form>
+    </div> <!-- end searchForm -->
+  </div> <!-- end search -->
+
+
+
+
+</div> <!-- end gc-header -->
+
+
+<div id="codesiteContent">
+
+<a id="gc-topnav-anchor"></a>
+<div id="gc-topnav">
+  <h1 style="padding:0 0 0 6px;">Google App Engine</h1>
+  <ul id="docs" class="gc-topnav-tabs">
+
+    <li id="home_link">
+      <a href="../../../index.html" title="Google App Engine home page">Home</a>
+    </li>
+  
+    <li id="docs_link">
+      <a href="../../index.html" class="selected" title="Official Google App Engine documentation">Docs</a>
+    </li>
+  
+    <li id="faq_link">
+      <a href="../../../kb/index.html" title="Answers to frequently asked questions about Google App Engine">FAQ</a>
+    </li>
+  
+    <li id="articles_link">
+      <a href="../../../articles/index.html" title="Focused articles and tutorials for Google App Engine developers">Articles</a>
+    </li>
+  
+    <li>
+      <a href="http://googleappengine.blogspot.com/" title="Official Google App Engine blog">Blog</a>
+    </li>
+  
+    <li>
+      <a href="../../../community.html" title="Community home for Google App Engine">Community</a>
+    </li>
+  
+    <li>
+      <a href="../../../terms.html" title="Google App Engine terms of service">Terms</a>
+    </li>
+  
+    <li>
+      <a href="../../../downloads.html" title="Download Google App Engine">Download</a>
+    </li>
+  
+
+  
+  
+  
+  
+  <li><g:plusone size="small" count="false" source="google:googlecode"></g:plusone>&nbsp;</li>
+</ul>
+</div> <!-- end gc-topnav -->
+
+
+    <div class="g-section g-tpl-170">
+
+      <div class="g-unit g-first" id="gc-toc">
+        <ul>
+  <li><a href="../../../downloads.html">Downloads</a></li>
+  <li><a href="../../../tools_tips.html">Tools and Tips</a></li>
+  <li><a href="../../glossary.html">Glossary</a><sup class="new">New!</sup></li>
+  <li><a href="https://appengine.google.com/">Admin Console</a></li>
+  <li><a href="http://code.google.com/status/appengine">System Status</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/issues/list">Issue Tracker</a></li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Getting Started</h2>
+    <ul>
+      <li><a href="../../whatisgoogleappengine.html">What Is Google App Engine?</a></li>
+      <li><a href="../../java/gettingstarted/index.html">Java</a>
+        <ul>
+              <li><a href="../../java/gettingstarted/introduction.html">Introduction</a></li>
+    <li><a href="../../java/gettingstarted/installing.html">Installing the Java SDK</a></li>
+    <li><a href="../../java/gettingstarted/creating.html">Creating a Project</a></li>
+    <li><a href="../../java/gettingstarted/usingusers.html">Using the Users Service</a></li>
+    <li><a href="../../java/gettingstarted/usingjsps.html">Using JSPs</a></li>
+    <li><a href="../../java/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+    <li><a href="../../java/gettingstarted/staticfiles.html">Using Static Files</a></li>
+    <li><a href="../../java/gettingstarted/uploading.html">Uploading Your Application</a></li>
+    <li><a href="http://googcloudlabs.appspot.com">Codelabs for Getting Started in Java</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstarted/index.html">Python 2.5</a>
+        <ul>
+            <li><a href="../../python/gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstarted/usingwebapp.html">Using the webapp Framework</a></li>
+  <li><a href="../../python/gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstarted/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstarted/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstarted/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../python/gettingstartedpython27/index.html">Python 2.7</a>
+        <ul>
+            <li><a href="../../python/gettingstartedpython27/introduction.html">Introduction</a></li>
+  <li><a href="../../python/gettingstartedpython27/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../../python/gettingstartedpython27/helloworld.html">Hello, World!</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingwebapp.html">Explaining the webapp2 Framework</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../../python/gettingstartedpython27/handlingforms.html">Handling Forms With webapp</a></li>
+  <li><a href="../../python/gettingstartedpython27/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../../python/gettingstartedpython27/templates.html">Using Templates</a></li>
+  <li><a href="../../python/gettingstartedpython27/staticfiles.html">Using Static Files</a></li>
+  <li><a href="../../python/gettingstartedpython27/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../gettingstarted/index.html">Go</a>
+        <ul>
+          <li><span class="exp-feat">Experimental!</span></li>
+            <li><a href="../gettingstarted/introduction.html">Introduction</a></li>
+  <li><a href="../gettingstarted/devenvironment.html">The Development Environment</a></li>
+  <li><a href="../gettingstarted/helloworld.html">Hello, World!</a></li>
+  <li><a href="../gettingstarted/usingusers.html">Using the Users Service</a></li>
+  <li><a href="../gettingstarted/handlingforms.html">Handling Forms</a></li>
+  <li><a href="../gettingstarted/usingdatastore.html">Using the Datastore</a></li>
+  <li><a href="../gettingstarted/uploading.html">Uploading Your Application</a></li>
+
+        </ul>
+      </li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Java</h2>
+    <ul>
+          <li><a href="../../java/overview.html">Overview</a></li>
+    <li><a href="../../java/runtime.html">Servlet Environment</a></li>
+    <li><a href="../../java/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../java/backends/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/backends/package-summary.html">Javadoc Reference</a></li>
+
+
+      </ul>
+    </li>
+    <li><a href="../../java/datastore/index.html">Storing Data</a>
+      <ul>
+            <li><a href="../../java/datastore/overview.html">Overview</a></li>
+    <li><a href="../../java/datastore/entities.html">Entities</a></li>
+    <li><a href="../../java/datastore/queries.html">Queries</a></li>
+    <li><a href="../../java/datastore/transactions.html">Transactions</a></li>
+    <li><a href="../../java/datastore/hr/index.html">Choosing a Datastore</a></li>
+    <li><a href="../../java/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+    <li><a href="../../java/datastore/metadataqueries.html">Metadata Queries</a></li>
+    <li><a href="../../java/datastore/stats.html">Statistics</a></li>
+    <li><a href="../../java/datastore/async.html">Async API</a></li>
+    <li><a href="../../java/datastore/callbacks.html">Callbacks</a></li>
+    <li><a href="../../java/datastore/jdo/index.html">JDO</a>
+      <ul>
+            <li><a href="../../java/datastore/jdo/overview.html">Overview</a></li>
+    <li><a href="../../java/datastore/jdo/dataclasses.html">Defining Data Classes with JDO</a></li>
+    <li><a href="../../java/datastore/jdo/creatinggettinganddeletingdata.html">Creating, Getting, and Deleting Data in JDO</a></li>
+    <li><a href="../../java/datastore/jdo/relationships.html">Entity Relationships in JDO</a></li>
+    <li><a href="../../java/datastore/jdo/queries.html">Queries in JDO</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/datastore/jpa/index.html">JPA</a>
+      <ul>
+            <li><a href="../../java/datastore/jpa/overview.html">Overview</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/datastore/package-summary.html">Javadoc Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/apis.html">Services</a>
+      <ul>
+        <li><a href="../../java/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../java/appidentity/overview.html">Overview</a></li>
+
+<li><a href="../../java/javadoc/com/google/appengine/api/appidentity/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../java/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../java/javadoc/com/google/appengine/api/blobstore/package-summary.html">API Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../java/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/files/package-summary.html">API Reference</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../java/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../java/capabilities/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/capabilities/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../java/conversion/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/conversion/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../java/channel/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/channel/package-summary.html">Javadoc Reference</a></li>
+<li><a href="../../java/channel/javascript.html">JavaScript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/images/index.html">Images</a>
+          <ul>
+                <li><a href="../../java/images/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/images/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/mail/index.html">Mail</a>
+          <ul>
+                <li><a href="../../java/mail/overview.html">Overview</a></li>
+    <li><a href="../../java/mail/usingjavamail.html">Using JavaMail to Send Mail</a></li>
+    <li><a href="../../java/mail/receiving.html">Receiving Mail</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/mail/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/memcache/index.html">Memcache</a>
+          <ul>
+                <li><a href="../../java/memcache/overview.html">Overview</a></li>
+    <li><a href="../../java/memcache/usingjcache.html">Using JCache</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/memcache/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../java/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../java/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../java/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/NamespaceManager.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/oauth/index.html">OAuth</a>
+          <ul>
+                <li><a href="../../java/oauth/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/oauth/package-summary.html">API Reference</a></li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../java/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../java/prospectivesearch/overview.html">Overview</a></li>
+<li><a href="../../java/javadoc/com/google/appengine/api/prospectivesearch/package-summary.html">Javadoc Reference</a></li>
+
+          </ul>
+        </li>
+        </li>
+        <li><a href="../../java/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../java/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../java/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../java/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><a href="../../java/javadoc/com/google/appengine/api/taskqueue/package-summary.html">Javadoc Reference</a></li>
+     <li><a href="../../java/taskqueue/rest.html">REST reference</a> <span class="exp-feat">(Experimental)</span></li>
+          </ul>
+        </li>
+        <li><a href="../../java/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                <li><a href="../../java/urlfetch/overview.html">Overview</a></li>
+    <li><a href="../../java/urlfetch/usingjavanet.html">Using java.net</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/urlfetch/package-summary.html">Low-level API</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/users/index.html">Users</a>
+          <ul>
+                <li><a href="../../java/users/overview.html">Overview</a></li>
+    <li><a href="../../java/javadoc/com/google/appengine/api/users/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../../java/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../java/xmpp/overview.html">Overview</a></li>
+     <li><a href="../../java/javadoc/com/google/appengine/api/xmpp/package-summary.html">API Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../java/javadoc/index.html">Services Javadoc</a></li>
+    <li><a href="../../java/jrewhitelist.html">JRE Class White List</a></li>
+    <li><a href="../../java/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../java/config/webxml.html">Deployment Descriptor</a></li>
+    <li><a href="../../java/config/appconfig.html">App Config</a></li>
+    <li><a href="../../java/config/backends.html">Backends Config</a></li>
+    <li><a href="../../java/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../java/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../java/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../java/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/configyaml/index.html">YAML Configuration</a>
+      <ul>
+                <li><a href="../../java/configyaml/appconfig_yaml.html">YAML App Config</a></li>
+        <li><a href="../../java/configyaml/backends.html">Backends Config</a></li>
+        <li><a href="../../java/configyaml/indexconfig.html">Index Config</a></li>
+        <li><a href="../../java/configyaml/cron.html">Scheduled Tasks</a></li>
+        <li><a href="../../java/configyaml/queue.html">Task Queue Config</a></li>
+        <li><a href="../../java/configyaml/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/tools/index.html">Tools</a>
+      <ul>
+            <li><a href="../../java/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../java/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../java/tools/eclipse.html">Google Plugin for Eclipse</a></li>
+    <li><a href="../../java/tools/ant.html">Using Apache Ant</a></li>
+    <li><a href="../../java/tools/capabilities.html">Capabilities Service Test Configuration</a>
+    <li><a href="../../java/tools/localunittesting.html">Local Unit Testing</a>
+        <ul>
+            <li><a href="../../java/tools/localunittesting/javadoc/index.html">Testing Javadoc</a></li>
+        </ul>
+    </li>
+    <li><a href="../../java/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../java/tools/remoteapi.html">Remote API</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../java/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../java/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Python</h2>
+    <ul>
+          <li><a href="../../python/overview.html">Overview</a></li>
+    <li><a href="../../python/runtime.html">Runtime Environment</a></li>
+    <li><a href="../../python/python27/index.html">Python 2.7</a>
+      <ul>
+            <li><a href="../../python/python27/newin27.html">What's New in Python 2.7</a></li>
+    <li><a href="../../python/python27/using27.html">Using Python 2.7</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../../python/backends/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/backends/functions.html">Backends API Functions</a></li>
+    <li><a href="../../python/backends/exceptions.html">Backends API Exceptions</a></li>
+    <li><a href="../../python/backends/logserviceapi.html">LogService API</a></li>
+    <li><a href="../../python/backends/applog.html">AppLog Class</a></li>
+    <li><a href="../../python/backends/requestlog.html">RequestLog Class</a></li>
+    <li><a href="../../python/backends/runtimeapi.html">Runtime API</a></li>
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/datastore/index.html">Storing Data</a>
+      <ul>
+              <li><a href="../../python/datastore/overview.html">Datastore Overview</a></li>
+      <li><a href="../../python/datastore/entities.html">Entities</a></li>
+      <li><a href="../../python/datastore/queries.html">Queries</a></li>
+      <li><a href="../../python/datastore/transactions.html">Transactions</a></li>
+      <li><a href="../../python/datastore/datamodeling.html">Data Modeling</a></li>
+      <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+      <li><a href="../../python/datastore/hr/index.html">Choosing a Datastore</a></li>
+      <li><a href="../../python/datastore/hr/overview.html">Using the High Replication Datastore</a></li>
+      <li><a href="../../python/datastore/metadataqueries.html">Metadata Queries</a></li>
+      <li><a href="../../python/datastore/stats.html">Statistics</a></li>
+      <li><a href="../../python/datastore/async.html">Async API</a></li>
+      <li><span class="tlw-title tlw-expanded">Reference</span>
+        <ul>
+          <li><a href="../../python/datastore/typesandpropertyclasses.html">Types and Property Classes</a></li>
+          <li><a href="../../python/datastore/gqlreference.html">GQL Reference</a></li>
+          <li><a href="../../python/datastore/modelclass.html">Model</a></li>
+          <li><a href="../../python/datastore/expandoclass.html">Expando</a></li>
+          <li><a href="../../python/datastore/polymodelclass.html">PolyModel</a></li>
+          <li><a href="../../python/datastore/propertyclass.html">Property</a></li>
+          <li><a href="../../python/datastore/queryclass.html">Query</a></li>
+          <li><a href="../../python/datastore/gqlqueryclass.html">GqlQuery</a></li>
+          <li><a href="../../python/datastore/metadataqueryclass.html">Metadata Query</a></li>
+          <li><a href="../../python/datastore/keyclass.html">Key</a></li>
+          <li><a href="../../python/datastore/functions.html">Functions</a></li>
+          <li><a href="../../python/datastore/exceptions.html">Exceptions</a></li>
+        </ul>
+      </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/dataprocessing/index.html">Data Processing</a>
+      <ul>
+             <li><a href="../../python/dataprocessing/overview.html">Overview</a></li>
+     <li><a href="../../python/dataprocessing/helloworld.html">Hello World</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/dataprocessing/mapreducepipelineclass.html">Mapreduce Pipline</a></li>
+         <li><a href="../../python/dataprocessing/readers_writers.html">Standard Input Readers and Output Writers</a></li>
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/apis.html">Services</a>
+      <ul>
+        <li><a href="../../python/appidentity/index.html">App Identity</a>
+          <ul>
+            <li><a href="../../python/appidentity/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/appidentity/functions.html">Functions</a></li>
+    <li><a href="../../python/appidentity/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../../python/blobstore/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/blobstore/blobinfoclass.html">BlobInfo</a></li>
+    <li><a href="../../python/blobstore/blobkeyclass.html">BlobKey</a></li>
+    <li><a href="../../python/blobstore/blobreaderclass.html">BlobReader</a></li>
+    <li><a href="../../python/blobstore/functions.html">Functions</a></li>
+    <li><a href="../../python/blobstore/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../../python/capabilities/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/capabilities/capabilitysetclass.html">CapabilitySet</a></li>
+    <li><a href="../../python/capabilities/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/conversion/index.html">Conversion</a>
+          <ul>
+            <li><a href="../../python/conversion/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/conversion/conversionclass.html">Conversion Class</a></li>
+    <li><a href="../../python/conversion/propertyclasses.html">Property Classes</a></li>
+    <li><a href="../../python/conversion/functions.html">Functions</a></li>
+    <li><a href="../../python/conversion/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../../python/channel/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/channel/functions.html">Functions</a></li>
+    <li><a href="../../python/channel/exceptions.html">Exceptions</a></li>
+    <li><a href="../../python/channel/javascript.html">Client Javascript Reference</a></li>
+  </ul>
+</li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/images/index.html">Images</a>
+          <ul>
+                 <li><a href="../../python/images/overview.html">Overview</a></li>
+     <li><a href="../../python/images/installingPIL.html">Installing PIL</a></li>
+     <li><a href="../../python/images/usingimages.html">Using the Images API</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/images/imageclass.html">Image</a></li>
+         <li><a href="../../python/images/functions.html">Functions</a></li>
+         <li><a href="../../python/images/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../../python/mail/overview.html">Overview</a></li>
+     <li><a href="../../python/mail/sendingmail.html">Sending Mail</a></li>
+     <li><a href="../../python/mail/receivingmail.html">Receiving Mail</a></li>
+     <li><a href="../../python/mail/attachments.html">Attachments</a></li>
+     <li><a href="../../python/mail/headers.html">Headers</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/mail/emailmessageclass.html">EmailMessage</a></li>
+         <li><a href="../../python/mail/emailmessagefields.html">Message Fields</a></li>
+         <li><a href="../../python/mail/functions.html">Functions</a></li>
+         <li><a href="../../python/mail/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../../python/memcache/overview.html">Overview</a></li>
+      <li><a href="../../python/memcache/usingmemcache.html">Using Memcache</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/memcache/clientclass.html">Client</a></li>
+         <li><a href="../../python/memcache/functions.html">Functions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/multitenancy/index.html">Multitenancy</a>
+          <ul>
+                  <li><a href="../../python/multitenancy/overview.html">Overview</a></li>
+    <li><a href="../../python/multitenancy/multitenancy.html">Multitenancy with Namespaces</a></li>
+    <li><a href="../../python/multitenancy/namespaces.html">Other Uses for Namespaces</a></li>
+    <li>Reference
+      <ul>
+        <li><a href="../../python/multitenancy/functions.html">Functions</a></li>
+        <li><a href="../../python/multitenancy/exceptions.html">Exceptions</a></li>
+      </ul>
+    </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/oauth/index.html">OAuth</a>
+          <ul>
+                 <li><a href="../../python/oauth/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/oauth/functions.html">Functions</a></li>
+         <li><a href="../../python/oauth/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/prospectivesearch/index.html">Prospective Search</a>
+          <ul>
+            <li><a href="../../python/prospectivesearch/overview.html">Overview</a></li>
+<li><span class="tlw-title tlw-expanded">Reference</span>
+  <ul>
+    <li><a href="../../python/prospectivesearch/functions.html">Functions</a></li>
+    <li><a href="../../python/prospectivesearch/exceptions.html">Exceptions</a></li>
+  </ul>
+</li> 
+
+          </ul> 
+        </li>
+         <li><a href="../../python/googlestorage/index.html">Google Cloud Storage</a>
+          <ul>
+            <li><a href="../../python/googlestorage/overview.html">Overview</a></li>
+<li><a href="../../python/googlestorage/functions.html">Functions</a></li>
+<li><a href="../../python/googlestorage/exceptions.html">Exceptions</a></li>
+    </li>
+
+
+          </ul>
+        </li>
+        <li><a href="../../python/taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../../python/taskqueue/overview.html">Overview</a></li>
+     <li><a href="../../python/taskqueue/overview-push.html">Using Push Queues</a></li>
+     <li><a href="../../python/taskqueue/overview-pull.html">Using Pull Queues</a><sup class="new">New!</sup></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/taskqueue/tasks.html">Task Class</a></li>
+         <li><a href="../../python/taskqueue/taskretryoptions.html">TaskRetryOptions Class</a></li>
+         <li><a href="../../python/taskqueue/queues.html">Queue Class</a></li>
+         <li><a href="../../python/taskqueue/rest.html">REST</a>  <span class="exp-feat">(Experimental)</span></li>
+         <li><a href="../../python/taskqueue/functions.html">Functions</a></li>
+         <li><a href="../../python/taskqueue/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../../python/urlfetch/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/urlfetch/fetchfunction.html">The fetch Function</a></li>
+         <li><a href="../../python/urlfetch/asynchronousrequests.html">Asynchronous Requests</a></li>
+         <li><a href="../../python/urlfetch/responseobjects.html">Response Objects</a></li>
+         <li><a href="../../python/urlfetch/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/users/index.html">Users</a>
+          <ul>
+                 <li><a href="../../python/users/overview.html">Overview</a></li>
+     <li><a href="../../python/users/userobjects.html">User Objects</a></li>
+     <li><a href="../../python/users/loginurls.html">Login URLs</a></li>
+     <li><a href="../../python/users/adminusers.html">Admin Users</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/users/userclass.html">User</a></li>
+         <li><a href="../../python/users/functions.html">Functions</a></li>
+         <li><a href="../../python/users/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+        <li><a href="../../python/xmpp/index.html">XMPP</a>
+          <ul>
+                 <li><a href="../../python/xmpp/overview.html">Overview</a></li>
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/xmpp/functions.html">Functions</a></li>
+         <li><a href="../../python/xmpp/messageclass.html">Message</a></li>
+         <li><a href="../../python/xmpp/exceptions.html">Exceptions</a></li>
+       </ul>
+     </li>
+
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li><a href="../../python/config/index.html">Configuration</a>
+      <ul>
+            <li><a href="../../python/config/appconfig.html">App Config</a></li>
+    <li><a href="../../python/config/backends.html">Backends Config</a></li>
+    <li><a href="../../python/config/indexconfig.html">Index Config</a></li>
+    <li><a href="../../python/config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../../python/config/queue.html">Task Queue Config</a></li>
+    <li><a href="../../python/config/dos.html">DoS Protection Config</a></li>
+
+      </ul>
+    </li>
+    <li><span class="tlw-title"><a href="../../python/tools/index.html">Tools</a></span>
+      <ul>
+            <li><a href="../../python/tools/devserver.html">Development Server</a></li>
+    <li><a href="../../python/tools/uploadinganapp.html">Uploading and Managing an App</a></li>
+    <li><a href="../../python/tools/uploadingdata.html">Uploading and Downloading Data</a></li>
+    <li><span class="tlw-title"><a href="../../python/tools/protorpc/index.html">ProtoRPC</a></span>
+      <ul>
+        <li><a href="../../python/tools/protorpc/overview.html">Overview</a></li>
+<li><a href="../../python/tools/protorpc/definition-functions.html">Definition Module</a></li>
+<li>Descriptor Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/descriptor/descriptorlibrary.html">DescriptorLibrary Functions</a></li>
+    <li><a href="../../python/tools/protorpc/descriptor/functions.html">Functions</a></li>
+
+  </ul>
+</li>
+<li>Messages Module
+  <ul>
+        <li><a href="../../python/tools/protorpc/messages/enumclass.html">Enum</a></li>
+    <li><a href="../../python/tools/protorpc/messages/enumfieldclass.html">EnumField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclass.html">Field</a></li>
+    <li><a href="../../python/tools/protorpc/messages/fieldclasses.html">Message Field Classes</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messageclass.html">Message</a></li>
+    <li><a href="../../python/tools/protorpc/messages/messagefieldclass.html">MessageField</a></li>
+    <li><a href="../../python/tools/protorpc/messages/variantclass.html">Variant</a></li>
+    <li><a href="../../python/tools/protorpc/messages/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/messages/exceptions.html">Exceptions</a></li>
+  </ul>
+</li>
+<li>Remote Service Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/remote/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/remote/httprequeststateclass.html">HttpRequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/requeststateclass.html">RequestState Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/rpcstatusclass.html">RpcStatus Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/serviceclass.html">Service Class</a></li>
+    <li><a href="../../python/tools/protorpc/remote/functions.html">Functions</a></li>
+    <li><a href="../../python/tools/protorpc/remote/exceptions.html">Exceptions</a></li>
+
+  </ul>
+</li>
+<li>Transport Library
+  <ul>
+        <li><a href="../../python/tools/protorpc/transport/httptransport.html">HttpTransport Class</a></li>
+    <li><a href="../../python/tools/protorpc/transport/transport.html">Transport Class</a></li>
+
+  </ul>
+</li>
+<li>WebApp Service Handlers
+  <ul>
+        <li><a href="../../python/tools/protorpc/webapp/index.html">Overview</a></li>
+    <li><a href="../../python/tools/protorpc/webapp/functions.html">WebApp Service Handlers</a></li>
+
+  </ul>
+</li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/webapp/index.html">webapp Framework</a>
+      <ul>
+             <li><a href="../../python/tools/webapp/overview.html">Overview</a></li>
+     <li><a href="../../python/tools/webapp/running.html">Running the Application</a></li>
+     <li><a href="../../python/tools/webapp/requesthandlers.html">Request Handlers</a></li>
+     <li><a href="../../python/tools/webapp/requestdata.html">Request Data</a></li>
+     <li><a href="../../python/tools/webapp/buildingtheresponse.html">Building the Response</a></li>
+     <li><a href="../../python/tools/webapp/redirects.html">Redirects, Headers and Status Codes</a></li>
+     <li><a href="../../python/tools/webapp/blobstorehandlers.html">Blobstore Handlers</a></li>
+
+     <li><span class="tlw-title tlw-expanded">Reference</span>
+       <ul>
+         <li><a href="../../python/tools/webapp/requestclass.html">Request</a></li>
+         <li><a href="../../python/tools/webapp/responseclass.html">Response</a></li>
+         <li><a href="../../python/tools/webapp/requesthandlerclass.html">RequestHandler</a></li>
+         <li><a href="../../python/tools/webapp/wsgiapplicationclass.html">WSGIApplication</a></li>
+         <li><a href="../../python/tools/webapp/utilmodule.html">Utility Functions</a></li>
+         
+       </ul>
+     </li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/tools/localunittesting.html">Local Unit Testing</a></li>
+    <li><a href="../../python/tools/appstats.html">Appstats</a></li>
+    <li><a href="../../python/tools/libraries.html">Included Libraries </a>(Python 2.5)</li>
+    <li><a href="../../python/tools/libraries27.html">Included Libraries</a>(Python 2.7)</li>
+    <li><a href="../../python/tools/appengineconfig.html">Python Module Configuration</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../../python/howto/index.html">How-To</a>
+      <ul>
+              <li><a href="../../python/howto/usinggdataservices.html">Google Data Services</a></li>
+      <li><a href="../../python/howto/maintenance.html">Handling Scheduled Maintenance Periods</a></li>
+
+      </ul>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Go</h2> <span class="exp-feat">Experimental!</span>
+    <ul>
+          <li><a href="../overview.html">Overview</a></li>
+    <li><a href="../runtime.html">Runtime Environment</a>
+      <ul>
+        <li><a href="../reference.html">Reference</a></li>
+      </ul>
+    </li>
+    <li><a href="../backends/index.html">Backends</a>
+      <ul>
+        <li><a href="../backends/overview.html">Overview</a></li>
+<li><a href="../backends/runtime.html">Runtime package</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../datastore/index.html">Storing Data</a>
+      <ul>
+             <li><a href="../datastore/overview.html">Overview</a></li>
+     <li><a href="../datastore/transactions.html">Transactions</a></li>
+     <li><a href="../datastore/reference.html">Reference</a></li>
+
+      </ul>
+    </li>
+    <li><a href="../apis.html">Services</a>
+      <ul>
+        <li><a href="../blobstore/index.html">Blobstore</a>
+          <ul>
+            <li><a href="../blobstore/overview.html">Overview</a></li>
+<li><a href="../blobstore/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../capabilities/index.html">Capabilities</a>
+          <ul>
+            <li><a href="../capabilities/overview.html">Overview</a></li>
+<li><a href="../capabilities/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../channel/index.html">Channel</a>
+          <ul>
+            <li><a href="../channel/overview.html">Overview</a></li>
+<li><a href="../channel/reference.html">Reference</a></li>
+<li><a href="../channel/javascript.html">Client Javascript Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../mail/index.html">Mail</a>
+          <ul>
+                 <li><a href="../mail/overview.html">Overview</a></li>
+     <li><a href="../mail/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../memcache/index.html">Memcache</a>
+          <ul>
+                 <li><a href="../memcache/overview.html">Overview</a></li>
+     <li><a href="../memcache/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../taskqueue/index.html">Task Queues</a>
+          <ul>
+                 <li><a href="../taskqueue/overview.html">Overview</a></li>
+     <li><a href="../taskqueue/reference.html">Reference</a></li>
+     <li><a href="../taskqueue/delay.html">Delay package</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../urlfetch/index.html">URL Fetch</a>
+          <ul>
+                 <li><a href="../urlfetch/overview.html">Overview</a></li>
+     <li><a href="../urlfetch/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+        <li><a href="../users/index.html">Users</a>
+          <ul>
+                 <li><a href="../users/overview.html">Overview</a></li>
+     <li><a href="../users/reference.html">Reference</a></li>
+
+          </ul>
+        </li>
+      </ul>
+        <li><a href="../config/index.html">Configuration</a>
+          <ul>
+                <li><a href="../config/appconfig.html">App Config</a></li>
+    <li><a href="../config/backends.html">Backends Config</a></li>
+    <li><a href="../config/indexconfig.html">Index Config</a></li>
+    <li><a href="../config/cron.html">Scheduled Tasks</a></li>
+    <li><a href="../config/queue.html">Task Queue Config</a></li>
+    <li><a href="../config/dos.html">DoS Protection Config</a></li>
+
+          </ul>
+        </li>
+        <li><a href="index.html">Tools</a>
+          <ul>
+                <li><a href="devserver.html">Development Server</a></li>
+    <li><a href="uploadinganapp.html">Uploading and Managing an App</a></li>
+
+          </ul>
+        </li>
+    </li>
+
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Managing Your App</h2>
+    <ul>
+      <li><a href="../../adminconsole/index.html">Admin Console</a>
+        <ul>
+          <li><a href="../../adminconsole/instances.html">Instances</a></li>
+<li><a href="../../adminconsole/roles.html">Roles</a></li>
+<li><a href="../../adminconsole/applicationsettings.html">Application Settings</a></li>
+<li><a href="../../adminconsole/datastoreadmin.html">Datastore</a></li>
+<li><a href="../../adminconsole/performancesettings.html">Performance Settings</a></li>
+
+        </ul>
+      </li>
+      <li><a href="../../quotas.html">Quotas</a></li>
+      <li><a href="../../billing.html">Billing</a></li>
+      <li><a href="../../premier/index.html">Premier Accounts</a></li>
+      <li><a href="../../domain.html">Using a Custom Domain</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><h2>Resources</h2>
+    <ul>
+      <li><a href="../../../kb/index.html">FAQ</a></li>
+      <li><a href="../../../articles/index.html">Articles</a></li>
+      <li><a href="../../videoresources.html">Video Resources</a><sup class="new">New!</sup></li>
+      <li><a href="http://code.google.com/p/googleappengine/">SDK Code</a></li>
+      <li><a href="http://code.google.com/p/datanucleus-appengine/">JDO/JPA Code</a></li>
+      <li><a href="http://code.google.com/p/google-app-engine-samples/">Sample Apps Code</a></li>
+      <li>Launcher Code
+        <ul>
+          <li><a href="http://code.google.com/p/google-appengine-mac-launcher/">Mac</a></li>
+          <li><a href="http://code.google.com/p/google-appengine-wx-launcher/">Windows/wx</a></li>
+        </ul>
+      </li>
+      <li><a href="../../../community.html">Discussion Groups</a></li>
+    </ul>
+  </li>
+</ul>
+<div class="line"></div>
+<ul>
+  <li><a href="../../roadmap.html">Product Roadmap</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkReleaseNotes">Release Notes: Python</a></li>
+  <li><a href="http://code.google.com/p/googleappengine/wiki/SdkForJavaReleaseNotes">Release Notes: Java</a></li>
+  <li><a href="../../revision_history.html">Revision History</a></li>
+</ul>
+
+        <a class="hidden" href="#gc-topnav-anchor">More Google App Engine resource links</a>
+      </div>
+
+      <div class="g-unit" id="gc-pagecontent">
+        <h1 class="page_title">Uploading, Downloading, and Managing a Go App</h1>
+
+
+
+
+<p>The App Engine Go SDK includes a command for interacting with App Engine named <code>appcfg.py</code>.  You can use this command to upload new versions of the code, configuration and static files for your app to App Engine.  You can also use the command to manage datastore indexes and download log data.</p>
+
+<ul>
+  <li><a href="#Uploading_the_App">Uploading the App</a></li>
+  <li><a href="#Updating_Indexes">Updating Indexes</a></li>
+  <li><a href="#Deleting_Unused_Indexes">Deleting Unused Indexes</a></li>
+  <li><a href="#Updating_Task_Queue_Configuration">Updating Task Queue Configuration</a></li>
+  <li><a href="#Updating_DoS_Protection_Configuration">Updating the DoS Protection Configuration</a></li>
+  <li><a href="#Managing_Scheduled_Tasks">Managing Scheduled Tasks</a></li>
+  <li><a href="#Downloading_Source_Code">Downloading Source Code</a></li>
+  <li><a href="#Downloading_Logs">Downloading Logs</a></li>
+  <li><a href="#Uploading_Data">Uploading Data</a></li>
+  <li><a href="#Using_an_HTTP_Proxy">Using an HTTP Proxy</a></li>
+  <li><a href="#Command_Line_Arguments">Command-Line Arguments</a></li>
+</ul>
+
+
+<h2 id="Uploading_the_App">Uploading the App</h2>
+
+<p>To upload application files, run the <code>appcfg.py</code> command with the <code>update</code> action and the name of your application's root directory.  The root directory should contain the <a href="../config/appconfig.html">app.yaml</a> file for the application.</p>
+
+<pre>
+appcfg.py update myapp/
+</pre>
+
+<p><code>appcfg.py</code> gets the application ID from the <code>app.yaml</code> file, and prompts you for the email address and password of your Google account.  After successfully signing in with your account, <code>appcfg.py</code> stores a "cookie" so that it does not need to prompt for a password on subsequent attempts.</p>
+
+<p>You can specify the email address on the command line using the <code>--email</code> option.  You cannot specify the password as a command line option.</p>
+
+<pre>
+appcfg.py --email=Albert.Johnson@example.com update myapp/
+</pre>
+
+<p>Only application owners and the developer who uploaded the code can download it. If anyone else attempts to download the app, they'll see an error message like the following:</p>
+<pre>Fetching file list...
+Email: user@example.com
+Password for user@example.com:
+Error 403: --- begin server output ---
+You do not have permission to download this app version.
+--- end server output ---</pre>
+
+<h2 id="Updating_Indexes">Updating Indexes</h2>
+
+<p>When you upload an application using <code>appcfg.py update</code>, the update includes the app's <code>index.yaml</code> file.  If the <code>index.yaml</code> file defines an index that doesn't exist yet on App Engine, App Engine creates the new index.  Depending on how much data is already in the datastore that needs to be mentioned in the new index, the process of creating the index may take a while.  If the app performs a query that requires an index that hasn't finished building yet, the query will raise an exception.</p>
+
+<p>To prevent this, you must ensure that the new version of the app that requires a new index is not the live version of the application until the indexes finish building.  One way to do this is to give the app a new version number in <code>app.yaml</code> whenever you add or change an index in <code>index.yaml</code>.  The app is uploaded as a new version, and does not become the default version automatically.  When your indexes have finished building, you change the default version to the new one using the "Versions" section of the <a href="../../adminconsole/index.html">Admin Console</a>.</p>
+
+<p>Another way to ensure that new indexes are built before the new app goes live is to upload the <code>index.yaml</code> configuration separately before uploading the app.  To upload only the index configuration for an app, use the following command:</p>
+
+<pre>
+appcfg.py update_indexes myapp/
+</pre>
+
+<p>You can check the status of the app's indexes from the "Indexes" section of <a href="../../adminconsole/index.html">the Admin Console</a>.
+
+
+<h2 id="Deleting_Unused_Indexes">Deleting Unused Indexes</h2>
+
+<p>When you change or remove an index from <code>index.yaml</code>, the original index is <i>not</i> deleted from App Engine automatically.  This gives you the opportunity to leave an older version of the app running while new indexes are being built, or to revert to the older version immediately if a problem is discovered with a newer version.</p>
+
+<p>When you are sure that old indexes are no longer needed, you can delete them from App Engine using the following command:</p>
+
+<pre>
+appcfg.py vacuum_indexes myapp/
+</pre>
+
+<p>This command deletes all indexes for the app that are not mentioned in the local version of <code>index.yaml</code>.</p>
+
+
+<h2 id="Updating_Task_Queue_Configuration">Updating Task Queue Configuration</h2>
+
+<p>You can update just the configuration for an app's task queues without uploading the full application.  To upload the <code>queue.yaml</code> file, use the <code>appcfg.py update_queues</code> command:</p>
+
+<pre>
+appcfg.py update_queues myapp/
+</pre>
+
+
+<h2 id="Updating_DoS_Protection_Configuration">Updating the DoS Protection Configuration</h2>
+
+<p>You can update just the configuration for the DoS Protection for an app without uploading the full application.  To upload the <code>dos.yaml</code> file, use the <code>appcfg.py update_dos</code> command:</p>
+
+<pre>
+appcfg.py update_dos myapp/
+</pre>
+
+
+<h2 id="Managing_Scheduled_Tasks">Managing Scheduled Tasks</h2>
+
+<p>App Engine supports scheduled tasks (known as cron jobs). You specify these in a file called <code>cron.yaml</code>, and upload them using the <code>appcfg.py update_cron</code> command:</p> 
+
+<pre>
+appcfg.py update_cron myapp/
+</pre>
+
+<p><code>appcfg update</code> will also upload cron job specifications if the file exists. For more on cron jobs, see the <a href="../config/cron.html">Cron Jobs</a> documentation.</p>
+
+<p><code>appcfg cron_info</code> displays a summary of the scheduled task configuration, and the expected times of the next few runs.</p>
+
+
+<h2 id="Downloading_Source_Code">Downloading Source Code</h2>
+
+<p>You can download an application's source code by running appcfg.py with the <code>download_app</code> action in the Python SDK command-line tool:</p>
+
+<pre>appcfg.py download_app -A <i>&lt;your_app_id&gt;</i> -V <i>&lt;your_app_version&gt;</i> &lt;output-dir&gt;</pre>
+
+<p>Output like the following results if the command is successful:</p>
+<pre>Getting file list...
+Email: &lt;admin-id&gt;@example.com
+Password for &lt;admin-id&gt;@example.com:
+Fetching files...
+Getting files...
+[1/5] request.py
+[2/5] login.py
+[3/5] static/screen.css
+[4/5] static/print.css
+[5/5] images/bird.png</pre>
+
+<p>Only the developer who uploaded the code can download it. If anyone other than that developer attempts to download the app, they'll see an error message like the following:</p>
+<pre>Fetching file list...
+Email: user@example.com
+Password for user@example.com:
+Error 403: --- begin server output ---
+You do not have permission to download this app version.
+--- end server output ---</pre>
+
+<p>You can permanently disable code downloads from the <b>Versions</b> screen in your development web server. On that page, click <b>permanently prohibit code downloads</b>:</p>
+
+<img src="../../images/dev-web-server_download-app.png" />
+
+<p class="warning"><strong>Warning!</strong> This action is irreversible. After you prohibit code download, there is no way to re-enable this feature.</p>
+
+
+
+<h2 id="Downloading_Logs">Downloading Logs</h2>
+
+<p>App Engine maintains a log of messages that your application emits using the <code>logging</code> module from the Python standard library, as well as other messages printed to the standard error stream.  App Engine also records each request in the log. Each <a href="#Command_Line_Arguments_appcfg_request_logs_severity">log level</a> has a fixed buffer size that controls the amount of log information you can access. Normally, you use logging features more at lower log levels; thus, the time window is smaller for log events at these levels. You can browse your app's logs of the last 90 days from the "Logs" section of <a href="../../adminconsole/index.html">the Admin Console</a>.</p>
+
+<p>If you wish to perform more detailed analysis of your application's logs, you can download the log data to a file on your computer.  To download logs to a file named <code>mylogs.txt</code>, use the following command:</p>
+
+<pre>
+appcfg.py request_logs myapp/ mylogs.txt
+</pre>
+
+<p>By default, the command downloads log messages from the current calendar day (since midnight Pacific Time) with a log level of INFO or higher (omitting DEBUG level messages).  The command overwrites the local log file.  You can adjust the number of days, the minimum log level, and whether to overwrite or append to the local log file using command-line options.  See below for more information on these options.</p>
+
+<p>You can limit the log messages that are downloaded to just those emitted during request on a given domain name using the <code>--vhost=...</code> option.  You can use this to download the logs for your live app using a Google Apps domain or <code>http://<i>your_app_id</i>.appspot.com</code>, excluding log messages emitted by versions you are testing on URLs such as <code>http://2.latest.<i>your_app_id</i>.appspot.com</code>.  Or you can use it to download just the log messages for a given test domain.</p>
+
+
+<h2 id="Uploading_Data">Uploading Data</h2>
+
+<p>You can upload large amounts data to your application's data store using <code>appcfg.py</code> with the <code>upload_data</code> action.  This action requires that you set up a special request handler in your Python application.  For complete instructions on how to use this feature, see <a href="../../python/tools/uploadingdata.html">Uploading Data</a>.</p>
+
+
+<h2 id="Using_an_HTTP_Proxy">Using an HTTP Proxy</h2>
+
+<p>If you are running <code>appcfg.py</code> behind an HTTP proxy, you must tell <code>appcfg.py</code> the name of the proxy.  To set an HTTP proxy for <code>appcfg.py</code>, set the <code>http_proxy</code> and <code>https_proxy</code> environment variables.</p>
+
+<p>Using Windows (in Command Prompt):</p>
+
+<pre>
+set HTTP_PROXY=http://cache.mycompany.com:3128
+set HTTPS_PROXY=http://cache.mycompany.com:3128
+appcfg.py update myapp
+</pre>
+
+<p>Using the command line in Mac OS X (in Terminal) or Linux:</p>
+
+<pre>
+export http_proxy="http://cache.mycompany.com:3128"
+appcfg.py update myapp
+</pre>
+
+<p>By default, <code>appcfg.py</code> uses HTTPS to communicate with App Engine.  If you require that it use HTTP instead, you can turn off HTTPS with the <code>--insecure</code> option:</p>
+
+<pre>
+appcfg.py --insecure update myapp
+</pre>
+
+<h2 id="Command_Line_Arguments">Command-Line Arguments</h2>
+
+<p>The <code>appcfg.py</code> command takes a set of options, an action, and arguments for the action.</p>
+
+<p>The following actions are available:</p>
+
+<dl>
+  <dt><code>appcfg.py <i>[options]</i> cron_info <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Displays information about the scheduled task (cron) configuration, including the expected times of the next few executions.  By default, displays the times of the next 5 runs.  You can modify the number of future run times displayed with the <code>--num_runs=...</code> option.</p>
+  </dd>
+
+  <dt><code>appcfg.py help <i>&lt;action&gt;</i></code></dt>
+  <dd>
+    <p>Prints a help message about the given action, then quits.</p>
+  </dd>
+</dl>
+
+
+<dl>
+  <dt><code>appcfg.py download_app -A &lt;app_id&gt; -V &lt;version&gt;&lt;output-dir&gt;</code></dt>
+    <dd>
+      <p>Retrieves the most current version of your application's code using the following options:</p>
+
+      <dl>
+        <dt><code>-A</code></dt>
+          <dd><p>The application ID (required).</p></dd>
+
+        <dt><code>-V</code></dt>
+          <dd><p>The current application version. May be one of the following:</p>
+            <ul>
+              <li><code>-V major.minor</code> &ndash; Specifies the exact version specified.</li>
+               <li><code>-V major</code> &ndash; Specifies the latest major version.</li>
+              <li>Omitted entirely &ndash; Returns the current default version, if one exists</li>
+            </ul>
+          </dd>
+
+        <dt><code>&lt;output-dir&gt;</code></dt>
+          <dd><p>The directory where you wish to save the files (required).</p></dd>
+      </dl>
+    </dd>
+</dl>
+
+
+  <dt><code>appcfg.py <i>[options]</i> request_logs <i>&lt;app-directory&gt;</i> <i>&lt;output-file&gt;</i></code></dt>
+  <dd>
+    <p>Retrieves log data for the application running on App Engine.  <code><i>output-file</i></code> is the name of the file to create, replace or append (if the <code>--append</code> flag is set).  If <code><i>output-file</i></code> is a hyphen (<code>-</code>), the log data is printed to the console.  The following options apply to <code>request_logs</code>:</p>
+    <dl>
+      <dt><code>--num_days=<i>...</i></code></dt>
+      <dd>
+        <p>The number of days of log data to retrieve, ending on the current date at midnight UTC.  A value of 0 retrieves all available logs.  If <code>--append</code> is given, then the default is 0, otherwise the default is 1.</p>
+      </dd>
+      <dt><code>--end_date=<i>...</i></code></dt>
+      <dd>
+        <p>The latest date of log data to return, in the form <code>YYYY-MM-DD</code>.  The default is today.  The <code>--num_days</code> option counts backwards from the end date.</p>
+      </dd>
+      <dt id="Command_Line_Arguments_appcfg_request_logs_severity"><code>--severity=<i>...</i></code></dt>
+      <dd>
+        <p>The minimum log level for the log messages to retrieve.  The value is a number corresponding to the log level: 4 for CRITICAL, 3 for ERROR, 2 for WARNING, 1 for INFO, 0 for DEBUG.  All messages at the given log level and above will be retrieved.  Default is 1 (INFO).</p>
+      </dd>
+      <dt><code>--append</code></dt>
+      <dd>
+        <p>Append the fetched data to the output file, starting with the first log line not already present in the file.  Running this command once a day with <code>--append</code> results in a file containing all log data.</p>
+        <p>The default is to overwrite the output file.  Does not apply if <code><i>output-file</i></code> is <code>-</code> (printing to the console).</p>
+      </dd>
+      <dt><code>--vhost=<i>...</i></code></dt>
+      <dd>
+        <p>If present, limits the log messages downloaded to just those emitted by requests for a given domain name.  For instance, <code>--vhost=example.com</code> will download just the log messages for the live app at the Google Apps domain <code>example.com</code>, excluding any log messages emitted by a new version being tested at <code>http://2.latest.<i>your_app_id</i>.appspot.com</code>.  Similarly, <code>--vhost=2.latest.<i>your_app_id</i>.appspot.com</code> downloads just the logs for the test version, excluding the live version.</p>
+        <p>The value is a regular expression that matches the <code>Host</code> header of the incoming requests.  Note that the pattern is case sensitive, even though domain names usually are not.</p>
+      </dd>
+      <dt><code>--include_vhost</code></dt>
+      <dd>
+        <p>Include the domain name for each request (the <code>Host</code> request header) in the request log data, as an additional field.</p>
+      </dd>
+    </dl>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> rollback <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Undoes a partially completed update for the given application.  You can use this if an update was interrupted, and the command is reporting that the application cannot be updated due to a lock.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> set_default_version <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Sets the default (serving) version of the app. By default, the serving version is set to the version specified in app.yaml, unless you specify another with the <code>--version</code> option.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> update <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Uploads files for an application given the application's root directory.  The application ID and version are taken from the <code>app.yaml</code> file in the app directory. The following option applies to <code>update</code>:</p>
+    <dl>
+      <dt><code>--max_size</code></dt>
+        <dd>
+          <p>Maximum size of a file to upload (in bytes).</p>
+        </dd>
+      
+    </dl>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> update_cron <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Updates the schedule task (cron) configuration for the app, based on the <code>cron.yaml</code> file.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> update_dos <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Updates the DoS Protection configuration for the app, based on the <code>dos.yaml</code> file.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> update_indexes <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Updates datastore indexes in App Engine to include newly added indexes.  If a new version of your application requires an additional index definition that was added to <a href="../config/indexconfig.html">index.yaml</a>, you can update your index definitions in App Engine prior to uploading the new version of your application.  Running this action a few hours prior to uploading your new application version will give the indexes time to build and be serving when the application is deployed.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> update_queues <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Updates the task queue configuration for the app, based on the <code>queue.yaml</code> file.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> upload_data <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Uploads data to the datastore from CSV files.  For complete information on using this feature, see <a href="../../python/tools/uploadingdata.html">Uploading Data</a>.</p>
+  </dd>
+
+  <dt><code>appcfg.py <i>[options]</i> vacuum_indexes <i>&lt;app-directory&gt;</i></code></dt>
+  <dd>
+    <p>Deletes unused datastore indexes in App Engine.  If an index definition is removed from <a href="../config/indexconfig.html">index.yaml</a>, the index is not deleted automatically when the application is uploaded because it may be in use by another version of the application.  Run this action when all old indexes are no longer needed.</p>
+  </dd>
+
+
+<p>The <code>appcfg.py</code> command accepts the following options for all actions:</p>
+
+<dl>
+
+  <dt><code>--application=<i>...</i></code></dt>
+  <dd>
+    <p>The application ID to use.  By default, this is derived from the <code>application:</code> line in the <code>app.yaml</code> file in the application directory.  If <code>--application</code> is specified, it overrides the ID in <code>app.yaml</code> for this action.</p>
+  </dd>
+
+  <dt><code>--email=<i>...</i></code></dt>
+  <dd>
+    <p>The email address of the Google account of an administrator for the application, for actions that require signing in.  If omitted and no cookie is stored from a previous use of the command, the command will prompt for this value.</p>
+  </dd>
+
+
+  <dt><code>--force</code></dt>
+  <dd>
+    <p>Force deletion of unused indexes.  By default, uploading an app does not delete unused indexes from the server, even if they do not appear in the <code>index.yaml</code> file.</p>
+  </dd>
+
+  <dt><code>--host=<i>...</i></code></dt>
+  <dd>
+    <p>The hostname of the local machine for use with remote procedure calls.</p>
+  </dd>
+
+  <dt><code>--insecure</code></dt>
+  <dd>
+    <p>Use HTTP instead of HTTPS to communicate with App Engine.</p>
+  </dd>
+
+  <dt><code>--max_size=...</code></dt>
+  <dd>
+    <p>A maximum size of files to upload, as a number of bytes.  Files larger than this size will not be uploaded.  The default is <code>10485760</code>.  The server currently enforces a maximum file size of 10,485,760 bytes, so increasing this value will not have any effect.</p>
+  </dd>
+
+  <dt><code>--no_cookies</code></dt>
+  <dd>
+    <p>Do not store the administrator sign-in credentials as a cookie; prompt for a password every time.</p>
+  </dd>
+
+  <dt><code>--noisy</code></dt>
+  <dd>
+    <p>Print many messages about what the command is doing.  This is mostly useful when working with the App Engine team to troubleshoot an upload issue.</p>
+  </dd>
+
+  <dt><code>--passin</code></dt>
+  <dd>
+    <p>If given, the tool accepts the Google account password in stdin instead of prompting for it interactively.  This allows you to invoke the tool from a script without putting your password on the command line.</p>
+  </dd>
+
+  <dt><code>--quiet</code></dt>
+  <dd>
+    <p>Do not print messages when successful.</p>
+  </dd>
+
+  <dt><code>--server=<i>...</i></code></dt>
+  <dd>
+    <p>The App Engine server hostname.  The default is <code>appengine.google.com</code>.</p>
+  </dd>
+
+  <dt><code>--verbose</code></dt>
+  <dd>
+    <p>Print messages about what the command is doing.</p>
+  </dd>
+
+  <dt><code>--version=<i>...</i></code></dt>
+  <dd>
+    <p>The version ID to use.  By default, this is derived from the the <code>version:</code> line in the <code>app.yaml</code> file in the application directory.  If <code>--version</code> is specified, it overrides the version ID in <code>app.yaml</code> for this action.</p>
+  </dd>
+
+</dl>
+
+
+      </div><!-- end gc-pagecontent -->
+   </div><!-- end gooey wrapper -->
+
+    </div> <!-- end codesite content -->
+
+
+<div id="gc-footer" dir="ltr">
+  <div class="text">
+    
+      <div class="notice"><div id="notice" style="text-align: center; border: 1em 0em 1em 0em">
+  Except as otherwise <a
+  href="http://code.google.com/policies.html#restrictions">noted</a>,
+  the content of this page is licensed under the <a rel="license"
+  href="http://creativecommons.org/licenses/by/3.0/">Creative Commons
+  Attribution 3.0 License</a>, and code samples are licensed under the
+  <a rel="license" href="http://www.apache.org/licenses/LICENSE-2.0">Apache
+  2.0 License</a>.
+<!-- <rdf:RDF xmlns="http://web.resource.org/cc/" 
+              xmlns:dc="http://purl.org/dc/elements/1.1/"
+              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <Work rdf:about="">
+    <license rdf:resource="http://creativecommons.org/licenses/by/3.0/" />
+  </Work>
+  <License rdf:about="http://creativecommons.org/licenses/by/3.0/">
+    <permits rdf:resource="http://web.resource.org/cc/Reproduction"/>
+    <permits rdf:resource="http://web.resource.org/cc/Distribution"/>
+    <requires rdf:resource="http://web.resource.org/cc/Notice"/>
+    <requires rdf:resource="http://web.resource.org/cc/Attribution"/>
+    <permits rdf:resource="http://web.resource.org/cc/DerivativeWorks"/>
+  </License>
+</rdf:RDF> -->
+</div>
+Java is a registered trademark of Oracle Corporation and/or its affiliates</div>
+    
+    ©2011 Google -
+    <a href="http://code.google.com">Code Home</a> -
+    <a href="http://code.google.com/terms.html">Site Terms of Service</a> -
+    <a href="http://code.google.com/privacy.html">Privacy Policy</a> -
+    <a href="http://code.google.com/more">Site Directory</a>
+    <br> <br>
+    Google Code offered in:
+    <a href="http://code.google.com/intl/en">English</a> -
+    <a href="http://code.google.com/intl/es">Español</a> -
+    <a href="http://code.google.com/intl/ja">日本語</a> -
+    <a href="http://code.google.com/intl/ko">한국어</a> -
+    <a href="http://code.google.com/intl/pt-BR">Português</a> -
+    <a href="http://code.google.com/intl/ru">Pусский</a> -
+    <a href="http://code.google.com/intl/zh-CN">中文(简体)</a> -
+    <a href="http://code.google.com/intl/zh-TW">中文(繁體)</a>
+  </div>
+</div><!-- end gc-footer -->
+
+</div><!-- end gc-container -->
+
+<script type="text/javascript">CODESITE_CSITimer['load'].tick('ats');</script>
+<script src="../../../../js/codesite_tail.pack.04102009.js" type="text/javascript"></script>
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+
+
+
+
+
+  </body>
+</html>
+
+
