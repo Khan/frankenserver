@@ -3,6 +3,67 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.6.2
+===============================
+- The Admin Console Datastore Admin has added experimental backup and restore
+  functionality. The job occurs within your application and counts against your
+  application quota, including Instance Hours, Datastore Ops and Datastore
+  Storage.
+- Developers can now specify how long a channel token will last until it
+  expires, with the default remaining two hours. Channel API quota is now
+  measured both in calls to create a channel and the number of hours of channel
+  time requested. The maximum hours of quota is the maximum number of channel
+  creation calls * 2, so free apps get 200 hours of requested channel token
+  time.
+- Python Django now work with Cloud SQL without additional configuration. For
+  further information see https://developers.google.com/cloud-sql/.
+- Task Queue API requests now include a X-Appengine-TaskETA header, that can be
+  used to measure task delivery latency.
+- The default API deadlines for Blobstore API calls have been raised to 15s for
+  online and 30s for offline requests, up from 5s.
+- The Images API now allows you to stretch an image without maintaining the
+  aspect ratio.
+    http://code.google.com/p/googleappengine/issues/detail?id=2220
+- The Blobstore API now includes the asynchronous function calls
+  create_upload_url_async, delete_async, and fetch_data_async.
+- Django version 1.3 is now available in the Python 2.5 runtime.
+- We've added a django_wsgi builtin to allow easier bootstrapping of Django
+  applications.
+- Mail Quota for App Engine apps that have signed up for billing will only be
+  increased after the first payment for the app is processed.
+- As announced in 1.6.1, in this release for the experimental Python 2.7
+  runtime, the mapreduce and datastore_admin builtins are not available to apps
+  deployed to Python 2.7.
+- Fixed an issue with remote_api where calling fetch_page() with a page size
+  of 301 and chaining the calls through the returned cursor was skipping half
+  of the results.
+- Fixed an issue where the PIL _imagingmath module was not available in Python
+  2.7.
+- Fixed an issue where the SDK did not resize images down to 512 pixels by
+  default, as it does in production.
+- Fixed an issue with the Images API where valid images were returning a
+  NotImageError.
+    http://code.google.com/p/googleappengine/issues/detail?id=5545
+- Fixed an issue where the SDK didn't start when using Python 2.7 and the
+  --backends flag.
+    http://code.google.com/p/googleappengine/issues/detail?id=6187
+- Fixed an issue where Jinja2 was not included in the SDK for use with Python
+  2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=6265
+- Fixed an issue with the sql datastore stub in Python 2.7 where the sqlite
+  module no longer accepted strings with non-ASCII characters.
+    http://code.google.com/p/googleappengine/issues/detail?id=6290
+- Fixed an issue where gzip did not work with Python 2.7 in the dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=6324
+- Fixed an issue where urllib2 did not work with Python 2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=6567
+- Fixed an error in the Datastore Viewer where an error was thrown when viewing
+  an Entity which defines an index with no properties.
+    http://code.google.com/p/googleappengine/issues/detail?id=6600
+- Fixed an issue where transactional tasks were not enqueued in the SDK when
+  running in high_replication mode.
+    http://code.google.com/p/googleappengine/issues/detail?id=6669
+
 Version 1.6.1
 ===============================
 - You can now configure Frontend Instance Classes from your Admin Console's

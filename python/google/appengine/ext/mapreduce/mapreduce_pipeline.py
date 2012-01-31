@@ -46,6 +46,7 @@ from google.appengine.ext.mapreduce import output_writers
 from google.appengine.ext.mapreduce import base_handler
 from google.appengine.ext.mapreduce import input_readers
 from google.appengine.ext.mapreduce import mapper_pipeline
+from google.appengine.ext.mapreduce import output_writers
 from google.appengine.ext.mapreduce import shuffler
 
 
@@ -54,28 +55,6 @@ from google.appengine.ext.mapreduce import shuffler
 MapperPipeline = mapper_pipeline.MapperPipeline
 
 ShufflePipeline = shuffler.ShufflePipeline
-
-
-class KeyValueBlobstoreOutputWriter(
-    output_writers.BlobstoreRecordsOutputWriter):
-  """Output writer for KeyValue records files in blobstore."""
-
-  def write(self, data, ctx):
-    if len(data) != 2:
-      logging.error("Got bad tuple of length %d (2-tuple expected): %s",
-                    len(data), data)
-
-    try:
-      key = str(data[0])
-      value = str(data[1])
-    except TypeError:
-      logging.error("Expecting a tuple, but got %s: %s",
-                    data.__class__.__name__, data)
-
-    proto = file_service_pb.KeyValue()
-    proto.set_key(key)
-    proto.set_value(value)
-    output_writers.BlobstoreRecordsOutputWriter.write(self, proto.Encode(), ctx)
 
 
 class MapPipeline(base_handler.PipelineBase):
@@ -92,7 +71,7 @@ class MapPipeline(base_handler.PipelineBase):
     shards: number of shards to start as int.
 
   Returns:
-    list of filenames list sharded by hash code.
+    list of filenames written to by this mapper, one for each shard.
   """
 
   def run(self,
@@ -105,7 +84,8 @@ class MapPipeline(base_handler.PipelineBase):
         job_name + "-map",
         mapper_spec,
         input_reader_spec,
-        output_writer_spec= __name__ + ".KeyValueBlobstoreOutputWriter",
+        output_writer_spec=
+            output_writers.__name__ + ".KeyValueBlobstoreOutputWriter",
         params=params,
         shards=shards)
 
@@ -116,10 +96,25 @@ class KeyValuesReader(input_readers.RecordsReader):
   expand_parameters = True
 
   def __iter__(self):
+    current_key = None
+    current_values = None
+
     for binary_record in input_readers.RecordsReader.__iter__(self):
       proto = file_service_pb.KeyValues()
       proto.ParseFromString(binary_record)
-      yield (proto.key(), proto.value_list())
+      if current_key is None:
+        current_key = proto.key()
+        current_values = proto.value_list()
+      else:
+        assert proto.key() == current_key
+        current_values.extend(proto.value_list())
+
+      if not proto.partial():
+
+
+        yield (current_key, current_values)
+        current_key = None
+        current_values = None
 
 
 class ReducePipeline(base_handler.PipelineBase):
@@ -155,7 +150,6 @@ class ReducePipeline(base_handler.PipelineBase):
         __name__ + ".KeyValuesReader",
         output_writer_spec,
         new_params)
-
 
 
 class MapreducePipeline(base_handler.PipelineBase):

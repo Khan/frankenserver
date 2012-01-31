@@ -115,6 +115,10 @@ class PermanentTaskFailure(Error):
   """Indicates that a task failed, and will never succeed."""
 
 
+class SingularTaskFailure(Error):
+  """Indicates that a task failed once."""
+
+
 def run(data):
   """Unpickles and executes a task.
 
@@ -261,8 +265,8 @@ def defer(obj, *args, **kwargs):
 class TaskHandler(webapp.RequestHandler):
   """A webapp handler class that processes deferred invocations."""
 
-  def post(self):
-
+  def run_from_request(self):
+    """Default behavior for POST requests to deferred handler."""
 
     if 'X-AppEngine-TaskName' not in self.request.headers:
       logging.critical('Detected an attempted XSRF attack. The header '
@@ -285,8 +289,18 @@ class TaskHandler(webapp.RequestHandler):
                if k.lower().startswith("x-appengine-")]
     logging.info(", ".join(headers))
 
+    run(self.request.body)
+
+  def post(self):
+
     try:
-      run(self.request.body)
+      self.run_from_request()
+    except SingularTaskFailure:
+
+
+      logging.debug("Failure executing task, task retry forced")
+      self.response.set_status(408)
+      return
     except PermanentTaskFailure, e:
 
       logging.exception("Permanent failure attempting to execute task")

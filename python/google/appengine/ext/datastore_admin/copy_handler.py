@@ -117,6 +117,7 @@ class DoCopyHandler(webapp.RequestHandler):
         'mapreduce_detail': self.MAPREDUCE_DETAIL,
         'error': error,
         'xsrf_error': xsrf_error,
+        'datastore_admin_home': utils.config.BASE_PATH,
     }
     utils.RenderToResponse(self, 'do_copy.html', template_params)
 
@@ -156,11 +157,12 @@ class DoCopyHandler(webapp.RequestHandler):
             'extra_header': extra_header,
         }
         jobs = utils.RunMapForKinds(
-            op,
+            op.key(),
             kinds,
             name_template,
             self.COPY_HANDLER,
             self.INPUT_READER,
+            None,
             mapper_params)
 
         error = ''

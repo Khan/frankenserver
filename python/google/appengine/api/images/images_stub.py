@@ -416,7 +416,8 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
                               current_height,
                               req_width,
                               req_height,
-                              crop_to_fit):
+                              crop_to_fit,
+                              allow_stretch):
     """Get new resize dimensions keeping the current aspect ratio.
 
     This uses the more restricting of the two requested values to determine
@@ -428,6 +429,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       req_width: int, requested new width of the image, 0 if unspecified.
       req_height: int, requested new height of the image, 0 if unspecified.
       crop_to_fit: bool, True if the less restricting dimension should be used.
+      allow_stretch: bool, True is aspect ratio should be ignored.
 
     Raises:
       apiproxy_errors.ApplicationError: if crop_to_fit is True either req_width
@@ -441,7 +443,13 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     width_ratio = float(req_width) / current_width
     height_ratio = float(req_height) / current_height
 
-    if crop_to_fit:
+    if allow_stretch:
+
+      if not req_width or not req_height:
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+      return req_width, req_height
+    elif crop_to_fit:
 
       if not req_width or not req_height:
         raise apiproxy_errors.ApplicationError(
@@ -489,13 +497,15 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
             images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
 
     crop_to_fit = transform.crop_to_fit()
+    allow_stretch = transform.allow_stretch()
 
     current_width, current_height = image.size
     new_width, new_height = self._CalculateNewDimensions(current_width,
                                                          current_height,
                                                          width,
                                                          height,
-                                                         crop_to_fit)
+                                                         crop_to_fit,
+                                                         allow_stretch)
     new_image = image.resize((new_width, new_height), Image.ANTIALIAS)
     if crop_to_fit and (new_width > width or new_height > height):
 

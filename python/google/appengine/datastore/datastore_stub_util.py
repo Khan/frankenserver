@@ -1313,6 +1313,16 @@ class LiveTxn(object):
 
       self.Rollback()
       raise
+    else:
+
+      for action in self._actions:
+        try:
+          apiproxy_stub_map.MakeSyncCall(
+              'taskqueue', 'Add', action, api_base_pb.VoidProto())
+        except apiproxy_errors.ApplicationError, e:
+          logging.warning('Transactional task %s has been dropped, %s',
+                          action, e)
+      self._actions = []
     finally:
 
       self._txn_manager._ReleaseWriteLocks(meta_data_list)
@@ -1349,18 +1359,6 @@ class LiveTxn(object):
 
       for key in tracker._delete.itervalues():
         self._txn_manager._Delete(key)
-
-
-
-
-      for action in self._actions:
-        try:
-          apiproxy_stub_map.MakeSyncCall(
-              'taskqueue', 'Add', action, api_base_pb.VoidProto())
-        except apiproxy_errors.ApplicationError, e:
-          logging.warning('Transactional task %s has been dropped, %s',
-                          action, e)
-      self._actions = []
 
 
       tracker._read_pos = EntityGroupTracker.APPLIED
@@ -2260,7 +2258,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
   def Write(self):
     """Writes the datastore to disk."""
-    raise NotImplemented
+    raise NotImplementedError
 
   def _GetQueryCursor(self, query, filters, orders):
     """Runs the given datastore_pb.Query and returns a QueryCursor for it.

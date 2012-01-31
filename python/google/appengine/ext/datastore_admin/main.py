@@ -26,10 +26,13 @@ To use, add this to app.yaml:
 """
 
 
+import operator
 import os
 
 from google.appengine.api import datastore_errors
+from google.appengine.api import users
 from google.appengine.ext import webapp
+from google.appengine.ext.datastore_admin import backup_handler
 from google.appengine.ext.datastore_admin import copy_handler
 from google.appengine.ext.datastore_admin import delete_handler
 from google.appengine.ext.datastore_admin import utils
@@ -41,10 +44,19 @@ from google.appengine.ext.webapp import util
 
 
 
-GET_ACTIONS = {
+ENTITY_ACTIONS = {
     'Copy to Another App': copy_handler.ConfirmCopyHandler.Render,
     'Delete Entities': delete_handler.ConfirmDeleteHandler.Render,
+    'Backup Entities': backup_handler.ConfirmBackupHandler.Render,
 }
+
+BACKUP_ACTIONS = {
+    'Delete': backup_handler.ConfirmDeleteBackupHandler.Render,
+    'Restore': backup_handler.ConfirmRestoreFromBackupHandler.Render,
+}
+
+GET_ACTIONS = ENTITY_ACTIONS.copy()
+GET_ACTIONS.update(BACKUP_ACTIONS)
 
 
 def _GetDatastoreStats(kinds_list, use_stats_kinds=False):
@@ -135,17 +147,22 @@ class RouteByActionHandler(webapp.RequestHandler):
         'cancel_url': self.request.path + '?' + self.request.query_string,
         'last_stats_update': last_stats_update,
         'app_id': self.request.get('app_id'),
+        'has_namespace': self.request.get('namespace', None) is not None,
         'namespace': self.request.get('namespace'),
-        'action_list': sorted(GET_ACTIONS.keys()),
+        'action_list': sorted(ENTITY_ACTIONS.keys()),
+        'backup_action_list': sorted(BACKUP_ACTIONS.keys()),
         'error': error,
-        'operations': utils.DatastoreAdminOperation.all().fetch(100),
+        'completed_operations': self.GetOperations(active=False),
+        'active_operations': self.GetOperations(active=True),
+        'backups': self.GetBackups(),
+        'map_reduce_path': utils.config.MAPREDUCE_PATH + '/detail'
     }
     utils.RenderToResponse(self, 'list_actions.html', template_params)
 
   def RouteAction(self, action_dict):
     action = self.request.get('action')
     if not action:
-      self.ListActions()
+      self.ListActions(error=self.request.get('error', None))
     elif action not in action_dict:
       error = '%s is not a valid action.' % action
       self.ListActions(error=error)
@@ -165,10 +182,32 @@ class RouteByActionHandler(webapp.RequestHandler):
     for kind in kinds:
       kind_name = kind.kind_name
       if (kind_name.startswith('__') or
-          kind_name == utils.DatastoreAdminOperation.kind()):
+          kind_name == utils.DatastoreAdminOperation.kind() or
+          kind_name == backup_handler.BackupInformation.kind()):
         continue
       kind_names.append(kind_name)
     return kind_names
+
+  def GetOperations(self, active=False, limit=100):
+    """Obtain a list of operation, ordered by last_updated."""
+    query = utils.DatastoreAdminOperation.all()
+    if active:
+      query.filter('active_jobs > ', 0)
+    else:
+      query.filter('active_jobs = ', 0)
+    operations = query.fetch(max(10000, limit) if limit else 1000)
+    operations = sorted(operations, key=operator.attrgetter('last_updated'),
+                        reverse=True)
+    return operations[:limit]
+
+  def GetBackups(self, limit=100):
+    """Obtain a list of backups."""
+    query = backup_handler.BackupInformation.all()
+    query.filter('complete_time > ', 0)
+    backups = query.fetch(max(10000, limit) if limit else 1000)
+    backups = sorted(backups, key=operator.attrgetter('complete_time'),
+                     reverse=True)
+    return backups[:limit]
 
 
 class StaticResourceHandler(webapp.RequestHandler):
@@ -208,6 +247,20 @@ class StaticResourceHandler(webapp.RequestHandler):
       self.response.out.write(open(path).read())
 
 
+class LoginRequiredHandler(webapp.RequestHandler):
+  """Handle federated login identity selector page."""
+
+  def get(self):
+    target = self.request.get('continue')
+    if not target:
+      self.error(400)
+      return
+
+
+    login_url = users.create_login_url(target)
+    self.redirect(login_url)
+
+
 def CreateApplication():
   """Create new WSGIApplication and register all handlers.
 
@@ -224,11 +277,12 @@ def CreateApplication():
        delete_handler.DoDeleteHandler),
       (r'%s/%s' % (utils.config.BASE_PATH,
                    utils.MapreduceDoneHandler.SUFFIX),
-       utils.MapreduceDoneHandler),
-      ] + copy_handler.handlers_list(utils.config.BASE_PATH) + [
-      (r'%s/static.*' % utils.config.BASE_PATH, StaticResourceHandler),
-      (r'.*', RouteByActionHandler),
-      ])
+      utils.MapreduceDoneHandler)]
+      + copy_handler.handlers_list(utils.config.BASE_PATH)
+      + backup_handler.handlers_list(utils.config.BASE_PATH)
+      + [(r'%s/static.*' % utils.config.BASE_PATH, StaticResourceHandler),
+         (r'/_ah/login_required', LoginRequiredHandler),
+         (r'.*', RouteByActionHandler)])
 
 
 APP = CreateApplication()

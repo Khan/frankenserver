@@ -38,3 +38,29 @@ class EnumTypeWrapper(object):
       return self._enum_type.values_by_number[number].name
     raise ValueError('Enum %s has no name defined for value %d' % (
         self._enum_type.name, number))
+
+  def keys(self):
+    """Return a list of the string names in the enum.
+
+    These are returned in the order they were defined in the .proto file.
+    """
+
+    return [value_descriptor.name
+            for value_descriptor in self._enum_type.values]
+
+  def values(self):
+    """Return a list of the integer values in the enum.
+
+    These are returned in the order they were defined in the .proto file.
+    """
+
+    return [value_descriptor.number
+            for value_descriptor in self._enum_type.values]
+
+  def items(self):
+    """Return a list of the (name, value) pairs of the enum.
+
+    These are returned in the order they were defined in the .proto file.
+    """
+    return [(value_descriptor.name, value_descriptor.number)
+            for value_descriptor in self._enum_type.values]

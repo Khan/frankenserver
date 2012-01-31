@@ -39,6 +39,7 @@ __all__ = [
     "BlobstoreOutputWriter",
     "BlobstoreOutputWriterBase",
     "BlobstoreRecordsOutputWriter",
+    "KeyValueBlobstoreOutputWriter",
     "COUNTER_IO_WRITE_BYTES",
     "COUNTER_IO_WRITE_MSEC",
     "OutputWriter",
@@ -46,10 +47,12 @@ __all__ = [
     ]
 
 import gc
+import logging
 import string
 import time
 
 from google.appengine.api import files
+from google.appengine.api.files import file_service_pb
 from google.appengine.api.files import records
 from google.appengine.ext.mapreduce import errors
 from google.appengine.ext.mapreduce import model
@@ -231,7 +234,7 @@ class _FilePool(object):
     for filename, data in self._append_buffer.iteritems():
       with files.open(filename, "a") as f:
         if len(data) > self._flush_size:
-          raise "Bad data: " + str(len(data))
+          raise errors.Error("Bad data: %s" % len(data))
         if self._ctx:
           operation.counters.Increment(
               COUNTER_IO_WRITE_BYTES, len(data))(self._ctx)
@@ -580,3 +583,25 @@ class BlobstoreRecordsOutputWriter(BlobstoreOutputWriterBase):
 
                         RecordsPool(self._filename, ctx=ctx, exclusive=True))
     ctx.get_pool("records_pool").append(str(data))
+
+
+class KeyValueBlobstoreOutputWriter(BlobstoreRecordsOutputWriter):
+  """Output writer for KeyValue records files in blobstore."""
+
+  def write(self, data, ctx):
+    if len(data) != 2:
+      logging.error("Got bad tuple of length %d (2-tuple expected): %s",
+                    len(data), data)
+
+    try:
+      key = str(data[0])
+      value = str(data[1])
+    except TypeError:
+      logging.error("Expecting a tuple, but got %s: %s",
+                    data.__class__.__name__, data)
+
+    proto = file_service_pb.KeyValue()
+    proto.set_key(key)
+    proto.set_value(value)
+    BlobstoreRecordsOutputWriter.write(self, proto.Encode(), ctx)
+

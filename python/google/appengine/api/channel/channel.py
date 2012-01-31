@@ -48,6 +48,9 @@ from google.appengine.runtime import apiproxy_errors
 MAXIMUM_CLIENT_ID_LENGTH = 64
 
 
+MAXIMUM_TOKEN_DURATION_MINUTES = 24 * 60
+
+
 
 
 
@@ -61,6 +64,10 @@ class Error(Exception):
 
 class InvalidChannelClientIdError(Error):
   """Error that indicates a bad client id."""
+
+
+class InvalidChannelTokenDurationError(Error):
+  """Error that indicates the requested duration is invalid."""
 
 
 class InvalidMessageError(Error):
@@ -124,11 +131,13 @@ def _ValidateClientId(client_id):
 
 
 
-def create_channel(client_id):
+def create_channel(client_id, duration_minutes=None):
   """Create a channel.
 
   Args:
     client_id: A string to identify this channel on the server side.
+    duration_minutes: An int specifying the number of minutes for which the
+        returned token should be valid.
 
   Returns:
     A token that the client can use to connect to the channel.
@@ -136,16 +145,26 @@ def create_channel(client_id):
   Raises:
     InvalidChannelClientIdError: if clientid is not an instance of str or
         unicode, or if the (utf-8 encoded) string is longer than 64 characters.
+    InvalidChannelTokenDurationError: if duration_minutes is not a number, less
+        than 1, or greater than 1440 (the number of minutes in a day).
     Other errors returned by _ToChannelError
   """
 
 
   client_id = _ValidateClientId(client_id)
 
+  if (not duration_minutes is None and
+      (not isinstance(duration_minutes, (int, long)) or
+       duration_minutes < 1 or
+       duration_minutes > MAXIMUM_TOKEN_DURATION_MINUTES)):
+    raise InvalidChannelTokenDurationError
+
   request = channel_service_pb.CreateChannelRequest()
   response = channel_service_pb.CreateChannelResponse()
 
   request.set_application_key(client_id)
+  if not duration_minutes is None:
+    request.set_duration_minutes(duration_minutes)
 
   try:
     apiproxy_stub_map.MakeSyncCall(_GetService(),
@@ -155,7 +174,7 @@ def create_channel(client_id):
   except apiproxy_errors.ApplicationError, e:
     raise _ToChannelError(e)
 
-  return response.client_id()
+  return response.token()
 
 
 

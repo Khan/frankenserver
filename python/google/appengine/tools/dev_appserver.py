@@ -242,6 +242,12 @@ class CompileError(Error):
   def __init__(self, text):
     self.text = text
 
+class ExecuteError(Error):
+  """Application could not be executed."""
+  def __init__(self, text, log):
+    self.text = text
+    self.log = log
+
 
 
 def MonkeyPatchPdb(pdb):
@@ -272,6 +278,30 @@ def MonkeyPatchPdb(pdb):
     p.set_trace(sys._getframe().f_back)
 
   pdb.set_trace = NewSetTrace
+
+
+def MonkeyPatchThreadingLocal(_threading_local):
+  """Given a reference to the _threading_local module, fix _localbase.__new__.
+
+  This ensures that using dev_appserver with a Python interpreter older than
+  2.7 will include the fix to the _threading_local._localbase.__new__ method
+  which was introduced in Python 2.7 (http://bugs.python.org/issue1522237).
+  """
+
+  @staticmethod
+  def New(cls, *args, **kw):
+    self = object.__new__(cls)
+    key = '_local__key', 'thread.local.' + str(id(self))
+    object.__setattr__(self, '_local__key', key)
+    object.__setattr__(self, '_local__args', (args, kw))
+    object.__setattr__(self, '_local__lock', _threading_local.RLock())
+    if (args or kw) and (cls.__init__ is object.__init__):
+      raise TypeError('Initialization arguments are not supported')
+    dict = object.__getattribute__(self, '__dict__')
+    _threading_local.current_thread().__dict__[key] = dict
+    return self
+
+  _threading_local._localbase.__new__ = New
 
 
 def SplitURL(relative_url):
@@ -778,7 +808,8 @@ def SetupEnvironment(cgi_path,
   if DEVEL_FAKE_IS_ADMIN_HEADER in env:
     del env[DEVEL_FAKE_IS_ADMIN_HEADER]
 
-  token = GetGoogleSqlOAuth2RefreshToken(rdbms.OAUTH_CREDENTIALS_PATH)
+  token = GetGoogleSqlOAuth2RefreshToken(os.path.expanduser(
+      rdbms.OAUTH_CREDENTIALS_PATH))
   if token:
     env['GOOGLE_SQL_OAUTH2_REFRESH_TOKEN'] = token
 
@@ -825,7 +856,9 @@ def ClearAllButEncodingsModules(module_dict):
     module_dict: Dictionary in the form used by sys.modules.
   """
   for module_name in module_dict.keys():
-    if not IsEncodingsModule(module_name):
+
+
+    if not IsEncodingsModule(module_name) and module_name != 'sys':
       del module_dict[module_name]
 
 
@@ -1365,8 +1398,20 @@ def ExecutePy27Handler(config, handler_path, cgi_path, import_hook):
   post_data = sys.stdin.read()
 
 
-  if post_data and 'CONTENT_TYPE' in env:
-    env['HTTP_CONTENT_TYPE'] = env['CONTENT_TYPE']
+
+
+
+
+
+
+  if 'CONTENT_TYPE' in env:
+    if post_data:
+      env['HTTP_CONTENT_TYPE'] = env['CONTENT_TYPE']
+    del env['CONTENT_TYPE']
+  if 'CONTENT_LENGTH' in env:
+    if env['CONTENT_LENGTH']:
+      env['HTTP_CONTENT_LENGTH'] = env['CONTENT_LENGTH']
+    del env['CONTENT_LENGTH']
 
   if cgi_path.endswith(handler_path):
     application_root = cgi_path[:-len(handler_path)]
@@ -1380,6 +1425,9 @@ def ExecutePy27Handler(config, handler_path, cgi_path, import_hook):
 
     import pdb
     MonkeyPatchPdb(pdb)
+
+    import _threading_local
+    MonkeyPatchThreadingLocal(_threading_local)
 
 
 
@@ -1501,7 +1549,6 @@ def ExecuteCGI(config,
   old_env = os.environ.copy()
   old_cwd = os.getcwd()
   old_file_type = types.FileType
-  old_path = sys.path[:]
   reset_modules = False
   app_log_handler = None
 
@@ -1600,10 +1647,6 @@ def ExecuteCGI(config,
     logservice_stub._flush_logs_buffer()
     sys.stderr = old_stderr
     logging.getLogger().removeHandler(app_log_handler)
-
-
-
-    sys.path[:] = old_path
 
     os.environ.clear()
     os.environ.update(old_env)
@@ -2780,6 +2823,15 @@ def CreateRequestHandler(root_path,
         self.send_response(httplib.INTERNAL_SERVER_ERROR, 'Compile error')
         self.wfile.write('Content-Type: text/plain; charset=utf-8\r\n\r\n')
         self.wfile.write(msg)
+      except ExecuteError, e:
+        logging.error(e.text)
+        self.send_response(httplib.INTERNAL_SERVER_ERROR, 'Execute error')
+        self.wfile.write('Content-Type: text/html; charset=utf-8\r\n\r\n')
+        self.wfile.write('<title>App failure</title>\n')
+        self.wfile.write(e.text + '\n<pre>\n')
+        for l in e.log:
+          self.wfile.write(cgi.escape(l))
+        self.wfile.write('</pre>\n')
       except:
         msg = 'Exception encountered handling request'
         logging.exception(msg)

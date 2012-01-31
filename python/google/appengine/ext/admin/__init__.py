@@ -1159,12 +1159,12 @@ class DatastoreQueryHandler(DatastoreRequestHandler):
 
 
 
-      ancestor_count = 1
-      if index.HasAncestor():
-        key = entity.key().parent()
-        while key != None:
-          ancestor_count = ancestor_count + 1
-          key = key.parent()
+    ancestor_count = 1
+    if index.HasAncestor():
+      key = entity.key().parent()
+      while key != None:
+        ancestor_count = ancestor_count + 1
+        key = key.parent()
     return composite_index_value_count * ancestor_count
 
   def _get_write_ops(self, entity):

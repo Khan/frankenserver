@@ -174,7 +174,7 @@ SUPPORTED_SERVICES = [BLOBSTORE_SERVICE_NAME,
                       URLFETCH_SERVICE_NAME,
                       USER_SERVICE_NAME,
                       XMPP_SERVICE_NAME,
-                      ]
+                     ]
 
 
 class Error(Exception):
@@ -229,11 +229,22 @@ class Testbed(object):
     self._activated = True
 
   def deactivate(self):
+    """Deactivate the testbed.
+
+    This method will restore the API proxy and environment variables to the
+    state before activate() was called.
+
+    Raises:
+      NotActivatedError: If called before activate() was called.
+    """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
     apiproxy_stub_map.apiproxy = self._original_stub_map
     self._enabled_stubs = []
-    os.environ = self._orig_env
+
+
+    os.environ.clear()
+    os.environ.update(self._orig_env)
     self._activated = False
 
   def setup_env(self, overwrite=False, **kwargs):

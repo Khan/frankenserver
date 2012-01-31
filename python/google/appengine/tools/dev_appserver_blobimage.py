@@ -39,6 +39,8 @@ BLOBIMAGE_URL_PATTERN = '/_ah/img(?:/.*)?'
 BLOBIMAGE_RESPONSE_TEMPLATE = ('Status: %(status)s\r\nContent-Type: %(content_type)s'
                                '\r\n\r\n%(data)s')
 
+DEFAULT_SERVING_SIZE = 512
+
 def CreateBlobImageDispatcher(images_stub):
   """Function to create a dynamic image serving stub.
 
@@ -86,10 +88,10 @@ def CreateBlobImageDispatcher(images_stub):
       image_data.set_blob_key(blob_key)
       image = self._images_stub._OpenImageData(image_data)
       original_mime_type = image.format
+      width, height = image.size
 
 
       if crop:
-        width, height = image.size
         crop_xform = None
         if width > height:
 
@@ -109,7 +111,13 @@ def CreateBlobImageDispatcher(images_stub):
           image = self._images_stub._Crop(image, crop_xform)
 
 
+      if resize is None:
+        if width > DEFAULT_SERVING_SIZE or height > DEFAULT_SERVING_SIZE:
+          resize = DEFAULT_SERVING_SIZE
+
+
       if resize:
+
         resize_xform = images_service_pb.Transform()
         resize_xform.set_width(resize)
         resize_xform.set_height(resize)

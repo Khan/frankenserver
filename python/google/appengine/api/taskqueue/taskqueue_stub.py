@@ -97,6 +97,7 @@ MAX_REQUEST_SIZE = 32 << 20
 BUILT_IN_HEADERS = set(['x-appengine-queuename',
                         'x-appengine-taskname',
                         'x-appengine-taskretrycount',
+                        'x-appengine-tasketa',
                         'x-appengine-development-payload',
                         'content-length'])
 
@@ -235,6 +236,8 @@ def QueryTasksResponseToDict(queue_name, task_response, now):
   headers.append(('X-AppEngine-TaskName', task_response.task_name()))
   headers.append(('X-AppEngine-TaskRetryCount',
                   str(task_response.retry_count())))
+  headers.append(('X-AppEngine-TaskETA',
+                  str(_UsecToSec(task_response.eta_usec()))))
   headers.append(('X-AppEngine-Development-Payload', '1'))
   headers.append(('Content-Length', str(len(task['body']))))
   if 'content-type' not in frozenset(key.lower() for key, _ in headers):
@@ -1351,6 +1354,7 @@ class _Queue(object):
                       ('X-AppEngine-QueueName': 'update-queue'),
                       ('X-AppEngine-TaskName': 'task-123'),
                       ('X-AppEngine-TaskRetryCount': '0'),
+                      ('X-AppEngine-TaskETA': '1234567890.123456'),
                       ('X-AppEngine-Development-Payload': '1'),
                       ('Content-Length': 0),
                       ('Content-Type': 'application/octet-stream')]
@@ -1383,6 +1387,7 @@ class _Queue(object):
                       ('X-AppEngine-QueueName': 'update-queue'),
                       ('X-AppEngine-TaskName': 'task-123'),
                       ('X-AppEngine-TaskRetryCount': '0'),
+                      ('X-AppEngine-TaskETA': '1234567890.123456'),
                       ('X-AppEngine-Development-Payload': '1'),
                       ('Content-Length': 0),
                       ('Content-Type': 'application/octet-stream')]
@@ -1794,6 +1799,8 @@ class _TaskExecutor(object):
     headers.append(('X-AppEngine-QueueName', queue.queue_name))
     headers.append(('X-AppEngine-TaskName', task.task_name()))
     headers.append(('X-AppEngine-TaskRetryCount', str(task.retry_count())))
+    headers.append(('X-AppEngine-TaskETA',
+                    str(_UsecToSec(task.eta_usec()))))
     headers.append(('X-AppEngine-Fake-Is-Admin', '1'))
     headers.append(('Content-Length', str(len(task.body()))))
     if 'content-type' not in header_dict:
@@ -2183,6 +2190,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
                       ('X-AppEngine-QueueName': 'update-queue'),
                       ('X-AppEngine-TaskName': 'task-123'),
                       ('X-AppEngine-TaskRetryCount': '0'),
+                      ('X-AppEngine-TaskETA': '1234567890.123456'),
                       ('X-AppEngine-Development-Payload': '1'),
                       ('Content-Length': 0),
                       ('Content-Type': 'application/octet-stream')]

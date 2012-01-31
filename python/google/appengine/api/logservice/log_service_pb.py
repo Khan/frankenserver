@@ -2299,6 +2299,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   include_all_ = 0
   has_cache_iterator_ = 0
   cache_iterator_ = 0
+  has_num_shards_ = 0
+  num_shards_ = 0
 
   def __init__(self, contents=None):
     self.version_id_ = []
@@ -2537,6 +2539,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_cache_iterator(self): return self.has_cache_iterator_
 
+  def num_shards(self): return self.num_shards_
+
+  def set_num_shards(self, x):
+    self.has_num_shards_ = 1
+    self.num_shards_ = x
+
+  def clear_num_shards(self):
+    if self.has_num_shards_:
+      self.has_num_shards_ = 0
+      self.num_shards_ = 0
+
+  def has_num_shards(self): return self.has_num_shards_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -2557,6 +2572,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_include_host()): self.set_include_host(x.include_host())
     if (x.has_include_all()): self.set_include_all(x.include_all())
     if (x.has_cache_iterator()): self.set_cache_iterator(x.cache_iterator())
+    if (x.has_num_shards()): self.set_num_shards(x.num_shards())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2596,6 +2612,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_include_all_ and self.include_all_ != x.include_all_: return 0
     if self.has_cache_iterator_ != x.has_cache_iterator_: return 0
     if self.has_cache_iterator_ and self.cache_iterator_ != x.cache_iterator_: return 0
+    if self.has_num_shards_ != x.has_num_shards_: return 0
+    if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2628,6 +2646,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
+    if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -2653,6 +2672,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
+    if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
     return n
 
   def Clear(self):
@@ -2673,6 +2693,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_include_host()
     self.clear_include_all()
     self.clear_cache_iterator()
+    self.clear_num_shards()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -2726,6 +2747,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_logs_per_request_):
       out.putVarInt32(136)
       out.putVarInt32(self.app_logs_per_request_)
+    if (self.has_num_shards_):
+      out.putVarInt32(144)
+      out.putVarInt32(self.num_shards_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -2780,6 +2804,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_logs_per_request_):
       out.putVarInt32(136)
       out.putVarInt32(self.app_logs_per_request_)
+    if (self.has_num_shards_):
+      out.putVarInt32(144)
+      out.putVarInt32(self.num_shards_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2838,6 +2865,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 136:
         self.set_app_logs_per_request(d.getVarInt32())
         continue
+      if tt == 144:
+        self.set_num_shards(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2876,6 +2906,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_include_host_: res+=prefix+("include_host: %s\n" % self.DebugFormatBool(self.include_host_))
     if self.has_include_all_: res+=prefix+("include_all: %s\n" % self.DebugFormatBool(self.include_all_))
     if self.has_cache_iterator_: res+=prefix+("cache_iterator: %s\n" % self.DebugFormatBool(self.cache_iterator_))
+    if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
     return res
 
 
@@ -2899,6 +2930,7 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   kinclude_host = 11
   kinclude_all = 12
   kcache_iterator = 13
+  knum_shards = 18
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -2919,7 +2951,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     15: "host_regex",
     16: "replica_index",
     17: "app_logs_per_request",
-  }, 17)
+    18: "num_shards",
+  }, 18)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2940,7 +2973,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     15: ProtocolBuffer.Encoder.STRING,
     16: ProtocolBuffer.Encoder.NUMERIC,
     17: ProtocolBuffer.Encoder.NUMERIC,
-  }, 17, ProtocolBuffer.Encoder.MAX_TYPE)
+    18: ProtocolBuffer.Encoder.NUMERIC,
+  }, 18, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

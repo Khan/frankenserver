@@ -705,7 +705,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
 
     conn.execute('UPDATE Apps SET indexes = ? WHERE app_id = ?',
-                 (app, indices.Encode()))
+                 (app, buffer(indices.Encode())))
 
   def _GetTablePrefix(self, data):
     """Returns the namespace prefix for a query.

@@ -64,6 +64,8 @@ class MapperPipeline(base_handler.PipelineBase):
 
 
       "job_id",
+
+      "counters",
       ]
 
   def run(self,
@@ -99,6 +101,7 @@ class MapperPipeline(base_handler.PipelineBase):
     if output_writer_class:
       files = output_writer_class.get_filenames(mapreduce_state)
 
+    self.fill(self.outputs.counters, mapreduce_state.counters_map.to_dict())
     self.complete(files)
 
 
@@ -124,4 +127,3 @@ class _CleanupPipeline(base_handler.PipelineBase):
 
   def run(self, temp_files):
     self.delete_file_or_list(temp_files)
-

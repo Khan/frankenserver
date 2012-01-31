@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Confirm Restore from a backup copy{% endblock %}
+{% block body %}
+  <h2>Datastore Admin: Restore from a backup copy</h2>
+  {% if backup %}
+    Are you sure you want to restore from {{ backup.name }}?
+    <br/>Restore does not delete any new entities added since the backup.
+    However, it will replace existing entities with the backed-up version for the following kinds:
+    <ul>
+      {% for kind in backup.kinds %}
+        <li>{{ kind }}</li>
+      {% endfor %}
+    </ul>
+    <form action="{{base_path}}/{{form_target}}" method="post" style="width:39.39em;">
+      <input type="hidden" name="backup_id" value="{{backup.key}}">
+      <input type="hidden" name="app_id" value="{{app_id|escape}}">
+      <input type="hidden" name="xsrf_token" value="{{xsrf_token|escape}}">
+      {% if notreadonly_warning %}
+      <div>
+        <h4 style="padding:0;margin-top:1em;margin-bottom:0.46em;">WARNING</h4>
+        <p>The application is not in read-only mode and restore may
+        conflict with other changes.
+        To place the application in read-only mode,
+        please follow the instructions at
+        <a href="http://code.google.com/appengine/docs/adminconsole/applicationsettings.html#Disable_Datastore_Writes">
+        Disable Datastore Writes</a>
+        </p>
+      </div>
+      {% endif %}
+      <p>Operation will be performed using the selected queue:
+        {% if queues %}
+        <select name="queue">
+          {% for queue in queues %}
+            <option value="{{ queue }}">{{ queue }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <input type="text" name="queue" value="default"/>
+        {% endif %}
+      </p>
+      <input type="submit" value="Restore">
+      <a href="{{ cancel_url|escape }}"><button>Cancel</button></a>
+    </form>
+  {% else %}
+    <div class="ae-errorbox">Backup was not found.</div>
+  {% endif %}
+{% endblock %}
+

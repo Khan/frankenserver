@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Confirm Delete of a backup copy{% endblock %}
+{% block body %}
+  <h2>Datastore Admin: Delete a backup copy</h2>
+  {% if backup_names %}
+    Are you sure you want to delete the following backups:
+    <ul>
+      {% for backup_name in backup_names %}
+        <li>{{ backup_name }}</li>
+      {% endfor %}
+    </ul>
+    <form action="{{base_path}}/{{form_target}}" method="post" style="width:39.39em;">
+      {% for backup_id in backup_ids %}
+        <input type="hidden" name="backup_id" value="{{backup_id}}">
+      {% endfor %}
+      <input type="hidden" name="namespace" value="{{namespace|escape}}">
+      <input type="hidden" name="app_id" value="{{app_id|escape}}">
+      <input type="hidden" name="xsrf_token" value="{{xsrf_token|escape}}">
+      <input type="Submit" value="Yes">
+      <a href="{{ cancel_url|escape }}"><button>No</button></a>
+    </form>
+
+  {% else %}
+    <div class="ae-errorbox">Backup was not found.</div>
+  {% endif %}
+{% endblock %}
+

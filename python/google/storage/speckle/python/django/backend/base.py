@@ -87,17 +87,6 @@ old_modules = [(name, sys.modules.pop(name)) for name in modules_to_swap
 
 sys.modules['MySQLdb'] = rdbms
 
-try:
-
-  from google.third_party import python
-  python.MySQLdb = rdbms
-  for module_name in modules_to_swap:
-    module_name = 'google.third_party.python.' + module_name
-    old_modules.append((module_name, sys.modules.pop(module_name, None)))
-  sys.modules['google.third_party.python.MySQLdb'] = rdbms
-except ImportError:
-  pass
-
 from django.db.backends.mysql import base
 
 

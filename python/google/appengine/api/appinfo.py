@@ -197,6 +197,7 @@ OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
 
 
 
+
 SUPPORTED_LIBRARIES = {
     'django': ['1.2'],
     'jinja2': ['2.6'],
@@ -640,11 +641,13 @@ class BuiltinHandler(validation.Validated):
     return [(b.builtin_name, getattr(b, b.builtin_name)) for b in builtins_list]
 
   @classmethod
-  def Validate(cls, builtins_list):
+  def Validate(cls, builtins_list, runtime=None):
     """Verify that all BuiltinHandler objects are valid and not repeated.
 
     Args:
       builtins_list: list of BuiltinHandler objects to validate.
+      runtime: if set then warnings are generated for builtins that have been
+          deprecated in the given runtime.
 
     Raises:
       InvalidBuiltinFormat if the name of a Builtinhandler object
@@ -662,6 +665,25 @@ class BuiltinHandler(validation.Validated):
         raise appinfo_errors.DuplicateBuiltinsSpecified(
             'Builtin %s was specified more than once in one yaml file.'
             % b.builtin_name)
+
+
+
+
+
+
+      if b.builtin_name == 'datastore_admin' and runtime == 'python':
+        logging.warning(
+            'The datastore_admin builtin is deprecated. You can find '
+            'information on how to enable it through the Administrative '
+            'Console here: http://code.google.com/appengine/docs/adminconsole/'
+            'datastoreadmin.html')
+      elif b.builtin_name == 'mapreduce' and runtime == 'python':
+        logging.warning(
+            'The mapreduce builtin is deprecated. You can find more '
+            'information on how to configure and use it here: '
+            'http://code.google.com/appengine/docs/python/dataprocessing/'
+            'overview.html')
+
       seen.add(b.builtin_name)
 
 
@@ -733,6 +755,10 @@ class AppInclude(validation.Validated):
           appyaml.handlers.append(h)
         else:
           tail.append(h)
+
+
+
+        h.position = None
 
       appyaml.handlers.extend(tail)
 
@@ -1013,7 +1039,7 @@ def LoadSingleAppInfo(app_info):
   appyaml = app_infos[0]
   ValidateHandlers(appyaml.handlers)
   if appyaml.builtins:
-    BuiltinHandler.Validate(appyaml.builtins)
+    BuiltinHandler.Validate(appyaml.builtins, appyaml.runtime)
 
   return appyaml
 

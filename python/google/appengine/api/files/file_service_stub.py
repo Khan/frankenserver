@@ -77,40 +77,39 @@ class GoogleStorage(object):
   def _Upload(self, buf, content_type, key):
     return _GoogleStorageUpload([buf, content_type, key])
 
-  def __init__(self):
-    self.index = 0
-    self.keys = {}
+  def __init__(self, blob_storage):
+    """Constructor.
+
+    Args:
+      blob_storage:
+          apphosting.api.blobstore.blobstore_stub.BlobStorage instance.
+    """
+    self.blob_storage = blob_storage
     self.uploads = {}
     self.finalized = set()
-
-  def ParseIndex(self, filename):
-    """Returns 123 from /gs/writable:123."""
-    assert filename
-    assert filename.startswith(_GS_UPLOAD_PREFIX)
-    return filename[len(_GS_UPLOAD_PREFIX):]
+    self.sequence_keys = {}
 
   def has_upload(self, filename):
     """Checks if there is an upload at this filename."""
-    return self.ParseIndex(filename) in self.uploads
-
-  def has_key(self, filename):
-    """Checks if there is a key at this filename."""
-    return filename in self.keys
+    return filename in self.uploads
 
   def finalize(self, filename):
     """Marks file as finalized."""
-    index = self.ParseIndex(filename)
-    upload = self.uploads[index]
-    self.keys[upload.key] = upload.buf
-    self.finalized.add(index)
-    self.uploads[index] = self._Upload(
-        None, upload.content_type, upload.key)
+    upload = self.uploads[filename]
+    self.finalized.add(filename)
+    upload.buf.seek(0)
+    self.blob_storage.StoreBlob(self.get_blob_key(upload.key), upload.buf)
+    del self.sequence_keys[filename]
+
+  @staticmethod
+  def get_blob_key(key):
+    """Converts a bigstore key into a base64 encoded blob key/filename."""
+    return base64.urlsafe_b64encode(key)
 
   def is_finalized(self, filename):
     """Checks if file is already finalized."""
-    index = self.ParseIndex(filename)
-    assert index in self.uploads
-    return index in self.finalized
+    assert filename in self.uploads
+    return filename in self.finalized
 
   def start_upload(self, request):
     """Starts a new upload based on the specified CreateRequest."""
@@ -139,23 +138,32 @@ class GoogleStorage(object):
     elif not gs_filename:
       raise_error(file_service_pb.FileServiceErrors.INVALID_PARAMETER)
 
-    self.index += 1
-    self.uploads[str(self.index)] = self._Upload(
+    random_str = ''.join(
+        random.choice(string.ascii_uppercase + string.digits)
+        for _ in range(64))
+    writable_name = '%s%s' % (
+        _GS_UPLOAD_PREFIX, base64.urlsafe_b64encode(random_str))
+    self.uploads[writable_name] = self._Upload(
         StringIO.StringIO(), mime_type, gs_filename)
-    return '%s%d' % (_GS_UPLOAD_PREFIX, self.index)
+    self.sequence_keys[writable_name] = None
+    return writable_name
 
-  def append(self, filename, data):
+  def append(self, filename, data, sequence_key):
     """Appends data to the upload filename."""
-    index = self.ParseIndex(filename)
     assert not self.is_finalized(filename)
-    self.uploads[index].buf.write(data)
+    if sequence_key:
+      current_sequence_key = self.sequence_keys[filename]
+      if current_sequence_key and current_sequence_key >= sequence_key:
+        raise_error(file_service_pb.FileServiceErrors.SEQUENCE_KEY_OUT_OF_ORDER,
+                    error_detail=current_sequence_key)
+      self.sequence_keys[filename] = sequence_key
+    self.uploads[filename].buf.write(data)
 
-  def read(self, key, pos, max_data):
-    """Reads max_data bytes from key starting at pos."""
-    assert key in self.keys
-    buf = self.keys[key]
-    buf.seek(pos)
-    return buf.read(max_data)
+  def get_reader(self, filename):
+    try:
+      return self.blob_storage.OpenBlob(self.get_blob_key(filename))
+    except IOError:
+      return None
 
 
 class GoogleStorageFile(object):
@@ -188,8 +196,10 @@ class GoogleStorageFile(object):
       elif self.filename.startswith(_GS_UPLOAD_PREFIX):
 
         raise_error(file_service_pb.FileServiceErrors.INVALID_FILE_NAME)
-      elif not self.file_storage.has_key(self.filename):
-        raise_error(file_service_pb.FileServiceErrors.EXISTENCE_ERROR)
+      else:
+        self.buf = self.file_storage.get_reader(self.filename)
+        if not self.buf:
+          raise_error(file_service_pb.FileServiceErrors.EXISTENCE_ERROR)
 
     if content_type != file_service_pb.FileContentType.RAW:
       raise_error(file_service_pb.FileServiceErrors.WRONG_CONTENT_TYPE)
@@ -203,15 +213,16 @@ class GoogleStorageFile(object):
     """Copies up to max_bytes starting at pos into response from filename."""
     if self.is_appending:
       raise_error(file_service_pb.FileServiceErrors.WRONG_OPEN_MODE)
-    data = self.file_storage.read(
-        self.filename, request.pos(), request.max_bytes())
+    self.buf.seek(request.pos())
+    data = self.buf.read(request.max_bytes())
     response.set_data(data)
 
   def append(self, request, response):
     """Appends data to filename."""
     if not self.is_appending:
       raise_error(file_service_pb.FileServiceErrors.WRONG_OPEN_MODE)
-    self.file_storage.append(self.filename, request.data())
+    self.file_storage.append(
+        self.filename, request.data(), request.sequence_key())
 
   def finalize(self):
     """Finalize a file.
@@ -453,7 +464,7 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
                                           max_request_size=MAX_REQUEST_SIZE)
     self.open_files = {}
     self.file_storage = BlobstoreStorage(blob_storage)
-    self.gs_storage = GoogleStorage()
+    self.gs_storage = GoogleStorage(blob_storage)
 
   def _Dynamic_Create(self, request, response):
     filesystem = request.filesystem()

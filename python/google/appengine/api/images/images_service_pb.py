@@ -230,6 +230,8 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   crop_bottom_y_ = 1.0
   has_autolevels_ = 0
   autolevels_ = 0
+  has_allow_stretch_ = 0
+  allow_stretch_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -403,6 +405,19 @@ class Transform(ProtocolBuffer.ProtocolMessage):
 
   def has_autolevels(self): return self.has_autolevels_
 
+  def allow_stretch(self): return self.allow_stretch_
+
+  def set_allow_stretch(self, x):
+    self.has_allow_stretch_ = 1
+    self.allow_stretch_ = x
+
+  def clear_allow_stretch(self):
+    if self.has_allow_stretch_:
+      self.has_allow_stretch_ = 0
+      self.allow_stretch_ = 0
+
+  def has_allow_stretch(self): return self.has_allow_stretch_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -419,6 +434,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (x.has_crop_right_x()): self.set_crop_right_x(x.crop_right_x())
     if (x.has_crop_bottom_y()): self.set_crop_bottom_y(x.crop_bottom_y())
     if (x.has_autolevels()): self.set_autolevels(x.autolevels())
+    if (x.has_allow_stretch()): self.set_allow_stretch(x.allow_stretch())
 
   def Equals(self, x):
     if x is self: return 1
@@ -448,6 +464,8 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if self.has_crop_bottom_y_ and self.crop_bottom_y_ != x.crop_bottom_y_: return 0
     if self.has_autolevels_ != x.has_autolevels_: return 0
     if self.has_autolevels_ and self.autolevels_ != x.autolevels_: return 0
+    if self.has_allow_stretch_ != x.has_allow_stretch_: return 0
+    if self.has_allow_stretch_ and self.allow_stretch_ != x.allow_stretch_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -469,6 +487,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_crop_right_x_): n += 5
     if (self.has_crop_bottom_y_): n += 5
     if (self.has_autolevels_): n += 2
+    if (self.has_allow_stretch_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -486,6 +505,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_crop_right_x_): n += 5
     if (self.has_crop_bottom_y_): n += 5
     if (self.has_autolevels_): n += 2
+    if (self.has_allow_stretch_): n += 2
     return n
 
   def Clear(self):
@@ -502,6 +522,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     self.clear_crop_right_x()
     self.clear_crop_bottom_y()
     self.clear_autolevels()
+    self.clear_allow_stretch()
 
   def OutputUnchecked(self, out):
     if (self.has_width_):
@@ -543,6 +564,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_crop_offset_y_):
       out.putVarInt32(109)
       out.putFloat(self.crop_offset_y_)
+    if (self.has_allow_stretch_):
+      out.putVarInt32(112)
+      out.putBoolean(self.allow_stretch_)
 
   def OutputPartial(self, out):
     if (self.has_width_):
@@ -584,6 +608,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if (self.has_crop_offset_y_):
       out.putVarInt32(109)
       out.putFloat(self.crop_offset_y_)
+    if (self.has_allow_stretch_):
+      out.putVarInt32(112)
+      out.putBoolean(self.allow_stretch_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -627,6 +654,9 @@ class Transform(ProtocolBuffer.ProtocolMessage):
       if tt == 109:
         self.set_crop_offset_y(d.getFloat())
         continue
+      if tt == 112:
+        self.set_allow_stretch(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -648,6 +678,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     if self.has_crop_right_x_: res+=prefix+("crop_right_x: %s\n" % self.DebugFormatFloat(self.crop_right_x_))
     if self.has_crop_bottom_y_: res+=prefix+("crop_bottom_y: %s\n" % self.DebugFormatFloat(self.crop_bottom_y_))
     if self.has_autolevels_: res+=prefix+("autolevels: %s\n" % self.DebugFormatBool(self.autolevels_))
+    if self.has_allow_stretch_: res+=prefix+("allow_stretch: %s\n" % self.DebugFormatBool(self.allow_stretch_))
     return res
 
 
@@ -667,6 +698,7 @@ class Transform(ProtocolBuffer.ProtocolMessage):
   kcrop_right_x = 8
   kcrop_bottom_y = 9
   kautolevels = 10
+  kallow_stretch = 14
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -683,7 +715,8 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     11: "crop_to_fit",
     12: "crop_offset_x",
     13: "crop_offset_y",
-  }, 13)
+    14: "allow_stretch",
+  }, 14)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -700,7 +733,8 @@ class Transform(ProtocolBuffer.ProtocolMessage):
     11: ProtocolBuffer.Encoder.NUMERIC,
     12: ProtocolBuffer.Encoder.FLOAT,
     13: ProtocolBuffer.Encoder.FLOAT,
-  }, 13, ProtocolBuffer.Encoder.MAX_TYPE)
+    14: ProtocolBuffer.Encoder.NUMERIC,
+  }, 14, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -711,6 +745,10 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
   content_ = ""
   has_blob_key_ = 0
   blob_key_ = ""
+  has_width_ = 0
+  width_ = 0
+  has_height_ = 0
+  height_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -741,11 +779,39 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   def has_blob_key(self): return self.has_blob_key_
 
+  def width(self): return self.width_
+
+  def set_width(self, x):
+    self.has_width_ = 1
+    self.width_ = x
+
+  def clear_width(self):
+    if self.has_width_:
+      self.has_width_ = 0
+      self.width_ = 0
+
+  def has_width(self): return self.has_width_
+
+  def height(self): return self.height_
+
+  def set_height(self, x):
+    self.has_height_ = 1
+    self.height_ = x
+
+  def clear_height(self):
+    if self.has_height_:
+      self.has_height_ = 0
+      self.height_ = 0
+
+  def has_height(self): return self.has_height_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_content()): self.set_content(x.content())
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+    if (x.has_width()): self.set_width(x.width())
+    if (x.has_height()): self.set_height(x.height())
 
   def Equals(self, x):
     if x is self: return 1
@@ -753,6 +819,10 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if self.has_content_ and self.content_ != x.content_: return 0
     if self.has_blob_key_ != x.has_blob_key_: return 0
     if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    if self.has_width_ != x.has_width_: return 0
+    if self.has_width_ and self.width_ != x.width_: return 0
+    if self.has_height_ != x.has_height_: return 0
+    if self.has_height_ and self.height_ != x.height_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -767,6 +837,8 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.content_))
     if (self.has_blob_key_): n += 1 + self.lengthString(len(self.blob_key_))
+    if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
+    if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -775,11 +847,15 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(len(self.content_))
     if (self.has_blob_key_): n += 1 + self.lengthString(len(self.blob_key_))
+    if (self.has_width_): n += 1 + self.lengthVarInt64(self.width_)
+    if (self.has_height_): n += 1 + self.lengthVarInt64(self.height_)
     return n
 
   def Clear(self):
     self.clear_content()
     self.clear_blob_key()
+    self.clear_width()
+    self.clear_height()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -787,6 +863,12 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if (self.has_blob_key_):
       out.putVarInt32(18)
       out.putPrefixedString(self.blob_key_)
+    if (self.has_width_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.width_)
+    if (self.has_height_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.height_)
 
   def OutputPartial(self, out):
     if (self.has_content_):
@@ -795,6 +877,12 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     if (self.has_blob_key_):
       out.putVarInt32(18)
       out.putPrefixedString(self.blob_key_)
+    if (self.has_width_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.width_)
+    if (self.has_height_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.height_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -804,6 +892,12 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.set_blob_key(d.getPrefixedString())
+        continue
+      if tt == 24:
+        self.set_width(d.getVarInt32())
+        continue
+      if tt == 32:
+        self.set_height(d.getVarInt32())
         continue
 
 
@@ -815,6 +909,8 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_content_: res+=prefix+("content: %s\n" % self.DebugFormatString(self.content_))
     if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    if self.has_width_: res+=prefix+("width: %s\n" % self.DebugFormatInt32(self.width_))
+    if self.has_height_: res+=prefix+("height: %s\n" % self.DebugFormatInt32(self.height_))
     return res
 
 
@@ -823,18 +919,24 @@ class ImageData(ProtocolBuffer.ProtocolMessage):
 
   kcontent = 1
   kblob_key = 2
+  kwidth = 3
+  kheight = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "content",
     2: "blob_key",
-  }, 2)
+    3: "width",
+    4: "height",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

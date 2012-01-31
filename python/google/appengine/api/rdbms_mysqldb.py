@@ -68,6 +68,10 @@ try:
   from MySQLdb import *
 
 
+
+  __import__('MySQLdb.constants', globals(), locals(), ['*'])
+
+
   def connect(instance=None, database=None, **kwargs):
     merged_kwargs = _connect_kwargs.copy()
     if database:

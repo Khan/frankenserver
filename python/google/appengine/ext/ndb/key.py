@@ -74,9 +74,11 @@ import base64
 import os
 
 from google.appengine.api import datastore_errors
+from google.appengine.api import datastore_types
 from google.appengine.api import namespace_manager
-from google.appengine.datastore import datastore_rpc
 from google.appengine.datastore import entity_pb
+
+from . import utils
 
 __all__ = ['Key']
 
@@ -97,7 +99,7 @@ class Key(object):
   - Key(pairs=[(kind1, id1), (kind2, id2), ...])
   - Key(flat=[kind1, id1, kind2, id2, ...])
 
-  Either of the above constructor forms can additional pass in another
+  Either of the above constructor forms can additionally pass in another
   key using parent=<key>.  The (kind, id) pairs of the parent key are
   inserted before the (kind, id) pairs passed explicitly.
 
@@ -504,7 +506,7 @@ class Key(object):
     """
     from . import model, tasklets
     ctx = tasklets.get_context()
-    cls = model.Model._get_kind_map().get(self.kind())
+    cls = model.Model._kind_map.get(self.kind())
     if cls:
       cls._pre_get_hook(self)
     fut = ctx.get(self, **ctx_options)
@@ -532,7 +534,7 @@ class Key(object):
     """
     from . import tasklets, model
     ctx = tasklets.get_context()
-    cls = model.Model._get_kind_map().get(self.kind())
+    cls = model.Model._kind_map.get(self.kind())
     if cls:
       cls._pre_delete_hook(self)
     fut = ctx.delete(self, **ctx_options)
@@ -543,10 +545,17 @@ class Key(object):
         fut.add_immediate_callback(post_hook, self, fut)
     return fut
 
+  @classmethod
+  def from_old_key(cls, old_key):
+    return cls(urlsafe=str(old_key))
+
+  def to_old_key(self):
+    return datastore_types.Key(encoded=self.urlsafe())
+
 
 # The remaining functions in this module are private.
 
-@datastore_rpc._positional(1)
+@utils.positional(1)
 def _ConstructReference(cls, pairs=None, flat=None,
                         reference=None, serialized=None, urlsafe=None,
                         app=None, namespace=None, parent=None):

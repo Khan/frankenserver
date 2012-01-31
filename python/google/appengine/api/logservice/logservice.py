@@ -79,6 +79,26 @@ class InvalidArgumentError(Error):
   """Function argument has invalid value."""
 
 
+class TimeoutError(Error):
+  """Requested timeout for fetch() call has expired while iterating results."""
+
+  def __init__(self, msg, offset):
+    Error.__init__(self, msg)
+    self.__offset = offset
+
+  @property
+  def offset(self):
+    """Binary offset indicating the current position in the result stream.
+
+    May be submitted to future Log read requests to continue iterating logs
+    starting exactly where this iterator left off.
+
+    Returns:
+        A byte string representing an offset into the log stream, or None.
+    """
+    return self.__offset
+
+
 class LogsBuffer(object):
   """Threadsafe buffer for storing and periodically flushing app logs."""
 
@@ -356,10 +376,10 @@ class _LogQueryResult(object):
       if more logs are requested.
     _logs: A list of RequestLogs corresponding to logs the user has asked for.
     _read_called: A boolean that indicates if a Read call has even been made
-      with the request stored in this object..
+      with the request stored in this object.
   """
 
-  def __init__(self, request):
+  def __init__(self, request, timeout=None):
     """Constructor.
 
     Args:
@@ -368,6 +388,9 @@ class _LogQueryResult(object):
     self._request = request
     self._logs = []
     self._read_called = False
+    self._end_time = None
+    if timeout is not None:
+      self._end_time = time.time() + timeout
 
   def __iter__(self):
     """Provides an iterator that yields log records one at a time.
@@ -381,6 +404,12 @@ class _LogQueryResult(object):
       for log_item in self._logs:
         yield RequestLog(log_item)
       if not self._read_called or self._request.has_offset():
+        if self._end_time and time.time() >= self._end_time:
+          offset = None
+          if self._request.has_offset():
+            offset = self._request.offset().Encode()
+          raise TimeoutError('A timeout occurred while iterating results',
+                             offset=offset)
         self._read_called = True
         self._advance()
       else:
@@ -721,7 +750,7 @@ class AppLog(object):
     return self._message
 
 
-_FETCH_KWARGS = frozenset(['prototype_request'])
+_FETCH_KWARGS = frozenset(['prototype_request', 'timeout'])
 
 
 @datastore_rpc._positional(0)
@@ -846,4 +875,9 @@ def fetch(start_time=None,
       raise InvalidArgumentError('prototype_request must be a LogReadRequest')
     request.MergeFrom(prototype_request)
 
-  return _LogQueryResult(request)
+  timeout = kwargs.get('timeout')
+  if timeout is not None:
+    if not isinstance(timeout, (float, int, long)):
+      raise InvalidArgumentError('timeout must be a float or integer')
+
+  return _LogQueryResult(request, timeout=timeout)

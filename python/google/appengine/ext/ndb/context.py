@@ -18,6 +18,8 @@ from . import tasklets
 from . import eventloop
 from . import utils
 
+__all__ = ['toplevel', 'Context', 'ContextOptions', 'AutoBatcher']
+
 logging_debug = utils.logging_debug
 
 _LOCK_TIME = 32  # Time to lock out memcache.add() after datastore updates.
@@ -571,16 +573,18 @@ class Context(object):
         entity = self._cache[key]  # May be None, meaning "doesn't exist".
         if entity is None or entity._key == key:
           # If entity's key didn't change later, it is ok.
-          # See issue #13.  http://goo.gl/jxjOP
+          # See issue 13.  http://goo.gl/jxjOP
           raise tasklets.Return(entity)
 
     use_datastore = self._use_datastore(key, options)
-    use_memcache = self._use_memcache(key, options)
-    using_tconn = isinstance(self._conn, datastore_rpc.TransactionalConnection)
-    in_transaction = (use_datastore and using_tconn)
+    if (use_datastore and
+        isinstance(self._conn, datastore_rpc.TransactionalConnection)):
+      use_memcache = False
+    else:
+      use_memcache = self._use_memcache(key, options)
     ns = key.namespace()
 
-    if use_memcache and not in_transaction:
+    if use_memcache:
       mkey = self._memcache_prefix + key.urlsafe()
       mvalue = yield self.memcache_get(mkey, for_cas=use_datastore,
                                        namespace=ns, use_cache=True)
@@ -600,13 +604,19 @@ class Context(object):
           entity = cls._from_pb(pb)
           # Store the key on the entity since it wasn't written to memcache.
           entity._key = key
+          if use_cache:
+            # Update in-memory cache.
+            self._cache[key] = entity
           raise tasklets.Return(entity)
 
       if mvalue is None and use_datastore:
         yield self.memcache_set(mkey, _LOCKED, time=_LOCK_TIME, namespace=ns,
                                 use_cache=True)
         yield self.memcache_gets(mkey, namespace=ns, use_cache=True)
+
     if not use_datastore:
+      # NOTE: Do not cache this miss.  In some scenarios this would
+      # prevent an app from working properly.
       raise tasklets.Return(None)
 
     if use_cache:
@@ -615,14 +625,19 @@ class Context(object):
       entity = yield self._get_batcher.add(key, options)
 
     if entity is not None:
-      if not in_transaction and use_memcache and mvalue != _LOCKED:
+      if use_memcache and mvalue != _LOCKED:
         # Don't serialize the key since it's already the memcache key.
         pbs = entity._to_pb(set_key=False).SerializePartialToString()
         timeout = self._get_memcache_timeout(key, options)
         # Don't yield -- this can run in the background.
+        # TODO: See issue 105 though.
         self.memcache_cas(mkey, pbs, time=timeout, namespace=ns)
-      if use_cache:
-        self._cache[key] = entity
+
+    if use_cache:
+      # Cache hit or miss.  NOTE: In this case it is okay to cache a
+      # miss; the datastore is the ultimate authority.
+      self._cache[key] = entity
+
     raise tasklets.Return(entity)
 
   @tasklets.tasklet
@@ -635,9 +650,11 @@ class Context(object):
       # Pass a dummy Key to _use_datastore().
       key = model.Key(entity.__class__, None)
     use_datastore = self._use_datastore(key, options)
+    use_memcache = None
 
     if entity._has_complete_key():
-      if self._use_memcache(key, options):
+      use_memcache = self._use_memcache(key, options)
+      if use_memcache:
         # Wait for memcache operations before starting datastore RPCs.
         mkey = self._memcache_prefix + key.urlsafe()
         ns = key.namespace()
@@ -651,10 +668,14 @@ class Context(object):
 
     if use_datastore:
       key = yield self._put_batcher.add(entity, options)
-      if self._use_memcache(key, options):
-        mkey = self._memcache_prefix + key.urlsafe()
-        ns = key.namespace()
-        yield self.memcache_delete(mkey, namespace=ns)
+      if not isinstance(self._conn, datastore_rpc.TransactionalConnection):
+        if use_memcache is None:
+          use_memcache = self._use_memcache(key, options)
+        if use_memcache:
+          mkey = self._memcache_prefix + key.urlsafe()
+          ns = key.namespace()
+          # TODO: Maybe don't yield here, like it get()?
+          yield self.memcache_delete(mkey, namespace=ns)
 
     if key is not None:
       if entity._key != key:
@@ -673,11 +694,13 @@ class Context(object):
     if self._use_memcache(key, options):
       mkey = self._memcache_prefix + key.urlsafe()
       ns = key.namespace()
+      # TODO: If not use_datastore, delete instead of lock?
       yield self.memcache_set(mkey, _LOCKED, time=_LOCK_TIME, namespace=ns,
                               use_cache=True)
 
     if self._use_datastore(key, options):
       yield self._delete_batcher.add(key, options)
+      # TODO: Delete from memcache here?
 
     if self._use_cache(key, options):
       self._cache[key] = None
@@ -688,7 +711,7 @@ class Context(object):
     lo_hi = yield self._conn.async_allocate_ids(options, key, size, max)
     raise tasklets.Return(lo_hi)
 
-  @datastore_rpc._positional(3)
+  @utils.positional(3)
   def map_query(self, query, callback, options=None, merge_future=None):
     mfut = merge_future
     if mfut is None:
@@ -709,32 +732,19 @@ class Context(object):
             pass  # It was a keys-only query and ent is really a Key.
           else:
             key = ent._key
-            if key in self._cache:
-              hit = self._cache[key]
-              if hit is not None and hit.key != key:
-                # The cached entry has been mutated to have a different key.
-                # That's a false hit.  Get rid of it.
-                # See issue #13.  http://goo.gl/jxjOP
-                del self._cache[key]
-            if key in self._cache:
-              # Assume the cache is more up to date.
-              if self._cache[key] is None:
-                # This is a weird case.  Apparently this entity was
-                # deleted concurrently with the query.  Let's just
-                # pretend the delete happened first.
-                logging.info('Conflict: entity %s was deleted', key)
-                continue
-              # Replace the entity the callback will see with the one
-              # from the cache.
-              if ent != self._cache[key]:
-                logging.info('Conflict: entity %s was modified', key)
-              ent = self._cache[key]
-            else:
-              # Cache the entity only if this is an ancestor query;
-              # non-ancestor queries may return stale results, since in
-              # the HRD these queries are "eventually consistent".
-              # TODO: Shouldn't we check this before considering cache hits?
-              if is_ancestor_query and self._use_cache(key, options):
+            if self._use_cache(key, options):
+              # Update the cache. If this key was already in the
+              # cache, update the cached entity in-place and return
+              # the cached entity, to maintain the invariant that
+              # there is only one copy of each cached entity.
+              cached_ent = self._cache.get(key)
+              if cached_ent is not None and cached_ent.key == key:
+                # TODO: Do the in-place update more subtly, so that
+                # mutable property values (e.g. repeated or structured
+                # properties) keep their identity.
+                cached_ent._values = ent._values
+                ent = cached_ent
+              else:
                 self._cache[key] = ent
           if callback is None:
             val = ent
@@ -745,6 +755,8 @@ class Context(object):
             else:
               val = callback(ent)
           mfut.putq(val)
+      except GeneratorExit:
+        raise
       except Exception, err:
         _, _, tb = sys.exc_info()
         mfut.set_exception(err, tb)
@@ -755,7 +767,7 @@ class Context(object):
     helper()
     return mfut
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def iter_query(self, query, callback=None, options=None):
     return self.map_query(query, callback=callback, options=options,
                           merge_future=tasklets.SerialQueueFuture())
@@ -798,6 +810,8 @@ class Context(object):
               result = yield result
           finally:
             yield tctx.flush()
+        except GeneratorExit:
+          raise
         except Exception:
           t, e, tb = sys.exc_info()
           yield tconn.async_rollback(options)  # TODO: Don't block???
@@ -829,62 +843,17 @@ class Context(object):
     NOTE: This does not affect memcache.
     """
     self._cache.clear()
-    self._get_queue.clear()
 
   @tasklets.tasklet
   def _clear_memcache(self, keys):
-    # Note: This doesn't technically *clear* the keys; it locks them.
     keys = set(key for key in keys if self._use_memcache(key))
     futures = []
     for key in keys:
       mkey = self._memcache_prefix + key.urlsafe()
       ns = key.namespace()
-      fut = self.memcache_set(mkey, _LOCKED, time=_LOCK_TIME, namespace=ns,
-                              use_cache=True)
+      fut = self.memcache_delete(mkey, namespace=ns)
       futures.append(fut)
     yield futures
-
-  @tasklets.tasklet
-  def get_or_insert(*args, **kwds):
-    # NOTE: The signature is really weird here because we want to support
-    # models with properties named e.g. 'self' or 'name'.
-    self, model_class, name = args  # These must always be positional.
-    our_kwds = {}
-    for kwd in 'app', 'namespace', 'parent', 'context_options':
-      # For each of these keyword arguments, if there is a property
-      # with the same name, the caller *must* use _foo=..., otherwise
-      # they may use either _foo=... or foo=..., but _foo=... wins.
-      alt_kwd = '_' + kwd
-      if alt_kwd in kwds:
-        our_kwds[kwd] = kwds.pop(alt_kwd)
-      elif (kwd in kwds and
-          not isinstance(getattr(model_class, kwd, None), model.Property)):
-        our_kwds[kwd] = kwds.pop(kwd)
-    app = our_kwds.get('app')
-    namespace = our_kwds.get('namespace')
-    parent = our_kwds.get('parent')
-    context_options = our_kwds.get('context_options')
-    # (End of super-special argument parsing.)
-    # TODO: Test the heck out of this, in all sorts of evil scenarios.
-    if not isinstance(name, basestring):
-      raise TypeError('name must be a string; received %r' % name)
-    elif not name:
-      raise ValueError('name cannot be an empty string.')
-    key = model.Key(model_class, name,
-                    app=app, namespace=namespace, parent=parent)
-    # TODO: Can (and should) the cache be trusted here?
-    ent = yield self.get(key)
-    if ent is None:
-      @tasklets.tasklet
-      def txn():
-        ent = yield key.get_async(options=context_options)
-        if ent is None:
-          ent = model_class(**kwds)  # TODO: Check for forbidden keys
-          ent._key = key
-          yield ent.put_async(options=context_options)
-        raise tasklets.Return(ent)
-      ent = yield self.transaction(txn)
-    raise tasklets.Return(ent)
 
   @tasklets.tasklet
   def _memcache_get_tasklet(self, todo, options):
@@ -968,7 +937,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(for_cas, bool):
-      raise ValueError('for_cas must be a bool; received %r' % for_cas)
+      raise TypeError('for_cas must be a bool; received %r' % for_cas)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     options = (for_cas, namespace)
@@ -988,7 +957,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(time, (int, long)):
-      raise ValueError('time must be a number; received %r' % time)
+      raise TypeError('time must be a number; received %r' % time)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     options = ('set', time, namespace)
@@ -1002,7 +971,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(time, (int, long)):
-      raise ValueError('time must be a number; received %r' % time)
+      raise TypeError('time must be a number; received %r' % time)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     return self._memcache_set_batcher.add((key, value),
@@ -1012,7 +981,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(time, (int, long)):
-      raise ValueError('time must be a number; received %r' % time)
+      raise TypeError('time must be a number; received %r' % time)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     return self._memcache_set_batcher.add((key, value),
@@ -1022,7 +991,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(time, (int, long)):
-      raise ValueError('time must be a number; received %r' % time)
+      raise TypeError('time must be a number; received %r' % time)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     return self._memcache_set_batcher.add((key, value),
@@ -1032,7 +1001,7 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(seconds, (int, long)):
-      raise ValueError('seconds must be a number; received %r' % seconds)
+      raise TypeError('seconds must be a number; received %r' % seconds)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     return self._memcache_del_batcher.add(key, (seconds, namespace))
@@ -1041,9 +1010,9 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(delta, (int, long)):
-      raise ValueError('delta must be a number; received %r' % delta)
+      raise TypeError('delta must be a number; received %r' % delta)
     if initial_value is not None and not isinstance(initial_value, (int, long)):
-      raise ValueError('initial_value must be a number or None; received %r' %
+      raise TypeError('initial_value must be a number or None; received %r' %
                        initial_value)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
@@ -1054,14 +1023,30 @@ class Context(object):
     if not isinstance(key, str):
       raise TypeError('key must be a string; received %r' % key)
     if not isinstance(delta, (int, long)):
-      raise ValueError('delta must be a number; received %r' % delta)
+      raise TypeError('delta must be a number; received %r' % delta)
     if initial_value is not None and not isinstance(initial_value, (int, long)):
-      raise ValueError('initial_value must be a number or None; received %r' %
+      raise TypeError('initial_value must be a number or None; received %r' %
                        initial_value)
     if namespace is None:
       namespace = namespace_manager.get_namespace()
     return self._memcache_off_batcher.add((key, -delta),
                                           (initial_value, namespace))
+
+  @tasklets.tasklet
+  def urlfetch(self, url, payload=None, method='GET', headers={},
+               allow_truncated=False, follow_redirects=True,
+               validate_certificate=None, deadline=None, callback=None):
+    from google.appengine.api import urlfetch
+    rpc = urlfetch.create_rpc(deadline=deadline, callback=callback)
+    urlfetch.make_fetch_call(rpc, url,
+                             payload=payload,
+                             method=method,
+                             headers=headers,
+                             allow_truncated=allow_truncated,
+                             follow_redirects=follow_redirects,
+                             validate_certificate=validate_certificate)
+    result = yield rpc
+    raise tasklets.Return(result)
 
 
 def toplevel(func):

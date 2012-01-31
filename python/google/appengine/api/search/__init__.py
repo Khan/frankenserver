@@ -24,8 +24,8 @@ from search import AddDocumentError
 from search import AddDocumentResult
 from search import AtomField
 from search import DateField
-from search import DeleteDocumentError
-from search import DeleteDocumentResult
+from search import RemoveDocumentError
+from search import RemoveDocumentResult
 from search import Document
 from search import DocumentOperationResult
 from search import Error

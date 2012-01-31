@@ -128,6 +128,7 @@ class DoDeleteHandler(webapp.RequestHandler):
         'mapreduce_detail': self.MAPREDUCE_DETAIL,
         'error': error,
         'xsrf_error': xsrf_error,
+        'datastore_admin_home': utils.config.BASE_PATH,
     }
     utils.RenderToResponse(self, 'do_delete.html', template_params)
 
@@ -148,11 +149,12 @@ class DoDeleteHandler(webapp.RequestHandler):
             'Deleting %s%s' % (kinds_str, namespace_str))
         name_template = 'Delete all %(kind)s objects%(namespace)s'
         jobs = utils.RunMapForKinds(
-            op,
+            op.key(),
             kinds,
             name_template,
             self.DELETE_HANDLER,
             self.INPUT_READER,
+            None,
             {})
         error = ''
 

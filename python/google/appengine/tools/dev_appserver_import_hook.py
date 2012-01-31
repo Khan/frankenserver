@@ -53,6 +53,7 @@ try:
 except ImportError:
   dist27 = None
 
+from google.appengine.api import appinfo
 
 
 SITE_PACKAGES = os.path.normcase(os.path.join(os.path.dirname(os.__file__),
@@ -122,13 +123,6 @@ def FakeRename(src, dst):
 def FakeUTime(path, times):
   """Fake version of os.utime."""
   raise OSError(errno.EPERM, "Operation not permitted", path)
-
-
-def FakeFileObject(fp, mode='rb', bufsize=-1, close=False):
-  """Assuming that the argument is a StringIO or file instance."""
-  if not hasattr(fp, 'fileno'):
-    fp.fileno = lambda: None
-  return fp
 
 
 def FakeGetHostByAddr(addr):
@@ -469,7 +463,8 @@ class FakeFile(file):
     FakeFile._availability_cache = {}
 
   @staticmethod
-  def IsFileAccessible(filename, normcase=os.path.normcase):
+  def IsFileAccessible(filename, normcase=os.path.normcase,
+                       py27_optional=False):
     """Determines if a file's path is accessible.
 
     SetAllowedPaths(), SetSkippedFiles() and SetStaticFileConfigMatcher() must
@@ -480,6 +475,8 @@ class FakeFile(file):
         directory, in which case access for files inside that directory will
         be checked.
       normcase: Used for dependency injection.
+      py27_optional: Whether the filename being checked matches the name of an
+        optional python27 runtime library.
 
     Returns:
       True if the file is accessible, False otherwise.
@@ -498,12 +495,14 @@ class FakeFile(file):
     result = FakeFile._availability_cache.get(logical_filename)
     if result is None:
       result = FakeFile._IsFileAccessibleNoCache(logical_filename,
-                                                 normcase=normcase)
+                                                 normcase=normcase,
+                                                 py27_optional=py27_optional)
       FakeFile._availability_cache[logical_filename] = result
     return result
 
   @staticmethod
-  def _IsFileAccessibleNoCache(logical_filename, normcase=os.path.normcase):
+  def _IsFileAccessibleNoCache(logical_filename, normcase=os.path.normcase,
+                               py27_optional=False):
     """Determines if a file's path is accessible.
 
     This is an internal part of the IsFileAccessible implementation.
@@ -511,6 +510,8 @@ class FakeFile(file):
     Args:
       logical_filename: Absolute path of the file to check.
       normcase: Used for dependency injection.
+      py27_optional: Whether the filename being checked matches the name of an
+        optional python27 runtime library.
 
     Returns:
       True if the file is accessible, False otherwise.
@@ -520,8 +521,10 @@ class FakeFile(file):
 
 
     logical_dirfakefile = logical_filename
+    is_dir = False
     if os.path.isdir(logical_filename):
       logical_dirfakefile = os.path.join(logical_filename, 'foo')
+      is_dir = True
 
 
     if IsPathInSubdirectories(logical_dirfakefile, [FakeFile._root_path],
@@ -531,6 +534,12 @@ class FakeFile(file):
 
       if not FakeFile._allow_skipped_files:
         path = relative_filename
+        if is_dir:
+
+
+
+
+          path = os.path.dirname(path)
         while path != os.path.dirname(path):
           if FakeFile._skip_files.match(path):
             logging.warning('Blocking access to skipped file "%s"',
@@ -542,6 +551,11 @@ class FakeFile(file):
         logging.warning('Blocking access to static file "%s"',
                         logical_filename)
         return False
+
+    if py27_optional:
+
+
+      return True
 
     if logical_filename in FakeFile.ALLOWED_FILES:
       return True
@@ -777,6 +791,7 @@ class HardenedModulesHook(object):
       '_functools',
       '_hashlib',
       '_heapq',
+      '_io',
       '_locale',
       '_lsprof',
       '_md5',
@@ -799,7 +814,6 @@ class HardenedModulesHook(object):
   _PY27_ALLOWED_MODULES = [
     '_bytesio',
     '_fileio',
-    '_io',
     '_json',
     '_symtable',
     '_yaml',
@@ -1139,7 +1153,6 @@ class HardenedModulesHook(object):
       },
 
       'socket': {
-          '_fileobject': FakeFileObject,
           'ssl': None,
 
 
@@ -1236,7 +1249,15 @@ class HardenedModulesHook(object):
           if 'django' not in self._module_dict:
             version = libentry.version
             if version == 'latest':
-              version = '1.2'
+              version = appinfo.SUPPORTED_LIBRARIES['django'][-1]
+            if google.__name__.endswith('3'):
+
+
+              try:
+                __import__('django.v' + version.replace('.', '_'))
+                continue
+              except ImportError:
+                sys.modules.pop('django', None)
             sitedir = os.path.join(SDK_ROOT,
                                    'lib',
                                    'django_%s' % version.replace('.', '_'))
@@ -1341,16 +1362,15 @@ class HardenedModulesHook(object):
       name = 'py_%s' % name
 
 
-
-    module = None
+    providing_dist = dist
     if self._config and self._config.runtime == 'python27':
 
 
       if dist27 is not None and name in dist27.__all__:
-        module = __import__(dist27.__name__, {}, {}, [name])
-    if module is None:
-      module = __import__(dist.__name__, {}, {}, [name])
-    return getattr(module, name)
+        providing_dist = dist27
+    fullname = '%s.%s' % (providing_dist.__name__, name)
+    __import__(fullname, {}, {})
+    return sys.modules[fullname]
 
   @Trace
   def FixModule(self, module):
@@ -1460,12 +1480,17 @@ class HardenedModulesHook(object):
         suffix, mode, file_type = description
 
         try:
-          if (file_type not in (self._imp.C_BUILTIN, self._imp.C_EXTENSION) and
-              not (FakeFile.IsFileAccessible(pathname) or
-                   (py27_optional and py27_enabled))):
-            error_message = 'Access to module file denied: %s' % pathname
-            logging.debug(error_message)
-            raise ImportError(error_message)
+          if (file_type not in (self._imp.C_BUILTIN, self._imp.C_EXTENSION)):
+            pkg_pathname = pathname
+            if file_type == self._imp.PKG_DIRECTORY:
+
+
+              pkg_pathname = os.path.join(pkg_pathname, '__init__.py')
+            if not FakeFile.IsFileAccessible(
+                pkg_pathname, py27_optional=py27_optional):
+              error_message = 'Access to module file denied: %s' % pathname
+              logging.debug(error_message)
+              raise ImportError(error_message)
 
           if (file_type not in self._ENABLED_FILE_TYPES and
               submodule not in self._white_list_c_modules):
@@ -1475,8 +1500,7 @@ class HardenedModulesHook(object):
             raise ImportError(error_message)
 
           if (py27_optional and not py27_enabled and
-              isinstance(source_file, str) and
-              not source_file.startswith(self._app_code_path)):
+              not pathname.startswith(self._app_code_path)):
             error_message = ('Third party package %s not enabled.' % topmodule)
             logging.debug(error_message)
             raise ImportError(error_message)
@@ -1498,6 +1522,9 @@ class HardenedModulesHook(object):
         msg = ('Third party package %s must be included in the '
                '"libraries:" clause of your app.yaml file '
                'in order to be imported.' % topmodule)
+
+
+
       logging.debug(msg)
       raise Py27OptionalModuleError(msg)
 

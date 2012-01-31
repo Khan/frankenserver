@@ -50,6 +50,7 @@ import subprocess
 import sys
 import threading
 import time
+import weakref
 
 from google.appengine.api import backendinfo
 from google.appengine.api.backends import backends as backends_api
@@ -1011,8 +1012,15 @@ def SetLogPrefix(prefix):
   """
   formatter = logging.Formatter(
       str(prefix) + ' [%(filename)s:%(lineno)d] %(levelname)s %(message)s')
-  for handler in logging._handlerList:
-    handler.setFormatter(formatter)
+  logging._acquireLock()
+  try:
+    for handler in logging._handlerList:
+      if isinstance(handler, weakref.ref):
+        handler = handler()
+      if handler:
+        handler.setFormatter(formatter)
+  finally:
+    logging._releaseLock()
 
 
 def Init(argv, options, root_path, appinfo):

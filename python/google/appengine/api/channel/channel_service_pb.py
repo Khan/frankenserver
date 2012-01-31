@@ -38,12 +38,14 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
   INTERNAL_ERROR =    1
   INVALID_CHANNEL_KEY =    2
   BAD_MESSAGE  =    3
+  INVALID_CHANNEL_TOKEN_DURATION =    4
 
   _ErrorCode_NAMES = {
     0: "OK",
     1: "INTERNAL_ERROR",
     2: "INVALID_CHANNEL_KEY",
     3: "BAD_MESSAGE",
+    4: "INVALID_CHANNEL_TOKEN_DURATION",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -116,6 +118,8 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
 class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
   has_application_key_ = 0
   application_key_ = ""
+  has_duration_minutes_ = 0
+  duration_minutes_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -133,15 +137,31 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_application_key(self): return self.has_application_key_
 
+  def duration_minutes(self): return self.duration_minutes_
+
+  def set_duration_minutes(self, x):
+    self.has_duration_minutes_ = 1
+    self.duration_minutes_ = x
+
+  def clear_duration_minutes(self):
+    if self.has_duration_minutes_:
+      self.has_duration_minutes_ = 0
+      self.duration_minutes_ = 0
+
+  def has_duration_minutes(self): return self.has_duration_minutes_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_application_key()): self.set_application_key(x.application_key())
+    if (x.has_duration_minutes()): self.set_duration_minutes(x.duration_minutes())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_application_key_ != x.has_application_key_: return 0
     if self.has_application_key_ and self.application_key_ != x.application_key_: return 0
+    if self.has_duration_minutes_ != x.has_duration_minutes_: return 0
+    if self.has_duration_minutes_ and self.duration_minutes_ != x.duration_minutes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -155,6 +175,7 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.application_key_))
+    if (self.has_duration_minutes_): n += 1 + self.lengthVarInt64(self.duration_minutes_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -162,25 +183,36 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_application_key_):
       n += 1
       n += self.lengthString(len(self.application_key_))
+    if (self.has_duration_minutes_): n += 1 + self.lengthVarInt64(self.duration_minutes_)
     return n
 
   def Clear(self):
     self.clear_application_key()
+    self.clear_duration_minutes()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.application_key_)
+    if (self.has_duration_minutes_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.duration_minutes_)
 
   def OutputPartial(self, out):
     if (self.has_application_key_):
       out.putVarInt32(10)
       out.putPrefixedString(self.application_key_)
+    if (self.has_duration_minutes_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.duration_minutes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_application_key(d.getPrefixedString())
+        continue
+      if tt == 16:
+        self.set_duration_minutes(d.getVarInt32())
         continue
 
 
@@ -191,6 +223,7 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_application_key_: res+=prefix+("application_key: %s\n" % self.DebugFormatString(self.application_key_))
+    if self.has_duration_minutes_: res+=prefix+("duration_minutes: %s\n" % self.DebugFormatInt32(self.duration_minutes_))
     return res
 
 
@@ -198,50 +231,71 @@ class CreateChannelRequest(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kapplication_key = 1
+  kduration_minutes = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "application_key",
-  }, 1)
+    2: "duration_minutes",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateChannelRequest'
 class CreateChannelResponse(ProtocolBuffer.ProtocolMessage):
-  has_client_id_ = 0
-  client_id_ = ""
+  has_token_ = 0
+  token_ = ""
+  has_duration_minutes_ = 0
+  duration_minutes_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
 
-  def client_id(self): return self.client_id_
+  def token(self): return self.token_
 
-  def set_client_id(self, x):
-    self.has_client_id_ = 1
-    self.client_id_ = x
+  def set_token(self, x):
+    self.has_token_ = 1
+    self.token_ = x
 
-  def clear_client_id(self):
-    if self.has_client_id_:
-      self.has_client_id_ = 0
-      self.client_id_ = ""
+  def clear_token(self):
+    if self.has_token_:
+      self.has_token_ = 0
+      self.token_ = ""
 
-  def has_client_id(self): return self.has_client_id_
+  def has_token(self): return self.has_token_
+
+  def duration_minutes(self): return self.duration_minutes_
+
+  def set_duration_minutes(self, x):
+    self.has_duration_minutes_ = 1
+    self.duration_minutes_ = x
+
+  def clear_duration_minutes(self):
+    if self.has_duration_minutes_:
+      self.has_duration_minutes_ = 0
+      self.duration_minutes_ = 0
+
+  def has_duration_minutes(self): return self.has_duration_minutes_
 
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_client_id()): self.set_client_id(x.client_id())
+    if (x.has_token()): self.set_token(x.token())
+    if (x.has_duration_minutes()): self.set_duration_minutes(x.duration_minutes())
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_client_id_ != x.has_client_id_: return 0
-    if self.has_client_id_ and self.client_id_ != x.client_id_: return 0
+    if self.has_token_ != x.has_token_: return 0
+    if self.has_token_ and self.token_ != x.token_: return 0
+    if self.has_duration_minutes_ != x.has_duration_minutes_: return 0
+    if self.has_duration_minutes_ and self.duration_minutes_ != x.duration_minutes_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -250,32 +304,44 @@ class CreateChannelResponse(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
+    if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
+    if (self.has_duration_minutes_): n += 1 + self.lengthVarInt64(self.duration_minutes_)
     return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
+    if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
+    if (self.has_duration_minutes_): n += 1 + self.lengthVarInt64(self.duration_minutes_)
     return n
 
   def Clear(self):
-    self.clear_client_id()
+    self.clear_token()
+    self.clear_duration_minutes()
 
   def OutputUnchecked(self, out):
-    if (self.has_client_id_):
+    if (self.has_token_):
       out.putVarInt32(18)
-      out.putPrefixedString(self.client_id_)
+      out.putPrefixedString(self.token_)
+    if (self.has_duration_minutes_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.duration_minutes_)
 
   def OutputPartial(self, out):
-    if (self.has_client_id_):
+    if (self.has_token_):
       out.putVarInt32(18)
-      out.putPrefixedString(self.client_id_)
+      out.putPrefixedString(self.token_)
+    if (self.has_duration_minutes_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.duration_minutes_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 18:
-        self.set_client_id(d.getPrefixedString())
+        self.set_token(d.getPrefixedString())
+        continue
+      if tt == 24:
+        self.set_duration_minutes(d.getVarInt32())
         continue
 
 
@@ -285,24 +351,28 @@ class CreateChannelResponse(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_client_id_: res+=prefix+("client_id: %s\n" % self.DebugFormatString(self.client_id_))
+    if self.has_token_: res+=prefix+("token: %s\n" % self.DebugFormatString(self.token_))
+    if self.has_duration_minutes_: res+=prefix+("duration_minutes: %s\n" % self.DebugFormatInt32(self.duration_minutes_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kclient_id = 2
+  ktoken = 2
+  kduration_minutes = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    2: "client_id",
-  }, 2)
+    2: "token",
+    3: "duration_minutes",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

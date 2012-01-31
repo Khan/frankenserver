@@ -510,6 +510,9 @@ def mail_message_to_mime_message(protocol_message):
   result['Reply-To'] = protocol_message.replyto()
   result['Subject'] = protocol_message.subject()
 
+  for header in protocol_message.header_list():
+    result[header.name()] = header.value()
+
   return result
 
 

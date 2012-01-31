@@ -1768,6 +1768,9 @@ def FromPropertyPb(pb):
     # return type is determined by the type of the argument
     string, int, bool, double, users.User, or one of the atom or gd types
   """
+
+
+
   pbval = pb.value()
   meaning = pb.meaning()
 
@@ -1775,7 +1778,7 @@ def FromPropertyPb(pb):
     value = pbval.stringvalue()
     if not pb.has_meaning() or meaning not in (entity_pb.Property.BLOB,
                                                entity_pb.Property.BYTESTRING):
-      value = unicode(value.decode('utf-8'))
+      value = unicode(value, 'utf-8')
   elif pbval.has_int64value():
 
 
@@ -1791,15 +1794,15 @@ def FromPropertyPb(pb):
   elif pbval.has_pointvalue():
     value = GeoPt(pbval.pointvalue().x(), pbval.pointvalue().y())
   elif pbval.has_uservalue():
-    email = unicode(pbval.uservalue().email().decode('utf-8'))
-    auth_domain = unicode(pbval.uservalue().auth_domain().decode('utf-8'))
+    email = unicode(pbval.uservalue().email(), 'utf-8')
+    auth_domain = unicode(pbval.uservalue().auth_domain(), 'utf-8')
     obfuscated_gaiaid = pbval.uservalue().obfuscated_gaiaid().decode('utf-8')
-    obfuscated_gaiaid = unicode(obfuscated_gaiaid)
+    obfuscated_gaiaid = unicode(pbval.uservalue().obfuscated_gaiaid(), 'utf-8')
 
     federated_identity = None
     if pbval.uservalue().has_federated_identity():
-      federated_identity = unicode(
-          pbval.uservalue().federated_identity().decode('utf-8'))
+      federated_identity = unicode(pbval.uservalue().federated_identity(),
+                                   'utf-8')
 
 
 

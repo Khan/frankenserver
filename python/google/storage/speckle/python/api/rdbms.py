@@ -27,7 +27,6 @@ http://www.python.org/dev/peps/pep-0249/
 import collections
 import datetime
 import exceptions
-import os
 import time
 import types
 
@@ -47,7 +46,10 @@ __path__ = api.__path__
 
 
 
-OAUTH_CREDENTIALS_PATH = os.path.expanduser('~/.googlesql_oauth2.dat')
+
+
+
+OAUTH_CREDENTIALS_PATH = '~/.googlesql_oauth2.dat'
 
 
 

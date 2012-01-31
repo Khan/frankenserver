@@ -22,7 +22,7 @@ __contributors__ = ["Thomas Broyer (t.broyer@ltgt.net)",
     "Sam Ruby",
     "Louis Nyffenegger"]
 __license__ = "MIT"
-__version__ = "0.7.0"
+__version__ = "0.7.2"
 
 import re
 import sys
@@ -58,11 +58,6 @@ try:
     from httplib2 import socks
 except ImportError:
     socks = None
-
-try:
-    from google3.pyglib import resources
-except ImportError:
-    resources = None
 
 # Build the appropriate socket wrapper for ssl
 try:
@@ -182,16 +177,8 @@ class CertificateHostnameMismatch(SSLHandshakeError):
 DEFAULT_MAX_REDIRECTS = 5
 
 # Default CA certificates file bundled with httplib2.
-try:
-  CA_CERTS = resources.GetResourceFilename(
-      "google3/third_party/py/httplib2/cacerts.txt")
-except (IOError, AttributeError):
-  # We're either running in an environment where we don't have access to
-  # google3.pyglib.resources, or an environment where it won't work correctly
-  # (e.g., //apphosting/tools:dev_appserver_internal_main). In either of these
-  # cases, we fall back on the os.path.join approach.
-  CA_CERTS = os.path.join(
-      os.path.dirname(os.path.abspath(__file__ )), "cacerts.txt")
+CA_CERTS = os.path.join(
+        os.path.dirname(os.path.abspath(__file__ )), "cacerts.txt")
 
 # Which headers are hop-by-hop headers by default
 HOP_BY_HOP = ['connection', 'keep-alive', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailers', 'transfer-encoding', 'upgrade']
@@ -1006,7 +993,10 @@ try:
         raise httplib.HTTPException()
 
     def getresponse(self):
-      return self.response
+      if self.response:
+        return self.response
+      else:
+        raise httplib.HTTPException()
 
     def set_debuglevel(self, level):
       pass
@@ -1173,7 +1163,6 @@ and more.
                     conn.close()
                     conn.connect()
                     continue
-                pass
             try:
                 response = conn.getresponse()
             except (socket.error, httplib.HTTPException):

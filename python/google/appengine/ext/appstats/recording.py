@@ -623,8 +623,6 @@ class Recorder(object):
         if filename.startswith(entry):
           filename = '<path[%s]>' % i + filename[len(entry):]
           break
-      else:
-        logging.info('No prefix for %s', filename)
     funcname = frame.f_code.co_name
     lineno = frame.f_lineno
 

@@ -202,6 +202,12 @@ class Image(object):
                           self._image_data.startswith("VP8 ", 12, 16))):
       self._update_webp_dimensions()
       self._format = WEBP
+
+    elif (size >= 16 and (self._image_data.startswith("RIFF", 0, 4) and
+                          self._image_data.startswith("WEBP", 8, 12) and
+                          self._image_data.startswith("VP8X", 12, 16))):
+      self._update_webp_vp8x_dimensions()
+      self._format = WEBP
     else:
       raise NotImageError("Unrecognized image format")
 
@@ -425,9 +431,20 @@ class Image(object):
     if self._height is None or self._width is None:
       raise BadImageError("Corrupt WEBP format")
 
+  def _update_webp_vp8x_dimensions(self):
+    """Updates the width and height fields of a webp image with vp8x chunk."""
+    size = len(self._image_data)
+
+    if size < 30:
+      raise BadImageError("Corrupt WEBP format")
+
+    self._width, self._height = struct.unpack("<II", self._image_data[24:32])
+
+    if self._height is None or self._width is None:
+      raise BadImageError("Corrupt WEBP format")
 
   def resize(self, width=0, height=0, crop_to_fit=False,
-             crop_offset_x=0.5, crop_offset_y=0.5):
+             crop_offset_x=0.5, crop_offset_y=0.5, allow_stretch=False):
     """Resize the image maintaining the aspect ratio.
 
     If both width and height are specified, the more restricting of the two
@@ -447,6 +464,9 @@ class Image(object):
         default is 0.5, the center of image.
       crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
         default is 0.5, the center of image.
+      allow_stretch: If True and both width and height are specified, the image
+        is stretched to fit the resize dimensions without maintaining the
+        aspect ratio.
 
     Raises:
       TypeError when width or height is not either 'int' or 'long' types.
@@ -471,7 +491,14 @@ class Image(object):
 
     if crop_to_fit and not (width and height):
       raise BadRequestError("Both width and height must be > 0 when "
-                            "crop_to_fit is specified")
+                            "crop_to_fit is specified.")
+
+    if not isinstance(allow_stretch, bool):
+      raise TypeError("allow_stretch must be boolean.")
+
+    if allow_stretch and not (width and height):
+      raise BadRequestError("Both width and height must be > 0 when "
+                            "allow_stretch is specified.")
 
     self._validate_crop_arg(crop_offset_x, "crop_offset_x")
     self._validate_crop_arg(crop_offset_y, "crop_offset_y")
@@ -484,6 +511,7 @@ class Image(object):
     transform.set_crop_to_fit(crop_to_fit)
     transform.set_crop_offset_x(crop_offset_x)
     transform.set_crop_offset_y(crop_offset_y)
+    transform.set_allow_stretch(allow_stretch)
 
     self._transforms.append(transform)
 
@@ -739,8 +767,14 @@ class Image(object):
     self._image_data = response.image().content()
     self._blob_key = None
     self._transforms = []
-    self._width = None
-    self._height = None
+    if response.image().has_width():
+      self._width = response.image().width()
+    else:
+      self._width = None
+    if response.image().has_height():
+      self._height = response.image().height()
+    else:
+      self._height = None
     self._format = None
     if response.source_metadata():
       self._original_metadata = json.loads(response.source_metadata())
@@ -832,7 +866,8 @@ class Image(object):
 
 def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
            correct_orientation=UNCHANGED_ORIENTATION,
-           crop_to_fit=False, crop_offset_x=0.5, crop_offset_y=0.5):
+           crop_to_fit=False, crop_offset_x=0.5, crop_offset_y=0.5,
+           allow_stretch=False):
   """Resize a given image file maintaining the aspect ratio.
 
   If both width and height are specified, the more restricting of the two
@@ -858,6 +893,9 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
       default is 0.5, the center of image.
     crop_offset_y: float value between 0.0 and 1.0, 0 is top and 1 is bottom,
       default is 0.5, the center of image.
+    allow_stretch: If True and both width and height are specified, the image
+      is stretched to fit the resize dimensions without maintaining the
+      aspect ratio.
 
   Raises:
     TypeError when width or height not either 'int' or 'long' types.
@@ -868,7 +906,8 @@ def resize(image_data, width=0, height=0, output_encoding=PNG, quality=None,
   """
   image = Image(image_data)
   image.resize(width, height, crop_to_fit=crop_to_fit,
-               crop_offset_x=crop_offset_x, crop_offset_y=crop_offset_y)
+               crop_offset_x=crop_offset_x, crop_offset_y=crop_offset_y,
+               allow_stretch=allow_stretch)
   image.set_correct_orientation(correct_orientation)
   return image.execute_transforms(output_encoding=output_encoding,
                                   quality=quality)
@@ -1219,7 +1258,7 @@ def get_serving_url(blob_key,
   if crop and not size:
     raise BadRequestError("Size should be set for crop operation")
 
-  if size and (size > IMG_SERVING_SIZES_LIMIT or size < 0):
+  if size is not None and (size > IMG_SERVING_SIZES_LIMIT or size < 0):
     raise UnsupportedSizeError("Unsupported size")
 
   request = images_service_pb.ImagesGetUrlBaseRequest()
@@ -1249,7 +1288,7 @@ def get_serving_url(blob_key,
       raise Error()
   url = response.url()
 
-  if size:
+  if size is not None:
     url += "=s%s" % size
   if crop:
     url += "-c"

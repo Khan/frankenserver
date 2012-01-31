@@ -57,6 +57,7 @@ import subprocess
 import stat
 import sys
 import tempfile
+import threading
 import time
 
 from google.appengine.ext.remote_api import handler
@@ -278,11 +279,13 @@ def find_go_files_mtime(app_files):
   return files, mtime
 
 
-def wait_until_go_app_ready(pid):
+def wait_until_go_app_ready(proc, tee):
 
   deadline = (datetime.datetime.now() +
               datetime.timedelta(seconds=MAX_START_TIME))
   while datetime.datetime.now() < deadline:
+    if proc.poll():
+      raise dev_appserver.ExecuteError('Go app failed during init', tee.buf)
     try:
       s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
       s.connect(SOCKET_HTTP)
@@ -291,8 +294,8 @@ def wait_until_go_app_ready(pid):
       return
     except:
       time.sleep(0.1)
-  os.kill(pid, signal.SIGTERM)
-  raise Exception('unable to start ' + GO_APP_NAME)
+  os.kill(proc.pid, signal.SIGTERM)
+  raise dev_appserver.ExecuteError('unable to start ' + GO_APP_NAME, tee.buf)
 
 
 def up(path, n):
@@ -300,6 +303,32 @@ def up(path, n):
   for _ in range(n):
     path = os.path.dirname(path)
   return path
+
+
+class Tee(threading.Thread):
+  """A simple line-oriented "tee".
+
+  This class connects two file-like objects, piping the output of one to the
+  input of the other, and buffering the last N lines.
+  """
+
+  MAX_LINES = 100
+
+  def __init__(self, in_f, out_f):
+    threading.Thread.__init__(self, name='Tee')
+    self.__in = in_f
+    self.__out = out_f
+    self.buf = []
+
+  def run(self):
+    while True:
+      line = self.__in.readline()
+      if not line:
+        break
+      self.__out.write(line)
+      self.buf.append(line)
+      if len(self.buf) > Tee.MAX_LINES:
+        self.buf.pop(0)
 
 
 class GoApp:
@@ -371,8 +400,11 @@ class GoApp:
       self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'unix:' + SOCKET_HTTP,
           '-addr_api', 'unix:' + SOCKET_API],
+          stderr=subprocess.PIPE,
           cwd=self.root_path, env=limited_env)
-      wait_until_go_app_ready(self.proc.pid)
+      tee = Tee(self.proc.stderr, sys.stderr)
+      tee.start()
+      wait_until_go_app_ready(self.proc, tee)
 
   def build(self, go_files):
     logging.info('building ' + GO_APP_NAME)

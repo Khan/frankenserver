@@ -29,7 +29,7 @@ if not hasattr(sys, 'version_info'):
                    'use version 2.5 or greater.\n')
   sys.exit(1)
 version_tuple = tuple(sys.version_info[:2])
-if version_tuple < (2, 4):
+if version_tuple < (2, 5):
   sys.stderr.write('Error: Python %d.%d is not supported. Please use '
                    'version 2.5 or greater.\n' % version_tuple)
   sys.exit(1)
@@ -47,7 +47,9 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'django_0_96'),
   os.path.join(DIR_PATH, 'lib', 'fancy_urllib'),
   os.path.join(DIR_PATH, 'lib', 'ipaddr'),
+  os.path.join(DIR_PATH, 'lib', 'jinja2'),
   os.path.join(DIR_PATH, 'lib', 'protorpc'),
+  os.path.join(DIR_PATH, 'lib', 'markupsafe'),
   os.path.join(DIR_PATH, 'lib', 'webob'),
   os.path.join(DIR_PATH, 'lib', 'webapp2'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),

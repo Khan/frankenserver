@@ -31,6 +31,119 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
+class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
+  has_lat_ = 0
+  lat_ = 0.0
+  has_lng_ = 0
+  lng_ = 0.0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def lat(self): return self.lat_
+
+  def set_lat(self, x):
+    self.has_lat_ = 1
+    self.lat_ = x
+
+  def clear_lat(self):
+    if self.has_lat_:
+      self.has_lat_ = 0
+      self.lat_ = 0.0
+
+  def has_lat(self): return self.has_lat_
+
+  def lng(self): return self.lng_
+
+  def set_lng(self, x):
+    self.has_lng_ = 1
+    self.lng_ = x
+
+  def clear_lng(self):
+    if self.has_lng_:
+      self.has_lng_ = 0
+      self.lng_ = 0.0
+
+  def has_lng(self): return self.has_lng_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_lat()): self.set_lat(x.lat())
+    if (x.has_lng()): self.set_lng(x.lng())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_lat_ != x.has_lat_: return 0
+    if self.has_lat_ and self.lat_ != x.lat_: return 0
+    if self.has_lng_ != x.has_lng_: return 0
+    if self.has_lng_ and self.lng_ != x.lng_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_lat_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: lat not set.')
+    if (not self.has_lng_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: lng not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 10
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_lat_):
+      n += 5
+    if (self.has_lng_):
+      n += 5
+    return n
+
+  def Clear(self):
+    self.clear_lat()
+    self.clear_lng()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(45)
+    out.putFloat(self.lat_)
+    out.putVarInt32(53)
+    out.putFloat(self.lng_)
+
+  def OutputPartial(self, out):
+    if (self.has_lat_):
+      out.putVarInt32(45)
+      out.putFloat(self.lat_)
+    if (self.has_lng_):
+      out.putVarInt32(53)
+      out.putFloat(self.lng_)
+
+  def TryMerge(self, d):
+    while 1:
+      tt = d.getVarInt32()
+      if tt == 36: break
+      if tt == 45:
+        self.set_lat(d.getFloat())
+        continue
+      if tt == 53:
+        self.set_lng(d.getFloat())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_lat_: res+=prefix+("lat: %s\n" % self.DebugFormatFloat(self.lat_))
+    if self.has_lng_: res+=prefix+("lng: %s\n" % self.DebugFormatFloat(self.lng_))
+    return res
+
 class FieldValue(ProtocolBuffer.ProtocolMessage):
 
 
@@ -39,6 +152,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   ATOM         =    2
   DATE         =    3
   NUMBER       =    4
+  GEO          =    5
 
   _ContentType_NAMES = {
     0: "TEXT",
@@ -46,6 +160,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     2: "ATOM",
     3: "DATE",
     4: "NUMBER",
+    5: "GEO",
   }
 
   def ContentType_Name(cls, x): return cls._ContentType_NAMES.get(x, "")
@@ -57,8 +172,11 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   language_ = "en"
   has_string_value_ = 0
   string_value_ = ""
+  has_geo_ = 0
+  geo_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def type(self): return self.type_
@@ -100,12 +218,32 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
 
   def has_string_value(self): return self.has_string_value_
 
+  def geo(self):
+    if self.geo_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.geo_ is None: self.geo_ = FieldValue_Geo()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.geo_
+
+  def mutable_geo(self): self.has_geo_ = 1; return self.geo()
+
+  def clear_geo(self):
+
+    if self.has_geo_:
+      self.has_geo_ = 0;
+      if self.geo_ is not None: self.geo_.Clear()
+
+  def has_geo(self): return self.has_geo_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_type()): self.set_type(x.type())
     if (x.has_language()): self.set_language(x.language())
     if (x.has_string_value()): self.set_string_value(x.string_value())
+    if (x.has_geo()): self.mutable_geo().MergeFrom(x.geo())
 
   def Equals(self, x):
     if x is self: return 1
@@ -115,10 +253,13 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if self.has_language_ and self.language_ != x.language_: return 0
     if self.has_string_value_ != x.has_string_value_: return 0
     if self.has_string_value_ and self.string_value_ != x.string_value_: return 0
+    if self.has_geo_ != x.has_geo_: return 0
+    if self.has_geo_ and self.geo_ != x.geo_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (self.has_geo_ and not self.geo_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -126,6 +267,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
+    if (self.has_geo_): n += 2 + self.geo_.ByteSize()
     return n
 
   def ByteSizePartial(self):
@@ -133,12 +275,14 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
+    if (self.has_geo_): n += 2 + self.geo_.ByteSizePartial()
     return n
 
   def Clear(self):
     self.clear_type()
     self.clear_language()
     self.clear_string_value()
+    self.clear_geo()
 
   def OutputUnchecked(self, out):
     if (self.has_type_):
@@ -150,6 +294,10 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_):
       out.putVarInt32(26)
       out.putPrefixedString(self.string_value_)
+    if (self.has_geo_):
+      out.putVarInt32(35)
+      self.geo_.OutputUnchecked(out)
+      out.putVarInt32(36)
 
   def OutputPartial(self, out):
     if (self.has_type_):
@@ -161,6 +309,10 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_):
       out.putVarInt32(26)
       out.putPrefixedString(self.string_value_)
+    if (self.has_geo_):
+      out.putVarInt32(35)
+      self.geo_.OutputPartial(out)
+      out.putVarInt32(36)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -174,6 +326,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       if tt == 26:
         self.set_string_value(d.getPrefixedString())
         continue
+      if tt == 35:
+        self.mutable_geo().TryMerge(d)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -185,6 +340,10 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if self.has_type_: res+=prefix+("type: %s\n" % self.DebugFormatInt32(self.type_))
     if self.has_language_: res+=prefix+("language: %s\n" % self.DebugFormatString(self.language_))
     if self.has_string_value_: res+=prefix+("string_value: %s\n" % self.DebugFormatString(self.string_value_))
+    if self.has_geo_:
+      res+=prefix+"Geo {\n"
+      res+=self.geo_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+"}\n"
     return res
 
 
@@ -194,20 +353,29 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   ktype = 1
   klanguage = 2
   kstring_value = 3
+  kGeoGroup = 4
+  kGeolat = 5
+  kGeolng = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "type",
     2: "language",
     3: "string_value",
-  }, 3)
+    4: "Geo",
+    5: "lat",
+    6: "lng",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STARTGROUP,
+    5: ProtocolBuffer.Encoder.FLOAT,
+    6: ProtocolBuffer.Encoder.FLOAT,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -763,4 +931,4 @@ class Document(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['FieldValue','Field','FieldTypes','Document']
+__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','Document']

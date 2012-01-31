@@ -41,6 +41,7 @@ __all__ = [
     "Error",
     "MissingYamlError",
     "MultipleDocumentsInMrYaml",
+    "ShuffleServiceError",
     ]
 
 class Error(Exception):
@@ -69,3 +70,8 @@ class BadReaderParamsError(BadParamsError):
 
 class BadWriterParamsError(BadParamsError):
   """The input parameters to a reader were invalid."""
+
+
+class ShuffleServiceError(Error):
+  """Error doing shuffle through shuffle service."""
+

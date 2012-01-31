@@ -31,6 +31,7 @@ code.
 
 
 import logging
+import types
 
 from google.appengine.api import lib_config
 
@@ -42,6 +43,14 @@ class Error(Exception):
 class InvalidResponseError(Error):
   """An error indicating that the response is invalid."""
   pass
+
+
+def _GetTypeName(x):
+  """Returns a user-friendly name descriping the given object's type."""
+  if type(x) is types.InstanceType:
+    return x.__class__.__name__
+  else:
+    return type(x).__name__
 
 
 class WsgiRequest(object):
@@ -91,7 +100,8 @@ class WsgiRequest(object):
       InvalidResponseError: body_data is not a str.
     """
     if not isinstance(body_data, str):
-      raise InvalidResponseError('body_data must be a str.')
+      raise InvalidResponseError('body_data must be a str, got %r' %
+                                 _GetTypeName(body_data))
     self._written_body.append(body_data)
 
   def _StartResponse(self, status, response_headers, exc_info=None):
@@ -115,24 +125,33 @@ class WsgiRequest(object):
       InvalidResponseError: The arguments passed are invalid.
     """
     if not isinstance(status, str):
-      raise InvalidResponseError('status must be a string')
+      raise InvalidResponseError('status must be a str, got %r' %
+                                 _GetTypeName(status))
     if not status:
       raise InvalidResponseError('status must not be empty')
     if not isinstance(response_headers, list):
-      raise InvalidResponseError('response_headers must be a list')
+      raise InvalidResponseError('response_headers must be a list, got %r' %
+                                 _GetTypeName(response_headers))
     for header in response_headers:
       if not isinstance(header, tuple):
-        raise InvalidResponseError('headers must be tuples')
+        raise InvalidResponseError('response_headers items must be tuple, '
+                                   'got %r' % _GetTypeName(header))
       if len(header) != 2:
-        raise InvalidResponseError('header tuples must have length 2')
-      if not isinstance(header[0], str) or not isinstance(header[1], str):
-        raise InvalidResponseError('headers must be str')
+        raise InvalidResponseError('header tuples must have length 2, '
+                                   'actual length %d' % len(header))
+      if not isinstance(header[0], str):
+        raise InvalidResponseError('header names must be str, got %r' %
+                                   _GetTypeName(header[0]))
+      if not isinstance(header[1], str):
+        raise InvalidResponseError('header values must be str, got %r' %
+                                   _GetTypeName(header[1]))
     try:
       status_number = int(status.split(' ')[0])
     except ValueError:
       raise InvalidResponseError('status code is not a number')
     if status_number < 200 or status_number >= 600:
-      raise InvalidResponseError('status code must be in the range [200,600)')
+      raise InvalidResponseError('status code must be in the range [200,600), '
+                                 'got %d' % status_number)
 
     if exc_info is not None:
 

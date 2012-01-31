@@ -31,6 +31,7 @@
 
 import bisect
 import copy
+import math
 import random
 import re
 import string
@@ -290,6 +291,64 @@ class PostingList(object):
     return _Repr(self, [('postings', self.postings)])
 
 
+class _ScoredDocument(object):
+  """A scored document_pb.Document."""
+
+  def __init__(self, document, score):
+    self._document = document
+    self._score = score
+
+  @property
+  def document(self):
+    return self._document
+
+  @property
+  def score(self):
+    return self._score
+
+  def __repr__(self):
+    return _Repr(self, [('document', self.document), ('score', self.score)])
+
+
+class _DocumentStatistics(object):
+  """Statistics about terms occuring in a document."""
+
+  def __init__(self):
+    self._term_stats = {}
+
+  def __iter__(self):
+    for item in self._term_stats.items():
+      yield item
+
+  def IncrementTermCount(self, term):
+    """Adds an occurrence of the term to the stats for the document."""
+    count = 0
+    if term in self._term_stats:
+      count = self._term_stats[term]
+    count += 1
+    self._term_stats[term] = count
+
+  def TermFrequency(self, term):
+    """Returns the term frequency in the document."""
+    if term not in self._term_stats:
+      return 0
+    return self._term_stats[term]
+
+  @property
+  def term_stats(self):
+    """Returns the collection of term frequencies in the document."""
+    return self._term_stats
+
+  def __eq__(self, other):
+    return self.term_stats == other.term_stats
+
+  def __hash__(self):
+    return hash(self.term_stats)
+
+  def __repr__(self):
+    return _Repr(self, [('term_stats', self.term_stats)])
+
+
 class RamInvertedIndex(object):
   """A simple RAM-resident inverted file over documents."""
 
@@ -297,6 +356,20 @@ class RamInvertedIndex(object):
     self._tokenizer = tokenizer
     self._inverted_index = {}
     self._schema = {}
+    self._document_ids = set([])
+
+  def _AddDocumentId(self, doc_id):
+    """Adds the doc_id to set in index."""
+    self._document_ids.add(doc_id)
+
+  def _RemoveDocumentId(self, doc_id):
+    """Removes the doc_id from the set in index."""
+    if doc_id in self._document_ids:
+      self._document_ids.remove(doc_id)
+
+  @property
+  def document_count(self):
+    return len(self._document_ids)
 
   def _AddFieldType(self, name, field_type):
     """Adds the type to the list supported for a named field."""
@@ -308,19 +381,28 @@ class RamInvertedIndex(object):
     if field_type not in field_types.type_list():
       field_types.add_type(field_type)
 
+  def GetDocumentStats(self, document):
+    """Gets statistics about occurrences of terms in document."""
+    document_stats = _DocumentStatistics()
+    for field in document.field_list():
+      for token in self._tokenizer.TokenizeValue(field_value=field.value()):
+        document_stats.IncrementTermCount(token.chars)
+    return document_stats
+
   def AddDocument(self, doc_id, document):
     """Adds a document into the index."""
     token_position = 0
     for field in document.field_list():
       self._AddFieldType(field.name(), field.value().type())
-      self._AddTokens(doc_id, field.name(), field.value(),
-                      token_position)
+      self._AddTokens(doc_id, field.name(), field.value(), token_position)
+    self._AddDocumentId(doc_id)
 
   def RemoveDocument(self, document):
     """Removes a document from the index."""
     doc_id = document.id()
     for field in document.field_list():
       self._RemoveTokens(doc_id, field.name(), field.value())
+    self._RemoveDocumentId(doc_id)
 
   def _AddTokens(self, doc_id, field_name, field_value, token_position):
     """Adds token occurrences for a given doc's field value."""
@@ -361,7 +443,17 @@ class RamInvertedIndex(object):
 
   def __repr__(self):
     return _Repr(self, [('_inverted_index', self._inverted_index),
-                        ('_schema', self._schema)])
+                        ('_schema', self._schema),
+                        ('document_count', self.document_count)])
+
+
+def _ScoreRequested(params):
+  """Returns True if match scoring requested, False otherwise."""
+  return (params.has_scorer_spec() and
+          (params.scorer_spec().scorer() is
+           search_service_pb.ScorerSpec.MATCH_SCORER or
+           params.scorer_spec().scorer() is
+           search_service_pb.ScorerSpec.RESCORING_MATCH_SCORER))
 
 
 class SimpleIndex(object):
@@ -408,12 +500,46 @@ class SimpleIndex(object):
     """Returns the documents in the index."""
     return self._documents.values()
 
-  def _DocumentsForPostings(self, postings):
+  def _TermFrequency(self, term, document):
+    """Return the term frequency in the document."""
+    return self._inverted_index.GetDocumentStats(document).TermFrequency(term)
+
+  @property
+  def document_count(self):
+    """Returns the count of documents in the index."""
+    return self._inverted_index.document_count
+
+  def _DocumentCountForTerm(self, term):
+    """Returns the document count for documents containing the term."""
+    return len(self._PostingsForToken(Token(chars=term)))
+
+  def _InverseDocumentFrequency(self, term):
+    """Returns inverse document frequency of term."""
+    return math.log10(self.document_count /
+                      float(self._DocumentCountForTerm(term)))
+
+  def _TermFrequencyInverseDocumentFrequency(self, term, document):
+    """Returns the term frequency times inverse document frequency of term."""
+    return (self._TermFrequency(term, document) *
+            self._InverseDocumentFrequency(term))
+
+  def _ScoreDocument(self, document, score, terms):
+    """Scores a document for the given query."""
+    if not score:
+      return 0
+    tf_idf = 0
+    for term in terms:
+      tf_idf += self._TermFrequencyInverseDocumentFrequency(term, document)
+    return tf_idf
+
+  def _DocumentsForPostings(self, postings, score=False, terms=None):
     """Returns the documents for the given postings."""
     docs = []
     for posting in postings:
       if posting.doc_id in self._documents:
-        docs.append(self._documents[posting.doc_id])
+        doc = self._documents[posting.doc_id]
+        docs.append(
+            _ScoredDocument(doc, self._ScoreDocument(doc, score, terms)))
     return docs
 
   def _FilterSpecialTokens(self, tokens):
@@ -464,10 +590,12 @@ class SimpleIndex(object):
     """Returns the text from the node, handling that it could be unicode."""
     return node.getText().encode('utf-8')
 
-  def _EvaluatePhrase(self, node, field=None):
+  def _EvaluatePhrase(self, node, terms, field=None):
     """Evaluates the phrase node returning matching postings."""
     tokens = self._SplitPhrase(self._GetQueryNodeText(node))
     tokens = self._AddFieldToTokens(field, tokens)
+    for token in tokens:
+      terms.add(token.chars)
     position_posting = {}
     token = tokens[0]
     postings = self._PostingsForToken(token)
@@ -488,12 +616,12 @@ class SimpleIndex(object):
     token = self._MakeToken(token)
     return self._PostingsForToken(token)
 
-  def _Evaluate(self, node):
+  def _Evaluate(self, node, terms):
     """Translates the node in a parse tree into a query string fragment."""
     if node.getType() is QueryParser.CONJUNCTION:
-      postings = self._Evaluate(node.children[0])
+      postings = self._Evaluate(node.children[0], terms)
       for child in node.children[1:]:
-        next_postings = self._Evaluate(child)
+        next_postings = self._Evaluate(child, terms)
         postings = [posting for posting in postings if posting in next_postings]
         if not postings:
           break
@@ -501,7 +629,7 @@ class SimpleIndex(object):
     if node.getType() is QueryParser.DISJUNCTION:
       postings = []
       for child in node.children:
-        postings.extend(self._Evaluate(child))
+        postings.extend(self._Evaluate(child, terms))
       return postings
     if node.getType() is QueryParser.RESTRICTION:
 
@@ -509,16 +637,17 @@ class SimpleIndex(object):
 
       child = node.children[1]
       if child.getType() is QueryParser.PHRASE:
-        return self._EvaluatePhrase(node=child, field=field_name)
+        return self._EvaluatePhrase(node=child, terms=terms, field=field_name)
       return self._PostingsForFieldToken(field_name,
                                          self._GetQueryNodeText(child))
     if node.getType() is QueryParser.PHRASE:
-      return self._EvaluatePhrase(node)
+      return self._EvaluatePhrase(node, terms)
     if (node.getType() is QueryParser.TEXT or
         node.getType() is QueryParser.NAME or
         node.getType() is QueryParser.FLOAT or
         node.getType() is QueryParser.INT):
       token = self._GetQueryNodeText(node)
+      terms.add(token)
       token = self._MakeToken(token)
       return self._PostingsForToken(token)
 
@@ -529,12 +658,20 @@ class SimpleIndex(object):
     query = urllib.unquote(search_request.query())
     query = query.strip()
     if not query:
-      return copy.copy(self._documents.values())
+      return [_ScoredDocument(document, 0) for document in
+              copy.copy(self._documents.values())]
     if not isinstance(query, unicode):
       query = unicode(query, 'utf-8')
     query_tree = query_parser.Simplify(query_parser.Parse(query))
-    postings = self._Evaluate(query_tree)
-    return self._DocumentsForPostings(postings)
+    terms = set([])
+    postings = self._Evaluate(query_tree, terms)
+    score = _ScoreRequested(search_request)
+    docs = self._DocumentsForPostings(postings, score=score, terms=terms)
+    if score:
+      docs = sorted(docs, key=lambda doc: doc.score, reverse=True)
+    else:
+      docs = sorted(docs, key=lambda doc: doc.document.order_id(), reverse=True)
+    return docs
 
   def GetSchema(self):
     """Returns the schema for the index."""
@@ -684,9 +821,9 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       new_field_types = metadata_pb.add_field()
       new_field_types.MergeFrom(field_types)
 
-  def _AddDocument(self, response, document, keys_only):
+  def _AddDocument(self, response, document, ids_only):
     doc = response.add_document()
-    if keys_only:
+    if ids_only:
       doc.set_id(document.id())
     else:
       doc.MergeFrom(document)
@@ -796,16 +933,39 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     """Fills the SearchResponse with the first set of results."""
     position_range = range(0, min(params.limit(), len(results)))
     self._FillSearchResponse(results, position_range, params.cursor_type(),
-                             response)
+                             _ScoreRequested(params), response)
 
-  def _FillSearchResponse(self, results, position_range, cursor_type, response):
+  def _CopyBaseDocument(self, doc, doc_copy):
+    doc_copy.set_id(doc.id())
+    if doc.has_order_id():
+      doc_copy.set_order_id(doc.order_id())
+    if doc.has_language():
+      doc_copy.set_language(doc.language())
+
+  def _CopyDocument(self, doc, doc_copy, field_spec=None, ids_only=None):
+    """Copies Document, doc, to doc_copy restricting fields to field_spec."""
+    if ids_only:
+      self._CopyBaseDocument(doc, doc_copy)
+    elif field_spec and field_spec.name_list():
+      self._CopyBaseDocument(doc, doc_copy)
+      for field in doc.field_list():
+        if field.name() in field_spec.name_list():
+          doc_copy.add_field().CopyFrom(field)
+    else:
+      doc_copy.CopyFrom(doc)
+
+  def _FillSearchResponse(self, results, position_range, cursor_type, score,
+                          response, field_spec=None, ids_only=None):
     """Fills the SearchResponse with a selection of results."""
     for i in position_range:
       result = results[i]
       search_result = response.add_result()
-      search_result.mutable_document().CopyFrom(result)
+      self._CopyDocument(result.document, search_result.mutable_document(),
+                         field_spec, ids_only)
       if cursor_type is search_service_pb.SearchParams.PER_RESULT:
-        search_result.set_cursor(result.id())
+        search_result.set_cursor(result.document.id())
+      if score:
+        search_result.add_score(result.score)
 
   def _Dynamic_Search(self, request, response):
     """A local implementation of SearchService.Search RPC.
@@ -834,7 +994,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     offset = 0
     if params.has_cursor():
-      positions = [i for i in range(len(results)) if results[i].id() is
+      positions = [i for i in range(len(results)) if results[i].document.id() is
                    params.cursor()]
       if positions:
         offset = positions[0] + 1
@@ -849,11 +1009,16 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
           min(offset + params.limit(), len(results)))
     else:
       position_range = range(0)
+    field_spec = None
+    if params.has_field_spec():
+      field_spec = params.field_spec()
     self._FillSearchResponse(results, position_range, params.cursor_type(),
-                             response)
+                             _ScoreRequested(params), response, field_spec,
+                             params.keys_only())
     if (params.cursor_type() is search_service_pb.SearchParams.SINGLE and
         len(position_range)):
-      response.set_cursor(results[position_range[len(position_range) - 1]].id())
+      response.set_cursor(
+          results[position_range[len(position_range) - 1]].document.id())
 
     response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
 

@@ -169,7 +169,7 @@ class AbstractRpcServer(object):
     Returns:
       A urllib2.OpenerDirector object.
     """
-    raise NotImplemented()
+    raise NotImplementedError
 
   def _CreateRequest(self, url, data=None):
     """Creates a new urllib request."""

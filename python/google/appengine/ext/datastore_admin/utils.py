@@ -36,11 +36,9 @@ from google.appengine.api import users
 from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import db
 from google.appengine.ext import webapp
-from google.appengine.ext.db import metadata
-from google.appengine.ext.mapreduce import context
 from google.appengine.ext.mapreduce import control
-from google.appengine.ext.mapreduce import input_readers
 from google.appengine.ext.mapreduce import model
+from google.appengine.ext.mapreduce import util
 from google.appengine.ext.webapp import _template
 
 MEMCACHE_NAMESPACE = '_ah-datastore_admin'
@@ -284,7 +282,7 @@ def GetPrintableStrs(namespace, kinds):
   Returns:
     (namespace_str, kind_str) tuple used for display to user.
   """
-  namespace_str = ''
+  namespace_str = namespace or ''
   if kinds:
     kind_str = 'all %s entities' % ', '.join(kinds)
   else:
@@ -337,6 +335,7 @@ class MapreduceDoneHandler(webapp.RequestHandler):
     if 'Mapreduce-Id' in self.request.headers:
       mapreduce_id = self.request.headers['Mapreduce-Id']
       mapreduce_state = model.MapreduceState.get_by_job_id(mapreduce_id)
+      mapreduce_params = mapreduce_state.mapreduce_spec.params
 
       keys = []
       job_success = True
@@ -348,19 +347,29 @@ class MapreduceDoneHandler(webapp.RequestHandler):
 
       db_config = _CreateDatastoreConfig()
       if job_success:
-        operation = DatastoreAdminOperation.get(
-            mapreduce_state.mapreduce_spec.params[
-                DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION])
-        def tx():
-          operation.active_jobs -= 1
-          operation.completed_jobs += 1
-          if not operation.active_jobs:
-            operation.status = DatastoreAdminOperation.STATUS_COMPLETED
-          db.delete(DatastoreAdminOperationJob.all().ancestor(operation),
-                    config=db_config)
-          operation.put(config=db_config)
-        db.run_in_transaction(tx)
-
+        operation_key = mapreduce_params.get(
+            DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION)
+        if operation_key is None:
+          logging.error('Done callback for job %s without operation key.',
+                        mapreduce_id)
+        else:
+          def tx():
+            operation = DatastoreAdminOperation.get(operation_key)
+            if mapreduce_id in operation.active_job_ids:
+              operation.active_jobs -= 1
+              operation.completed_jobs += 1
+              operation.active_job_ids.remove(mapreduce_id)
+            if not operation.active_jobs:
+              operation.status = DatastoreAdminOperation.STATUS_COMPLETED
+              db.delete(DatastoreAdminOperationJob.all().ancestor(operation),
+                        config=db_config)
+            operation.put(config=db_config)
+            if 'done_callback_handler' in mapreduce_params:
+              done_callback_handler = util.for_name(
+                  mapreduce_params['done_callback_handler'])
+              if done_callback_handler:
+                done_callback_handler(operation, mapreduce_id, mapreduce_state)
+          db.run_in_transaction(tx)
         if config.CLEANUP_MAPREDUCE_STATE:
 
           keys.append(mapreduce_state.key())
@@ -381,11 +390,15 @@ class DatastoreAdminOperation(db.Model):
 
 
   PARAM_DATASTORE_ADMIN_OPERATION = 'datastore_admin_operation'
+  DEFAULT_LAST_UPDATED_VALUE = datetime.datetime(1970, 1, 1)
 
   description = db.TextProperty()
   status = db.StringProperty()
   active_jobs = db.IntegerProperty(default=0)
+  active_job_ids = db.StringListProperty()
   completed_jobs = db.IntegerProperty(default=0)
+  last_updated = db.DateTimeProperty(default=DEFAULT_LAST_UPDATED_VALUE,
+                                     auto_now=True)
 
   @classmethod
   def kind(cls):
@@ -423,25 +436,29 @@ def StartOperation(description):
   return operation
 
 
-def StartMap(operation,
+def StartMap(operation_key,
              job_name,
              handler_spec,
              reader_spec,
+             writer_spec,
              mapper_params,
              mapreduce_params=None,
-             start_transaction=True):
+             start_transaction=True,
+             queue_name=None):
   """Start map as part of datastore admin operation.
 
   Will increase number of active jobs inside the operation and start new map.
 
   Args:
-    operation: An instance of DatastoreAdminOperation for current operation.
+    operation_key: Key of the DatastoreAdminOperation for current operation.
     job_name: Map job name.
     handler_spec: Map handler specification.
     reader_spec: Input reader specification.
+    writer_spec: Output writer specification.
     mapper_params: Custom mapper parameters.
     mapreduce_params: Custom mapreduce parameters.
     start_transaction: Specify if a new transaction should be started.
+    queue_name: the name of the queue that will be used by the M/R.
 
   Returns:
     resulting map job id as string.
@@ -450,45 +467,55 @@ def StartMap(operation,
   if not mapreduce_params:
     mapreduce_params = dict()
   mapreduce_params[DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION] = (
-      str(operation.key()))
-  mapreduce_params['done_callback'] = '%s/%s' % (
-      config.BASE_PATH, MapreduceDoneHandler.SUFFIX)
+      str(operation_key))
+  mapreduce_params['done_callback'] = '%s/%s' % (config.BASE_PATH,
+                                                 MapreduceDoneHandler.SUFFIX)
   mapreduce_params['force_writes'] = 'True'
 
   def tx():
-    operation.active_jobs += 1
-    operation.put(config=_CreateDatastoreConfig())
+    operation = DatastoreAdminOperation.get(operation_key)
 
-
-    return control.start_map(
+    job_id = control.start_map(
         job_name, handler_spec, reader_spec,
         mapper_params,
+        output_writer_spec=writer_spec,
         mapreduce_parameters=mapreduce_params,
         base_path=config.MAPREDUCE_PATH,
         shard_count=32,
-        transactional=True)
+        transactional=True,
+        queue_name=queue_name)
+    operation.active_jobs += 1
+    operation.active_job_ids = list(set(operation.active_job_ids + [job_id]))
+    operation.put(config=_CreateDatastoreConfig())
+    return job_id
   if start_transaction:
     return db.run_in_transaction(tx)
   else:
     return tx()
 
 
-def RunMapForKinds(operation,
+def RunMapForKinds(operation_key,
                    kinds,
                    job_name_template,
                    handler_spec,
                    reader_spec,
-                   mapper_params):
+                   writer_spec,
+                   mapper_params,
+                   mapreduce_params=None,
+                   queue_name=None):
   """Run mapper job for all entities in specified kinds.
 
   Args:
-    operation: instance of DatastoreAdminOperation to record all jobs.
+    operation_key: The key of the DatastoreAdminOperation to record all jobs.
     kinds: list of entity kinds as strings.
     job_name_template: template for naming individual mapper jobs. Can
       reference %(kind)s and %(namespace)s formatting variables.
     handler_spec: mapper handler specification.
     reader_spec: reader specification.
+    writer_spec: writer specification.
     mapper_params: custom parameters to pass to mapper.
+    mapreduce_params: dictionary parameters relevant to the whole job.
+    queue_name: the name of the queue that will be used by the M/R.
 
   Returns:
     Ids of all started mapper jobs as list of strings.
@@ -496,7 +523,9 @@ def RunMapForKinds(operation,
   jobs = []
   for kind in kinds:
     mapper_params['entity_kind'] = kind
-    job_name = job_name_template % {'kind': kind, 'namespace': ''}
-    jobs.append(StartMap(
-        operation, job_name, handler_spec, reader_spec, mapper_params))
+    job_name = job_name_template % {'kind': kind, 'namespace':
+                                    mapper_params.get('namespaces', '')}
+    jobs.append(StartMap(operation_key, job_name, handler_spec, reader_spec,
+                         writer_spec, mapper_params, mapreduce_params,
+                         queue_name=queue_name))
   return jobs

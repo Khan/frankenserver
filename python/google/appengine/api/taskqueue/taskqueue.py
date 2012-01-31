@@ -194,6 +194,10 @@ class QueuePausedError(Error):
   """The queue is paused and cannot process modify task lease requests."""
 
 
+class InvalidTagError(Error):
+  """The specified tag is invalid."""
+
+
 class _DefaultAppVersionSingleton(object):
   def __repr__(self):
     return '<DefaultApplicationVersion>'
@@ -226,6 +230,8 @@ MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES = 2 ** 20
 MAX_URL_LENGTH = 2083
 
 MAX_TASKS_PER_LEASE = 1000
+
+MAX_TAG_LENGTH = 500
 
 MAX_LEASE_SECONDS = 3600 * 24 * 7
 
@@ -293,7 +299,9 @@ _ERROR_MAPPING = {
     taskqueue_service_pb.TaskQueueServiceError.TASK_LEASE_EXPIRED:
         TaskLeaseExpiredError,
     taskqueue_service_pb.TaskQueueServiceError.QUEUE_PAUSED:
-        QueuePausedError
+        QueuePausedError,
+    taskqueue_service_pb.TaskQueueServiceError.INVALID_TAG:
+        InvalidTagError,
 
 }
 
@@ -657,6 +665,10 @@ class Task(object):
       if self.size > max_task_size_bytes:
         raise TaskTooLargeError('Task size must be less than %d; found %d' %
                                 (max_task_size_bytes, self.size))
+      if self.__tag and len(self.__tag) > MAX_TAG_LENGTH:
+        raise InvalidTagError(
+            'Tag must be <= %d bytes. Got a %d byte tag.' % (
+                MAX_TAG_LENGTH, len(self.__tag)))
 
   def __resolve_hostname_and_target(self):
     """Resolve the values of the target parameter and the `Host' header.

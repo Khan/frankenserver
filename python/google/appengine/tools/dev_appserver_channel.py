@@ -91,8 +91,6 @@ def CreateChannelDispatcher(channel_service_stub):
           Defaults to None.
       """
 
-      outfile.write('Status: 200\r\n')
-
       (unused_scheme, unused_netloc,
        path, query,
        unused_fragment) = urlparse.urlsplit(request.relative_url)
@@ -102,19 +100,25 @@ def CreateChannelDispatcher(channel_service_stub):
 
       if page == 'jsapi':
         path = os.path.join(os.path.dirname(__file__), 'dev-channel-js.js')
+        outfile.write('Status: 200\r\n')
         outfile.write('Content-type: text/javascript\r\n\r\n')
         outfile.write(open(path).read())
       elif page == 'dev':
+        token = param_dict['channel'][0]
+        if not self._channel_service_stub.is_valid_token(token):
+          outfile.write('Status: 401\r\n\r\n')
+          return
+
+        outfile.write('Status: 200\r\n')
         outfile.write('\r\n')
-        id = param_dict['channel'][0]
         command = param_dict['command'][0]
 
         if command == 'connect':
-          self._channel_service_stub.connect_channel(id)
+          self._channel_service_stub.connect_channel(token)
           outfile.write('1')
         elif command == 'poll':
-          self._channel_service_stub.connect_channel(id)
-          if self._channel_service_stub.has_channel_messages(id):
-            outfile.write(self._channel_service_stub.pop_first_message(id))
+          self._channel_service_stub.connect_channel(token)
+          if self._channel_service_stub.has_channel_messages(token):
+            outfile.write(self._channel_service_stub.pop_first_message(token))
 
   return ChannelDispatcher(channel_service_stub)

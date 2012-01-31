@@ -281,6 +281,7 @@ class RemoteDatastoreStub(RemoteStub):
     query_result.mutable_cursor().set_cursor(cursor_id)
 
   def _Dynamic_Next(self, next_request, query_result):
+    assert next_request.offset() == 0
     cursor_id = next_request.cursor().cursor()
     if cursor_id not in self.__queries:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
@@ -298,6 +299,11 @@ class RemoteDatastoreStub(RemoteStub):
         query.clear_count()
 
     self._Dynamic_RunQuery(query, query_result, cursor_id)
+
+
+
+
+    query_result.set_skipped_results(0)
 
   def _Dynamic_Get(self, get_request, get_response):
     txid = None

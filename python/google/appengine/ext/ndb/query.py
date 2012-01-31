@@ -133,11 +133,11 @@ import sys
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_query
-from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import gql
 
 from . import model
 from . import tasklets
+from . import utils
 
 __all__ = ['Binding', 'AND', 'OR', 'parse_gql', 'Query',
            'QueryOptions', 'Cursor']
@@ -354,6 +354,8 @@ class FilterNode(Node):
   """Tree node for a single filter expression."""
 
   def __new__(cls, name, opsymbol, value):
+    if isinstance(value, model.Key):
+      value = value.to_old_key()
     if opsymbol == '!=':
       n1 = FilterNode(name, '<', value)
       n2 = FilterNode(name, '>', value)
@@ -664,7 +666,7 @@ class Query(object):
   operators !=, IN or OR is used.
   """
 
-  @datastore_rpc._positional(1)
+  @utils.positional(1)
   def __init__(self, kind=None, ancestor=None, filters=None, orders=None,
                app=None, namespace=None):
     """Constructor.
@@ -678,8 +680,10 @@ class Query(object):
       namespace: Optional namespace.
     """
     if ancestor is not None and not isinstance(ancestor, Binding):
+      if not isinstance(ancestor, model.Key):
+        raise TypeError('ancestor must be a Key')
       if not ancestor.id():
-        raise TypeError('ancestor cannot be an incomplete key')
+        raise ValueError('ancestor cannot be an incomplete key')
       if app is not None:
         if app != ancestor.app():
           raise TypeError('app/ancestor mismatch')
@@ -733,7 +737,7 @@ class Query(object):
       filters = filters._to_filter(bindings)
     dsquery = datastore_query.Query(app=self.__app,
                                     namespace=self.__namespace,
-                                    kind=kind.decode('utf-8'),
+                                    kind=kind.decode('utf-8') if kind else None,
                                     ancestor=ancestor,
                                     filter_predicate=filters,
                                     order=self.__orders)
@@ -762,11 +766,46 @@ class Query(object):
           queue.putq((batch, i, result))
       queue.complete()
 
+    except GeneratorExit:
+      raise
     except Exception:
       if not queue.done():
         _, e, tb = sys.exc_info()
         queue.set_exception(e, tb)
       raise
+
+  @tasklets.tasklet
+  def _run_to_list(self, results, options=None):
+    # Internal version of run_to_queue(), without a queue.
+    ctx = tasklets.get_context()
+    conn = ctx._conn
+    dsquery = self._get_query(conn)
+    rpc = dsquery.run_async(conn, options)
+    while rpc is not None:
+      batch = yield rpc
+      rpc = batch.next_batch_async(options)
+      for result in batch.results:
+        # Update cache, copying code from Context().map_query().
+        if not options or not options.keys_only:
+          key = result._key
+          if ctx._use_cache(key, options):
+            cached_result = ctx._cache.get(key)
+            if cached_result is not None and cached_result.key == key:
+              cached_result._values = result._values
+              result = cached_result
+            else:
+              ctx._cache[key] = result
+        results.append(result)
+
+    raise tasklets.Return(results)
+
+  def _needs_multi_query(self):
+    filters = self.__filters
+    if filters is not None:
+      filters = filters.resolve()
+      if isinstance(filters, DisjunctionNode):
+        return True
+    return False
 
   def _maybe_multi_query(self):
     filters = self.__filters
@@ -871,7 +910,7 @@ class Query(object):
 
   __iter__ = iter
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def map(self, callback, merge_future=None, **q_options):
     """Map a callback function or tasklet over the query results.
 
@@ -885,7 +924,9 @@ class Query(object):
     with a Key.  Also, when produce_cursors=True is given, it is
     called with three arguments: the current batch, the index within
     the batch, and the entity or Key at that index.  The callback can
-    return whatever it wants.
+    return whatever it wants.  If the callback is None, a trivial
+    callback is assumed that just returns the entity or key passed in
+    (ignoring produce_cursors).
 
     Optional merge future: The merge_future is an advanced argument
     that can be used to override how the callback results are combined
@@ -905,7 +946,7 @@ class Query(object):
     return self.map_async(callback, merge_future=merge_future,
                           **q_options).get_result()
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def map_async(self, callback, merge_future=None, **q_options):
     """Map a callback function or tasklet over the query results.
 
@@ -915,7 +956,7 @@ class Query(object):
                                             options=_make_options(q_options),
                                             merge_future=merge_future)
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def fetch(self, limit=None, **q_options):
     """Fetch a list of query results, up to a limit.
 
@@ -928,8 +969,7 @@ class Query(object):
     """
     return self.fetch_async(limit, **q_options).get_result()
 
-  @tasklets.tasklet
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def fetch_async(self, limit=None, **q_options):
     """Fetch a list of query results, up to a limit.
 
@@ -941,15 +981,12 @@ class Query(object):
     elif limit is None:
       limit = _MAX_LIMIT
     q_options['limit'] = limit
-    q_options.setdefault('prefetch_size', limit)
     q_options.setdefault('batch_size', limit)
-    res = []
-    it = self.iter(**q_options)
-    while (yield it.has_next_async()):
-      res.append(it.next())
-      if len(res) >= limit:
-        break
-    raise tasklets.Return(res)
+    if self._needs_multi_query():
+      return self.map_async(None, **q_options)
+    # Optimization using direct batches.
+    options = _make_options(q_options)
+    return self._run_to_list([], options=options)
 
   def get(self, **q_options):
     """Get the first query result, if any.
@@ -976,7 +1013,7 @@ class Query(object):
       raise tasklets.Return(None)
     raise tasklets.Return(res[0])
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def count(self, limit=None, **q_options):
     """Count the number of query results, up to a limit.
 
@@ -995,7 +1032,7 @@ class Query(object):
     return self.count_async(limit, **q_options).get_result()
 
   @tasklets.tasklet
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def count_async(self, limit=None, **q_options):
     """Count the number of query results, up to a limit.
 
@@ -1010,12 +1047,10 @@ class Query(object):
                       'keyword argument simultaneously.')
     elif limit is None:
       limit = _MAX_LIMIT
-    if (self.__filters is not None and
-        isinstance(self.__filters, DisjunctionNode)):
+    if self._needs_multi_query():
       # _MultiQuery does not support iterating over result batches,
       # so just fetch results and count them.
       # TODO: Use QueryIterator to avoid materializing the results list.
-      q_options.setdefault('prefetch_size', limit)
       q_options.setdefault('batch_size', limit)
       q_options.setdefault('keys_only', True)
       results = yield self.fetch_async(limit, **q_options)
@@ -1037,7 +1072,7 @@ class Query(object):
       total += batch.skipped_results
     raise tasklets.Return(total)
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def fetch_page(self, page_size, **q_options):
     """Fetch a page of results.
 
@@ -1065,7 +1100,7 @@ class Query(object):
     return self.fetch_page_async(page_size, **q_options).get_result()
 
   @tasklets.tasklet
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def fetch_page_async(self, page_size, **q_options):
     """Fetch a page of results.
 
@@ -1104,8 +1139,7 @@ def _make_options(q_options):
   if 'options' in q_options:
     # Move 'options' to 'config' since that is what QueryOptions() uses.
     if 'config' in q_options:
-      raise TypeError('The options pertaining to a config option must be '
-                      'given independently instead of using a config argument.')
+      raise TypeError('You cannot use config= and options= at the same time')
     q_options['config'] = q_options.pop('options')
   return QueryOptions(**q_options)
 
@@ -1157,7 +1191,7 @@ class QueryIterator(object):
   # Indicate the loop is exhausted.
   _exhausted = False
 
-  @datastore_rpc._positional(2)
+  @utils.positional(2)
   def __init__(self, query, **q_options):
     """Constructor.  Takes a Query and query options.
 
@@ -1215,7 +1249,7 @@ class QueryIterator(object):
     """
     if self._batch is None:
       raise datastore_errors.BadArgumentError('There is no cursor currently')
-    return self._batch.cursor(self._index + 1)
+    return self._batch.cursor(self._index + 1)  # TODO: inline this as async.
 
   def __iter__(self):
     """Iterator protocol: get the iterator for this iterator, i.e. self."""

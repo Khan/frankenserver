@@ -54,7 +54,17 @@ class Session(model.Model):
     #: Save time.
     updated = model.DateTimeProperty(auto_now=True)
     #: Session data, pickled.
-    data = PickledProperty(dict)
+    try:
+        # If model.PickleProperty exists, we must use it, since the
+        # above PickledProperty is broken in NDB 0.9.4 and later.
+        # This still leaves NDB 0.9.4 broken, since it doesn't have
+        # model.PickleProperty.  Fortunately no SDK contains NDB
+        # 0.9.4, we went straight from 0.9.3 (in SDK 1.6.1) to 0.9.6
+        # (in SDK 1.6.2).
+        data = model.PickleProperty()
+    except AttributeError:
+        # In NDB 0.9.3 or before, the above PickledProperty works.
+        data = PickledProperty(dict)
 
     @classmethod
     def get_by_sid(cls, sid):

@@ -251,7 +251,7 @@ class HTTPMessage(mimetools.Message):
 
 class HTTPResponse:
   # App Engine Note: The public interface is identical to the interface provided
-  #    in Python 2.7 excep __init__ takes a
+  #    in Python 2.7 except __init__ takes a
   #    google.appengine.api.urlfetch.Response instance rather than a socket.
 
   def __init__(self,

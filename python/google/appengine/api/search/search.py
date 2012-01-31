@@ -50,8 +50,8 @@ __all__ = [
     'AddDocumentResult',
     'AtomField',
     'DateField',
-    'DeleteDocumentError',
-    'DeleteDocumentResult',
+    'RemoveDocumentError',
+    'RemoveDocumentResult',
     'Document',
     'DocumentOperationResult',
     'Error',
@@ -78,7 +78,7 @@ _MAXIMUM_FIELD_ATOM_LENGTH = 500
 _LANGUAGE_LENGTH = 2
 _MAXIMUM_FIELD_NAME_LENGTH = 500
 _MAXIMUM_CURSOR_LENGTH = 1000
-_MAXIMUM_DOCUMENT_ID_LENGTH = 100
+_MAXIMUM_DOCUMENT_ID_LENGTH = 500
 _MAXIMUM_STRING_LENGTH = 500
 _MAXIMUM_DOCS_PER_REQUEST = 200
 _MAXIMUM_EXPRESSION_LENGTH = 5000
@@ -110,7 +110,7 @@ class InvalidRequest(Error):
 
 
 class DocumentOperationResult(object):
-  """Represents result of individual operation of a batch index or delete.
+  """Represents result of individual operation of a batch index or removal.
 
   This is an abstract class.
   """
@@ -176,7 +176,7 @@ class AddDocumentResult(DocumentOperationResult):
   """The result of indexing a single document."""
 
 
-class DeleteDocumentResult(DocumentOperationResult):
+class RemoveDocumentResult(DocumentOperationResult):
   """The result of deleting a single document."""
 
 
@@ -201,24 +201,24 @@ class AddDocumentError(Error):
     return self._document_results
 
 
-class DeleteDocumentError(Error):
+class RemoveDocumentError(Error):
   """Indicates some error occured deleting one of the documents requested."""
 
   def __init__(self, message, document_results):
     """Initializer.
 
     Args:
-      message: A message detailing the cause of the failure to delete some
+      message: A message detailing the cause of the failure to remove some
         document.
-      document_results: A list of DeleteDocumentResult corresponding to the
-        list of Ids of Documents requested to be deleted.
+      document_results: A list of RemoveDocumentResult corresponding to the
+        list of Ids of Documents requested to be removed.
     """
-    super(DeleteDocumentError, self).__init__(message)
+    super(RemoveDocumentError, self).__init__(message)
     self._document_results = document_results
 
   @property
   def document_results(self):
-    """Returns DeleteDocumentResult list corresponding to Documents deleted."""
+    """Returns RemoveDocumentResult list corresponding to Documents removed."""
     return self._document_results
 
 
@@ -973,7 +973,7 @@ def _NewDocumentFromPb(doc_pb):
 
 
 def _QuoteString(argument):
-  return '"' + argument.replace('"', '\"') + '"'
+  return '"' + argument.replace('"', '\\\"') + '"'
 
 
 class FieldExpression(object):
@@ -1289,10 +1289,9 @@ class SearchResponse(object):
     """Initializer.
 
     Args:
-      and message if any.
+      matched_count: The number of documents matched by the query.
       results: The list of SearchResult returned from executing a search
         request.
-      matched_count: The number of documents matched by the query.
       cursor: A cursor to continue the search from the end of the
         search results.
 
@@ -1356,7 +1355,7 @@ class ListDocumentsResponse(object):
   """Represents the result of executing a list documents request.
 
   For example, the following code shows how a response could be used
-  to determine which documents were successfully deleted or not.
+  to determine which documents were successfully removed or not.
 
   response = index.list_documents()
   for document in response:
@@ -1641,32 +1640,32 @@ class Index(object):
                                results)
     return results
 
-  def _NewDeleteDocumentResultFromPb(self, status_pb, doc_id):
-    """Constructs DeleteDocumentResult from RequestStatus pb and doc_id."""
+  def _NewRemoveDocumentResultFromPb(self, status_pb, doc_id):
+    """Constructs RemoveDocumentResult from RequestStatus pb and doc_id."""
     message = None
     if status_pb.has_error_detail():
       message = status_pb.error_detail()
     code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
-    return DeleteDocumentResult(code=code, message=message, document_id=doc_id)
+    return RemoveDocumentResult(code=code, message=message, document_id=doc_id)
 
-  def _NewDeleteDocumentResultList(self, document_ids, response):
-    return [self._NewDeleteDocumentResultFromPb(status, doc_id)
+  def _NewRemoveDocumentResultList(self, document_ids, response):
+    return [self._NewRemoveDocumentResultFromPb(status, doc_id)
             for status, doc_id in zip(response.status_list(), document_ids)]
 
-  def delete_documents(self, document_ids):
+  def remove(self, document_ids):
     """Delete the documents with the corresponding document ids from the index.
 
     If no document exists for the identifier in the list, then that document
-    identifier is ignored. If any document delete fails, then no documents
-    will be deleted.
+    identifier is ignored. If any document remove fails, then no documents
+    will be removed.
 
     Args:
       document_ids: A single identifier or list of identifiers of documents
-        to delete.
+        to remove.
 
     Raises:
-      DeleteDocumentError: If one or more documents failed to delete or
-        number deleted did not match requested.
+      RemoveDocumentError: If one or more documents failed to remove or
+        number removed did not match requested.
       ValueError: If document_ids is not a string or iterable of valid document
         identifiers or number of document ids is larger than
         _MAXIMUM_DOCS_PER_REQUEST.
@@ -1677,7 +1676,7 @@ class Index(object):
       return
 
     if len(doc_ids) > _MAXIMUM_DOCS_PER_REQUEST:
-      raise ValueError('too many documents to delete')
+      raise ValueError('too many documents to remove')
 
     request = search_service_pb.DeleteDocumentRequest()
     response = search_service_pb.DeleteDocumentResponse()
@@ -1693,16 +1692,16 @@ class Index(object):
     except apiproxy_errors.ApplicationError, e:
       raise _ToSearchError(e)
 
-    results = self._NewDeleteDocumentResultList(document_ids, response)
+    results = self._NewRemoveDocumentResultList(document_ids, response)
 
     if response.status_size() != len(doc_ids):
-      raise DeleteDocumentError(
-          'did not delete requested number of documents', results)
+      raise RemoveDocumentError(
+          'did not remove requested number of documents', results)
 
     for status in response.status_list():
       if status.code() != search_service_pb.SearchServiceError.OK:
-        raise DeleteDocumentError(
-            'one or more delete document operations failed', results)
+        raise RemoveDocumentError(
+            'one or more remove document operations failed', results)
 
   def _NewSearchResponse(self, response):
     """Returns a SearchResponse populated from a search_service response pb."""
@@ -1726,7 +1725,7 @@ class Index(object):
         cursor=response_cursor)
 
   def search(self, query, offset=0, limit=20, matched_count_accuracy=100,
-             cursor=None, cursor_type=None, sort_specs=None,
+             ids_only=False, cursor=None, cursor_type=None, sort_specs=None,
              returned_fields=None, snippeted_fields=None,
              returned_expressions=None, **kwargs):
     """Search the index for documents matching the query.
@@ -1786,6 +1785,7 @@ class Index(object):
         any SearchResponse with matched_count <= 100 is accurate. This option
         may add considerable latency/expense, especially when used with
         returned_fields.
+      ids_only: Only return document ids, do not return any fields.
       cursor: A cursor returned in a previous set of search results to use
         as a starting point to retrieve the next set of results. This can get
         you better performance, and also improves the consistency of pagination
@@ -1847,6 +1847,9 @@ class Index(object):
 
     self._CheckMatchedCountAccuracy(matched_count_accuracy)
     params.set_matched_count_accuracy(matched_count_accuracy)
+
+    if ids_only:
+      params.set_keys_only(ids_only)
 
     self._CheckCursor(cursor)
     if cursor:
@@ -1951,7 +1954,7 @@ class Index(object):
     return ListDocumentsResponse(documents=documents)
 
   def list_documents(self, start_doc_id=None, include_start_doc=True,
-                     limit=100, keys_only=False, **kwargs):
+                     limit=100, ids_only=False, **kwargs):
     """List documents in the index, in doc_id order.
 
     Args:
@@ -1960,7 +1963,7 @@ class Index(object):
       include_start_doc: If true, include the document with the Id specified by
         the start_doc_id parameter.
       limit: The maximum number of documents to return.
-      keys_only: If true, the documents returned only contain their keys.
+      ids_only: If true, the documents returned only contain their keys.
 
     Returns:
       A ListDocumentsResponse containing a list of Documents, ordered by Id.
@@ -1985,7 +1988,7 @@ class Index(object):
     params.set_include_start_doc(include_start_doc)
 
     params.set_limit(limit)
-    params.set_keys_only(keys_only)
+    params.set_keys_only(ids_only)
 
     response = search_service_pb.ListDocumentsResponse()
     try:
