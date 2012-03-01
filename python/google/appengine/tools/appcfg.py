@@ -66,6 +66,12 @@ from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
 from google.appengine.tools import appengine_rpc
+try:
+
+
+  from google.appengine.tools import appengine_rpc_httplib2
+except ImportError:
+  appengine_rpc_httplib2 = None
 from google.appengine.tools import bulkloader
 
 
@@ -124,6 +130,24 @@ DEFAULT_RESOURCE_LIMITS = {
     'max_total_file_size': 150 * MEGA,
     'max_file_count': 10000,
 }
+
+# Client ID and secrets are managed in the Google API console.
+
+
+
+
+
+APPCFG_CLIENT_ID = '550516889912.apps.googleusercontent.com'
+APPCFG_CLIENT_NOTSOSECRET = 'ykPq-0UYfKNprLRjVx1hBBar'
+APPCFG_SCOPES = ['https://www.googleapis.com/auth/appengine.admin']
+
+
+class Error(Exception):
+  pass
+
+
+class OAuthNotAvailable(Error):
+  """The appengine_rpc_httplib2 module could not be imported."""
 
 
 def PrintUpdate(msg):
@@ -202,10 +226,7 @@ class FileClassification(object):
         else:
           regex = handler.upload
         if re.match(regex, filename):
-          if handler.mime_type is not None:
-            return handler.mime_type
-          else:
-            return FileClassification.__MimeType(filename)
+          return handler.mime_type or FileClassification.__MimeType(filename)
     return None
 
   @staticmethod
@@ -230,9 +251,8 @@ class FileClassification(object):
     for error_handler in config.error_handlers:
       if error_handler.file == filename:
         error_code = error_handler.error_code
-        if not error_code:
-          error_code = 'default'
-        if error_handler.mime_type is not None:
+        error_code = error_code or  'default'
+        if error_handler.mime_type:
           return (error_handler.mime_type, error_code)
         else:
           return (FileClassification.__MimeType(filename), error_code)
@@ -248,16 +268,16 @@ class FileClassification(object):
     return guess
 
   def IsApplicationFile(self):
-    return self.__static_mime_type is None and self.__error_mime_type is None
+    return not self.IsStaticFile() and not self.IsErrorFile()
 
   def IsStaticFile(self):
-    return self.__static_mime_type is not None
+    return bool(self.__static_mime_type)
 
   def StaticMimeType(self):
     return self.__static_mime_type
 
   def IsErrorFile(self):
-    return self.__error_mime_type is not None
+    return bool(self.__error_mime_type)
 
   def ErrorMimeType(self):
     return self.__error_mime_type
@@ -2088,7 +2108,7 @@ class AppVersionUpload(object):
           file_length = GetFileLength(file_handle)
 
 
-          if max_size_override is not None:
+          if max_size_override:
             max_size = max_size_override
           elif file_classification.IsApplicationFile():
             max_size = resource_limits['max_file_size']
@@ -2327,7 +2347,7 @@ class AppCfgApp(object):
   """
 
   def __init__(self, argv, parser_class=optparse.OptionParser,
-               rpc_server_class=appengine_rpc.HttpRpcServer,
+               rpc_server_class=None,
                raw_input_fn=raw_input,
                password_input_fn=getpass.getpass,
                out_fh=sys.stdout,
@@ -2480,6 +2500,10 @@ you do not need to override the size except in rare cases."""
     verbosity = self.options.verbose
 
 
+    if self.options.oauth2_refresh_token:
+      self.options.oauth2 = True
+
+
 
 
     self.opener = opener
@@ -2587,6 +2611,17 @@ you do not need to override the size except in rare cases."""
     parser.add_option('-R', '--allow_any_runtime', action='store_true',
                       dest='allow_any_runtime', default=False,
                       help='Do not validate the runtime in app.yaml')
+    parser.add_option('--oauth2', action='store_true', dest='oauth2',
+                      default=False,
+                      help='Use OAuth2 instead of password auth.')
+    parser.add_option('--oauth2_refresh_token', action='store',
+                      dest='oauth2_refresh_token', default=None,
+                      help='An existing OAuth2 refresh token to use. Will '
+                      'not attempt interactive OAuth approval.')
+    parser.add_option('--noauth_local_webserver', action='store_false',
+                      dest='auth_local_webserver', default=True,
+                      help='Do not run a local web server to handle redirects '
+                      'during OAuth authorization.')
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -2621,6 +2656,9 @@ you do not need to override the size except in rare cases."""
 
     Returns:
       A new AbstractRpcServer, on which RPC calls can be made.
+
+    Raises:
+      OAuthNotAvailable: Oauth is requested but the dependecies aren't imported.
     """
 
     def GetUserCredentials():
@@ -2642,7 +2680,29 @@ you do not need to override the size except in rare cases."""
     StatusUpdate('Host: %s' % self.options.server)
 
 
-    if self.options.host and self.options.host == 'localhost':
+
+    dev_appserver = self.options.host == 'localhost'
+    if self.options.oauth2 and not dev_appserver:
+      if not appengine_rpc_httplib2:
+
+        raise OAuthNotAvailable()
+      if not self.rpc_server_class:
+        self.rpc_server_class = appengine_rpc_httplib2.HttpRpcServerOauth2
+
+      get_user_credentials = self.options.oauth2_refresh_token
+
+      source = (APPCFG_CLIENT_ID, APPCFG_CLIENT_NOTSOSECRET, APPCFG_SCOPES)
+
+      appengine_rpc_httplib2.tools.FLAGS.auth_local_webserver = (
+          self.options.auth_local_webserver)
+    else:
+      if not self.rpc_server_class:
+        self.rpc_server_class = appengine_rpc.HttpRpcServer
+      get_user_credentials = GetUserCredentials
+      source = GetSourceName()
+
+
+    if dev_appserver:
       email = self.options.email
       if email is None:
         email = 'test@example.com'
@@ -2651,7 +2711,7 @@ you do not need to override the size except in rare cases."""
           self.options.server,
           lambda: (email, 'password'),
           GetUserAgent(),
-          GetSourceName(),
+          source,
           host_override=self.options.host,
           save_cookies=self.options.save_cookies,
 
@@ -2666,8 +2726,8 @@ you do not need to override the size except in rare cases."""
     else:
       auth_tries = 3
 
-    return self.rpc_server_class(self.options.server, GetUserCredentials,
-                                 GetUserAgent(), GetSourceName(),
+    return self.rpc_server_class(self.options.server, get_user_credentials,
+                                 GetUserAgent(), source,
                                  host_override=self.options.host,
                                  save_cookies=self.options.save_cookies,
                                  auth_tries=auth_tries,
@@ -3634,7 +3694,11 @@ you do not need to override the size except in rare cases."""
                       ' is to be written. (Required)')
 
   def ResourceLimitsInfo(self, output=None):
-    """Outputs the current resource limits."""
+    """Outputs the current resource limits.
+
+    Args:
+      output: The file handle to write the output to (used for testing).
+    """
     appyaml = self._ParseAppYaml(self.basepath, includes=True)
     resource_limits = GetResourceLimits(self._GetRpcServer(), appyaml)
 

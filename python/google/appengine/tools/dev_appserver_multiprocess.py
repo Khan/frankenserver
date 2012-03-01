@@ -55,6 +55,7 @@ import weakref
 from google.appengine.api import backendinfo
 from google.appengine.api.backends import backends as backends_api
 from google.appengine.ext.remote_api import remote_api_stub
+from google.appengine.tools import api_server
 
 ARG_ADDRESS = 'address'
 ARG_PORT = 'port'
@@ -103,7 +104,6 @@ class ChildProcess(object):
   def __init__(self,
                host,
                port,
-               api_server=False,
                app_instance=None,
                backend_id=None,
                instance_id=None):
@@ -113,13 +113,11 @@ class ChildProcess(object):
     backend_id is specified).
 
     Args:
-      api_server: (bool) The process represents the multiprocess API Server.
       app_instance: (int) The process represents the indicated app instance.
       backend_id: (string) The process represents a backend.
       instance_id: (int) The process represents the given backend instance.
     """
 
-    self.api_server = api_server
     self.app_instance = app_instance
     self.backend_id = backend_id
     self.instance_id = instance_id
@@ -130,9 +128,7 @@ class ChildProcess(object):
     self.SetHostPort(host, port)
 
   def __str__(self):
-    if self.api_server:
-      string = 'Remote API Server'
-    elif self.app_instance is not None:
+    if self.app_instance is not None:
       string = 'App Instance'
     elif self.instance_id is not None:
       string = 'Backend Instance: %s.%d' % (self.backend_id, self.instance_id)
@@ -177,8 +173,6 @@ class ChildProcess(object):
     self.SetFlag('--port', short_flag='-p', value=self.port)
     self.SetFlag('--multiprocess_api_port', value=self.api_port)
 
-    if self.api_server:
-      self.SetFlag('--multiprocess_api_server')
     if self.app_instance is not None:
       self.SetFlag('--multiprocess_app_instance_id', value=0)
     if self.backend_id is not None:
@@ -326,12 +320,10 @@ class DevProcess(object):
   """Represents a process in the multiprocess dev_appserver."""
 
   TYPE_MASTER = 'Master'
-  TYPE_API_SERVER = 'Remote API Server'
   TYPE_APP_INSTANCE = 'App Instance'
   TYPE_BACKEND_BALANCER = 'Backend Balancer'
   TYPE_BACKEND_INSTANCE = 'Backend Instance'
   TYPES = frozenset([TYPE_MASTER,
-                     TYPE_API_SERVER,
                      TYPE_APP_INSTANCE,
                      TYPE_BACKEND_BALANCER,
                      TYPE_BACKEND_INSTANCE])
@@ -412,8 +404,6 @@ class DevProcess(object):
     self.port = options[ARG_PORT]
 
 
-    if ARG_MULTIPROCESS_API_SERVER in options:
-      self.SetType(DevProcess.TYPE_API_SERVER)
     if ARG_MULTIPROCESS_APP_INSTANCE_ID in options:
       self.SetType(DevProcess.TYPE_APP_INSTANCE)
       self.app_instance = options[ARG_MULTIPROCESS_APP_INSTANCE_ID]
@@ -432,9 +422,6 @@ class DevProcess(object):
       self.api_port = int(options[ARG_MULTIPROCESS_API_PORT])
     if ARG_MULTIPROCESS_MIN_PORT in options:
       self.multiprocess_min_port = int(options[ARG_MULTIPROCESS_MIN_PORT])
-
-    if self.IsApiServer():
-      assert self.port == self.api_port
 
     if self.IsBackend():
       self.InitBackendEntry()
@@ -470,7 +457,7 @@ class DevProcess(object):
     self.handle_requests = HandleRequestThread()
     self.handle_requests.start()
 
-  def StartChildren(self, argv):
+  def StartChildren(self, argv, options):
     """Starts the set of child processes."""
     self.children = []
 
@@ -504,18 +491,42 @@ class DevProcess(object):
     next_port = base_port
 
 
-    self.child_api_server = ChildProcess(self.host, next_port, api_server=True)
-    self.children.append(self.child_api_server)
+    self.child_api_server = api_server.APIServerProcess(
+        executable=sys.executable,
+        script=os.path.join(os.path.dirname(argv[0]), 'api_server.py'),
+        host=self.host,
+        port=next_port,
+        app_id=self.app_id,
+        application_host=options['address'],
+        application_port=options['port'],
+        application_root=options['root_path'],
+        blobstore_path=options['blobstore_path'],
+        clear_datastore=options['clear_datastore'],
+        clear_prospective_search=options['clear_prospective_search'],
+        datastore_path=options['datastore_path'],
+        enable_sendmail=options['enable_sendmail'],
+        enable_task_running=not options['disable_task_running'],
+        high_replication=options['high_replication'],
+        persist_logs=options['persist_logs'],
+        prospective_search_path=options['prospective_search_path'],
+        require_indexes=options['require_indexes'],
+        show_mail_body=options['show_mail_body'],
+        smtp_host=options['smtp_host'],
+        smtp_password=options['smtp_password'],
+        smtp_port=options['smtp_port'],
+        smtp_user=options['smtp_user'],
+        task_retry_seconds=options['task_retry_seconds'],
+        trusted=options['trusted'],
+        use_sqlite=options['use_sqlite'],
+        )
+    self.child_api_server.Start()
 
 
     if self.multiprocess_min_port == 0:
       self.AssignPortsRandomly()
 
 
-    self.child_api_server.host = API_SERVER_HOST
-
-
-    self.api_port = self.child_api_server.port
+    self.api_port = next_port
 
 
 
@@ -523,12 +534,16 @@ class DevProcess(object):
       child.Start(argv, self.api_port)
 
 
-    for child in self.children:
+    self.child_api_server.WaitUntilServing()
 
+    for child in self.children:
       child.WaitForConnection()
 
 
+
+
     message = '\n\nMultiprocess Setup Complete:'
+    message += '\n  Remote API Server [%s]' % self.child_api_server.url
     for child in self.children:
       message += '\n  %s' % child
     message += '\n'
@@ -576,10 +591,6 @@ class DevProcess(object):
   def IsSubprocess(self):
     """Indicates that this is a subprocessess of the dev_appserver."""
     return not (self.IsDefault() or self.IsMaster())
-
-  def IsApiServer(self):
-    """Indicates whether this is the api server process."""
-    return self.Type() == DevProcess.TYPE_API_SERVER
 
   def IsAppInstance(self):
     """Indicates whether this process represents an application instance."""
@@ -651,14 +662,15 @@ class DevProcess(object):
     Otherwise, set up the stubs for data based APIs as remote stubs pointing at
     the to the API server and return True.
     """
-    if self.IsDefault() or self.IsApiServer():
+    if self.IsDefault():
       return False
+
 
     services = ['datastore_v3', 'memcache', 'taskqueue']
     remote_api_stub.ConfigureRemoteApi(
         self.app_id, PATH_DEV_API_SERVER, lambda: ('', ''),
         servername='%s:%d' % (API_SERVER_HOST, self.api_port),
-        services=services)
+        services=services, use_remote_datastore=False)
     return True
 
   def NewAppInfo(self, appinfo):
@@ -718,10 +730,6 @@ class DevProcess(object):
     if self.IsBalancer():
 
       ForwardRequestThread(request, client_address).start()
-      return
-    elif self.IsApiServer():
-
-      HandleRequestDirectly(request, client_address)
       return
 
     assert self.IsAppInstance() or self.IsBackendInstance()
@@ -1003,6 +1011,8 @@ def Shutdown():
   else:
     PosixShutdown()
 
+  dev_process.child_api_server.Quit()
+
 
 def SetLogPrefix(prefix):
   """Adds a prefix to the log handler to identify the process.
@@ -1087,7 +1097,7 @@ def Init(argv, options, root_path, appinfo):
 
   SetLogPrefix(process)
   if process.IsMaster():
-    process.StartChildren(argv)
+    process.StartChildren(argv, options)
 
   process.InitBalanceSet()
 

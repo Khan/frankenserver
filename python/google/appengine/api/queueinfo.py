@@ -110,8 +110,8 @@ max_doublings: A non-negative integer. On successive failures, the retry backoff
 A queue may optionally specify an acl (Access Control List).
   acl:
   - user_email: a@foo.com
-  - user_email: b@gmail.com
-Each user email must correspond to an account hosted by Google. The acl is
+  - writer_email: b@gmail.com
+Each email must correspond to an account hosted by Google. The acl is
 enforced for queue access from outside AppEngine.
 
 An app's queues are also subject to storage quota limits for their stored tasks,
@@ -173,6 +173,7 @@ MAX_DOUBLINGS = 'max_doublings'
 
 ACL = 'acl'
 USER_EMAIL = 'user_email'
+WRITER_EMAIL = 'writer_email'
 
 
 class MalformedQueueConfiguration(Exception):
@@ -193,7 +194,8 @@ class RetryParameters(validation.Validated):
 class Acl(validation.Validated):
   """Access control list for a single task queue."""
   ATTRIBUTES = {
-      USER_EMAIL: validation.TYPE_STR,
+      USER_EMAIL: validation.Optional(validation.TYPE_STR),
+      WRITER_EMAIL: validation.Optional(validation.TYPE_STR),
   }
 
 

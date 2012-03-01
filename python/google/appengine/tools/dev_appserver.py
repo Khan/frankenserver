@@ -142,7 +142,6 @@ from google.appengine.tools import dev_appserver_blobstore
 from google.appengine.tools import dev_appserver_channel
 from google.appengine.tools import dev_appserver_blobimage
 from google.appengine.tools import dev_appserver_import_hook
-from google.appengine.tools import dev_appserver_index
 from google.appengine.tools import dev_appserver_login
 from google.appengine.tools import dev_appserver_oauth
 from google.appengine.tools import dev_appserver_multiprocess as multiprocess
@@ -2464,7 +2463,6 @@ def _ClearTemplateCache(module_dict=sys.modules):
 
 def CreateRequestHandler(root_path,
                          login_url,
-                         require_indexes=False,
                          static_caching=True,
                          default_partition=None,
                          persist_logs=False):
@@ -2480,7 +2478,6 @@ def CreateRequestHandler(root_path,
   Args:
     root_path: Path to the root of the application running on the server.
     login_url: Relative URL which should be used for handling user logins.
-    require_indexes: True if index.yaml is read-only gospel; default False.
     static_caching: True if browser caching of static files should be allowed.
     default_partition: Default partition to use in the application id.
 
@@ -2508,14 +2505,6 @@ def CreateRequestHandler(root_path,
 
 
   application_module_dict = SetupSharedModules(sys.modules)
-
-
-  if require_indexes:
-
-    index_yaml_updater = None
-  else:
-
-    index_yaml_updater = dev_appserver_index.IndexYamlUpdater(root_path)
 
 
   application_config_cache = AppConfigCache()
@@ -2756,9 +2745,6 @@ def CreateRequestHandler(root_path,
                                        [implicit_matcher, explicit_matcher])
 
 
-        dev_appserver_index.SetupIndexes(config.application, root_path)
-
-
 
 
         if multiprocess.GlobalProcess().HandleRequest(self):
@@ -2864,11 +2850,6 @@ def CreateRequestHandler(root_path,
         except socket.error, e:
           if len(e.args) >= 1 and e.args[0] != errno.EPIPE:
             raise e
-        else:
-          if index_yaml_updater is not None:
-
-
-            index_yaml_updater.UpdateIndexYaml()
 
     def log_error(self, format, *args):
       """Redirect error messages through the logging module."""
@@ -3288,11 +3269,11 @@ def SetupStubs(app_id, **config):
     if use_sqlite:
       datastore = datastore_sqlite_stub.DatastoreSqliteStub(
           app_id, datastore_path, require_indexes=require_indexes,
-          trusted=trusted)
+          trusted=trusted, root_path=root_path)
     else:
       datastore = datastore_file_stub.DatastoreFileStub(
           app_id, datastore_path, require_indexes=require_indexes,
-          trusted=trusted)
+          trusted=trusted, root_path=root_path)
 
     if high_replication:
       datastore.SetConsistencyPolicy(
@@ -3312,17 +3293,15 @@ def SetupStubs(app_id, **config):
             task_retry_seconds=task_retry_seconds,
             default_http_server='%s:%s' % (serve_address, serve_port)))
 
-    if mysql_user:
 
 
 
-      from google.appengine import api
-      sys.modules['google.appengine.api.rdbms'] = rdbms_mysqldb
-      api.rdbms = rdbms_mysqldb
-      rdbms_mysqldb.SetConnectKwargs(host=mysql_host, port=mysql_port,
-                                     user=mysql_user, passwd=mysql_password,
-                                     unix_socket=mysql_socket)
-      rdbms_mysqldb.connect(database='')
+  from google.appengine import api
+  sys.modules['google.appengine.api.rdbms'] = rdbms_mysqldb
+  api.rdbms = rdbms_mysqldb
+  rdbms_mysqldb.SetConnectKwargs(host=mysql_host, port=mysql_port,
+                                 user=mysql_user, passwd=mysql_password,
+                                 unix_socket=mysql_socket)
 
   fixed_login_url = '%s?%s=%%s' % (login_url,
                                    dev_appserver_login.CONTINUE_PARAM)
@@ -3449,17 +3428,6 @@ def CreateImplicitMatcher(
   path_adjuster = create_path_adjuster(root_path)
 
 
-  if multiprocess.GlobalProcess().IsApiServer():
-    remote_api_dispatcher = create_cgi_dispatcher(
-        config, module_dict, root_path, path_adjuster)
-    url_matcher.AddURL(multiprocess.PATH_DEV_API_SERVER,
-                       remote_api_dispatcher,
-                       REMOTE_API_PATH,
-                       False,
-                       False,
-                       appinfo.AUTH_FAIL_ACTION_REDIRECT)
-
-
 
 
   login_dispatcher = create_local_dispatcher(config, sys.modules, path_adjuster,
@@ -3534,7 +3502,6 @@ def CreateServer(root_path,
                  port,
                  template_dir=None,
                  serve_address='',
-                 require_indexes=False,
                  allow_skipped_files=False,
                  static_caching=True,
                  python_path_list=sys.path,
@@ -3555,7 +3522,6 @@ def CreateServer(root_path,
     port: Port to start the application server on.
     template_dir: Unused.
     serve_address: Address on which the server should serve.
-    require_indexes: True if index.yaml is read-only gospel; default False.
     allow_skipped_files: True if skipped files should be accessible.
     static_caching: True if browser caching of static files should be allowed.
     python_path_list: Used for dependency injection.
@@ -3577,7 +3543,6 @@ def CreateServer(root_path,
 
   handler_class = CreateRequestHandler(absolute_root_path,
                                        login_url,
-                                       require_indexes,
                                        static_caching,
                                        default_partition,
                                        persist_logs)

@@ -31,6 +31,7 @@ import os
 
 from google.appengine.api import datastore_errors
 from google.appengine.api import users
+from google.appengine.ext import deferred
 from google.appengine.ext import webapp
 from google.appengine.ext.datastore_admin import backup_handler
 from google.appengine.ext.datastore_admin import copy_handler
@@ -192,9 +193,11 @@ class RouteByActionHandler(webapp.RequestHandler):
     """Obtain a list of operation, ordered by last_updated."""
     query = utils.DatastoreAdminOperation.all()
     if active:
-      query.filter('active_jobs > ', 0)
+      query.filter('status = ', utils.DatastoreAdminOperation.STATUS_ACTIVE)
     else:
-      query.filter('active_jobs = ', 0)
+      query.filter('status IN ', [
+          utils.DatastoreAdminOperation.STATUS_COMPLETED,
+          utils.DatastoreAdminOperation.STATUS_FAILED])
     operations = query.fetch(max(10000, limit) if limit else 1000)
     operations = sorted(operations, key=operator.attrgetter('last_updated'),
                         reverse=True)
@@ -277,7 +280,8 @@ def CreateApplication():
        delete_handler.DoDeleteHandler),
       (r'%s/%s' % (utils.config.BASE_PATH,
                    utils.MapreduceDoneHandler.SUFFIX),
-      utils.MapreduceDoneHandler)]
+       utils.MapreduceDoneHandler),
+      (utils.config.DEFERRED_PATH, deferred.TaskHandler)]
       + copy_handler.handlers_list(utils.config.BASE_PATH)
       + backup_handler.handlers_list(utils.config.BASE_PATH)
       + [(r'%s/static.*' % utils.config.BASE_PATH, StaticResourceHandler),

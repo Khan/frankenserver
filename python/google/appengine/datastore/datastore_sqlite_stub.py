@@ -268,7 +268,7 @@ class KindPseudoKind(object):
       for row in c.fetchall():
         kinds.append(MakeEntityForQuery(query, self.name, ToUtf8(row[0])))
 
-      cursor = datastore_stub_util._ExecuteQuery(kinds, query, [], [])
+      cursor = datastore_stub_util._ExecuteQuery(kinds, query, [], [], [])
     finally:
       self.sqlitestub._ReleaseConnection(conn)
 
@@ -389,7 +389,7 @@ class PropertyPseudoKind(object):
       if property_pb:
         properties.append(property_pb)
 
-      cursor = datastore_stub_util._ExecuteQuery(properties, query, [], [])
+      cursor = datastore_stub_util._ExecuteQuery(properties, query, [], [], [])
     finally:
       self.sqlitestub._ReleaseConnection(conn)
 
@@ -446,7 +446,8 @@ class NamespacePseudoKind(object):
           ns_id = datastore_types._EMPTY_NAMESPACE_ID
         namespace_entities.append(MakeEntityForQuery(query, self.name, ns_id))
 
-    return datastore_stub_util._ExecuteQuery(namespace_entities, query, [], [])
+    return datastore_stub_util._ExecuteQuery(namespace_entities, query,
+                                             [], [], [])
 
 
 class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
@@ -474,7 +475,8 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
                verbose=False,
                service_name='datastore_v3',
                trusted=False,
-               consistency_policy=None):
+               consistency_policy=None,
+               root_path=None):
     """Constructor.
 
     Initializes the SQLite database if necessary.
@@ -492,12 +494,13 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       consistency_policy: The consistency policy to use or None to use the
         default. Consistency policies can be found in
         datastore_stub_util.*ConsistencyPolicy
+      root_path: string, the root path of the app.
     """
     datastore_stub_util.BaseDatastore.__init__(self, require_indexes,
                                                consistency_policy)
     apiproxy_stub.APIProxyStub.__init__(self, service_name)
     datastore_stub_util.DatastoreStub.__init__(self, weakref.proxy(self),
-                                               app_id, trusted)
+                                               app_id, trusted, root_path)
 
     self.__datastore_file = datastore_file
 
@@ -566,7 +569,6 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       self._ReleaseConnection(conn)
 
     self.__namespaces = set()
-    self.__query_history = {}
     self.__id_map = {}
     self.__Init()
 
@@ -823,11 +825,6 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     assert pb.IsInitialized(explanation), explanation
 
     pb.Encode()
-
-  def QueryHistory(self):
-    """Returns a dict that maps Query PBs to times they've been run."""
-    return dict((pb, times) for pb, times in self.__query_history.items() if
-                pb.app() == self._app_id)
 
   def __GenerateFilterInfo(self, filters, query):
     """Transform a list of filters into a more usable form.
@@ -1162,7 +1159,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
       self._ReleaseConnection(conn)
 
-  def _GetQueryCursor(self, query, filters, orders):
+  def _GetQueryCursor(self, query, filters, orders, index_list):
     """Returns a query cursor for the provided query.
 
     Args:
@@ -1199,22 +1196,11 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
         db_cursor = conn.execute(sql_stmt, params)
         dsquery = datastore_stub_util._MakeQuery(query, filters, orders)
         cursor = datastore_stub_util.IteratorCursor(
-            query, dsquery, orders, _DedupingEntityIterator(db_cursor))
+            query, dsquery, orders, index_list,
+            _DedupingEntityIterator(db_cursor))
       finally:
         self._ReleaseConnection(conn)
     return cursor
-
-  def _Dynamic_RunQuery(self, query, query_result):
-    super(DatastoreSqliteStub, self)._Dynamic_RunQuery(query, query_result)
-
-
-    clone = datastore_pb.Query()
-    clone.CopyFrom(query)
-    clone.clear_hint()
-    clone.clear_limit()
-    clone.clear_count()
-    clone.clear_offset()
-    self.__query_history[clone] = self.__query_history.get(clone, 0) + 1
 
   def _AllocateIds(self, reference, size=1, max_id=None):
     conn = self._GetConnection()

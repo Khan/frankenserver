@@ -34,6 +34,7 @@
 
 
 __all__ = [
+    "BadCombinerOutputError",
     "BadParamsError",
     "BadReaderParamsError",
     "BadWriterParamsError",
@@ -74,4 +75,8 @@ class BadWriterParamsError(BadParamsError):
 
 class ShuffleServiceError(Error):
   """Error doing shuffle through shuffle service."""
+
+
+class BadCombinerOutputError(Error):
+  """Combiner outputs data instead of yielding it."""
 

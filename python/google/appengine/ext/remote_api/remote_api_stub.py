@@ -516,7 +516,8 @@ def GetRemoteAppIdFromServer(server, path, remote_token=None):
 
 
 def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
-                                 default_auth_domain=None):
+                                 default_auth_domain=None,
+                                 use_remote_datastore=True):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Args:
@@ -527,6 +528,10 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
     services: A list of services to set up stubs for. If specified, only those
       services are configured; by default all supported services are configured.
     default_auth_domain: The authentication domain to use by default.
+    use_remote_datastore: Whether to use RemoteDatastoreStub instead of passing
+      through datastore requests. RemoteDatastoreStub batches transactional
+      datastore requests since, in production, datastore requires are scoped to
+      a single request.
 
   Raises:
     urllib2.HTTPError: if app_id is not provided and there is an error while
@@ -545,7 +550,7 @@ def ConfigureRemoteApiFromServer(server, path, app_id, services=None,
   os.environ['APPLICATION_ID'] = app_id
   os.environ.setdefault('AUTH_DOMAIN', default_auth_domain or 'gmail.com')
   apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
-  if 'datastore_v3' in services:
+  if 'datastore_v3' in services and use_remote_datastore:
     services.remove('datastore_v3')
     datastore_stub = RemoteDatastoreStub(server, path)
     apiproxy_stub_map.apiproxy.RegisterStub('datastore_v3', datastore_stub)
@@ -600,7 +605,8 @@ def ConfigureRemoteApi(app_id,
                        secure=False,
                        services=None,
                        default_auth_domain=None,
-                       save_cookies=False):
+                       save_cookies=False,
+                       use_remote_datastore=True):
   """Does necessary setup to allow easy remote access to App Engine APIs.
 
   Either servername must be provided or app_id must not be None.  If app_id
@@ -630,6 +636,10 @@ def ConfigureRemoteApi(app_id,
       services are configured; by default all supported services are configured.
     default_auth_domain: The authentication domain to use by default.
     save_cookies: Forwarded to rpc_server_factory function.
+    use_remote_datastore: Whether to use RemoteDatastoreStub instead of passing
+      through datastore requests. RemoteDatastoreStub batches transactional
+      datastore requests since, in production, datastore requires are scoped to
+      a single request.
 
   Returns:
     server, the server created by rpc_server_factory, which may be useful for
@@ -651,7 +661,7 @@ def ConfigureRemoteApi(app_id,
     app_id = GetRemoteAppIdFromServer(server, path, rtok)
 
   ConfigureRemoteApiFromServer(server, path, app_id, services,
-                               default_auth_domain)
+                               default_auth_domain, use_remote_datastore)
   return server
 
 

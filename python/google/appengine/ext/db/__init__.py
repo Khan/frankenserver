@@ -1680,6 +1680,13 @@ def allocate_id_range(model, start, end, **kwargs):
     return KEY_RANGE_EMPTY
 
 
+def _index_converter(index):
+  return Index(index.Id(),
+               index.Kind(),
+               index.HasAncestor(),
+               index.Properties())
+
+
 def get_indexes_async(**kwargs):
   """Asynchronously retrieves the application indexes and their states.
 
@@ -1687,8 +1694,7 @@ def get_indexes_async(**kwargs):
   get_result() on the return value to block on the call and get the results.
   """
   def extra_hook(indexes):
-    return [(Index(index.Id(), index.Kind(), index.HasAncestor(),
-                  index.Properties()), state) for index, state in indexes]
+    return [(_index_converter(index), state) for index, state in indexes]
 
   return datastore.GetIndexesAsync(extra_hook=extra_hook, **kwargs)
 
@@ -1948,7 +1954,9 @@ class Expando(Model):
 
 class _BaseQuery(object):
   """Base class for both Query and GqlQuery."""
-  _compile = False
+
+  _last_raw_query = None
+  _last_index_list = None
 
   def __init__(self, model_class=None, keys_only=False, compile=True,
                cursor=None, namespace=None):
@@ -2021,8 +2029,7 @@ class _BaseQuery(object):
 
   def __getstate__(self):
     state = self.__dict__.copy()
-    if '_last_raw_query' in state:
-      del state['_last_raw_query']
+    state['_last_raw_query'] = None
     return state
 
   def get(self, **kwargs):
@@ -2083,6 +2090,23 @@ class _BaseQuery(object):
       kwargs.setdefault('batch_size', datastore._MAX_INT_32)
     return list(self.run(limit=limit, offset=offset, **kwargs))
 
+  def index_list(self):
+    """Get the index list for an already executed query.
+
+    Returns:
+      A list of indexes used by the query.
+
+    Raises:
+      AssertionError: If the query has not been executed.
+    """
+    if self._last_raw_query is None:
+      raise AssertionError('No index list because query has not been run.')
+    if self._last_index_list is None:
+      raw_index_list = self._last_raw_query.GetIndexList()
+      self._last_index_list = [_index_converter(raw_index)
+                               for raw_index in raw_index_list]
+    return self._last_index_list
+
   def cursor(self):
     """Get a serialized cursor for an already executed query.
 
@@ -2092,15 +2116,17 @@ class _BaseQuery(object):
 
     Returns:
       A base64-encoded serialized cursor.
+
+    Raises:
+      AssertionError: If the query has not been executed.
     """
     if not self._compile:
       raise AssertionError(
           'Query must be created with compile=True to produce cursors')
-    try:
-      return websafe_encode_cursor(
-          self._last_raw_query.GetCompiledCursor())
-    except AttributeError:
+    if self._last_raw_query is None:
       raise AssertionError('No cursor available.')
+    cursor = self._last_raw_query.GetCursor()
+    return websafe_encode_cursor(cursor)
 
   def with_cursor(self, start_cursor=None, end_cursor=None):
     """Set the start and end of this query using serialized cursors.
@@ -2712,8 +2738,13 @@ class StringProperty(Property):
           % (self.name, type(value).__name__))
     if not self.multiline and value and value.find('\n') != -1:
       raise BadValueError('Property %s is not multi-line' % self.name)
+    if value is not None and len(value) > self.MAX_LENGTH:
+      raise BadValueError(
+          'Property %s is %d characters long; it must be %d or less.'
+          % (self.name, len(value), self.MAX_LENGTH))
     return value
 
+  MAX_LENGTH = 500
   data_type = basestring
 
 
@@ -2828,8 +2859,13 @@ class ByteStringProperty(Property):
     if value is not None and not isinstance(value, ByteString):
       raise BadValueError('Property %s must be a ByteString instance'
                           % self.name)
+    if value is not None and len(value) > self.MAX_LENGTH:
+      raise BadValueError(
+          'Property %s is %d bytes long; it must be %d or less.'
+          % (self.name, len(value), self.MAX_LENGTH))
     return value
 
+  MAX_LENGTH = 500
   data_type = ByteString
 
 

@@ -90,7 +90,9 @@ HEADER_MAP = {
 }
 
 
-ENV_PASSTHROUGH = re.compile(r'^(BACKEND_PORT\..*|INSTANCE_ID)$')
+ENV_PASSTHROUGH = re.compile(
+    r'^(BACKEND_PORT\..*|INSTANCE_ID|SERVER_SOFTWARE)$'
+)
 
 
 APP_CONFIG = None

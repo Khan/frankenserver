@@ -62,6 +62,7 @@ from django.core import exceptions
 from django.db.backends import signals
 from django.utils import safestring
 
+from google.appengine.api import apiproxy_stub_map
 from google.storage.speckle.python.api import rdbms
 from google.storage.speckle.python.django.backend import client
 
@@ -130,9 +131,8 @@ def _GetDriver(driver_name=None):
     The imported driver module, or None if a suitable driver can not be found.
   """
   if not driver_name:
-    server_software = os.getenv('SERVER_SOFTWARE', '')
     base_pkg_path = 'google.storage.speckle.python.api.'
-    if server_software.startswith(PROD_SERVER_SOFTWARE):
+    if apiproxy_stub_map.apiproxy.GetStub('rdbms'):
       driver_name = base_pkg_path + 'rdbms_apiproxy'
     else:
       driver_name = base_pkg_path + 'rdbms_googleapi'
@@ -160,9 +160,9 @@ def Connect(driver_name=None, oauth2_refresh_token=None, **kwargs):
       found in storage and no oauth2_refresh_token was given.
   """
   driver = _GetDriver(driver_name)
-  server_software = os.getenv('SERVER_SOFTWARE', '')
-  if server_software and driver.__name__.endswith('rdbms_googleapi'):
-    if server_software.startswith(PROD_SERVER_SOFTWARE):
+  if (os.getenv('APPENGINE_RUNTIME') and
+      driver.__name__.endswith('rdbms_googleapi')):
+    if os.getenv('SERVER_SOFTWARE', '').startswith(PROD_SERVER_SOFTWARE):
       logging.warning(
           'Using the Google API driver is not recommended when running on '
           'production App Engine.  You should instead use the GAE API Proxy '

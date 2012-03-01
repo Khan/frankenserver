@@ -73,10 +73,10 @@ __author__ = 'guido@google.com (Guido van Rossum)'
 import base64
 import os
 
-from google.appengine.api import datastore_errors
-from google.appengine.api import datastore_types
-from google.appengine.api import namespace_manager
-from google.appengine.datastore import entity_pb
+from .google_imports import datastore_errors
+from .google_imports import datastore_types
+from .google_imports import namespace_manager
+from .google_imports import entity_pb
 
 from . import utils
 
@@ -201,7 +201,8 @@ class Key(object):
         kwargs = _args[0]
       else:
         if 'flat' in kwargs:
-          raise TypeError('Key() cannot accept flat as a keyword argument.')
+          raise TypeError('Key() with positional arguments '
+                          'cannot accept flat as a keyword argument.')
         kwargs['flat'] = _args
     self = super(Key, cls).__new__(cls)
     # Either __reference or (__pairs, __app, __namespace) must be set.
@@ -554,6 +555,7 @@ class Key(object):
 
 
 # The remaining functions in this module are private.
+# TODO: Conform to PEP 8 naming, e.g. _construct_reference() etc.
 
 @utils.positional(1)
 def _ConstructReference(cls, pairs=None, flat=None,

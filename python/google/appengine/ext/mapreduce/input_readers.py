@@ -48,20 +48,25 @@ __all__ = [
     "DatastoreKeyInputReader",
     "Error",
     "InputReader",
+    "LogInputReader",
     "NamespaceInputReader",
     "RecordsReader",
     ]
 
 
 
+import base64
 import copy
 import StringIO
 import time
 import zipfile
 
+from google.net.proto import ProtocolBuffer
 from google.appengine.api import datastore
 from google.appengine.api import files
+from google.appengine.api import logservice
 from google.appengine.api.files import records
+from google.appengine.api.logservice import log_service_pb
 from google.appengine.datastore import datastore_query
 from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import blobstore
@@ -1012,7 +1017,7 @@ class BlobstoreZipInputReader(InputReader):
 
 
 class BlobstoreZipLineInputReader(InputReader):
-  """Input reader for newline delimited files in zip archives from  Blobstore.
+  """Input reader for newline delimited files in zip archives from Blobstore.
 
   This has the same external interface as the BlobstoreLineInputReader, in that
   it takes a list of blobs as its input and yields lines to the reader.
@@ -1632,7 +1637,7 @@ class RecordsReader(InputReader):
 
 
     batch_list.sort(reverse=True, key=lambda x: len(x))
-    return [RecordsReader(batch, 0) for batch in batch_list]
+    return [cls(batch, 0) for batch in batch_list]
 
   @classmethod
   def validate(cls, mapper_spec):
@@ -1658,3 +1663,224 @@ class RecordsReader(InputReader):
     if self._reader:
       position = self._reader.tell()
     return "%s:%s" % (self._filenames, position)
+
+
+class LogInputReader(InputReader):
+  """Input reader for a time range of logs via the Logs Reader API.
+
+  The number of input shards may be specified by the SHARDS_PARAM mapper
+  parameter.  A starting and ending time (in seconds since the Unix epoch) are
+  required to generate time ranges over which to shard the input.
+  """
+
+  START_TIME_PARAM = "start_time"
+  END_TIME_PARAM = "end_time"
+  MINIMUM_LOG_LEVEL_PARAM = "minimum_log_level"
+  INCLUDE_INCOMPLETE_PARAM = "include_incomplete"
+  INCLUDE_APP_LOGS_PARAM = "include_app_logs"
+  VERSION_IDS_PARAM = "version_ids"
+
+
+  _OFFSET_PARAM = "offset"
+  _PROTOTYPE_REQUEST_PARAM = "prototype_request"
+
+  _PARAMS = frozenset([START_TIME_PARAM, END_TIME_PARAM, _OFFSET_PARAM,
+                       MINIMUM_LOG_LEVEL_PARAM, INCLUDE_INCOMPLETE_PARAM,
+                       INCLUDE_APP_LOGS_PARAM, VERSION_IDS_PARAM,
+                       _PROTOTYPE_REQUEST_PARAM])
+  _KWARGS = frozenset([_OFFSET_PARAM, _PROTOTYPE_REQUEST_PARAM])
+
+  def __init__(self,
+               start_time=None,
+               end_time=None,
+               minimum_log_level=None,
+               include_incomplete=False,
+               include_app_logs=False,
+               version_ids=None,
+               **kwargs):
+    """Constructor.
+
+    Args:
+      start_time: The earliest request completion or last-update time of logs
+        that should be mapped over, in seconds since the Unix epoch.
+      end_time: The latest request completion or last-update time that logs
+        should be mapped over, in seconds since the Unix epoch.
+      minimum_log_level: An application log level which serves as a filter on
+        the requests mapped over--requests with no application log at or above
+        the specified level will be omitted, even if include_app_logs is False.
+      include_incomplete: Whether or not to include requests that have started
+        but not yet finished, as a boolean.  Defaults to False.
+      include_app_logs: Whether or not to include application level logs in the
+        mapped logs, as a boolean.  Defaults to False.
+      version_ids: A list of version ids whose logs should be mapped against.
+    """
+    InputReader.__init__(self)
+
+
+
+    self.__params = dict(kwargs)
+
+    if start_time is not None:
+      self.__params[self.START_TIME_PARAM] = start_time
+    if end_time is not None:
+      self.__params[self.END_TIME_PARAM] = end_time
+    if minimum_log_level is not None:
+      self.__params[self.MINIMUM_LOG_LEVEL_PARAM] = minimum_log_level
+    if include_incomplete is not None:
+      self.__params[self.INCLUDE_INCOMPLETE_PARAM] = include_incomplete
+    if include_app_logs is not None:
+      self.__params[self.INCLUDE_APP_LOGS_PARAM] = include_app_logs
+    if version_ids:
+      self.__params[self.VERSION_IDS_PARAM] = version_ids
+
+
+    if self._PROTOTYPE_REQUEST_PARAM in self.__params:
+      prototype_request = log_service_pb.LogReadRequest(
+          self.__params[self._PROTOTYPE_REQUEST_PARAM])
+      self.__params[self._PROTOTYPE_REQUEST_PARAM] = prototype_request
+
+  @staticmethod
+  def __kwargs(args):
+    """Return a new dictionary with all keys converted to type 'str'."""
+    return dict((str(name), value) for name, value in args.iteritems())
+
+  def __iter__(self):
+    """Iterates over logs in a given range of time.
+
+    Yields:
+      A RequestLog containing all the information for a single request.
+    """
+    for log in logservice.fetch(**self.__params):
+      self.__params[self._OFFSET_PARAM] = log.offset
+      yield log
+
+  @classmethod
+  def from_json(cls, json):
+    """Creates an instance of the InputReader for the given input shard's state.
+
+    Args:
+      json: The InputReader state as a dict-like object.
+
+    Returns:
+      An instance of the InputReader configured using the given JSON parameters.
+    """
+    params = cls.__kwargs(json)
+
+
+    params = dict((k, v) for k, v in params.iteritems() if k in cls._PARAMS)
+
+
+
+
+    if cls._OFFSET_PARAM in params:
+      params[cls._OFFSET_PARAM] = base64.b64decode(params[cls._OFFSET_PARAM])
+    return cls(**params)
+
+  def to_json(self):
+    """Returns an input shard state for the remaining inputs.
+
+    Returns:
+      A JSON serializable version of the remaining input to read.
+    """
+
+    params = dict(self.__params)
+    if self._PROTOTYPE_REQUEST_PARAM in params:
+      prototype_request = params[self._PROTOTYPE_REQUEST_PARAM]
+      params[self._PROTOTYPE_REQUEST_PARAM] = prototype_request.Encode()
+    if self._OFFSET_PARAM in params:
+      params[self._OFFSET_PARAM] = base64.b64encode(params[self._OFFSET_PARAM])
+    return params
+
+  @classmethod
+  def split_input(cls, mapper_spec):
+    """Returns a list of input readers for the given input specification.
+
+    Args:
+      mapper_spec: The MapperSpec for this InputReader.
+
+    Returns:
+      A list of InputReaders.
+    """
+    params = cls.__kwargs(mapper_spec.params)
+    shard_count = mapper_spec.shard_count
+
+
+    start_time = params[cls.START_TIME_PARAM]
+    end_time = params[cls.END_TIME_PARAM]
+    seconds_per_shard = (end_time - start_time) / shard_count
+
+
+    shards = []
+    for _ in xrange(shard_count - 1):
+      params[cls.END_TIME_PARAM] = (params[cls.START_TIME_PARAM] +
+                                    seconds_per_shard)
+      shards.append(LogInputReader(**params))
+      params[cls.START_TIME_PARAM] = params[cls.END_TIME_PARAM]
+
+
+    params[cls.END_TIME_PARAM] = end_time
+    return shards + [LogInputReader(**params)]
+
+  @classmethod
+  def validate(cls, mapper_spec):
+    """Validates the mapper's specification and all necessary parameters.
+
+    Args:
+      mapper_spec: The MapperSpec to be used with this InputReader.
+
+    Raises:
+      BadReaderParamsError: If the user fails to specify both a starting time
+        and an ending time, or if the starting time is later than the ending
+        time.
+    """
+    if mapper_spec.input_reader_class() != cls:
+      raise errors.BadReaderParamsError("Input reader class mismatch")
+
+    params = cls.__kwargs(mapper_spec.params)
+    params_diff = set(params.keys()) - cls._PARAMS
+    if params_diff:
+      raise errors.BadReaderParamsError("Invalid mapper parameters: %s" %
+                                        ",".join(params_diff))
+    if cls.VERSION_IDS_PARAM not in params:
+      raise errors.BadReaderParamsError("Must specify a list of version ids "
+                                        "for mapper input")
+    if (cls.START_TIME_PARAM not in params or
+        params[cls.START_TIME_PARAM] is None):
+      raise errors.BadReaderParamsError("Must specify a starting time for "
+                                        "mapper input")
+    if cls.END_TIME_PARAM not in params or params[cls.END_TIME_PARAM] is None:
+      params[cls.END_TIME_PARAM] = time.time()
+
+    if params[cls.START_TIME_PARAM] >= params[cls.END_TIME_PARAM]:
+      raise errors.BadReaderParamsError("The starting time cannot be later "
+                                        "than or the same as the ending time.")
+
+    if cls._PROTOTYPE_REQUEST_PARAM in params:
+      try:
+        params[cls._PROTOTYPE_REQUEST_PARAM] = log_service_pb.LogReadRequest(
+            params[cls._PROTOTYPE_REQUEST_PARAM])
+      except (TypeError, ProtocolBuffer.ProtocolBufferDecodeError):
+        raise errors.BadReaderParamsError("The prototype request must be "
+                                          "parseable as a LogReadRequest.")
+
+
+
+
+    try:
+      logservice.fetch(**params)
+    except logservice.InvalidArgumentError, e:
+      raise errors.BadReaderParamsError("One or more parameters are not valid "
+                                        "inputs to logservice.fetch(): %s" % e)
+
+  def __str__(self):
+    """Returns the string representation of this LogInputReader."""
+    params = []
+    for key, value in self.__params.iteritems():
+      if key is self._PROTOTYPE_REQUEST_PARAM:
+        params.append("%s='%s'" % (key, value))
+      elif key is self._OFFSET_PARAM:
+        params.append("%s='%s'" % (key, value))
+      else:
+        params.append("%s=%s" % (key, value))
+
+    return "LogInputReader(%s)" % ", ".join(params)

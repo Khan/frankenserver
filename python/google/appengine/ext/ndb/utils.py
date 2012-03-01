@@ -24,18 +24,23 @@ def wrapping(wrapped):
   # A decorator to decorate a decorator's wrapper.  Following the lead
   # of Twisted and Monocle, this is supposed to make debugging heavily
   # decorated code easier.  We'll see...
-  # TODO: Evaluate; so far it hasn't helped (nor hurt).
+  # TODO: Evaluate; so far it hasn't helped, and it has hurt some.
   def wrapping_wrapper(wrapper):
-    wrapper.__name__ = wrapped.__name__
-    wrapper.__doc__ = wrapped.__doc__
-    wrapper.__dict__.update(wrapped.__dict__)
-    wrapper.__wrapped__ = wrapped
+    try:
+      wrapper.__wrapped__ = wrapped
+      wrapper.__name__ = wrapped.__name__
+      wrapper.__doc__ = wrapped.__doc__
+      wrapper.__dict__.update(wrapped.__dict__)
+    except Exception:
+      pass
     return wrapper
   return wrapping_wrapper
 
 
 # Define a base class for classes that need to be thread-local.
-if os.getenv('wsgi.multithread'):
+# This is pretty subtle; we want to use threading.local if threading
+# is supported, but object if it is not.
+if threading.local.__module__ == 'thread':
   logging_debug('Using threading.local')
   threading_local = threading.local
 else:
@@ -65,7 +70,7 @@ def func_info(func, lineno=None):
   if not DEBUG:
     return None
   func = getattr(func, '__wrapped__', func)
-  code = func.func_code
+  code = getattr(func, 'func_code', None)
   return code_info(code, lineno)
 
 
@@ -97,8 +102,8 @@ def frame_info(frame):
 
 
 def code_info(code, lineno=None):
-  if not DEBUG:
-    return None
+  if not DEBUG or not code:
+    return ''
   funcname = code.co_name
   # TODO: Be cleverer about stripping filename,
   # e.g. strip based on sys.path.

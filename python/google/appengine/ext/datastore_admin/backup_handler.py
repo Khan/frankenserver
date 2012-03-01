@@ -43,10 +43,12 @@ from google.appengine.api import blobstore as blobstore_api
 from google.appengine.api import capabilities
 from google.appengine.api import datastore
 from google.appengine.api import files
+from google.appengine.api import taskqueue
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import blobstore
 from google.appengine.ext import db
+from google.appengine.ext import deferred
 from google.appengine.ext import webapp
 from google.appengine.ext.datastore_admin import utils
 from google.appengine.ext.mapreduce import input_readers
@@ -169,11 +171,13 @@ class BaseDoHandler(webapp.RequestHandler):
     Status of executed jobs is displayed.
     """
     jobs = self.request.get('job', allow_multiple=True)
+    tasks = self.request.get('task', allow_multiple=True)
     error = self.request.get('error', '')
     xsrf_error = self.request.get('xsrf_error', '')
 
     template_params = {
         'job_list': jobs,
+        'task_list': tasks,
         'mapreduce_detail': self.MAPREDUCE_DETAIL,
         'error': error,
         'xsrf_error': xsrf_error,
@@ -230,7 +234,7 @@ class BaseDoHandler(webapp.RequestHandler):
     Returns:
       The exception error string.
     """
-    return str(type(e)) + ": " + str(e)
+    return str(type(e)) + ': ' + str(e)
 
 
 class DoBackupHandler(BaseDoHandler):
@@ -255,8 +259,7 @@ class DoBackupHandler(BaseDoHandler):
 
     kinds = self.request.get('kind', allow_multiple=True)
     queue = self.request.get('queue')
-
-    job_name = 'datastore_backup_%s' % re.sub(r'[^\w]', '_', backup)
+    job_name = 'datastore_backup_%s_%%(kind)s' % re.sub(r'[^\w]', '_', backup)
     try:
       job_operation = utils.StartOperation('Backup: %s' % backup)
       backup_info = BackupInformation(parent=job_operation)
@@ -268,23 +271,50 @@ class DoBackupHandler(BaseDoHandler):
           'backup_info_pk': str(backup_info.key()),
           'force_ops_writes': True
       }
-      jobs = utils.RunMapForKinds(
-          job_operation.key(),
-          kinds,
-          job_name,
-          self.BACKUP_HANDLER,
-          self.INPUT_READER,
-          self.OUTPUT_WRITER,
-          self._GetBasicMapperParams(),
-          mapreduce_params,
-          queue_name=queue)
-      backup_info.active_jobs = jobs
-      backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
-      return [('job', job) for job in jobs]
-    except Exception, e:
-      logging.exception('Failed to start a datastore backup job "%s".',
+      if len(kinds) <= 10:
+        return [('job', job) for job in _run_map_jobs(
+            job_operation.key(), backup_info.key(), kinds, job_name,
+            self.BACKUP_HANDLER, self.INPUT_READER, self.OUTPUT_WRITER,
+            self._GetBasicMapperParams(), mapreduce_params, queue)]
+      else:
+        retry_options = taskqueue.TaskRetryOptions(task_retry_limit=1)
+        return [('task', deferred.defer(_run_map_jobs, job_operation.key(),
+                                        backup_info.key(), kinds, job_name,
+                                        self.BACKUP_HANDLER, self.INPUT_READER,
+                                        self.OUTPUT_WRITER,
+                                        self._GetBasicMapperParams(),
+                                        mapreduce_params,
+                                        queue, _queue=queue,
+                                        _url=utils.ConfigDefaults.DEFERRED_PATH,
+                                        _retry_options=retry_options).name)]
+    except Exception:
+      logging.exception('Failed to start a datastore backup job[s] for "%s".',
                         job_name)
-      raise e
+      if job_operation:
+        job_operation.status = utils.DatastoreAdminOperation.STATUS_FAILED
+        job_operation.put(config=datastore_rpc.Configuration(force_writes=True))
+      raise
+
+
+def _run_map_jobs(job_operation_key, backup_info_key, kinds, job_name,
+                  backup_handler, input_reader, output_writer, mapper_params,
+                  mapreduce_params, queue):
+  backup_info = BackupInformation.get(backup_info_key)
+  if not backup_info:
+    return []
+  jobs = utils.RunMapForKinds(
+      job_operation_key,
+      kinds,
+      job_name,
+      backup_handler,
+      input_reader,
+      output_writer,
+      mapper_params,
+      mapreduce_params,
+      queue_name=queue)
+  backup_info.active_jobs = jobs
+  backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
+  return jobs
 
 
 class DoBackupDeleteHandler(BaseDoHandler):
@@ -342,6 +372,7 @@ class DoBackupRestoreHandler(BaseDoHandler):
 
     queue = self.request.get('queue')
     job_name = 'datastore_backup_%s' % re.sub(r'[^\w]', '_', backup.name)
+    job_operation = None
     try:
       job_operation = utils.StartOperation('Restore from backup: %s'
                                            % backup.name)
@@ -360,10 +391,13 @@ class DoBackupRestoreHandler(BaseDoHandler):
           mapper_params,
           mapreduce_params,
           queue_name=queue))]
-    except Exception, e:
+    except Exception:
       logging.exception('Failed to start a restore from backup job "%s".',
                         job_name)
-      raise e
+      if job_operation:
+        job_operation.status = utils.DatastoreAdminOperation.STATUS_FAILED
+        job_operation.put(config=datastore_rpc.Configuration(force_writes=True))
+      raise
 
 
 class BackupInformation(db.Model):
@@ -394,15 +428,47 @@ def BackupCompleteHandler(operation, job_id, mapreduce_state):
   mapreduce_spec = mapreduce_state.mapreduce_spec
   backup_info = BackupInformation.get(mapreduce_spec.params['backup_info_pk'])
   if backup_info:
-    backup_info.blob_files = list(
-        set(backup_info.blob_files + mapreduce_state.writer_state['filenames']))
+    filenames = mapreduce_state.writer_state['filenames']
+
+
+    backup_info.blob_files = list(set(backup_info.blob_files + filenames))
     if job_id in backup_info.active_jobs:
       backup_info.active_jobs.remove(job_id)
       backup_info.completed_jobs = list(
           set(backup_info.completed_jobs + [job_id]))
-    if operation.status == utils.DatastoreAdminOperation.STATUS_COMPLETED:
-      backup_info.complete_time = datetime.datetime.now()
     backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
+    if operation.status == utils.DatastoreAdminOperation.STATUS_COMPLETED:
+      deferred.defer(finalize_backup_info, backup_info.key(),
+                     _url=utils.ConfigDefaults.DEFERRED_PATH)
+  else:
+    logging.warn('BackupInfo was not found for %s',
+                 mapreduce_spec.params['backup_info_pk'])
+
+
+def finalize_backup_info(backup_info_key):
+  backup_info = BackupInformation.get(backup_info_key)
+  backup_info.complete_time = datetime.datetime.now()
+
+
+  backup_info.blob_files = drop_empty_files(backup_info.blob_files)
+  backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
+  logging.info('Backup %s completed', backup_info.name)
+
+
+def drop_empty_files(filenames):
+  """Deletes empty files and returns filenames minus the deleted ones."""
+  non_empty_filenames = []
+  empty_file_keys = []
+  blobs_info = blobstore.BlobInfo.get([files.blobstore.get_blob_key(fn)
+                                       for fn in filenames])
+  for filename, blob_info in zip(filenames, blobs_info):
+    if blob_info:
+      if blob_info.size > 0:
+        non_empty_filenames.append(filename)
+      else:
+        empty_file_keys.append(blob_info.key())
+  blobstore_api.delete(empty_file_keys)
+  return non_empty_filenames
 
 
 class BackupEntity(object):
@@ -435,6 +501,7 @@ class RestoreEntity(object):
     pb = entity_pb.EntityProto(contents=record)
     entity = datastore.Entity._FromPb(pb)
     yield op.db.Put(entity)
+
 
 
 def get_queue_names(app_id=None):

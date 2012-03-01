@@ -44,6 +44,7 @@ from google.appengine.api import apiproxy_stub_map
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.api.logservice import logsutil
 from google.appengine.datastore import datastore_rpc
+from google.appengine.runtime import apiproxy_errors
 
 
 AUTOFLUSH_ENABLED = True
@@ -423,8 +424,14 @@ class _LogQueryResult(object):
     """
     response = log_service_pb.LogReadResponse()
 
-    apiproxy_stub_map.MakeSyncCall('logservice', 'Read', self._request,
-                                   response)
+    try:
+      apiproxy_stub_map.MakeSyncCall('logservice', 'Read', self._request,
+                                     response)
+    except apiproxy_errors.ApplicationError, e:
+      if e.application_error == log_service_pb.LogServiceError.INVALID_REQUEST:
+        raise InvalidArgumentError(e.error_detail)
+      raise Error(e.error_detail)
+
     self._logs = response.log_list()
     self._request.clear_offset()
     if response.has_offset():
@@ -654,7 +661,7 @@ class RequestLog(object):
 
   @property
   def task_name(self):
-    """The request's task name, if this generated via the Task Queue API.
+    """The request's task name, if generated via the Task Queue API.
 
     Returns:
        A string containing the request's task name if relevant, or None.
@@ -778,8 +785,9 @@ def fetch(start_time=None,
       results should be fetched for, in seconds since the Unix epoch.
     end_time: The latest request completion or last-update time that
       results should be fetched for, in seconds since the Unix epoch.
-    offset: A LogOffset protocol buffer previously returned by a query similar
-      to this one indicating a point in the result stream at which to continue.
+    offset: A byte string representing an offset into the log stream, extracted
+      from a previously emitted RequestLog.  This iterator will begin
+      immediately after the record from which the offset came.
     minimum_log_level: An application log level which serves as a filter on the
       requests returned--requests with no application log at or above the
       specified level will be omitted.  Works even if include_app_logs is not
@@ -804,7 +812,7 @@ def fetch(start_time=None,
       correct type.
   """
 
-  args_diff = set(kwargs.iterkeys()) - _FETCH_KWARGS
+  args_diff = set(kwargs) - _FETCH_KWARGS
   if args_diff:
     raise InvalidArgumentError('Invalid arguments: %s' % ', '.join(args_diff))
 

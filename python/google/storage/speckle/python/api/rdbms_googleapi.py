@@ -36,7 +36,7 @@ except ImportError:
 
   try:
     import google_sql
-    google_sql.fix_sys_path(include_google_sql_libs=True)
+    google_sql.fix_sys_path(google_sql.GOOGLE_SQL_EXTRA_PATHS)
   except ImportError:
     logging.warning(
         'Attempt to automatically load Google Cloud SQL dependencies failed! '

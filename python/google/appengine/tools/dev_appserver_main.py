@@ -613,7 +613,6 @@ def main(argv):
   port = option_dict[ARG_PORT]
   login_url = option_dict[ARG_LOGIN_URL]
   address = option_dict[ARG_ADDRESS]
-  require_indexes = option_dict[ARG_REQUIRE_INDEXES]
   allow_skipped_files = option_dict[ARG_ALLOW_SKIPPED_FILES]
   static_caching = option_dict[ARG_STATIC_CACHING]
   persist_logs = option_dict[ARG_PERSIST_LOGS]
@@ -649,7 +648,6 @@ def main(argv):
       port,
       sdk_dir=SDK_PATH,
       serve_address=address,
-      require_indexes=require_indexes,
       allow_skipped_files=allow_skipped_files,
       static_caching=static_caching,
       default_partition=default_partition,

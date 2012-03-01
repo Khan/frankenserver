@@ -136,5 +136,5 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
                               (':'.join(request.scope_list()),
                                time.time() % 100))
 
-    response.set_expiration_time(time.time() + 1800)
+    response.set_expiration_time(int(time.time()) + 1800)
 

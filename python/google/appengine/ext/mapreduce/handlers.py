@@ -275,7 +275,7 @@ class MapperWorkerCallbackHandler(util.HugeTaskHandler):
       else:
         result = handler(data)
 
-      if util.is_generator_function(handler):
+      if util.is_generator(handler):
         for output in result:
           if isinstance(output, operation.Operation):
             output(ctx)
@@ -844,7 +844,9 @@ class StartJobHandler(base_handler.PostJsonHandler):
     return value
 
   @classmethod
-  def _start_map(cls, name, mapper_spec,
+  def _start_map(cls,
+                 name,
+                 mapper_spec,
                  mapreduce_params,
                  base_path=None,
                  queue_name=None,
@@ -852,12 +854,17 @@ class StartJobHandler(base_handler.PostJsonHandler):
                  countdown=None,
                  hooks_class_name=None,
                  _app=None,
-                 transactional=False):
+                 transactional=False,
+                 parent_entity=None):
     queue_name = queue_name or os.environ.get("HTTP_X_APPENGINE_QUEUENAME",
                                               "default")
     if queue_name[0] == "_":
 
       queue_name = "default"
+
+    if not transactional and parent_entity:
+      raise Exception("Parent shouldn't be specfied "
+                      "for non-transactional starts.")
 
 
     mapper_spec.get_handler()
@@ -891,7 +898,7 @@ class StartJobHandler(base_handler.PostJsonHandler):
     config = util.create_datastore_write_config(mapreduce_spec)
 
     def start_mapreduce():
-      parent = None
+      parent = parent_entity
       if not transactional:
 
 

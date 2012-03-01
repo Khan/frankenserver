@@ -309,7 +309,8 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
                service_name='datastore_v3',
                trusted=False,
                consistency_policy=None,
-               save_changes=True):
+               save_changes=True,
+               root_path=None):
     """Constructor.
 
     Initializes and loads the datastore from the backing files, if they exist.
@@ -329,12 +330,13 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
         datastore_stub_util.*ConsistencyPolicy
       save_changes: bool, default True. If this stub should modify
         datastore_file when entities are changed.
+      root_path: string, the root path of the app.
     """
     datastore_stub_util.BaseDatastore.__init__(self, require_indexes,
                                                consistency_policy)
     apiproxy_stub.APIProxyStub.__init__(self, service_name)
     datastore_stub_util.DatastoreStub.__init__(self, weakref.proxy(self),
-                                               app_id, trusted)
+                                               app_id, trusted, root_path)
 
 
 
@@ -359,9 +361,6 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
     self.__schema_cache = {}
 
-
-    self.__query_history = {}
-
     self.__next_id = 1L
     self.__id_lock = threading.Lock()
 
@@ -384,7 +383,6 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
       self.__entities_by_kind = collections.defaultdict(dict)
       self.__entities_by_group = collections.defaultdict(dict)
-      self.__query_history = {}
       self.__schema_cache = {}
     finally:
       self.__entities_lock.release()
@@ -506,7 +504,10 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
     try:
       try:
-        if filename and filename != '/dev/null' and os.path.isfile(filename):
+        if (filename and
+            filename != '/dev/null' and
+            os.path.isfile(filename) and
+            os.stat(filename).st_size > 0):
           return pickle.load(open(filename, 'rb'))
         else:
           logging.warning('Could not read datastore data from %s', filename)
@@ -574,13 +575,6 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
     pb.Encode()
 
-  def QueryHistory(self):
-    """Returns a dict that maps Query PBs to times they've been run.
-    """
-
-    return dict((pb, times) for pb, times in self.__query_history.items()
-                if pb.app() == self._app_id)
-
   def _GetSchemaCache(self, kind, usekey):
     if kind in self.__schema_cache and usekey in self.__schema_cache[kind]:
       return self.__schema_cache[kind][usekey]
@@ -637,7 +631,7 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     eg_k = datastore_types.ReferenceToKeyValue(entity_group)
     return self.__entities_by_group[eg_k].copy()
 
-  def _GetQueryCursor(self, query, filters, orders):
+  def _GetQueryCursor(self, query, filters, orders, index_list):
     app_id = query.app()
     namespace = query.name_space()
 
@@ -668,7 +662,8 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     finally:
       self.__entities_lock.release()
 
-    return datastore_stub_util._ExecuteQuery(results, query, filters, orders)
+    return datastore_stub_util._ExecuteQuery(results, query,
+                                             filters, orders, index_list)
 
   def _AllocateIds(self, reference, size=1, max_id=None):
     datastore_stub_util.Check(not (size and max_id),
@@ -694,18 +689,3 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
 
   def _OnApply(self):
     self.__WriteDatastore()
-
-  def _Dynamic_RunQuery(self, query, query_result):
-    super(DatastoreFileStub, self)._Dynamic_RunQuery(query, query_result)
-
-
-    clone = datastore_pb.Query()
-    clone.CopyFrom(query)
-    clone.clear_hint()
-    clone.clear_limit()
-    clone.clear_offset()
-    clone.clear_count()
-    if clone in self.__query_history:
-      self.__query_history[clone] += 1
-    else:
-      self.__query_history[clone] = 1

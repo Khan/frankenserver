@@ -436,7 +436,7 @@ class Cursor(object):
 class Connection(object):
 
   def __init__(self, dsn, instance, database=None, user='root', password=None,
-               deadline_seconds=30.0, conv=None,
+               deadline_seconds=60.0, conv=None,
                query_deadline_seconds=86400.0, retry_interval_seconds=30.0):
     """Creates a new SQL Service connection.
 

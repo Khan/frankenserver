@@ -35,7 +35,16 @@ from google.appengine.api import lib_config
 
 
 
-_config_handle = lib_config.register('django', {'settings_module': 'settings'})
+
+
+
+
+
+
+
+_config_handle = lib_config.register(
+    'django', {'settings_module': os.getenv('DJANGO_SETTINGS_MODULE',
+                                            'settings')})
 settings_path = _config_handle.settings_module
 
 from google.appengine.ext.webapp import util

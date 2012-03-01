@@ -285,12 +285,12 @@ import cPickle as pickle
 import datetime
 import zlib
 
-from google.appengine.api import datastore_errors
-from google.appengine.api import datastore_types
-from google.appengine.api import users
-from google.appengine.datastore import datastore_query
-from google.appengine.datastore import datastore_rpc
-from google.appengine.datastore import entity_pb
+from .google_imports import datastore_errors
+from .google_imports import datastore_types
+from .google_imports import users
+from .google_imports import datastore_query
+from .google_imports import datastore_rpc
+from .google_imports import entity_pb
 
 from . import utils
 
@@ -300,14 +300,17 @@ Key = key_module.Key  # For export.
 _MAX_LONG = key_module._MAX_LONG
 
 # NOTE: Property and Error classes are added later.
-__all__ = ['Key', 'ModelAdapter', 'ModelAttribute',
+__all__ = ['Key', 'BlobKey', 'GeoPt', 'Rollback',
+           'Index', 'IndexState', 'IndexProperty',
+           'ModelAdapter', 'ModelAttribute',
            'ModelKey', 'MetaModel', 'Model', 'Expando',
-           'BlobKey', 'GeoPt', 'Rollback',
            'transaction', 'transaction_async',
            'in_transaction', 'transactional',
            'get_multi', 'get_multi_async',
            'put_multi', 'put_multi_async',
            'delete_multi', 'delete_multi_async',
+           'get_indexes', 'get_indexes_async',
+           'make_connection',
            ]
 
 
@@ -326,6 +329,166 @@ class KindError(datastore_errors.BadValueError):
 
 class ComputedPropertyError(datastore_errors.Error):
   """Raised when attempting to assign a value to a computed property."""
+
+
+# Map index directions to human-readable strings.
+_DIR_MAP = {
+  entity_pb.Index_Property.ASCENDING: 'asc',
+  entity_pb.Index_Property.DESCENDING: 'desc',
+  }
+
+# Map index states to human-readable strings.
+_STATE_MAP = {
+  entity_pb.CompositeIndex.ERROR: 'error',
+  entity_pb.CompositeIndex.DELETED: 'deleting',
+  entity_pb.CompositeIndex.READ_WRITE: 'serving',
+  entity_pb.CompositeIndex.WRITE_ONLY: 'building',
+  }
+
+
+class _NotEqualMixin(object):
+  """Mix-in class that implements __ne__ in terms of __eq__."""
+
+  def __ne__(self, other):
+    """Implement self != other as not(self == other)."""
+    eq = self.__eq__(other)
+    if eq is NotImplemented:
+      return NotImplemented
+    return not eq
+
+
+class IndexProperty(_NotEqualMixin):
+  """Immutable object representing a single property in an index."""
+
+  @utils.positional(1)
+  def __new__(cls, name, direction):
+    """Constructor."""
+    obj = object.__new__(cls)
+    obj.__name = name
+    obj.__direction = direction
+    return obj
+
+  @property
+  def name(self):
+    """The property name being indexed, a string."""
+    return self.__name
+
+  @property
+  def direction(self):
+    """The direction in the index for this property, 'asc' or 'desc'."""
+    return self.__direction
+
+  def __repr__(self):
+    """Return a string representation."""
+    return '%s(name=%r, direction=%r)' % (self.__class__.__name__,
+                                          self.name,
+                                          self.direction)
+
+  def __eq__(self, other):
+    """Compare two index properties for equality."""
+    if not isinstance(other, IndexProperty):
+      return NotImplemented
+    return self.name == other.name and self.direction == other.direction
+
+  def __hash__(self):
+    return hash((self.name, self.direction))
+
+
+class Index(_NotEqualMixin):
+  """Immutable object representing an index."""
+
+  @utils.positional(1)
+  def __new__(cls, kind, properties, ancestor):
+    """Constructor."""
+    obj = object.__new__(cls)
+    obj.__kind = kind
+    obj.__properties = properties
+    obj.__ancestor = ancestor
+    return obj
+
+  @property
+  def kind(self):
+    """The kind being indexed, a string."""
+    return self.__kind
+
+  @property
+  def properties(self):
+    """A list of PropertyIndex objects giving the properties being indexed."""
+    return self.__properties
+
+  @property
+  def ancestor(self):
+    """Whether this is an ancestor index, a bool."""
+    return self.__ancestor
+
+  def __repr__(self):
+    """Return a string representation."""
+    parts = []
+    parts.append('kind=%r' % self.kind)
+    parts.append('properties=%r' % self.properties)
+    parts.append('ancestor=%s' % self.ancestor)
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(parts))
+
+  def __eq__(self, other):
+    """Compare two indexes."""
+    if not isinstance(other, Index):
+      return NotImplemented
+    return (self.kind == other.kind and
+            self.properties == other.properties and
+            self.ancestor == other.ancestor)
+
+  def __hash__(self):
+    return hash((self.kind, self.properties, self.ancestor))
+
+
+class IndexState(_NotEqualMixin):
+  """Immutable object representing and index and its state."""
+
+  @utils.positional(1)
+  def __new__(cls, definition, state, id):
+    """Constructor."""
+    obj = object.__new__(cls)
+    obj.__definition = definition
+    obj.__state = state
+    obj.__id = id
+    return obj
+
+  @property
+  def definition(self):
+    """An Index object describing the index."""
+    return self.__definition
+
+  @property
+  def state(self):
+    """The index state, a string.
+
+    Possible values are 'error', 'deleting', 'serving' or 'building'.
+    """
+    return self.__state
+
+  @property
+  def id(self):
+    """The index ID, an integer."""
+    return self.__id
+
+  def __repr__(self):
+    """Return a string representation."""
+    parts = []
+    parts.append('definition=%r' % self.definition)
+    parts.append('state=%r' % self.state)
+    parts.append('id=%d' % self.id)
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(parts))
+
+  def __eq__(self, other):
+    """Compare two index states."""
+    if not isinstance(other, IndexState):
+      return NotImplemented
+    return (self.definition == other.definition and
+            self.state == other.state and
+            self.id == other.id)
+
+  def __hash__(self):
+    return hash((self.definition, self.state, self.id))
 
 
 class ModelAdapter(datastore_rpc.AbstractAdapter):
@@ -371,7 +534,9 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
       kind = key.kind()
     modelclass = Model._kind_map.get(kind, self.default_model)
     if modelclass is None:
-      raise KindError("No implementation found for kind '%s'" % kind)
+      raise KindError(
+        "No model class found for kind '%s'. Did you forget to import it?" %
+        kind)
     entity = modelclass._from_pb(pb, key=key, set_key=False)
     if self.want_pbs:
       entity._orig_pb = pb
@@ -380,6 +545,21 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
   def entity_to_pb(self, ent):
     pb = ent._to_pb()
     return pb
+
+  def pb_to_index(self, pb):
+    index_def = pb.definition()
+    properties = [IndexProperty(name=prop.name(),
+                                direction=_DIR_MAP[prop.direction()])
+                  for prop in index_def.property_list()]
+    index = Index(kind=index_def.entity_type(),
+                  properties=properties,
+                  ancestor=bool(index_def.ancestor()),
+                  )
+    index_state = IndexState(definition=index,
+                             state=_STATE_MAP[pb.state()],
+                             id=pb.id(),
+                             )
+    return index_state
 
 
 def make_connection(config=None, default_model=None):
@@ -399,7 +579,7 @@ class ModelAttribute(object):
     pass
 
 
-class _BaseValue(object):
+class _BaseValue(_NotEqualMixin):
   """A marker object wrapping a 'base type' value.
 
   This is used to be able to tell whether ent._values[name] is a
@@ -425,10 +605,8 @@ class _BaseValue(object):
       return NotImplemented
     return self.b_val == other.b_val
 
-  def __ne__(self, other):
-    if not isinstance(other, _BaseValue):
-      return NotImplemented
-    return self.b_val != other.b_val
+  def __hash__(self):
+    raise TypeError('_BaseValue is not immutable')
 
 
 class Property(ModelAttribute):
@@ -556,7 +734,7 @@ class Property(ModelAttribute):
                  '_choices', '_validator', '_verbose_name']
   _positional = 1  # Only name is a positional argument.
 
-  @utils.positional(1 + _positional)
+  @utils.positional(1 + _positional)  # Add 1 for self.
   def __init__(self, name=None, indexed=None, repeated=None,
                required=None, default=None, choices=None, validator=None,
                verbose_name=None):
@@ -564,8 +742,10 @@ class Property(ModelAttribute):
     if name is not None:
       if isinstance(name, unicode):
         name = name.encode('utf-8')
+      if not isinstance(name, str):
+        raise TypeError('Name %r is not a string' % (name,))
       if '.' in name:
-        raise ValueError('name cannot contain period characters' % name)
+        raise ValueError('Name %r cannot contain period characters' % (name,))
       self._name = name
     if indexed is not None:
       self._indexed = indexed
@@ -637,6 +817,7 @@ class Property(ModelAttribute):
     Returns:
       A FilterNode instance representing the requested comparison.
     """
+    # NOTE: This is also used by query.gql().
     if not self._indexed:
       raise datastore_errors.BadFilterError(
         'Cannot query for unindexed property %s' % self._name)
@@ -1227,7 +1408,7 @@ class FloatProperty(Property):
 _MEANING_URI_COMPRESSED = 'ZLIB'
 
 
-class _CompressedValue(object):
+class _CompressedValue(_NotEqualMixin):
   """A marker object wrapping compressed values."""
 
   __slots__ = ['z_val']
@@ -1245,10 +1426,8 @@ class _CompressedValue(object):
       return NotImplemented
     return self.z_val == other.z_val
 
-  def __ne__(self, other):
-    if not isinstance(other, _CompressedValue):
-      return NotImplemented
-    return self.z_val != other.z_val
+  def __hash__(self):
+    raise TypeError('_CompressedValue is not immutable')
 
 
 class BlobProperty(Property):
@@ -1484,10 +1663,40 @@ class KeyProperty(Property):
 
   _kind = None
 
-  @utils.positional(1 + Property._positional)
+  @utils.positional(2 + Property._positional)
   def __init__(self, *args, **kwds):
-    kind = kwds.pop('kind', None)
-    super(KeyProperty, self).__init__(*args, **kwds)
+    # Support several positional signatures:
+    # ()  =>  name=None, kind from kwds
+    # (None)  =>  name=None, kind from kwds
+    # (name)  =>  name=arg 0, kind from kwds
+    # (kind)  =>  name=None, kind=arg 0
+    # (name, kind)  => name=arg 0, kind=arg 1
+    # (kind, name)  => name=arg 1, kind=arg 0
+    # The positional kind must be a Model subclass; it cannot be a string.
+    name = kind = None
+
+    for arg in args:
+      if isinstance(arg, basestring):
+        if name is not None:
+          raise TypeError('You can only specify one name')
+        name = arg
+      elif isinstance(arg, type) and issubclass(arg, Model):
+        if kind is not None:
+          raise TypeError('You can only specify one kind')
+        kind = arg
+      elif arg is not None:
+        raise TypeError('Unexpected positional argument: %r' % (arg,))
+
+    if name is None:
+      name = kwds.pop('name', None)
+    elif 'name' in kwds:
+      raise TypeError('You can only specify name once')
+
+    if kind is None:
+      kind = kwds.pop('kind', None)
+    elif 'kind' in kwds:
+      raise TypeError('You can only specify kind once')
+
     if kind is not None:
       if isinstance(kind, type) and issubclass(kind, Model):
         kind = kind._get_kind()
@@ -1495,6 +1704,9 @@ class KeyProperty(Property):
         kind = kind.encode('utf-8')
       if not isinstance(kind, str):
         raise TypeError('kind must be a Model class or a string')
+
+    super(KeyProperty, self).__init__(name, **kwds)
+
     self._kind = kind
 
   def _datastore_type(self, value):
@@ -1702,7 +1914,7 @@ class TimeProperty(DateTimeProperty):
     return datetime.datetime.now().time()
 
 
-class StructuredGetForDictMixin(Property):
+class _StructuredGetForDictMixin(Property):
   """Mixin class so *StructuredProperty can share _get_for_dict().
 
   The behavior here is that sub-entities are converted to dictionaries
@@ -1719,7 +1931,7 @@ class StructuredGetForDictMixin(Property):
     return value
 
 
-class StructuredProperty(StructuredGetForDictMixin):
+class StructuredProperty(_StructuredGetForDictMixin):
   """A Property whose value is itself an entity.
 
   The values of the sub-entity are indexed and can be queried.
@@ -1775,7 +1987,10 @@ class StructuredProperty(StructuredGetForDictMixin):
     # Import late to avoid circular imports.
     from .query import ConjunctionNode, PostFilterNode
     from .query import RepeatedStructuredPropertyPredicate
-    value = self._do_validate(value)  # None is not allowed!
+    if value is None:
+      from .query import FilterNode  # Import late to avoid circular imports.
+      return FilterNode(self._name, op, value)
+    value = self._do_validate(value)
     value = self._call_to_base_type(value)
     filters = []
     match_keys = []
@@ -1861,7 +2076,7 @@ class StructuredProperty(StructuredGetForDictMixin):
         for unused_name, prop in sorted(value._properties.iteritems()):
           prop._serialize(value, pb, prefix + self._name + '.',
                           self._repeated or parent_repeated)
-      elif parent_repeated:
+      else:
         # Serialize a single None
         super(StructuredProperty, self)._serialize(
           entity, pb, prefix=prefix, parent_repeated=parent_repeated)
@@ -1930,7 +2145,7 @@ class StructuredProperty(StructuredGetForDictMixin):
         value._prepare_for_put()
 
 
-class LocalStructuredProperty(StructuredGetForDictMixin, BlobProperty):
+class LocalStructuredProperty(_StructuredGetForDictMixin, BlobProperty):
   """Substructure that is serialized to an opaque blob.
 
   This looks like StructuredProperty on the Python side, but is
@@ -2166,7 +2381,7 @@ class MetaModel(type):
     return '%s<%s>' % (cls.__name__, ', '.join(props))
 
 
-class Model(object):
+class Model(_NotEqualMixin):
   """A class describing datastore entities.
 
   Model instances are usually called entities.  All model classes
@@ -2229,6 +2444,8 @@ class Model(object):
     through the constructor, but can be assigned to entity attributes
     after the entity has been created.
     """
+    # TODO: Use the same signature hacks as in get_or_insert() to
+    # fully support properties named id, parent or key?
     if key is not None:
       if id is not None:
         raise datastore_errors.BadArgumentError(
@@ -2381,13 +2598,6 @@ class Model(object):
       if my_value != their_value:
         return False
     return True
-
-  def __ne__(self, other):
-    """Implement self != other as not(self == other)."""
-    eq = self.__eq__(other)
-    if eq is NotImplemented:
-      return NotImplemented
-    return not eq
 
   def _to_pb(self, pb=None, allow_partial=False, set_key=True):
     """Internal helper to turn an entity into an EntityProto protobuf."""
@@ -2581,12 +2791,21 @@ class Model(object):
     Returns:
       A Query object.
     """
+    # TODO: Disallow non-empty args and filter=.
     from .query import Query  # Import late to avoid circular imports.
     qry = Query(kind=cls._get_kind(), **kwds)
     if args:
       qry = qry.filter(*args)
     return qry
   query = _query
+
+  @classmethod
+  def _gql(cls, query_string, *args, **kwds):
+    """Run a GQL query."""
+    from .query import gql  # Import late to avoid circular imports.
+    return gql('SELECT * FROM %s %s' % (cls._get_kind(), query_string),
+               *args, **kwds)
+  gql = _gql
 
   def _put(self, **ctx_options):
     """Write this entity to the datastore.
@@ -2680,7 +2899,7 @@ class Model(object):
         def txn():
           ent = yield key.get_async(options=context_options)
           if ent is None:
-            ent = cls(**kwds)  # TODO: Check for forbidden keys
+            ent = cls(**kwds)  # TODO: Use _populate().
             ent._key = key
             yield ent.put_async(options=context_options)
           raise tasklets.Return(ent)
@@ -2922,22 +3141,39 @@ def in_transaction():
 
 
 @utils.positional(1)
-def transactional(func):
+def transactional(func=None, **ctx_options):
   """Decorator to make a function automatically run in a transaction.
 
   If we're already in a transaction this is a no-op.
 
-  Note: If you need to override the retry count, or want some kind of
-  async behavior, or pass Context options, use the transaction()
-  function above.
+  This supports two forms:
+
+  (1) Vanilla:
+      @transactional
+      def callback(arg):
+        ...
+
+  (2) With options:
+      @transactional(retries=1)
+      def callback(arg):
+        ...
   """
-  @utils.wrapping(func)
-  def transactional_wrapper(*args, **kwds):
-    if in_transaction():
-      return func(*args, **kwds)
-    else:
-      return transaction(lambda: func(*args, **kwds))
-  return transactional_wrapper
+  if func is not None:
+    # Form (1), vanilla.
+    if ctx_options:
+      raise TypeError('@transactional() does not take positional arguments')
+    return transactional()(func)
+
+  # Form (2), with options.
+  def outer_transactional_wrapper(func):
+    @utils.wrapping(func)
+    def transactional_wrapper(*args, **kwds):
+      if in_transaction():
+        return func(*args, **kwds)
+      else:
+        return transaction(lambda: func(*args, **kwds), **ctx_options)
+    return transactional_wrapper
+  return outer_transactional_wrapper
 
 
 def get_multi_async(keys, **ctx_options):
@@ -3020,6 +3256,32 @@ def delete_multi(keys, **ctx_options):
   """
   return [future.get_result()
           for future in delete_multi_async(keys, **ctx_options)]
+
+
+def get_indexes_async(**ctx_options):
+  """Get a data structure representing the configured indexes.
+
+  Args:
+    **ctx_options: Context options.
+
+  Returns:
+    A future.
+  """
+  from . import tasklets
+  ctx = tasklets.get_context()
+  return ctx.get_indexes(**ctx_options)
+
+
+def get_indexes(**ctx_options):
+  """Get a data structure representing the configured indexes.
+
+  Args:
+    **ctx_options: Context options.
+
+  Returns:
+    A list of Index objects.
+  """
+  return get_indexes_async(**ctx_options).get_result()
 
 
 # Update __all__ to contain all Property and Exception subclasses.

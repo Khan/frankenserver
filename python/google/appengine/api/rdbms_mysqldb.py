@@ -70,6 +70,16 @@ try:
 
 
   __import__('MySQLdb.constants', globals(), locals(), ['*'])
+except ImportError:
+  logging.warning('The rdbms API is not available because the MySQLdb '
+                  'library could not be loaded.')
+
+
+  def connect(instance=None, database=None):
+    raise NotImplementedError(
+        'Unable to find the MySQLdb library. Please see the SDK '
+        'documentation for installation instructions.')
+else:
 
 
   def connect(instance=None, database=None, **kwargs):
@@ -88,17 +98,13 @@ try:
             'Unable to find MySQL socket file.  Use --mysql_socket to '
             'specify its location manually.')
     logging.info('Connecting to MySQL with kwargs %r', merged_kwargs)
-    return MySQLdb.connect(**merged_kwargs)
-
-except ImportError:
-  logging.warning('The rdbms API is not available because the MySQLdb '
-                  'library could not be loaded.')
-
-
-  def connect(instance=None, database=None):
-    raise NotImplementedError(
-        'Unable to find the MySQLdb library. Please see the SDK '
-        'documentation for installation instructions.')
+    try:
+      return MySQLdb.connect(**merged_kwargs)
+    except MySQLdb.Error:
+      logging.critical(
+          'MySQL connection failed! Ensure that you have provided correct '
+          'values for the --mysql_* flags when running dev_appserver.py')
+      raise
 
 
 def set_instance(instance):

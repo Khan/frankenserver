@@ -16,11 +16,12 @@
 #
 import cgi
 import datetime
-import wsgiref.handlers
+
 
 from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.ext import webapp
+from google.appengine.ext.webapp import util
 
 class Greeting(db.Model):
   author = db.UserProperty()
@@ -73,7 +74,7 @@ application = webapp.WSGIApplication([
 
 
 def main():
-  wsgiref.handlers.CGIHandler().run(application)
+  util.run_wsgi_app(application)
 
 
 if __name__ == '__main__':

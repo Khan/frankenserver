@@ -49,13 +49,19 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
                login_url=_DEFAULT_LOGIN_URL,
                logout_url=_DEFAULT_LOGOUT_URL,
                service_name='user',
-               auth_domain=_DEFAULT_AUTH_DOMAIN):
+               auth_domain=_DEFAULT_AUTH_DOMAIN,
+               http_server_address=None,
+               ):
     """Initializer.
 
     Args:
       login_url: String containing the URL to use for logging in.
       logout_url: String containing the URL to use for logging out.
       service_name: Service name expected for all calls.
+      auth_domain: The authentication domain for the service e.g. "gmail.com".
+      http_server_address: The address of the application's HTTP server e.g.
+          "localhost:8080". If this is not set then the SERVER_NAME and
+          SERVER_PORT environment variables are used.
 
     Note: Both the login_url and logout_url arguments must contain one format
     parameter, which will be replaced with the continuation URL where the user
@@ -65,6 +71,8 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self.__num_requests = 0
     self._login_url = login_url
     self._logout_url = logout_url
+    self._http_server_address = http_server_address
+
 
 
 
@@ -133,9 +141,12 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     if host:
       return continue_url
 
-    host = os.environ['SERVER_NAME']
-    if os.environ['SERVER_PORT'] != '80':
-      host = host + ":" + os.environ['SERVER_PORT']
+    if self._http_server_address:
+      host = self._http_server_address
+    else:
+      host = os.environ['SERVER_NAME']
+      if os.environ['SERVER_PORT'] != '80':
+        host = host + ":" + os.environ['SERVER_PORT']
 
 
     if path == '':

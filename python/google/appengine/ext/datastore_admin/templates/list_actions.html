@@ -201,6 +201,7 @@
         <tr>
           <th scope="col" class="id">Description</th>
           <th scope="col" class="id">Completed steps</th>
+          <th scope="col" class="id">Status</th>
         </tr>
       </thead>
       <tbody>
@@ -211,6 +212,9 @@
             </td>
             <td class="id">
               {{operation.completed_jobs}} steps
+            </td>
+            <td class="id">
+              {{operation.status}}
             </td>
           </tr>
         {% endfor %}

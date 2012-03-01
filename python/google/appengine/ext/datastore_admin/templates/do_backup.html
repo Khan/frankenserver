@@ -24,20 +24,33 @@
         information.
         </p>
       </div>
+      {% for id in job_list %}
+        <p>Backup <a href="{{mapreduce_detail|escape}}{{id|escape}}">job with id
+          {{id|escape}}</a>
+            kicked off.</p>
+      {% endfor %}
     {% endif %}
-    {% for id in job_list %}
-      <p>Backup <a href="{{mapreduce_detail|escape}}{{id|escape}}">job with id
-        {{id|escape}}</a>
-          kicked off.</p>
-    {% endfor %}
-
+    {% if task_list %}
+      <div class="ae-message">
+        <div class="ae-alert">
+          The followings tasks were submitted and will initiate MapReduce jobs.
+        </div>
+        <ul>
+          {% for task_name in task_list %}
+            <li>{{ task_name }}</li>
+          {% endfor %}
+        </ul>
+        <p>Once job's are created their status will only be available for as
+        long as the job takes to complete. Once the job is complete, it will
+        remove the status objects from your datastore.
+        Click a job's id for status information.
+        </p>
+      </div>
+    {% endif %}
     {% if error %}
-      <p>There was a problem kicking off the jobs.
-      {% if job_list %}The above jobs did start successfully.  The error
-        starting the remaining jobs was:
-      {% else %}The error was:
-      {% endif %}</p>
-      <pre><code>{{error|escape}}</code></pre>
+      <p>There was a problem kicking some off the jobs/tasks:
+        <pre><code>{{error|escape}}</code></pre>
+      </p>
     {% endif %}
   {% endif %}
   <a href="{{datastore_admin_home}}">Back to Datastore Admin</a>

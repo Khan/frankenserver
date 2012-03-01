@@ -33,6 +33,9 @@
 """Pipelines for mapreduce library."""
 
 
+__all__ = [
+    "MapperPipeline",
+    ]
 
 import google
 

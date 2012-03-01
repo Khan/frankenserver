@@ -21,6 +21,7 @@
 
 
 import os
+import re
 import sys
 
 
@@ -57,17 +58,31 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'google.appengine._internal.graphy'),
 ]
 
+API_SERVER_EXTRA_PATHS = [
+  os.path.join(DIR_PATH, 'lib', 'argparse'),
+]
+API_SERVER_EXTRA_PATH_SCRIPTS = 'api_server'
 
-GOOGLE_SQL_EXTRA_PATHS = [
-  os.path.join(DIR_PATH, 'lib', 'enum'),
+
+OAUTH_CLIENT_EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'google-api-python-client'),
-  os.path.join(DIR_PATH, 'lib', 'grizzled'),
   os.path.join(DIR_PATH, 'lib', 'httplib2'),
+  os.path.join(DIR_PATH, 'lib', 'python-gflags'),
+]
+
+OAUTH_CLIENT_EXTRA_PATH_SCRIPTS = '(appcfg|bulkloader)'
+
+
+GOOGLE_SQL_EXTRA_PATHS = OAUTH_CLIENT_EXTRA_PATHS + [
+  os.path.join(DIR_PATH, 'lib', 'enum'),
+  os.path.join(DIR_PATH, 'lib', 'grizzled'),
   os.path.join(DIR_PATH, 'lib', 'oauth2'),
   os.path.join(DIR_PATH, 'lib', 'prettytable'),
-  os.path.join(DIR_PATH, 'lib', 'python-gflags'),
   os.path.join(DIR_PATH, 'lib', 'sqlcmd'),
 ]
+
+GOOGLE_SQL_EXTRA_PATH_SCRIPTS = 'google_sql'
+
 
 
 SCRIPT_EXCEPTIONS = {
@@ -79,18 +94,27 @@ SCRIPT_DIR_EXCEPTIONS = {
 }
 
 
-def fix_sys_path(include_google_sql_libs=False):
+def fix_sys_path(extra_extra_paths=()):
   """Fix the sys.path to include our extra paths."""
   extra_paths = EXTRA_PATHS[:]
-  if include_google_sql_libs:
-    extra_paths.extend(GOOGLE_SQL_EXTRA_PATHS)
+  extra_paths.extend(extra_extra_paths)
   sys.path = extra_paths + sys.path
 
 
 def run_file(file_path, globals_, script_dir=SCRIPT_DIR):
   """Execute the file at the specified path with the passed-in globals."""
   script_name = os.path.basename(file_path)
-  fix_sys_path('google_sql' in script_name)
+
+  if re.match(OAUTH_CLIENT_EXTRA_PATH_SCRIPTS, script_name):
+    extra_extra_paths = OAUTH_CLIENT_EXTRA_PATHS
+  elif re.match(GOOGLE_SQL_EXTRA_PATH_SCRIPTS, script_name):
+    extra_extra_paths = GOOGLE_SQL_EXTRA_PATHS
+  elif re.match(API_SERVER_EXTRA_PATH_SCRIPTS, script_name):
+    extra_extra_paths = API_SERVER_EXTRA_PATHS
+  else:
+    extra_extra_paths = []
+  fix_sys_path(extra_extra_paths)
+
   script_name = SCRIPT_EXCEPTIONS.get(script_name, script_name)
   script_dir = SCRIPT_DIR_EXCEPTIONS.get(script_name, script_dir)
   script_path = os.path.join(script_dir, script_name)

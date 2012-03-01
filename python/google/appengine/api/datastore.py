@@ -248,8 +248,9 @@ class _BaseIndex(object):
         The order of the properties is based on the order in the index.
     """
     argument_error = datastore_errors.BadArgumentError
-    datastore_types.ValidateInteger(index_id, 'index_id', argument_error)
-    datastore_types.ValidateString(kind, 'kind', argument_error)
+    datastore_types.ValidateInteger(index_id, 'index_id', argument_error,
+                                    zero_ok=True)
+    datastore_types.ValidateString(kind, 'kind', argument_error, empty_ok=True)
     if not isinstance(properties, (list, tuple)):
       raise argument_error('properties must be a list or a tuple')
     for idx, index_property in enumerate(properties):
@@ -281,7 +282,7 @@ class _BaseIndex(object):
     return self.__id
 
   def _Kind(self):
-    """Returns the index kind, a string."""
+    """Returns the index kind, a string, or None if none."""
     return self.__kind
 
   def _HasAncestor(self):
@@ -1239,6 +1240,10 @@ class Query(dict):
   __ancestor_pb = None
   __compile = None
 
+  __index_list_source = None
+  __cursor_source = None
+  __compiled_query_source = None
+
 
   __cursor = None
 
@@ -1528,6 +1533,21 @@ class Query(dict):
           property_filters)
     return None
 
+  def GetIndexList(self):
+    """Get the index list from the last run of this query.
+
+    Returns:
+      A list of indexes used by the last run of this query.
+
+    Raises:
+      AssertionError: The query has not yet been run.
+    """
+    index_list_function = self.__index_list_source
+    if index_list_function:
+      return index_list_function()
+    raise AssertionError('No index list available because this query has not '
+                         'been executed')
+
   def GetCursor(self):
     """Get the cursor from the last run of this query.
 
@@ -1539,20 +1559,22 @@ class Query(dict):
       - Count: A cursor that points immediately after the last result counted.
 
     Returns:
-      A datastore_query.Cursor object that can be used in subsiquent query
+      A datastore_query.Cursor object that can be used in subsequent query
       requests.
+
+    Raises:
+      AssertionError: The query has not yet been run or cannot be compiled.
     """
-    try:
 
 
-      cursor = self.__cursor_source()
-      if not cursor:
-        raise AttributeError()
-    except AttributeError:
-      raise AssertionError('No cursor available, either this query has not '
-                           'been executed or there is no compilation '
-                           'available for this kind of query')
-    return cursor
+    cursor_function = self.__cursor_source
+    if cursor_function:
+      cursor = cursor_function()
+      if cursor:
+        return cursor
+    raise AssertionError('No cursor available, either this query has not '
+                         'been executed or there is no compilation '
+                         'available for this kind of query')
 
   def GetBatcher(self, config=None):
     """Runs this query and returns a datastore_query.Batcher.
@@ -1579,7 +1601,7 @@ class Query(dict):
     invalid, raises BadValueError. If an IN filter is provided, and a sort
     order on another property is provided, raises BadQueryError.
 
-    If you know in advance how many results you want, use Get() instead. It's
+    If you know in advance how many results you want, use limit=#. It's
     more efficient.
 
     Args:
@@ -1592,6 +1614,8 @@ class Query(dict):
     config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
                                   config_class=datastore_query.QueryOptions)
     itr = Iterator(self.GetBatcher(config=config))
+
+    self.__index_list_source = itr.GetIndexList
 
     self.__cursor_source = itr.cursor
 
@@ -1638,6 +1662,8 @@ class Query(dict):
                                   config_class=datastore_query.QueryOptions)
 
     batch = self.GetBatcher(config=config).next()
+    self.__index_list_source = (
+        lambda: [index for index, state in batch.index_list])
     self.__cursor_source = lambda: batch.cursor(0)
     self.__compiled_query_source = lambda: batch._compiled_query
     return max(0, batch.skipped_results - original_offset)
@@ -1648,10 +1674,9 @@ class Query(dict):
 
   def __getstate__(self):
     state = self.__dict__.copy()
-    if '_Query__cursor_source' in state:
-      del state['_Query__cursor_source']
-    if '_Query__compiled_query_source' in state:
-      del state['_Query__compiled_query_source']
+    state['_Query__index_list_source'] = None
+    state['_Query__cursor_source'] = None
+    state['_Query__compiled_query_source'] = None
     return state
 
   def __setitem__(self, filter, value):
@@ -1827,18 +1852,18 @@ class Query(dict):
     """Returns the internal-only pb representation of the last query run.
 
     Do not use.
+
+    Raises:
+      AssertionError: Query not compiled or not yet executed.
     """
-    try:
-
-
-      compiled_query = self.__compiled_query_source()
-      if not compiled_query:
-        raise AttributeError()
-    except AttributeError:
-      raise AssertionError('No compiled query available, either this query has '
-                           'not been executed or there is no compilation '
-                           'available for this kind of query')
-    return compiled_query
+    compiled_query_function = self.__compiled_query_source
+    if compiled_query_function:
+      compiled_query = compiled_query_function()
+      if compiled_query:
+        return compiled_query
+    raise AssertionError('No compiled query available, either this query has '
+                         'not been executed or there is no compilation '
+                         'available for this kind of query')
 
   GetCompiledQuery = _GetCompiledQuery
   GetCompiledCursor = GetCursor
@@ -2229,10 +2254,14 @@ class MultiQuery(Query):
 
     return max(0, len(used_keys) - lower_bound)
 
+  def GetIndexList(self):
+
+    raise AssertionError('No index_list available for a MultiQuery (queries '
+                         'using "IN" or "!=" operators)')
+
   def GetCursor(self):
     raise AssertionError('No cursor available for a MultiQuery (queries '
                          'using "IN" or "!=" operators)')
-
 
   def _GetCompiledQuery(self):
     """Internal only, do not use."""
@@ -2635,6 +2664,7 @@ class Iterator(datastore_query.ResultsIterator):
 
   Deprecated, do not use, only for backwards compatability.
   """
+
   def _Next(self, count=None):
     if count is None:
       count = 20
@@ -2648,7 +2678,16 @@ class Iterator(datastore_query.ResultsIterator):
   def GetCompiledCursor(self, query):
     return self.cursor()
 
+  def GetIndexList(self):
+    """Returns the list of indexes used to perform the query."""
+    tuple_index_list = super(Iterator, self).index_list()
+    return [index for index, state in tuple_index_list]
+
   _Get = _Next
+
+
+
+  index_list = GetIndexList
 
 
 

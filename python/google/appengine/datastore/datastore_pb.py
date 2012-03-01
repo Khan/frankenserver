@@ -5698,6 +5698,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.result_ = []
+    self.index_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -5813,6 +5814,22 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def has_compiled_cursor(self): return self.has_compiled_cursor_
 
+  def index_size(self): return len(self.index_)
+  def index_list(self): return self.index_
+
+  def index(self, i):
+    return self.index_[i]
+
+  def mutable_index(self, i):
+    return self.index_[i]
+
+  def add_index(self):
+    x = CompositeIndex()
+    self.index_.append(x)
+    return x
+
+  def clear_index(self):
+    self.index_ = []
 
   def MergeFrom(self, x):
     assert x is not self
@@ -5823,6 +5840,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_compiled_query()): self.mutable_compiled_query().MergeFrom(x.compiled_query())
     if (x.has_compiled_cursor()): self.mutable_compiled_cursor().MergeFrom(x.compiled_cursor())
+    for i in xrange(x.index_size()): self.add_index().CopyFrom(x.index(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -5841,6 +5859,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if self.has_compiled_query_ and self.compiled_query_ != x.compiled_query_: return 0
     if self.has_compiled_cursor_ != x.has_compiled_cursor_: return 0
     if self.has_compiled_cursor_ and self.compiled_cursor_ != x.compiled_cursor_: return 0
+    if len(self.index_) != len(x.index_): return 0
+    for e1, e2 in zip(self.index_, x.index_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -5854,6 +5875,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: more_results not set.')
     if (self.has_compiled_query_ and not self.compiled_query_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_compiled_cursor_ and not self.compiled_cursor_.IsInitialized(debug_strs)): initialized = 0
+    for p in self.index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -5865,6 +5888,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_keys_only_): n += 2
     if (self.has_compiled_query_): n += 1 + self.lengthString(self.compiled_query_.ByteSize())
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSize())
+    n += 1 * len(self.index_)
+    for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
@@ -5878,6 +5903,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_keys_only_): n += 2
     if (self.has_compiled_query_): n += 1 + self.lengthString(self.compiled_query_.ByteSizePartial())
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSizePartial())
+    n += 1 * len(self.index_)
+    for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -5888,6 +5915,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     self.clear_keys_only()
     self.clear_compiled_query()
     self.clear_compiled_cursor()
+    self.clear_index()
 
   def OutputUnchecked(self, out):
     if (self.has_cursor_):
@@ -5914,6 +5942,10 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_skipped_results_):
       out.putVarInt32(56)
       out.putVarInt32(self.skipped_results_)
+    for i in xrange(len(self.index_)):
+      out.putVarInt32(66)
+      out.putVarInt32(self.index_[i].ByteSize())
+      self.index_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -5941,6 +5973,10 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_skipped_results_):
       out.putVarInt32(56)
       out.putVarInt32(self.skipped_results_)
+    for i in xrange(len(self.index_)):
+      out.putVarInt32(66)
+      out.putVarInt32(self.index_[i].ByteSizePartial())
+      self.index_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5978,6 +6014,12 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       if tt == 56:
         self.set_skipped_results(d.getVarInt32())
         continue
+      if tt == 66:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_index().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6009,6 +6051,14 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"compiled_cursor <\n"
       res+=self.compiled_cursor_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    cnt=0
+    for e in self.index_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("index%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
@@ -6022,6 +6072,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   kkeys_only = 4
   kcompiled_query = 5
   kcompiled_cursor = 6
+  kindex = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6032,7 +6083,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     5: "compiled_query",
     6: "compiled_cursor",
     7: "skipped_results",
-  }, 7)
+    8: "index",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6043,7 +6095,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.STRING,
     7: ProtocolBuffer.Encoder.NUMERIC,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.STRING,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
