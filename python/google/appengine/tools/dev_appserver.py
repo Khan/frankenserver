@@ -40,7 +40,6 @@ from google.appengine.tools import os_compat
 
 import __builtin__
 import BaseHTTPServer
-import Cookie
 import base64
 import cStringIO
 import cgi
@@ -56,7 +55,6 @@ import logging
 import mimetools
 import mimetypes
 import os
-import pdb
 import select
 import shutil
 import simplejson
@@ -99,7 +97,6 @@ from google.appengine.api import appinfo_includes
 from google.appengine.api import app_logging
 from google.appengine.api import blobstore
 from google.appengine.api import croninfo
-from google.appengine.api import datastore_admin
 from google.appengine.api import datastore_file_stub
 from google.appengine.api import lib_config
 from google.appengine.api import mail
@@ -613,6 +610,7 @@ class MatcherDispatcher(URLDispatcher):
   def __init__(self,
                config,
                login_url,
+               module_manager,
                url_matchers,
                get_user_info=dev_appserver_login.GetUserInfo,
                login_redirect=dev_appserver_login.LoginRedirect):
@@ -621,12 +619,15 @@ class MatcherDispatcher(URLDispatcher):
     Args:
       config: AppInfoExternal instance representing the parsed app.yaml file.
       login_url: Relative URL which should be used for handling user logins.
+      module_manager: ModuleManager instance that is used to detect and reload
+        modules if the matched Dispatcher is dynamic.
       url_matchers: Sequence of URLMatcher objects.
       get_user_info: Used for dependency injection.
       login_redirect: Used for dependency injection.
     """
     self._config = config
     self._login_url = login_url
+    self._module_manager = module_manager
     self._url_matchers = tuple(url_matchers)
     self._get_user_info = get_user_info
     self._login_redirect = login_redirect
@@ -677,6 +678,15 @@ class MatcherDispatcher(URLDispatcher):
                       % (httplib.FORBIDDEN, email_addr))
       else:
         request.path = matched_path
+
+
+
+
+
+        if (not isinstance(dispatcher, FileDispatcher) and
+            self._module_manager.AreModuleFilesModified()):
+          self._module_manager.ResetModules()
+
         forward_request = dispatcher.Dispatch(request,
                                               outfile,
                                               base_env_dict=base_env_dict)
@@ -2332,6 +2342,9 @@ class ModuleManager(object):
 
     self._modification_times = {}
 
+
+    self._dirty = True
+
   @staticmethod
   def GetModuleFile(module, is_file=os.path.isfile):
     """Helper method to try to determine modules source file.
@@ -2362,6 +2375,7 @@ class ModuleManager(object):
     Returns:
       True if one or more files have been modified, False otherwise.
     """
+    self._dirty = True
     for name, (mtime, fname) in self._modification_times.iteritems():
 
       if name not in self._modules:
@@ -2381,6 +2395,9 @@ class ModuleManager(object):
 
   def UpdateModuleFileModificationTimes(self):
     """Records the current modification times of all monitored modules."""
+    if not self._dirty:
+      return
+
     self._modification_times.clear()
     for name, module in self._modules.items():
       if not isinstance(module, types.ModuleType):
@@ -2394,6 +2411,8 @@ class ModuleManager(object):
       except OSError, e:
         if e.errno not in FILE_MISSING_EXCEPTIONS:
           raise e
+
+    self._dirty = False
 
   def ResetModules(self):
     """Clear modules so that when request is run they are reloaded."""
@@ -2682,7 +2701,7 @@ def CreateRequestHandler(root_path,
           static_caching=static_caching, default_partition=default_partition)
 
 
-        if not from_cache or self.module_manager.AreModuleFilesModified():
+        if not from_cache:
           self.module_manager.ResetModules()
 
 
@@ -2741,7 +2760,7 @@ def CreateRequestHandler(root_path,
             user_agent=self.headers.get('user-agent'),
             host=host_name)
 
-        dispatcher = MatcherDispatcher(config, login_url,
+        dispatcher = MatcherDispatcher(config, login_url, self.module_manager,
                                        [implicit_matcher, explicit_matcher])
 
 
@@ -3263,7 +3282,7 @@ def SetupStubs(app_id, **config):
 
 
   if not multiprocess.GlobalProcess().MaybeConfigureRemoteDataApis():
-    """Configures local versions of datastore, memcache, and taskqueue."""
+
     apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
 
     if use_sqlite:
@@ -3395,6 +3414,18 @@ def SetupStubs(app_id, **config):
   system_service_stub = system_stub.SystemServiceStub()
   multiprocess.GlobalProcess().UpdateSystemStub(system_service_stub)
   apiproxy_stub_map.apiproxy.RegisterStub('system', system_service_stub)
+
+
+def TearDownStubs():
+  """Clean up any stubs that need cleanup."""
+
+  datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
+
+
+  if isinstance(datastore_stub, datastore_stub_util.BaseTransactionManager):
+    logging.info('Applying all pending transactions and saving the datastore')
+    datastore_stub.Flush()
+    datastore_stub.Write()
 
 
 def CreateImplicitMatcher(

@@ -517,3 +517,36 @@ class Testbed(object):
       return
     stub = xmpp_service_stub.XmppServiceStub()
     self._register_stub(XMPP_SERVICE_NAME, stub)
+
+  def _init_stub(self, service_name, *args, **kwargs):
+    """Enable a stub by service name.
+
+    Args:
+      service_name: Name of service to initialize.  This name should be the
+        name used by the service stub.
+
+      Additional arguments are passed along to the specific stub initializer.
+
+    Raises:
+      NotActivatedError: When this function is called before testbed is
+        activated or after it is deactivated.
+      StubNotSupportedError: When an unsupported service_name is provided.
+    """
+    if not self._activated:
+      raise NotActivatedError('The testbed is not activated.')
+    if service_name not in SUPPORTED_SERVICES:
+      msg = 'The "%s" service is not supported by testbed' % service_name
+      raise StubNotSupportedError(msg)
+    method_name = 'init_%s_stub' % service_name
+    method = getattr(self, method_name)
+    method(*args, **kwargs)
+
+  def init_all_stubs(self, enable=True):
+    """Enable all known testbed stubs.
+
+    Args:
+      enable: True, if the fake services should be enabled, False if real
+              services should be disabled.
+    """
+    for service_name in SUPPORTED_SERVICES:
+      self._init_stub(service_name, enable)

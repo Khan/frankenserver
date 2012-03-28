@@ -44,6 +44,18 @@ class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
       service_name: Service name expected for all calls.
     """
     super(CapabilityServiceStub, self).__init__(service_name)
+    self._packages = {}
+
+  def SetPackageEnabled(self, package, enabled):
+    """Set all features of a given package to enabled.
+
+    Args:
+      package: Name of package.
+      enabled: True to enable, False to disable.
+    """
+
+    self._packages[package] = enabled
+
 
 
   def _Dynamic_IsEnabled(self, request, response):
@@ -53,9 +65,16 @@ class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
       request: An IsEnabledRequest.
       response: An IsEnabledResponse.
     """
-    response.set_summary_status(IsEnabledResponse.ENABLED)
+    package_enabled = self._packages.get(request.package(), True)
+    if package_enabled:
+      response.set_summary_status(IsEnabledResponse.ENABLED)
+    else:
+      response.set_summary_status(IsEnabledResponse.DISABLED)
 
     default_config = response.add_config()
     default_config.set_package('')
     default_config.set_capability('')
-    default_config.set_status(CapabilityConfig.ENABLED)
+    if package_enabled:
+      default_config.set_status(CapabilityConfig.ENABLED)
+    else:
+      default_config.set_status(CapabilityConfig.DISABLED)

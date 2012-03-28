@@ -176,18 +176,59 @@ class RouteByActionHandler(webapp.RequestHandler):
   def post(self):
     self.RouteAction(GET_ACTIONS)
 
-  def GetKinds(self):
-    """Obtain list of all entity kinds from the datastore."""
-    kinds = metadata.Kind.all().fetch(99999999)
+  def GetKinds(self, all_ns=True):
+    """Obtain a list of all kind names from the datastore.
+
+    Args:
+      all_ns: If true, list kind names for all namespaces.
+              If false, list kind names only for the current namespace.
+
+    Returns:
+      An alphabetized list of kinds for the specified namespace(s).
+    """
+    if all_ns:
+      result = self.GetKindsForAllNamespaces()
+    else:
+      result = self.GetKindsForCurrentNamespace()
+    return result
+
+  def GetKindsForAllNamespaces(self):
+    """Obtain a list of all kind names from the datastore, *regardless*
+    of namespace.  The result is alphabetized and deduped."""
+
+
+    namespace_list = [ns.namespace_name
+                      for ns in metadata.Namespace.all().run(limit=99999999)]
+    kind_itr_list = [metadata.Kind.all(namespace=ns).run(limit=99999999,
+                                                         batch_size=99999999)
+                     for ns in namespace_list]
+
+
+    kind_name_set = set()
+    for kind_itr in kind_itr_list:
+      for kind in kind_itr:
+        kind_name = kind.kind_name
+        if self.__IsVisibleKindName(kind_name):
+          kind_name_set.add(kind.kind_name)
+
+    kind_name_list = sorted(kind_name_set)
+    return kind_name_list
+
+  def GetKindsForCurrentNamespace(self):
+    """Obtain a list of all kind names from the datastore for the
+    current namespace.  The result is alphabetized."""
+    kinds = metadata.Kind.all().order('__key__').fetch(99999999)
     kind_names = []
     for kind in kinds:
       kind_name = kind.kind_name
-      if (kind_name.startswith('__') or
-          kind_name == utils.DatastoreAdminOperation.kind() or
-          kind_name == backup_handler.BackupInformation.kind()):
-        continue
-      kind_names.append(kind_name)
+      if self.__IsVisibleKindName(kind_name):
+        kind_names.append(kind_name)
     return kind_names
+
+  def __IsVisibleKindName(self, kind_name):
+    return not (kind_name.startswith('__') or
+                kind_name == utils.DatastoreAdminOperation.kind() or
+                kind_name == backup_handler.BackupInformation.kind())
 
   def GetOperations(self, active=False, limit=100):
     """Obtain a list of operation, ordered by last_updated."""

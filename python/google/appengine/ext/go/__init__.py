@@ -49,6 +49,7 @@ import errno
 import getpass
 import logging
 import os
+import random
 import re
 import shutil
 import signal
@@ -68,10 +69,9 @@ from google.appengine.tools import dev_appserver
 GAB_WORK_DIR = None
 GO_APP = None
 GO_APP_NAME = '_go_app'
+GO_HTTP_PORT = 0
+GO_API_PORT = 0
 RAPI_HANDLER = None
-SOCKET_HTTP = os.path.join(tempfile.gettempdir(),
-                           'dev_appserver_%s_socket_http')
-SOCKET_API = os.path.join(tempfile.gettempdir(), 'dev_appserver_%s_socket_api')
 HEALTH_CHECK_PATH = '/_appengine_delegate_health_check'
 INTERNAL_SERVER_ERROR = ('Status: 500 Internal Server Error\r\n' +
     'Content-Type: text/plain\r\n\r\nInternal Server Error')
@@ -96,6 +96,20 @@ ENV_PASSTHROUGH = re.compile(
 
 
 APP_CONFIG = None
+
+
+def pick_unused_port():
+  for _ in range(10):
+    port = int(random.uniform(32768, 60000))
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+      s.bind(('127.0.0.1', port))
+      return port
+    except socket.error:
+      logging.info('could not bind to port %d', port)
+    finally:
+      s.close()
+  raise dev_appserver.ExecuteError('could not pick an unused port')
 
 
 def gab_work_dir():
@@ -124,18 +138,13 @@ def cleanup():
     shutil.rmtree(GAB_WORK_DIR)
   except:
     pass
-  for fn in [SOCKET_HTTP, SOCKET_API]:
-    try:
-      os.remove(fn)
-    except:
-      pass
 
 
 class DelegateClient(asyncore.dispatcher):
   def __init__(self, http_req):
     asyncore.dispatcher.__init__(self)
-    self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    self.connect(SOCKET_HTTP)
+    self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.connect(('127.0.0.1', GO_HTTP_PORT))
     self.buffer = http_req
     self.result = ''
     self.closed = False
@@ -161,12 +170,8 @@ class DelegateClient(asyncore.dispatcher):
 class DelegateServer(asyncore.dispatcher):
   def __init__(self):
     asyncore.dispatcher.__init__(self)
-    self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    try:
-      os.remove(SOCKET_API)
-    except OSError:
-      pass
-    self.bind(SOCKET_API)
+    self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.bind(('127.0.0.1', GO_API_PORT))
     self.listen(5)
 
   def handle_accept(self):
@@ -289,8 +294,8 @@ def wait_until_go_app_ready(proc, tee):
     if proc.poll():
       raise dev_appserver.ExecuteError('Go app failed during init', tee.buf)
     try:
-      s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-      s.connect(SOCKET_HTTP)
+      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      s.connect(('127.0.0.1', GO_HTTP_PORT))
       s.send('HEAD %s HTTP/1.0\r\n\r\n' % HEALTH_CHECK_PATH)
       s.close()
       return
@@ -358,6 +363,7 @@ class GoApp:
   def cleanup(self):
     if self.proc:
       os.kill(self.proc.pid, signal.SIGTERM)
+      self.proc = None
 
   def make_and_run(self, env):
     app_files = find_app_files(self.root_path)
@@ -389,7 +395,8 @@ class GoApp:
 
 
     if not self.proc or self.proc.poll() is not None:
-      logging.info('running ' + GO_APP_NAME)
+      logging.info('running %s, HTTP port = %d, API port = %d',
+          GO_APP_NAME, GO_HTTP_PORT, GO_API_PORT)
 
       limited_env = {
           'PWD': self.root_path,
@@ -400,8 +407,8 @@ class GoApp:
           limited_env[k] = v
       self.proc_start = app_mtime
       self.proc = subprocess.Popen([bin_name,
-          '-addr_http', 'unix:' + SOCKET_HTTP,
-          '-addr_api', 'unix:' + SOCKET_API],
+          '-addr_http', 'tcp:127.0.0.1:%d' % GO_HTTP_PORT,
+          '-addr_api', 'tcp:127.0.0.1:%d' % GO_API_PORT],
           stderr=subprocess.PIPE,
           cwd=self.root_path, env=limited_env)
       tee = Tee(self.proc.stderr, sys.stderr)
@@ -431,15 +438,25 @@ class GoApp:
       raise dev_appserver.CompileError(p.stdout.read() + '\n' + p.stderr.read())
 
 
+OldSigTermHandler = None
+
+def SigTermHandler(signum, frame):
+  if GO_APP:
+    GO_APP.cleanup()
+  if OldSigTermHandler:
+    OldSigTermHandler(signum, frame)
+
 def execute_go_cgi(root_path, handler_path, cgi_path, env, infile, outfile):
 
-  global RAPI_HANDLER, GAB_WORK_DIR, SOCKET_HTTP, SOCKET_API, GO_APP
+  global RAPI_HANDLER, GAB_WORK_DIR, GO_APP, GO_HTTP_PORT, GO_API_PORT
+  global OldSigTermHandler
   if not RAPI_HANDLER:
     user_port = '%s_%s' % (getpass.getuser(), env['SERVER_PORT'])
     GAB_WORK_DIR = gab_work_dir() % user_port
-    SOCKET_HTTP = SOCKET_HTTP % user_port
-    SOCKET_API = SOCKET_API % user_port
+    GO_HTTP_PORT = pick_unused_port()
+    GO_API_PORT = pick_unused_port()
     atexit.register(cleanup)
+    OldSigTermHandler = signal.signal(signal.SIGTERM, SigTermHandler)
     DelegateServer()
     RAPI_HANDLER = handler.ApiCallHandler()
     GO_APP = GoApp(root_path)

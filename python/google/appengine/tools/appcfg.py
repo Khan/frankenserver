@@ -60,6 +60,7 @@ from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
 from google.appengine.api import croninfo
 from google.appengine.api import dosinfo
+from google.appengine.api import pagespeedinfo
 from google.appengine.api import queueinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
@@ -845,6 +846,31 @@ class DosEntryUpload(object):
                         app_id=self.config.application,
                         version=self.config.version,
                         payload=self.dos.ToYAML())
+
+
+class PagespeedEntryUpload(object):
+  """Provides facilities to upload pagespeed configs to the hosting service."""
+
+  def __init__(self, rpcserver, config, pagespeed):
+    """Creates a new PagespeedEntryUpload.
+
+    Args:
+      rpcserver: The RPC server to use. Should be an instance of a subclass of
+        AbstractRpcServer.
+      config: The AppInfoExternal object derived from the app.yaml file.
+      pagespeed: The PagespeedInfoExternal object from pagespeed.yaml.
+    """
+    self.rpcserver = rpcserver
+    self.config = config
+    self.pagespeed = pagespeed
+
+  def DoUpload(self):
+    """Uploads the pagespeed entries."""
+    StatusUpdate('Uploading Page Speed configuration.')
+    self.rpcserver.Send('/api/pagespeed/update',
+                        app_id=self.config.application,
+                        version=self.config.version,
+                        payload=self.pagespeed.ToYAML())
 
 
 class DefaultVersionSet(object):
@@ -2540,7 +2566,9 @@ you do not need to override the size except in rare cases."""
     action_names.sort()
     desc = ''
     for action_name in action_names:
-      desc += '  %s: %s\n' % (action_name, self.actions[action_name].short_desc)
+      if not self.actions[action_name].hidden:
+        desc += '  %s: %s\n' % (action_name,
+                                self.actions[action_name].short_desc)
     return desc
 
   def _GetOptionParser(self):
@@ -2879,6 +2907,18 @@ you do not need to override the size except in rare cases."""
     """
     return self._ParseYamlFile(basepath, 'dos', dosinfo.LoadSingleDos)
 
+  def _ParsePagespeedYaml(self, basepath):
+    """Parses the pagespeed.yaml file.
+
+    Args:
+      basepath: the directory of the application.
+
+    Returns:
+      A PagespeedInfoExternal object or None if the file does not exist.
+    """
+    return self._ParseYamlFile(basepath, 'pagespeed',
+                               pagespeedinfo.LoadSinglePagespeed)
+
   def Help(self, action=None):
     """Prints help for a specific action.
 
@@ -3014,6 +3054,13 @@ you do not need to override the size except in rare cases."""
       dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
       dos_upload.DoUpload()
 
+
+    pagespeed_yaml = self._ParsePagespeedYaml(self.basepath)
+    if pagespeed_yaml:
+      pagespeed_upload = PagespeedEntryUpload(
+          rpcserver, appyaml, pagespeed_yaml)
+      pagespeed_upload.DoUpload()
+
   def _UpdateOptions(self, parser):
     """Adds update-specific options to 'parser'.
 
@@ -3116,6 +3163,21 @@ you do not need to override the size except in rare cases."""
     if dos_yaml:
       dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
       dos_upload.DoUpload()
+
+  def UpdatePagespeed(self):
+    """Updates any new or changed pagespeed configuration."""
+    if self.args:
+      self.parser.error('Expected a single <directory> argument.')
+
+    appyaml = self._ParseAppYaml(self.basepath)
+    rpcserver = self._GetRpcServer()
+
+
+    pagespeed_yaml = self._ParsePagespeedYaml(self.basepath)
+    if pagespeed_yaml:
+      pagespeed_upload = PagespeedEntryUpload(
+          rpcserver, appyaml, pagespeed_yaml)
+      pagespeed_upload.DoUpload()
 
   def BackendsAction(self):
     """Placeholder; we never expect this action to be invoked."""
@@ -3722,6 +3784,7 @@ you do not need to override the size except in rare cases."""
         object.
       uses_basepath: Does the action use a basepath/app-directory (and hence
         app.yaml).
+      hidden: Should this command be shown in the help listing.
     """
 
 
@@ -3731,7 +3794,7 @@ you do not need to override the size except in rare cases."""
 
     def __init__(self, function, usage, short_desc, long_desc='',
                  error_desc=None, options=lambda obj, parser: None,
-                 uses_basepath=True):
+                 uses_basepath=True, hidden=False):
       """Initializer for the class attributes."""
       self.function = function
       self.usage = usage
@@ -3740,6 +3803,7 @@ you do not need to override the size except in rare cases."""
       self.error_desc = error_desc
       self.options = options
       self.uses_basepath = uses_basepath
+      self.hidden = hidden
 
     def __call__(self, appcfg):
       """Invoke this Action on the specified AppCfg.
@@ -3817,6 +3881,15 @@ definitions from the optional queue.yaml file."""),
           long_desc="""
 The 'update_dos' command will update any new, removed or changed dos
 definitions from the optional dos.yaml file."""),
+
+      'update_pagespeed': Action(
+          function='UpdatePagespeed',
+          usage='%prog [options] update_pagespeed <directory>',
+          short_desc='Update application pagespeed definitions.',
+          long_desc="""
+The 'update_pagespeed' command will update your Page Speed configuration
+from the optional pagesped.yaml file.""",
+          hidden=True),
 
       'backends': Action(
           function='BackendsAction',

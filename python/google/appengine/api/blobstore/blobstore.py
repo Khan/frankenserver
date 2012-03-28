@@ -63,6 +63,8 @@ __all__ = ['BLOB_INFO_KIND',
            'delete_async',
            'fetch_data',
            'fetch_data_async',
+           'create_gs_key',
+           'create_gs_key_async',
           ]
 
 
@@ -111,7 +113,6 @@ class _CreationFormatError(Error):
 
 class PermissionDeniedError(Error):
   """Raised when permissions are lacking for a requested operation."""
-
 
 
 def _ToBlobstoreError(error):
@@ -430,3 +431,67 @@ def fetch_data_async(blob_key, start_index, end_index, rpc=None):
 
   return _make_async_call(rpc, 'FetchData', request, response,
                           _get_result_hook, lambda rpc: rpc.response.data())
+
+
+def create_gs_key(filename, rpc=None):
+  """Create an encoded key for a Google Storage file.
+
+  The created blob key will include short lived access token using the
+  applications service account for authorization.
+
+  This blob key should not be stored permanently as the access token will
+  expire.
+
+  Args:
+    filename: The filename of the google storage object to create the key for.
+    rpc: Optional UserRPC object.
+
+  Returns:
+    An encrypted blob key object that also contains a short term access token
+      that represents the applications service account.
+  """
+  rpc = create_gs_key_async(filename, rpc)
+  return rpc.get_result()
+
+
+def create_gs_key_async(filename, rpc=None):
+  """Create an encoded key for a google storage file - async version.
+
+  The created blob key will include short lived access token using the
+  applications service account for authorization.
+
+  This blob key should not be stored permanently as the access token will
+  expire.
+
+  Args:
+    filename: The filename of the google storage object to create the
+      key for.
+    rpc: Optional UserRPC object.
+
+  Returns:
+    A UserRPC whose result will be a str as returned by create_gs_key.
+
+  Raises:
+    TypeError: If filename is not a string.
+    ValueError: If filename is not in the format '/gs/bucket_name/object_name'
+  """
+
+  if not isinstance(filename, basestring):
+    raise TypeError('filename must be str: %s' % filename)
+  if not filename.startswith('/gs/'):
+    raise ValueError('filename must start with "/gs/": %s' % filename)
+  if not '/' in filename[4:]:
+    raise ValueError('filename must have the format '
+                     '"/gs/bucket_name/object_name": %s' % filename)
+
+  request = blobstore_service_pb.CreateEncodedGoogleStorageKeyRequest()
+  response = blobstore_service_pb.CreateEncodedGoogleStorageKeyResponse()
+
+  request.set_filename(filename)
+
+  return _make_async_call(rpc,
+                          'CreateEncodedGoogleStorageKey',
+                          request,
+                          response,
+                          _get_result_hook,
+                          lambda rpc: rpc.response.blob_key())

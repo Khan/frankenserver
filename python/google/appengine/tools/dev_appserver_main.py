@@ -162,7 +162,6 @@ from google.appengine.tools import dev_appserver_multiprocess as multiprocess
 
 
 
-
 DEFAULT_ADMIN_CONSOLE_SERVER = 'appengine.google.com'
 
 
@@ -575,7 +574,7 @@ def main(argv):
   default_partition = option_dict[ARG_DEFAULT_PARTITION]
   appinfo = None
   try:
-    appinfo, matcher, _ = dev_appserver.LoadAppConfig(
+    appinfo, _, _ = dev_appserver.LoadAppConfig(
         root_path, {}, default_partition=default_partition)
   except yaml_errors.EventListenerError, e:
     logging.error('Fatal error when loading application configuration:\n%s', e)
@@ -681,6 +680,7 @@ def main(argv):
         done = True
       except KeyboardInterrupt:
         pass
+    dev_appserver.TearDownStubs()
 
   return 0
 

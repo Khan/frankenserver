@@ -93,7 +93,7 @@ class GQL(object):
   """A GQL interface to the datastore.
 
   GQL is a SQL-like language which supports more object-like semantics
-  in a langauge that is familiar to SQL users. The language supported by
+  in a language that is familiar to SQL users. The language supported by
   GQL will change over time, but will start off with fairly simple
   semantics.
 
@@ -108,6 +108,7 @@ class GQL(object):
     [LIMIT [<offset>,]<count>]
     [OFFSET <offset>]
     [HINT (ORDER_FIRST | HINT FILTER_FIRST | HINT ANCESTOR_FIRST)]
+    [;]
 
   <condition> := <property> {< | <= | > | >= | = | != | IN} <value>
   <condition> := <property> {< | <= | > | >= | = | != | IN} CAST(<value>)
@@ -815,7 +816,7 @@ class GQL(object):
 
   @property
   def _entity(self):
-    logging.warning('GQL._entity is deprecated. Please use GQL.kind().')
+    logging.error('GQL._entity is deprecated. Please use GQL.kind().')
     return self._kind
 
 
@@ -916,7 +917,7 @@ class GQL(object):
     return None
 
   def __AcceptTerminal(self):
-    """Only accept an empty string.
+    """Accept either a single semi-colon or an empty string.
 
     Returns:
       True
@@ -924,6 +925,9 @@ class GQL(object):
     Raises:
       BadQueryError if there are unconsumed symbols in the query.
     """
+
+    self.__Accept(';')
+
     if self.__next_symbol < len(self.__symbols):
       self.__Error('Expected no additional symbols')
     return True

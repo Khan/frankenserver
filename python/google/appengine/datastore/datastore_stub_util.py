@@ -1999,12 +1999,6 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     self._require_indexes = require_indexes
     self._pseudo_kinds = {}
 
-  def __del__(self):
-
-
-    self.Flush()
-    self.Write()
-
   def Clear(self):
     """Clears out all stored values."""
 
@@ -2586,12 +2580,15 @@ class DatastoreStub(object):
     allocate_ids_response.set_start(start)
     allocate_ids_response.set_end(end)
 
-  def _SetupIndexes(self):
+  def _SetupIndexes(self, _open=open):
     """Ensure that the set of existing composite indexes matches index.yaml.
 
     Note: this is similar to the algorithm used by the admin console for
     the same purpose.
     """
+
+
+
     if not self._root_path:
       return
     index_yaml_file = os.path.join(self._root_path, 'index.yaml')
@@ -2602,7 +2599,7 @@ class DatastoreStub(object):
     else:
       try:
         index_yaml_mtime = os.path.getmtime(index_yaml_file)
-        fh = open(index_yaml_file, 'r')
+        fh = _open(index_yaml_file, 'r')
       except (OSError, IOError):
         index_yaml_data = None
       else:

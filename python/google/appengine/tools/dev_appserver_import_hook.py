@@ -1235,6 +1235,11 @@ class HardenedModulesHook(object):
         list(self._white_list_partial_modules['socket']) +
         ['getdefaulttimeout', 'setdefaulttimeout'])
 
+
+      webob_path = os.path.join(SDK_ROOT, 'lib', 'webob_1_1_1')
+      if webob_path not in sys.path:
+        sys.path.insert(1, webob_path)
+
       for libentry in self._config.GetAllLibraries():
         self._enabled_modules.append(libentry.name)
         extra = self.__PY27_OPTIONAL_ALLOWED_MODULES.get(libentry.name)

@@ -253,6 +253,10 @@ class BlobstoreDownloadHandler(webapp.RequestHandler):
     if isinstance(blob_key_or_info, blobstore.BlobInfo):
       blob_key = blob_key_or_info.key()
       blob_info = blob_key_or_info
+    elif isinstance(blob_key_or_info, str) and blob_key_or_info.startswith(
+        '/gs/'):
+      blob_key = blobstore.create_gs_key(blob_key_or_info)
+      blob_info = None
     else:
       blob_key = blob_key_or_info
       blob_info = None

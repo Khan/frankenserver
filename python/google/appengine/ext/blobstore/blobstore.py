@@ -66,6 +66,8 @@ __all__ = ['BLOB_INFO_KIND',
            'delete_async',
            'fetch_data',
            'fetch_data_async',
+           'create_gs_key',
+           'create_gs_key_async',
            'get',
            'parse_blob_info']
 
@@ -83,6 +85,8 @@ create_upload_url = blobstore.create_upload_url
 create_upload_url_async = blobstore.create_upload_url_async
 delete = blobstore.delete
 delete_async = blobstore.delete_async
+create_gs_key = blobstore.create_gs_key
+create_gs_key_async = blobstore.create_gs_key_async
 
 
 class BlobInfoParseError(Error):

@@ -108,6 +108,12 @@ class ConfigDefaults(object):
 
 
 
+
+
+  DATASTORE_DETAILS = False
+
+
+
   def should_record(env):
     """Return a bool indicating whether we should record this request.
 
@@ -250,6 +256,110 @@ class Recorder(object):
       self.traces.append(trace)
       self.overhead += (now - pre_now)
 
+  def record_datastore_details(self, call, request, response, trace):
+    """Records entity information relating to datastore related RPCs.
+
+    Parses requests and responses of datastore related RPCs, and records
+    the primary keys of entities that are put into the datastore or
+    fetched from the datastore. Non-datastore RPCs are ignored. Keys are
+    recorded in the form of Reference protos. Currently the information
+    is logged for the following calls: Get, Put, RunQuery and Next. The
+    code may be extended in the future to cover more RPC calls. In
+    addition to the entity keys, useful information specific to each
+    call is recorded. E.g., for queries, the entity kind and cursor
+    information is recorded; For gets, a flag indicating if the
+    requested entity key is present or not is recorded.
+
+    Args:
+      call: The call name, e.g. 'Get'.
+      request: The request protocol message corresponding to the call.
+      response: The response protocol message corresponding to the call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    if call == 'Put':
+      self.record_put_details(response, trace)
+    elif call in ('RunQuery', 'Next'):
+      self.record_query_details(call, request, response, trace)
+    elif call == 'Get':
+      self.record_get_details(request, response, trace)
+
+
+  def record_put_details(self, response, trace):
+    """Records keys of entities written by datastore put calls.
+
+    Args:
+      response: The response protocol message of the Put RPC call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    details = trace.mutable_datastore_details()
+    for key in response.key_list():
+      newent = details.add_keys_written()
+      newent.CopyFrom(key)
+
+  def record_get_details(self, request, response, trace):
+    """Records keys of entities requested by datastore gets.
+
+    Also records if each requested key was sucessfully fetched.
+
+    Args:
+      request: The request protocol message of the Get RPC call.
+      response: The response protocol message of the Get RPC call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    details = trace.mutable_datastore_details()
+    for key in request.key_list():
+      newent = details.add_keys_read()
+      newent.CopyFrom(key)
+    for entity_present in response.entity_list():
+      details.add_get_successful_fetch(entity_present.has_entity())
+
+  def record_query_details(self, call, request, response, trace):
+    """Records keys of entities fetched by a datastore query.
+
+    Information is recorded for both the RunQuery and Next calls.
+    For RunQuery calls, we record the entity kind and ancestor (if
+    applicable) and cursor information (which can help correlate
+    the RunQuery with a subsequent Next call). For Next calls, we
+    record cursor information of the Request (which helps associate
+    this call with the previous RunQuery/Next call), and the Response
+    (which helps associate this call with the subsequent Next call).
+    For key only queries, entity keys are not recorded since entities
+    are not actually fetched. In the future, we might want to record
+    the entities but also record a flag indicating whether this is a
+    key only query.
+
+    Args:
+      call: The call name, e.g. 'RunQuery' or 'Next'
+      request: The request protocol message of the RPC call.
+      response: The response protocol message of the RPC call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    details = trace.mutable_datastore_details()
+    if not response.keys_only():
+
+
+      for entity in response.result_list():
+        newent = details.add_keys_read()
+        newent.CopyFrom(entity.key())
+    if call == 'RunQuery':
+
+      if request.has_kind():
+        details.set_query_kind(request.kind())
+      if request.has_ancestor():
+        ancestor = details.mutable_query_ancestor()
+        ancestor.CopyFrom(request.ancestor())
+
+
+      if response.has_cursor():
+        details.set_query_nextcursor(response.cursor().cursor())
+    elif call == 'Next':
+
+
+
+      details.set_query_thiscursor(request.cursor().cursor())
+      if response.has_cursor():
+        details.set_query_nextcursor(response.cursor().cursor())
+
   def record_rpc_request(self, service, call, request, response, rpc):
     """Record the request of an RPC call.
 
@@ -305,9 +415,13 @@ class Recorder(object):
           if 0 <= index < len(self.traces):
             trace = self.traces[index]
             trace.set_response_data_summary(sresp)
+            trace.set_api_milliseconds(mcycles_to_msecs(api_mcycles))
             trace.set_api_mcycles(api_mcycles)
             duration = delta - trace.start_offset_milliseconds()
             trace.set_duration_milliseconds(duration)
+            if config.DATASTORE_DETAILS and service == 'datastore_v3':
+              self.record_datastore_details(call, request,
+                                            response, trace)
             self.overhead += (time.time() - now)
             return
     else:
@@ -436,7 +550,7 @@ class Recorder(object):
       x.set_key(key)
       x.set_value(value)
     with self._lock:
-      proto.individual_stats_list()[:] = self.traces
+      proto.individual_stats_list().extend(self.traces)
 
   def json(self):
     """Return a JSON-ifyable representation of the pertinent data.
@@ -528,7 +642,7 @@ class Recorder(object):
       traces_mc = [trace.api_mcycles() for trace in self.traces]
     mcycles = 0
     for trace_mc in traces_mc:
-      if isinstance(trace_mc, int):
+      if isinstance(trace_mc, (int, long)):
         mcycles += trace_mc
     return mcycles
 
@@ -562,7 +676,7 @@ class Recorder(object):
                      trace.start_offset_milliseconds(),
                      trace.service_call_name(),
                      trace.duration_milliseconds(),
-                     trace.api_mcycles())
+                     trace.api_milliseconds())
         logging.info('    REQ  : %s', trace.request_data_summary())
         logging.info('    RESP : %s', trace.response_data_summary())
         if level <= 1:
@@ -706,7 +820,7 @@ def format_value(val):
   return formatting._format_value(val, config.MAX_REPR, config.MAX_DEPTH)
 
 
-class StatsProto(datamodel_pb.RequestStatProto):
+class StatsProto(object):
   """A subclass if RequestStatProto with a number of extra attributes.
 
   This exists mainly so that ui.py can pass an instance of this class
@@ -733,16 +847,15 @@ class StatsProto(datamodel_pb.RequestStatProto):
   """
 
   def __init__(self, *args, **kwds):
-    """Constructor.
-
-    This exists solely so it can pre-populate the .api_milliseconds
-    attributes of the entries in .individual_stats_list().
-    """
-    datamodel_pb.RequestStatProto.__init__(self, *args, **kwds)
+    self._proto = datamodel_pb.RequestStatProto(*args, **kwds)
 
 
     for r in self.individual_stats_list():
-      r.api_milliseconds = mcycles_to_msecs(r.api_mcycles())
+      if not r.has_api_milliseconds():
+        r.set_api_milliseconds(mcycles_to_msecs(r.api_mcycles()))
+
+  def __getattr__(self, key):
+    return getattr(self._proto, key)
 
   def start_time_formatted(self):
     """Return a string representing .start_timestamp_milliseconds()."""
@@ -756,16 +869,14 @@ class StatsProto(datamodel_pb.RequestStatProto):
     warnings.warn('processor_mcycles does not return correct values',
                   DeprecationWarning,
                   stacklevel=2)
-    return datamodel_pb.RequestStatProto.processor_mcycles(self)
+    return self._proto.processor_mcycles()
 
   def processor_milliseconds(self):
     """Return an int giving .processor_mcycles() converted to milliseconds."""
     warnings.warn('processor_milliseconds does not return correct values',
                   DeprecationWarning,
                   stacklevel=2)
-
-    return mcycles_to_msecs(
-        datamodel_pb.RequestStatProto.processor_mcycles(self))
+    return mcycles_to_msecs(self._proto.processor_mcycles())
 
   __combined_rpc_count = None
 

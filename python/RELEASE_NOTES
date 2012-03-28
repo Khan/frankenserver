@@ -3,6 +3,54 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.6.4
+===============================
+- Billed applications that have specified additional logs retention over 1 GB
+  are now being charged for that storage at $0.24/GB/month (the first gigabyte
+  of logs storage is free). All logs beyond an application's specified storage
+  limit will be deleted. Please examine your Application Settings page to verify
+  you are retaining the desired amount of logs.
+- Datastore statistics now show the amount of storage used by application
+  indexes.
+- We have released an experimental utility for migrating your application's
+  blobs at the same time you migrate your datastore data. You can opt-in to
+  blob migration in the Admin Console when you start your migration.
+- We have updated the experimental Backup/Restore functionality to include
+  the option to backup and restore to Google Cloud Storage.
+- The NDB datastore API is now generally available. For full release notes
+  on the version 0.9.9 and 1.0.0 fixes that have been integrated into the
+  API see:
+    http://code.google.com/p/appengine-ndb-experiment/source/browse/RELEASE_NOTES?name=sandbox
+- In the Python 2.7 runtime, Background threads are available as an
+  experimental release when using App Engine backends.
+- Using the Blobstore API's serve_blob() method, your application can serve
+  objects hosted on Google Storage for Developers.
+- The Admin Console now provides a Memcache viewer that lists Memcache stats and
+  can display Memcache content based on key.
+- In the Capabilities API stub in the SDK, you can now enable or disable
+  a capability using SetPackagedEnabled.
+- The Windows installer now prompts to install Python 2.7 instead of
+  Python 2.5.
+- The Testbed API now supports the Capabilities API.
+- GQL queries in the Admin Console no longer throw an error when a trailing
+  semi-colon is included.
+- The Datastore API now includes a NonTransactional decorator to ensure that
+  a function is run outside of a transaction. Existing transactions are paused
+  while the function is executing.
+- The Datastore Admin tab in the Admin Console now shows entities from every
+  namespace.
+    http://code.google.com/p/googleappengine/issues/detail?id=3962
+- Fixed an issue with _strptime when threadsafe was specified.
+    http://code.google.com/p/googleappengine/issues/detail?id=6489
+- Fixed an issue where DatastoreFileStub.__del__ fails on tempfile.msktemp.
+    http://code.google.com/p/googleappengine/issues/detail?id=6749
+- WebOb 1.1.1 is now included in the SDK, and used by default there when
+  Python 2.7 is specified.
+    http://code.google.com/p/googleappengine/issues/detail?id=7014
+- Fixed an issue where the index.yaml file was cleared if your skip_files entry
+  differs from the default skip_files list.
+    http://code.google.com/p/googleappengine/issues/detail?id=7031
+
 Version 1.6.3
 ===============================
 - In the Admin Console, you can use new the Traffic Splitting feature to send a

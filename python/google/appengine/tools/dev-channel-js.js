@@ -42,17 +42,22 @@ goog.require = function() {
 goog.basePath = "";
 goog.nullFunction = function() {
 };
-goog.identityFunction = function(var_args) {
-  return var_args
+goog.identityFunction = function(opt_returnValue) {
+  return opt_returnValue
 };
 goog.abstractMethod = function() {
   throw Error("unimplemented abstract method");
 };
 goog.addSingletonGetter = function(ctor) {
   ctor.getInstance = function() {
-    return ctor.instance_ || (ctor.instance_ = new ctor)
+    if(ctor.instance_) {
+      return ctor.instance_
+    }
+    goog.DEBUG && (goog.instantiatedSingletons_[goog.instantiatedSingletons_.length] = ctor);
+    return ctor.instance_ = new ctor
   }
 };
+goog.instantiatedSingletons_ = [];
 goog.typeOf = function(value) {
   var s = typeof value;
   if("object" == s) {
@@ -1391,29 +1396,28 @@ goog.dom.classes.set = function(element, className) {
 };
 goog.dom.classes.get = function(element) {
   var className = element.className;
-  return className && "function" == typeof className.split ? className.split(/\s+/) : []
+  return goog.isString(className) && className.match(/\S+/g) || []
 };
 goog.dom.classes.add = function(element, var_args) {
-  var classes = goog.dom.classes.get(element), args = goog.array.slice(arguments, 1), b = goog.dom.classes.add_(classes, args);
+  var classes = goog.dom.classes.get(element), args = goog.array.slice(arguments, 1), expectedCount = classes.length + args.length;
+  goog.dom.classes.add_(classes, args);
   element.className = classes.join(" ");
-  return b
+  return classes.length == expectedCount
 };
 goog.dom.classes.remove = function(element, var_args) {
-  var classes = goog.dom.classes.get(element), args = goog.array.slice(arguments, 1), b = goog.dom.classes.remove_(classes, args);
-  element.className = classes.join(" ");
-  return b
+  var classes = goog.dom.classes.get(element), args = goog.array.slice(arguments, 1), newClasses = goog.dom.classes.getDifference_(classes, args);
+  element.className = newClasses.join(" ");
+  return newClasses.length == classes.length - args.length
 };
 goog.dom.classes.add_ = function(classes, args) {
-  for(var rv = 0, i = 0;i < args.length;i++) {
-    goog.array.contains(classes, args[i]) || (classes.push(args[i]), rv++)
+  for(var i = 0;i < args.length;i++) {
+    goog.array.contains(classes, args[i]) || classes.push(args[i])
   }
-  return rv == args.length
 };
-goog.dom.classes.remove_ = function(classes, args) {
-  for(var rv = 0, i = 0;i < classes.length;i++) {
-    goog.array.contains(args, classes[i]) && (goog.array.splice(classes, i--, 1), rv++)
-  }
-  return rv == args.length
+goog.dom.classes.getDifference_ = function(arr1, arr2) {
+  return goog.array.filter(arr1, function(item) {
+    return!goog.array.contains(arr2, item)
+  })
 };
 goog.dom.classes.swap = function(element, fromClass, toClass) {
   for(var classes = goog.dom.classes.get(element), removed = !1, i = 0;i < classes.length;i++) {
@@ -1424,7 +1428,7 @@ goog.dom.classes.swap = function(element, fromClass, toClass) {
 };
 goog.dom.classes.addRemove = function(element, classesToRemove, classesToAdd) {
   var classes = goog.dom.classes.get(element);
-  goog.isString(classesToRemove) ? goog.array.remove(classes, classesToRemove) : goog.isArray(classesToRemove) && goog.dom.classes.remove_(classes, classesToRemove);
+  goog.isString(classesToRemove) ? goog.array.remove(classes, classesToRemove) : goog.isArray(classesToRemove) && (classes = goog.dom.classes.getDifference_(classes, classesToRemove));
   goog.isString(classesToAdd) && !goog.array.contains(classes, classesToAdd) ? classes.push(classesToAdd) : goog.isArray(classesToAdd) && goog.dom.classes.add_(classes, classesToAdd);
   element.className = classes.join(" ")
 };
@@ -2013,13 +2017,16 @@ goog.dom.isNodeList = function(val) {
   return!1
 };
 goog.dom.getAncestorByTagNameAndClass = function(element, opt_tag, opt_class) {
+  if(!opt_tag && !opt_class) {
+    return null
+  }
   var tagName = opt_tag ? opt_tag.toUpperCase() : null;
   return goog.dom.getAncestor(element, function(node) {
     return(!tagName || node.nodeName == tagName) && (!opt_class || goog.dom.classes.has(node, opt_class))
   }, !0)
 };
-goog.dom.getAncestorByClass = function(element, opt_class) {
-  return goog.dom.getAncestorByTagNameAndClass(element, null, opt_class)
+goog.dom.getAncestorByClass = function(element, className) {
+  return goog.dom.getAncestorByTagNameAndClass(element, null, className)
 };
 goog.dom.getAncestor = function(element, matcher, opt_includeNode, opt_maxSearchSteps) {
   opt_includeNode || (element = element.parentNode);
@@ -3254,7 +3261,7 @@ goog.reflect.canAccessProperty = function(obj, prop) {
 };
 goog.events = {};
 goog.events.BrowserFeature = {HAS_W3C_BUTTON:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), HAS_W3C_EVENT_SUPPORT:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), SET_KEY_CODE_TO_PREVENT_DEFAULT:goog.userAgent.IE && !goog.userAgent.isVersion("8"), HAS_NAVIGATOR_ONLINE_PROPERTY:!goog.userAgent.WEBKIT || goog.userAgent.isVersion("528"), HAS_HTML5_NETWORK_EVENT_SUPPORT:goog.userAgent.GECKO && goog.userAgent.isVersion("1.9b") || goog.userAgent.IE && goog.userAgent.isVersion("8") || goog.userAgent.OPERA && 
-goog.userAgent.isVersion("9.5") || goog.userAgent.WEBKIT && goog.userAgent.isVersion("528"), HTML5_NETWORK_EVENTS_FIRE_ON_WINDOW:!goog.userAgent.GECKO || goog.userAgent.isVersion("8")};
+goog.userAgent.isVersion("9.5") || goog.userAgent.WEBKIT && goog.userAgent.isVersion("528"), HTML5_NETWORK_EVENTS_FIRE_ON_BODY:goog.userAgent.GECKO && !goog.userAgent.isVersion("8") || goog.userAgent.IE && !goog.userAgent.isVersion("9")};
 goog.events.Event = function(type, opt_target) {
   goog.Disposable.call(this);
   this.type = type;

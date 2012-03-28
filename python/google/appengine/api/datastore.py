@@ -282,7 +282,7 @@ class _BaseIndex(object):
     return self.__id
 
   def _Kind(self):
-    """Returns the index kind, a string, or None if none."""
+    """Returns the index kind, a string.  Empty string ('') if none."""
     return self.__kind
 
   def _HasAncestor(self):
@@ -2457,27 +2457,43 @@ def RunInTransactionOptions(options, function, *args, **kwargs):
 
 
 
+  options = datastore_rpc.TransactionOptions(options)
+  if IsInTransaction():
+    if options.propagation in (None, datastore_rpc.TransactionOptions.NESTED):
 
-  retries = datastore_rpc.TransactionOptions.retries(options)
+      raise datastore_errors.BadRequestError(
+          'Nested transactions are not supported.')
+    elif options.propagation is datastore_rpc.TransactionOptions.INDEPENDENT:
+
+
+      txn_connection = _GetConnection()
+      _SetConnection(_thread_local.old_connection)
+      try:
+        return RunInTransactionOptions(options, function, *args, **kwargs)
+      finally:
+        _SetConnection(txn_connection)
+    return function(*args, **kwargs)
+
+  if options.propagation is datastore_rpc.TransactionOptions.MANDATORY:
+    raise datastore_errors.BadRequestError(
+      'Requires an existing transaction.')
+
+
+  retries = options.retries
   if retries is None:
     retries = DEFAULT_TRANSACTION_RETRIES
 
-
-  if IsInTransaction():
-    raise datastore_errors.BadRequestError(
-      'Nested transactions are not supported.')
-
-  old_connection = _GetConnection()
+  _thread_local.old_connection = _GetConnection()
 
   for _ in range(0, retries + 1):
-    new_connection = old_connection.new_transaction(options)
+    new_connection = _thread_local.old_connection.new_transaction(options)
     _SetConnection(new_connection)
     try:
       ok, result = _DoOneTry(new_connection, function, args, kwargs)
       if ok:
         return result
     finally:
-      _SetConnection(old_connection)
+      _SetConnection(_thread_local.old_connection)
 
 
   raise datastore_errors.TransactionFailedError(
@@ -2550,34 +2566,80 @@ def IsInTransaction():
   return isinstance(_GetConnection(), datastore_rpc.TransactionalConnection)
 
 
-datastore_rpc._positional(1)
-def Transactional(_func=None, require_new=False, **kwargs):
+def Transactional(_func=None, **kwargs):
   """A decorator that makes sure a function is run in a transaction.
+
+  Defaults propagation to datastore_rpc.TransactionOptions.ALLOWED, which means
+  any existing transaction will be used in place of creating a new one.
 
   WARNING: Reading from the datastore while in a transaction will not see any
   changes made in the same transaction. If the function being decorated relies
-  on seeing all changes made in the calling scoope, set require_new=True.
+  on seeing all changes made in the calling scoope, set
+  propagation=datastore_rpc.TransactionOptions.NESTED.
 
   Args:
     _func: do not use.
-    require_new: A bool that indicates the function requires its own transaction
-      and cannot share a transaction with the calling scope (nested transactions
-      are not currently supported by the datastore).
     **kwargs: TransactionOptions configuration options.
 
   Returns:
     A wrapper for the given function that creates a new transaction if needed.
   """
-  if _func is None:
-    return lambda function: Transactional(_func=function,
-                                          require_new=require_new,
-                                          **kwargs)
+
+  if _func is not None:
+    return Transactional()(_func)
+
+
+  if not kwargs.pop('require_new', None):
+
+    kwargs.setdefault('propagation', datastore_rpc.TransactionOptions.ALLOWED)
+
   options = datastore_rpc.TransactionOptions(**kwargs)
-  def wrapper(*args, **kwds):
-    if not require_new and IsInTransaction():
-      return _func(*args, **kwds)
-    return RunInTransactionOptions(options, _func, *args, **kwds)
-  return wrapper
+
+  def outer_wrapper(func):
+    def inner_wrapper(*args, **kwds):
+      return RunInTransactionOptions(options, func, *args, **kwds)
+    return inner_wrapper
+  return outer_wrapper
+
+
+@datastore_rpc._positional(1)
+def NonTransactional(_func=None, allow_existing=True):
+  """A decorator that insures a function is run outside a transaction.
+
+  If there is an existing transaction (and allow_existing=True), the existing
+  transaction is paused while the function is executed.
+
+  Args:
+    _func: do not use
+    allow_existing: If false, throw an exception if called from within a
+      transaction
+
+  Returns:
+    A wrapper for the decorated function that ensures it runs outside a
+    transaction.
+  """
+
+  if _func is not None:
+    return NonTransactional()(_func)
+
+  def outer_wrapper(func):
+    def inner_wrapper(*args, **kwds):
+      if not IsInTransaction():
+        return func(*args, **kwds)
+
+      if not allow_existing:
+        raise datastore_errors.BadRequestError(
+            'Function cannot be called from within a transaction.')
+
+
+      txn_connection = _GetConnection()
+      _SetConnection(_thread_local.old_connection)
+      try:
+        return func(*args, **kwds)
+      finally:
+        _SetConnection(txn_connection)
+    return inner_wrapper
+  return outer_wrapper
 
 
 def _GetCompleteKeyOrError(arg):

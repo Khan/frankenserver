@@ -37,15 +37,9 @@ import urllib2
 
 import httplib2
 
-try:
-  from oauth2client import client
-  from oauth2client import file as oauth2client_file
-  from oauth2client import tools
-except ImportError:
-
-  from apiclient.oauth2client import client
-  from apiclient.oauth2client import file as oauth2client_file
-  from apiclient.oauth2client import tools
+from oauth2client import client
+from oauth2client import file as oauth2client_file
+from oauth2client import tools
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 

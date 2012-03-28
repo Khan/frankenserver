@@ -152,6 +152,10 @@ class IndexYamlUpdater(object):
       nothing to update).
     """
 
+
+
+
+
     index_yaml_file = os.path.join(self.root_path, 'index.yaml')
 
 
@@ -188,7 +192,7 @@ class IndexYamlUpdater(object):
 
 
 
-        fh = open(index_yaml_file, 'rU')
+        fh = openfile(index_yaml_file, 'rU')
       except IOError:
         index_yaml_data = None
       else:

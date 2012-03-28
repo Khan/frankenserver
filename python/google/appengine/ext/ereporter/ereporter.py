@@ -62,7 +62,7 @@ can ensure that the traces from the newest minor versions get included by adding
 this to your index.yaml:
 
   indexes:
-  - kind: __google_ExceptionRecord
+  - kind: ExceptionRecord
     properties:
     - name: date
     - name: major_version

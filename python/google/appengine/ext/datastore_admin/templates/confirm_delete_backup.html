@@ -9,6 +9,9 @@
         <li>{{ backup_name }}</li>
       {% endfor %}
     </ul>
+    {% if gs_warning %}
+    <p>Warning, backup files stored in Google Cloud Storage can only be deleted manually and will not be deleted by this operation.</p>
+    {% endif %}
     <form action="{{base_path}}/{{form_target}}" method="post" style="width:39.39em;">
       {% for backup_id in backup_ids %}
         <input type="hidden" name="backup_id" value="{{backup_id}}">

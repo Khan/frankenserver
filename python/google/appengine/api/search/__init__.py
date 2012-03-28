@@ -27,6 +27,7 @@ from search import DateField
 from search import RemoveDocumentError
 from search import RemoveDocumentResult
 from search import Document
+from search import DocumentCursor
 from search import DocumentOperationResult
 from search import Error
 from search import Field
@@ -38,9 +39,17 @@ from search import InvalidRequest
 from search import ListDocumentsResponse
 from search import list_indexes
 from search import ListIndexesResponse
+from search import MatchScorer
 from search import NumberField
+from search import Query
+from search import QueryOptions
+from search import RescoringMatchScorer
+from search import ScoredDocument
 from search import SearchResponse
 from search import SearchResult
+from search import SearchResults
+from search import SortExpression
+from search import SortOption
 from search import SortSpec
 from search import TextField
 from search import TransientError

@@ -684,8 +684,3 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
       self.__id_lock.release()
 
     return (start, end)
-
-
-
-  def _OnApply(self):
-    self.__WriteDatastore()

@@ -34,8 +34,8 @@ from google.appengine.api.files import file as files
 
 
 
-_GS_FILESYSTEM = 'gs'
-_GS_PREFIX = '/gs/'
+_GS_FILESYSTEM = files.GS_FILESYSTEM
+_GS_PREFIX = '/' + _GS_FILESYSTEM + '/'
 _MIME_TYPE_PARAMETER = 'content_type'
 _CANNED_ACL_PARAMETER = 'acl'
 _CONTENT_ENCODING_PARAMETER = 'content_encoding'
@@ -51,7 +51,7 @@ def create(filename,
            content_encoding=None,
            content_disposition=None,
            user_metadata=None):
-  """Create a writable blobstore file.
+  """Create a writable googlestore file.
 
   Args:
     filename: Google Storage object name (/gs/bucket/object)
@@ -120,3 +120,12 @@ def create(filename,
             'Expected string for value in user_metadata for key: ', key)
       params[_USER_METADATA_PREFIX + key] = value
   return files._create(_GS_FILESYSTEM, filename=filename, params=params)
+
+
+def default_bucket_name():
+  """Obtain the default Google Storage bucket name for this application.
+
+    Returns:
+      A string that is the name of the default bucket.
+  """
+  return files._default_gs_bucket_name()

@@ -239,10 +239,19 @@ class _ConfigurationMetaClass(type):
 
       return type.__new__(metaclass, classname, bases, classDict)
 
-    classDict['__slots__'] = ['_values']
+
+
+    if object in bases:
+      classDict['__slots__'] = ['_values']
+    else:
+      classDict['__slots__'] = []
     cls = type.__new__(metaclass, classname, bases, classDict)
     if object not in bases:
-      cls._options = cls._options.copy()
+      options = {}
+      for c in reversed(cls.__mro__):
+        if '_options' in c.__dict__:
+          options.update(c.__dict__['_options'])
+      cls._options = options
       for option, value in cls.__dict__.iteritems():
         if isinstance(value, ConfigOption):
           if cls._options.has_key(option):
@@ -1657,8 +1666,7 @@ class BaseConnection(object):
         (app,))
     req = datastore_pb.BeginTransactionRequest()
     req.set_app(app)
-    if (TransactionOptions.xg(config, self.__config) or
-        TransactionOptions.allow_multiple_entity_groups(config, self.__config)):
+    if (TransactionOptions.xg(config, self.__config)):
       req.set_allow_multiple_eg(True)
     resp = datastore_pb.Transaction()
     rpc = self.make_rpc_call(config, 'BeginTransaction', req, resp,
@@ -1785,6 +1793,35 @@ class Connection(BaseConnection):
 class TransactionOptions(Configuration):
   """An immutable class that contains options for a transaction."""
 
+  NESTED = 1
+  """Create a nested transaction under an existing one."""
+
+  MANDATORY = 2
+  """Always propagate an exsiting transaction, throw an exception if there is no
+  exsiting transaction."""
+
+  ALLOWED = 3
+  """If there is an existing transaction propagate it."""
+
+  INDEPENDENT = 4
+  """Always use a new transaction, pausing any existing transactions."""
+
+  _PROPAGATION = frozenset((NESTED, MANDATORY, ALLOWED, INDEPENDENT))
+
+  @ConfigOption
+  def propagation(value):
+    """How existing transactions should be handled.
+
+    One of NESTED, MANDATORY, ALLOWED, INDEPENDENT. The interpertation of
+    these types is up to higher level run-in-transaction implementations.
+
+    Raises: datastore_errors.BadArgumentError if value is not reconized.
+    """
+    if value not in TransactionOptions._PROPAGATION:
+      raise datastore_errors.BadArgumentError('Unknown propagation value (%r)' %
+                                              (value,))
+    return value
+
   @ConfigOption
   def xg(value):
     """Whether to allow cross-group transactions.
@@ -1797,17 +1834,11 @@ class TransactionOptions(Configuration):
     return value
 
   @ConfigOption
-  def allow_multiple_entity_groups(value):
-    """Deprecated, will be removed in 1.5.6. Use xg instead."""
-    if not isinstance(value, bool):
-      raise datastore_errors.BadArgumentError(
-          'allow_multiple_entity_groups argument should be bool (%r)' %
-          (value,))
-    return value
-
-  @ConfigOption
   def retries(value):
     """How many retries to attempt on the transaction.
+
+    The exact retry logic is implemented in higher level run-in-transaction
+    implementations.
 
     Raises: datastore_errors.BadArgumentError if value is not an integer or
       is not greater than zero.

@@ -46,6 +46,8 @@ from google.appengine.tools import dev_appserver_upload
 
 MAX_REQUEST_SIZE = 32 << 20
 
+GS_INFO_KIND = '__GsFileInfo__'
+
 
 
 _now_function = datetime.datetime.now
@@ -101,6 +103,18 @@ class GoogleStorage(object):
     self.blob_storage.StoreBlob(self.get_blob_key(upload.key), upload.buf)
     del self.sequence_keys[filename]
 
+
+    encoded_key = blobstore.create_gs_key(upload.key)
+    file_info = datastore.Entity(GS_INFO_KIND,
+                                 name=encoded_key,
+                                 namespace='')
+    file_info['creation'] = _now_function()
+    file_info['filename'] = upload.key
+    file_info['size'] = upload.buf.len
+    file_info['content_type'] = upload.content_type
+    file_info['storage_key'] = self.get_blob_key(upload.key)
+    datastore.Put(file_info)
+
   @staticmethod
   def get_blob_key(key):
     """Converts a bigstore key into a base64 encoded blob key/filename."""
@@ -146,6 +160,12 @@ class GoogleStorage(object):
     self.uploads[writable_name] = self._Upload(
         StringIO.StringIO(), mime_type, gs_filename)
     self.sequence_keys[writable_name] = None
+
+
+    datastore.Delete(
+        datastore.Key.from_path(GS_INFO_KIND,
+                                blobstore.create_gs_key(gs_filename),
+                                namespace=''))
     return writable_name
 
   def append(self, filename, data, sequence_key):
@@ -531,3 +551,7 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
     response.add_filesystem('blobstore')
     response.add_filesystem('gs')
     response.set_shuffle_available(False)
+
+  def _Dynamic_GetDefaultGsBucketName(self, request, response):
+    """Handler for GetDefaultGsBucketName RPC call."""
+    response.set_default_gs_bucket_name('app_default_bucket')

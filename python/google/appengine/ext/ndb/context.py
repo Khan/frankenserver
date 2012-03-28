@@ -19,7 +19,7 @@ from . import tasklets
 from . import eventloop
 from . import utils
 
-__all__ = ['Context', 'ContextOptions', 'AutoBatcher',
+__all__ = ['Context', 'ContextOptions', 'TransactionOptions', 'AutoBatcher',
            'EVENTUAL_CONSISTENCY',
            ]
 
@@ -31,7 +31,7 @@ _LOCKED = 0  # Special value to store in memcache indicating locked value.
 EVENTUAL_CONSISTENCY = datastore_rpc.Configuration.EVENTUAL_CONSISTENCY
 
 
-class ContextOptions(datastore_rpc.TransactionOptions):
+class ContextOptions(datastore_rpc.Configuration):
   """Configuration options that may be passed along with get/put/delete."""
 
   @datastore_rpc.ConfigOption
@@ -70,24 +70,30 @@ class ContextOptions(datastore_rpc.TransactionOptions):
     return value
 
 
+class TransactionOptions(ContextOptions, datastore_rpc.TransactionOptions):
+  """Support both context options and transaction options."""
+
+
+
 # options and config can be used interchangeably.
 _OPTION_TRANSLATIONS = {
   'options': 'config',
 }
 
 
-def _make_ctx_options(ctx_options):
+def _make_ctx_options(ctx_options, config_cls=ContextOptions):
   """Helper to construct a ContextOptions object from keyword arguments.
 
   Args:
-    ctx_options: a dict of keyword arguments.
+    ctx_options: A dict of keyword arguments.
+    config_cls: Optional Configuration class to use, default ContextOptions.
 
   Note that either 'options' or 'config' can be used to pass another
-  ContextOptions object, but not both.  If another ContextOptions
+  Configuration object, but not both.  If another Configuration
   object is given it provides default values.
 
   Returns:
-    A ContextOptions object, or None if ctx_options is empty.
+    A Configuration object, or None if ctx_options is empty.
   """
   if not ctx_options:
     return None
@@ -98,7 +104,7 @@ def _make_ctx_options(ctx_options):
         raise ValueError('Cannot specify %s and %s at the same time' %
                          (key, translation))
       ctx_options[translation] = ctx_options.pop(key)
-  return ContextOptions(**ctx_options)
+  return config_cls(**ctx_options)
 
 
 class AutoBatcher(object):
@@ -172,13 +178,15 @@ class AutoBatcher(object):
 
 class Context(object):
 
-  def __init__(self, conn=None, auto_batcher_class=AutoBatcher, config=None):
+  def __init__(self, conn=None, auto_batcher_class=AutoBatcher, config=None,
+               parent_context=None):
     # NOTE: If conn is not None, config is only used to get the
     # auto-batcher limits.
     if conn is None:
       conn = model.make_connection(config)
     self._conn = conn
     self._auto_batcher_class = auto_batcher_class
+    self._parent_context = parent_context  # For transaction nesting.
     # Get the get/put/delete limits (defaults 1000, 500, 500).
     # Note that the explicit config passed in overrides the config
     # attached to the connection, if it was passed in.
@@ -740,24 +748,9 @@ class Context(object):
             batch, i, ent = yield inq.getq()
           except EOFError:
             break
-          if isinstance(ent, model.Key):
-            pass  # It was a keys-only query and ent is really a Key.
-          else:
-            key = ent._key
-            if self._use_cache(key, options):
-              # Update the cache. If this key was already in the
-              # cache, update the cached entity in-place and return
-              # the cached entity, to maintain the invariant that
-              # there is only one copy of each cached entity.
-              cached_ent = self._cache.get(key)
-              if cached_ent is not None and cached_ent.key == key:
-                # TODO: Do the in-place update more subtly, so that
-                # mutable property values (e.g. repeated or structured
-                # properties) keep their identity.
-                cached_ent._values = ent._values
-                ent = cached_ent
-              else:
-                self._cache[key] = ent
+          ent = self._update_cache_from_query_result(ent, options)
+          if ent is None:
+            continue
           if callback is None:
             val = ent
           else:
@@ -779,6 +772,25 @@ class Context(object):
     helper()
     return mfut
 
+  def _update_cache_from_query_result(self, ent, options):
+    if isinstance(ent, model.Key):
+      return ent  # It was a keys-only query and ent is really a Key.
+    key = ent._key
+    if not self._use_cache(key, options):
+      return ent  # This key should not be cached.
+
+    # Check the cache.  If there is a valid cached entry, substitute
+    # that for the result, even if the cache has an explicit None.
+    if key in self._cache:
+      cached_ent = self._cache[key]
+      if (cached_ent is None or
+          cached_ent.key == key and cached_ent.__class__ is ent.__class__):
+        return cached_ent
+
+    # Update the cache.
+    self._cache[key] = ent
+    return ent
+
   @utils.positional(2)
   def iter_query(self, query, callback=None, pass_batch_into_callback=None,
                  options=None):
@@ -791,30 +803,58 @@ class Context(object):
     # Will invoke callback() one or more times with the default
     # context set to a new, transactional Context.  Returns a Future.
     # Callback may be a tasklet.
-    options = _make_ctx_options(ctx_options)
-    app = ContextOptions.app(options) or key_module._DefaultAppId()
+    options = _make_ctx_options(ctx_options, TransactionOptions)
+    propagation = TransactionOptions.propagation(options)
+    if propagation is None:
+      propagation = TransactionOptions.NESTED
+
+    parent = self
+    if propagation == TransactionOptions.NESTED:
+      if self.in_transaction():
+        raise datastore_errors.BadRequestError(
+          'Nested transactions are not supported.')
+    elif propagation == TransactionOptions.MANDATORY:
+      if not self.in_transaction():
+        raise datastore_errors.BadRequestError(
+          'Requires an existing transaction.')
+      raise tasklets.Return(callback())
+    elif propagation == TransactionOptions.ALLOWED:
+      if self.in_transaction():
+        raise tasklets.Return(callback())
+    elif propagation == TransactionOptions.INDEPENDENT:
+      while parent.in_transaction():
+        parent = parent._parent_context
+        if parent is None:
+          raise datastore_errors.BadRequestError(
+            'Context without non-transactional ancestor')
+    else:
+      raise datastore_errors.BadArgumentError(
+        'Invalid propagation value (%s).' % (propagation,))
+
+    app = TransactionOptions.app(options) or key_module._DefaultAppId()
     # Note: zero retries means try it once.
-    retries = ContextOptions.retries(options)
+    retries = TransactionOptions.retries(options)
     if retries is None:
       retries = 3
-    yield self.flush()
+    yield parent.flush()
     for _ in xrange(1 + max(0, retries)):
-      transaction = yield self._conn.async_begin_transaction(options, app)
+      transaction = yield parent._conn.async_begin_transaction(options, app)
       tconn = datastore_rpc.TransactionalConnection(
-        adapter=self._conn.adapter,
-        config=self._conn.config,
+        adapter=parent._conn.adapter,
+        config=parent._conn.config,
         transaction=transaction)
       old_ds_conn = datastore._GetConnection()
-      tctx = self.__class__(conn=tconn,
-                            auto_batcher_class=self._auto_batcher_class)
+      tctx = parent.__class__(conn=tconn,
+                              auto_batcher_class=parent._auto_batcher_class,
+                              parent_context=parent)
       try:
         # Copy memcache policies.  Note that get() will never use
         # memcache in a transaction, but put and delete should do their
         # memcache thing (which is to mark the key as deleted for
         # _LOCK_TIME seconds).  Also note that the in-process cache and
         # datastore policies keep their default (on) state.
-        tctx.set_memcache_policy(self.get_memcache_policy())
-        tctx.set_memcache_timeout_policy(self.get_memcache_timeout_policy())
+        tctx.set_memcache_policy(parent.get_memcache_policy())
+        tctx.set_memcache_timeout_policy(parent.get_memcache_timeout_policy())
         tasklets.set_context(tctx)
         datastore._SetConnection(tconn)  # For taskqueue coordination
         try:
@@ -837,9 +877,8 @@ class Context(object):
         else:
           ok = yield tconn.async_commit(options)
           if ok:
-            # TODO: This is questionable when self is transactional.
-            self._cache.update(tctx._cache)
-            yield self._clear_memcache(tctx._cache)
+            parent._cache.update(tctx._cache)
+            yield parent._clear_memcache(tctx._cache)
             raise tasklets.Return(result)
       finally:
         datastore._SetConnection(old_ds_conn)

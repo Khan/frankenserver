@@ -81,7 +81,7 @@ class ConfirmDeleteHandler(webapp.RequestHandler):
       handler: the webapp.RequestHandler invoking the method
     """
     namespace = handler.request.get('namespace')
-    kinds = handler.request.get('kind', allow_multiple=True)
+    kinds = handler.request.get_all('kind')
     sizes_known, size_total, remainder = utils.ParseKindsAndSizes(kinds)
 
     (namespace_str, kind_str) = utils.GetPrintableStrs(namespace, kinds)
@@ -119,7 +119,7 @@ class DoDeleteHandler(webapp.RequestHandler):
 
     Status of executed jobs is displayed.
     """
-    jobs = self.request.get('job', allow_multiple=True)
+    jobs = self.request.get_all('job')
     error = self.request.get('error', '')
     xsrf_error = self.request.get('xsrf_error', '')
 
@@ -138,7 +138,7 @@ class DoDeleteHandler(webapp.RequestHandler):
     Jobs are executed and user is redirected to the get handler.
     """
     namespace = self.request.get('namespace')
-    kinds = self.request.get('kind', allow_multiple=True)
+    kinds = self.request.get_all('kind')
     (namespace_str, kinds_str) = utils.GetPrintableStrs(namespace, kinds)
     token = self.request.get('xsrf_token')
 

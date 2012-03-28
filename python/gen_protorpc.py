@@ -51,7 +51,7 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'jinja2'),
   os.path.join(DIR_PATH, 'lib', 'protorpc'),
   os.path.join(DIR_PATH, 'lib', 'markupsafe'),
-  os.path.join(DIR_PATH, 'lib', 'webob'),
+  os.path.join(DIR_PATH, 'lib', 'webob_0_9'),
   os.path.join(DIR_PATH, 'lib', 'webapp2'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
   os.path.join(DIR_PATH, 'lib', 'simplejson'),

@@ -3860,6 +3860,7 @@ is_in_transaction = datastore.IsInTransaction
 
 
 transactional = datastore.Transactional
+non_transactional = datastore.NonTransactional
 
 
 create_config = datastore.CreateConfig

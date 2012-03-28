@@ -33,6 +33,7 @@ Class:
 
 
 
+import base64
 import os
 import time
 
@@ -336,6 +337,22 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     """
     for blob_key in request.blob_key_list():
       response.add_decoded(blob_key.decode('base64'))
+
+  def _Dynamic_CreateEncodedGoogleStorageKey(self, request, response):
+    """Create an encoded blob key that represents a bigstore file.
+
+    For now we'll just base64 encode the bigstore filename, APIs that accept
+    encoded blob keys will need to be able to support Google Storage files or
+    blobstore files based on decoding this key.
+
+    Args:
+      request: A fully-initialized CreateEncodedGoogleStorageKeyRequest
+        instance.
+      response: A CreateEncodedGoogleStorageKeyResponse instance.
+    """
+    filename = request.filename()
+    response.set_blob_key('encoded_gs_file:' +
+                          base64.urlsafe_b64encode(filename))
 
   def CreateBlob(self, blob_key, content):
     """Create new blob and put in storage and Datastore.

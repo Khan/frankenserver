@@ -84,6 +84,9 @@ from google.appengine.runtime import apiproxy_errors
 _DEBUG = True
 
 
+QUEUE_MODE = taskqueue_service_pb.TaskQueueMode
+
+
 _UsecToSec = taskqueue_stub._UsecToSec
 _FormatEta = taskqueue_stub._FormatEta
 _EtaDelta = taskqueue_stub._EtaDelta
@@ -427,6 +430,7 @@ class TaskQueueHelper(object):
     queues = []
     for queue_proto in response.queue_list():
       queue = {'name': queue_proto.queue_name(),
+               'mode': queue_proto.mode(),
                'rate': queue_proto.user_specified_rate(),
                'bucket_size': queue_proto.bucket_capacity()}
       queues.append(queue)
@@ -520,6 +524,27 @@ class TaskQueueHelper(object):
     self._make_sync_call('PurgeQueue', request)
 
 
+class QueueBatch(object):
+  """Collection of push queues or pull queues."""
+
+  def __init__(self, title, run_manually, rate_limited, contents):
+    self.title = title
+    self.run_manually = run_manually
+    self.rate_limited = rate_limited
+    self.contents = contents
+
+  def __eq__(self, other):
+    if type(self) is not type(other):
+      return NotImplemented
+    return (self.title == other.title and
+            self.run_manually == other.run_manually and
+            self.rate_limited == other.rate_limited and
+            self.contents == other.contents)
+
+  def __iter__(self):
+    return self.contents.__iter__()
+
+
 class QueuesPageHandler(BaseRequestHandler):
   """Shows information about configured (and default) task queues."""
   PATH = '/queues'
@@ -530,10 +555,26 @@ class QueuesPageHandler(BaseRequestHandler):
 
   def get(self):
     """Shows template displaying the configured task queues."""
+
+    def is_push_queue(queue):
+      return queue['mode'] == QUEUE_MODE.PUSH
+
+    def is_pull_queue(queue):
+      return queue['mode'] == QUEUE_MODE.PULL
+
     now = datetime.datetime.utcnow()
     values = {}
     try:
-      values['queues'] = self.helper.get_queues(now)
+      queues = self.helper.get_queues(now)
+      push_queues = QueueBatch('Push Queues',
+                               True,
+                               True,
+                               filter(is_push_queue, queues))
+      pull_queues = QueueBatch('Pull Queues',
+                               False,
+                               False,
+                               filter(is_pull_queue, queues))
+      values['queueBatches'] = [push_queues, pull_queues]
     except apiproxy_errors.ApplicationError:
 
 
@@ -684,16 +725,24 @@ class TasksPageHandler(BaseRequestHandler):
       pages[-1]['has_gap'] = True
     tasks = tasks[:self.per_page]
 
+
+    def is_this_push_queue(queue):
+      return (queue['name'] == self.queue_name and
+              queue['mode'] == QUEUE_MODE.PUSH)
+
     values = {
-      'queue': self.queue_name,
-      'per_page': self.per_page,
-      'tasks': tasks,
-      'prev_page': self.prev_page,
-      'next_page': self.next_page,
-      'this_page': self.this_page,
-      'pages': pages,
-      'page_no': self.page_no,
+        'queue': self.queue_name,
+        'per_page': self.per_page,
+        'tasks': tasks,
+        'prev_page': self.prev_page,
+        'next_page': self.next_page,
+        'this_page': self.this_page,
+        'pages': pages,
+        'page_no': self.page_no,
     }
+    if any(filter(is_this_push_queue, self.helper.get_queues(now))):
+      values['is_push_queue'] = 'true'
+
     self.generate('tasks.html', values)
 
   @xsrf_required

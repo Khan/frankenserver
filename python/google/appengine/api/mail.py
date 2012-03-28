@@ -674,6 +674,11 @@ class _EmailMessageBase(object):
       'attachments',
   ])
 
+  ALLOWED_EMPTY_PROPERTIES = set([
+      'subject',
+      'body'
+  ])
+
 
 
   PROPERTIES.update(('to', 'cc', 'bcc'))
@@ -748,8 +753,6 @@ class _EmailMessageBase(object):
     """
     if not hasattr(self, 'sender'):
       raise MissingSenderError()
-    if not hasattr(self, 'subject'):
-      raise MissingSubjectError()
 
 
     found_body = False
@@ -773,10 +776,6 @@ class _EmailMessageBase(object):
 
         html.decode()
       found_body = True
-
-
-    if not found_body:
-      raise MissingBodyError()
 
     if hasattr(self, 'attachments'):
       for file_name, data in _attachment_sequence(self.attachments):
@@ -830,13 +829,17 @@ class _EmailMessageBase(object):
 
     if hasattr(self, 'reply_to'):
       message.set_replyto(_to_str(self.reply_to))
-    message.set_subject(_to_str(self.subject))
+    if hasattr(self, 'subject'):
+      message.set_subject(_to_str(self.subject))
+    else:
+      message.set_subject('')
 
     if hasattr(self, 'body'):
       body = self.body
       if isinstance(body, EncodedPayload):
         body = body.decode()
       message.set_textbody(_to_str(body))
+
     if hasattr(self, 'html'):
       html = self.html
       if isinstance(html, EncodedPayload):
@@ -944,7 +947,7 @@ class _EmailMessageBase(object):
       if attr in ['sender', 'reply_to']:
         check_email_valid(value, attr)
 
-      if not value:
+      if not value and not attr in self.ALLOWED_EMPTY_PROPERTIES:
         raise ValueError('May not set empty value for \'%s\'' % attr)
 
 

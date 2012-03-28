@@ -396,9 +396,6 @@ class DevProcess(object):
     self.backends = backends
     self.options = options
 
-    if not self.backends:
-      raise Error('Entering multiprocess mode with no backends configured.')
-
     self.app_id = appinfo.application
     self.host = options[ARG_ADDRESS]
     self.port = options[ARG_PORT]
@@ -1061,23 +1058,17 @@ def Init(argv, options, root_path, appinfo):
   if ARG_BACKENDS not in options:
     return
 
-  backends_fh = None
-  try:
-    backends_fh = open(os.path.join(root_path, 'backends.yaml'))
-  except IOError:
-    return
+  backends_path = os.path.join(root_path, 'backends.yaml')
+  if not os.path.exists(backends_path):
+    backends = []
+  else:
+    backends_fh = open(backends_path)
+    try:
+      backend_info = backendinfo.LoadBackendInfo(backends_fh.read())
+    finally:
+      backends_fh.close()
+    backends = backend_info.backends
 
-  backend_info = None
-  try:
-    backend_info = backendinfo.LoadBackendInfo(backends_fh.read())
-  finally:
-    backends_fh.close()
-
-  if not backend_info:
-    logging.info('No backends, running in single-process mode.')
-    return
-
-  backends = backend_info.backends
   backend_set = set()
   for backend in backends:
     if backend.name in backend_set:

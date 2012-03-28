@@ -1259,7 +1259,207 @@ class DecodeBlobKeyResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.DecodeBlobKeyResponse'
+class CreateEncodedGoogleStorageKeyRequest(ProtocolBuffer.ProtocolMessage):
+  has_filename_ = 0
+  filename_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def filename(self): return self.filename_
+
+  def set_filename(self, x):
+    self.has_filename_ = 1
+    self.filename_ = x
+
+  def clear_filename(self):
+    if self.has_filename_:
+      self.has_filename_ = 0
+      self.filename_ = ""
+
+  def has_filename(self): return self.has_filename_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_filename()): self.set_filename(x.filename())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_filename_ != x.has_filename_: return 0
+    if self.has_filename_ and self.filename_ != x.filename_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_filename_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: filename not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.filename_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_filename_):
+      n += 1
+      n += self.lengthString(len(self.filename_))
+    return n
+
+  def Clear(self):
+    self.clear_filename()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.filename_)
+
+  def OutputPartial(self, out):
+    if (self.has_filename_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.filename_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_filename(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_filename_: res+=prefix+("filename: %s\n" % self.DebugFormatString(self.filename_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kfilename = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "filename",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateEncodedGoogleStorageKeyRequest'
+class CreateEncodedGoogleStorageKeyResponse(ProtocolBuffer.ProtocolMessage):
+  has_blob_key_ = 0
+  blob_key_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def blob_key(self): return self.blob_key_
+
+  def set_blob_key(self, x):
+    self.has_blob_key_ = 1
+    self.blob_key_ = x
+
+  def clear_blob_key(self):
+    if self.has_blob_key_:
+      self.has_blob_key_ = 0
+      self.blob_key_ = ""
+
+  def has_blob_key(self): return self.has_blob_key_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_blob_key_ != x.has_blob_key_: return 0
+    if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_blob_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: blob_key not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.blob_key_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_blob_key_):
+      n += 1
+      n += self.lengthString(len(self.blob_key_))
+    return n
+
+  def Clear(self):
+    self.clear_blob_key()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.blob_key_)
+
+  def OutputPartial(self, out):
+    if (self.has_blob_key_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.blob_key_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_blob_key(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kblob_key = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "blob_key",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateEncodedGoogleStorageKeyResponse'
 if _extension_runtime:
   pass
 
-__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','FetchDataRequest','FetchDataResponse','CloneBlobRequest','CloneBlobResponse','DecodeBlobKeyRequest','DecodeBlobKeyResponse']
+__all__ = ['BlobstoreServiceError','CreateUploadURLRequest','CreateUploadURLResponse','DeleteBlobRequest','FetchDataRequest','FetchDataResponse','CloneBlobRequest','CloneBlobResponse','DecodeBlobKeyRequest','DecodeBlobKeyResponse','CreateEncodedGoogleStorageKeyRequest','CreateEncodedGoogleStorageKeyResponse']

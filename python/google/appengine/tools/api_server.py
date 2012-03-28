@@ -29,7 +29,6 @@ from __future__ import with_statement
 import BaseHTTPServer
 import httplib
 import logging
-import os
 import os.path
 import pickle
 import socket
@@ -405,6 +404,15 @@ def _SetupStubs(
           apiproxy_stub_map.apiproxy.GetStub('taskqueue')))
 
 
+def _TearDownStubs():
+  """Clean up any stubs that need cleanup."""
+
+  logging.info('Applying all pending transactions and saving the datastore')
+  datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
+  datastore_stub.Flush()
+  datastore_stub.Write()
+
+
 def ParseCommandArguments(args):
   """Parses and the application's command line arguments.
 
@@ -633,7 +641,7 @@ class APIServerProcess(object):
     return 'http://%s:%d' % (self._host, self._port)
 
   def __repr__(self):
-    return '<APIServerProcess command=%r>' % ' '.join(self.args)
+    return '<APIServerProcess command=%r>' % ' '.join(self._args)
 
   def Start(self):
     """Starts the API Server process."""
@@ -703,6 +711,11 @@ class APIServerProcess(object):
 
 
 def main():
+
+  logging.basicConfig(
+      level=logging.INFO,
+      format='[API Server] [%(filename)s:%(lineno)d] %(levelname)s %(message)s')
+
   args = ParseCommandArguments(sys.argv[1:])
 
   if args.clear_datastore:
@@ -753,9 +766,11 @@ def main():
               taskqueue_default_http_server=application_address,
               user_login_url=args.user_login_url,
               user_logout_url=args.user_logout_url)
-
   server = APIServer((args.api_host, args.api_port), args.application)
-  server.serve_forever()
+  try:
+    server.serve_forever()
+  finally:
+    _TearDownStubs()
 
 
 if __name__ == '__main__':

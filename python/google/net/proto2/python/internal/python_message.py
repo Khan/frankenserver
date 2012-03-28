@@ -154,6 +154,7 @@ def _AddSlots(message_descriptor, dictionary):
   dictionary['__slots__'] = ['_cached_byte_size',
                              '_cached_byte_size_dirty',
                              '_fields',
+                             '_unknown_fields',
                              '_is_present_in_parent',
                              '_listener',
                              '_listener_for_children',
@@ -280,6 +281,9 @@ def _AddInitMethod(message_descriptor, cls):
     self._cached_byte_size = 0
     self._cached_byte_size_dirty = len(kwargs) > 0
     self._fields = {}
+
+
+    self._unknown_fields = ()
     self._is_present_in_parent = False
     self._listener = message_listener_mod.NullMessageListener()
     self._listener_for_children = _Listener(self)
@@ -618,6 +622,7 @@ def _AddClearMethod(message_descriptor, cls):
   def Clear(self):
 
     self._fields = {}
+    self._unknown_fields = ()
     self._Modified()
   cls.Clear = Clear
 
@@ -647,7 +652,16 @@ def _AddEqualsMethod(message_descriptor, cls):
     if self is other:
       return True
 
-    return self.ListFields() == other.ListFields()
+    if not self.ListFields() == other.ListFields():
+      return False
+
+
+    unknown_fields = list(self._unknown_fields)
+    unknown_fields.sort()
+    other_unknown_fields = list(other._unknown_fields)
+    other_unknown_fields.sort()
+
+    return unknown_fields == other_unknown_fields
 
   cls.__eq__ = __eq__
 
@@ -708,6 +722,9 @@ def _AddByteSizeMethod(message_descriptor, cls):
     for field_descriptor, field_value in self.ListFields():
       size += field_descriptor._sizer(field_value)
 
+    for tag_bytes, value_bytes in self._unknown_fields:
+      size += len(tag_bytes) + len(value_bytes)
+
     self._cached_byte_size = size
     self._cached_byte_size_dirty = False
     self._listener_for_children.dirty = False
@@ -742,6 +759,9 @@ def _AddSerializePartialToStringMethod(message_descriptor, cls):
   def InternalSerialize(self, write_bytes):
     for field_descriptor, field_value in self.ListFields():
       field_descriptor._encoder(write_bytes, field_value)
+    for tag_bytes, value_bytes in self._unknown_fields:
+      write_bytes(tag_bytes)
+      write_bytes(value_bytes)
   cls._InternalSerialize = InternalSerialize
 
 
@@ -768,13 +788,18 @@ def _AddMergeFromStringMethod(message_descriptor, cls):
   def InternalParse(self, buffer, pos, end):
     self._Modified()
     field_dict = self._fields
+    unknown_field_list = self._unknown_fields
     while pos != end:
       (tag_bytes, new_pos) = local_ReadTag(buffer, pos)
       field_decoder = decoders_by_tag.get(tag_bytes)
       if field_decoder is None:
+        value_start_pos = new_pos
         new_pos = local_SkipField(buffer, new_pos, end, tag_bytes)
         if new_pos == -1:
           return pos
+        if not unknown_field_list:
+          unknown_field_list = self._unknown_fields = []
+        unknown_field_list.append((tag_bytes, buffer[value_start_pos:new_pos]))
         pos = new_pos
       else:
         pos = field_decoder(buffer, new_pos, end, self, field_dict)
@@ -896,6 +921,12 @@ def _AddMergeFromMethod(cls):
           field_value.MergeFrom(value)
       else:
         self._fields[field] = value
+
+    if msg._unknown_fields:
+      if not self._unknown_fields:
+        self._unknown_fields = []
+      self._unknown_fields.extend(msg._unknown_fields)
+
   cls.MergeFrom = MergeFrom
 
 

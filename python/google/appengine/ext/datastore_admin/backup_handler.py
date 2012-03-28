@@ -73,7 +73,7 @@ class ConfirmBackupHandler(webapp.RequestHandler):
     """
     namespace = handler.request.get('namespace', None)
     has_namespace = namespace is not None
-    kinds = handler.request.get('kind', allow_multiple=True)
+    kinds = handler.request.get_all('kind')
     sizes_known, size_total, remainder = utils.ParseKindsAndSizes(kinds)
     notreadonly_warning = capabilities.CapabilitySet(
         'datastore_v3', capabilities=['write']).is_enabled()
@@ -110,14 +110,15 @@ class ConfirmDeleteBackupHandler(webapp.RequestHandler):
     Args:
       handler: the webapp.RequestHandler invoking the method
     """
-    backup_ids = handler.request.get_all('backup_id')
-    if backup_ids:
-      backups = db.get(backup_ids)
-      backup_ids = [backup.key() for backup in backups]
-      backup_names = [backup.name for backup in backups]
-    else:
-      backup_names = []
-      backup_ids = []
+    requested_backup_ids = handler.request.get_all('backup_id')
+    backup_names = []
+    backup_ids = []
+    gs_warning = False
+    if requested_backup_ids:
+      for backup in db.get(requested_backup_ids):
+        backup_ids.append(backup.key())
+        backup_names.append(backup.name)
+        gs_warning |= backup.filesystem == files.GS_FILESYSTEM
     template_params = {
         'form_target': DoBackupDeleteHandler.SUFFIX,
         'app_id': handler.request.get('app_id'),
@@ -125,6 +126,7 @@ class ConfirmDeleteBackupHandler(webapp.RequestHandler):
         'backup_ids': backup_ids,
         'backup_names': backup_names,
         'xsrf_token': utils.CreateXsrfToken(XSRF_ACTION),
+        'gs_warning': gs_warning
     }
     utils.RenderToResponse(handler, 'confirm_delete_backup.html',
                            template_params)
@@ -170,8 +172,8 @@ class BaseDoHandler(webapp.RequestHandler):
 
     Status of executed jobs is displayed.
     """
-    jobs = self.request.get('job', allow_multiple=True)
-    tasks = self.request.get('task', allow_multiple=True)
+    jobs = self.request.get_all('job')
+    tasks = self.request.get_all('task')
     error = self.request.get('error', '')
     xsrf_error = self.request.get('xsrf_error', '')
 
@@ -244,7 +246,7 @@ class DoBackupHandler(BaseDoHandler):
   BACKUP_HANDLER = __name__ + '.BackupEntity.map'
   BACKUP_COMPLETE_HANDLER = __name__ +  '.BackupCompleteHandler'
   INPUT_READER = input_readers.__name__ + '.DatastoreEntityInputReader'
-  OUTPUT_WRITER = output_writers.__name__ + '.BlobstoreRecordsOutputWriter'
+  OUTPUT_WRITER = output_writers.__name__ + '.FileRecordsOutputWriter'
   _get_html_page = 'do_backup.html'
   _get_post_html_page = SUFFIX
 
@@ -257,32 +259,39 @@ class DoBackupHandler(BaseDoHandler):
     if BackupInformation.name_exists(backup):
       return [('error', 'Backup "%s" already exists.' % backup)]
 
-    kinds = self.request.get('kind', allow_multiple=True)
+    kinds = self.request.get_all('kind')
     queue = self.request.get('queue')
+    filesystem = self.request.get('destination_type',
+                                  default_value=files.BLOBSTORE_FILESYSTEM)
     job_name = 'datastore_backup_%s_%%(kind)s' % re.sub(r'[^\w]', '_', backup)
     try:
       job_operation = utils.StartOperation('Backup: %s' % backup)
       backup_info = BackupInformation(parent=job_operation)
+      backup_info.filesystem = filesystem
       backup_info.name = backup
       backup_info.kinds = kinds
       backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
       mapreduce_params = {
           'done_callback_handler': self.BACKUP_COMPLETE_HANDLER,
           'backup_info_pk': str(backup_info.key()),
-          'force_ops_writes': True
+          'force_ops_writes': True,
       }
+      mapper_spec = dict(self._GetBasicMapperParams())
+      mapper_spec['filesystem'] = filesystem
+      if filesystem == files.GS_FILESYSTEM:
+        mapper_spec['gs_bucket_name'] = self.request.get('gs_bucket_name')
       if len(kinds) <= 10:
         return [('job', job) for job in _run_map_jobs(
             job_operation.key(), backup_info.key(), kinds, job_name,
             self.BACKUP_HANDLER, self.INPUT_READER, self.OUTPUT_WRITER,
-            self._GetBasicMapperParams(), mapreduce_params, queue)]
+            mapper_spec, mapreduce_params, queue)]
       else:
         retry_options = taskqueue.TaskRetryOptions(task_retry_limit=1)
         return [('task', deferred.defer(_run_map_jobs, job_operation.key(),
                                         backup_info.key(), kinds, job_name,
                                         self.BACKUP_HANDLER, self.INPUT_READER,
                                         self.OUTPUT_WRITER,
-                                        self._GetBasicMapperParams(),
+                                        mapper_spec,
                                         mapreduce_params,
                                         queue, _queue=queue,
                                         _url=utils.ConfigDefaults.DEFERRED_PATH,
@@ -337,8 +346,11 @@ class DoBackupDeleteHandler(BaseDoHandler):
       try:
         for backup_info in db.get(backup_ids):
           if backup_info:
-            blobstore_api.delete([files.blobstore.get_blob_key(filename)
-                                  for filename in backup_info.blob_files])
+
+            if backup_info.filesystem == files.BLOBSTORE_FILESYSTEM:
+
+              blobstore_api.delete([files.blobstore.get_blob_key(filename)
+                                    for filename in backup_info.blob_files])
             backup_info.delete()
       except Exception, e:
         logging.exception('Failed to delete datastore backup.')
@@ -405,6 +417,7 @@ class BackupInformation(db.Model):
 
   name = db.StringProperty()
   kinds = db.StringListProperty()
+  filesystem = db.StringProperty(default=files.BLOBSTORE_FILESYSTEM)
   start_time = db.DateTimeProperty(auto_now_add=True)
   active_jobs = db.StringListProperty()
   completed_jobs = db.StringListProperty()
@@ -431,6 +444,8 @@ def BackupCompleteHandler(operation, job_id, mapreduce_state):
     filenames = mapreduce_state.writer_state['filenames']
 
 
+    if backup_info.filesystem == files.BLOBSTORE_FILESYSTEM:
+      filenames = drop_empty_files(filenames)
     backup_info.blob_files = list(set(backup_info.blob_files + filenames))
     if job_id in backup_info.active_jobs:
       backup_info.active_jobs.remove(job_id)
@@ -438,23 +453,20 @@ def BackupCompleteHandler(operation, job_id, mapreduce_state):
           set(backup_info.completed_jobs + [job_id]))
     backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
     if operation.status == utils.DatastoreAdminOperation.STATUS_COMPLETED:
-      deferred.defer(finalize_backup_info, backup_info.key(),
-                     _url=utils.ConfigDefaults.DEFERRED_PATH)
+      finalize_backup_info(backup_info)
   else:
     logging.warn('BackupInfo was not found for %s',
                  mapreduce_spec.params['backup_info_pk'])
 
 
-def finalize_backup_info(backup_info_key):
-  backup_info = BackupInformation.get(backup_info_key)
+def finalize_backup_info(backup_info):
   backup_info.complete_time = datetime.datetime.now()
 
-
-  backup_info.blob_files = drop_empty_files(backup_info.blob_files)
   backup_info.put(config=datastore_rpc.Configuration(force_writes=True))
   logging.info('Backup %s completed', backup_info.name)
 
 
+@db.non_transactional
 def drop_empty_files(filenames):
   """Deletes empty files and returns filenames minus the deleted ones."""
   non_empty_filenames = []

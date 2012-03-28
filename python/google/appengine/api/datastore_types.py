@@ -556,7 +556,12 @@ class Key(object):
   def has_id_or_name(self):
     """Returns True if this entity has an id or name, False otherwise.
     """
-    return self.id_or_name() is not None
+    elems = self.__reference.path().element_list()
+    if elems:
+      e = elems[-1]
+      return bool(e.name() or e.id())
+    else:
+      return False
 
   def parent(self):
     """Returns this entity's parent, as a Key. If this entity has no parent,
