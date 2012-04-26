@@ -262,39 +262,47 @@ class Cursor(object):
       raise InterfaceError('unknown JDBC type %d' % datatype)
     return converter(value)
 
-  def execute(self, statement, args=None):
-    """Prepares and executes a database operation (query or command).
+  def _AddBindVariablesToRequest(self, args, bind_variable_factory):
+    """Add args to the request BindVariableProto list.
 
     Args:
-      statement: A string, a SQL statement.
-      args: A sequence of arguments matching the statement's bind variables,
-        if any.
+      args: Sequence of arguments to turn into BindVariableProtos.
+      bind_variable_factory: A callable which returns new BindVariableProtos.
+
+    Returns:
+      The given args sequence, potentially wrapped in a list.
 
     Raises:
       InterfaceError: Unknown type used as a bind variable.
+    """
+
+    if not hasattr(args, '__iter__'):
+      args = [args]
+    for i, arg in enumerate(args):
+      bv = bind_variable_factory()
+      bv.position = i + 1
+      if arg is None:
+        bv.type = jdbc_type.NULL
+      else:
+        try:
+          bv.type, bv.value = self._EncodeVariable(arg)
+        except TypeError:
+          raise InterfaceError('unknown type %s for arg %d' % (type(arg), i))
+    return args
+
+  def _DoExec(self, request):
+    """Send an ExecRequest and handle the response.
+
+    Args:
+      request: The sql_pb2.ExecRequest to send.
+
+    Returns:
+      The client_pb2.ResultProto returned by the server.
+
+    Raises:
       DatabaseError: A SQL exception occurred.
       OperationalError: RPC problem.
     """
-    self._CheckOpen()
-
-    request = sql_pb2.ExecRequest()
-    request.options.include_generated_keys = True
-    if args is not None:
-
-      if not hasattr(args, '__iter__'):
-        args = [args]
-      for i, arg in enumerate(args):
-        bv = request.bind_variable.add()
-        bv.position = i + 1
-        if arg is None:
-          bv.type = jdbc_type.NULL
-        else:
-          try:
-            bv.type, bv.value = self._EncodeVariable(arg)
-          except TypeError:
-            raise InterfaceError('unknown type %s for arg %d' % (type(arg), i))
-    request.statement = _ConvertFormatToQmark(statement, args)
-
     response = self._conn.MakeRequest('Exec', request)
     result = response.result
     if result.HasField('sql_exception'):
@@ -338,20 +346,55 @@ class Cursor(object):
     if result.generated_keys:
       self.lastrowid = long(result.generated_keys[-1])
 
+    return result
+
+  def execute(self, statement, args=None):
+    """Prepares and executes a database operation (query or command).
+
+    Args:
+      statement: A string, a SQL statement.
+      args: A sequence of arguments matching the statement's bind variables,
+        if any.
+
+    Raises:
+      InterfaceError: Unknown type used as a bind variable.
+      DatabaseError: A SQL exception occurred.
+      OperationalError: RPC problem.
+    """
+    self._CheckOpen()
+
+    request = sql_pb2.ExecRequest()
+    request.options.include_generated_keys = True
+    if args is not None:
+      args = self._AddBindVariablesToRequest(args, request.bind_variable.add)
+    request.statement = _ConvertFormatToQmark(statement, args)
+    self._DoExec(request)
+
   def executemany(self, statement, seq_of_args):
-    """Calls execute() for each value of seq_of_args.
+    """Prepares and executes a database operation for given parameter sequences.
 
     Args:
       statement: A string, a SQL statement.
       seq_of_args: A sequence, each entry of which is a sequence of arguments
         matching the statement's bind variables, if any.
+
+    Raises:
+      InterfaceError: Unknown type used as a bind variable.
+      DatabaseError: A SQL exception occurred.
+      OperationalError: RPC problem.
     """
     self._CheckOpen()
-    rowcount = 0
+
+    request = sql_pb2.ExecRequest()
+    request.options.include_generated_keys = True
+
+    args = None
     for args in seq_of_args:
-      self.execute(statement, args)
-      rowcount += self.rowcount
-    self._rowcount = rowcount
+      bbv = request.batch.batch_bind_variable.add()
+      args = self._AddBindVariablesToRequest(args, bbv.bind_variable.add)
+    request.statement = _ConvertFormatToQmark(statement, args)
+    result = self._DoExec(request)
+    self._rowcount = sum(result.batch_rows_updated)
 
   def fetchone(self):
     """Fetches the next row of a query result set.

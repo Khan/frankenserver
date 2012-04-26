@@ -164,45 +164,67 @@ class DetailsHandler(webapp.RequestHandler):
         pass
     if timestamp:
       record = recording.load_full_proto(timestamp)
+    render_record(self.response, record, './file')
 
 
-    if record is None:
-      self.response.set_status(404)
+def render_record(response, record, file_url=None):
+  """ Render an appstats record in detail.
 
-      self.response.out.write(render('details.html', {}))
-      return
+  This is a minor refactoring of DetailsHandler to support an offline
+  tool for analyzing Appstats data and to allow that tool to call
+  the original Appstats detailed record visualization. Since the offline
+  tool may read Appstats records from other sources (e.g., a downloaded file),
+  we are moving the logic of DetailsHandler related to processing and
+  visualizing individual Appstats records to this function. This
+  function may now be called from outside this file.
+
+  Args:
+    response: An instance of the webapp response class representing
+      data to be sent in response to a web request.
+    record: A RequestStatProto which contains detailed Appstats recording
+      for an individual request.
+    file_url: Indicates the URL to be used to follow links to files in
+      application source code. A default value of 'None' indicates that
+      links to files in source code will not be shown.
+  """
+
+  if record is None:
+    response.set_status(404)
+
+    response.out.write(render('details.html', {}))
+    return
 
 
-    rpcstats_map = {}
-    for rpc_stat in record.individual_stats_list():
-      key = rpc_stat.service_call_name()
-      count, real, api = rpcstats_map.get(key, (0, 0, 0))
-      count += 1
-      real += rpc_stat.duration_milliseconds()
-      api += rpc_stat.api_mcycles()
-      rpcstats_map[key] = (count, real, api)
-    rpcstats_by_count = [
-        (name, count, real, recording.mcycles_to_msecs(api))
-        for name, (count, real, api) in rpcstats_map.iteritems()]
-    rpcstats_by_count.sort(key=lambda x: -x[1])
+  rpcstats_map = {}
+  for rpc_stat in record.individual_stats_list():
+    key = rpc_stat.service_call_name()
+    count, real, api = rpcstats_map.get(key, (0, 0, 0))
+    count += 1
+    real += rpc_stat.duration_milliseconds()
+    api += rpc_stat.api_mcycles()
+    rpcstats_map[key] = (count, real, api)
+  rpcstats_by_count = [
+      (name, count, real, recording.mcycles_to_msecs(api))
+      for name, (count, real, api) in rpcstats_map.iteritems()]
+  rpcstats_by_count.sort(key=lambda x: -x[1])
 
 
-    real_total = 0
-    api_total_mcycles = 0
-    for i, rpc_stat in enumerate(record.individual_stats_list()):
-      real_total += rpc_stat.duration_milliseconds()
-      api_total_mcycles += rpc_stat.api_mcycles()
+  real_total = 0
+  api_total_mcycles = 0
+  for i, rpc_stat in enumerate(record.individual_stats_list()):
+    real_total += rpc_stat.duration_milliseconds()
+    api_total_mcycles += rpc_stat.api_mcycles()
 
-    api_total = recording.mcycles_to_msecs(api_total_mcycles)
+  api_total = recording.mcycles_to_msecs(api_total_mcycles)
 
-    data = {'sys': sys,
-            'record': record,
-            'rpcstats_by_count': rpcstats_by_count,
-            'real_total': real_total,
-            'api_total': api_total,
-            'file_url': './file',
-            }
-    self.response.out.write(render('details.html', data))
+  data = {'sys': sys,
+          'record': record,
+          'rpcstats_by_count': rpcstats_by_count,
+          'real_total': real_total,
+          'api_total': api_total,
+          'file_url': file_url,
+          }
+  response.out.write(render('details.html', data))
 
 
 class FileHandler(webapp.RequestHandler):

@@ -82,7 +82,9 @@ def GenerateIndexFromHistory(query_history,
 
 
   for query, count in query_history.iteritems():
-    required, kind, ancestor, props, num_eq_filters = datastore_index.CompositeIndexForQuery(query)
+    required, kind, ancestor, props = (
+        datastore_index.CompositeIndexForQuery(query))
+    props = datastore_index.GetRecommendedIndexProperties(props)
     if required:
       key = (kind, ancestor, props)
       if key not in manual_keys:
@@ -170,9 +172,9 @@ class IndexYamlUpdater(object):
 
 
     datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
-    query_history = datastore_stub.QueryHistory()
-    history_changed = (len(query_history) != self.last_history_size)
-    self.last_history_size = len(query_history)
+    query_ci_history_len = datastore_stub._QueryCompositeIndexHistoryLength()
+    history_changed = (query_ci_history_len != self.last_history_size)
+    self.last_history_size = query_ci_history_len
 
 
     if not (index_yaml_changed or history_changed):
@@ -240,7 +242,7 @@ class IndexYamlUpdater(object):
         return
 
 
-    automatic_part = GenerateIndexFromHistory(query_history,
+    automatic_part = GenerateIndexFromHistory(datastore_stub.QueryHistory(),
                                               all_indexes, manual_indexes)
 
 

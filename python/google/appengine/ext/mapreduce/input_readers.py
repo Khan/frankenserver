@@ -57,6 +57,7 @@ __all__ = [
 
 import base64
 import copy
+import logging
 import StringIO
 import time
 import zipfile
@@ -169,6 +170,12 @@ class InputReader(model.JsonMixin):
   def validate(cls, mapper_spec):
     """Validates mapper spec and all mapper parameters.
 
+    Input reader parameters are expected to be passed as "input_reader"
+    subdictionary of mapper_spec.params. To be compatible with previous
+    API input reader is advised to check mapper_spec.params and issue
+    a warning if "input_reader" subdicationary is not present.
+    _get_params helper method can be used to simplify implementation.
+
     Args:
       mapper_spec: The MapperSpec for this InputReader.
 
@@ -176,6 +183,47 @@ class InputReader(model.JsonMixin):
       BadReaderParamsError: required parameters are missing or invalid.
     """
     raise NotImplementedError("validate() not implemented in %s" % cls)
+
+
+def _get_params(mapper_spec, allowed_keys=None):
+  """Obtain input reader parameters.
+
+  Utility function for input readers implementation. Fetches parameters
+  from mapreduce specification giving appropriate usage warnings.
+
+  Args:
+    mapper_spec: The MapperSpec for the job
+    allowed_keys: set of all allowed keys in parameters as strings. If it is not
+      None, then parameters are expected to be in a separate "input_reader"
+      subdictionary of mapper_spec parameters.
+
+  Returns:
+    mapper parameters as dict
+
+  Raises:
+    BadReaderParamsError: if parameters are invalid/missing or not allowed.
+  """
+  if "input_reader" not in mapper_spec.params:
+    message = ("Input reader's parameters should be specified in "
+        "input_reader subdictionary.")
+    if allowed_keys:
+      raise errors.BadReaderParamsError(message)
+    else:
+      logging.warning(message)
+    params = mapper_spec.params
+    params = dict((str(n), v) for n, v in params.iteritems())
+  else:
+    if not isinstance(mapper_spec.params.get("input_reader"), dict):
+      raise BadReaderParamsError(
+          "Input reader parameters should be a dictionary")
+    params = mapper_spec.params.get("input_reader")
+    params = dict((str(n), v) for n, v in params.iteritems())
+    if allowed_keys:
+      params_diff = set(params.keys()) - allowed_keys
+      if params_diff:
+        raise errors.BadReaderParamsError(
+            "Invalid input_reader parameters: %s" % ",".join(params_diff))
+  return params
 
 
 
@@ -459,7 +507,7 @@ class AbstractDatastoreInputReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise BadReaderParamsError("Input reader class mismatch")
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     if cls.ENTITY_KIND_PARAM not in params:
       raise BadReaderParamsError("Missing mapper parameter 'entity_kind'")
     if cls.BATCH_SIZE_PARAM in params:
@@ -499,7 +547,7 @@ class AbstractDatastoreInputReader(InputReader):
       equal to number_of_shards but may be padded with Nones if there are too
       few results for effective sharding.
     """
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     entity_kind_name = params[cls.ENTITY_KIND_PARAM]
     batch_size = int(params.get(cls.BATCH_SIZE_PARAM, cls._BATCH_SIZE))
     shard_count = mapper_spec.shard_count
@@ -636,17 +684,28 @@ class DatastoreInputReader(AbstractDatastoreInputReader):
     while True:
       query = k_range.make_ascending_query(
           util.for_name(self._entity_kind))
-      if cursor:
-        query.with_cursor(cursor)
+      if isinstance(query, db.Query):
 
-      results = query.fetch(limit=self._batch_size)
-      if not results:
-        break
+        if cursor:
+          query.with_cursor(cursor)
 
-      for model_instance in results:
-        key = model_instance.key()
-        yield key, model_instance
-      cursor = query.cursor()
+        results = query.fetch(limit=self._batch_size)
+        if not results:
+          break
+
+        for model_instance in results:
+          key = model_instance.key()
+          yield key, model_instance
+        cursor = query.cursor()
+      else:
+
+        results, cursor, more = query.fetch_page(self._batch_size,
+                                                 start_cursor=cursor)
+        for model_instance in results:
+          key = model_instance.key
+          yield key, model_instance
+        if not more:
+          break
 
   @classmethod
   def validate(cls, mapper_spec):
@@ -659,7 +718,7 @@ class DatastoreInputReader(AbstractDatastoreInputReader):
       BadReaderParamsError: required parameters are missing or invalid.
     """
     super(DatastoreInputReader, cls).validate(mapper_spec)
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     keys_only = util.parse_bool(params.get(cls.KEYS_ONLY_PARAM, False))
     if keys_only:
       raise BadReaderParamsError("The keys_only parameter is obsolete. "
@@ -790,7 +849,7 @@ class BlobstoreLineInputReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise BadReaderParamsError("Mapper input reader class mismatch")
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     if cls.BLOB_KEYS_PARAM not in params:
       raise BadReaderParamsError("Must specify 'blob_keys' for mapper input")
     blob_keys = params[cls.BLOB_KEYS_PARAM]
@@ -819,7 +878,7 @@ class BlobstoreLineInputReader(InputReader):
     Returns:
       A list of BlobstoreInputReaders corresponding to the specified shards.
     """
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     blob_keys = params[cls.BLOB_KEYS_PARAM]
     if isinstance(blob_keys, basestring):
 
@@ -967,7 +1026,7 @@ class BlobstoreZipInputReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise BadReaderParamsError("Mapper input reader class mismatch")
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     if cls.BLOB_KEY_PARAM not in params:
       raise BadReaderParamsError("Must specify 'blob_key' for mapper input")
     blob_key = params[cls.BLOB_KEY_PARAM]
@@ -990,7 +1049,7 @@ class BlobstoreZipInputReader(InputReader):
     Returns:
       A list of InputReaders spanning files within the zip.
     """
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     blob_key = params[cls.BLOB_KEY_PARAM]
     zip_input = zipfile.ZipFile(_reader(blob_key))
     files = zip_input.infolist()
@@ -1080,7 +1139,7 @@ class BlobstoreZipLineInputReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise BadReaderParamsError("Mapper input reader class mismatch")
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     if cls.BLOB_KEYS_PARAM not in params:
       raise BadReaderParamsError("Must specify 'blob_key' for mapper input")
 
@@ -1114,7 +1173,7 @@ class BlobstoreZipLineInputReader(InputReader):
       There will be at least one reader per blob, but it will otherwise
       attempt to keep the expanded size even.
     """
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     blob_keys = params[cls.BLOB_KEYS_PARAM]
     if isinstance(blob_keys, basestring):
 
@@ -1401,8 +1460,7 @@ class ConsistentKeyReader(DatastoreKeyInputReader):
   def split_input(cls, mapper_spec):
     """Splits input into key ranges."""
     readers = super(ConsistentKeyReader, cls).split_input(mapper_spec)
-
-    start_time_us = mapper_spec.params.get(
+    start_time_us = _get_params(mapper_spec).get(
         cls.START_TIME_US_PARAM, long(time.time() * 1e6))
     for reader in readers:
       reader.start_time_us = start_time_us
@@ -1490,8 +1548,7 @@ class NamespaceInputReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise BadReaderParamsError("Input reader class mismatch")
-    params = mapper_spec.params
-
+    params = _get_params(mapper_spec)
     if cls.BATCH_SIZE_PARAM in params:
       try:
         batch_size = int(params[cls.BATCH_SIZE_PARAM])
@@ -1510,8 +1567,8 @@ class NamespaceInputReader(InputReader):
     Returns:
       A list of InputReaders.
     """
-    batch_size = int(mapper_spec.params.get(cls.BATCH_SIZE_PARAM,
-                                            cls._BATCH_SIZE))
+    batch_size = int(_get_params(mapper_spec).get(
+        cls.BATCH_SIZE_PARAM, cls._BATCH_SIZE))
     shard_count = mapper_spec.shard_count
     namespace_ranges = namespace_range.NamespaceRange.split(shard_count,
                                                             contiguous=True)
@@ -1620,7 +1677,7 @@ class RecordsReader(InputReader):
     Returns:
       A list of InputReaders.
     """
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     shard_count = mapper_spec.shard_count
 
     if cls.FILES_PARAM in params:
@@ -1651,7 +1708,7 @@ class RecordsReader(InputReader):
     """
     if mapper_spec.input_reader_class() != cls:
       raise errors.BadReaderParamsError("Input reader class mismatch")
-    params = mapper_spec.params
+    params = _get_params(mapper_spec)
     if (cls.FILES_PARAM not in params and
         cls.FILE_PARAM not in params):
       raise BadReaderParamsError(
@@ -1739,11 +1796,6 @@ class LogInputReader(InputReader):
           self.__params[self._PROTOTYPE_REQUEST_PARAM])
       self.__params[self._PROTOTYPE_REQUEST_PARAM] = prototype_request
 
-  @staticmethod
-  def __kwargs(args):
-    """Return a new dictionary with all keys converted to type 'str'."""
-    return dict((str(name), value) for name, value in args.iteritems())
-
   def __iter__(self):
     """Iterates over logs in a given range of time.
 
@@ -1764,10 +1816,9 @@ class LogInputReader(InputReader):
     Returns:
       An instance of the InputReader configured using the given JSON parameters.
     """
-    params = cls.__kwargs(json)
 
-
-    params = dict((k, v) for k, v in params.iteritems() if k in cls._PARAMS)
+    params = dict((str(k), v) for k, v in json.iteritems()
+                  if k in cls._PARAMS)
 
 
 
@@ -1801,7 +1852,7 @@ class LogInputReader(InputReader):
     Returns:
       A list of InputReaders.
     """
-    params = cls.__kwargs(mapper_spec.params)
+    params = _get_params(mapper_spec)
     shard_count = mapper_spec.shard_count
 
 
@@ -1836,11 +1887,7 @@ class LogInputReader(InputReader):
     if mapper_spec.input_reader_class() != cls:
       raise errors.BadReaderParamsError("Input reader class mismatch")
 
-    params = cls.__kwargs(mapper_spec.params)
-    params_diff = set(params.keys()) - cls._PARAMS
-    if params_diff:
-      raise errors.BadReaderParamsError("Invalid mapper parameters: %s" %
-                                        ",".join(params_diff))
+    params = _get_params(mapper_spec, allowed_keys=cls._PARAMS)
     if cls.VERSION_IDS_PARAM not in params:
       raise errors.BadReaderParamsError("Must specify a list of version ids "
                                         "for mapper input")

@@ -127,9 +127,9 @@ class AbstractAdapter(object):
    representation."""
    raise NotImplementedError
 
-  def pb_to_query_result(self, pb, keys_only=False):
+  def pb_to_query_result(self, pb, query_options):
     """Turn an entity_pb.EntityProto into a user-level query result."""
-    if keys_only:
+    if query_options.keys_only:
       return self.pb_to_key(pb.key())
     else:
       return self.pb_to_entity(pb)
@@ -328,7 +328,9 @@ class BaseConfiguration(object):
           config_option = obj._options[key]
         except KeyError, err:
           raise TypeError('Unknown configuration option (%s)' % err)
-        obj._values[key] = config_option.validator(value)
+        value = config_option.validator(value)
+        if value is not None:
+          obj._values[key] = value
     return obj
 
   def __eq__(self, other):
@@ -453,6 +455,15 @@ class BaseConfiguration(object):
 
     return _MergedConfiguration(config, self)
 
+  def __getstate__(self):
+    return {'_values': self._values}
+
+  def __setstate__(self, state):
+
+
+    obj = self.__class__(**state['_values'])
+    self._values = obj._values
+
 
 class _MergedConfiguration(BaseConfiguration):
   """Helper class to handle merges of configurations.
@@ -507,6 +518,16 @@ class _MergedConfiguration(BaseConfiguration):
       else:
         return None
     raise AttributeError("Configuration has no attribute '%s'" % (name,))
+
+  def __getstate__(self):
+    return {'_configs': self._configs}
+
+  def __setstate__(self, state):
+
+    obj = _MergedConfiguration(*state['_configs'])
+    self._values = obj._values
+    self._configs = obj._configs
+    self._options = obj._options
 
 
 class Configuration(BaseConfiguration):
@@ -1814,6 +1835,13 @@ class TransactionOptions(Configuration):
 
     One of NESTED, MANDATORY, ALLOWED, INDEPENDENT. The interpertation of
     these types is up to higher level run-in-transaction implementations.
+
+    WARNING: Using anything other than NESTED for the propagation flag
+    can have strange consequences.  When using ALLOWED or MANDATORY, if
+    an exception is raised, the transaction is likely not safe to
+    commit.  When using INDEPENDENT it is not generally safe to return
+    values read to the caller (as they were not read in the caller's
+    transaction).
 
     Raises: datastore_errors.BadArgumentError if value is not reconized.
     """

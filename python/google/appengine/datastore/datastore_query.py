@@ -103,7 +103,7 @@ def make_filter(name, op, values):
     Other exception types (like OverflowError): if the property value does not
       meet type-specific criteria.
   """
-  datastore_types.ValidateProperty(name, values, read_only=True)
+  datastore_types.ValidateProperty(name, values)
   properties = datastore_types.ToPropertyPb(name, values)
   if isinstance(properties, list):
     filters = [PropertyFilter(op, prop) for prop in properties]
@@ -329,6 +329,9 @@ class PropertyFilter(_SinglePropertyFilter):
 
   def _apply_to_value(self, value):
     if not hasattr(self, '_cmp_value'):
+      if self._filter.op() == datastore_pb.Query_Filter.EXISTS:
+
+        return True
       self._cmp_value = datastore_types.PropertyValueToKeyValue(
           self._filter.property(0).value())
       self._condition = ('value %s self._cmp_value' %
@@ -1293,6 +1296,45 @@ class QueryOptions(FetchOptions):
     return value
 
   @datastore_rpc.ConfigOption
+  def projection(value):
+    """A list or tuple of property names to project.
+
+    If None, the entire entity is returned.
+
+    Specifying a projection:
+    - may change the index requirements for the given query;
+    - will cause a partial entity to be returned;
+    - will cause only entities that contain those properties to be returned;
+
+    A partial entities only contain the property name and value for properties
+    in the projection (meaning and multiple will not be set). They will also
+    only contain a single value for any multi-valued property. However, if a
+    multi-valued property is specified in the order, an inequality property, or
+    the projected properties, the entity will be returned multiple times. Once
+    for each unique combination of values.
+
+    However, projection queries are significantly faster than normal queries.
+
+    Raises:
+      datastore_errors.BadArgumentError if value is empty or not a list or tuple
+    of strings.
+    """
+    if isinstance(value, list):
+      value = tuple(value)
+    elif not isinstance(value, tuple):
+      raise datastore_errors.BadArgumentError(
+          'properties argument should be a list or tuple (%r)' % (value,))
+    if not value:
+      raise datastore_errors.BadArgumentError(
+          'properties argument cannot be empty')
+    for prop in value:
+      if not isinstance(prop, basestring):
+        raise datastore_errors.BadArgumentError(
+            'properties argument should contain only strings (%r)' % (prop,))
+
+    return value
+
+  @datastore_rpc.ConfigOption
   def limit(value):
     """Limit on the number of results to return.
 
@@ -1375,7 +1417,7 @@ class Cursor(_BaseComponent):
   """
 
   @datastore_rpc._positional(1)
-  def __init__(self, _cursor_pb=None):
+  def __init__(self, _cursor_pb=None, urlsafe=None):
     """Constructor.
 
     A Cursor constructed with no arguments points the first result of any
@@ -1385,6 +1427,11 @@ class Cursor(_BaseComponent):
 
 
     super(Cursor, self).__init__()
+    if urlsafe is not None:
+      if _cursor_pb is not None:
+        raise datastore_errors.BadArgumentError(
+            'Do not use _cursor_pb and urlsafe together')
+      _cursor_pb = self._bytes_to_cursor_pb(self._urlsafe_to_bytes(urlsafe))
     if _cursor_pb is not None:
       if not isinstance(_cursor_pb, datastore_pb.CompiledCursor):
         raise datastore_errors.BadArgumentError(
@@ -1433,6 +1480,12 @@ class Cursor(_BaseComponent):
       datastore_errors.BadValueError if the cursor argument does not represent a
       serialized cursor.
     """
+    cursor_pb = Cursor._bytes_to_cursor_pb(cursor)
+    return Cursor(_cursor_pb=cursor_pb)
+
+  @staticmethod
+  def _bytes_to_cursor_pb(cursor):
+
     try:
       cursor_pb = datastore_pb.CompiledCursor(cursor)
     except (ValueError, TypeError), e:
@@ -1450,15 +1503,16 @@ class Cursor(_BaseComponent):
             'Invalid cursor %s. Details: %s' % (cursor, e))
       else:
         raise
-    return Cursor(_cursor_pb=cursor_pb)
+    return cursor_pb
 
-  def to_websafe_string(self):
+  def urlsafe(self):
     """Serialize cursor as a websafe string.
 
     Returns:
       A base64-encoded serialized cursor.
     """
     return base64.urlsafe_b64encode(self.to_bytes())
+  to_websafe_string = urlsafe
 
   @staticmethod
   def from_websafe_string(cursor):
@@ -1477,6 +1531,12 @@ class Cursor(_BaseComponent):
       datastore_errors.BadValueError if the cursor argument is not a string
       type of does not represent a serialized cursor.
     """
+    decoded_bytes = Cursor._urlsafe_to_bytes(cursor)
+    return Cursor.from_bytes(decoded_bytes)
+
+  @staticmethod
+  def _urlsafe_to_bytes(cursor):
+
     if not isinstance(cursor, basestring):
       raise datastore_errors.BadValueError(
           'cursor argument should be str or unicode (%r)' % (cursor,))
@@ -1488,7 +1548,7 @@ class Cursor(_BaseComponent):
     except (ValueError, TypeError), e:
       raise datastore_errors.BadValueError(
           'Invalid cursor %s. Details: %s' % (cursor, e))
-    return Cursor.from_bytes(decoded_bytes)
+    return decoded_bytes
 
   @staticmethod
   def _from_query_result(query_result):
@@ -1826,6 +1886,10 @@ class Query(_BaseQuery):
 
     if QueryOptions.keys_only(query_options, conn.config):
       pb.set_keys_only(True)
+
+    projection = QueryOptions.projection(query_options, conn.config)
+    if projection:
+      pb.property_name_list().extend(projection)
 
     if QueryOptions.produce_cursors(query_options, conn.config):
       pb.set_compile(True)
@@ -2387,8 +2451,11 @@ class Batch(object):
     except datastore_errors.NeedIndexError, exc:
 
       if isinstance(rpc.request, datastore_pb.Query):
+        _, kind, ancestor, props = datastore_index.CompositeIndexForQuery(
+            rpc.request)
+
         yaml = datastore_index.IndexYamlForQuery(
-            *datastore_index.CompositeIndexForQuery(rpc.request)[1:-1])
+           kind, ancestor, datastore_index.GetRecommendedIndexProperties(props))
         raise datastore_errors.NeedIndexError(
             str(exc) + '\nThe suggested index for this query is:\n' + yaml)
       raise
@@ -2436,9 +2503,8 @@ class Batch(object):
     Returns:
       A list of results that should be returned to the user.
     """
-    keys_only = self._batch_shared.keys_only
     pb_to_query_result = self._batch_shared.conn.adapter.pb_to_query_result
-    return [pb_to_query_result(result, keys_only)
+    return [pb_to_query_result(result, self._batch_shared.query_options)
             for result in results]
 
   def __getstate__(self):

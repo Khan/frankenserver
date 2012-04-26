@@ -1124,6 +1124,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
   GD_POSTALADDRESS =   12
   GD_RATING    =   13
   BLOBKEY      =   17
+  INDEX_VALUE  =   18
 
   _Meaning_NAMES = {
     14: "BLOB",
@@ -1143,6 +1144,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     12: "GD_POSTALADDRESS",
     13: "GD_RATING",
     17: "BLOBKEY",
+    18: "INDEX_VALUE",
   }
 
   def Meaning_Name(cls, x): return cls._Meaning_NAMES.get(x, "")

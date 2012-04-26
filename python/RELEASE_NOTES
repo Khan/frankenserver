@@ -3,6 +3,52 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.6.5
+===============================
+- You can now perform datastore queries that return a subset of your entity
+  properties with the same performance and cost of a keys-only query. This
+  feature is experimental.
+- In the High Replication Datastore, there is a new metadata kind,
+  __entity_group__, that has a numeric __version__ property. This property is
+  guaranteed to increase on every change to the entity group.
+- The Images API now supports manipulating objects hosted on Google Cloud
+  Storage.
+- In the Images API, the get_serving_url call now optionally allows you to
+  specify if the URL you are generating should be served over https.
+- In the Task Queue REST API, you can now specify a tag when you insert a task
+  on a Pull Queue.
+- In the Task Queue API, you can specify a deadline for the lease_tasks call.
+  The default deadline has been increased from 5 seconds to 10 seconds.
+- You can now use cron to schedule Datastore backups.
+- The Datastore Admin now has a page that displays information on the status of
+  your Datastore backups and restores.
+- You can now abort your Datastore backup or restore from the Datastore Admin.
+- You can now restore a single Datastore Kind from the Datastore Admin from a
+  Datastore backup.
+- In the Admin Console, you can report production issues with your application
+  directly to Google from the application's pages. Simply click the "Report
+  Production Issues" link, fill out the requested information, and submit.
+- All user requests have X-AppEngine-Region, X-AppEngine-City, and
+  X-AppEngine-CityLatLong headers which contain location information based on
+  the IP address of the client request. For a full description of these headers,
+  see:
+    https://developers.google.com/appengine/docs/python/runtime#Request_Headers
+- We have added support for concurrent transactions to @db.transactional and
+  db.run_in_transaction_options() along with other transaction propagation
+  options.
+- We've introduced an experimental new Mac Installer that only supports Python
+  2.7.
+- In your app.yaml file, you can include an env_variables stanza that will set
+  the given environment variables in your application's runtime.
+- Jinja2 now includes the _debugsupport module.
+- Fixed an issue with the dev_appserver where it defaulted the HTTP
+  Content-Type of a request to text/plain instead of text/html.
+- Fixed an issue where the SDK would include some indexes that were not needed
+  in production.
+- Fixed an issue in the SDK where the SDK admin console would not display utf-8
+  encoded list property values.
+  http://code.google.com/p/googleappengine/issues/detail?id=7079
+
 Version 1.6.4
 ===============================
 - Billed applications that have specified additional logs retention over 1 GB

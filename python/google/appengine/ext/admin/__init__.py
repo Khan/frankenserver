@@ -142,6 +142,17 @@ def ustr(value):
     return unicode(value).encode('UTF-8')
 
 
+def urepr(value):
+  """Like repr(), but UTF-8-encodes Unicode inside a list."""
+  if isinstance(value, list):
+    return '[' + ', '.join(map(urepr, value)) + ']'
+  if isinstance(value, unicode):
+    return ('u"' +
+            value.encode('utf-8').replace('\"', '\\"').replace('\\', '\\\\') +
+            '"')
+  return repr(value)
+
+
 def TruncateValue(value):
   """Truncates potentially very long string to a fixed maximum length."""
   value = str(value)
@@ -1637,8 +1648,8 @@ class SearchIndexHandler(BaseRequestHandler):
 
 
     for result in response.results:
-      doc = Document(result.document.doc_id)
-      for field in result.document.fields:
+      doc = Document(result.doc_id)
+      for field in result.fields:
         field_names.add(field.name)
         doc.fields[field.name] = field
       documents.append(doc)
@@ -1673,8 +1684,10 @@ class SearchIndexHandler(BaseRequestHandler):
                                    default=10)
     index_name = self.request.get('index') or 'index'
     index = search.Index(name=index_name, namespace=namespace)
-    resp = index.search(query=query, offset=start, limit=limit)
-    has_more = resp.matched_count > start + limit
+    resp = index.search(query=search.Query(
+        query_string=query,
+        options=search.QueryOptions(offset=start, limit=limit)))
+    has_more = resp.number_found > start + limit
 
     current_page = start / limit + 1
     values = {
@@ -1885,14 +1898,29 @@ class TimeType(DataType):
 
 class ListType(DataType):
   def format(self, value):
-    return repr(value)
+    return urepr(value)
 
-  def short_format(self, value):
+  def short_format_orig(self, value):
     format = self.format(value)
     if len(format) > 20:
       return format[:20] + '...'
     else:
       return format
+
+  def utf8_short_format(self, value):
+    format = self.format(value).decode('utf-8')
+    if len(format) > 20:
+      return format[:20].encode('utf-8') + '...'
+    else:
+      return format.encode('utf-8')
+
+  def short_format(self, value):
+
+
+    try:
+      return self.utf8_short_format(value)
+    except Exception:
+      return self.short_format_orig(value)
 
   def name(self):
     return 'list'

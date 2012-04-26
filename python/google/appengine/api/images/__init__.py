@@ -45,6 +45,7 @@ except:
   import simplejson as json
 
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import blobstore
 from google.appengine.api import datastore_types
 from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
@@ -132,24 +133,34 @@ class UnsupportedSizeError(Error):
 class Image(object):
   """Image object to manipulate."""
 
-  def __init__(self, image_data=None, blob_key=None):
+  def __init__(self, image_data=None, blob_key=None, filename=None):
     """Constructor.
+
+    Only one of image_data, blob_key or filename can be specified.
 
     Args:
       image_data: str, image data in string form.
       blob_key: BlobKey, BlobInfo, str, or unicode representation of BlobKey of
         blob containing the image data.
+      filename: str, the filename of a Google Storage file containing the
+        image data. Must be in the format '/gs/bucket_name/object_name'.
 
     Raises:
       NotImageError if the given data is empty.
     """
-    if not image_data and not blob_key:
+
+    if not image_data and not blob_key and not filename:
       raise NotImageError("Empty image data.")
-    if image_data and blob_key:
-      raise NotImageError("Can only take one image or blob key.")
+    if image_data and (blob_key or filename):
+      raise NotImageError("Can only take one of image, blob key or filename.")
+    if blob_key and filename:
+      raise NotImageError("Can only take one of image, blob key or filename.")
 
     self._image_data = image_data
-    self._blob_key = _extract_blob_key(blob_key)
+    if filename:
+      self._blob_key = blobstore.create_gs_key(filename)
+    else:
+      self._blob_key = _extract_blob_key(blob_key)
     self._transforms = []
     self._width = None
     self._height = None
@@ -1215,7 +1226,8 @@ IMG_SERVING_CROP_SIZES = [32, 48, 64, 72, 80, 104, 136, 144, 150, 160]
 
 def get_serving_url(blob_key,
                     size=None,
-                    crop=False):
+                    crop=False,
+                    secure_url=None):
   """Obtain a url that will serve the underlying image.
 
   This URL is served by a high-performance dynamic image serving infrastructure.
@@ -1243,6 +1255,7 @@ def get_serving_url(blob_key,
       blob to get URL of.
     size: int, size of resulting images
     crop: bool, True requests a cropped image, False a resized one.
+    secure_url: bool, True requests a https url, False requests a http url.
 
   Returns:
     str, a url
@@ -1251,6 +1264,7 @@ def get_serving_url(blob_key,
     BlobKeyRequiredError: when no blobkey was specified in the ctor.
     UnsupportedSizeError: when size parameters uses unsupported sizes.
     BadRequestError: when crop/size are present in wrong combination.
+    TypeError: when secure_url is not a boolean type.
   """
   if not blob_key:
     raise BlobKeyRequiredError("A Blobkey is required for this operation.")
@@ -1261,10 +1275,16 @@ def get_serving_url(blob_key,
   if size is not None and (size > IMG_SERVING_SIZES_LIMIT or size < 0):
     raise UnsupportedSizeError("Unsupported size")
 
+  if secure_url and not isinstance(secure_url, bool):
+    raise TypeError("secure_url must be boolean.")
+
   request = images_service_pb.ImagesGetUrlBaseRequest()
   response = images_service_pb.ImagesGetUrlBaseResponse()
 
   request.set_blob_key(_extract_blob_key(blob_key))
+
+  if secure_url:
+    request.set_create_secure_url(secure_url)
 
   try:
     apiproxy_stub_map.MakeSyncCall("images",

@@ -51,12 +51,14 @@ __all__ = [
     'InvalidTaskNameError', 'InvalidUrlError', 'PermissionDeniedError',
     'TaskAlreadyExistsError', 'TaskTooLargeError', 'TombstonedTaskError',
     'TooManyTasksError', 'TransientError', 'UnknownQueueError',
-    'InvalidLeaseTimeError', 'InvalidMaxTasksError',
+    'InvalidLeaseTimeError', 'InvalidMaxTasksError', 'InvalidDeadlineError',
     'InvalidQueueModeError', 'TransactionalRequestTooLargeError',
     'TaskLeaseExpiredError', 'QueuePausedError',
 
     'MAX_QUEUE_NAME_LENGTH', 'MAX_TASK_NAME_LENGTH', 'MAX_TASK_SIZE_BYTES',
     'MAX_PULL_TASK_SIZE_BYTES', 'MAX_PUSH_TASK_SIZE_BYTES',
+    'MAX_LEASE_SECONDS', 'MAX_TASKS_PER_ADD',
+    'MAX_TASKS_PER_LEASE',
     'MAX_URL_LENGTH',
 
     'DEFAULT_APP_VERSION',
@@ -176,6 +178,10 @@ class InvalidLeaseTimeError(Error):
 
 class InvalidMaxTasksError(Error):
   """The requested max tasks in lease_tasks is invalid."""
+
+
+class InvalidDeadlineError(Error):
+  """The requested deadline in lease_tasks is invalid."""
 
 
 class InvalidQueueModeError(Error):
@@ -920,6 +926,19 @@ class Task(object):
     return self.__eta
 
   @property
+  def _eta_usec(self):
+    """Returns a int microseconds timestamp when this Task will execute."""
+
+
+
+
+
+
+
+
+    return int(round(self.eta_posix * 1e6))
+
+  @property
   def headers(self):
     """Returns a copy of the headers for this Task."""
     return self.__headers.copy()
@@ -1380,7 +1399,23 @@ class Queue(object):
           'Only %d tasks can be leased at once' %
           MAX_TASKS_PER_LEASE)
 
-  def lease_tasks(self, lease_seconds, max_tasks):
+  @staticmethod
+  def _ValidateDeadline(deadline):
+    if not isinstance(deadline, (int, long, float)):
+      raise TypeError(
+          'deadline must be numeric')
+
+    if deadline <= 0:
+      raise InvalidDeadlineError(
+          'Negative or zero deadline requested')
+
+  @staticmethod
+  def _QueryAndOwnTasks(request, response, deadline):
+    rpc = apiproxy_stub_map.UserRPC('taskqueue', deadline)
+    rpc.make_call('QueryAndOwnTasks', request, response)
+    rpc.check_success()
+
+  def lease_tasks(self, lease_seconds, max_tasks, deadline=10):
     """Leases a number of tasks from the Queue for a period of time.
 
     This method can only be performed on a pull Queue. Any non-pull tasks in
@@ -1392,6 +1427,8 @@ class Queue(object):
     Args:
       lease_seconds: Number of seconds to lease the tasks.
       max_tasks: Max number of tasks to lease from the pull Queue.
+      deadline: The maximum number of seconds to wait before aborting the
+        method call.
 
     Returns:
       A list of tasks leased from the Queue.
@@ -1406,6 +1443,7 @@ class Queue(object):
     """
     lease_seconds = self._ValidateLeaseSeconds(lease_seconds)
     self._ValidateMaxTasks(max_tasks)
+    self._ValidateDeadline(deadline)
 
     request = taskqueue_service_pb.TaskQueueQueryAndOwnTasksRequest()
     response = taskqueue_service_pb.TaskQueueQueryAndOwnTasksResponse()
@@ -1415,10 +1453,7 @@ class Queue(object):
     request.set_max_tasks(max_tasks)
 
     try:
-      apiproxy_stub_map.MakeSyncCall('taskqueue',
-                                     'QueryAndOwnTasks',
-                                     request,
-                                     response)
+      self._QueryAndOwnTasks(request, response, deadline)
     except apiproxy_errors.ApplicationError, e:
       raise self.__TranslateError(e.application_error, e.error_detail)
 
@@ -1429,7 +1464,7 @@ class Queue(object):
 
     return tasks
 
-  def lease_tasks_by_tag(self, lease_seconds, max_tasks, tag=None):
+  def lease_tasks_by_tag(self, lease_seconds, max_tasks, tag=None, deadline=10):
     """Leases a number of tasks from the Queue for a period of time.
 
     This method can only be performed on a pull Queue. Any non-pull tasks in
@@ -1442,6 +1477,8 @@ class Queue(object):
       lease_seconds: Number of seconds to lease the tasks.
       max_tasks: Max number of tasks to lease from the pull Queue.
       tag: The to query for, or None to group by the first available tag.
+      deadline: The maximum number of seconds to wait before aborting the
+        method call.
 
     Returns:
       A list of tasks leased from the Queue.
@@ -1456,6 +1493,7 @@ class Queue(object):
     """
     lease_seconds = self._ValidateLeaseSeconds(lease_seconds)
     self._ValidateMaxTasks(max_tasks)
+    self._ValidateDeadline(deadline)
 
     request = taskqueue_service_pb.TaskQueueQueryAndOwnTasksRequest()
     response = taskqueue_service_pb.TaskQueueQueryAndOwnTasksResponse()
@@ -1468,10 +1506,7 @@ class Queue(object):
       request.set_tag(tag)
 
     try:
-      apiproxy_stub_map.MakeSyncCall('taskqueue',
-                                     'QueryAndOwnTasks',
-                                     request,
-                                     response)
+      self._QueryAndOwnTasks(request, response, deadline)
     except apiproxy_errors.ApplicationError, e:
       raise self.__TranslateError(e.application_error, e.error_detail)
 
@@ -1713,7 +1748,7 @@ class Queue(object):
     if self._app:
       task_request.set_app_id(self._app)
     task_request.set_queue_name(self.__name)
-    task_request.set_eta_usec(long(task.eta_posix * 1e6))
+    task_request.set_eta_usec(task._eta_usec)
     if task.name:
       task_request.set_task_name(task.name)
     else:
@@ -1793,7 +1828,7 @@ class Queue(object):
 
     request.set_queue_name(self.__name)
     request.set_task_name(task.name)
-    request.set_eta_usec(int(task.eta_posix * 1e6))
+    request.set_eta_usec(task._eta_usec)
     request.set_lease_seconds(lease_seconds)
 
     try:

@@ -912,7 +912,8 @@ def load_summary_protos():
       logging.warn('Bad record: %s', err)
     else:
       records.append(pb)
-  logging.info('Loaded %d raw records, %d valid', len(results), len(records))
+  logging.info('Loaded %d raw summary records, %d valid',
+               len(results), len(records))
 
   records.sort(key=lambda pb: -pb.start_timestamp_milliseconds())
   return records

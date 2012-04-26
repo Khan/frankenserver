@@ -407,9 +407,7 @@ def _SetupStubs(
 def _TearDownStubs():
   """Clean up any stubs that need cleanup."""
 
-  logging.info('Applying all pending transactions and saving the datastore')
   datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
-  datastore_stub.Flush()
   datastore_stub.Write()
 
 

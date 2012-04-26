@@ -1277,6 +1277,8 @@ _PROPERTY_MEANINGS = {
   ByteString:        entity_pb.Property.BYTESTRING,
   Text:              entity_pb.Property.TEXT,
   datetime.datetime: entity_pb.Property.GD_WHEN,
+  datetime.date:     entity_pb.Property.GD_WHEN,
+  datetime.time:     entity_pb.Property.GD_WHEN,
   _OverflowDateTime: entity_pb.Property.GD_WHEN,
   Category:          entity_pb.Property.ATOM_CATEGORY,
   Link:              entity_pb.Property.ATOM_LINK,
@@ -1431,6 +1433,35 @@ _VALIDATE_PROPERTY_VALUES = {
   BlobKey: ValidatePropertyNothing,
 }
 
+_PROPERTY_TYPE_TO_INDEX_VALUE_TYPE = {
+  basestring: str,
+  Blob: str,
+  ByteString: str,
+  bool: bool,
+  Category: str,
+  datetime.datetime: long,
+  datetime.date: long,
+  datetime.time: long,
+  _OverflowDateTime: long,
+  Email: str,
+  float: float,
+  GeoPt: GeoPt,
+  IM: str,
+  int: long,
+  Key: Key,
+  Link: str,
+  long: long,
+  PhoneNumber: str,
+  PostalAddress: str,
+  Rating: long,
+  str: str,
+  Text: str,
+  type(None): type(None),
+  unicode: str,
+  users.User: users.User,
+  BlobKey: str,
+}
+
 
 assert set(_VALIDATE_PROPERTY_VALUES.iterkeys()) == _PROPERTY_TYPES
 
@@ -1441,6 +1472,7 @@ def ValidateProperty(name, values, read_only=False):
   Args:
     name: Name of the property this is for.
     value: Value for the property as a Python native type.
+    read_only: deprecated
 
   Raises:
     BadPropertyError if the property name is invalid. BadValueError if the
@@ -1449,10 +1481,6 @@ def ValidateProperty(name, values, read_only=False):
     type-specific criteria.
   """
   ValidateString(name, 'property name', datastore_errors.BadPropertyError)
-
-  if not read_only and RESERVED_PROPERTY_NAME.match(name):
-    raise datastore_errors.BadPropertyError(
-        '%s is a reserved property name.' % name)
 
   values_type = type(values)
 
@@ -1463,10 +1491,7 @@ def ValidateProperty(name, values, read_only=False):
         (name, repr(values)))
 
 
-  if values_type is list:
-    multiple = True
-  else:
-    multiple = False
+  if values_type is not list:
     values = [values]
 
 
@@ -1782,7 +1807,8 @@ def FromPropertyPb(pb):
   if pbval.has_stringvalue():
     value = pbval.stringvalue()
     if not pb.has_meaning() or meaning not in (entity_pb.Property.BLOB,
-                                               entity_pb.Property.BYTESTRING):
+                                               entity_pb.Property.BYTESTRING,
+                                               entity_pb.Property.INDEX_VALUE):
       value = unicode(value, 'utf-8')
   elif pbval.has_int64value():
 
@@ -1827,6 +1853,64 @@ def FromPropertyPb(pb):
     raise datastore_errors.BadValueError(
       'Error converting pb: %s\nException was: %s' % (pb, msg))
 
+  return value
+
+
+def RestoreFromIndexValue(index_value, data_type):
+  """Restores a index value to the correct datastore type.
+
+  Projection queries return property values direclty from a datastore index.
+  These values are the native datastore values, one of str, bool, long, float,
+  GeoPt, Key or User. This function restores the original value when the the
+  original type is known.
+
+  This function returns the value type returned when decoding a normal entity,
+  not necessarily of type data_type. For example, data_type=int returns a
+  long instance.
+
+  Args:
+    index_value: The value returned by FromPropertyPb for the projected
+      property.
+    data_type: The type of the value originally given to ToPropertyPb
+
+  Returns:
+    The restored property value.
+
+  Raises:
+    datastore_errors.BadValueError if the value cannot be restored.
+  """
+  raw_type = _PROPERTY_TYPE_TO_INDEX_VALUE_TYPE.get(data_type)
+  if raw_type is None:
+    raise datastore_errors.BadValueError(
+        'Unsupported data type (%r)' % data_type)
+
+  if index_value is None:
+    return index_value
+
+
+
+  if not isinstance(index_value, raw_type):
+    raise datastore_errors.BadValueError(
+        'Unsupported converstion. Expected %r got %r' %
+        (type(index_value), raw_type))
+
+  meaning = _PROPERTY_MEANINGS.get(data_type)
+
+
+  if isinstance(index_value, str) and meaning not in (
+      entity_pb.Property.BLOB, entity_pb.Property.BYTESTRING):
+    index_value = unicode(index_value, 'utf-8')
+
+
+  conv = _PROPERTY_CONVERSIONS.get(meaning)
+  if not conv:
+    return index_value
+
+  try:
+    value = conv(index_value)
+  except (KeyError, ValueError, IndexError, TypeError, AttributeError), msg:
+    raise datastore_errors.BadValueError(
+      'Error converting value: %r\nException was: %s' % (index_value, msg))
   return value
 
 

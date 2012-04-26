@@ -129,7 +129,7 @@ class _GqlQuery(db.GqlQuery):
     app = kwds.pop('_app', None)
     self._proto_query = gql.GQL(query_string, _app=app, namespace='')
 
-    super(db.GqlQuery, self).__init__(model_class, namespace='')
+    super(db.GqlQuery, self).__init__(model_class)
     self.bind(*args, **kwds)
 
 

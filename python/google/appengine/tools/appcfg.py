@@ -1718,7 +1718,7 @@ class AppVersionUpload(object):
     rpcserver: The AbstractRpcServer to use for the upload.
     config: The AppInfoExternal object derived from the app.yaml file.
     app_id: The application string from 'config'.
-    version: The version string from 'config', or an alternate version override.
+    version: The version string from 'config'.
     backend: The backend to update, if any.
     files: A dictionary of files to upload to the rpcserver, mapping path to
       hash of the file contents.
@@ -1728,7 +1728,7 @@ class AppVersionUpload(object):
     started: True iff the StartServing method has been called.
   """
 
-  def __init__(self, rpcserver, config, version=None, backend=None,
+  def __init__(self, rpcserver, config, backend=None,
                error_fh=None):
     """Creates a new AppVersionUpload.
 
@@ -1737,7 +1737,6 @@ class AppVersionUpload(object):
         or TestRpcServer.
       config: An AppInfoExternal object that specifies the configuration for
         this application.
-      version: If specified, overrides the app version specified in config.
       backend: If specified, indicates the update applies to the given backend.
         The backend name must match an entry in the backends: stanza.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
@@ -1748,10 +1747,7 @@ class AppVersionUpload(object):
     self.backend = backend
     self.error_fh = error_fh or sys.stderr
 
-    if version:
-      self.version = version
-    else:
-      self.version = self.config.version
+    self.version = self.config.version
 
     self.params = {}
     if self.app_id:
@@ -2787,12 +2783,11 @@ you do not need to override the size except in rare cases."""
 
     return None
 
-  def _ParseAppYaml(self, basepath, includes=True):
+  def _ParseAppYaml(self, basepath):
     """Parses the app.yaml file.
 
     Args:
       basepath: the directory of the application.
-      includes: if True builtins and includes will be parsed.
 
     Returns:
       An AppInfoExternal object.
@@ -2804,10 +2799,7 @@ you do not need to override the size except in rare cases."""
 
     fh = self.opener(appyaml_filename, 'r')
     try:
-      if includes:
-        appyaml = appinfo_includes.Parse(fh, self.opener)
-      else:
-        appyaml = appinfo.LoadSingleAppInfo(fh)
+      appyaml = appinfo_includes.Parse(fh, self.opener)
     finally:
       fh.close()
     orig_application = appyaml.application
@@ -2996,8 +2988,7 @@ you do not need to override the size except in rare cases."""
       updatecheck = self.update_check_class(rpcserver, appyaml)
       updatecheck.CheckForUpdates()
 
-    appversion = AppVersionUpload(rpcserver, appyaml, self.options.version,
-                                  backend, self.error_fh)
+    appversion = AppVersionUpload(rpcserver, appyaml, backend, self.error_fh)
     return appversion.DoUpload(
         self.file_iterator(basepath, appyaml.skip_files, appyaml.runtime),
         lambda path: self.opener(os.path.join(basepath, path), 'rb'),
@@ -3008,7 +2999,7 @@ you do not need to override the size except in rare cases."""
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
 
-    appyaml = self._ParseAppYaml(self.basepath, includes=True)
+    appyaml = self._ParseAppYaml(self.basepath)
     rpcserver = self._GetRpcServer()
 
 
@@ -3324,8 +3315,7 @@ you do not need to override the size except in rare cases."""
     backend is specified the rollback will affect the current app version.
     """
     appyaml = self._ParseAppYaml(self.basepath)
-    appversion = AppVersionUpload(self._GetRpcServer(), appyaml,
-                                  self.options.version, backend)
+    appversion = AppVersionUpload(self._GetRpcServer(), appyaml, backend)
 
 
     appversion.in_transaction = True
@@ -3531,7 +3521,7 @@ you do not need to override the size except in rare cases."""
 
     if len(self.args) == 1:
       self.basepath = self.args[0]
-      appyaml = self._ParseAppYaml(self.basepath, includes=True)
+      appyaml = self._ParseAppYaml(self.basepath)
 
       self.options.app_id = appyaml.application
 
@@ -3761,7 +3751,7 @@ you do not need to override the size except in rare cases."""
     Args:
       output: The file handle to write the output to (used for testing).
     """
-    appyaml = self._ParseAppYaml(self.basepath, includes=True)
+    appyaml = self._ParseAppYaml(self.basepath)
     resource_limits = GetResourceLimits(self._GetRpcServer(), appyaml)
 
 

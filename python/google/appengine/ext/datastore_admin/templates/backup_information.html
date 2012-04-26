@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Backup Information{% endblock %}
+{% block body %}
+  <h2>Datastore Admin: Backup Information</h2>
+  {% for backup in backups %}
+  <p>
+    <table title="{{backup.name}}" style="border-spacing: 0px 50px;">
+      <thead>
+        <tr><td><b>Name:</b></td><td>{{backup.name}}</td></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Kinds:</b></td><td>{{ backup.kinds|join:', '}}</td></tr>
+        <tr><td><b>Target:</b></td><td>{{backup.filesystem}}</td></tr>
+        <tr><td><b>Started:</b></td><td>{{backup.start_time}}</td></tr>
+        {% if backup.complete_time %}
+          <tr><td><b>Completed:</b></td><td>{{backup.complete_time}}</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </p>
+  {% endfor %}
+  <form action="{{ back_target }}" method="post">
+    <input class="goog-button" type="submit" value="Back">
+  </form>
+{% endblock %}

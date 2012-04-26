@@ -130,6 +130,9 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
   def _GetFrom(self, requested):
     """Validates that the from JID is valid.
 
+    The JID uses the display-app-id for all apps to simulate a common case
+    in production (alias === display-app-id).
+
     Args:
       requested: The requested from JID.
 
@@ -140,9 +143,11 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       xmpp.InvalidJidError if the requested JID is invalid.
     """
 
-    appid = app_identity.get_application_id()
+    full_appid = os.environ.get('APPLICATION_ID')
+    partition, domain_name, display_app_id = (
+        app_identity.app_identity._ParseFullAppId(full_appid))
     if requested == None or requested == '':
-      return appid + '@appspot.com/bot'
+      return display_app_id + '@appspot.com/bot'
 
 
     node, domain, resource = ('', '', '')
@@ -172,9 +177,9 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
                requested)
       raise xmpp.InvalidJidError()
 
-    if domain == 'appspot.com' and node == appid:
+    if domain == 'appspot.com' and node == display_app_id:
       return node + '@' + domain + '/' + resource
-    elif domain == appid + '.appspotchat.com':
+    elif domain == display_app_id + '.appspotchat.com':
       return node + '@' + domain + '/' + resource
 
     self.log('Invalid From JID: Must be appid@appspot.com[/resource] or '

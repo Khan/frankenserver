@@ -46,6 +46,14 @@ XSRF_VALIDITY_TIME = 600
 KINDS_AND_SIZES_VAR = 'kinds_and_sizes'
 
 
+DATASTORE_ADMIN_OPERATION_KIND = '_AE_DatastoreAdmin_Operation'
+BACKUP_INFORMATION_KIND = '_AE_Backup_Information'
+BACKUP_INFORMATION_FILES_KIND = '_AE_Backup_Information_Kind_Files'
+DATASTORE_ADMIN_KINDS = (DATASTORE_ADMIN_OPERATION_KIND,
+                         BACKUP_INFORMATION_KIND,
+                         BACKUP_INFORMATION_FILES_KIND)
+
+
 class ConfigDefaults(object):
   """Configurable constants.
 
@@ -70,6 +78,10 @@ config = lib_config.register('datastore_admin', ConfigDefaults.__dict__)
 config.BASE_PATH
 
 
+
+
+def IsKindNameVisible(kind_name):
+  return not (kind_name.startswith('__') or kind_name in DATASTORE_ADMIN_KINDS)
 
 
 def RenderToResponse(handler, template_file, template_params):
@@ -394,6 +406,7 @@ class DatastoreAdminOperation(db.Model):
   STATUS_ACTIVE = 'Active'
   STATUS_COMPLETED = 'Completed'
   STATUS_FAILED = 'Failed'
+  STATUS_ABORTED = 'Aborted'
 
 
   PARAM_DATASTORE_ADMIN_OPERATION = 'datastore_admin_operation'
@@ -409,7 +422,7 @@ class DatastoreAdminOperation(db.Model):
 
   @classmethod
   def kind(cls):
-    return '_AE_DatastoreAdmin_Operation'
+    return DATASTORE_ADMIN_OPERATION_KIND
 
 
 class DatastoreAdminOperationJob(db.Model):
@@ -540,9 +553,17 @@ def RunMapForKinds(operation_key,
     return jobs
 
   except BaseException:
-    operation = DatastoreAdminOperation.get(operation_key)
-    operation.status = DatastoreAdminOperation.STATUS_FAILED
-    operation.put(config=_CreateDatastoreConfig())
-    for job in jobs:
-      model.MapreduceControl.abort(job)
+    AbortAdminOperation(operation_key,
+                        _status=DatastoreAdminOperation.STATUS_FAILED)
     raise
+
+
+def AbortAdminOperation(operation_key,
+                        _status=DatastoreAdminOperation.STATUS_ABORTED):
+  """Aborts active jobs."""
+  operation = DatastoreAdminOperation.get(operation_key)
+  operation.status = _status
+  operation.put(config=_CreateDatastoreConfig())
+  for job in operation.active_job_ids:
+    logging.info('Aborting Job %s', job)
+    model.MapreduceControl.abort(job)

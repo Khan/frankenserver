@@ -52,6 +52,9 @@ from google.appengine.api.images import images_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 
+
+GS_INFO_KIND = "__GsFileInfo__"
+
 MAX_REQUEST_SIZE = 32 << 20
 
 
@@ -272,6 +275,10 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       request: ImagesGetUrlBaseRequest, contains a blobkey to an image
       response: ImagesGetUrlBaseResponse, contains a url to serve the image
     """
+    if request.create_secure_url():
+      logging.info("Secure URLs will not be created using the development "
+                   "application server.")
+
     response.set_url("%s/_ah/img/%s" % (self._host_prefix, request.blob_key()))
 
   def _EncodeImage(self, image, output_encoding):
@@ -362,25 +369,39 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
           images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
 
   def _OpenBlob(self, blob_key):
-    key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
-                                        blob_key,
-                                        namespace='')
+    """Create an Image from the blob data read from blob_key."""
+    storage_key = None
+
     try:
-      datastore.Get(key)
-    except datastore_errors.Error:
+      gs_info = datastore.Get(
+          datastore.Key.from_path(GS_INFO_KIND,
+                                  blob_key,
+                                  namespace=''))
+      storage_key = gs_info['storage_key']
+    except datastore_errors.EntityNotFoundError:
+      pass
+
+    if not storage_key:
+      try:
+        key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
+                                            blob_key,
+                                            namespace='')
+        datastore.Get(key)
+        storage_key = blob_key
+      except datastore_errors.Error:
 
 
-      logging.exception('Blob with key %r does not exist', blob_key)
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR)
+        logging.exception('Blob with key %r does not exist', blob_key)
+        raise apiproxy_errors.ApplicationError(
+            images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR)
 
     blobstore_stub = apiproxy_stub_map.apiproxy.GetStub("blobstore")
 
 
     try:
-      blob_file = blobstore_stub.storage.OpenBlob(blob_key)
+      blob_file = blobstore_stub.storage.OpenBlob(storage_key)
     except IOError:
-      logging.exception('Could not get file for blob_key %r', blob_key)
+      logging.exception("Could not get file for blob_key %r", blob_key)
 
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
@@ -388,7 +409,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     try:
       return Image.open(blob_file)
     except IOError:
-      logging.exception('Could not open image %r for blob_key %r',
+      logging.exception("Could not open image %r for blob_key %r",
                         blob_file, blob_key)
 
       raise apiproxy_errors.ApplicationError(

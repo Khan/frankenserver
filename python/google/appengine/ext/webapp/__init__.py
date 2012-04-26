@@ -99,7 +99,11 @@ def __django_version_setup():
                    'libraries.html#Django')
     try:
 
-      from django import v0_96
+
+
+      import django
+      if not hasattr(django, 'VERSION'):
+        from django import v0_96
     except ImportError:
 
       pass

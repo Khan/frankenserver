@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block body %}
-  <h2>Datastore Admin</h2>
+  <h2>Datastore Admin of {{hosting_app_id}}</h2>
   {% if error %}
   <div class="ae-errorbox">
     {{ error }}
@@ -95,6 +95,55 @@
         </tr>
       </tbody>
     </table>
+  {% endif %}
+  {% if pending_backups %}
+    <p>
+    <div class="ae-table-caption">
+      <div class="ae-paginate">
+        <div class="g-section g-tpl-50-50 g-split">
+          <div class="g-unit g-first">
+            <strong>Pending Backups</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <form action="{{ base_path }}/" method="post">
+      <input type="hidden" name="app_id" value="{{ app_id }}">
+      <input type="hidden" name="cancel_url" value="{{ cancel_url }}">
+      <table id="pending_backups" class="ae-table ae-table-striped">
+        <thead>
+          <tr>
+            <th scope="col" class="cbc tct-selectall"></th>
+            <th scope="col" class="id">Name</th>
+            <th scope="col" class="id">Start-Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pending_backup in pending_backups %}
+            <tr>
+              <td class="cbc">
+                <input type="checkbox" name="backup_id" value="{{ pending_backup.key }}" id="{{ pending_backup.key }}">
+              </td>
+              <td class="id">
+                <span title="Kinds: {{ pending_backup.kinds|join:', '|truncatewords:20}}">{{ pending_backup.name }}</span>
+              </td>
+              <td class="id">
+                {{ pending_backup.start_time }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" nowrap="nowrap">
+              {% for pending_backup_action in pending_backup_action_list %}
+                  <input type="submit" name="action" style="" class="goog-button" value="{{ pending_backup_action }}">
+              {% endfor %}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </form>
   {% endif %}
   {% if backups %}
     <p>

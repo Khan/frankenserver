@@ -828,7 +828,7 @@ class ExtendableProtocolMessage(ProtocolMessage):
           value.OutputPartial(out)
         else:
           value.OutputUnchecked(out)
-        out.putVarInt32(wire_tag + 1)
+        out.putVarInt32(ext.wire_tag + 1)
       elif ext.field_type == TYPE_FOREIGN:
         if partial:
           out.putVarInt32(value.ByteSizePartial())

@@ -524,6 +524,9 @@ def PutAsync(entities, **kwargs):
   entities, multiple = NormalizeAndTypeCheck(entities, Entity)
 
   for entity in entities:
+    if entity.is_projection():
+      raise datastore_errors.BadRequestError(
+        'Cannot put a partial entity: %s' % entity)
     if not entity.kind() or not entity.app():
       raise datastore_errors.BadRequestError(
           'App and kind must not be empty, in entity: %s' % entity)
@@ -698,6 +701,10 @@ class Entity(dict):
   Includes read-only accessors for app id, kind, and primary key. Also
   provides dictionary-style access to properties.
   """
+
+
+  __projection = False
+
   def __init__(self, kind, parent=None, _app=None, name=None, id=None,
                unindexed_properties=[], namespace=None, **kwds):
     """Constructor. Takes the kind and transaction root, which cannot be
@@ -793,25 +800,31 @@ class Entity(dict):
     return self.__key.app()
 
   def namespace(self):
-    """Returns the namespace of this entity, a string or None.
-    """
+    """Returns the namespace of this entity, a string or None."""
     return self.__key.namespace()
 
   def kind(self):
-    """Returns this entity's kind, a string.
-    """
+    """Returns this entity's kind, a string."""
     return self.__key.kind()
 
   def is_saved(self):
-    """Returns if this entity has been saved to the datastore
-    """
+    """Returns if this entity has been saved to the datastore."""
     last_path = self.__key._Key__reference.path().element_list()[-1]
     return ((last_path.has_name() ^ last_path.has_id()) and
             self.__key.has_id_or_name())
 
-  def key(self):
-    """Returns this entity's primary key, a Key instance.
+  def is_projection(self):
+    """Returns if this entity is a projection from full entity.
+
+    Projected entities:
+    - may not contain all properties from the original entity;
+    - only contain single values for lists;
+    - may not contain values with the same type as the original entity.
     """
+    return self.__projection
+
+  def key(self):
+    """Returns this entity's primary key, a Key instance."""
     return self.__key
 
   def parent(self):
@@ -1035,21 +1048,22 @@ class Entity(dict):
 
     Args:
       pb: datastore_pb.Entity or str encoding of a datastore_pb.Entity
+      validate_reserved_properties: deprecated
 
     Returns:
       Entity: the Entity representation of pb
     """
+
     if isinstance(pb, str):
       real_pb = entity_pb.EntityProto()
       real_pb.ParseFromString(pb)
       pb = real_pb
 
     return Entity._FromPb(
-        pb, require_valid_key=False,
-        validate_reserved_properties=validate_reserved_properties)
+        pb, require_valid_key=False)
 
   @staticmethod
-  def _FromPb(pb, require_valid_key=True, validate_reserved_properties=True):
+  def _FromPb(pb, require_valid_key=True):
     """Static factory method. Returns the Entity representation of the
     given protocol buffer (datastore_pb.Entity). Not intended to be used by
     application developers.
@@ -1097,6 +1111,8 @@ class Entity(dict):
 
     for prop_list in (pb.property_list(), pb.raw_property_list()):
       for prop in prop_list:
+        if prop.meaning() == entity_pb.Property.INDEX_VALUE:
+          e.__projection = True
         try:
           value = datastore_types.FromPropertyPb(prop)
         except (AssertionError, AttributeError, TypeError, ValueError), e:
@@ -1127,8 +1143,7 @@ class Entity(dict):
 
 
 
-      datastore_types.ValidateReadProperty(
-          decoded_name, value, read_only=(not validate_reserved_properties))
+      datastore_types.ValidateReadProperty(decoded_name, value)
 
       dict.__setitem__(e, decoded_name, value)
 
@@ -1236,18 +1251,11 @@ class Query(dict):
   __app = None
   __namespace = None
   __orderings = None
-  __hint = None
   __ancestor_pb = None
-  __compile = None
 
   __index_list_source = None
   __cursor_source = None
   __compiled_query_source = None
-
-
-  __cursor = None
-
-  __end_cursor = None
 
 
 
@@ -1261,31 +1269,27 @@ class Query(dict):
 
   def __init__(self, kind=None, filters={}, _app=None, keys_only=False,
                compile=True, cursor=None, namespace=None, end_cursor=None,
-               **kwds):
+               projection=None, _namespace=None):
     """Constructor.
 
     Raises BadArgumentError if kind is not a string. Raises BadValueError or
     BadFilterError if filters is not a dictionary of valid filters.
 
     Args:
-      # kind is required. filters is optional; if provided, it's used
-      # as an initial set of property filters. keys_only defaults to False.
-      kind: string
-      filters: dict
-      keys_only: boolean
-      namespace: string
+      namespace: string, the namespace to query.
+      kind: string, the kind of entities to query, or None.
+      filters: dict, initial set of filters.
+      keys_only: boolean, if keys should be returned instead of entities.
+      projection: iterable of property names to project.
+      compile: boolean, if the query should generate cursors.
+      cursor: datastore_query.Cursor, the start cursor to use.
+      end_cursor: datastore_query.Cursor, the end cursor to use.
+      _namespace: deprecated, use namespace instead.
     """
 
 
 
 
-
-
-    _namespace = kwds.pop('_namespace', None)
-
-    if kwds:
-      raise datastore_errors.BadArgumentError(
-          'Excess keyword arguments ' + repr(kwds))
 
 
 
@@ -1307,10 +1311,13 @@ class Query(dict):
 
     self.__app = datastore_types.ResolveAppId(_app)
     self.__namespace = datastore_types.ResolveNamespace(namespace)
-    self.__keys_only = keys_only
-    self.__compile = compile
-    self.__cursor = cursor
-    self.__end_cursor = end_cursor
+
+    self.__query_options = datastore_query.QueryOptions(
+        keys_only=keys_only,
+        produce_cursors=compile,
+        start_cursor=cursor,
+        end_cursor=end_cursor,
+        projection=projection)
 
   def Order(self, *orderings):
     """Specify how the query results should be sorted.
@@ -1435,11 +1442,9 @@ class Query(dict):
       # this query
       Query
     """
-    if hint not in [self.ORDER_FIRST, self.ANCESTOR_FIRST, self.FILTER_FIRST]:
-      raise datastore_errors.BadArgumentError(
-        'Query hint must be ORDER_FIRST, ANCESTOR_FIRST, or FILTER_FIRST.')
-
-    self.__hint = hint
+    if hint is not self.__query_options.hint:
+      self.__query_options = datastore_query.QueryOptions(
+          hint=hint, config=self.__query_options)
     return self
 
   def Ancestor(self, ancestor):
@@ -1465,15 +1470,11 @@ class Query(dict):
 
   def IsKeysOnly(self):
     """Returns True if this query is keys only, false otherwise."""
-    return self.__keys_only
+    return self.__query_options.keys_only
 
   def GetQueryOptions(self):
     """Returns a datastore_query.QueryOptions for the current instance."""
-    return datastore_query.QueryOptions(keys_only=self.__keys_only,
-                                        produce_cursors=self.__compile,
-                                        start_cursor=self.__cursor,
-                                        end_cursor=self.__end_cursor,
-                                        hint=self.__hint)
+    return self.__query_options
 
   def GetQuery(self):
     """Returns a datastore_query.Query for the current instance."""
@@ -1679,6 +1680,16 @@ class Query(dict):
     state['_Query__compiled_query_source'] = None
     return state
 
+  def __setstate__(self, state):
+
+    if '_Query__query_options' not in state:
+      state['_Query__query_options'] = datastore_query.QueryOptions(
+        keys_only=state.pop('_Query__keys_only'),
+        produce_cursors=state.pop('_Query__compile'),
+        start_cursor=state.pop('_Query__cursor'),
+        end_cursor=state.pop('_Query__end_cursor'))
+    self.__dict__ = state
+
   def __setitem__(self, filter, value):
     """Implements the [] operator. Used to set filters.
 
@@ -1688,7 +1699,7 @@ class Query(dict):
     if isinstance(value, tuple):
       value = list(value)
 
-    datastore_types.ValidateProperty(' ', value, read_only=True)
+    datastore_types.ValidateProperty(' ', value)
     match = self._CheckFilter(filter, value)
     property = match.group(1)
     operator = match.group(3)
@@ -1942,11 +1953,18 @@ class MultiQuery(Query):
           ' Probable cause: too many IN/!= filters in query.' %
           (MAX_ALLOWABLE_QUERIES, len(bound_queries)))
 
+    projection = (bound_queries and
+                  bound_queries[0].GetQueryOptions().projection)
+
     for query in bound_queries:
+      if projection != query.GetQueryOptions().projection:
+        raise datastore_errors.BadQueryError(
+            'All queries must have the same projection.')
       if query.IsKeysOnly():
         raise datastore_errors.BadQueryError(
             'MultiQuery does not support keys_only.')
 
+    self.__projection = projection
     self.__bound_queries = bound_queries
     self.__orderings = orderings
     self.__compile = False
@@ -2117,6 +2135,32 @@ class MultiQuery(Query):
                                             config=config)
     return lower_bound, upper_bound, config
 
+  def __GetProjectionOverride(self,  config):
+    """Returns a tuple of (original projection, projeciton override).
+
+    If projection is None, there is no projection. If override is None,
+    projection is sufficent for this query.
+    """
+    projection = datastore_query.QueryOptions.projection(config)
+    if  projection is None:
+      projection = self.__projection
+    else:
+      projection = projection
+
+    if not projection:
+      return None, None
+
+
+
+    override = set()
+    for prop, _ in self.__orderings:
+      if prop not in projection:
+        override.add(prop)
+    if not override:
+      return projection, None
+
+    return projection, projection + tuple(override)
+
   def Run(self, **kwargs):
     """Return an iterable output with all results in order.
 
@@ -2137,6 +2181,10 @@ class MultiQuery(Query):
 
 
     lower_bound, upper_bound, config = self._ExtractBounds(config)
+
+    projection, override = self.__GetProjectionOverride(config)
+    if override:
+      config = datastore_query.QueryOptions(projection=override, config=config)
 
     results = []
     count = 1
@@ -2179,15 +2227,27 @@ class MultiQuery(Query):
 
           break
         top_result = heapq.heappop(result_heap)
+        if projection:
 
-        results_to_push = []
-        if top_result.GetEntity().key() not in used_keys:
-          yield top_result.GetEntity()
+          dedupe_key = (top_result.GetEntity().key(),
+
+                        frozenset(top_result.GetEntity().iteritems()))
+        else:
+          dedupe_key = top_result.GetEntity().key()
+
+        if dedupe_key not in used_keys:
+          result = top_result.GetEntity()
+          if override:
+
+            for key in result.keys():
+              if key not in projection:
+                del result[key]
+          yield result
         else:
 
           pass
 
-        used_keys.add(top_result.GetEntity().key())
+        used_keys.add(dedupe_key)
 
 
         results_to_push = []
@@ -2236,10 +2296,16 @@ class MultiQuery(Query):
       count of the number of entries returned.
     """
 
-    kwargs['keys_only'] = True
     kwargs['limit'] = limit
     config = _GetConfigFromKwargs(kwargs, convert_rpc=True,
                                   config_class=datastore_query.QueryOptions)
+
+    projection, override = self.__GetProjectionOverride(config)
+
+    if not projection:
+      config = datastore_query.QueryOptions(keys_only=True, config=config)
+    elif override:
+      config = datastore_query.QueryOptions(projection=override, config=config)
 
 
     lower_bound, upper_bound, config = self._ExtractBounds(config)
@@ -2247,8 +2313,14 @@ class MultiQuery(Query):
 
     used_keys = set()
     for bound_query in self.__bound_queries:
-      for key in bound_query.Run(config=config):
-        used_keys.add(key)
+      for result in bound_query.Run(config=config):
+        if projection:
+
+          dedupe_key = (result.key(),
+                        tuple(result.iteritems()))
+        else:
+          dedupe_key = result
+        used_keys.add(dedupe_key)
         if upper_bound and len(used_keys) >= upper_bound:
           return upper_bound - lower_bound
 

@@ -69,6 +69,8 @@ Enable stubs and disable services
 ---------------------------------
 
 This module allows you to use stubs for the following services:
+- capability_service
+- channel
 - datastore_v3 (aka datastore)
 - images (only for dev_appserver)
 - mail (only for dev_appserver)
@@ -77,7 +79,6 @@ This module allows you to use stubs for the following services:
 - urlfetch
 - user
 - xmpp
-- channel
 
 To use a particular service stub, call self.init_SERVICENAME_stub().
 This will replace calls to the service with calls to the service
@@ -116,6 +117,7 @@ from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import dict_blob_storage
+from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.channel import channel_service_stub
 try:
   from google.appengine.api.images import images_stub
@@ -153,6 +155,7 @@ DEFAULT_SERVER_PORT = DEFAULT_ENVIRONMENT['SERVER_PORT']
 
 
 BLOBSTORE_SERVICE_NAME = 'blobstore'
+CAPABILITY_SERVICE_NAME = 'capability_service'
 CHANNEL_SERVICE_NAME = 'channel'
 DATASTORE_SERVICE_NAME = 'datastore_v3'
 IMAGES_SERVICE_NAME = 'images'
@@ -165,6 +168,7 @@ XMPP_SERVICE_NAME = 'xmpp'
 
 
 SUPPORTED_SERVICES = [BLOBSTORE_SERVICE_NAME,
+                      CAPABILITY_SERVICE_NAME,
                       CHANNEL_SERVICE_NAME,
                       DATASTORE_SERVICE_NAME,
                       IMAGES_SERVICE_NAME,
@@ -203,7 +207,8 @@ class Testbed(object):
 
   def __init__(self):
     self._activated = False
-    self._enabled_stubs = []
+
+    self._enabled_stubs = {}
 
   def activate(self):
     """Activate the testbed.
@@ -239,8 +244,13 @@ class Testbed(object):
     """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
+
+    for service_name, deactivate_callback in self._enabled_stubs.iteritems():
+      if deactivate_callback:
+        deactivate_callback(self._test_stub_map.GetStub(service_name))
+
     apiproxy_stub_map.apiproxy = self._original_stub_map
-    self._enabled_stubs = []
+    self._enabled_stubs = {}
 
 
     os.environ.clear()
@@ -284,22 +294,21 @@ class Testbed(object):
       if overwrite or key not in os.environ:
         os.environ[key] = value
 
-  def _register_stub(self, service_name, stub):
+  def _register_stub(self, service_name, stub, deactivate_callback=None):
     """Register a service stub.
 
     Args:
       service_name: The name of the service the stub represents.
       stub: The stub.
+      deactivate_callback: An optional function to call when deactivating the
+        stub. Must accept the stub as the only argument.
 
     Raises:
       NotActivatedError: The testbed is not activated.
     """
-    if not self._activated:
-      raise NotActivatedError('The testbed is not activated.')
-    if service_name in self._test_stub_map._APIProxyStubMap__stub_map:
-      del self._test_stub_map._APIProxyStubMap__stub_map[service_name]
+    self._disable_stub(service_name)
     self._test_stub_map.RegisterStub(service_name, stub)
-    self._enabled_stubs.append(service_name)
+    self._enabled_stubs[service_name] = deactivate_callback
 
   def _disable_stub(self, service_name):
     """Disable a service stub.
@@ -312,10 +321,11 @@ class Testbed(object):
     """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
+    deactivate_callback = self._enabled_stubs.pop(service_name, None)
+    if deactivate_callback:
+      deactivate_callback(self._test_stub_map.GetStub(service_name))
     if service_name in self._test_stub_map._APIProxyStubMap__stub_map:
       del self._test_stub_map._APIProxyStubMap__stub_map[service_name]
-    if service_name in self._enabled_stubs:
-      self._enabled_stubs.remove(service_name)
 
   def get_stub(self, service_name):
     """Get the stub for a service.
@@ -354,6 +364,19 @@ class Testbed(object):
     storage = dict_blob_storage.DictBlobStorage()
     stub = blobstore_stub.BlobstoreServiceStub(storage)
     self._register_stub(BLOBSTORE_SERVICE_NAME, stub)
+
+  def init_capability_stub(self, enable=True):
+    """Enable the capability stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(CAPABILITY_SERVICE_NAME)
+      return
+    stub = capability_stub.CapabilityServiceStub()
+    self._register_stub(CAPABILITY_SERVICE_NAME, stub)
 
   def init_channel_stub(self, enable=True):
     """Enable the channel stub.
@@ -401,14 +424,20 @@ class Testbed(object):
       stub = datastore_sqlite_stub.DatastoreSqliteStub(
           os.environ['APPLICATION_ID'],
           datastore_file,
+          use_atexit=False,
           **stub_kw_args)
     else:
       stub_kw_args.setdefault('save_changes', False)
       stub = datastore_file_stub.DatastoreFileStub(
           os.environ['APPLICATION_ID'],
           datastore_file,
+          use_atexit=False,
           **stub_kw_args)
-    self._register_stub(DATASTORE_SERVICE_NAME, stub)
+    self._register_stub(DATASTORE_SERVICE_NAME, stub,
+                        self._deactivate_datastore_v3_stub)
+
+  def _deactivate_datastore_v3_stub(self, stub):
+    stub.Write()
 
   def init_images_stub(self, enable=True):
     """Enable the images stub.
@@ -537,7 +566,14 @@ class Testbed(object):
     if service_name not in SUPPORTED_SERVICES:
       msg = 'The "%s" service is not supported by testbed' % service_name
       raise StubNotSupportedError(msg)
-    method_name = 'init_%s_stub' % service_name
+
+
+
+    if service_name == CAPABILITY_SERVICE_NAME:
+      method_name = 'init_capability_stub'
+    else:
+      method_name = 'init_%s_stub' % service_name
+
     method = getattr(self, method_name)
     method(*args, **kwargs)
 

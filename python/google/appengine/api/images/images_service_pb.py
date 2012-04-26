@@ -2828,6 +2828,8 @@ class ImagesHistogramResponse(ProtocolBuffer.ProtocolMessage):
 class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
   has_blob_key_ = 0
   blob_key_ = ""
+  has_create_secure_url_ = 0
+  create_secure_url_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -2845,15 +2847,31 @@ class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_blob_key(self): return self.has_blob_key_
 
+  def create_secure_url(self): return self.create_secure_url_
+
+  def set_create_secure_url(self, x):
+    self.has_create_secure_url_ = 1
+    self.create_secure_url_ = x
+
+  def clear_create_secure_url(self):
+    if self.has_create_secure_url_:
+      self.has_create_secure_url_ = 0
+      self.create_secure_url_ = 0
+
+  def has_create_secure_url(self): return self.has_create_secure_url_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+    if (x.has_create_secure_url()): self.set_create_secure_url(x.create_secure_url())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_blob_key_ != x.has_blob_key_: return 0
     if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    if self.has_create_secure_url_ != x.has_create_secure_url_: return 0
+    if self.has_create_secure_url_ and self.create_secure_url_ != x.create_secure_url_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2867,6 +2885,7 @@ class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.blob_key_))
+    if (self.has_create_secure_url_): n += 2
     return n + 1
 
   def ByteSizePartial(self):
@@ -2874,25 +2893,36 @@ class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_blob_key_):
       n += 1
       n += self.lengthString(len(self.blob_key_))
+    if (self.has_create_secure_url_): n += 2
     return n
 
   def Clear(self):
     self.clear_blob_key()
+    self.clear_create_secure_url()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.blob_key_)
+    if (self.has_create_secure_url_):
+      out.putVarInt32(16)
+      out.putBoolean(self.create_secure_url_)
 
   def OutputPartial(self, out):
     if (self.has_blob_key_):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_)
+    if (self.has_create_secure_url_):
+      out.putVarInt32(16)
+      out.putBoolean(self.create_secure_url_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_blob_key(d.getPrefixedString())
+        continue
+      if tt == 16:
+        self.set_create_secure_url(d.getBoolean())
         continue
 
 
@@ -2903,6 +2933,7 @@ class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    if self.has_create_secure_url_: res+=prefix+("create_secure_url: %s\n" % self.DebugFormatBool(self.create_secure_url_))
     return res
 
 
@@ -2910,16 +2941,19 @@ class ImagesGetUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kblob_key = 1
+  kcreate_secure_url = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "blob_key",
-  }, 1)
+    2: "create_secure_url",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

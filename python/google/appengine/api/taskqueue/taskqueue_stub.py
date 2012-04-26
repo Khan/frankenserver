@@ -879,9 +879,6 @@ class Retry(object):
 
 
   _default_params = taskqueue_service_pb.TaskQueueRetryParameters()
-  _default_params.set_min_backoff_sec(0.001)
-  _default_params.set_max_backoff_sec(3600)
-  _default_params.set_max_doublings(100000)
 
   def __init__(self, task, queue):
     """Constructor.

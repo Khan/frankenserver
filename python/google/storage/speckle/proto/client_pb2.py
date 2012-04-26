@@ -17,6 +17,7 @@
 
 
 
+from google.net.proto2.python.internal import enum_type_wrapper
 from google.net.proto2.python.public import descriptor
 from google.net.proto2.python.public import message
 from google.net.proto2.python.public import reflection
@@ -64,7 +65,7 @@ _TRANSACTIONISOLATIONLEVEL = descriptor.EnumDescriptor(
   serialized_end=10193,
 )
 
-
+TransactionIsolationLevel = enum_type_wrapper.EnumTypeWrapper(_TRANSACTIONISOLATIONLEVEL)
 _RESULTSETTYPE = descriptor.EnumDescriptor(
   name='ResultSetType',
   full_name='speckle.ResultSetType',
@@ -90,7 +91,7 @@ _RESULTSETTYPE = descriptor.EnumDescriptor(
   serialized_end=10335,
 )
 
-
+ResultSetType = enum_type_wrapper.EnumTypeWrapper(_RESULTSETTYPE)
 _RESULTSETCONCURRENCY = descriptor.EnumDescriptor(
   name='ResultSetConcurrency',
   full_name='speckle.ResultSetConcurrency',
@@ -112,7 +113,7 @@ _RESULTSETCONCURRENCY = descriptor.EnumDescriptor(
   serialized_end=10447,
 )
 
-
+ResultSetConcurrency = enum_type_wrapper.EnumTypeWrapper(_RESULTSETCONCURRENCY)
 _RESULTSETHOLDABILITY = descriptor.EnumDescriptor(
   name='ResultSetHoldability',
   full_name='speckle.ResultSetHoldability',
@@ -134,7 +135,7 @@ _RESULTSETHOLDABILITY = descriptor.EnumDescriptor(
   serialized_end=10572,
 )
 
-
+ResultSetHoldability = enum_type_wrapper.EnumTypeWrapper(_RESULTSETHOLDABILITY)
 _FETCHDIRECTION = descriptor.EnumDescriptor(
   name='FetchDirection',
   full_name='speckle.FetchDirection',
@@ -160,7 +161,7 @@ _FETCHDIRECTION = descriptor.EnumDescriptor(
   serialized_end=10650,
 )
 
-
+FetchDirection = enum_type_wrapper.EnumTypeWrapper(_FETCHDIRECTION)
 _METADATATYPE = descriptor.EnumDescriptor(
   name='MetadataType',
   full_name='speckle.MetadataType',
@@ -266,7 +267,7 @@ _METADATATYPE = descriptor.EnumDescriptor(
   serialized_end=11873,
 )
 
-
+MetadataType = enum_type_wrapper.EnumTypeWrapper(_METADATATYPE)
 _CLIENTTYPE = descriptor.EnumDescriptor(
   name='ClientType',
   full_name='speckle.ClientType',
@@ -320,7 +321,7 @@ _CLIENTTYPE = descriptor.EnumDescriptor(
   serialized_end=12201,
 )
 
-
+ClientType = enum_type_wrapper.EnumTypeWrapper(_CLIENTTYPE)
 TRANSACTIONISOLATIONLEVEL_TRANSACTION_NONE = 0
 TRANSACTIONISOLATIONLEVEL_TRANSACTION_READ_COMMITTED = 2
 TRANSACTIONISOLATIONLEVEL_TRANSACTION_READ_UNCOMMITTED = 1

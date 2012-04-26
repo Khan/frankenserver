@@ -536,19 +536,20 @@ class Query(ProtocolBuffer.ProtocolMessage):
   keys_only_ = 0
   has_transaction_ = 0
   transaction_ = None
-  has_distinct_ = 0
-  distinct_ = 0
   has_compile_ = 0
   compile_ = 0
   has_failover_ms_ = 0
   failover_ms_ = 0
   has_strong_ = 0
   strong_ = 0
+  has_distinct_ = 0
+  distinct_ = 0
 
   def __init__(self, contents=None):
     self.filter_ = []
     self.order_ = []
     self.composite_index_ = []
+    self.property_name_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -806,19 +807,6 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_transaction(self): return self.has_transaction_
 
-  def distinct(self): return self.distinct_
-
-  def set_distinct(self, x):
-    self.has_distinct_ = 1
-    self.distinct_ = x
-
-  def clear_distinct(self):
-    if self.has_distinct_:
-      self.has_distinct_ = 0
-      self.distinct_ = 0
-
-  def has_distinct(self): return self.has_distinct_
-
   def compile(self): return self.compile_
 
   def set_compile(self, x):
@@ -858,6 +846,34 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_strong(self): return self.has_strong_
 
+  def property_name_size(self): return len(self.property_name_)
+  def property_name_list(self): return self.property_name_
+
+  def property_name(self, i):
+    return self.property_name_[i]
+
+  def set_property_name(self, i, x):
+    self.property_name_[i] = x
+
+  def add_property_name(self, x):
+    self.property_name_.append(x)
+
+  def clear_property_name(self):
+    self.property_name_ = []
+
+  def distinct(self): return self.distinct_
+
+  def set_distinct(self, x):
+    self.has_distinct_ = 1
+    self.distinct_ = x
+
+  def clear_distinct(self):
+    if self.has_distinct_:
+      self.has_distinct_ = 0
+      self.distinct_ = 0
+
+  def has_distinct(self): return self.has_distinct_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -878,10 +894,11 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (x.has_require_perfect_plan()): self.set_require_perfect_plan(x.require_perfect_plan())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
-    if (x.has_distinct()): self.set_distinct(x.distinct())
     if (x.has_compile()): self.set_compile(x.compile())
     if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
     if (x.has_strong()): self.set_strong(x.strong())
+    for i in xrange(x.property_name_size()): self.add_property_name(x.property_name(i))
+    if (x.has_distinct()): self.set_distinct(x.distinct())
 
   def Equals(self, x):
     if x is self: return 1
@@ -922,14 +939,17 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
-    if self.has_distinct_ != x.has_distinct_: return 0
-    if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
     if self.has_compile_ != x.has_compile_: return 0
     if self.has_compile_ and self.compile_ != x.compile_: return 0
     if self.has_failover_ms_ != x.has_failover_ms_: return 0
     if self.has_failover_ms_ and self.failover_ms_ != x.failover_ms_: return 0
     if self.has_strong_ != x.has_strong_: return 0
     if self.has_strong_ and self.strong_ != x.strong_: return 0
+    if len(self.property_name_) != len(x.property_name_): return 0
+    for e1, e2 in zip(self.property_name_, x.property_name_):
+      if e1 != e2: return 0
+    if self.has_distinct_ != x.has_distinct_: return 0
+    if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -972,10 +992,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_require_perfect_plan_): n += 3
     if (self.has_keys_only_): n += 3
     if (self.has_transaction_): n += 2 + self.lengthString(self.transaction_.ByteSize())
-    if (self.has_distinct_): n += 3
     if (self.has_compile_): n += 3
     if (self.has_failover_ms_): n += 2 + self.lengthVarInt64(self.failover_ms_)
     if (self.has_strong_): n += 3
+    n += 2 * len(self.property_name_)
+    for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
+    if (self.has_distinct_): n += 3
     return n + 1
 
   def ByteSizePartial(self):
@@ -1002,10 +1024,12 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_require_perfect_plan_): n += 3
     if (self.has_keys_only_): n += 3
     if (self.has_transaction_): n += 2 + self.lengthString(self.transaction_.ByteSizePartial())
-    if (self.has_distinct_): n += 3
     if (self.has_compile_): n += 3
     if (self.has_failover_ms_): n += 2 + self.lengthVarInt64(self.failover_ms_)
     if (self.has_strong_): n += 3
+    n += 2 * len(self.property_name_)
+    for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
+    if (self.has_distinct_): n += 3
     return n
 
   def Clear(self):
@@ -1026,10 +1050,11 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_require_perfect_plan()
     self.clear_keys_only()
     self.clear_transaction()
-    self.clear_distinct()
     self.clear_compile()
     self.clear_failover_ms()
     self.clear_strong()
+    self.clear_property_name()
+    self.clear_distinct()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1101,6 +1126,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_strong_):
       out.putVarInt32(256)
       out.putBoolean(self.strong_)
+    for i in xrange(len(self.property_name_)):
+      out.putVarInt32(266)
+      out.putPrefixedString(self.property_name_[i])
 
   def OutputPartial(self, out):
     if (self.has_app_):
@@ -1173,6 +1201,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_strong_):
       out.putVarInt32(256)
       out.putBoolean(self.strong_)
+    for i in xrange(len(self.property_name_)):
+      out.putVarInt32(266)
+      out.putPrefixedString(self.property_name_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1255,6 +1286,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 256:
         self.set_strong(d.getBoolean())
         continue
+      if tt == 266:
+        self.add_property_name(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1313,10 +1347,16 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
-    if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
     if self.has_compile_: res+=prefix+("compile: %s\n" % self.DebugFormatBool(self.compile_))
     if self.has_failover_ms_: res+=prefix+("failover_ms: %s\n" % self.DebugFormatInt64(self.failover_ms_))
     if self.has_strong_: res+=prefix+("strong: %s\n" % self.DebugFormatBool(self.strong_))
+    cnt=0
+    for e in self.property_name_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("property_name%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
+    if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
     return res
 
 
@@ -1344,10 +1384,11 @@ class Query(ProtocolBuffer.ProtocolMessage):
   krequire_perfect_plan = 20
   kkeys_only = 21
   ktransaction = 22
-  kdistinct = 24
   kcompile = 25
   kfailover_ms = 26
   kstrong = 32
+  kproperty_name = 33
+  kdistinct = 24
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1376,7 +1417,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     30: "compiled_cursor",
     31: "end_compiled_cursor",
     32: "strong",
-  }, 32)
+    33: "property_name",
+  }, 33)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1405,7 +1447,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     30: ProtocolBuffer.Encoder.STRING,
     31: ProtocolBuffer.Encoder.STRING,
     32: ProtocolBuffer.Encoder.NUMERIC,
-  }, 32, ProtocolBuffer.Encoder.MAX_TYPE)
+    33: ProtocolBuffer.Encoder.STRING,
+  }, 33, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2044,6 +2087,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   def __init__(self, contents=None):
     self.primaryscan_ = CompiledQuery_PrimaryScan()
     self.mergejoinscan_ = []
+    self.property_name_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -2129,6 +2173,21 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
 
   def has_keys_only(self): return self.has_keys_only_
 
+  def property_name_size(self): return len(self.property_name_)
+  def property_name_list(self): return self.property_name_
+
+  def property_name(self, i):
+    return self.property_name_[i]
+
+  def set_property_name(self, i, x):
+    self.property_name_[i] = x
+
+  def add_property_name(self, x):
+    self.property_name_.append(x)
+
+  def clear_property_name(self):
+    self.property_name_ = []
+
   def entityfilter(self):
     if self.entityfilter_ is None:
       self.lazy_init_lock_.acquire()
@@ -2157,6 +2216,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (x.has_offset()): self.set_offset(x.offset())
     if (x.has_limit()): self.set_limit(x.limit())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
+    for i in xrange(x.property_name_size()): self.add_property_name(x.property_name(i))
     if (x.has_entityfilter()): self.mutable_entityfilter().MergeFrom(x.entityfilter())
 
   def Equals(self, x):
@@ -2174,6 +2234,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if self.has_limit_ and self.limit_ != x.limit_: return 0
     if self.has_keys_only_ != x.has_keys_only_: return 0
     if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
+    if len(self.property_name_) != len(x.property_name_): return 0
+    for e1, e2 in zip(self.property_name_, x.property_name_):
+      if e1 != e2: return 0
     if self.has_entityfilter_ != x.has_entityfilter_: return 0
     if self.has_entityfilter_ and self.entityfilter_ != x.entityfilter_: return 0
     return 1
@@ -2203,6 +2266,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_def_): n += 2 + self.lengthString(self.index_def_.ByteSize())
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
+    n += 2 * len(self.property_name_)
+    for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSize()
     return n + 4
 
@@ -2218,6 +2283,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_limit_): n += 1 + self.lengthVarInt64(self.limit_)
     if (self.has_keys_only_):
       n += 2
+    n += 2 * len(self.property_name_)
+    for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSizePartial()
     return n
 
@@ -2228,6 +2295,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     self.clear_offset()
     self.clear_limit()
     self.clear_keys_only()
+    self.clear_property_name()
     self.clear_entityfilter()
 
   def OutputUnchecked(self, out):
@@ -2254,6 +2322,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(170)
       out.putVarInt32(self.index_def_.ByteSize())
       self.index_def_.OutputUnchecked(out)
+    for i in xrange(len(self.property_name_)):
+      out.putVarInt32(194)
+      out.putPrefixedString(self.property_name_[i])
 
   def OutputPartial(self, out):
     if (self.has_primaryscan_):
@@ -2281,6 +2352,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(170)
       out.putVarInt32(self.index_def_.ByteSizePartial())
       self.index_def_.OutputPartial(out)
+    for i in xrange(len(self.property_name_)):
+      out.putVarInt32(194)
+      out.putPrefixedString(self.property_name_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2309,6 +2383,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_index_def().TryMerge(tmp)
         continue
+      if tt == 194:
+        self.add_property_name(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2336,6 +2413,12 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if self.has_offset_: res+=prefix+("offset: %s\n" % self.DebugFormatInt32(self.offset_))
     if self.has_limit_: res+=prefix+("limit: %s\n" % self.DebugFormatInt32(self.limit_))
     if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
+    cnt=0
+    for e in self.property_name_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("property_name%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
     if self.has_entityfilter_:
       res+=prefix+"EntityFilter {\n"
       res+=self.entityfilter_.__str__(prefix + "  ", printElemNumber)
@@ -2363,6 +2446,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   koffset = 10
   klimit = 11
   kkeys_only = 12
+  kproperty_name = 24
   kEntityFilterGroup = 13
   kEntityFilterdistinct = 14
   kEntityFilterkind = 17
@@ -2391,7 +2475,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     21: "index_def",
     22: "start_postfix_value",
     23: "end_postfix_value",
-  }, 23)
+    24: "property_name",
+  }, 24)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2416,7 +2501,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     21: ProtocolBuffer.Encoder.STRING,
     22: ProtocolBuffer.Encoder.STRING,
     23: ProtocolBuffer.Encoder.STRING,
-  }, 23, ProtocolBuffer.Encoder.MAX_TYPE)
+    24: ProtocolBuffer.Encoder.STRING,
+  }, 24, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -5691,6 +5777,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   more_results_ = 0
   has_keys_only_ = 0
   keys_only_ = 0
+  has_index_only_ = 0
+  index_only_ = 0
   has_compiled_query_ = 0
   compiled_query_ = None
   has_compiled_cursor_ = 0
@@ -5776,6 +5864,19 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def has_keys_only(self): return self.has_keys_only_
 
+  def index_only(self): return self.index_only_
+
+  def set_index_only(self, x):
+    self.has_index_only_ = 1
+    self.index_only_ = x
+
+  def clear_index_only(self):
+    if self.has_index_only_:
+      self.has_index_only_ = 0
+      self.index_only_ = 0
+
+  def has_index_only(self): return self.has_index_only_
+
   def compiled_query(self):
     if self.compiled_query_ is None:
       self.lazy_init_lock_.acquire()
@@ -5838,6 +5939,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (x.has_skipped_results()): self.set_skipped_results(x.skipped_results())
     if (x.has_more_results()): self.set_more_results(x.more_results())
     if (x.has_keys_only()): self.set_keys_only(x.keys_only())
+    if (x.has_index_only()): self.set_index_only(x.index_only())
     if (x.has_compiled_query()): self.mutable_compiled_query().MergeFrom(x.compiled_query())
     if (x.has_compiled_cursor()): self.mutable_compiled_cursor().MergeFrom(x.compiled_cursor())
     for i in xrange(x.index_size()): self.add_index().CopyFrom(x.index(i))
@@ -5855,6 +5957,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if self.has_more_results_ and self.more_results_ != x.more_results_: return 0
     if self.has_keys_only_ != x.has_keys_only_: return 0
     if self.has_keys_only_ and self.keys_only_ != x.keys_only_: return 0
+    if self.has_index_only_ != x.has_index_only_: return 0
+    if self.has_index_only_ and self.index_only_ != x.index_only_: return 0
     if self.has_compiled_query_ != x.has_compiled_query_: return 0
     if self.has_compiled_query_ and self.compiled_query_ != x.compiled_query_: return 0
     if self.has_compiled_cursor_ != x.has_compiled_cursor_: return 0
@@ -5886,6 +5990,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.result_)): n += self.lengthString(self.result_[i].ByteSize())
     if (self.has_skipped_results_): n += 1 + self.lengthVarInt64(self.skipped_results_)
     if (self.has_keys_only_): n += 2
+    if (self.has_index_only_): n += 2
     if (self.has_compiled_query_): n += 1 + self.lengthString(self.compiled_query_.ByteSize())
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSize())
     n += 1 * len(self.index_)
@@ -5901,6 +6006,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_more_results_):
       n += 2
     if (self.has_keys_only_): n += 2
+    if (self.has_index_only_): n += 2
     if (self.has_compiled_query_): n += 1 + self.lengthString(self.compiled_query_.ByteSizePartial())
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSizePartial())
     n += 1 * len(self.index_)
@@ -5913,6 +6019,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     self.clear_skipped_results()
     self.clear_more_results()
     self.clear_keys_only()
+    self.clear_index_only()
     self.clear_compiled_query()
     self.clear_compiled_cursor()
     self.clear_index()
@@ -5946,6 +6053,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(66)
       out.putVarInt32(self.index_[i].ByteSize())
       self.index_[i].OutputUnchecked(out)
+    if (self.has_index_only_):
+      out.putVarInt32(72)
+      out.putBoolean(self.index_only_)
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -5977,6 +6087,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(66)
       out.putVarInt32(self.index_[i].ByteSizePartial())
       self.index_[i].OutputPartial(out)
+    if (self.has_index_only_):
+      out.putVarInt32(72)
+      out.putBoolean(self.index_only_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6020,6 +6133,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_index().TryMerge(tmp)
         continue
+      if tt == 72:
+        self.set_index_only(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6043,6 +6159,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if self.has_skipped_results_: res+=prefix+("skipped_results: %s\n" % self.DebugFormatInt32(self.skipped_results_))
     if self.has_more_results_: res+=prefix+("more_results: %s\n" % self.DebugFormatBool(self.more_results_))
     if self.has_keys_only_: res+=prefix+("keys_only: %s\n" % self.DebugFormatBool(self.keys_only_))
+    if self.has_index_only_: res+=prefix+("index_only: %s\n" % self.DebugFormatBool(self.index_only_))
     if self.has_compiled_query_:
       res+=prefix+"compiled_query <\n"
       res+=self.compiled_query_.__str__(prefix + "  ", printElemNumber)
@@ -6070,6 +6187,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   kskipped_results = 7
   kmore_results = 3
   kkeys_only = 4
+  kindex_only = 9
   kcompiled_query = 5
   kcompiled_cursor = 6
   kindex = 8
@@ -6084,7 +6202,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     6: "compiled_cursor",
     7: "skipped_results",
     8: "index",
-  }, 8)
+    9: "index_only",
+  }, 9)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6096,7 +6215,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     6: ProtocolBuffer.Encoder.STRING,
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.STRING,
-  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
+    9: ProtocolBuffer.Encoder.NUMERIC,
+  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

@@ -64,7 +64,6 @@ from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import entity_pb
 
 
-
 class Property(validation.Validated):
   """Representation for an individual property of an index.
 
@@ -211,7 +210,7 @@ _DIRECTION_MAP = {
     'descending': entity_pb.Index_Property.DESCENDING,
     }
 
-def Normalize(filters, orders):
+def Normalize(filters, orders, properties):
   """ Normalizes filter and order query components.
 
   The resulting components have the same effect as the given components if used
@@ -245,6 +244,33 @@ def Normalize(filters, orders):
       new_orders.append(o)
   orders = new_orders
 
+  remove_set.update(inequality_properties)
+
+
+  new_filters = []
+  for f in filters:
+    if f.op() not in EXISTS_OPERATORS:
+      new_filters.append(f)
+      continue
+    name = f.property(0).name()
+    if name not in remove_set:
+      remove_set.add(name)
+      new_filters.append(f)
+
+
+  for prop in properties:
+    if prop not in remove_set:
+      remove_set.add(prop)
+      new_filter = datastore_pb.Query_Filter()
+      new_filter.set_op(datastore_pb.Query_Filter.EXISTS)
+      new_prop = new_filter.add_property()
+      new_prop.set_name(prop)
+      new_prop.set_multiple(False)
+      new_prop.mutable_value()
+      new_filters.append(new_filter)
+
+  filters = new_filters
+
 
 
 
@@ -264,7 +290,7 @@ def Normalize(filters, orders):
   return (filters, orders)
 
 
-def RemoveNativelySupportedComponents(filters, orders):
+def RemoveNativelySupportedComponents(filters, orders, properties):
   """ Removes query components that are natively supported by the datastore.
 
   The resulting filters and orders should not be used in an actual query.
@@ -272,7 +298,15 @@ def RemoveNativelySupportedComponents(filters, orders):
   Returns
     (filters, orders) the reduced set of filters and orders
   """
-  (filters, orders) = Normalize(filters, orders)
+  (filters, orders) = Normalize(filters, orders, properties)
+
+  for f in filters:
+    if f.op() in EXISTS_OPERATORS:
+
+
+
+      return (filters, orders)
+
 
 
   has_key_desc_order = False
@@ -363,14 +397,16 @@ def CompositeIndexForQuery(query):
     query: A datastore_pb.Query instance.
 
   Returns:
-    A tuple of the form (required, kind, ancestor, (prop1, prop2, ...), neq):
-      required: boolean, whether the index is required
+    A tuple of the form (required, kind, ancestor, properties).
+      required: boolean, whether the index is required;
       kind: the kind or None;
       ancestor: True if this is an ancestor query;
-      prop1, prop2, ...: tuples of the form (name, direction) where:
-        name: a property name;
-        direction: datastore_pb.Query_Order.ASCENDING or ...DESCENDING;
-      neq: the number of prop tuples corresponding to equality filters.
+      properties: A tuple consisting of any number of:
+      - Sets of property names: Indicates these properties can appear in any
+        order with any direction.
+      - Tuples of (property name, direction) tuples. Indicating the properties
+        must appear in the exact order with the given direction. direction can
+        be None if direction does not matter.
   """
   required = True
 
@@ -392,7 +428,8 @@ def CompositeIndexForQuery(query):
 
     required = False
 
-  (filters, orders) = RemoveNativelySupportedComponents(filters, orders)
+  filters, orders = RemoveNativelySupportedComponents(
+      filters, orders, query.property_name_list())
 
 
   eq_filters = [f for f in filters if f.op() in EQUALITY_OPERATORS]
@@ -424,18 +461,13 @@ def CompositeIndexForQuery(query):
         assert filter.property(0).name() == ineq_property
 
 
-  props = []
 
 
-  eq_set = set()
-  for f in eq_filters:
-    prop = f.property(0)
-    if prop.name() not in eq_set:
-      eq_set.add(prop.name())
-      props.append((prop.name(), ASCENDING))
+  prefix = frozenset(f.property(0).name() for f in eq_filters)
 
+  postfix_ordered = [(order.property(), order.direction()) for order in orders]
 
-  props.sort()
+  postfix_unordered = frozenset(f.property(0).name() for f in exists_filters)
 
 
   if ineq_property:
@@ -444,37 +476,54 @@ def CompositeIndexForQuery(query):
 
       assert ineq_property == orders[0].property()
     else:
-      props.append((ineq_property, ASCENDING))
+      postfix_ordered.append((ineq_property, None))
 
-
-  for order in orders:
-    props.append((order.property(), order.direction()))
-
-
-  for filter in exists_filters:
-    prop = filter.property(0)
-    prop_name = prop.name()
-    for name, direction in props:
-      if name == prop_name:
-        break
-    else:
-
-      props.append((prop_name, ASCENDING))
-
-  if kind and not ancestor and len(props) <= 1:
+  property_count = len(prefix) + len(postfix_ordered) + len(postfix_unordered)
+  if kind and not ancestor and property_count <= 1:
 
 
     required = False
 
 
-
-    if props:
-      prop, dir = props[0]
-      if prop in datastore_types._SPECIAL_PROPERTIES and dir is DESCENDING:
+    if postfix_ordered:
+      prop, dir = postfix_ordered[0]
+      if prop == datastore_types.KEY_SPECIAL_PROPERTY and dir is DESCENDING:
         required = True
 
 
-  return (required, kind, ancestor, tuple(props), len(eq_set))
+  return (required, kind, ancestor,
+          (prefix, tuple(postfix_ordered), postfix_unordered))
+
+
+def GetRecommendedIndexProperties(properties):
+  """Converts the properties returned by datastore_index.CompositeIndexForQuery
+  into a recommended list of index properties and directions.
+
+  All unordered components are sorted and assigned an ASCENDING direction. All
+  ordered components with out a direction are assigned an ASCEDNING direction.
+
+  Args:
+    properties: See datastore_index.CompositeIndexForQuery
+
+  Returns:
+    A tuple of (name, direction) tuples where:
+        name: a property name
+        direction: datastore_pb.Query_Order.ASCENDING or ...DESCENDING
+  """
+  result = []
+  for sub_list in properties:
+    if isinstance(sub_list, (frozenset, set)):
+
+      for prop in sorted(sub_list):
+        result.append((prop, ASCENDING))
+    else:
+
+
+      for prop, dir in sub_list:
+        result.append((prop, dir if dir is not None else ASCENDING))
+
+  return tuple(result)
+
 
 def MinimalCompositeIndexForQuery(query, index_defs):
   """Computes the minimal composite index for this query.
@@ -484,26 +533,28 @@ def MinimalCompositeIndexForQuery(query, index_defs):
 
   Args:
     query: the datastore_pb.Query to compute suggestions for
-    index_defs: a list of datastore_index.Index objects that
-      already exist.
+    index_defs: a list of datastore_index.Index objects that already exist.
 
   Returns:
     None if no index is needed, otherwise the minimal index in the form
   (is_most_efficient, kind, ancestor, properties). Where is_most_efficient is a
-  bool denoting if the suggested index is the most efficient (i.e. the one
-  returned by datastore_index.CompositeIndexForQuery).
+  boolean denoting if the suggested index is the most efficient (i.e. the one
+  returned by datastore_index.CompositeIndexForQuery). kind, ancestor,
+  and properties are the same variables returned by
+  datastore_index.CompositeIndexForQuery.
   """
 
-  required, kind, ancestor, props, num_eq = CompositeIndexForQuery(query)
+  required, kind, ancestor, props = CompositeIndexForQuery(query)
 
   if not required:
     return None
 
 
-  postfix = props[num_eq:]
-  eq_props = set(prop[0] for prop in props[:num_eq])
-  prefix_remaining = eq_props.copy()
-  ancestor_remaining = ancestor
+
+  prefix, postfix_ordered, postfix_unordered = props
+
+
+  remaining_dict = {}
 
   for definition in index_defs:
     if (kind != definition.kind or
@@ -513,29 +564,91 @@ def MinimalCompositeIndexForQuery(query, index_defs):
 
     _, _, index_props = IndexToKey(definition)
 
-    if index_props[-len(postfix):] != postfix:
+
+
+
+
+    postfix_split = len(index_props) - 1
+    while (postfix_split >= 0 and
+           index_props[postfix_split][0] in postfix_unordered):
+      postfix_split -= 1
+    postfix_split += 1
+
+    index_postfix_unordered = index_props[postfix_split:]
+
+
+    if set(prop for prop, dir in index_postfix_unordered) != postfix_unordered:
       continue
 
 
-    index_eq_props = set(prop[0] for prop in index_props[:-len(postfix)])
-    if index_eq_props - eq_props:
+    postfix_start = postfix_split - len(postfix_ordered)
+    if postfix_start < 0:
+      continue
+
+    index_postfix_ordered = index_props[postfix_start:postfix_split]
+    match = True
+    for (index_prop, index_dir), (prop, dir) in zip(index_postfix_ordered,
+                                                    postfix_ordered):
+      if index_prop != prop or (dir is not None and index_dir != dir):
+        match = False
+        break
+
+    if not match:
       continue
 
 
-    prefix_remaining -= index_eq_props
+    index_prefix = set(prop for prop, dir in index_props[:postfix_start])
+
+
+    if index_prefix - prefix:
+      continue
+
+
+
+
+    index_postfix = tuple(index_postfix_ordered + index_postfix_unordered)
+    remaining  = remaining_dict.get(index_postfix)
+    if remaining is None:
+      remaining = prefix.copy(), ancestor
+
+
+    props_remaining, ancestor_remaining = remaining
+    props_remaining = props_remaining - index_prefix
     if definition.ancestor:
       ancestor_remaining = False
 
-    if not (prefix_remaining or ancestor_remaining):
+    if not (props_remaining or ancestor_remaining):
       return None
 
-  minimal_props = tuple((prop, datastore_pb.Query_Order.ASCENDING)
-                   for prop in sorted(prefix_remaining)) + postfix
+    if (props_remaining, ancestor_remaining) == remaining:
+      continue
 
-  return (minimal_props == props and ancestor_remaining == ancestor,
-          kind,
-          ancestor_remaining,
-          minimal_props)
+
+    remaining_dict[index_postfix] = (props_remaining, ancestor_remaining)
+
+  if not remaining_dict:
+    return (True, kind, ancestor, props)
+
+  def calc_cost(minimal_props, minimal_ancestor):
+    result = len(minimal_props)
+    if minimal_ancestor:
+      result += 2
+
+
+  minimal_postfix, remaining = remaining_dict.popitem()
+  minimal_props, minimal_ancestor = remaining
+  minimal_cost = calc_cost(minimal_props, minimal_ancestor)
+  for index_postfix, (props_remaining, ancestor_remaining) in remaining_dict:
+    cost = calc_cost(props_remaining, ancestor_remaining)
+    if cost < minimal_cost:
+      minimal_cost = cost
+      minimal_postfix = index_postfix
+      minimal_props = props_remaining
+      minimal_ancestor = ancestor_remaining
+
+
+  return False, kind, minimal_ancestor, (frozenset(minimal_props),
+                                         minimal_postfix, frozenset())
 
 
 def IndexYamlForQuery(kind, ancestor, props):

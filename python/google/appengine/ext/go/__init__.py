@@ -346,14 +346,23 @@ class GoApp:
     self.goroot = os.path.join(
 
         up(__file__, 5),
-        "goroot")
+        'goroot')
     if not os.path.isdir(self.goroot):
       raise Exception('no goroot found at ' + self.goroot)
 
 
-    for bin in os.listdir(os.path.join(self.goroot, 'bin')):
-      if len(bin) == 2 and bin[1] == 'g':
-        self.arch = bin[0]
+    arch_map = {
+        'arm': '5',
+        'amd64': '6',
+        '386': '8',
+    }
+    for p in os.listdir(os.path.join(self.goroot, 'pkg', 'tool')):
+
+      if '_' not in p:
+        continue
+      arch = p.split('_', 1)[1]
+      if arch in arch_map:
+        self.arch = arch_map[arch]
         break
     if not self.arch:
       raise Exception('bad goroot: no compiler found')

@@ -1051,7 +1051,7 @@ goog.DEBUG && (goog.math.Coordinate.prototype.toString = function() {
   return"(" + this.x + ", " + this.y + ")"
 });
 goog.math.Coordinate.equals = function(a, b) {
-  return a == b ? !0 : !a || !b ? !1 : a.x == b.x && a.y == b.y
+  return a == b ? true : !a || !b ? false : a.x == b.x && a.y == b.y
 };
 goog.math.Coordinate.distance = function(a, b) {
   var dx = a.x - b.x, dy = a.y - b.y;
@@ -1102,8 +1102,8 @@ goog.math.Size.prototype.round = function() {
   return this
 };
 goog.math.Size.prototype.scale = function(s) {
-  this.width *= s;
-  this.height *= s;
+  this.width = this.width * s;
+  this.height = this.height * s;
   return this
 };
 goog.object = {};
@@ -2246,11 +2246,11 @@ goog.iter.range = function(startOrStop, opt_stop, opt_step) {
   }
   var newIter = new goog.iter.Iterator;
   newIter.next = function() {
-    if(0 < step && start >= stop || 0 > step && start <= stop) {
+    if(step > 0 && start >= stop || step < 0 && start <= stop) {
       throw goog.iter.StopIteration;
     }
     var rv = start;
-    start += step;
+    start = start + step;
     return rv
   };
   return newIter
@@ -3075,7 +3075,8 @@ goog.debug.Logger.Level.predefinedLevelsCache_ = null;
 goog.debug.Logger.Level.createPredefinedLevelsCache_ = function() {
   goog.debug.Logger.Level.predefinedLevelsCache_ = {};
   for(var i = 0, level;level = goog.debug.Logger.Level.PREDEFINED_LEVELS[i];i++) {
-    goog.debug.Logger.Level.predefinedLevelsCache_[level.value] = level, goog.debug.Logger.Level.predefinedLevelsCache_[level.name] = level
+    goog.debug.Logger.Level.predefinedLevelsCache_[level.value] = level;
+    goog.debug.Logger.Level.predefinedLevelsCache_[level.name] = level
   }
 };
 goog.debug.Logger.Level.getPredefinedLevel = function(name) {
@@ -3099,18 +3100,35 @@ goog.debug.Logger.getLogger = function(name) {
   return goog.debug.LogManager.getLogger(name)
 };
 goog.debug.Logger.logToProfilers = function(msg) {
-  goog.global.console && (goog.global.console.timeStamp ? goog.global.console.timeStamp(msg) : goog.global.console.markTimeline && goog.global.console.markTimeline(msg));
-  goog.global.msWriteProfilerMark && goog.global.msWriteProfilerMark(msg)
+  if(goog.global.console) {
+    if(goog.global.console.timeStamp) {
+      goog.global.console.timeStamp(msg)
+    }else {
+      if(goog.global.console.markTimeline) {
+        goog.global.console.markTimeline(msg)
+      }
+    }
+  }
+  if(goog.global.msWriteProfilerMark) {
+    goog.global.msWriteProfilerMark(msg)
+  }
 };
 goog.debug.Logger.prototype.getParent = function() {
   return this.parent_
 };
 goog.debug.Logger.prototype.getChildren = function() {
-  this.children_ || (this.children_ = {});
+  if(!this.children_) {
+    this.children_ = {}
+  }
   return this.children_
 };
 goog.debug.Logger.prototype.setLevel = function(level) {
-  goog.debug.Logger.ENABLE_HIERARCHY ? this.level_ = level : (goog.asserts.assert(!this.name_, "Cannot call setLevel() on a non-root logger when goog.debug.Logger.ENABLE_HIERARCHY is false."), goog.debug.Logger.rootLevel_ = level)
+  if(goog.debug.Logger.ENABLE_HIERARCHY) {
+    this.level_ = level
+  }else {
+    goog.asserts.assert(!this.name_, "Cannot call setLevel() on a non-root logger when goog.debug.Logger.ENABLE_HIERARCHY is false.");
+    goog.debug.Logger.rootLevel_ = level
+  }
 };
 goog.debug.Logger.prototype.getEffectiveLevel = function() {
   if(!goog.debug.Logger.ENABLE_HIERARCHY) {
@@ -3133,7 +3151,10 @@ goog.debug.Logger.prototype.log = function(level, msg, opt_exception) {
 };
 goog.debug.Logger.prototype.getLogRecord = function(level, msg, opt_exception) {
   var logRecord = goog.debug.LogBuffer.isBufferingEnabled() ? goog.debug.LogBuffer.getInstance().addRecord(level, msg, this.name_) : new goog.debug.LogRecord(level, "" + msg, this.name_);
-  opt_exception && (logRecord.setException(opt_exception), logRecord.setExceptionText(goog.debug.exposeException(opt_exception, arguments.callee.caller)));
+  if(opt_exception) {
+    logRecord.setException(opt_exception);
+    logRecord.setExceptionText(goog.debug.exposeException(opt_exception, arguments.callee.caller))
+  }
   return logRecord
 };
 goog.debug.Logger.prototype.severe = function(msg, opt_exception) {
@@ -3149,7 +3170,8 @@ goog.debug.Logger.prototype.doLogRecord_ = function(logRecord) {
   goog.debug.Logger.logToProfilers("log:" + logRecord.getMessage());
   if(goog.debug.Logger.ENABLE_HIERARCHY) {
     for(var target = this;target;) {
-      target.callPublish_(logRecord), target = target.getParent()
+      target.callPublish_(logRecord);
+      target = target.getParent()
     }
   }else {
     for(var i = 0, handler;handler = goog.debug.Logger.rootHandlers_[i++];) {
@@ -3174,7 +3196,11 @@ goog.debug.LogManager = {};
 goog.debug.LogManager.loggers_ = {};
 goog.debug.LogManager.rootLogger_ = null;
 goog.debug.LogManager.initialize = function() {
-  goog.debug.LogManager.rootLogger_ || (goog.debug.LogManager.rootLogger_ = new goog.debug.Logger(""), goog.debug.LogManager.loggers_[""] = goog.debug.LogManager.rootLogger_, goog.debug.LogManager.rootLogger_.setLevel(goog.debug.Logger.Level.CONFIG))
+  if(!goog.debug.LogManager.rootLogger_) {
+    goog.debug.LogManager.rootLogger_ = new goog.debug.Logger("");
+    goog.debug.LogManager.loggers_[""] = goog.debug.LogManager.rootLogger_;
+    goog.debug.LogManager.rootLogger_.setLevel(goog.debug.Logger.Level.CONFIG)
+  }
 };
 goog.debug.LogManager.getLoggers = function() {
   return goog.debug.LogManager.loggers_
@@ -3274,11 +3300,13 @@ goog.events.Event.prototype.disposeInternal = function() {
   delete this.currentTarget
 };
 goog.events.Event.prototype.propagationStopped_ = !1;
+goog.events.Event.prototype.defaultPrevented = !1;
 goog.events.Event.prototype.returnValue_ = !0;
 goog.events.Event.prototype.stopPropagation = function() {
   this.propagationStopped_ = !0
 };
 goog.events.Event.prototype.preventDefault = function() {
+  this.defaultPrevented = !0;
   this.returnValue_ = !1
 };
 goog.events.Event.stopPropagation = function(e) {
@@ -3335,7 +3363,7 @@ goog.events.BrowserEvent.prototype.init = function(e, opt_currentTarget) {
   this.metaKey = e.metaKey;
   this.state = e.state;
   this.event_ = e;
-  delete this.returnValue_;
+  e.defaultPrevented && this.preventDefault();
   delete this.propagationStopped_
 };
 goog.events.BrowserEvent.prototype.stopPropagation = function() {
@@ -4371,8 +4399,25 @@ goog.net.XhrIo.prototype.onReadyStateChangeEntryPoint_ = function() {
   this.onReadyStateChangeHelper_()
 };
 goog.net.XhrIo.prototype.onReadyStateChangeHelper_ = function() {
-  this.active_ && "undefined" != typeof goog && (this.xhrOptions_[goog.net.XmlHttp.OptionType.LOCAL_REQUEST_ERROR] && this.getReadyState() == goog.net.XmlHttp.ReadyState.COMPLETE && 2 == this.getStatus() ? this.logger_.fine(this.formatMsg_("Local request error detected and ignored")) : this.inSend_ && this.getReadyState() == goog.net.XmlHttp.ReadyState.COMPLETE ? goog.Timer.defaultTimerObject.setTimeout(goog.bind(this.onReadyStateChange_, this), 0) : (this.dispatchEvent(goog.net.EventType.READY_STATE_CHANGE), 
-  this.isComplete() && (this.logger_.fine(this.formatMsg_("Request complete")), this.active_ = !1, this.isSuccess() ? (this.dispatchEvent(goog.net.EventType.COMPLETE), this.dispatchEvent(goog.net.EventType.SUCCESS)) : (this.lastError_ = this.getStatusText() + " [" + this.getStatus() + "]", this.dispatchErrors_()), this.cleanUpXhr_())))
+  if(this.active_ && "undefined" != typeof goog) {
+    if(this.xhrOptions_[goog.net.XmlHttp.OptionType.LOCAL_REQUEST_ERROR] && this.getReadyState() == goog.net.XmlHttp.ReadyState.COMPLETE && 2 == this.getStatus()) {
+      this.logger_.fine(this.formatMsg_("Local request error detected and ignored"))
+    }else {
+      if(this.inSend_ && this.getReadyState() == goog.net.XmlHttp.ReadyState.COMPLETE) {
+        goog.Timer.defaultTimerObject.setTimeout(goog.bind(this.onReadyStateChange_, this), 0)
+      }else {
+        if(this.dispatchEvent(goog.net.EventType.READY_STATE_CHANGE), this.isComplete()) {
+          this.logger_.fine(this.formatMsg_("Request complete"));
+          this.active_ = !1;
+          try {
+            this.isSuccess() ? (this.dispatchEvent(goog.net.EventType.COMPLETE), this.dispatchEvent(goog.net.EventType.SUCCESS)) : (this.lastError_ = this.getStatusText() + " [" + this.getStatus() + "]", this.dispatchErrors_())
+          }finally {
+            this.cleanUpXhr_()
+          }
+        }
+      }
+    }
+  }
 };
 goog.net.XhrIo.prototype.cleanUpXhr_ = function(opt_fromDispose) {
   if(this.xhr_) {
@@ -4774,25 +4819,13 @@ goog.Uri.QueryData.prototype.getKeys = function() {
 };
 goog.Uri.QueryData.prototype.getValues = function(opt_key) {
   this.ensureKeyMapInitialized_();
-  var rv;
+  var rv = [];
   if(opt_key) {
     var key = this.getKeyName_(opt_key);
-    if(this.containsKey(key)) {
-      var value = this.keyMap_.get(key);
-      if(goog.isArray(value)) {
-        return value
-      }
-      rv = [];
-      rv.push(value)
-    }else {
-      rv = []
-    }
+    this.containsKey(key) && (rv = goog.array.concat(rv, this.keyMap_.get(key)))
   }else {
-    var vals = this.keyMap_.getValues();
-    rv = [];
-    for(var i = 0;i < vals.length;i++) {
-      var val = vals[i];
-      goog.isArray(val) ? goog.array.extend(rv, val) : rv.push(val)
+    for(var values = this.keyMap_.getValues(), i = 0;i < values.length;i++) {
+      rv = goog.array.concat(rv, values[i])
     }
   }
   return rv

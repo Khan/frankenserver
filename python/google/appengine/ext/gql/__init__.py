@@ -215,6 +215,15 @@ class GQL(object):
 
   __ANCESTOR = -1
 
+
+  _kind = None
+  _keys_only = False
+  __projection = None
+  __has_ancestor = False
+  __offset = -1
+  __limit = -1
+  __hint = ''
+
   def __init__(self, query_string, _app=None, _auth_domain=None,
                namespace=None):
     """Ctor.
@@ -231,20 +240,16 @@ class GQL(object):
       datastore_errors.BadQueryError: if the query is not parsable.
     """
 
-    self._kind = ''
+
     self.__filters = {}
 
-
-    self.__has_ancestor = False
     self.__orderings = []
-    self.__offset = -1
-    self.__limit = -1
-    self.__hint = ''
+
     self.__app = _app
 
     self.__namespace = namespace
-    self.__auth_domain = _auth_domain
 
+    self.__auth_domain = _auth_domain
 
 
     self.__symbols = self.TOKENIZE_REGEX.findall(query_string)
@@ -286,10 +291,11 @@ class GQL(object):
     else:
       query_count = 1
 
-    for i in xrange(query_count):
+    for _ in xrange(query_count):
       queries.append(datastore.Query(self._kind,
                                      _app=self.__app,
                                      keys_only=self._keys_only,
+                                     projection=self.__projection,
                                      namespace=self.__namespace,
                                      cursor=cursor,
                                      end_cursor=end_cursor))
@@ -675,13 +681,13 @@ class GQL(object):
         Number of iterations needed to fill the structure
       """
       if not enumerated_queries:
-        for i in xrange(n):
+        for _ in xrange(n):
           queries.append({})
         return 1
       else:
         old_size = len(queries)
         tmp_queries = []
-        for i in xrange(n - 1):
+        for _ in xrange(n - 1):
           [tmp_queries.append(filter_map.copy()) for filter_map in queries]
         queries.extend(tmp_queries)
         queries.sort()
@@ -768,7 +774,7 @@ class GQL(object):
       it = bind_results.Run()
 
       try:
-        for i in xrange(offset):
+        for _ in xrange(offset):
           it.next()
       except StopIteration:
         pass
@@ -808,6 +814,10 @@ class GQL(object):
   def is_keys_only(self):
     """Returns True if this query returns Keys, False if it returns Entities."""
     return self._keys_only
+
+  def projection(self):
+    """Returns the tuple of properties in the projection, or None."""
+    return self.__projection
 
   def kind(self):
     return self._kind
@@ -942,8 +952,14 @@ class GQL(object):
       True if parsing completed okay.
     """
     self.__Expect('SELECT')
-    result_type = self.__AcceptRegex(self.__result_type_regex)
-    self._keys_only = (result_type == '__key__')
+    if not self.__Accept('*'):
+      props = [self.__ExpectIdentifier()]
+      while self.__Accept(','):
+        props.append(self.__ExpectIdentifier())
+      if props == ['__key__']:
+        self._keys_only = True
+      else:
+        self.__projection = tuple(props)
     return self.__From()
 
   def __From(self):
@@ -957,13 +973,7 @@ class GQL(object):
       True if parsing completed okay.
     """
     if self.__Accept('FROM'):
-      kind = self.__Identifier()
-      if kind:
-        self._kind = kind
-      else:
-        self.__Error('Identifier Expected')
-    else:
-      self._kind = None
+      self._kind = self.__ExpectIdentifier()
     return self.__Where()
 
   def __Where(self):
@@ -1145,6 +1155,12 @@ class GQL(object):
 
         identifier = identifier[1:-1].replace('""', '"')
     return identifier
+
+  def __ExpectIdentifier(self):
+    id = self.__Identifier()
+    if not id:
+      self.__Error('Identifier Expected')
+    return id
 
   def __Reference(self):
     """Consume a parameter reference and return it.
