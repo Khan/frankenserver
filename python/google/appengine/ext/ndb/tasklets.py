@@ -67,6 +67,7 @@ import types
 
 from .google_imports import apiproxy_stub_map
 from .google_imports import apiproxy_rpc
+from .google_imports import datastore_errors
 from .google_imports import datastore_rpc
 
 from . import eventloop
@@ -157,6 +158,7 @@ def _init_flow_exceptions():
   """
   global _flow_exceptions
   _flow_exceptions = ()
+  add_flow_exception(datastore_errors.Rollback)
   try:
     from webob import exc
   except ImportError:
@@ -564,7 +566,7 @@ class MultiFuture(Future):
       mfut.complete()
       fut = mfut
     elif not isinstance(fut, Future):
-      raise TypeError('Expected Future received %r' % fut)
+      raise TypeError('Expected Future, received %s: %r' % (type(fut), fut))
     if self._full:
       raise RuntimeError('MultiFuture cannot add a dependent once complete.')
     self._results.append(fut)

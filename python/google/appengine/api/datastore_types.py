@@ -1148,8 +1148,8 @@ class Text(unicode):
     raise TypeError('Text() argument should be str or unicode, not %s' %
                     type(arg).__name__)
 
-class Blob(str):
-  """A blob type, appropriate for storing binary data of any length.
+class _BaseByteType(str):
+  """A base class for datastore types that are encoded as bytes.
 
   This behaves identically to the Python str type, except for the
   constructor, which only accepts str arguments.
@@ -1166,13 +1166,13 @@ class Blob(str):
     if arg is None:
       arg = ''
     if isinstance(arg, str):
-      return super(Blob, cls).__new__(cls, arg)
+      return super(_BaseByteType, cls).__new__(cls, arg)
 
-    raise TypeError('Blob() argument should be str instance, not %s' %
-                    type(arg).__name__)
+    raise TypeError('%s() argument should be str instance, not %s' %
+                    (cls.__name__, type(arg).__name__))
 
   def ToXml(self):
-    """Output a blob as XML.
+    """Output bytes as XML.
 
     Returns:
       Base64 encoded version of itself for safe insertion in to an XML document.
@@ -1180,37 +1180,44 @@ class Blob(str):
     encoded = base64.urlsafe_b64encode(self)
     return saxutils.escape(encoded)
 
-class ByteString(str):
-  """A byte-string type, appropriate for storing short amounts of indexed data.
 
-  This behaves identically to Blob, except it's used only for short, indexed
-  byte strings.
+class Blob(_BaseByteType):
+  """A blob type, appropriate for storing binary data of any length.
+
+  This behaves identically to the Python str type, except for the
+  constructor, which only accepts str arguments.
+  """
+  pass
+
+
+class EmbeddedEntity(_BaseByteType):
+  """A proto encoded EntityProto.
+
+  This behaves identically to Blob, except for the
+  constructor, which accepts a str or EntityProto argument.
+
+  Can be decoded using datastore.Entity.FromProto(), db.model_from_protobuf() or
+  ndb.LocalStructuredProperty.
   """
 
   def __new__(cls, arg=None):
     """Constructor.
 
-    We only accept str instances.
-
     Args:
-      arg: optional str instance (default '')
+      arg: optional str or EntityProto instance (default '')
     """
-    if arg is None:
-      arg = ''
-    if isinstance(arg, str):
-      return super(ByteString, cls).__new__(cls, arg)
+    if isinstance(arg, entity_pb.EntityProto):
+      arg = arg.SerializePartialToString()
+    return super(EmbeddedEntity, cls).__new__(cls, arg)
 
-    raise TypeError('ByteString() argument should be str instance, not %s' %
-                    type(arg).__name__)
 
-  def ToXml(self):
-    """Output a ByteString as XML.
+class ByteString(_BaseByteType):
+  """A byte-string type, appropriate for storing short amounts of indexed data.
 
-    Returns:
-      Base64 encoded version of itself for safe insertion in to an XML document.
-    """
-    encoded = base64.urlsafe_b64encode(self)
-    return saxutils.escape(encoded)
+  This behaves identically to Blob, except it's used only for short, indexed
+  byte strings.
+  """
+  pass
 
 
 class BlobKey(object):
@@ -1274,6 +1281,7 @@ _PROPERTY_MEANINGS = {
 
 
   Blob:              entity_pb.Property.BLOB,
+  EmbeddedEntity:    entity_pb.Property.ENTITY_PROTO,
   ByteString:        entity_pb.Property.BYTESTRING,
   Text:              entity_pb.Property.TEXT,
   datetime.datetime: entity_pb.Property.GD_WHEN,
@@ -1294,6 +1302,7 @@ _PROPERTY_MEANINGS = {
 
 _PROPERTY_TYPES = frozenset([
   Blob,
+  EmbeddedEntity,
   ByteString,
   bool,
   Category,
@@ -1321,8 +1330,9 @@ _PROPERTY_TYPES = frozenset([
 
 
 
-_RAW_PROPERTY_TYPES = (Blob, Text)
-_RAW_PROPERTY_MEANINGS = (entity_pb.Property.BLOB, entity_pb.Property.TEXT)
+_RAW_PROPERTY_TYPES = (Blob, Text, EmbeddedEntity)
+_RAW_PROPERTY_MEANINGS = (entity_pb.Property.BLOB, entity_pb.Property.TEXT,
+                          entity_pb.Property.ENTITY_PROTO)
 
 
 def ValidatePropertyInteger(name, value):
@@ -1409,6 +1419,7 @@ def ValidatePropertyKey(name, value):
 
 _VALIDATE_PROPERTY_VALUES = {
   Blob: ValidatePropertyNothing,
+  EmbeddedEntity: ValidatePropertyNothing,
   ByteString: ValidatePropertyString,
   bool: ValidatePropertyNothing,
   Category: ValidatePropertyString,
@@ -1436,6 +1447,7 @@ _VALIDATE_PROPERTY_VALUES = {
 _PROPERTY_TYPE_TO_INDEX_VALUE_TYPE = {
   basestring: str,
   Blob: str,
+  EmbeddedEntity: str,
   ByteString: str,
   bool: bool,
   Category: str,
@@ -1664,6 +1676,7 @@ def PackFloat(name, value, pbvalue):
 
 _PACK_PROPERTY_VALUES = {
   Blob: PackBlob,
+  EmbeddedEntity: PackBlob,
   ByteString: PackBlob,
   bool: PackBool,
   Category: PackString,
@@ -1782,10 +1795,17 @@ _PROPERTY_CONVERSIONS = {
   entity_pb.Property.GD_POSTALADDRESS:  PostalAddress,
   entity_pb.Property.GD_RATING:         Rating,
   entity_pb.Property.BLOB:              Blob,
+  entity_pb.Property.ENTITY_PROTO:      EmbeddedEntity,
   entity_pb.Property.BYTESTRING:        ByteString,
   entity_pb.Property.TEXT:              Text,
   entity_pb.Property.BLOBKEY:           BlobKey,
 }
+
+
+_NON_UTF8_MEANINGS = frozenset((entity_pb.Property.BLOB,
+                                entity_pb.Property.ENTITY_PROTO,
+                                entity_pb.Property.BYTESTRING,
+                                entity_pb.Property.INDEX_VALUE))
 
 
 def FromPropertyPb(pb):
@@ -1806,9 +1826,7 @@ def FromPropertyPb(pb):
 
   if pbval.has_stringvalue():
     value = pbval.stringvalue()
-    if not pb.has_meaning() or meaning not in (entity_pb.Property.BLOB,
-                                               entity_pb.Property.BYTESTRING,
-                                               entity_pb.Property.INDEX_VALUE):
+    if not pb.has_meaning() or meaning not in _NON_UTF8_MEANINGS:
       value = unicode(value, 'utf-8')
   elif pbval.has_int64value():
 
@@ -1897,8 +1915,7 @@ def RestoreFromIndexValue(index_value, data_type):
   meaning = _PROPERTY_MEANINGS.get(data_type)
 
 
-  if isinstance(index_value, str) and meaning not in (
-      entity_pb.Property.BLOB, entity_pb.Property.BYTESTRING):
+  if isinstance(index_value, str) and meaning not in _NON_UTF8_MEANINGS:
     index_value = unicode(index_value, 'utf-8')
 
 
@@ -1949,6 +1966,7 @@ _PROPERTY_TYPE_STRINGS = {
     'float':            float,
     'key':              Key,
     'blob':             Blob,
+    'entity:proto':     EmbeddedEntity,
     'bytestring':       ByteString,
     'text':             Text,
     'user':             users.User,

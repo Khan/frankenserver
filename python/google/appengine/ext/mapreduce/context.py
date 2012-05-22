@@ -56,7 +56,13 @@ import threading
 
 from google.appengine.api import datastore
 from google.appengine.ext import db
-from google.appengine.ext import ndb
+
+try:
+  from google.appengine.ext import ndb
+except ImportError:
+  ndb = None
+# It is acceptable to set key_range.ndb to the ndb module,
+# imported through some other way (e.g. from the app dir).
 
 
 
@@ -80,7 +86,7 @@ COUNTER_MAPPER_WALLTIME_MS = "mapper-walltime-ms"
 
 def _normalize_entity(value):
   """Return an entity from an entity or model instance."""
-  if isinstance(value, ndb.Model):
+  if ndb is not None and isinstance(value, ndb.Model):
     return None
   if getattr(value, "_populate_internal_entity", None):
     return value._populate_internal_entity()
@@ -88,7 +94,7 @@ def _normalize_entity(value):
 
 def _normalize_key(value):
   """Return a key from an entity, model instance, key, or key string."""
-  if isinstance(value, (ndb.Model, ndb.Key)):
+  if ndb is not None and isinstance(value, (ndb.Model, ndb.Key)):
     return None
   if getattr(value, "key", None):
     return value.key()
@@ -187,7 +193,7 @@ class MutationPool(object):
 
   def ndb_put(self, entity):
     """Like put(), but for NDB entities."""
-    assert isinstance(entity, ndb.Model)
+    assert ndb is not None and isinstance(entity, ndb.Model)
     entity_size = len(entity._to_pb().Encode())
     if (self.ndb_puts.length >= self.max_entity_count or
         (self.ndb_puts.size + entity_size) > self.max_pool_size):

@@ -75,12 +75,22 @@ import threading
 import yaml
 import hashlib
 
-from google.appengine.api import apiproxy_rpc
-from google.appengine.api import apiproxy_stub_map
-from google.appengine.datastore import datastore_pb
-from google.appengine.ext.remote_api import remote_api_pb
-from google.appengine.ext.remote_api import remote_api_services
-from google.appengine.runtime import apiproxy_errors
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import apiproxy_rpc
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.datastore import datastore_pb
+  from google.appengine.ext.remote_api import remote_api_pb
+  from google.appengine.ext.remote_api import remote_api_services
+  from google.appengine.runtime import apiproxy_errors
+else:
+  from google.appengine.api import apiproxy_rpc
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.datastore import datastore_pb
+  from google.appengine.ext.remote_api import remote_api_pb
+  from google.appengine.ext.remote_api import remote_api_services
+  from google.appengine.runtime import apiproxy_errors
+
 from google.appengine.tools import appengine_rpc
 
 
@@ -125,7 +135,7 @@ def GetSourceName():
 class TransactionData(object):
   """Encapsulates data about an individual transaction."""
 
-  def __init__(self, thread_id):
+  def __init__(self, thread_id, is_xg):
 
 
     self.thread_id = thread_id
@@ -138,6 +148,8 @@ class TransactionData(object):
 
 
     self.entities = {}
+
+    self.is_xg = is_xg
 
 
 class RemoteStub(object):
@@ -369,26 +381,33 @@ class RemoteDatastoreStub(RemoteStub):
       requires_id = lambda x: x.id() == 0 and not x.has_name()
       new_ents = [e for e in entities
                   if requires_id(e.key().path().element_list()[-1])]
-      id_request = remote_api_pb.PutRequest()
+      id_request = datastore_pb.PutRequest()
+
+      txid = put_request.transaction().handle()
+      txdata = self.__transactions[txid]
+      assert (txdata.thread_id ==
+          thread.get_ident()), "Transactions are single-threaded."
       if new_ents:
         for ent in new_ents:
           e = id_request.add_entity()
           e.mutable_key().CopyFrom(ent.key())
           e.mutable_entity_group()
         id_response = datastore_pb.PutResponse()
+
+
+
+        if txdata.is_xg:
+          rpc_name = 'GetIDsXG'
+        else:
+          rpc_name = 'GetIDs'
         super(RemoteDatastoreStub, self).MakeSyncCall(
-            'remote_datastore', 'GetIDs', id_request, id_response)
+            'remote_datastore', rpc_name, id_request, id_response)
         assert id_request.entity_size() == id_response.key_size()
         for key, ent in zip(id_response.key_list(), new_ents):
           ent.mutable_key().CopyFrom(key)
           ent.mutable_entity_group().add_element().CopyFrom(
               key.path().element(0))
 
-
-      txid = put_request.transaction().handle()
-      txdata = self.__transactions[txid]
-      assert (txdata.thread_id ==
-          thread.get_ident()), "Transactions are single-threaded."
       for entity in entities:
         txdata.entities[entity.key().Encode()] = (entity.key(), entity)
         put_response.add_key().CopyFrom(entity.key())
@@ -412,7 +431,8 @@ class RemoteDatastoreStub(RemoteStub):
     self.__local_tx_lock.acquire()
     try:
       txid = self.__next_local_tx
-      self.__transactions[txid] = TransactionData(thread.get_ident())
+      self.__transactions[txid] = TransactionData(thread.get_ident(),
+                                                  request.allow_multiple_eg())
       self.__next_local_tx += 1
     finally:
       self.__local_tx_lock.release()
@@ -432,6 +452,7 @@ class RemoteDatastoreStub(RemoteStub):
     del self.__transactions[txid]
 
     tx = remote_api_pb.TransactionRequest()
+    tx.set_allow_multiple_eg(txdata.is_xg)
     for key, hash in txdata.preconditions.values():
       precond = tx.add_precondition()
       precond.mutable_key().CopyFrom(key)

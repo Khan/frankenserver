@@ -50,6 +50,7 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'ipaddr'),
   os.path.join(DIR_PATH, 'lib', 'jinja2'),
   os.path.join(DIR_PATH, 'lib', 'protorpc'),
+  os.path.join(DIR_PATH, 'lib', 'PyAMF'),
   os.path.join(DIR_PATH, 'lib', 'markupsafe'),
   os.path.join(DIR_PATH, 'lib', 'webob_0_9'),
   os.path.join(DIR_PATH, 'lib', 'webapp2'),

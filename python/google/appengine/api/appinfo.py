@@ -75,7 +75,11 @@ _EXPIRATION_CONVERSIONS = {
 
 
 APP_ID_MAX_LEN = 100
-MAJOR_VERSION_ID_MAX_LEN = 100
+SERVER_ID_MAX_LEN = 63
+
+
+
+SERVER_VERSION_ID_MAX_LEN = 63
 MAX_URL_MAPS = 100
 
 
@@ -85,21 +89,38 @@ PARTITION_SEPARATOR = '~'
 DOMAIN_SEPARATOR = ':'
 
 
+VERSION_SEPARATOR = '.'
+
+
+SERVER_SEPARATOR = ':'
+
+
+DEFAULT_SERVER = 'default'
+
+
 
 PARTITION_RE_STRING = (r'[a-z\d\-]{1,%d}\%s' %
                        (APP_ID_MAX_LEN, PARTITION_SEPARATOR))
 DOMAIN_RE_STRING = (r'(?!\-)[a-z\d\-\.]{1,%d}%s' %
                     (APP_ID_MAX_LEN, DOMAIN_SEPARATOR))
-DISPLAY_APP_ID_RE_STRING = (r'(?!-)[a-z\d\-]{1,%d}' % (APP_ID_MAX_LEN))
+DISPLAY_APP_ID_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % APP_ID_MAX_LEN
 APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
                          (PARTITION_RE_STRING,
                           DOMAIN_RE_STRING,
                           DISPLAY_APP_ID_RE_STRING))
 
+SERVER_ID_RE_STRING = r'^(?!-)[a-z\d\-]{1,%d}$' % SERVER_ID_MAX_LEN
 
 
 
-VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,%d}' % MAJOR_VERSION_ID_MAX_LEN
+
+
+
+SERVER_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{1,%d}$' %
+                               SERVER_VERSION_ID_MAX_LEN)
+
+_INSTANCES_REGEX = r'^([\d]+|automatic)$'
+
 ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
 
@@ -108,6 +129,8 @@ BUILTIN_NAME_PREFIX = 'ah-builtin'
 RUNTIME_RE_STRING = r'[a-z][a-z0-9]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
+
+SOURCE_LANGUAGE_RE_STRING = r'[\w.\-]{1,32}'
 
 HANDLER_STATIC_FILES = 'static_files'
 HANDLER_STATIC_DIR = 'static_dir'
@@ -157,11 +180,14 @@ API_ENDPOINT = 'api_endpoint'
 
 
 APPLICATION = 'application'
+SERVER = 'server'
+SERVER_SETTINGS = 'server_settings'
 VERSION = 'version'
 MAJOR_VERSION = 'major_version'
 MINOR_VERSION = 'minor_version'
 RUNTIME = 'runtime'
 API_VERSION = 'api_version'
+SOURCE_LANGUAGE = 'source_language'
 BUILTINS = 'builtins'
 INCLUDES = 'includes'
 HANDLERS = 'handlers'
@@ -180,6 +206,11 @@ THREADSAFE = 'threadsafe'
 API_CONFIG = 'api_config'
 CODE_LOCK = 'code_lock'
 ENV_VARIABLES = 'env_variables'
+
+
+INSTANCES = 'instances'
+MINIMUM_IDLE_INSTANCES = 'min_idle_instances'
+MAXIMUM_IDLE_INSTANCES = 'max_idle_instances'
 
 
 PAGES = 'pages'
@@ -206,6 +237,7 @@ SUPPORTED_LIBRARIES = {
     'markupsafe': ['0.15'],
     'numpy': ['1.6.1'],
     'PIL': ['1.1.7'],
+    'PyAMF': ['0.6.1'],
     'pycrypto': ['2.3'],
     'setuptools': ['0.6c11'],
     'webapp2': ['2.3', '2.5.1'],
@@ -451,7 +483,7 @@ class URLMap(HandlerBase):
     """Generates a warning for reserved URLs.
 
     See:
-    http://code.google.com/appengine/docs/python/config/appconfig.html#Reserved_URLs
+    https://developers.google.com/appengine/docs/python/config/appconfig#Reserved_URLs
     """
     if self.url == '/form':
       logging.warning(
@@ -676,13 +708,14 @@ class BuiltinHandler(validation.Validated):
         logging.warning(
             'The datastore_admin builtin is deprecated. You can find '
             'information on how to enable it through the Administrative '
-            'Console here: http://code.google.com/appengine/docs/adminconsole/'
+            'Console here: '
+            'http://developers.google.com/appengine/docs/adminconsole/'
             'datastoreadmin.html')
       elif b.builtin_name == 'mapreduce' and runtime == 'python':
         logging.warning(
             'The mapreduce builtin is deprecated. You can find more '
             'information on how to configure and use it here: '
-            'http://code.google.com/appengine/docs/python/dataprocessing/'
+            'http://developers.google.com/appengine/docs/python/dataprocessing/'
             'overview.html')
 
       seen.add(b.builtin_name)
@@ -718,6 +751,16 @@ class Library(validation.Validated):
                 self.name,
                 self.version,
                 '", "'.join(SUPPORTED_LIBRARIES[self.name])))
+
+
+class ServerSettings(validation.Validated):
+  """Class representing server settings in the AppInfoExternal.
+  """
+  ATTRIBUTES = {
+      INSTANCES: validation.Optional(_INSTANCES_REGEX),
+      MINIMUM_IDLE_INSTANCES: validation.Optional(_INSTANCES_REGEX),
+      MAXIMUM_IDLE_INSTANCES: validation.Optional(_INSTANCES_REGEX),
+  }
 
 
 class EnvironmentVariables(validation.ValidatedDict):
@@ -825,6 +868,9 @@ class AppInfoExternal(validation.Validated):
     version: Application's major version.
     runtime: Runtime used by application.
     api_version: Which version of APIs to use.
+    source_language: Optional specification of the source language.
+      For example we specify "php-quercus" if this is a Java app
+      that was generated from PHP source using Quercus
     handlers: List of URL handlers.
     default_expiration: Default time delta to use for cache expiration for
       all static files, unless they have their own specific 'expiration' set.
@@ -843,11 +889,15 @@ class AppInfoExternal(validation.Validated):
 
 
       APPLICATION: APPLICATION_RE_STRING,
-      VERSION: validation.Optional(VERSION_RE_STRING),
+      SERVER: validation.Optional(SERVER_ID_RE_STRING),
+      VERSION: validation.Optional(SERVER_VERSION_ID_RE_STRING),
       RUNTIME: RUNTIME_RE_STRING,
 
 
       API_VERSION: API_VERSION_RE_STRING,
+      SOURCE_LANGUAGE: validation.Optional(
+          validation.Regex(SOURCE_LANGUAGE_RE_STRING)),
+      SERVER_SETTINGS: validation.Optional(ServerSettings),
       BUILTINS: validation.Optional(validation.Repeated(BuiltinHandler)),
       INCLUDES: validation.Optional(validation.Type(list)),
       HANDLERS: validation.Optional(validation.Repeated(URLMap)),
@@ -1061,9 +1111,14 @@ class AppInfoSummary(validation.Validated):
   It is used to pass back information about the newly created app to users
   after a new version has been created.
   """
+
+
+
+
+
   ATTRIBUTES = {
       APPLICATION: APPLICATION_RE_STRING,
-      MAJOR_VERSION: VERSION_RE_STRING,
+      MAJOR_VERSION: SERVER_VERSION_ID_RE_STRING,
       MINOR_VERSION: validation.TYPE_LONG
   }
 

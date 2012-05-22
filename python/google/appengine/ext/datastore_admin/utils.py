@@ -21,9 +21,6 @@
 """Used render templates for datastore admin."""
 
 
-
-
-
 import base64
 import datetime
 import logging
@@ -44,6 +41,7 @@ from google.appengine.ext.webapp import _template
 MEMCACHE_NAMESPACE = '_ah-datastore_admin'
 XSRF_VALIDITY_TIME = 600
 KINDS_AND_SIZES_VAR = 'kinds_and_sizes'
+DEFAULT_SHARD_SIZE = 32
 
 
 DATASTORE_ADMIN_OPERATION_KIND = '_AE_DatastoreAdmin_Operation'
@@ -111,8 +109,7 @@ def _GetTemplatePath(template_file):
 
 
 def _GetDefaultParams(template_params):
-  """Update template_params to always contain necessary paths and never be None.
-  """
+  """Update template_params to always contain necessary paths and never None."""
   if not template_params:
     template_params = {}
   template_params.update({
@@ -135,7 +132,7 @@ def CreateXsrfToken(action):
   user_str = _MakeUserStr()
 
   token = base64.b64encode(
-      ''.join([chr(int(random.random()*255)) for _ in range(0, 64)]))
+      ''.join(chr(int(random.random()*255)) for _ in range(0, 64)))
 
   memcache.set(token,
                (user_str, action),
@@ -165,9 +162,7 @@ def ValidateXsrfToken(token, action):
   if not token_obj:
     return False
 
-  token_str = token_obj[0]
-  token_action = token_obj[1]
-
+  token_str, token_action = token_obj
   if user_str != token_str or action != token_action:
     return False
 
@@ -181,9 +176,8 @@ def CacheStats(formatted_results):
     formatted_results: list of dictionaries of the form returnned by
       main._PresentableKindStats.
   """
-  kinds_and_sizes = {}
-  for kind_dict in formatted_results:
-    kinds_and_sizes[kind_dict['kind_name']] = kind_dict['total_bytes']
+  kinds_and_sizes = dict((kind['kind_name'], kind['total_bytes'])
+                         for kind in formatted_results)
 
   memcache.set(KINDS_AND_SIZES_VAR,
                kinds_and_sizes,
@@ -196,50 +190,44 @@ def RetrieveCachedStats():
   Returns:
     Dictionary mapping kind names to total bytes.
   """
-  kinds_and_sizes = memcache.get(KINDS_AND_SIZES_VAR,
-                                 namespace=MEMCACHE_NAMESPACE)
-
-  return kinds_and_sizes
+  return memcache.get(KINDS_AND_SIZES_VAR, namespace=MEMCACHE_NAMESPACE)
 
 
 def _MakeUserStr():
   """Make a user string to use to represent the user.  'noauth' by default."""
   user = users.get_current_user()
-  if not user:
-    user_str = 'noauth'
-  else:
-    user_str = user.nickname()
-
-  return user_str
+  return user.nickname() if user else 'noauth'
 
 
-def GetPrettyBytes(bytes, significant_digits=0):
+def GetPrettyBytes(bytes_num, significant_digits=0):
   """Get a pretty print view of the given number of bytes.
 
   This will give a string like 'X MBytes'.
 
   Args:
-    bytes: the original number of bytes to pretty print.
+    bytes_num: the original number of bytes to pretty print.
     significant_digits: number of digits to display after the decimal point.
 
   Returns:
     A string that has the pretty print version of the given bytes.
+    If bytes_num is to big the string 'Alot' will be returned.
   """
   byte_prefixes = ['', 'K', 'M', 'G', 'T', 'P', 'E']
   for i in range(0, 7):
     exp = i * 10
-    if bytes < 2**(exp + 10):
+    if bytes_num < 1<<(exp + 10):
       if i == 0:
-        formatted_bytes = str(bytes)
+        formatted_bytes = str(bytes_num)
       else:
-        formatted_bytes = '%.*f' % (significant_digits, (bytes * 1.0 / 2**exp))
+        formatted_bytes = '%.*f' % (significant_digits,
+                                    (bytes_num * 1.0 / (1<<exp)))
       if formatted_bytes != '1':
         plural = 's'
       else:
         plural = ''
       return '%s %sByte%s' % (formatted_bytes, byte_prefixes[i], plural)
 
-  logging.error('Number too high to convert: %d', bytes)
+  logging.error('Number too high to convert: %d', bytes_num)
   return 'Alot'
 
 
@@ -366,6 +354,7 @@ class MapreduceDoneHandler(webapp.RequestHandler):
           logging.error('Done callback for job %s without operation key.',
                         mapreduce_id)
         else:
+
           def tx():
             operation = DatastoreAdminOperation.get(operation_key)
             if mapreduce_id in operation.active_job_ids:
@@ -484,7 +473,7 @@ def StartMap(operation_key,
   """
 
   if not mapreduce_params:
-    mapreduce_params = dict()
+    mapreduce_params = {}
   mapreduce_params[DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION] = (
       str(operation_key))
   mapreduce_params['done_callback'] = '%s/%s' % (config.BASE_PATH,
@@ -500,7 +489,7 @@ def StartMap(operation_key,
         output_writer_spec=writer_spec,
         mapreduce_parameters=mapreduce_params,
         base_path=config.MAPREDUCE_PATH,
-        shard_count=32,
+        shard_count=DEFAULT_SHARD_SIZE,
         transactional=True,
         queue_name=queue_name,
         transactional_parent=operation)
@@ -566,4 +555,4 @@ def AbortAdminOperation(operation_key,
   operation.put(config=_CreateDatastoreConfig())
   for job in operation.active_job_ids:
     logging.info('Aborting Job %s', job)
-    model.MapreduceControl.abort(job)
+    model.MapreduceControl.abort(job, config=_CreateDatastoreConfig())

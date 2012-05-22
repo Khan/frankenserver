@@ -38,8 +38,11 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   service_call_name_ = ""
   has_total_amount_of_calls_ = 0
   total_amount_of_calls_ = 0
+  has_total_cost_of_calls_microdollars_ = 0
+  total_cost_of_calls_microdollars_ = 0
 
   def __init__(self, contents=None):
+    self.total_billed_ops_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def service_call_name(self): return self.service_call_name_
@@ -68,11 +71,42 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
 
   def has_total_amount_of_calls(self): return self.has_total_amount_of_calls_
 
+  def total_cost_of_calls_microdollars(self): return self.total_cost_of_calls_microdollars_
+
+  def set_total_cost_of_calls_microdollars(self, x):
+    self.has_total_cost_of_calls_microdollars_ = 1
+    self.total_cost_of_calls_microdollars_ = x
+
+  def clear_total_cost_of_calls_microdollars(self):
+    if self.has_total_cost_of_calls_microdollars_:
+      self.has_total_cost_of_calls_microdollars_ = 0
+      self.total_cost_of_calls_microdollars_ = 0
+
+  def has_total_cost_of_calls_microdollars(self): return self.has_total_cost_of_calls_microdollars_
+
+  def total_billed_ops_size(self): return len(self.total_billed_ops_)
+  def total_billed_ops_list(self): return self.total_billed_ops_
+
+  def total_billed_ops(self, i):
+    return self.total_billed_ops_[i]
+
+  def mutable_total_billed_ops(self, i):
+    return self.total_billed_ops_[i]
+
+  def add_total_billed_ops(self):
+    x = BilledOpProto()
+    self.total_billed_ops_.append(x)
+    return x
+
+  def clear_total_billed_ops(self):
+    self.total_billed_ops_ = []
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_service_call_name()): self.set_service_call_name(x.service_call_name())
     if (x.has_total_amount_of_calls()): self.set_total_amount_of_calls(x.total_amount_of_calls())
+    if (x.has_total_cost_of_calls_microdollars()): self.set_total_cost_of_calls_microdollars(x.total_cost_of_calls_microdollars())
+    for i in xrange(x.total_billed_ops_size()): self.add_total_billed_ops().CopyFrom(x.total_billed_ops(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -80,6 +114,11 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if self.has_service_call_name_ and self.service_call_name_ != x.service_call_name_: return 0
     if self.has_total_amount_of_calls_ != x.has_total_amount_of_calls_: return 0
     if self.has_total_amount_of_calls_ and self.total_amount_of_calls_ != x.total_amount_of_calls_: return 0
+    if self.has_total_cost_of_calls_microdollars_ != x.has_total_cost_of_calls_microdollars_: return 0
+    if self.has_total_cost_of_calls_microdollars_ and self.total_cost_of_calls_microdollars_ != x.total_cost_of_calls_microdollars_: return 0
+    if len(self.total_billed_ops_) != len(x.total_billed_ops_): return 0
+    for e1, e2 in zip(self.total_billed_ops_, x.total_billed_ops_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -92,12 +131,17 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: total_amount_of_calls not set.')
+    for p in self.total_billed_ops_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.service_call_name_))
     n += self.lengthVarInt64(self.total_amount_of_calls_)
+    if (self.has_total_cost_of_calls_microdollars_): n += 1 + self.lengthVarInt64(self.total_cost_of_calls_microdollars_)
+    n += 1 * len(self.total_billed_ops_)
+    for i in xrange(len(self.total_billed_ops_)): n += self.lengthString(self.total_billed_ops_[i].ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
@@ -108,17 +152,29 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if (self.has_total_amount_of_calls_):
       n += 1
       n += self.lengthVarInt64(self.total_amount_of_calls_)
+    if (self.has_total_cost_of_calls_microdollars_): n += 1 + self.lengthVarInt64(self.total_cost_of_calls_microdollars_)
+    n += 1 * len(self.total_billed_ops_)
+    for i in xrange(len(self.total_billed_ops_)): n += self.lengthString(self.total_billed_ops_[i].ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_service_call_name()
     self.clear_total_amount_of_calls()
+    self.clear_total_cost_of_calls_microdollars()
+    self.clear_total_billed_ops()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.service_call_name_)
     out.putVarInt32(24)
     out.putVarInt64(self.total_amount_of_calls_)
+    if (self.has_total_cost_of_calls_microdollars_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.total_cost_of_calls_microdollars_)
+    for i in xrange(len(self.total_billed_ops_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.total_billed_ops_[i].ByteSize())
+      self.total_billed_ops_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_service_call_name_):
@@ -127,6 +183,13 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if (self.has_total_amount_of_calls_):
       out.putVarInt32(24)
       out.putVarInt64(self.total_amount_of_calls_)
+    if (self.has_total_cost_of_calls_microdollars_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.total_cost_of_calls_microdollars_)
+    for i in xrange(len(self.total_billed_ops_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.total_billed_ops_[i].ByteSizePartial())
+      self.total_billed_ops_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -136,6 +199,15 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 24:
         self.set_total_amount_of_calls(d.getVarInt64())
+        continue
+      if tt == 32:
+        self.set_total_cost_of_calls_microdollars(d.getVarInt64())
+        continue
+      if tt == 42:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_total_billed_ops().TryMerge(tmp)
         continue
 
 
@@ -147,6 +219,15 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_service_call_name_: res+=prefix+("service_call_name: %s\n" % self.DebugFormatString(self.service_call_name_))
     if self.has_total_amount_of_calls_: res+=prefix+("total_amount_of_calls: %s\n" % self.DebugFormatInt64(self.total_amount_of_calls_))
+    if self.has_total_cost_of_calls_microdollars_: res+=prefix+("total_cost_of_calls_microdollars: %s\n" % self.DebugFormatInt64(self.total_cost_of_calls_microdollars_))
+    cnt=0
+    for e in self.total_billed_ops_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("total_billed_ops%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
@@ -155,18 +236,24 @@ class AggregateRpcStatsProto(ProtocolBuffer.ProtocolMessage):
 
   kservice_call_name = 1
   ktotal_amount_of_calls = 3
+  ktotal_cost_of_calls_microdollars = 4
+  ktotal_billed_ops = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "service_call_name",
     3: "total_amount_of_calls",
-  }, 3)
+    4: "total_cost_of_calls_microdollars",
+    5: "total_billed_ops",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -537,6 +624,166 @@ class StackFrameProto(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.StackFrameProto'
+class BilledOpProto(ProtocolBuffer.ProtocolMessage):
+
+
+  DATASTORE_READ =    0
+  DATASTORE_WRITE =    1
+  DATASTORE_SMALL =    2
+  MAIL_RECIPIENT =    3
+  CHANNEL_OPEN =    4
+  XMPP_STANZA  =    5
+
+  _BilledOp_NAMES = {
+    0: "DATASTORE_READ",
+    1: "DATASTORE_WRITE",
+    2: "DATASTORE_SMALL",
+    3: "MAIL_RECIPIENT",
+    4: "CHANNEL_OPEN",
+    5: "XMPP_STANZA",
+  }
+
+  def BilledOp_Name(cls, x): return cls._BilledOp_NAMES.get(x, "")
+  BilledOp_Name = classmethod(BilledOp_Name)
+
+  has_op_ = 0
+  op_ = 0
+  has_num_ops_ = 0
+  num_ops_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def op(self): return self.op_
+
+  def set_op(self, x):
+    self.has_op_ = 1
+    self.op_ = x
+
+  def clear_op(self):
+    if self.has_op_:
+      self.has_op_ = 0
+      self.op_ = 0
+
+  def has_op(self): return self.has_op_
+
+  def num_ops(self): return self.num_ops_
+
+  def set_num_ops(self, x):
+    self.has_num_ops_ = 1
+    self.num_ops_ = x
+
+  def clear_num_ops(self):
+    if self.has_num_ops_:
+      self.has_num_ops_ = 0
+      self.num_ops_ = 0
+
+  def has_num_ops(self): return self.has_num_ops_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_op()): self.set_op(x.op())
+    if (x.has_num_ops()): self.set_num_ops(x.num_ops())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_op_ != x.has_op_: return 0
+    if self.has_op_ and self.op_ != x.op_: return 0
+    if self.has_num_ops_ != x.has_num_ops_: return 0
+    if self.has_num_ops_ and self.num_ops_ != x.num_ops_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_op_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: op not set.')
+    if (not self.has_num_ops_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: num_ops not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthVarInt64(self.op_)
+    n += self.lengthVarInt64(self.num_ops_)
+    return n + 2
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_op_):
+      n += 1
+      n += self.lengthVarInt64(self.op_)
+    if (self.has_num_ops_):
+      n += 1
+      n += self.lengthVarInt64(self.num_ops_)
+    return n
+
+  def Clear(self):
+    self.clear_op()
+    self.clear_num_ops()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8)
+    out.putVarInt32(self.op_)
+    out.putVarInt32(16)
+    out.putVarInt32(self.num_ops_)
+
+  def OutputPartial(self, out):
+    if (self.has_op_):
+      out.putVarInt32(8)
+      out.putVarInt32(self.op_)
+    if (self.has_num_ops_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.num_ops_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_op(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.set_num_ops(d.getVarInt32())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_op_: res+=prefix+("op: %s\n" % self.DebugFormatInt32(self.op_))
+    if self.has_num_ops_: res+=prefix+("num_ops: %s\n" % self.DebugFormatInt32(self.num_ops_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kop = 1
+  knum_ops = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "op",
+    2: "num_ops",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.BilledOpProto'
 class DatastoreCallDetailsProto(ProtocolBuffer.ProtocolMessage):
   has_query_kind_ = 0
   query_kind_ = ""
@@ -918,9 +1165,12 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   was_successful_ = 1
   has_datastore_details_ = 0
   datastore_details_ = None
+  has_call_cost_microdollars_ = 0
+  call_cost_microdollars_ = 0
 
   def __init__(self, contents=None):
     self.call_stack_ = []
+    self.billed_ops_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1076,6 +1326,35 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
 
   def has_datastore_details(self): return self.has_datastore_details_
 
+  def call_cost_microdollars(self): return self.call_cost_microdollars_
+
+  def set_call_cost_microdollars(self, x):
+    self.has_call_cost_microdollars_ = 1
+    self.call_cost_microdollars_ = x
+
+  def clear_call_cost_microdollars(self):
+    if self.has_call_cost_microdollars_:
+      self.has_call_cost_microdollars_ = 0
+      self.call_cost_microdollars_ = 0
+
+  def has_call_cost_microdollars(self): return self.has_call_cost_microdollars_
+
+  def billed_ops_size(self): return len(self.billed_ops_)
+  def billed_ops_list(self): return self.billed_ops_
+
+  def billed_ops(self, i):
+    return self.billed_ops_[i]
+
+  def mutable_billed_ops(self, i):
+    return self.billed_ops_[i]
+
+  def add_billed_ops(self):
+    x = BilledOpProto()
+    self.billed_ops_.append(x)
+    return x
+
+  def clear_billed_ops(self):
+    self.billed_ops_ = []
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1090,6 +1369,8 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     if (x.has_was_successful()): self.set_was_successful(x.was_successful())
     for i in xrange(x.call_stack_size()): self.add_call_stack().CopyFrom(x.call_stack(i))
     if (x.has_datastore_details()): self.mutable_datastore_details().MergeFrom(x.datastore_details())
+    if (x.has_call_cost_microdollars()): self.set_call_cost_microdollars(x.call_cost_microdollars())
+    for i in xrange(x.billed_ops_size()): self.add_billed_ops().CopyFrom(x.billed_ops(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -1116,6 +1397,11 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_datastore_details_ != x.has_datastore_details_: return 0
     if self.has_datastore_details_ and self.datastore_details_ != x.datastore_details_: return 0
+    if self.has_call_cost_microdollars_ != x.has_call_cost_microdollars_: return 0
+    if self.has_call_cost_microdollars_ and self.call_cost_microdollars_ != x.call_cost_microdollars_: return 0
+    if len(self.billed_ops_) != len(x.billed_ops_): return 0
+    for e1, e2 in zip(self.billed_ops_, x.billed_ops_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1131,6 +1417,8 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     for p in self.call_stack_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_datastore_details_ and not self.datastore_details_.IsInitialized(debug_strs)): initialized = 0
+    for p in self.billed_ops_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1147,6 +1435,9 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.call_stack_)
     for i in xrange(len(self.call_stack_)): n += self.lengthString(self.call_stack_[i].ByteSize())
     if (self.has_datastore_details_): n += 1 + self.lengthString(self.datastore_details_.ByteSize())
+    if (self.has_call_cost_microdollars_): n += 1 + self.lengthVarInt64(self.call_cost_microdollars_)
+    n += 1 * len(self.billed_ops_)
+    for i in xrange(len(self.billed_ops_)): n += self.lengthString(self.billed_ops_[i].ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
@@ -1167,6 +1458,9 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.call_stack_)
     for i in xrange(len(self.call_stack_)): n += self.lengthString(self.call_stack_[i].ByteSizePartial())
     if (self.has_datastore_details_): n += 1 + self.lengthString(self.datastore_details_.ByteSizePartial())
+    if (self.has_call_cost_microdollars_): n += 1 + self.lengthVarInt64(self.call_cost_microdollars_)
+    n += 1 * len(self.billed_ops_)
+    for i in xrange(len(self.billed_ops_)): n += self.lengthString(self.billed_ops_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -1181,6 +1475,8 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     self.clear_was_successful()
     self.clear_call_stack()
     self.clear_datastore_details()
+    self.clear_call_cost_microdollars()
+    self.clear_billed_ops()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -1216,6 +1512,13 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(98)
       out.putVarInt32(self.datastore_details_.ByteSize())
       self.datastore_details_.OutputUnchecked(out)
+    if (self.has_call_cost_microdollars_):
+      out.putVarInt32(104)
+      out.putVarInt64(self.call_cost_microdollars_)
+    for i in xrange(len(self.billed_ops_)):
+      out.putVarInt32(114)
+      out.putVarInt32(self.billed_ops_[i].ByteSize())
+      self.billed_ops_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_service_call_name_):
@@ -1253,6 +1556,13 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(98)
       out.putVarInt32(self.datastore_details_.ByteSizePartial())
       self.datastore_details_.OutputPartial(out)
+    if (self.has_call_cost_microdollars_):
+      out.putVarInt32(104)
+      out.putVarInt64(self.call_cost_microdollars_)
+    for i in xrange(len(self.billed_ops_)):
+      out.putVarInt32(114)
+      out.putVarInt32(self.billed_ops_[i].ByteSizePartial())
+      self.billed_ops_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1296,6 +1606,15 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_datastore_details().TryMerge(tmp)
         continue
+      if tt == 104:
+        self.set_call_cost_microdollars(d.getVarInt64())
+        continue
+      if tt == 114:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_billed_ops().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1325,6 +1644,15 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"datastore_details <\n"
       res+=self.datastore_details_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_call_cost_microdollars_: res+=prefix+("call_cost_microdollars: %s\n" % self.DebugFormatInt64(self.call_cost_microdollars_))
+    cnt=0
+    for e in self.billed_ops_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("billed_ops%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
@@ -1342,6 +1670,8 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
   kwas_successful = 9
   kcall_stack = 10
   kdatastore_details = 12
+  kcall_cost_microdollars = 13
+  kbilled_ops = 14
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1356,7 +1686,9 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     10: "call_stack",
     11: "api_milliseconds",
     12: "datastore_details",
-  }, 12)
+    13: "call_cost_microdollars",
+    14: "billed_ops",
+  }, 14)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1371,7 +1703,9 @@ class IndividualRpcStatsProto(ProtocolBuffer.ProtocolMessage):
     10: ProtocolBuffer.Encoder.STRING,
     11: ProtocolBuffer.Encoder.NUMERIC,
     12: ProtocolBuffer.Encoder.STRING,
-  }, 12, ProtocolBuffer.Encoder.MAX_TYPE)
+    13: ProtocolBuffer.Encoder.NUMERIC,
+    14: ProtocolBuffer.Encoder.STRING,
+  }, 14, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1984,4 +2318,4 @@ class RequestStatProto(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['AggregateRpcStatsProto','KeyValProto','StackFrameProto','DatastoreCallDetailsProto','IndividualRpcStatsProto','RequestStatProto']
+__all__ = ['AggregateRpcStatsProto','KeyValProto','StackFrameProto','BilledOpProto','DatastoreCallDetailsProto','IndividualRpcStatsProto','RequestStatProto']

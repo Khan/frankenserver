@@ -115,6 +115,7 @@ except AttributeError:
   mail_stub = None
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
+from google.appengine.api.app_identity import app_identity_stub
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import dict_blob_storage
 from google.appengine.api.capabilities import capability_stub
@@ -154,6 +155,7 @@ DEFAULT_SERVER_SOFTWARE = DEFAULT_ENVIRONMENT['SERVER_SOFTWARE']
 DEFAULT_SERVER_PORT = DEFAULT_ENVIRONMENT['SERVER_PORT']
 
 
+APP_IDENTITY_SERVICE_NAME = 'app_identity_service'
 BLOBSTORE_SERVICE_NAME = 'blobstore'
 CAPABILITY_SERVICE_NAME = 'capability_service'
 CHANNEL_SERVICE_NAME = 'channel'
@@ -167,18 +169,23 @@ USER_SERVICE_NAME = 'user'
 XMPP_SERVICE_NAME = 'xmpp'
 
 
-SUPPORTED_SERVICES = [BLOBSTORE_SERVICE_NAME,
-                      CAPABILITY_SERVICE_NAME,
-                      CHANNEL_SERVICE_NAME,
-                      DATASTORE_SERVICE_NAME,
-                      IMAGES_SERVICE_NAME,
-                      MAIL_SERVICE_NAME,
-                      MEMCACHE_SERVICE_NAME,
-                      TASKQUEUE_SERVICE_NAME,
-                      URLFETCH_SERVICE_NAME,
-                      USER_SERVICE_NAME,
-                      XMPP_SERVICE_NAME,
-                     ]
+INIT_STUB_METHOD_NAMES = {
+    APP_IDENTITY_SERVICE_NAME: 'init_app_identity_stub',
+    BLOBSTORE_SERVICE_NAME: 'init_blobstore_stub',
+    CAPABILITY_SERVICE_NAME: 'init_capability_stub',
+    CHANNEL_SERVICE_NAME: 'init_channel_stub',
+    DATASTORE_SERVICE_NAME: 'init_datastore_v3_stub',
+    IMAGES_SERVICE_NAME: 'init_images_stub',
+    MAIL_SERVICE_NAME: 'init_mail_stub',
+    MEMCACHE_SERVICE_NAME: 'init_memcache_stub',
+    TASKQUEUE_SERVICE_NAME: 'init_taskqueue_stub',
+    URLFETCH_SERVICE_NAME: 'init_urlfetch_stub',
+    USER_SERVICE_NAME: 'init_user_stub',
+    XMPP_SERVICE_NAME: 'init_xmpp_stub',
+}
+
+
+SUPPORTED_SERVICES = sorted(INIT_STUB_METHOD_NAMES)
 
 
 class Error(Exception):
@@ -349,6 +356,20 @@ class Testbed(object):
     if service_name not in self._enabled_stubs:
       return None
     return self._test_stub_map.GetStub(service_name)
+
+  def init_app_identity_stub(self, enable=True):
+    """Enable the app identity stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(APP_IDENTITY_SERVICE_NAME)
+      return
+
+    stub = app_identity_stub.AppIdentityServiceStub()
+    self._register_stub(APP_IDENTITY_SERVICE_NAME, stub)
 
   def init_blobstore_stub(self, enable=True):
     """Enable the blobstore stub.
@@ -563,16 +584,10 @@ class Testbed(object):
     """
     if not self._activated:
       raise NotActivatedError('The testbed is not activated.')
-    if service_name not in SUPPORTED_SERVICES:
+    method_name = INIT_STUB_METHOD_NAMES.get(service_name, None)
+    if method_name is None:
       msg = 'The "%s" service is not supported by testbed' % service_name
       raise StubNotSupportedError(msg)
-
-
-
-    if service_name == CAPABILITY_SERVICE_NAME:
-      method_name = 'init_capability_stub'
-    else:
-      method_name = 'init_%s_stub' % service_name
 
     method = getattr(self, method_name)
     method(*args, **kwargs)

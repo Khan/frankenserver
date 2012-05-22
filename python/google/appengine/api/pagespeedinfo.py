@@ -18,7 +18,7 @@
 
 
 
-"""Page Speed configuration tools.
+"""PageSpeed configuration tools.
 
 Library for parsing pagespeed.yaml files and working with these in memory.
 """
@@ -45,7 +45,7 @@ DISABLED_REWRITERS = 'disabled_rewriters'
 
 
 class MalformedPagespeedConfiguration(Exception):
-  """Configuration file for Page Speed API is malformed."""
+  """Configuration file for PageSpeed API is malformed."""
 
 
 
@@ -56,11 +56,11 @@ class PagespeedInfoExternal(validation.Validated):
   """Describes the format of a pagespeed.yaml file.
 
   URL blacklist entries are patterns (with '?' and '*' as wildcards).  Any URLs
-  that match a pattern on the blacklist will not be optimized by Page Speed.
+  that match a pattern on the blacklist will not be optimized by PageSpeed.
 
   Rewriter names are strings (like 'CombineCss' or 'RemoveComments') describing
-  individual Page Speed rewriters.  A full list of valid rewriter names can be
-  found in the Page Speed documentation.
+  individual PageSpeed rewriters.  A full list of valid rewriter names can be
+  found in the PageSpeed documentation.
   """
   ATTRIBUTES = {
       URL_BLACKLIST: validation.Optional(
@@ -72,12 +72,13 @@ class PagespeedInfoExternal(validation.Validated):
   }
 
 
-def LoadSinglePagespeed(pagespeed_info):
+def LoadSinglePagespeed(pagespeed_info, open_fn=None):
   """Load a pagespeed.yaml file or string and return a PagespeedInfoExternal.
 
   Args:
     pagespeed_info: The contents of a pagespeed.yaml file as a string, or an
       open file object.
+    open_fn: Function for opening files. Unused.
 
   Returns:
     A PagespeedInfoExternal instance which represents the contents of the parsed

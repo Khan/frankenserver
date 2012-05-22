@@ -1042,13 +1042,15 @@ class Entity(dict):
     return pb
 
   @staticmethod
-  def FromPb(pb, validate_reserved_properties=True):
+  def FromPb(pb, validate_reserved_properties=True,
+             default_kind='<not specified>'):
     """Static factory method. Returns the Entity representation of the
     given protocol buffer (datastore_pb.Entity).
 
     Args:
       pb: datastore_pb.Entity or str encoding of a datastore_pb.Entity
       validate_reserved_properties: deprecated
+      default_kind: str, the kind to use if the pb has no key.
 
     Returns:
       Entity: the Entity representation of pb
@@ -1056,14 +1058,14 @@ class Entity(dict):
 
     if isinstance(pb, str):
       real_pb = entity_pb.EntityProto()
-      real_pb.ParseFromString(pb)
+      real_pb.ParsePartialFromString(pb)
       pb = real_pb
 
     return Entity._FromPb(
-        pb, require_valid_key=False)
+        pb, require_valid_key=False, default_kind=default_kind)
 
   @staticmethod
-  def _FromPb(pb, require_valid_key=True):
+  def _FromPb(pb, require_valid_key=True, default_kind='<not specified>'):
     """Static factory method. Returns the Entity representation of the
     given protocol buffer (datastore_pb.Entity). Not intended to be used by
     application developers.
@@ -1074,13 +1076,15 @@ class Entity(dict):
     Args:
       # a protocol buffer Entity
       pb: datastore_pb.Entity
+      default_kind: str, the kind to use if the pb has no key.
 
     Returns:
       # the Entity representation of the argument
       Entity
     """
 
-    assert pb.key().path().element_size() > 0
+    if not pb.key().path().element_size():
+      pb.mutable_key().CopyFrom(Key.from_path(default_kind, 0)._ToPb())
 
     last_path = pb.key().path().element_list()[-1]
     if require_valid_key:
@@ -1092,14 +1096,15 @@ class Entity(dict):
         assert last_path.name()
 
 
-    unindexed_properties = [p.name() for p in pb.raw_property_list()]
+    unindexed_properties = [unicode(p.name(), 'utf-8')
+                            for p in pb.raw_property_list()]
 
 
     if pb.key().has_name_space():
       namespace = pb.key().name_space()
     else:
       namespace = ''
-    e = Entity(unicode(last_path.type().decode('utf-8')),
+    e = Entity(unicode(last_path.type(), 'utf-8'),
                unindexed_properties=unindexed_properties,
                _app=pb.key().app(), namespace=namespace)
     ref = e.__key._Key__reference
@@ -1138,7 +1143,7 @@ class Entity(dict):
 
 
     for name, value in temporary_values.iteritems():
-      decoded_name = unicode(name.decode('utf-8'))
+      decoded_name = unicode(name, 'utf-8')
 
 
 
@@ -2194,6 +2199,15 @@ class MultiQuery(Query):
       results.append(bound_query.Run(config=config))
       count += 1
 
+    def GetDedupeKey(sort_order_entity):
+      if projection:
+
+        return (sort_order_entity.GetEntity().key(),
+
+               frozenset(sort_order_entity.GetEntity().iteritems()))
+      else:
+        return sort_order_entity.GetEntity().key()
+
     def IterateResults(results):
       """Iterator function to return all results in sorted order.
 
@@ -2227,14 +2241,7 @@ class MultiQuery(Query):
 
           break
         top_result = heapq.heappop(result_heap)
-        if projection:
-
-          dedupe_key = (top_result.GetEntity().key(),
-
-                        frozenset(top_result.GetEntity().iteritems()))
-        else:
-          dedupe_key = top_result.GetEntity().key()
-
+        dedupe_key = GetDedupeKey(top_result)
         if dedupe_key not in used_keys:
           result = top_result.GetEntity()
           if override:
@@ -2253,7 +2260,7 @@ class MultiQuery(Query):
         results_to_push = []
         while result_heap:
           next = heapq.heappop(result_heap)
-          if cmp(top_result, next):
+          if dedupe_key != GetDedupeKey(next):
 
             results_to_push.append(next)
             break

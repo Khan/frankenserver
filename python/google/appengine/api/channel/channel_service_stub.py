@@ -74,6 +74,9 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     apiproxy_stub.APIProxyStub.__init__(self, service_name)
     self._log = log
     self._time_func = time_func
+
+
+
     self._connected_channel_messages = {}
 
 
@@ -124,6 +127,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     response.set_token(token)
 
 
+  @apiproxy_stub.Synchronized
   def _Dynamic_SendChannelMessage(self, request, response):
     """Implementation of channel.send_message.
 
@@ -187,6 +191,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
             and all(c.isdigit() for c in expiration_sec)
             and long(expiration_sec) > self._time_func())
 
+  @apiproxy_stub.Synchronized
   def get_channel_messages(self, token):
     """Returns the pending messages for a given channel.
 
@@ -205,6 +210,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
 
     return None
 
+  @apiproxy_stub.Synchronized
   def has_channel_messages(self, token):
     """Checks to see if the given channel has any pending messages.
 
@@ -222,6 +228,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
               token, has_messages)
     return has_messages
 
+  @apiproxy_stub.Synchronized
   def pop_first_message(self, token):
     """Returns and clears the first message from the message queue.
 
@@ -239,6 +246,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
 
     return None
 
+  @apiproxy_stub.Synchronized
   def clear_channel_messages(self, token):
     """Clears all messages from the channel.
 
@@ -312,6 +320,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     self._add_event(0, DefineSendConnectPresenceCallback(client_id),
                     'channel-connect', client_id)
 
+  @apiproxy_stub.Synchronized
   def disconnect_channel_event(self, client_id):
     """Removes the channel from the list of connected channels."""
     self._log('Removing channel %s', client_id)
@@ -336,6 +345,7 @@ class ChannelServiceStub(apiproxy_stub.APIProxyStub):
     self._add_event(timeout, DefineDisconnectCallback(client_id),
                     'channel-disconnect', client_id)
 
+  @apiproxy_stub.Synchronized
   def connect_channel(self, token):
     """Marks the channel identified by the token (token) as connected."""
     client_id = self.client_id_from_token(token)

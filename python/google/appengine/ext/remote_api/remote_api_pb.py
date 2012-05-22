@@ -686,6 +686,8 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
   puts_ = None
   has_deletes_ = 0
   deletes_ = None
+  has_allow_multiple_eg_ = 0
+  allow_multiple_eg_ = 0
 
   def __init__(self, contents=None):
     self.precondition_ = []
@@ -746,12 +748,26 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_deletes(self): return self.has_deletes_
 
+  def allow_multiple_eg(self): return self.allow_multiple_eg_
+
+  def set_allow_multiple_eg(self, x):
+    self.has_allow_multiple_eg_ = 1
+    self.allow_multiple_eg_ = x
+
+  def clear_allow_multiple_eg(self):
+    if self.has_allow_multiple_eg_:
+      self.has_allow_multiple_eg_ = 0
+      self.allow_multiple_eg_ = 0
+
+  def has_allow_multiple_eg(self): return self.has_allow_multiple_eg_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.precondition_size()): self.add_precondition().CopyFrom(x.precondition(i))
     if (x.has_puts()): self.mutable_puts().MergeFrom(x.puts())
     if (x.has_deletes()): self.mutable_deletes().MergeFrom(x.deletes())
+    if (x.has_allow_multiple_eg()): self.set_allow_multiple_eg(x.allow_multiple_eg())
 
   def Equals(self, x):
     if x is self: return 1
@@ -762,6 +778,8 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_puts_ and self.puts_ != x.puts_: return 0
     if self.has_deletes_ != x.has_deletes_: return 0
     if self.has_deletes_ and self.deletes_ != x.deletes_: return 0
+    if self.has_allow_multiple_eg_ != x.has_allow_multiple_eg_: return 0
+    if self.has_allow_multiple_eg_ and self.allow_multiple_eg_ != x.allow_multiple_eg_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -778,6 +796,7 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.precondition_)): n += self.precondition_[i].ByteSize()
     if (self.has_puts_): n += 1 + self.lengthString(self.puts_.ByteSize())
     if (self.has_deletes_): n += 1 + self.lengthString(self.deletes_.ByteSize())
+    if (self.has_allow_multiple_eg_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -786,12 +805,14 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.precondition_)): n += self.precondition_[i].ByteSizePartial()
     if (self.has_puts_): n += 1 + self.lengthString(self.puts_.ByteSizePartial())
     if (self.has_deletes_): n += 1 + self.lengthString(self.deletes_.ByteSizePartial())
+    if (self.has_allow_multiple_eg_): n += 2
     return n
 
   def Clear(self):
     self.clear_precondition()
     self.clear_puts()
     self.clear_deletes()
+    self.clear_allow_multiple_eg()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.precondition_)):
@@ -806,6 +827,9 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.deletes_.ByteSize())
       self.deletes_.OutputUnchecked(out)
+    if (self.has_allow_multiple_eg_):
+      out.putVarInt32(48)
+      out.putBoolean(self.allow_multiple_eg_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.precondition_)):
@@ -820,6 +844,9 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.deletes_.ByteSizePartial())
       self.deletes_.OutputPartial(out)
+    if (self.has_allow_multiple_eg_):
+      out.putVarInt32(48)
+      out.putBoolean(self.allow_multiple_eg_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -838,6 +865,9 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_deletes().TryMerge(tmp)
+        continue
+      if tt == 48:
+        self.set_allow_multiple_eg(d.getBoolean())
         continue
 
 
@@ -863,6 +893,7 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"deletes <\n"
       res+=self.deletes_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_allow_multiple_eg_: res+=prefix+("allow_multiple_eg: %s\n" % self.DebugFormatBool(self.allow_multiple_eg_))
     return res
 
 
@@ -874,6 +905,7 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
   kPreconditionhash = 3
   kputs = 4
   kdeletes = 5
+  kallow_multiple_eg = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -882,7 +914,8 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
     3: "hash",
     4: "puts",
     5: "deletes",
-  }, 5)
+    6: "allow_multiple_eg",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -891,7 +924,8 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

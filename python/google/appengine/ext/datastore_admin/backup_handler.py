@@ -62,6 +62,11 @@ from google.appengine.ext.mapreduce import output_writers
 XSRF_ACTION = 'backup'
 BUCKET_PATTERN = (r'^([a-zA-Z0-9]+(\-[a-zA-Z0-9]+)*)'
                   r'(\.([a-zA-Z0-9]+(\-[a-zA-Z0-9]+)*))*$')
+MAX_BUCKET_LEN = 222
+MIN_BUCKET_LEN = 3
+MAX_BUCKET_SEGMENT_LEN = 63
+NUM_KINDS_DEFERRED_THRESHOLD = 10
+MAX_BLOBS_PER_DELETE = 500
 
 
 class ConfirmBackupHandler(webapp.RequestHandler):
@@ -116,20 +121,18 @@ class ConfirmDeleteBackupHandler(webapp.RequestHandler):
       handler: the webapp.RequestHandler invoking the method
     """
     requested_backup_ids = handler.request.get_all('backup_id')
-    backup_names = []
-    backup_ids = []
+    backups = []
     gs_warning = False
     if requested_backup_ids:
       for backup in db.get(requested_backup_ids):
-        backup_ids.append(backup.key())
-        backup_names.append(backup.name)
-        gs_warning |= backup.filesystem == files.GS_FILESYSTEM
+        if backup:
+          backups.append(backup)
+          gs_warning |= backup.filesystem == files.GS_FILESYSTEM
     template_params = {
         'form_target': DoBackupDeleteHandler.SUFFIX,
         'app_id': handler.request.get('app_id'),
         'cancel_url': handler.request.get('cancel_url'),
-        'backup_ids': backup_ids,
-        'backup_names': backup_names,
+        'backups': backups,
         'xsrf_token': utils.CreateXsrfToken(XSRF_ACTION),
         'gs_warning': gs_warning
     }
@@ -290,7 +293,7 @@ class BaseDoHandler(webapp.RequestHandler):
     Returns:
       The exception error string.
     """
-    return str(type(e)) + ': ' + str(e)
+    return '%s: %s' % (type(e), e)
 
 
 class BackupValidationException(Exception):
@@ -331,7 +334,7 @@ def _perform_backup(kinds,
 
     if not gs_bucket_name:
       raise BackupValidationException('Bucket name missing.')
-    bucket_name = gs_bucket_name.split('/')[0]
+    bucket_name = gs_bucket_name.split('/', 1)[0]
     validate_gs_bucket_name(bucket_name)
     if not is_accessible_bucket_name(bucket_name):
       raise BackupValidationException(
@@ -365,15 +368,16 @@ def _perform_backup(kinds,
           mapper_params, mapreduce_params, queue)]
     else:
       retry_options = taskqueue.TaskRetryOptions(task_retry_limit=1)
-      return [('task', deferred.defer(_run_map_jobs, job_operation.key(),
-                                      backup_info.key(), kinds, job_name,
+      deferred_task = deferred.defer(_run_map_jobs, job_operation.key(),
+                                     backup_info.key(), kinds, job_name,
                                       BACKUP_HANDLER, INPUT_READER,
                                       OUTPUT_WRITER,
                                       mapper_params,
                                       mapreduce_params,
                                       queue, _queue=queue,
                                       _url=utils.ConfigDefaults.DEFERRED_PATH,
-                                      _retry_options=retry_options).name)]
+                                      _retry_options=retry_options)
+      return [('task', deferred_task.name)]
   except Exception:
     logging.exception('Failed to start a datastore backup job[s] for "%s".',
                       job_name)
@@ -429,6 +433,7 @@ class BackupLinkHandler(webapp.RequestHandler):
       self.errorResponse(e.message)
 
   def errorResponse(self, message):
+    logging.error('Could not create backup via link: %s', message)
     self.response.set_status(400, message)
 
 
@@ -460,9 +465,27 @@ class DoBackupHandler(BaseDoHandler):
       return [('error', e.message)]
 
 
-def _run_map_jobs(job_operation_key, backup_info_key, kinds, job_name,
-                  backup_handler, input_reader, output_writer, mapper_params,
+def _run_map_jobs(job_operation_key,
+                  backup_info_key, kinds, job_name, backup_handler,
+                  input_reader, output_writer, mapper_params,
                   mapreduce_params, queue):
+  """Creates backup/restore MR jobs for the given operation.
+
+  Args:
+    job_operation_key: a key of utils.DatastoreAdminOperation entity.
+    backup_info_key: a key of BackupInformation entity.
+    kinds: a list of kinds to run the M/R for.
+    job_name: the M/R job name prefix.
+    backup_handler: M/R job completion handler.
+    input_reader: M/R input reader.
+    output_writer: M/R output writer.
+    mapper_params: custom parameters to pass to mapper.
+    mapreduce_params: dictionary parameters relevant to the whole job.
+    queue: the name of the queue that will be used by the M/R.
+
+  Returns:
+    Ids of all started mapper jobs as list of strings.
+  """
   backup_info = BackupInformation.get(backup_info_key)
   if not backup_info:
     return []
@@ -497,20 +520,29 @@ def delete_backup_files(filesystem, backup_files):
 
     if filesystem == files.BLOBSTORE_FILESYSTEM:
 
-      blobstore_api.delete([files.blobstore.get_blob_key(filename)
-                            for filename in backup_files])
+
+      blob_keys = []
+      for fname in backup_files:
+        blob_key = files.blobstore.get_blob_key(fname)
+        if blob_key:
+          blob_keys.append(blob_key)
+          if len(blob_keys) == MAX_BLOBS_PER_DELETE:
+            blobstore_api.delete(blob_keys)
+            blob_keys = []
+      if blob_keys:
+        blobstore_api.delete(blob_keys)
 
 
 def delete_backup_info(backup_info):
   """Deletes a backup including its associated files and other metadata."""
   if backup_info.blob_files:
     delete_backup_files(backup_info.filesystem, backup_info.blob_files)
-    backup_info.delete()
+    backup_info.delete(force_writes=True)
   else:
     kinds_backup_files = tuple(backup_info.get_kind_backup_files())
     delete_backup_files(backup_info.filesystem, itertools.chain(*(
         kind_backup_files.files for kind_backup_files in kinds_backup_files)))
-    db.delete(kinds_backup_files + (backup_info,))
+    db.delete(kinds_backup_files + (backup_info,), force_writes=True)
 
 
 class DoBackupDeleteHandler(BaseDoHandler):
@@ -539,7 +571,8 @@ class DoBackupDeleteHandler(BaseDoHandler):
         error = str(e)
 
     if error:
-      self.redirect(utils.config.BASE_PATH + '?error=%s' % error)
+      query = urllib.urlencode([('error', error)])
+      self.redirect('%s?%s' % (utils.config.BASE_PATH, query))
     else:
       self.redirect(utils.config.BASE_PATH)
 
@@ -622,15 +655,10 @@ class DoBackupRestoreHandler(BaseDoHandler):
           'backup_name': backup.name,
           'force_ops_writes': True
       }
-      return [('job', utils.StartMap(
-          job_operation.key(),
-          job_name,
-          self.BACKUP_RESTORE_HANDLER,
-          self.INPUT_READER,
-          None,
-          mapper_params,
-          mapreduce_params,
-          queue_name=queue))]
+      job = utils.StartMap(job_operation.key(), job_name,
+                           self.BACKUP_RESTORE_HANDLER, self.INPUT_READER, None,
+                           mapper_params, mapreduce_params, queue_name=queue)
+      return [('job', job)]
     except Exception:
       logging.exception('Failed to start a restore from backup job "%s".',
                         job_name)
@@ -654,7 +682,7 @@ class BackupInformation(db.Model):
 
   @classmethod
   def kind(cls):
-    return '_AE_Backup_Information'
+    return utils.BACKUP_INFORMATION_KIND
 
   @classmethod
   def name_exists(cls, backup_name):
@@ -739,9 +767,9 @@ def drop_empty_files(filenames):
   """Deletes empty files and returns filenames minus the deleted ones."""
   non_empty_filenames = []
   empty_file_keys = []
-  blobs_info = blobstore.BlobInfo.get([files.blobstore.get_blob_key(fn)
-                                       for fn in filenames])
-  for filename, blob_info in zip(filenames, blobs_info):
+  blobs_info = blobstore.BlobInfo.get(
+      [files.blobstore.get_blob_key(fn) for fn in filenames])
+  for filename, blob_info in itertools.izip(filenames, blobs_info):
     if blob_info:
       if blob_info.size > 0:
         non_empty_filenames.append(filename)
@@ -770,18 +798,9 @@ class RestoreEntity(object):
   """A class which restore the entity to datastore."""
 
   def __init__(self):
-    self.initialized = False
-    self.kind_filter = None
-
-  def initialize(self):
-    if self.initialized:
-      return
-
     mapper_params = context.get().mapreduce_spec.mapper.params
     kind_filter = mapper_params.get('kind_filter')
-    if kind_filter:
-      self.kind_filter = set(kind_filter)
-    self.initialized = True
+    self.kind_filter = set(kind_filter) if kind_filter else None
 
   def map(self, record):
     """Restore entity map handler.
@@ -792,9 +811,8 @@ class RestoreEntity(object):
     Yields:
       A operation.db.Put for the mapped entity
     """
-    self.initialize()
     pb = entity_pb.EntityProto(contents=record)
-    entity = datastore.Entity._FromPb(pb)
+    entity = datastore.Entity.FromPb(pb)
     if not self.kind_filter or entity.kind() in self.kind_filter:
       yield op.db.Put(entity)
 
@@ -811,20 +829,21 @@ def validate_gs_bucket_name(bucket_name):
   Raises:
     BackupValidationException: If the bucket name is invalid.
   """
+  if len(bucket_name) > MAX_BUCKET_LEN:
+    raise BackupValidationException(
+        'Bucket name length should not be longer than %d' % MAX_BUCKET_LEN)
+  if len(bucket_name) < MIN_BUCKET_LEN:
+    raise BackupValidationException(
+        'Bucket name length should be longer than %d' % MIN_BUCKET_LEN)
   if bucket_name.lower().startswith('goog'):
     raise BackupValidationException(
-        'Bucket name should not start with the goog prefix')
-  if len(bucket_name) > 222:
-    raise BackupValidationException(
-        'Bucket name length should not be longer than 222')
-  if len(bucket_name) < 3:
-    raise BackupValidationException(
-        'Bucket name length should be longer than 3')
+        'Bucket name should not start with a "goog" prefix')
   bucket_elements = bucket_name.split('.')
   for bucket_element in bucket_elements:
-    if len(bucket_element) > 63:
+    if len(bucket_element) > MAX_BUCKET_SEGMENT_LEN:
       raise BackupValidationException(
-          'Segment length of bucket name should not be longer than 63')
+          'Segment length of bucket name should not be longer than %d' %
+          MAX_BUCKET_SEGMENT_LEN)
   if not re.match(BUCKET_PATTERN, bucket_name):
     raise BackupValidationException('Invalid bucket name "%s"' % bucket_name)
 
@@ -832,22 +851,23 @@ def validate_gs_bucket_name(bucket_name):
 def is_accessible_bucket_name(bucket_name):
   """Returns True if the application has access to the specified bucket."""
   scope = 'https://www.googleapis.com/auth/devstorage.read_write'
-  url = 'https://' + bucket_name + '.commondatastorage.googleapis.com/'
+  url = 'https://%s.commondatastorage.googleapis.com/' % bucket_name
   auth_token, _ = app_identity.get_access_token(scope)
   result = urlfetch.fetch(url, method=urlfetch.HEAD, headers={
-      'Authorization': 'OAuth ' + auth_token, 'x-goog-api-version': '2'})
+      'Authorization': 'OAuth %s' % auth_token,
+      'x-goog-api-version': '2'})
   return result and result.status_code == 200
 
 
 
-def get_queue_names(app_id=None):
+def get_queue_names(app_id=None, max_rows=100):
   """Returns a list with all non-special queue names for app_id."""
   rpc = apiproxy_stub_map.UserRPC('taskqueue')
   request = taskqueue_service_pb.TaskQueueFetchQueuesRequest()
   response = taskqueue_service_pb.TaskQueueFetchQueuesResponse()
   if app_id:
     request.set_app_id(app_id)
-  request.set_max_rows(100)
+  request.set_max_rows(max_rows)
   queues = ['default']
   try:
     rpc.make_call('FetchQueues', request, response)
@@ -858,8 +878,8 @@ def get_queue_names(app_id=None):
           not queue.queue_name().startswith('__') and
           queue.queue_name() != 'default'):
         queues.append(queue.queue_name())
-  except Exception, e:
-    logging.exception('Failed to get queue names: %s', str(e))
+  except Exception:
+    logging.exception('Failed to get queue names.')
   return queues
 
 

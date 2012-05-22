@@ -433,7 +433,7 @@ class HttpRpcServer(AbstractRpcServer):
 Without the ssl module, the identity of the remote host cannot be verified, and
 connections may NOT be secure. To fix this, please install the ssl module from
 http://pypi.python.org/pypi/ssl .
-To learn more, see http://code.google.com/appengine/kb/general.html#rpcssl .""")
+To learn more, see https://developers.google.com/appengine/kb/general#rpcssl""")
     super(HttpRpcServer, self)._Authenticate()
     if self.cookie_jar.filename is not None and self.save_cookies:
       logger.info("Saving authentication cookies to %s",

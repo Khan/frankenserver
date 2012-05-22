@@ -3,6 +3,44 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.6.6
+===============================
+- On May 8, 2012 we released an experimental Search API.
+    http://googleappengine.blogspot.com/2012/05/looking-for-search-find-it-on-google.html
+- The Admin Console now displays the quotas for Search API Calls and Search
+  Stored Data.
+- The Search API has deprecated the order_id attribute on Document class. It has
+  been replaced with the rank attribute.
+- The Search API has deprecated the document attribute on ListResponse and
+  replaced it with a result attribute. Also the document_id attribute on
+  OperationResult class is deprecated and replaced with the id attribute.
+- Fixed an issue where unicode is not consistently handled in the Python Search
+  API.
+- App creation for apps using the Master/Slave datastore is now restricted to
+  only those users who already own a Master/Slave app.
+- Apps with billing enabled are now able to configure up to 100 cron jobs.
+- Admin Console can no longer be included in an <iframe>.  To prevent
+  clickjacking attacks on the Admin Console, we are now setting
+  X-Frame-Options: SAMEORIGIN.  To read more about clickjacking, please read:
+  https://www.owasp.org/index.php/Clickjacking.
+- The Admin Console will now periodically prompt administrators to take an
+  optional App Engine satisfaction survey.
+- You can now use the third party PyAMF library with Python 2.7. This is
+  available as an experimental feature.
+- For NDB, Rollback has been added to the default list of flow exceptions.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=179
+- Fixed an issue where large datastore backups were unable to be deleted.
+- Fixed an issue where datastore backups fail due to an ASCII decoding issue.
+- Fixed an issue where the SDK did not import subpackages correctly when using
+  import hooks.
+- Fixed an issue where running a projection query on a multi-valued property
+  with an equality filter did not return any results.
+- Fixed an issue where unicode environment variables were dropped in Appstats
+  when using Python 2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=6448
+- Fixed an issue where XG transactions did not work with the Remote API.
+    http://code.google.com/p/googleappengine/issues/detail?id=7238
+
 Version 1.6.5
 ===============================
 - You can now perform datastore queries that return a subset of your entity

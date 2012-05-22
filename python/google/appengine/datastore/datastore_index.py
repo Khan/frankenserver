@@ -110,11 +110,12 @@ class IndexDefinitions(validation.Validated):
       }
 
 
-def ParseIndexDefinitions(document):
+def ParseIndexDefinitions(document, open_fn=None):
   """Parse an individual index definitions document from string or stream.
 
   Args:
     document: Yaml document as a string or file-like stream.
+    open_fn: Function for opening files. Unused.
 
   Raises:
     EmptyConfigurationFile when the configuration file is empty.

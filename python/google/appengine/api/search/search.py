@@ -48,7 +48,6 @@ from google.appengine.runtime import apiproxy_errors
 
 __all__ = [
     'AddDocumentError',
-    'AddDocumentResult',
     'AddError',
     'AddResult',
     'AtomField',
@@ -63,7 +62,6 @@ __all__ = [
     'Index',
     'InternalError',
     'InvalidRequest',
-    'ListDocumentsResponse',
     'ListIndexesResponse',
     'ListResponse',
     'MatchScorer',
@@ -72,7 +70,6 @@ __all__ = [
     'Query',
     'QueryOptions',
     'RemoveDocumentError',
-    'RemoveDocumentResult',
     'RemoveError',
     'RemoveResult',
     'RescoringMatchScorer',
@@ -128,10 +125,19 @@ class InvalidRequest(Error):
   """Indicates an invalid request was made on the search API by the client."""
 
 
-class DocumentOperationResult(object):
+def _ConvertToUnicode(some_string):
+  """Convert UTF-8 encoded string to unicode."""
+  if some_string is None:
+    return None
+  if isinstance(some_string, unicode):
+    return some_string
+  return unicode(some_string, 'utf-8')
+
+
+class OperationResult(object):
   """Represents result of individual operation of a batch index or removal.
 
-  This is an abstract class. Deprecated. Use OperationResult.
+  This is an abstract class.
   """
 
   OK, INVALID_REQUEST, TRANSIENT_ERROR, INTERNAL_ERROR = (
@@ -139,29 +145,24 @@ class DocumentOperationResult(object):
 
   _CODES = frozenset([OK, INVALID_REQUEST, TRANSIENT_ERROR, INTERNAL_ERROR])
 
-  def __init__(self, code, message=None, document_id=None):
+  def __init__(self, code, message=None, id=None):
     """Initializer.
 
     Args:
       code: The error or success code of the operation.
       message: An error message associated with any error.
-      document_id: The id of the document some operation was performed on.
+      id: The id of the object some operation was performed on.
 
     Raises:
       TypeError: If an unknown attribute is passed.
       ValueError: If an unknown code is passed.
     """
-    warnings.warn('DocumentOperationResult is deprecated. '
-                  'Use OperationResult instead',
-                  DeprecationWarning, stacklevel=2)
-    self._message = message
-    if self._message is not None and not isinstance(self._message, basestring):
-      raise TypeError('message must be a string: %r' % self._message)
+    self._message = _ConvertToUnicode(message)
     self._code = code
     if self._code not in self._CODES:
       raise ValueError('Unknown operation result code %r, must be one of %s'
                        % (self._code, self._CODES))
-    self._document_id = document_id
+    self._id = _ConvertToUnicode(id)
 
   @property
   def code(self):
@@ -177,46 +178,36 @@ class DocumentOperationResult(object):
   def document_id(self):
     """Returns the Id of the document the operation was performed on.
 
-    Deprecated. Use OperationResult.object_id.
+    Deprecated. Use id instead.
 
     Returns:
       the Id.
     """
-    return self._document_id
-
-  def __repr__(self):
-    return _Repr(self, [('code', self.code), ('message', self.message),
-                        ('document_id', self.document_id)])
-
-
-class OperationResult(DocumentOperationResult):
-  """Represents result of individual operation of a batch index or removal.
-
-  This is an abstract class.
-  """
-
-  def __init__(self, code, message=None, object_id=None):
-    """Initializer.
-
-    Args:
-      code: The error or success code of the operation.
-      message: An error message associated with any error.
-      object_id: The id of the object some operation was performed on.
-
-    Raises:
-      TypeError: If an unknown attribute is passed.
-      ValueError: If an unknown code is passed.
-    """
-    super(OperationResult, self).__init__(code, message, object_id)
+    warnings.warn('document_id is deprecated. Use id instead',
+                  DeprecationWarning, stacklevel=2)
+    return self._id
 
   @property
   def object_id(self):
+    """Returns the Id of the object the operation was performed on.
+
+    Deprecated. Use id instead.
+
+    Returns:
+      the Id.
+    """
+    warnings.warn('object_id is deprecated. Use id instead',
+                  DeprecationWarning, stacklevel=2)
+    return self._id
+
+  @property
+  def id(self):
     """Returns the Id of the object the operation was performed on."""
-    return self.document_id
+    return self._id
 
   def __repr__(self):
     return _Repr(self, [('code', self.code), ('message', self.message),
-                        ('object_id', self.object_id)])
+                        ('id', self.id)])
 
 
 _ERROR_OPERATION_CODE_MAP = {
@@ -230,57 +221,35 @@ _ERROR_OPERATION_CODE_MAP = {
     }
 
 
-class AddDocumentResult(OperationResult):
-  """The result of indexing a single document. Deprecated. Use AddResult."""
+class _DocumentOperationResult(OperationResult):
+  """Represents result of individual operation of a batch index or removal.
+
+  This is an abstract class. Deprecated. Use OperationResult instead.
+  """
+
+  def __getattribute__(self, name):
+    warnings.warn('DocumentOperationResult.%s is deprecated. '
+                  'Use OperationResult.%s instead.' % (name, name))
+    return OperationResult.__getattribute__(self, name)
 
 
-class AddResult(AddDocumentResult):
+DocumentOperationResult = _DocumentOperationResult(
+    code=OperationResult.OK, message=None)
+
+
+class AddResult(OperationResult):
   """The result of indexing a single object."""
 
 
-class RemoveDocumentResult(OperationResult):
-  """The result of deleting a single document. Deprecated. Use RemoveResult."""
-
-
-class RemoveResult(RemoveDocumentResult):
+class RemoveResult(OperationResult):
   """The result of deleting a single document."""
 
 
 class AddDocumentError(Error):
-  """Indicates some error occurred indexing one of the documents requested.
+  """Indicates some error occurred indexing one of the objects requested.
 
-  Deprecated. Use AddError.
+  Deprecated. Use AddError instead.
   """
-
-  def __init__(self, message, document_results):
-    """Initializer.
-
-    Args:
-      message: A message detailing the cause of the failure to index some
-        document.
-      document_results: A list of AddDocumentResult corresponding to
-        the list of Document requested to be indexed.
-    """
-    warnings.warn('AddDocumentError is deprecated. '
-                  'Use AddError instead',
-                  DeprecationWarning, stacklevel=2)
-    super(AddDocumentError, self).__init__(message)
-    self._document_results = document_results
-
-  @property
-  def document_results(self):
-    """Returns AddDocumentResult list corresponding to Documents indexed.
-
-    Deprecated. Use AddError.results.
-
-    Returns:
-      the AddDocumentResult.
-    """
-    return self._document_results
-
-
-class AddError(AddDocumentError):
-  """Indicates some error occurred indexing one of the objects requested."""
 
   def __init__(self, message, results):
     """Initializer.
@@ -291,42 +260,35 @@ class AddError(AddDocumentError):
       results: A list of AddResult corresponding to the list of objects
         requested to be indexed.
     """
-    super(AddError, self).__init__(message, results)
+    super(AddDocumentError, self).__init__(message)
+    self._results = results
+
+  @property
+  def document_results(self):
+    """Returns AddResult list corresponding to Documents indexed.
+
+    Deprecated. Use AddError.results.
+
+    Returns:
+      The list of AddResult.
+    """
+    warnings.warn('document_results is deprecated. Use results instead. '
+                  '"except AddDocumentError" is deprecated. Use '
+                  '"except AddError" instead.',
+                  DeprecationWarning, stacklevel=2)
+    return self._results
+
+
+class AddError(AddDocumentError):
+  """Indicates some error occurred indexing one of the objects requested."""
 
   @property
   def results(self):
     """Returns AddResult list corresponding to objects indexed."""
-    return self.document_results
+    return self._results
 
 
 class RemoveDocumentError(Error):
-  """Indicates some error occured deleting one of the documents requested."""
-
-  def __init__(self, message, document_results):
-    """Initializer.
-
-    Args:
-      message: A message detailing the cause of the failure to remove some
-        document.
-      document_results: A list of RemoveDocumentResult corresponding to the
-        list of Ids of Documents requested to be removed.
-    """
-    super(RemoveDocumentError, self).__init__(message)
-    self._document_results = document_results
-
-  @property
-  def document_results(self):
-    """Returns RemoveDocumentResult list corresponding to Documents removed.
-
-    Deprecated. Use RemoveError.results.
-
-    Returns:
-      the RemoveDocumentResult.
-    """
-    return self._document_results
-
-
-class RemoveError(RemoveDocumentError):
   """Indicates some error occured deleting one of the objects requested."""
 
   def __init__(self, message, results):
@@ -338,12 +300,32 @@ class RemoveError(RemoveDocumentError):
       results: A list of RemoveResult corresponding to the list of Ids of
         objects requested to be removed.
     """
-    super(RemoveError, self).__init__(message, results)
+    super(RemoveDocumentError, self).__init__(message)
+    self._results = results
+
+  @property
+  def document_results(self):
+    """Returns RemoveResult list corresponding to Documents removed.
+
+    Deprecated. Use RemoveError.results.
+
+    Returns:
+      The list of RemoveResult.
+    """
+    warnings.warn('document_results is deprecated. Use results instead. '
+                  '"except RemoveDocumentError" is deprecated. Use '
+                  '"except RemoveError" instead.',
+                  DeprecationWarning, stacklevel=2)
+    return self._results
+
+
+class RemoveError(RemoveDocumentError):
+  """Indicates some error occured deleting one of the objects requested."""
 
   @property
   def results(self):
     """Returns RemoveResult list corresponding to Documents removed."""
-    return self.document_results
+    return self._results
 
 
 _ERROR_MAP = {
@@ -423,7 +405,8 @@ def _CheckNumber(value, name):
     TypeError: If the value is not a number.
   """
   if not isinstance(value, (int, long, float)):
-    raise TypeError('%s must be a number' % name)
+    raise TypeError('%s must be a int, long or float, got %s' %
+                    (name, value.__class__.__name__))
   return value
 
 
@@ -475,16 +458,12 @@ def _ValidateString(value,
   if value is None and empty_ok:
     return
   if value is not None and not isinstance(value, basestring):
-    raise type_exception('%s should be a string; received %s (a %s):' %
-                         (name, value, datastore_types.typename(value)))
+    raise type_exception('%s must be a basestring; got %s:' %
+                         (name, value.__class__.__name__))
   if not value and not empty_ok:
     raise value_exception('%s must not be empty.' % name)
 
-  encoded_value = value
-  if isinstance(value, unicode):
-    encoded_value = value.encode('utf-8')
-
-  if len(encoded_value) > max_len:
+  if len(value.encode('utf-8')) > max_len:
     raise value_exception('%s must be under %d bytes.' % (name, max_len))
   return value
 
@@ -571,6 +550,11 @@ def _ConvertToList(arg):
   return []
 
 
+def _ConvertToUnicodeList(arg):
+  """Converts arg to a list of unicode objects."""
+  return [_ConvertToUnicode(value) for value in _ConvertToList(arg)]
+
+
 def _CheckDocumentId(doc_id):
   """Checks doc_id is a valid document identifier, and returns it.
 
@@ -601,7 +585,8 @@ def _CheckAtom(atom):
 def _CheckDate(date):
   """Checks the date is a datetime.date, but not a datetime.datetime."""
   if not isinstance(date, datetime.date) or isinstance(date, datetime.datetime):
-    raise TypeError('date %s must be a date but not a datetime' % date)
+    raise TypeError('date must be a date but not a datetime, got %s' %
+                    date.__class__.__name__)
   return date
 
 
@@ -610,10 +595,11 @@ def _CheckLanguage(language):
   if language is None:
     return None
   if not isinstance(language, basestring):
-    raise TypeError('language code must be a string')
+    raise TypeError('language must be a basestring, got %s' %
+                    language.__class__.__name__)
   if len(language) != _LANGUAGE_LENGTH:
-    raise ValueError('language should have a length of %d'
-                     % _LANGUAGE_LENGTH)
+    raise ValueError('language should have a length of %d, got %s'
+                     % (_LANGUAGE_LENGTH, len(language)))
   return language
 
 
@@ -624,8 +610,8 @@ def _CheckSortLimit(limit):
 
 def _Repr(class_instance, ordered_dictionary):
   """Generates an unambiguous representation for instance and ordered dict."""
-  return 'search.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
-      ["%s='%s'" % (key, value) for (key, value) in ordered_dictionary
+  return u'search.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
+      ['%s=%r' % (key, value) for (key, value) in ordered_dictionary
        if value is not None and value != []]))
 
 
@@ -669,7 +655,7 @@ def list_indexes(namespace='', offset=None, limit=20,
   if namespace is None:
     namespace = namespace_manager.get_namespace()
   if namespace is None:
-    namespace = ''
+    namespace = u''
   namespace_manager.validate_namespace(namespace, exception=ValueError)
   params.set_namespace(namespace)
   if offset is not None:
@@ -732,9 +718,9 @@ class Field(object):
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
-    self._name = _CheckFieldName(name)
+    self._name = _CheckFieldName(_ConvertToUnicode(name))
     self._value = self._CheckValue(value)
-    self._language = _CheckLanguage(language)
+    self._language = _CheckLanguage(_ConvertToUnicode(language))
 
   @property
   def name(self):
@@ -781,14 +767,18 @@ class Field(object):
   def __str__(self):
     return repr(self)
 
+  def _CopyStringValueToProtocolBuffer(self, field_value_pb):
+    """Copies value to a string value in proto buf."""
+    field_value_pb.set_string_value(self.value.encode('utf-8'))
+
 
 def _CopyFieldToProtocolBuffer(field, pb):
   """Copies field's contents to a document_pb.Field protocol buffer."""
-  pb.set_name(field.name)
+  pb.set_name(field.name.encode('utf-8'))
   field_value_pb = pb.mutable_value()
   if field.language:
-    field_value_pb.set_language(field.language)
-  if field.value:
+    field_value_pb.set_language(field.language.encode('utf-8'))
+  if field.value is not None:
     field._CopyValueToProtocolBuffer(field_value_pb)
   return pb
 
@@ -812,17 +802,14 @@ class TextField(Field):
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, name, value, language)
+    Field.__init__(self, name, _ConvertToUnicode(value), language)
 
   def _CheckValue(self, value):
     return _CheckText(value)
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.TEXT)
-    if isinstance(self.value, unicode):
-      field_value_pb.set_string_value(self.value.encode('utf-8'))
-    else:
-      field_value_pb.set_string_value(self.value)
+    self._CopyStringValueToProtocolBuffer(field_value_pb)
 
 
 class HtmlField(Field):
@@ -845,14 +832,14 @@ class HtmlField(Field):
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, name, value, language)
+    Field.__init__(self, name, _ConvertToUnicode(value), language)
 
   def _CheckValue(self, value):
     return _CheckHtml(value)
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.HTML)
-    field_value_pb.set_string_value(self.value)
+    self._CopyStringValueToProtocolBuffer(field_value_pb)
 
 
 class AtomField(Field):
@@ -874,14 +861,14 @@ class AtomField(Field):
       TypeError: If value is not a string.
       ValueError: If value is longer than allowed.
     """
-    Field.__init__(self, name, value, language)
+    Field.__init__(self, name, _ConvertToUnicode(value), language)
 
   def _CheckValue(self, value):
     return _CheckAtom(value)
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.ATOM)
-    field_value_pb.set_string_value(self.value)
+    self._CopyStringValueToProtocolBuffer(field_value_pb)
 
 
 class DateField(Field):
@@ -956,14 +943,33 @@ def _GetValue(value_pb):
   raise TypeError('unknown FieldValue type %d' % value_pb.type())
 
 
+_STRING_TYPES = set([document_pb.FieldValue.TEXT,
+                     document_pb.FieldValue.HTML,
+                     document_pb.FieldValue.ATOM])
+
+
+def _DecodeUTF8(pb_value):
+  """Decodes a UTF-8 encoded string into unicode."""
+  if pb_value is not None:
+    return pb_value.decode('utf-8')
+  return None
+
+
+def _DecodeValue(pb_value, val_type):
+  """Decodes a possible UTF-8 encoded string value to unicode."""
+  if val_type in _STRING_TYPES:
+    return _DecodeUTF8(pb_value)
+  return pb_value
+
+
 def _NewFieldFromPb(pb):
   """Constructs a Field from a document_pb.Field protocol buffer."""
-  name = pb.name()
-  value = _GetValue(pb.value())
+  name = _DecodeUTF8(pb.name())
+  val_type = pb.value().type()
+  value = _DecodeValue(_GetValue(pb.value()), val_type)
   lang = None
   if pb.value().has_language():
-    lang = pb.value().language()
-  val_type = pb.value().type()
+    lang = _DecodeUTF8(pb.value().language())
   if val_type == document_pb.FieldValue.TEXT:
     return TextField(name, value, lang)
   elif val_type == document_pb.FieldValue.HTML:
@@ -983,7 +989,7 @@ class Document(object):
   The following example shows how to create a document consisting of a set
   of fields, some plain text and some in HTML.
 
-  Document(doc_id='document id',
+  Document(doc_id='document_id',
            fields=[TextField(name='subject', value='going for dinner'),
                    HtmlField(name='body',
                              value='<html>I found a place.</html>',
@@ -993,7 +999,8 @@ class Document(object):
   """
   _FIRST_JAN_2011 = datetime.datetime(2011, 1, 1)
 
-  def __init__(self, doc_id=None, fields=None, language='en', order_id=None):
+  def __init__(self, doc_id=None, fields=None, language='en', order_id=None,
+               rank=None):
     """Initializer.
 
     Args:
@@ -1003,25 +1010,39 @@ class Document(object):
       fields: An iterable of Field instances representing the content of the
         document.
       language: The code of the language used in the field values.
-      order_id: The id used to specify the order this document will be returned
-        in search results, where 0 <= order_id <= sys.maxint. If not specified,
-        the number of seconds since 1st Jan 2011 is used. Documents are returned
-        in descending order of the order ID.
+      order_id: Same as rank, deprecated.
+      rank: The rank of this document used to specify the order in which
+        documents are returned by search. Rank must be a non-negative integer.
+        If not specified, the number of seconds since 1st Jan 2011 is used.
+        Documents are returned in descending order of their rank, in absence
+        of sorting or scoring options.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
       ValueError: If any of the parameters have invalid values.
     """
+    doc_id = _ConvertToUnicode(doc_id)
     if doc_id is not None:
       _CheckDocumentId(doc_id)
     self._doc_id = doc_id
     self._fields = _GetList(fields)
-    self._language = _CheckLanguage(language)
+    self._language = _CheckLanguage(_ConvertToUnicode(language))
 
-    if order_id is None:
-      order_id = self._GetDefaultOrderId()
-    self._order_id = self._CheckOrderId(order_id)
+    doc_rank = None
+    if not order_id is None:
+
+      warnings.warn('order_id is deprecated; use rank instead',
+                    DeprecationWarning, stacklevel=2)
+      doc_rank = order_id
+    if not rank is None:
+      if not doc_rank is None:
+        warnings.warn('Both order_id and rank are set; use just rank',
+                      DeprecationWarning, stacklevel=2)
+      doc_rank = rank
+    if doc_rank is None:
+      doc_rank = self._GetDefaultRank()
+    self._rank = self._CheckRank(doc_rank)
 
   @property
   def doc_id(self):
@@ -1041,27 +1062,33 @@ class Document(object):
   @property
   def order_id(self):
     """Returns the id used to return documents in a defined order."""
-    return self._order_id
+    warnings.warn('order_id is deprecated; use rank instead',
+                  DeprecationWarning, stacklevel=2)
+    return self._rank
 
-  def _CheckOrderId(self, order_id):
-    """Checks the order id is valid, then returns it."""
-    return _CheckInteger(order_id, 'order_id', upper_bound=sys.maxint)
+  @property
+  def rank(self):
+    """Returns the rank of this document."""
+    return self._rank
 
-  def _GetDefaultOrderId(self):
-    """Returns a default order id as total seconds since 1st Jan 2011."""
+  def _CheckRank(self, rank):
+    """Checks if rank is valid, then returns it."""
+    return _CheckInteger(rank, 'rank', upper_bound=sys.maxint)
+
+  def _GetDefaultRank(self):
+    """Returns a default rank as total seconds since 1st Jan 2011."""
     td = datetime.datetime.now() - Document._FIRST_JAN_2011
     return td.seconds + (td.days * 24 * 3600)
 
   def __repr__(self):
     return _Repr(
         self, [('doc_id', self.doc_id), ('fields', self.fields),
-               ('language', self.language), ('order_id', self.order_id)])
+               ('language', self.language), ('rank', self.rank)])
 
   def __eq__(self, other):
     return (isinstance(other, type(self)) and self.doc_id == other.doc_id and
-            self.order_id == other.order_id and self.language == other.language
-            and len(self.fields) == len(other.fields) and
-            sorted(self.fields) == sorted(other.fields))
+            self.rank == other.rank and self.language == other.language
+            and self.fields == other.fields)
 
   def __ne__(self, other):
     return not self == other
@@ -1080,13 +1107,13 @@ def _CopyDocumentToProtocolBuffer(document, pb):
   """Copies Document to a document_pb.Document protocol buffer."""
   pb.set_storage(document_pb.Document.DISK)
   if document.doc_id:
-    pb.set_id(document.doc_id)
+    pb.set_id(document.doc_id.encode('utf-8'))
   if document.language:
-    pb.set_language(document.language)
+    pb.set_language(document.language.encode('utf-8'))
   for field in document.fields:
     field_pb = pb.add_field()
     _CopyFieldToProtocolBuffer(field, field_pb)
-  pb.set_order_id(document.order_id)
+  pb.set_order_id(document.rank)
   return pb
 
 
@@ -1099,11 +1126,11 @@ def _NewDocumentFromPb(doc_pb):
   """Constructs a Document from a document_pb.Document protocol buffer."""
   lang = None
   if doc_pb.has_language():
-    lang = doc_pb.language()
-  return Document(doc_id=doc_pb.id(),
+    lang = _DecodeUTF8(doc_pb.language())
+  return Document(doc_id=_DecodeUTF8(doc_pb.id()),
                   fields=_NewFieldsFromPb(doc_pb.field_list()),
                   language=lang,
-                  order_id=doc_pb.order_id())
+                  rank=doc_pb.order_id())
 
 
 def _QuoteString(argument):
@@ -1137,13 +1164,13 @@ class FieldExpression(object):
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
-    self._name = _CheckFieldName(name)
+    self._name = _CheckFieldName(_ConvertToUnicode(name))
     if expression is None:
-      raise ValueError('expression in FieldExpression cannot be null')
+      raise ValueError('expression must be a FieldExpression, got None')
     if not isinstance(expression, basestring):
-      raise TypeError('expression expected in FieldExpression, but got %s' %
-                      type(expression))
-    self._expression = _CheckExpression(expression)
+      raise TypeError('expression must be a FieldExpression, got %s' %
+                      expression.__class__.__name__)
+    self._expression = _CheckExpression(_ConvertToUnicode(expression))
 
   @property
   def name(self):
@@ -1162,8 +1189,8 @@ class FieldExpression(object):
 
 def _CopyFieldExpressionToProtocolBuffer(field_expression, pb):
   """Copies FieldExpression to a search_service_pb.FieldSpec_Expression."""
-  pb.set_name(field_expression.name)
-  pb.set_expression(field_expression.expression)
+  pb.set_name(field_expression.name.encode('utf-8'))
+  pb.set_expression(field_expression.expression.encode('utf-8'))
 
 
 class SortOptions(object):
@@ -1201,8 +1228,8 @@ class SortOptions(object):
     self._expressions = _GetList(expressions)
     for expression in self._expressions:
       if not isinstance(expression, SortExpression):
-        raise TypeError('expected a SortExpression but got %s' %
-                        type(expression))
+        raise TypeError('expression must be a SortExpression, got %s' %
+                        expression.__class__.__name__)
     self._limit = _CheckSortLimit(limit)
 
   @property
@@ -1267,12 +1294,12 @@ class RescoringMatchScorer(MatchScorer):
 
 def _CopySortExpressionToProtocolBuffer(sort_expression, pb):
   """Copies a SortExpression to a search_service_pb.SortSpec protocol buffer."""
-  pb.set_sort_expression(sort_expression.expression)
+  pb.set_sort_expression(sort_expression.expression.encode('utf-8'))
   if sort_expression.direction == SortExpression.ASCENDING:
     pb.set_sort_descending(False)
   if sort_expression.default_value is not None:
     if isinstance(sort_expression.default_value, basestring):
-      pb.set_default_value_text(sort_expression.default_value)
+      pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
     else:
       pb.set_default_value_numeric(sort_expression.default_value)
   return pb
@@ -1285,10 +1312,25 @@ def _CopyMatchScorerToScorerSpecProtocolBuffer(match_scorer, limit, pb):
   elif isinstance(match_scorer, MatchScorer):
     pb.set_scorer(search_service_pb.ScorerSpec.MATCH_SCORER)
   else:
-    raise TypeError('Expected MatchScorer or RescoringMatchRescorer but got %s'
-                    % type(match_scorer))
+    raise TypeError(
+        'match_scorer must be a MatchScorer or RescoringMatchRescorer, '
+        'got %s' % match_scorer.__class__.__name__)
   pb.set_limit(limit)
   return pb
+
+
+def _CopySortOptionsToProtocolBuffer(sort_options, params):
+  """Copies the SortOptions into the SearchParams proto buf."""
+  for expression in sort_options.expressions:
+    sort_spec_pb = params.add_sort_spec()
+    _CopySortExpressionToProtocolBuffer(expression, sort_spec_pb)
+  if sort_options.match_scorer:
+    scorer_spec = params.mutable_scorer_spec()
+    _CopyMatchScorerToScorerSpecProtocolBuffer(
+        sort_options.match_scorer, sort_options.limit, scorer_spec)
+    scorer_spec.set_limit(sort_options.limit)
+  else:
+    params.mutable_scorer_spec().set_limit(sort_options.limit)
 
 
 class SortExpression(object):
@@ -1301,7 +1343,7 @@ class SortExpression(object):
 
     MAX_FIELD_VALUE = unichr(0xffff) * 80
 
-  MIN_FIELD_VALUE = ''
+  MIN_FIELD_VALUE = u''
 
 
   ASCENDING, DESCENDING = ('ASCENDING', 'DESCENDING')
@@ -1329,13 +1371,14 @@ class SortExpression(object):
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
-    self._expression = expression
+    self._expression = _ConvertToUnicode(expression)
     self._direction = self._CheckDirection(direction)
     self._default_value = default_value
-    if expression is None:
-      raise TypeError('expression required for SortExpression')
-    _CheckExpression(expression)
+    if self._expression is None:
+      raise TypeError('expression must be a SortExpression, got None')
+    _CheckExpression(self._expression)
     if isinstance(self.default_value, basestring):
+      self._default_value = _ConvertToUnicode(default_value)
       _CheckText(self._default_value, 'default_value')
     elif self._default_value is not None:
       _CheckNumber(self._default_value, 'default_value')
@@ -1371,7 +1414,7 @@ class ScoredDocument(Document):
 
 
   def __init__(self, doc_id=None, fields=None, language='en', order_id=None,
-               sort_scores=None, expressions=None, cursor=None):
+               sort_scores=None, expressions=None, cursor=None, rank=None):
     """Initializer.
 
     Args:
@@ -1381,10 +1424,11 @@ class ScoredDocument(Document):
       fields: An iterable of Field instances representing the content of the
         document.
       language: The code of the language used in the field values.
-      order_id: The id used to specify the order this document will be returned
-        in search results, where 0 <= order_id <= sys.maxint. If not specified,
-        the number of seconds since 1st Jan 2011 is used. Documents are returned
-        in descending order of the order ID.
+      order_id: Same as rank, deprecated.
+      rank: The rank of this document. A rank must be a non-negative integer
+        less than sys.maxint. If not specified, the number of seconds since
+        1st Jan 2011 is used. Documents are returned in descending order of
+        their rank.
       sort_scores: The list of scores assigned during sort evaluation. Each
         sort dimension is included. Positive scores are used for ascending
         sorts; negative scores for descending.
@@ -1398,11 +1442,13 @@ class ScoredDocument(Document):
       ValueError: If any of the parameters have invalid values.
     """
     super(ScoredDocument, self).__init__(doc_id=doc_id, fields=fields,
-                                         language=language, order_id=order_id)
+                                         language=language, order_id=order_id,
+                                         rank=rank)
     self._sort_scores = self._CheckSortScores(_GetList(sort_scores))
     self._expressions = _GetList(expressions)
     if cursor is not None and not isinstance(cursor, Cursor):
-      raise TypeError('expected a Cursor but got %s' % type(cursor))
+      raise TypeError('cursor must be a Cursor, got %s' %
+                      cursor.__class__.__name__)
     self._cursor = cursor
 
   @property
@@ -1452,16 +1498,11 @@ class ScoredDocument(Document):
       _CheckNumber(sort_score, 'sort_scores')
     return sort_scores
 
-  def _CheckCursor(self, cursor):
-    """Checks cursor is a string which is not too long, and returns it."""
-    return _ValidateString(cursor, 'cursor', _MAXIMUM_CURSOR_LENGTH,
-                           empty_ok=True)
-
   def __repr__(self):
     return _Repr(self, [('doc_id', self.doc_id),
                         ('fields', self.fields),
                         ('language', self.language),
-                        ('order_id', self.order_id),
+                        ('rank', self.rank),
                         ('sort_scores', self.sort_scores),
                         ('expressions', self.expressions),
                         ('cursor', self.cursor)])
@@ -1488,7 +1529,8 @@ class SearchResults(object):
     self._number_found = _CheckInteger(number_found, 'number_found')
     self._results = _GetList(results)
     if cursor is not None and not isinstance(cursor, Cursor):
-      raise TypeError('expected a Cursor but got %s' % type(cursor))
+      raise TypeError('cursor must be a Cursor, got %s' %
+                      cursor.__class__.__name__)
     self._cursor = cursor
 
   def __iter__(self):
@@ -1532,55 +1574,7 @@ class SearchResults(object):
                         ('cursor', self.cursor)])
 
 
-class ListDocumentsResponse(object):
-  """Represents the result of executing a list documents request.
-
-  Deprecated. Use ListResponse.
-
-  For example, the following code shows how a response could be used
-  to determine which documents were successfully removed or not.
-
-  response = index.list_documents()
-  for document in response:
-    print "document ", document
-  """
-
-  def __init__(self, documents=None):
-    """Initializer.
-
-    Args:
-      documents: The documents returned from an index ordered by Id.
-
-    Raises:
-      TypeError: If any of the parameters have an invalid type, or an unknown
-        attribute is passed.
-      ValueError: If any of the parameters have an invalid value.
-    """
-    warnings.warn('ListDocumentsResponse is deprecated. '
-                  'Use ListResponse instead',
-                  DeprecationWarning, stacklevel=2)
-    self._documents = _GetList(documents)
-
-  def __iter__(self):
-    for document in self.documents:
-      yield document
-
-  @property
-  def documents(self):
-    """Returns a list of documents ordered by Id from the index.
-
-    Deprecated. Use ListResponse.results.
-
-    Returns:
-      the list of documents
-    """
-    return self._documents
-
-  def __repr__(self):
-    return _Repr(self, [('documents', self.documents)])
-
-
-class ListResponse(ListDocumentsResponse):
+class ListResponse(object):
   """Represents the result of executing a list request on an index.
 
   For example, the following code shows how a response could be used
@@ -1602,12 +1596,30 @@ class ListResponse(ListDocumentsResponse):
         attribute is passed.
       ValueError: If any of the parameters have an invalid value.
     """
-    super(ListResponse, self).__init__(results)
+    self._results = _GetList(results)
+
+  def __iter__(self):
+    for result in self.results:
+      yield result
+
+  @property
+  def documents(self):
+    """Returns a list of documents ordered by Id from the index.
+
+    Deprecated. Use ListResponse.results.
+
+    Returns:
+      the list of documents
+    """
+    warnings.warn('documents is deprecated. '
+                  'Use ListResponse.results instead',
+                  DeprecationWarning, stacklevel=2)
+    return self._results
 
   @property
   def results(self):
     """Returns a list of results ordered by Id from the index."""
-    return self.documents
+    return self._results
 
   def __repr__(self):
     return _Repr(self, [('results', self.results)])
@@ -1619,7 +1631,7 @@ class ListIndexesResponse(object):
   For example, the following code shows how the response can be
   used to get available Indexes.
 
-  for index in search.list_indexes():
+  for index in search.list_indexes(fetch_schema=True):
     print "index ", index.name
     print index.schema
   """
@@ -1703,12 +1715,13 @@ class Cursor(object):
 
       ValueError: if the web_safe_string is not of required format.
     """
-    self._web_safe_string = _CheckCursor(web_safe_string)
+    self._web_safe_string = _CheckCursor(_ConvertToUnicode(web_safe_string))
     self._per_result = per_result
-    if web_safe_string:
-      parts = web_safe_string.split(':', 1)
+    if self._web_safe_string:
+      parts = self._web_safe_string.split(':', 1)
       if len(parts) != 2 or parts[0] not in ['True', 'False']:
-        raise ValueError('invalid format for web_safe_string')
+        raise ValueError('invalid format for web_safe_string, got %s' %
+                         self._web_safe_string)
       self._internal_cursor = parts[1]
 
       self._per_result = (parts[0] == 'True')
@@ -1736,12 +1749,9 @@ def _CheckQuery(query):
   """Checks a query is a valid query string."""
   _ValidateString(query, 'query', _MAXIMUM_QUERY_LENGTH, empty_ok=True)
   if query is None:
-    raise ValueError('query must not be null')
+    raise TypeError('query must be unicode, got None')
   if query.strip():
-    if isinstance(query, unicode):
-      query_parser.Parse(query)
-    else:
-      query_parser.Parse(unicode(query, 'utf-8'))
+    query_parser.Parse(query)
   return query
 
 
@@ -1869,27 +1879,28 @@ class QueryOptions(object):
     self._number_found_accuracy = _CheckNumberFoundAccuracy(
         number_found_accuracy)
     if cursor is not None and not isinstance(cursor, Cursor):
-      raise TypeError('expected a Cursor but got %s' % type(cursor))
+      raise TypeError('cursor must be a Cursor, got %s' %
+                      cursor.__class__.__name__)
     if cursor is not None and offset is not None:
       raise ValueError('cannot set cursor and offset together')
     self._cursor = cursor
     self._offset = _CheckOffset(offset)
     if sort_options is not None and not isinstance(sort_options, SortOptions):
-      raise TypeError('expected a SortOptions but got %s' %
-                      type(sort_options))
+      raise TypeError('sort_options must be a SortOptions, got %s' %
+                      sort_options.__class__.__name__)
     self._sort_options = sort_options
 
-    self._returned_fields = _ConvertToList(returned_fields)
+    self._returned_fields = _ConvertToUnicodeList(returned_fields)
     _CheckFieldNames(self._returned_fields)
     self._ids_only = ids_only
     if self._ids_only and self._returned_fields:
       raise ValueError('cannot have ids_only and returned_fields set together')
-    self._snippeted_fields = _ConvertToList(snippeted_fields)
+    self._snippeted_fields = _ConvertToUnicodeList(snippeted_fields)
     _CheckFieldNames(self._snippeted_fields)
     self._returned_expressions = _ConvertToList(returned_expressions)
     for expression in self._returned_expressions:
-      _CheckFieldName(expression.name)
-      _CheckExpression(expression.expression)
+      _CheckFieldName(_ConvertToUnicode(expression.name))
+      _CheckExpression(_ConvertToUnicode(expression.expression))
     _CheckNumberOfFields(self._returned_expressions, self._snippeted_fields,
                          self._returned_fields)
 
@@ -1980,7 +1991,7 @@ def _CopyQueryOptionsToProtocolBuffer(
   params.set_limit(limit)
   params.set_matched_count_accuracy(number_found_accuracy)
   if cursor:
-    params.set_cursor(cursor)
+    params.set_cursor(cursor.encode('utf-8'))
 
   params.set_cursor_type(cursor_type)
   if ids_only:
@@ -1988,29 +1999,19 @@ def _CopyQueryOptionsToProtocolBuffer(
   if returned_fields or snippeted_fields or returned_expressions:
     field_spec_pb = params.mutable_field_spec()
     for field in returned_fields:
-      field_spec_pb.add_name(field)
+      field_spec_pb.add_name(field.encode('utf-8'))
     for snippeted_field in snippeted_fields:
+      expression = u'snippet(%s, %s)' % (_QuoteString(query), snippeted_field)
       _CopyFieldExpressionToProtocolBuffer(
           FieldExpression(
-              name=snippeted_field,
-              expression='snippet(' + _QuoteString(query)
-              + ', ' + snippeted_field + ')'),
+              name=snippeted_field, expression=expression.encode('utf-8')),
           field_spec_pb.add_expression())
     for expression in returned_expressions:
       _CopyFieldExpressionToProtocolBuffer(
           expression, field_spec_pb.add_expression())
 
   if sort_options is not None:
-    for expression in sort_options.expressions:
-      sort_spec_pb = params.add_sort_spec()
-      _CopySortExpressionToProtocolBuffer(expression, sort_spec_pb)
-    if sort_options.match_scorer:
-      scorer_spec = params.mutable_scorer_spec()
-      _CopyMatchScorerToScorerSpecProtocolBuffer(
-          sort_options.match_scorer, sort_options.limit, scorer_spec)
-      scorer_spec.set_limit(sort_options.limit)
-    else:
-      params.mutable_scorer_spec().set_limit(sort_options.limit)
+    _CopySortOptionsToProtocolBuffer(sort_options, params)
 
 
 class Query(object):
@@ -2052,21 +2053,21 @@ class Query(object):
     Args:
       query_string: The query to match against documents in the index. A query
         is a boolean expression containing terms.  For example, the query
-          'job tag:"very important" sent:[TO 2011-02-28]'
+          'job tag:"very important" sent <= 2011-02-28'
         finds documents with the term job in any field, that contain the
         phrase "very important" in a tag field, and a sent date up to and
         including 28th February, 2011.  You can use combinations of
           '(cat OR feline) food NOT dog'
         to find documents which contain the term cat or feline as well as food,
         but do not mention the term dog. A further example,
-          'category:televisions brand:sony price:[300 TO 400}'
+          'category:televisions brand:sony price >= 300 price < 400'
         will return documents which have televisions in a category field, a
         sony brand and a price field which is 300 (inclusive) to 400
         (exclusive).
       options: A QueryOptions describing post-processing of search results.
     """
-    self._query_string = query_string
-    _CheckQuery(query_string)
+    self._query_string = _ConvertToUnicode(query_string)
+    _CheckQuery(self._query_string)
     self._options = options
 
   @property
@@ -2082,10 +2083,7 @@ class Query(object):
 
 def _CopyQueryToProtocolBuffer(query, params):
   """Copies Query object to params protobuf."""
-  if isinstance(query, unicode):
-    params.set_query(query.encode('utf-8'))
-  else:
-    params.set_query(query)
+  params.set_query(query.encode('utf-8'))
 
 
 def _CopyQueryObjectToProtocolBuffer(query, params):
@@ -2177,12 +2175,12 @@ class Index(object):
       TypeError: If an unknown attribute is passed.
       ValueError: If an unknown consistency mode, or invalid namespace is given.
     """
-    self._name = _CheckIndexName(name)
-    self._namespace = namespace
+    self._name = _CheckIndexName(_ConvertToUnicode(name))
+    self._namespace = _ConvertToUnicode(namespace)
     if self._namespace is None:
-      self._namespace = namespace_manager.get_namespace()
+      self._namespace = _ConvertToUnicode(namespace_manager.get_namespace())
     if self._namespace is None:
-      self._namespace = ''
+      self._namespace = u''
     namespace_manager.validate_namespace(self._namespace, exception=ValueError)
     self._consistency = consistency
     if self._consistency not in self._CONSISTENCY_MODES:
@@ -2231,9 +2229,9 @@ class Index(object):
     """Constructs AddResult from RequestStatus pb and doc_id."""
     message = None
     if status_pb.has_error_detail():
-      message = status_pb.error_detail()
+      message = _DecodeUTF8(status_pb.error_detail())
     code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
-    return AddResult(code=code, message=message, object_id=doc_id)
+    return AddResult(code=code, message=message, id=_DecodeUTF8(doc_id))
 
   def _NewAddResultList(self, response):
     return [self._NewAddResultFromPb(status, doc_id)
@@ -2263,8 +2261,7 @@ class Index(object):
 
     if isinstance(documents, basestring):
       raise TypeError('documents must be a Document or sequence of '
-                      'Documents, %s found'
-                      % datastore_types.typename(documents))
+                      'Documents, got %s' % documents.__class__.__name__)
     try:
       docs = list(iter(documents))
     except TypeError:
@@ -2306,9 +2303,10 @@ class Index(object):
     """Constructs RemoveResult from RequestStatus pb and doc_id."""
     message = None
     if status_pb.has_error_detail():
-      message = status_pb.error_detail()
+      message = _DecodeUTF8(status_pb.error_detail())
     code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
-    return RemoveResult(code=code, message=message, object_id=doc_id)
+
+    return RemoveResult(code=code, message=message, id=doc_id)
 
   def _NewRemoveResultList(self, document_ids, response):
     return [self._NewRemoveResultFromPb(status, doc_id)
@@ -2354,7 +2352,7 @@ class Index(object):
     except apiproxy_errors.ApplicationError, e:
       raise _ToSearchError(e)
 
-    results = self._NewRemoveResultList(document_ids, response)
+    results = self._NewRemoveResultList(doc_ids, response)
 
     if response.status_size() != len(doc_ids):
       raise RemoveError(
@@ -2369,10 +2367,11 @@ class Index(object):
     """Constructs a Document from a document_pb.Document protocol buffer."""
     lang = None
     if doc_pb.has_language():
-      lang = doc_pb.language()
+      lang = _DecodeUTF8(doc_pb.language())
     return ScoredDocument(
-        doc_id=doc_pb.id(), fields=_NewFieldsFromPb(doc_pb.field_list()),
-        language=lang, order_id=doc_pb.order_id(), sort_scores=sort_scores,
+        doc_id=_DecodeUTF8(doc_pb.id()),
+        fields=_NewFieldsFromPb(doc_pb.field_list()),
+        language=lang, rank=doc_pb.order_id(), sort_scores=sort_scores,
         expressions=_NewFieldsFromPb(expressions), cursor=cursor)
 
   def _NewSearchResults(self, response, cursor):
@@ -2384,7 +2383,7 @@ class Index(object):
         if isinstance(cursor, Cursor):
 
           per_result_cursor = Cursor(web_safe_string=_ToWebSafeString(
-              cursor.per_result, result_pb.cursor()))
+              cursor.per_result, _DecodeUTF8(result_pb.cursor())))
       results.append(
           self._NewScoredDocumentFromPb(
               result_pb.document(), result_pb.score_list(),
@@ -2394,7 +2393,7 @@ class Index(object):
       if isinstance(cursor, Cursor):
 
         results_cursor = Cursor(web_safe_string=_ToWebSafeString(
-            cursor.per_result, response.cursor()))
+            cursor.per_result, _DecodeUTF8(response.cursor())))
     return SearchResults(
         results=results, number_found=response.matched_count(),
         cursor=results_cursor)
@@ -2545,12 +2544,6 @@ class Index(object):
     _CheckStatus(response.status())
     return self._NewListResponse(response)
 
-  def _CheckCursorType(self, cursor_type):
-    """Checks the cursor_type is one specified in _CURSOR_TYPES or None."""
-    if cursor_type is None:
-      return None
-    return _CheckEnum(cursor_type, 'cursor_type', values=Index._CURSOR_TYPES)
-
 
 _CURSOR_TYPE_PB_MAP = {
   None: search_service_pb.SearchParams.NONE,
@@ -2574,8 +2567,8 @@ _CONSISTENCY_PB_TO_MODES_MAP = {
 
 def _CopyMetadataToProtocolBuffer(index, spec_pb):
   """Copies Index specification to a search_service_pb.IndexSpec."""
-  spec_pb.set_name(index.name)
-  spec_pb.set_namespace(index.namespace)
+  spec_pb.set_name(index.name.encode('utf-8'))
+  spec_pb.set_namespace(index.namespace.encode('utf-8'))
   spec_pb.set_consistency(_CONSISTENCY_MODES_TO_PB_MAP.get(index.consistency))
 
 _FIELD_TYPE_MAP = {
@@ -2593,7 +2586,7 @@ def _NewSchemaFromPb(field_type_pb_list):
   for field_type_pb in field_type_pb_list:
     for field_type in field_type_pb.type_list():
       public_type = _FIELD_TYPE_MAP[field_type]
-      name = field_type_pb.name()
+      name = _DecodeUTF8(field_type_pb.name())
       if name in field_types:
         field_types[name].append(public_type)
       else:
@@ -2607,7 +2600,7 @@ def _NewIndexFromPb(index_metadata_pb):
   consistency = _CONSISTENCY_PB_TO_MODES_MAP.get(spec_pb.consistency())
   index = None
   if spec_pb.has_namespace():
-    index = Index(name=spec_pb.index_name(), namespace=spec_pb.namespace(),
+    index = Index(name=spec_pb.name(), namespace=spec_pb.namespace(),
                   consistency=consistency)
   else:
     index = Index(name=spec_pb.name(), consistency=consistency)

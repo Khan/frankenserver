@@ -233,7 +233,10 @@ class EntityGroup(BaseMetadata):
 
   @classmethod
   def key_for_entity(cls, entity_or_key):
-    """Return the key for the entity group containing entity_or_key.
+    """Return the metadata key for the entity group containing entity_or_key.
+
+    Use this key to get() the __entity_group__ metadata entity for the
+    entity group containing entity_or_key.
 
     Args:
       entity_or_key: a key or entity whose __entity_group__ key you want.

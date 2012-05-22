@@ -185,3 +185,29 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
     self.log('Invalid From JID: Must be appid@appspot.com[/resource] or '
              'node@appid.appspotchat.com[/resource]. JID: %s', requested)
     raise xmpp.InvalidJidError()
+
+  def _Dynamic_CreateChannel(self, request, response):
+    """Implementation of XmppService::CreateChannel.
+
+    Args:
+      request: A CreateChannelRequest.
+      response: A CreateChannelResponse.
+    """
+    self.log('Sending a Create Channel:')
+    self.log('    Client ID:')
+    self.log('       ' + request.application_key())
+    if request.duration_minutes():
+      self.log('    Duration minutes: ' + request.duration_minutes())
+
+  def _Dynamic_SendChannelMessage(self, request, response):
+    """Implementation of XmppService::SendChannelMessage.
+
+    Args:
+      request: A SendMessageRequest.
+      response: A SendMessageRequest.
+    """
+    self.log('Sending a Channel Message:')
+    self.log('    Client ID:')
+    self.log('       ' + request.application_key())
+    self.log('    Message:')
+    self.log('       ' + request.duration_minutes())

@@ -663,7 +663,20 @@ class DevProcess(object):
       return False
 
 
-    services = ['datastore_v3', 'memcache', 'taskqueue']
+
+
+
+
+
+    services = (
+        'app_identity_service',
+        'capability_service',
+        'conversion',
+        'datastore_v3',
+        'memcache',
+        'taskqueue',
+        'urlfetch',
+    )
     remote_api_stub.ConfigureRemoteApi(
         self.app_id, PATH_DEV_API_SERVER, lambda: ('', ''),
         servername='%s:%d' % (API_SERVER_HOST, self.api_port),

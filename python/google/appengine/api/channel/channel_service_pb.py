@@ -39,6 +39,7 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
   INVALID_CHANNEL_KEY =    2
   BAD_MESSAGE  =    3
   INVALID_CHANNEL_TOKEN_DURATION =    4
+  APPID_ALIAS_REQUIRED =    5
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -46,6 +47,7 @@ class ChannelServiceError(ProtocolBuffer.ProtocolMessage):
     2: "INVALID_CHANNEL_KEY",
     3: "BAD_MESSAGE",
     4: "INVALID_CHANNEL_TOKEN_DURATION",
+    5: "APPID_ALIAS_REQUIRED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

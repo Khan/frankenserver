@@ -32,7 +32,6 @@ except ImportError:
   _MD5_FUNC = md5.new
 
 import collections
-import datetime
 import itertools
 import logging
 import os
@@ -829,7 +828,7 @@ class BaseCursor(object):
     """True if entity is before cursor according to the current order.
 
     Args:
-      entity: a datastore_pb.EntityProto entity.
+      entity: a entity_pb.EntityProto entity.
       cursor: a compiled cursor as returned by _DecodeCompiledCursor.
     """
     x = self.__order_compare_entities(entity, cursor[0])
@@ -845,7 +844,7 @@ class BaseCursor(object):
       compiled_cursor: The datastore_pb.CompiledCursor to decode.
 
     Returns:
-      (cursor_entity, inclusive): a datastore_pb.EntityProto and if it should
+      (cursor_entity, inclusive): a entity_pb.EntityProto and if it should
       be included in the result set.
     """
     assert len(compiled_cursor.position_list()) == 1
@@ -856,7 +855,7 @@ class BaseCursor(object):
 
 
     remaining_properties = self.__order_property_names.copy()
-    cursor_entity = datastore_pb.EntityProto()
+    cursor_entity = entity_pb.EntityProto()
     cursor_entity.mutable_key().CopyFrom(position.key())
     for indexvalue in position.indexvalue_list():
       property = cursor_entity.add_property()
@@ -901,7 +900,7 @@ class IteratorCursor(BaseCursor):
       dsquery: a datastore_query.Query over query.
       orders: the orders of query as returned by _GuessOrders.
       index_list: A list of indexes used by the query.
-      results: iterator over datastore_pb.EntityProto
+      results: iterator over entity_pb.EntityProto
     """
     super(IteratorCursor, self).__init__(query, dsquery, orders, index_list)
 
@@ -1030,7 +1029,7 @@ class ListCursor(BaseCursor):
       dsquery: a datastore_query.Query over query.
       orders: the orders of query as returned by _GuessOrders.
       index_list: the list of indexes used by the query.
-      results: list of datastore_pb.EntityProto
+      results: list of entity_pb.EntityProto
     """
     super(ListCursor, self).__init__(query, dsquery, orders, index_list)
 
@@ -1071,7 +1070,7 @@ class ListCursor(BaseCursor):
     cursor's entity no longer exists.
 
     Args:
-      results: the query's results (sequence of datastore_pb.EntityProto)
+      results: the query's results (sequence of entity_pb.EntityProto)
       cursor: a compiled cursor as returned by _DecodeCompiledCursor
     Returns:
       the integer offset
@@ -1183,7 +1182,7 @@ class LiveTxn(object):
   FAILED = 4
 
   _state = ACTIVE
-  _commit_time = None
+  _commit_time_s = None
 
   def __init__(self, txn_manager, app, allow_multiple_eg):
     assert isinstance(txn_manager, BaseTransactionManager)
@@ -1410,7 +1409,7 @@ class LiveTxn(object):
       for tracker in trackers:
         tracker._meta_data.Log(self)
       self._state = self.COMMITED
-      self._commit_time = datetime.datetime.now()
+      self._commit_time_s = time.time()
     except:
 
       self.Rollback()
@@ -1453,9 +1452,6 @@ class LiveTxn(object):
       assert tracker._read_pos != tracker.APPLIED
 
 
-      tracker._meta_data.Unlog(self)
-
-
       for entity, insert in tracker._put.itervalues():
         self._txn_manager._Put(entity, insert)
 
@@ -1464,8 +1460,11 @@ class LiveTxn(object):
         self._txn_manager._Delete(key)
 
 
+
       tracker._read_pos = EntityGroupTracker.APPLIED
-      self._txn_manager._OnApply()
+
+
+      tracker._meta_data.Unlog(self)
     finally:
       self._apply_lock.release()
 
@@ -1591,6 +1590,11 @@ class MasterSlaveConsistencyPolicy(BaseConsistencyPolicy):
       finally:
         tracker._meta_data._write_lock.release()
 
+
+
+
+    txn._txn_manager.Write()
+
   def _OnGroom(self, meta_data_list):
 
 
@@ -1670,8 +1674,7 @@ class TimeBasedHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
     return random.Random(id(txn) ^ id(meta_data)).random()
 
   def _ShouldApply(self, txn, meta_data):
-    elapsed_ms = ((datetime.datetime.now() - txn._commit_time).microseconds //
-                  1000)
+    elapsed_ms = (time.time() - txn._commit_time_s) * 1000
     classification = self._Classify(txn, meta_data)
     return self._ShouldApplyImpl(elapsed_ms, classification)
 
@@ -1801,16 +1804,20 @@ class BaseTransactionManager(object):
 
   def Flush(self):
     """Applies all outstanding transactions."""
-    for meta_data in self._meta_data.itervalues():
-      if not meta_data._apply_queue:
-        continue
+    self._meta_data_lock.acquire()
+    try:
+      for meta_data in self._meta_data.itervalues():
+        if not meta_data._apply_queue:
+          continue
 
 
-      meta_data._write_lock.acquire()
-      try:
-        meta_data.CatchUp()
-      finally:
-        meta_data._write_lock.release()
+        meta_data._write_lock.acquire()
+        try:
+          meta_data.CatchUp()
+        finally:
+          meta_data._write_lock.release()
+    finally:
+      self._meta_data_lock.release()
 
   def _GetMetaData(self, entity_group):
     """Safely gets the EntityGroupMetaData object for the given entity_group.
@@ -1904,10 +1911,6 @@ class BaseTransactionManager(object):
       reference: The entity_pb.Reference of the entity to delete.
     """
     raise NotImplementedError
-
-  def _OnApply(self):
-    """Hook to take action after a transaction is applied."""
-    pass
 
   def _GetEntitiesInEntityGroup(self, entity_group):
     """Gets the contents of a specific entity group.
@@ -2407,7 +2410,6 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
   def Write(self):
     """Writes the datastore to disk."""
-    logging.info('Applying all pending transactions and saving the datastore')
     self.Flush()
 
   def _GetQueryCursor(self, query, filters, orders, index_list):
@@ -2847,8 +2849,8 @@ class DatastoreStub(object):
 
 
     if created or deleted:
-      logging.info('Created %d and deleted %d index(es); total %d',
-                   created, deleted, len(requested))
+      logging.debug('Created %d and deleted %d index(es); total %d',
+                    created, deleted, len(requested))
 
   def _UpdateIndexes(self):
     if self._index_yaml_updater is not None:
@@ -2859,8 +2861,8 @@ def CompareEntityPbByKey(a, b):
   """Compare two entity protobuf's by key.
 
   Args:
-    a: datastore_pb.EntityProto to compare
-    b: datastore_pb.EntityProto to compare
+    a: entity_pb.EntityProto to compare
+    b: entity_pb.EntityProto to compare
   Returns:
      <0 if a's key is before b's, =0 if they are the same key, and >0 otherwise.
   """
@@ -2944,6 +2946,7 @@ def _CreateIndexEntities(entity, postfix_props):
   """
   to_split = {}
   split_required = False
+  base_props = []
   for prop in entity.property_list():
     if prop.name() in postfix_props:
       values = to_split.get(prop.name())
@@ -2955,6 +2958,8 @@ def _CreateIndexEntities(entity, postfix_props):
         split_required = True
       if prop.value() not in values:
         values.append(prop.value())
+    else:
+      base_props.append(prop)
 
   if not split_required:
 
@@ -2963,6 +2968,7 @@ def _CreateIndexEntities(entity, postfix_props):
   clone = entity_pb.EntityProto()
   clone.CopyFrom(entity)
   clone.clear_property()
+  clone.property_list().extend(base_props)
   results = [clone]
 
   for name, splits in to_split.iteritems():

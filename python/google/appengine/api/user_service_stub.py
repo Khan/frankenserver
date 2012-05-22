@@ -28,6 +28,10 @@ import urlparse
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import user_service_pb
 
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.runtime import apiproxy_errors
+else:
+  from google.appengine.runtime import apiproxy_errors
 
 _DEFAULT_LOGIN_URL = 'https://www.google.com/accounts/Login?continue=%s'
 _DEFAULT_LOGOUT_URL = 'https://www.google.com/accounts/Logout?continue=%s'
@@ -50,8 +54,7 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
                logout_url=_DEFAULT_LOGOUT_URL,
                service_name='user',
                auth_domain=_DEFAULT_AUTH_DOMAIN,
-               http_server_address=None,
-               ):
+               http_server_address=None):
     """Initializer.
 
     Args:
@@ -68,18 +71,37 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     should be redirected after log-in or log-out has been completed.
     """
     super(UserServiceStub, self).__init__(service_name)
-    self.__num_requests = 0
     self._login_url = login_url
     self._logout_url = logout_url
     self._http_server_address = http_server_address
+
+    self.SetOAuthUser()
 
 
 
 
     os.environ['AUTH_DOMAIN'] = auth_domain
 
-  def num_requests(self):
-    return self.__num_requests
+  def SetOAuthUser(self,
+                   email=_OAUTH_EMAIL,
+                   domain=_OAUTH_AUTH_DOMAIN,
+                   user_id=_OAUTH_USER_ID,
+                   is_admin=False):
+    """Set test OAuth user.
+
+    Determines what user is returned by requests to GetOAuthUser.
+
+    Args:
+      email: Email address of oauth user.  None indicates that no oauth user
+        is authenticated.
+      domain: Domain of oauth user.
+      user_id: User ID of oauth user.
+      is_admin:  Whether the user is an admin.
+    """
+    self.__email = email
+    self.__domain = domain
+    self.__user_id = user_id
+    self.__is_admin = is_admin
 
   def _Dynamic_CreateLoginURL(self, request, response):
     """Trivial implementation of UserService.CreateLoginURL().
@@ -88,7 +110,6 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       request: a CreateLoginURLRequest
       response: a CreateLoginURLResponse
     """
-    self.__num_requests += 1
     response.set_login_url(
         self._login_url %
         urllib.quote(self._AddHostToContinueURL(request.destination_url())))
@@ -100,7 +121,6 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       request: a CreateLogoutURLRequest
       response: a CreateLogoutURLResponse
     """
-    self.__num_requests += 1
     response.set_logout_url(
         self._logout_url %
         urllib.quote(self._AddHostToContinueURL(request.destination_url())))
@@ -112,10 +132,14 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       unused_request: a GetOAuthUserRequest
       response: a GetOAuthUserResponse
     """
-    self.__num_requests += 1
-    response.set_email(_OAUTH_EMAIL)
-    response.set_user_id(_OAUTH_USER_ID)
-    response.set_auth_domain(_OAUTH_AUTH_DOMAIN)
+    if self.__email is None:
+      raise apiproxy_errors.ApplicationError(
+          user_service_pb.UserServiceError.OAUTH_INVALID_REQUEST)
+    else:
+      response.set_email(self.__email)
+      response.set_user_id(self.__user_id)
+      response.set_auth_domain(self.__domain)
+      response.set_is_admin(self.__is_admin)
 
   def _Dynamic_CheckOAuthSignature(self, unused_request, response):
     """Trivial implementation of UserService.CheckOAuthSignature().
@@ -124,7 +148,6 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       unused_request: a CheckOAuthSignatureRequest
       response: a CheckOAuthSignatureResponse
     """
-    self.__num_requests += 1
     response.set_oauth_consumer_key(_OAUTH_CONSUMER_KEY)
 
   def _AddHostToContinueURL(self, continue_url):

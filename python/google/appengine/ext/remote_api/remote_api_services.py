@@ -168,6 +168,7 @@ SERVICE_PB_MAP = {
         'Transaction': (remote_api_pb.TransactionRequest,
                         datastore_pb.PutResponse),
         'GetIDs':      (datastore_pb.PutRequest, datastore_pb.PutResponse),
+        'GetIDsXG':    (datastore_pb.PutRequest, datastore_pb.PutResponse),
     },
     'search': {
         'IndexDocument': (search_service_pb.IndexDocumentRequest,

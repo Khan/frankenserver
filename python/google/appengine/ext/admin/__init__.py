@@ -369,7 +369,7 @@ class CronPageHandler(BaseRequestHandler):
         matches = schedule.GetMatches(now, 3)
         job['times'] = []
         for match in matches:
-          job['times'].append({'runtime': match.strftime("%Y-%m-%d %H:%M:%SZ"),
+          job['times'].append({'runtime': match.strftime('%Y-%m-%d %H:%M:%SZ'),
                                'difference': str(match - now)})
     self.generate('cron.html', values)
 
@@ -383,9 +383,9 @@ class XMPPPageHandler(BaseRequestHandler):
 
     xmpp_configured = True
     values = {
-      'xmpp_configured': xmpp_configured,
-      'request': self.request
-    }
+        'xmpp_configured': xmpp_configured,
+        'request': self.request
+        }
     self.generate('xmpp.html', values)
 
 
@@ -1728,8 +1728,8 @@ class SearchDocumentHandler(BaseRequestHandler):
     doc = None
     index = search.Index(name=index_name, namespace=namespace)
     resp = index.list_documents(start_doc_id=doc_id, limit=1)
-    if resp.documents and resp.documents[0].doc_id == doc_id:
-      doc = resp.documents[0]
+    if resp.results and resp.results[0].doc_id == doc_id:
+      doc = resp.results[0]
 
     values = {
         'request': self.request,

@@ -55,6 +55,7 @@ _PROPERTY_TYPE_TO_DSS_NAME = {
     float: ('Float', 'DOUBLE'),
     datastore_types.Key: ('Key', 'REFERENCE'),
     datastore_types.Blob: ('Blob', 'STRING'),
+    datastore_types.EmbeddedEntity: ('EmbeddedEntity', 'STRING'),
     datastore_types.ByteString: ('ShortBlob', 'STRING'),
     datastore_types.Text: ('Text', 'STRING'),
     users.User: ('User', 'USER'),
@@ -162,6 +163,8 @@ class DatastoreStatsProcessor(object):
                                                                 entity_key_size)
     property_index_count = 0
     property_index_size = 0
+
+
     for prop_list in (proto.property_list(), proto.raw_property_list()):
       for prop in prop_list:
         index_size, index_count = self.__GetPropertyIndexStat(namespace,

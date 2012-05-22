@@ -871,25 +871,38 @@ def ClearAllButEncodingsModules(module_dict):
       del module_dict[module_name]
 
 
-def UpdateNotSharedModulesInParents(module_dict):
-  """Replace modules not shared between the hardened and unhardened parts of the
-  process in their parent packages.
+def ConnectAndDisconnectChildModules(old_module_dict, new_module_dict):
+  """Prepares for switching from old_module_dict to new_module_dict.
 
-  If foo.bar is not shared then this replaces the reference to bar contained in
-  foo with the foo.bar in module_dict if it is present and deletes it otherwise.
+  Disconnects child modules going away from parents that remain, and reconnects
+  child modules that are being added back in to old parents.  This is needed to
+  satisfy code that follows the getattr() descendant chain rather than looking
+  up the desired module directly in the module dict.
 
   Args:
-    module_dict: A dict containing the modules to be added to sys.modules.
-
+    old_module_dict: The module dict being replaced, looks like sys.modules.
+    new_module_dict: The module dict takings its place, looks like sys.modules.
   """
-  for prefix in NOT_SHARED_MODULE_PREFIXES:
-    parent_name, _, submodule_name = prefix.rpartition('.')
-    parent = module_dict.get(parent_name)
-    if parent:
-      if prefix in module_dict:
-        setattr(parent, submodule_name, module_dict[prefix])
-      elif hasattr(parent, submodule_name):
-        delattr(parent, submodule_name)
+  old_keys = set(old_module_dict.keys())
+  new_keys = set(new_module_dict.keys())
+  for deleted_module_name in old_keys - new_keys:
+    if old_module_dict[deleted_module_name] is None:
+      continue
+    segments = deleted_module_name.rsplit('.', 1)
+    if len(segments) == 2:
+      parent_module = new_module_dict.get(segments[0])
+      if parent_module and hasattr(parent_module, segments[1]):
+        delattr(parent_module, segments[1])
+  for added_module_name in new_keys - old_keys:
+    if new_module_dict[added_module_name] is None:
+      continue
+    segments = added_module_name.rsplit('.', 1)
+    if len(segments) == 2:
+      parent_module = old_module_dict.get(segments[0])
+      child_module = new_module_dict[added_module_name]
+      if (parent_module and
+          getattr(parent_module, segments[1], None) is not child_module):
+        setattr(parent_module, segments[1], child_module)
 
 
 
@@ -1017,8 +1030,8 @@ def CheckScriptExists(cgi_path, handler_path):
       like 'foo/bar/baz.py'). May contain $PYTHON_LIB references.
 
   Raises:
-    CouldNotFindModuleError if the given handler_path is a file and doesn't have
-    the expected extension.
+    CouldNotFindModuleError: if the given handler_path is a file and doesn't
+    have the expected extension.
   """
   if handler_path.startswith(PYTHON_LIB_VAR + '/'):
 
@@ -1562,9 +1575,9 @@ def ExecuteCGI(config,
   app_log_handler = None
 
   try:
+    ConnectAndDisconnectChildModules(sys.modules, module_dict)
     ClearAllButEncodingsModules(sys.modules)
     sys.modules.update(module_dict)
-    UpdateNotSharedModulesInParents(module_dict)
     sys.argv = [cgi_path]
 
     sys.stdin = cStringIO.StringIO(infile.getvalue())
@@ -1643,9 +1656,9 @@ def ExecuteCGI(config,
 
 
     module_dict.update(sys.modules)
+    ConnectAndDisconnectChildModules(sys.modules, old_module_dict)
     ClearAllButEncodingsModules(sys.modules)
     sys.modules.update(old_module_dict)
-    UpdateNotSharedModulesInParents(old_module_dict)
 
     __builtin__.__dict__.update(old_builtin)
     sys.argv = old_argv
@@ -2160,7 +2173,7 @@ def IgnoreHeadersRewriter(response):
   Certain response headers cannot be modified by an Application.  For a
   complete list of these headers please see:
 
-    http://code.google.com/appengine/docs/webapp/responseclass.html#Disallowed_HTTP_Response_Headers
+    https://developers.google.com/appengine/docs/python/tools/webapp/responseclass#Disallowed_HTTP_Response_Headers
 
   This rewriter simply removes those headers.
   """
@@ -3290,7 +3303,24 @@ def SetupStubs(app_id, **config):
 
   if not multiprocess.GlobalProcess().MaybeConfigureRemoteDataApis():
 
+
+
+
+
+
     apiproxy_stub_map.apiproxy = apiproxy_stub_map.APIProxyStubMap()
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'app_identity_service',
+        app_identity_stub.AppIdentityServiceStub())
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'capability_service',
+        capability_stub.CapabilityServiceStub())
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'conversion',
+        conversion_stub.ConversionServiceStub())
 
     if use_sqlite:
       datastore = datastore_sqlite_stub.DatastoreSqliteStub(
@@ -3319,6 +3349,10 @@ def SetupStubs(app_id, **config):
             task_retry_seconds=task_retry_seconds,
             default_http_server='%s:%s' % (serve_address, serve_port)))
 
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'urlfetch',
+        urlfetch_stub.URLFetchServiceStub())
+
 
 
 
@@ -3334,14 +3368,14 @@ def SetupStubs(app_id, **config):
   fixed_logout_url = '%s&%s' % (fixed_login_url,
                                 dev_appserver_login.LOGOUT_PARAM)
 
+
+
+
+
   apiproxy_stub_map.apiproxy.RegisterStub(
       'user',
       user_service_stub.UserServiceStub(login_url=fixed_login_url,
                                         logout_url=fixed_logout_url))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'urlfetch',
-      urlfetch_stub.URLFetchServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'mail',
@@ -3351,10 +3385,6 @@ def SetupStubs(app_id, **config):
                                 smtp_password,
                                 enable_sendmail=enable_sendmail,
                                 show_mail_body=show_mail_body))
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'capability_service',
-      capability_stub.CapabilityServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'xmpp',
@@ -3371,10 +3401,6 @@ def SetupStubs(app_id, **config):
           apiproxy_stub_map.apiproxy.GetStub('taskqueue')))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-      'app_identity_service',
-      app_identity_stub.AppIdentityServiceStub())
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
       'search',
       simple_search_stub.SearchServiceStub())
 
@@ -3385,10 +3411,6 @@ def SetupStubs(app_id, **config):
 
 
 
-
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'conversion',
-      conversion_stub.ConversionServiceStub())
 
   try:
     from google.appengine.api.images import images_stub
@@ -3430,6 +3452,7 @@ def TearDownStubs():
 
 
   if isinstance(datastore_stub, datastore_stub_util.BaseTransactionManager):
+    logging.info('Applying all pending transactions and saving the datastore')
     datastore_stub.Write()
 
 
@@ -3445,7 +3468,7 @@ def CreateImplicitMatcher(
   """Creates a URLMatcher instance that handles internal URLs.
 
   Used to facilitate handling user login/logout, debugging, info about the
-  currently running app, etc.
+  currently running app, quitting the dev appserver, etc.
 
   Args:
     config: AppInfoExternal instance representing the parsed app.yaml file.
@@ -3462,6 +3485,20 @@ def CreateImplicitMatcher(
   """
   url_matcher = URLMatcher()
   path_adjuster = create_path_adjuster(root_path)
+
+
+
+
+  def _HandleQuit():
+    raise KeyboardInterrupt
+  quit_dispatcher = create_local_dispatcher(config, sys.modules, path_adjuster,
+                                            _HandleQuit)
+  url_matcher.AddURL('/_ah/quit?',
+                     quit_dispatcher,
+                     '',
+                     False,
+                     False,
+                     appinfo.AUTH_FAIL_ACTION_REDIRECT)
 
 
 

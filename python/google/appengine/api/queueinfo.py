@@ -149,8 +149,12 @@ _MODE_REGEX = r'(pull)|(push)'
 
 
 
-_MAJOR_VERSION_ID_MAX_LEN = 100
-_VERSION_REGEX = r'(?!-)[a-z\d\-]{1,%d}' % _MAJOR_VERSION_ID_MAX_LEN
+SERVER_ID_RE_STRING = r'(?!-)[a-z\d\-]{1,63}'
+
+
+SERVER_VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,100}'
+_VERSION_REGEX = r'^(?:(?:(%s):)?)(%s)$' % (SERVER_ID_RE_STRING,
+                                            SERVER_VERSION_RE_STRING)
 
 QUEUE = 'queue'
 
@@ -209,6 +213,8 @@ class QueueEntry(validation.Validated):
       MAX_CONCURRENT_REQUESTS: validation.Optional(validation.TYPE_INT),
       RETRY_PARAMETERS: validation.Optional(RetryParameters),
       ACL: validation.Optional(validation.Repeated(Acl)),
+
+
       TARGET: validation.Optional(_VERSION_REGEX),
   }
 
@@ -221,11 +227,12 @@ class QueueInfoExternal(validation.Validated):
   }
 
 
-def LoadSingleQueue(queue_info):
+def LoadSingleQueue(queue_info, open_fn=None):
   """Load a queue.yaml file or string and return a QueueInfoExternal object.
 
   Args:
     queue_info: the contents of a queue.yaml file, as a string.
+    open_fn: Function for opening files. Unused.
 
   Returns:
     A QueueInfoExternal object.

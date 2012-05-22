@@ -383,6 +383,7 @@ def _flatten_params(params):
   Returns:
     List of (key, value) tuples.
   """
+
   def get_string(value):
     if isinstance(value, unicode):
       return unicode(value).encode('utf-8')
@@ -407,6 +408,39 @@ def _flatten_params(params):
         param_list.extend((key, get_string(v)) for v in iterator)
 
   return param_list
+
+
+def _TranslateError(error, detail=''):
+  """Translates a TaskQueueServiceError into an exception.
+
+  Args:
+    error: Value from TaskQueueServiceError enum.
+    detail: A human-readable description of the error.
+
+  Returns:
+    The corresponding Exception sub-class for that error code.
+  """
+  if (error >= taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR
+      and isinstance(error, int)):
+    from google.appengine.api import datastore
+    datastore_exception = datastore._DatastoreExceptionFromErrorCodeAndDetail(
+        error - taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR,
+        detail)
+
+    class JointException(datastore_exception.__class__, DatastoreError):
+      """There was a datastore error while accessing the queue."""
+      __msg = (u'taskqueue.DatastoreError caused by: %s %s' %
+               (datastore_exception.__class__, detail))
+      def __str__(self):
+        return JointException.__msg
+
+    return JointException()
+  else:
+    exception_class = _ERROR_MAPPING.get(error, None)
+    if exception_class:
+      return exception_class(detail)
+    else:
+      return Error('Application error %s: %s' % (error, detail))
 
 
 class TaskRetryOptions(object):
@@ -1225,7 +1259,7 @@ class QueueStatistics(object):
       apiproxy_stub_map.MakeSyncCall(
           'taskqueue', 'FetchQueueStats', request, response)
     except apiproxy_errors.ApplicationError, e:
-      raise cls.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     assert len(queues) == response.queuestats_size(), (
         'Expected %d results, got %d' % (
@@ -1283,7 +1317,7 @@ class Queue(object):
                                      request,
                                      response)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
   def delete_tasks(self, task):
     """Deletes a Task or list of Tasks in this Queue.
@@ -1346,7 +1380,7 @@ class Queue(object):
     try:
       apiproxy_stub_map.MakeSyncCall('taskqueue', 'Delete', request, response)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     assert response.result_size() == len(tasks), (
         'expected %d results from detele(), got %d' % (
@@ -1361,7 +1395,7 @@ class Queue(object):
           result == taskqueue_service_pb.TaskQueueServiceError.TOMBSTONED_TASK):
         task._Task__deleted = False
       elif exception is None:
-        exception = self.__TranslateError(result)
+        exception = _TranslateError(result)
 
     if exception is not None:
       raise exception
@@ -1455,7 +1489,7 @@ class Queue(object):
     try:
       self._QueryAndOwnTasks(request, response, deadline)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     tasks = []
     for response_task in response.task_list():
@@ -1508,7 +1542,7 @@ class Queue(object):
     try:
       self._QueryAndOwnTasks(request, response, deadline)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     tasks = []
     for response_task in response.task_list():
@@ -1621,7 +1655,7 @@ class Queue(object):
     try:
       apiproxy_stub_map.MakeSyncCall('taskqueue', 'BulkAdd', request, response)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     assert response.taskresult_size() == len(tasks), (
         'expected %d results from BulkAdd(), got %d' % (
@@ -1638,7 +1672,7 @@ class Queue(object):
             taskqueue_service_pb.TaskQueueServiceError.SKIPPED):
         pass
       elif exception is None:
-        exception = self.__TranslateError(task_result.result())
+        exception = _TranslateError(task_result.result())
 
     if exception is not None:
       raise exception
@@ -1773,39 +1807,6 @@ class Queue(object):
     """Returns the name of this queue."""
     return self.__name
 
-  @staticmethod
-  def __TranslateError(error, detail=''):
-    """Translates a TaskQueueServiceError into an exception.
-
-    Args:
-      error: Value from TaskQueueServiceError enum.
-      detail: A human-readable description of the error.
-
-    Returns:
-      The corresponding Exception sub-class for that error code.
-    """
-    if (error >= taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR
-        and isinstance(error, int)):
-      from google.appengine.api import datastore
-      datastore_exception = datastore._DatastoreExceptionFromErrorCodeAndDetail(
-          error - taskqueue_service_pb.TaskQueueServiceError.DATASTORE_ERROR,
-          detail)
-
-      class JointException(datastore_exception.__class__, DatastoreError):
-        """There was a datastore error while accessing the queue."""
-        __msg = (u'taskqueue.DatastoreError caused by: %s %s' %
-                 (datastore_exception.__class__, detail))
-        def __str__(self):
-          return JointException.__msg
-
-      return JointException()
-    else:
-      exception_class = _ERROR_MAPPING.get(error, None)
-      if exception_class:
-        return exception_class(detail)
-      else:
-        return Error('Application error %s: %s' % (error, detail))
-
   def modify_task_lease(self, task, lease_seconds):
     """Modifies the lease of a task in this queue.
 
@@ -1837,7 +1838,7 @@ class Queue(object):
                                      request,
                                      response)
     except apiproxy_errors.ApplicationError, e:
-      raise self.__TranslateError(e.application_error, e.error_detail)
+      raise _TranslateError(e.application_error, e.error_detail)
 
     task._Task__eta_posix = response.updated_eta_usec() * 1e-6
     task._Task__eta = None

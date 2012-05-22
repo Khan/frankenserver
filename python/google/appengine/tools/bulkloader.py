@@ -2761,7 +2761,7 @@ class Loader(object):
     uploaded entities. The value returned should be None (to use a
     server generated numeric key), or a string which neither starts
     with a digit nor has the form __*__ (see
-    http://code.google.com/appengine/docs/python/datastore/keysandentitygroups.html),
+    https://developers.google.com/appengine/docs/python/datastore/entities),
     or a datastore.Key instance.
 
     If you generate your own string keys, keep in mind:

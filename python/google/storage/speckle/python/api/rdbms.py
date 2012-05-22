@@ -152,13 +152,14 @@ _PYTHON_TYPE_TO_JDBC_TYPE = {
 
 
 def _ConvertFormatToQmark(statement, args):
-  """Replaces '%s' with '?'.
+  """Replaces '%s' or '%(name)s' with '?'.
 
   The server actually supports '?' for bind parameters, but the
-  MySQLdb implementation of PEP 249 uses '%s'.  Most clients don't
-  bother checking the paramstyle member and just hardcode '%s' in
-  their statements.  This function converts a format-style statement
-  into a qmark-style statement.
+  MySQLdb implementation of PEP 249 uses 'format' paramstyle (%s) when the
+  given args list is a sequence, and 'pyformat' paramstyle (%(name)s) when the
+  args list is a mapping.  Most clients don't bother checking the paramstyle
+  member and just hardcode '%s' or '%(name)s' in their statements.  This
+  function converts a (py)format-style statement into a qmark-style statement.
 
   Args:
     statement: A string, a SQL statement.
@@ -168,10 +169,61 @@ def _ConvertFormatToQmark(statement, args):
   Returns:
     The converted string.
   """
-  if args:
+  if isinstance(args, dict):
+    return statement % collections.defaultdict(lambda: '?')
+  elif args:
     qmarks = tuple('?' * len(args))
     return statement % qmarks
   return statement
+
+
+class _AccessLogger(object):
+  """Simple dict-like object that records all lookup attempts.
+
+  Attributes:
+    accessed_keys: List of all lookup keys, in the order which they occurred.
+  """
+
+  def __init__(self):
+    self.accessed_keys = []
+
+  def __getitem__(self, key):
+    self.accessed_keys.append(key)
+    return ''
+
+
+def _ConvertArgsDictToList(statement, args):
+  """Convert a given args mapping to a list of positional arguments.
+
+  Takes a statement written in 'pyformat' style which uses mapping keys from
+  the given args mapping, and returns the list of args values that would be
+  used for interpolation if the statement were written in a positional
+  'format' style instead.
+
+  For example, consider the following pyformat string and a mapping used for
+  interpolation:
+
+    '%(foo)s '%(bar)s' % {'foo': 1, 'bar': 2}
+
+  Given these parameters, this function would return the following output:
+
+    [1, 2]
+
+  This could then be used for interpolation if the given string were instead
+  expressed using a positional format style:
+
+    '%s %s' % (1, 2)
+
+  Args:
+    statement: The statement, possibly containing pyformat style tokens.
+    args: Mapping to pull values from.
+
+  Returns:
+    A list containing values from the given args mapping.
+  """
+  access_logger = _AccessLogger()
+  statement % access_logger
+  return [args[key] for key in access_logger.accessed_keys]
 
 
 class Cursor(object):
@@ -262,22 +314,20 @@ class Cursor(object):
       raise InterfaceError('unknown JDBC type %d' % datatype)
     return converter(value)
 
-  def _AddBindVariablesToRequest(self, args, bind_variable_factory):
+  def _AddBindVariablesToRequest(self, statement, args, bind_variable_factory):
     """Add args to the request BindVariableProto list.
 
     Args:
+      statement: The SQL statement.
       args: Sequence of arguments to turn into BindVariableProtos.
       bind_variable_factory: A callable which returns new BindVariableProtos.
-
-    Returns:
-      The given args sequence, potentially wrapped in a list.
 
     Raises:
       InterfaceError: Unknown type used as a bind variable.
     """
+    if isinstance(args, dict):
+      args = _ConvertArgsDictToList(statement, args)
 
-    if not hasattr(args, '__iter__'):
-      args = [args]
     for i, arg in enumerate(args):
       bv = bind_variable_factory()
       bv.position = i + 1
@@ -288,7 +338,6 @@ class Cursor(object):
           bv.type, bv.value = self._EncodeVariable(arg)
         except TypeError:
           raise InterfaceError('unknown type %s for arg %d' % (type(arg), i))
-    return args
 
   def _DoExec(self, request):
     """Send an ExecRequest and handle the response.
@@ -353,8 +402,8 @@ class Cursor(object):
 
     Args:
       statement: A string, a SQL statement.
-      args: A sequence of arguments matching the statement's bind variables,
-        if any.
+      args: A sequence or mapping of arguments matching the statement's bind
+        variables, if any.
 
     Raises:
       InterfaceError: Unknown type used as a bind variable.
@@ -366,7 +415,11 @@ class Cursor(object):
     request = sql_pb2.ExecRequest()
     request.options.include_generated_keys = True
     if args is not None:
-      args = self._AddBindVariablesToRequest(args, request.bind_variable.add)
+
+      if not hasattr(args, '__iter__'):
+        args = [args]
+      self._AddBindVariablesToRequest(
+          statement, args, request.bind_variable.add)
     request.statement = _ConvertFormatToQmark(statement, args)
     self._DoExec(request)
 
@@ -375,8 +428,8 @@ class Cursor(object):
 
     Args:
       statement: A string, a SQL statement.
-      seq_of_args: A sequence, each entry of which is a sequence of arguments
-        matching the statement's bind variables, if any.
+      seq_of_args: A sequence, each entry of which is a sequence or mapping of
+        arguments matching the statement's bind variables, if any.
 
     Raises:
       InterfaceError: Unknown type used as a bind variable.
@@ -390,8 +443,12 @@ class Cursor(object):
 
     args = None
     for args in seq_of_args:
+
+      if not hasattr(args, '__iter__'):
+        args = [args]
       bbv = request.batch.batch_bind_variable.add()
-      args = self._AddBindVariablesToRequest(args, bbv.bind_variable.add)
+      self._AddBindVariablesToRequest(
+          statement, args, bbv.bind_variable.add)
     request.statement = _ConvertFormatToQmark(statement, args)
     result = self._DoExec(request)
     self._rowcount = sum(result.batch_rows_updated)

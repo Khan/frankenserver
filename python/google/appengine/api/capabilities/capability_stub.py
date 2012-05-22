@@ -49,6 +49,9 @@ class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
   def SetPackageEnabled(self, package, enabled):
     """Set all features of a given package to enabled.
 
+    This method is thread-unsafe, so should only be called during set-up, before
+    multiple API server threads start.
+
     Args:
       package: Name of package.
       enabled: True to enable, False to disable.

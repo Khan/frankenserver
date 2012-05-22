@@ -1604,7 +1604,7 @@ class HardenedModulesHook(object):
         pass
     else:
 
-      loader = importer.find_module(submodule)
+      loader = importer.find_module(submodule_fullname)
       if loader is not None:
 
 

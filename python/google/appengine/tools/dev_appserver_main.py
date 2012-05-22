@@ -268,6 +268,56 @@ DEFAULT_ARGS = {
 }
 
 
+OPTIONS = 'a:cdhp:'
+
+
+LONG_OPTIONS = [
+    'address=',
+    'admin_console_host=',
+    'admin_console_server=',
+    'allow_skipped_files',
+    'auth_domain=',
+    'backends',
+    'blobstore_path=',
+    'clear_datastore',
+    'clear_prospective_search',
+    'datastore_path=',
+    'debug',
+    'debug_imports',
+    'default_partition=',
+    'disable_static_caching',
+    'disable_task_running',
+    'enable_sendmail',
+    'help',
+    'high_replication',
+    'history_path=',
+    'multiprocess',
+    'multiprocess_api_port=',
+    'multiprocess_api_server',
+    'multiprocess_app_instance_id=',
+    'multiprocess_backend_id=',
+    'multiprocess_backend_instance_id=',
+    'multiprocess_min_port=',
+    'mysql_host=',
+    'mysql_password=',
+    'mysql_port=',
+    'mysql_socket=',
+    'mysql_user=',
+    'persist_logs',
+    'port=',
+    'require_indexes',
+    'show_mail_body',
+    'skip_sdk_update_check',
+    'smtp_host=',
+    'smtp_password=',
+    'smtp_port=',
+    'smtp_user=',
+    'task_retry_seconds=',
+    'trusted',
+    'use_sqlite',
+]
+
+
 def PrintUsageExit(code):
   """Prints usage information and exits with a status code.
 
@@ -298,53 +348,7 @@ def ParseArguments(argv):
   option_dict = DEFAULT_ARGS.copy()
 
   try:
-    opts, args = getopt.gnu_getopt(
-      argv[1:],
-      'a:cdhp:',
-      [ 'address=',
-        'admin_console_host=',
-        'admin_console_server=',
-        'allow_skipped_files',
-        'auth_domain=',
-        'backends',
-        'blobstore_path=',
-        'clear_datastore',
-        'clear_prospective_search',
-        'datastore_path=',
-        'debug',
-        'debug_imports',
-        'default_partition=',
-        'disable_static_caching',
-        'disable_task_running',
-        'enable_sendmail',
-        'help',
-        'high_replication',
-        'history_path=',
-        'multiprocess',
-        'multiprocess_api_port=',
-        'multiprocess_api_server',
-        'multiprocess_app_instance_id=',
-        'multiprocess_backend_id=',
-        'multiprocess_backend_instance_id=',
-        'multiprocess_min_port=',
-        'mysql_host=',
-        'mysql_password=',
-        'mysql_port=',
-        'mysql_socket=',
-        'mysql_user=',
-        'persist_logs',
-        'port=',
-        'require_indexes',
-        'show_mail_body',
-        'skip_sdk_update_check',
-        'smtp_host=',
-        'smtp_password=',
-        'smtp_port=',
-        'smtp_user=',
-        'task_retry_seconds=',
-        'trusted',
-        'use_sqlite',
-      ])
+    opts, args = getopt.gnu_getopt(argv[1:], OPTIONS, LONG_OPTIONS)
   except getopt.GetoptError, e:
     print >>sys.stderr, 'Error: %s' % e
     PrintUsageExit(1)

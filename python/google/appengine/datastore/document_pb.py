@@ -31,6 +31,8 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
+from google.appengine.datastore.acl_pb import *
+import google.appengine.datastore.acl_pb
 class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
   has_lat_ = 0
   lat_ = 0.0
@@ -94,14 +96,14 @@ class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    return n + 10
+    return n + 18
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_lat_):
-      n += 5
+      n += 9
     if (self.has_lng_):
-      n += 5
+      n += 9
     return n
 
   def Clear(self):
@@ -109,28 +111,28 @@ class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
     self.clear_lng()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(45)
-    out.putFloat(self.lat_)
-    out.putVarInt32(53)
-    out.putFloat(self.lng_)
+    out.putVarInt32(41)
+    out.putDouble(self.lat_)
+    out.putVarInt32(49)
+    out.putDouble(self.lng_)
 
   def OutputPartial(self, out):
     if (self.has_lat_):
-      out.putVarInt32(45)
-      out.putFloat(self.lat_)
+      out.putVarInt32(41)
+      out.putDouble(self.lat_)
     if (self.has_lng_):
-      out.putVarInt32(53)
-      out.putFloat(self.lng_)
+      out.putVarInt32(49)
+      out.putDouble(self.lng_)
 
   def TryMerge(self, d):
     while 1:
       tt = d.getVarInt32()
       if tt == 36: break
-      if tt == 45:
-        self.set_lat(d.getFloat())
+      if tt == 41:
+        self.set_lat(d.getDouble())
         continue
-      if tt == 53:
-        self.set_lng(d.getFloat())
+      if tt == 49:
+        self.set_lng(d.getDouble())
         continue
 
 
@@ -140,8 +142,8 @@ class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_lat_: res+=prefix+("lat: %s\n" % self.DebugFormatFloat(self.lat_))
-    if self.has_lng_: res+=prefix+("lng: %s\n" % self.DebugFormatFloat(self.lng_))
+    if self.has_lat_: res+=prefix+("lat: %s\n" % self.DebugFormat(self.lat_))
+    if self.has_lng_: res+=prefix+("lng: %s\n" % self.DebugFormat(self.lng_))
     return res
 
 class FieldValue(ProtocolBuffer.ProtocolMessage):
@@ -373,8 +375,8 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STARTGROUP,
-    5: ProtocolBuffer.Encoder.FLOAT,
-    6: ProtocolBuffer.Encoder.FLOAT,
+    5: ProtocolBuffer.Encoder.DOUBLE,
+    6: ProtocolBuffer.Encoder.DOUBLE,
   }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
@@ -687,9 +689,12 @@ class Document(ProtocolBuffer.ProtocolMessage):
   order_id_ = 0
   has_storage_ = 0
   storage_ = 0
+  has_acl_ = 0
+  acl_ = None
 
   def __init__(self, contents=None):
     self.field_ = []
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def id(self): return self.id_
@@ -760,6 +765,25 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def has_storage(self): return self.has_storage_
 
+  def acl(self):
+    if self.acl_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.acl_ is None: self.acl_ = AccessControlList()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.acl_
+
+  def mutable_acl(self): self.has_acl_ = 1; return self.acl()
+
+  def clear_acl(self):
+
+    if self.has_acl_:
+      self.has_acl_ = 0;
+      if self.acl_ is not None: self.acl_.Clear()
+
+  def has_acl(self): return self.has_acl_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -768,6 +792,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_order_id()): self.set_order_id(x.order_id())
     if (x.has_storage()): self.set_storage(x.storage())
+    if (x.has_acl()): self.mutable_acl().MergeFrom(x.acl())
 
   def Equals(self, x):
     if x is self: return 1
@@ -782,12 +807,15 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if self.has_order_id_ and self.order_id_ != x.order_id_: return 0
     if self.has_storage_ != x.has_storage_: return 0
     if self.has_storage_ and self.storage_ != x.storage_: return 0
+    if self.has_acl_ != x.has_acl_: return 0
+    if self.has_acl_ and self.acl_ != x.acl_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     for p in self.field_:
       if not p.IsInitialized(debug_strs): initialized=0
+    if (self.has_acl_ and not self.acl_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -798,6 +826,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
+    if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSize())
     return n
 
   def ByteSizePartial(self):
@@ -808,6 +837,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
+    if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSizePartial())
     return n
 
   def Clear(self):
@@ -816,6 +846,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.clear_field()
     self.clear_order_id()
     self.clear_storage()
+    self.clear_acl()
 
   def OutputUnchecked(self, out):
     if (self.has_id_):
@@ -834,6 +865,10 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
+    if (self.has_acl_):
+      out.putVarInt32(50)
+      out.putVarInt32(self.acl_.ByteSize())
+      self.acl_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_id_):
@@ -852,6 +887,10 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
+    if (self.has_acl_):
+      out.putVarInt32(50)
+      out.putVarInt32(self.acl_.ByteSizePartial())
+      self.acl_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -874,6 +913,12 @@ class Document(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_storage(d.getVarInt32())
         continue
+      if tt == 50:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_acl().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -894,6 +939,10 @@ class Document(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_order_id_: res+=prefix+("order_id: %s\n" % self.DebugFormatInt32(self.order_id_))
     if self.has_storage_: res+=prefix+("storage: %s\n" % self.DebugFormatInt32(self.storage_))
+    if self.has_acl_:
+      res+=prefix+"acl <\n"
+      res+=self.acl_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -905,6 +954,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
   kfield = 3
   korder_id = 4
   kstorage = 5
+  kacl = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -913,7 +963,8 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: "field",
     4: "order_id",
     5: "storage",
-  }, 5)
+    6: "acl",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -922,7 +973,8 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.STRING,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

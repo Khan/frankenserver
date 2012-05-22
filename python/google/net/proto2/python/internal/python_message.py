@@ -43,6 +43,7 @@ try:
   from cStringIO import StringIO
 except ImportError:
   from StringIO import StringIO
+import copy_reg
 import struct
 import weakref
 
@@ -86,6 +87,7 @@ def InitMessage(descriptor, cls):
   _AddStaticMethods(cls)
   _AddMessageMethods(descriptor, cls)
   _AddPrivateHelperMethods(cls)
+  copy_reg.pickle(cls, lambda obj: (cls, (), obj.__getstate__()))
 
 
 
@@ -134,6 +136,10 @@ def _VerifyExtensionHandle(message, extension_handle):
 
   if not extension_handle.is_extension:
     raise KeyError('"%s" is not an extension.' % extension_handle.full_name)
+
+  if not extension_handle.containing_type:
+    raise KeyError('"%s" is missing a containing_type.'
+                   % extension_handle.full_name)
 
   if extension_handle.containing_type is not message.DESCRIPTOR:
     raise KeyError('Extension "%s" extends message type "%s", but this '

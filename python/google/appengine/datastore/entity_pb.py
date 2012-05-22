@@ -1107,6 +1107,7 @@ class PropertyValue(ProtocolBuffer.ProtocolMessage):
 class Property(ProtocolBuffer.ProtocolMessage):
 
 
+  NO_MEANING   =    0
   BLOB         =   14
   TEXT         =   15
   BYTESTRING   =   16
@@ -1124,9 +1125,11 @@ class Property(ProtocolBuffer.ProtocolMessage):
   GD_POSTALADDRESS =   12
   GD_RATING    =   13
   BLOBKEY      =   17
+  ENTITY_PROTO =   19
   INDEX_VALUE  =   18
 
   _Meaning_NAMES = {
+    0: "NO_MEANING",
     14: "BLOB",
     15: "TEXT",
     16: "BYTESTRING",
@@ -1144,6 +1147,7 @@ class Property(ProtocolBuffer.ProtocolMessage):
     12: "GD_POSTALADDRESS",
     13: "GD_RATING",
     17: "BLOBKEY",
+    19: "ENTITY_PROTO",
     18: "INDEX_VALUE",
   }
 

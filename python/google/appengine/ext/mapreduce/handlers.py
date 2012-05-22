@@ -867,9 +867,6 @@ class StartJobHandler(base_handler.PostJsonHandler):
                       "for non-transactional starts.")
 
 
-    mapper_spec.get_handler()
-
-
     mapper_input_reader_class = mapper_spec.input_reader_class()
     mapper_input_reader_class.validate(mapper_spec)
 
@@ -884,6 +881,14 @@ class StartJobHandler(base_handler.PostJsonHandler):
         mapper_spec.to_json(),
         mapreduce_params,
         hooks_class_name)
+
+
+    ctx = context.Context(mapreduce_spec, None)
+    context.Context._set(ctx)
+    try:
+      mapper_spec.get_handler()
+    finally:
+      context.Context._set(None)
 
     kickoff_params = {"mapreduce_spec": mapreduce_spec.to_json_str()}
     if _app:

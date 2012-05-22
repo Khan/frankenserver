@@ -360,7 +360,7 @@ class PropertyPseudoKind(object):
 
 
           representation_pb = property_pb.add_property()
-          representation_pb.set_name(u'property_representation')
+          representation_pb.set_name('property_representation')
           representation_pb.set_multiple(True)
           representation_pb.mutable_value().set_stringvalue(tag_name)
 

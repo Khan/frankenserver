@@ -16,8 +16,6 @@
 #
 
 
-
-
 """OAuth API.
 
 A service that enables App Engine apps to validate OAuth requests.

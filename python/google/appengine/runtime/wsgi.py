@@ -190,7 +190,7 @@ class WsgiRequest(object):
       return {'error': 1}
     result = None
     try:
-      result = handler(self._environ, self._StartResponse)
+      result = handler(dict(self._environ), self._StartResponse)
       for chunk in result:
         if not isinstance(chunk, str):
           raise InvalidResponseError('handler must return an iterable of str')

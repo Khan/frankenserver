@@ -21,6 +21,11 @@
           real={{record.duration_milliseconds}}ms
           api={{record.api_milliseconds}}ms
           overhead={{record.overhead_walltime_milliseconds}}ms
+          {% if has_cost_data %}
+          cost={{record.combined_rpc_cost_microdollars}}
+          <br>
+          billed_ops={{record.combined_rpc_billed_ops}}
+          {% endif %}
         </dd>
       </dl>
     </div>
@@ -54,6 +59,10 @@
                   <b>{{t.service_call_name|escape}}</b>
                   real={{t.duration_milliseconds}}ms
                   api={{t.api_milliseconds}}ms
+                  {% if has_cost_data %}
+                  cost={{t.call_cost_microdollars}}
+                  billed_ops=[{{t.billed_ops_str}}]
+                  {% endif %}
                 </td>
               </tr>
             </tbody>
@@ -105,6 +114,10 @@
             <td align="right">#RPCs</td>
             <td align="right">real time</td>
             <td align="right">api time</td>
+            {% if has_cost_data %}
+            <td align="right">Cost</td>
+            <td align="right">Billed Ops</td>
+            {% endif %}
           </tr>
           {% for item in rpcstats_by_count %}
           <tr>
@@ -112,6 +125,10 @@
             <td align="right">{{item.1|escape}}</td>
             <td align="right">{{item.2}}ms</td>
             <td align="right">{{item.3}}ms</td>
+            {% if has_cost_data %}
+            <td align="right">{{item.4}}</td>
+            <td align="right">{{item.5}}</td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
@@ -193,7 +210,7 @@ function timelineClickHandler(zippyIndex, hash) {
 function renderChart() {
   var chart = new Gantt();
   {% for t in record.individual_stats_list %}
-    chart.add_bar('{{t.service_call_name|escape}}',
+    chart.add_bar('{{t.service_call_name|escape}}{% if has_cost_data %} [{{t.billed_ops_str|escape}}]{% endif %}',
         {{t.start_offset_milliseconds}}, {{t.duration_milliseconds}},
         {{t.api_milliseconds}},
         '{{t.duration_milliseconds}}ms{% if t.api_milliseconds %} ({{t.api_milliseconds}}ms api){% endif %}',

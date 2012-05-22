@@ -101,7 +101,8 @@ def _GetDatastoreStats(kinds_list, use_stats_kinds=False):
 
 
     if (not kind_ent.kind_name.startswith('__')
-        and (use_stats_kinds or kind_ent.kind_name in kinds_list)):
+        and (use_stats_kinds or kind_ent.kind_name in kinds_list)
+        and kind_ent.count > 0):
       results[kind_ent.kind_name] = _PresentatableKindStats(kind_ent)
 
   utils.CacheStats(results.values())

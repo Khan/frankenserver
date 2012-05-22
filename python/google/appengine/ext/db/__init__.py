@@ -249,6 +249,7 @@ _ALLOWED_PROPERTY_TYPES = set([
     datetime.date,
     datetime.time,
     Blob,
+    datastore_types.EmbeddedEntity,
     ByteString,
     Text,
     users.User,
@@ -361,7 +362,7 @@ def model_from_protobuf(pb, _entity_class=datastore.Entity):
     Model instance resulting from decoding the protocol buffer
   """
 
-  entity = _entity_class.FromPb(pb)
+  entity = _entity_class.FromPb(pb, default_kind=Expando.kind())
   return class_for_kind(entity.kind()).from_entity(entity)
 
 

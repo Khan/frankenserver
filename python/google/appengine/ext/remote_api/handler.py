@@ -172,6 +172,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
     begin_request = datastore_pb.BeginTransactionRequest()
     begin_request.set_app(os.environ['APPLICATION_ID'])
+    begin_request.set_allow_multiple_eg(request.allow_multiple_eg())
     tx = datastore_pb.Transaction()
     self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
 
@@ -215,7 +216,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
     self.__call('datastore_v3', 'Commit', tx, api_base_pb.VoidProto())
 
-  def _Dynamic_GetIDs(self, request, response):
+  def _Dynamic_GetIDsXG(self, request, response):
+    self._Dynamic_GetIDs(request, response, is_xg=True)
+
+  def _Dynamic_GetIDs(self, request, response, is_xg=False):
     """Fetch unique IDs for a set of paths."""
 
     for entity in request.entity_list():
@@ -228,6 +232,7 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
 
     begin_request = datastore_pb.BeginTransactionRequest()
     begin_request.set_app(os.environ['APPLICATION_ID'])
+    begin_request.set_allow_multiple_eg(is_xg)
     tx = datastore_pb.Transaction()
     self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
 

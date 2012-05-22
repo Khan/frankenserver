@@ -265,6 +265,21 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   def Consistency_Name(cls, x): return cls._Consistency_NAMES.get(x, "")
   Consistency_Name = classmethod(Consistency_Name)
 
+
+
+  SEARCH       =    0
+  DATASTORE    =    1
+  CLOUD_STORAGE =    2
+
+  _Source_NAMES = {
+    0: "SEARCH",
+    1: "DATASTORE",
+    2: "CLOUD_STORAGE",
+  }
+
+  def Source_Name(cls, x): return cls._Source_NAMES.get(x, "")
+  Source_Name = classmethod(Source_Name)
+
   has_name_ = 0
   name_ = ""
   has_consistency_ = 0
@@ -273,6 +288,8 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   namespace_ = ""
   has_version_ = 0
   version_ = 0
+  has_source_ = 0
+  source_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -329,6 +346,19 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
 
   def has_version(self): return self.has_version_
 
+  def source(self): return self.source_
+
+  def set_source(self, x):
+    self.has_source_ = 1
+    self.source_ = x
+
+  def clear_source(self):
+    if self.has_source_:
+      self.has_source_ = 0
+      self.source_ = 0
+
+  def has_source(self): return self.has_source_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -336,6 +366,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if (x.has_consistency()): self.set_consistency(x.consistency())
     if (x.has_namespace()): self.set_namespace(x.namespace())
     if (x.has_version()): self.set_version(x.version())
+    if (x.has_source()): self.set_source(x.source())
 
   def Equals(self, x):
     if x is self: return 1
@@ -347,6 +378,8 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if self.has_namespace_ and self.namespace_ != x.namespace_: return 0
     if self.has_version_ != x.has_version_: return 0
     if self.has_version_ and self.version_ != x.version_: return 0
+    if self.has_source_ != x.has_source_: return 0
+    if self.has_source_ and self.source_ != x.source_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -363,6 +396,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_consistency_): n += 1 + self.lengthVarInt64(self.consistency_)
     if (self.has_namespace_): n += 1 + self.lengthString(len(self.namespace_))
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -373,6 +407,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_consistency_): n += 1 + self.lengthVarInt64(self.consistency_)
     if (self.has_namespace_): n += 1 + self.lengthString(len(self.namespace_))
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_source_): n += 1 + self.lengthVarInt64(self.source_)
     return n
 
   def Clear(self):
@@ -380,6 +415,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     self.clear_consistency()
     self.clear_namespace()
     self.clear_version()
+    self.clear_source()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -393,6 +429,9 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(32)
       out.putVarInt32(self.version_)
+    if (self.has_source_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.source_)
 
   def OutputPartial(self, out):
     if (self.has_name_):
@@ -407,6 +446,9 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(32)
       out.putVarInt32(self.version_)
+    if (self.has_source_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.source_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -423,6 +465,9 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
       if tt == 32:
         self.set_version(d.getVarInt32())
         continue
+      if tt == 40:
+        self.set_source(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -435,6 +480,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     if self.has_consistency_: res+=prefix+("consistency: %s\n" % self.DebugFormatInt32(self.consistency_))
     if self.has_namespace_: res+=prefix+("namespace: %s\n" % self.DebugFormatString(self.namespace_))
     if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt32(self.version_))
+    if self.has_source_: res+=prefix+("source: %s\n" % self.DebugFormatInt32(self.source_))
     return res
 
 
@@ -445,6 +491,7 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
   kconsistency = 2
   knamespace = 3
   kversion = 4
+  ksource = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -452,7 +499,8 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     2: "consistency",
     3: "namespace",
     4: "version",
-  }, 4)
+    5: "source",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -460,7 +508,8 @@ class IndexSpec(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
