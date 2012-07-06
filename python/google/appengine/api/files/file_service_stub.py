@@ -42,7 +42,6 @@ from google.appengine.api.files import file_service_pb
 from google.appengine.api.files import gs
 from google.appengine.ext import blobstore
 from google.appengine.runtime import apiproxy_errors
-from google.appengine.tools import dev_appserver_upload
 
 
 MAX_REQUEST_SIZE = 32 << 20
@@ -52,6 +51,12 @@ GS_INFO_KIND = '__GsFileInfo__'
 
 
 _now_function = datetime.datetime.now
+
+
+def _random_string(length):
+  """Generate a random string of given length."""
+  return ''.join(
+      random.choice(string.letters + string.digits) for _ in range(length))
 
 
 def raise_error(error_code, error_detail=''):
@@ -257,7 +262,7 @@ class GoogleStorageFile(object):
     file_stat.set_filename(file_info['filename'])
     file_stat.set_finalized(True)
     file_stat.set_length(file_info['size'])
-    file_stat.set_content_type(file_info['content_type'])
+    file_stat.set_content_type(file_service_pb.FileContentType.RAW)
     response.set_more_files_found(False)
 
   def read(self, request, response):
@@ -480,7 +485,7 @@ class BlobstoreFile(object):
     file_stat.set_filename(file_info['filename'])
     file_stat.set_finalized(True)
     file_stat.set_length(file_info['size'])
-    file_stat.set_content_type(file_info['content_type'])
+    file_stat.set_content_type(file_service_pb.FileContentType.RAW)
     response.set_more_files_found(False)
 
   def read(self, request, response):
@@ -518,7 +523,7 @@ class BlobstoreFile(object):
     Copies temp file data to the blobstore.
     """
     self.file_storage.finalize(self.filename)
-    blob_key = dev_appserver_upload.GenerateBlobKey()
+    blob_key = _random_string(64)
     self.file_storage.register_blob_key(self.ticket, blob_key)
 
     size = self.file_storage.save_blob(self.filename, blob_key)

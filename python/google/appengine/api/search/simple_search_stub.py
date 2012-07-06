@@ -47,6 +47,7 @@ from google.appengine.api.search import search_service_pb
 from google.appengine.runtime import apiproxy_errors
 
 __all__ = ['IndexConsistencyError',
+           'GeoPoint',
            'Number',
            'Posting',
            'PostingList',
@@ -139,6 +140,25 @@ class Number(Token):
     Token.__init__(self, **kwargs)
 
 
+class GeoPoint(Token):
+  """Represents a geo point in a document field or query."""
+
+  def __init__(self, **kwargs):
+    self._latitude = kwargs.pop('latitude')
+    self._longitude = kwargs.pop('longitude')
+    Token.__init__(self, **kwargs)
+
+  @property
+  def latitude(self):
+    """Returns the angle between equatorial plan and line thru the geo point."""
+    return self._latitude
+
+  @property
+  def longitude(self):
+    """Returns the angle from a reference meridian to another meridian."""
+    return self._longitude
+
+
 class Posting(object):
   """Represents a occurrences of some token at positions in a document."""
 
@@ -205,6 +225,10 @@ class SimpleTokenizer(object):
 
   def TokenizeValue(self, field_value, token_position=0):
     """Tokenizes a document_pb.FieldValue into a sequence of Tokens."""
+    if field_value.type() is document_pb.FieldValue.GEO:
+      return self._TokenizeForType(field_type=field_value.type(),
+                                   value=field_value.geo(),
+                                   token_position=token_position)
     return self._TokenizeForType(field_type=field_value.type(),
                                  value=field_value.string_value(),
                                  token_position=token_position)
@@ -222,6 +246,10 @@ class SimpleTokenizer(object):
     """Tokenizes value into a sequence of Tokens."""
     if field_type is document_pb.FieldValue.NUMBER:
       return [Token(chars=value, position=token_position)]
+
+    if field_type is document_pb.FieldValue.GEO:
+      return [GeoPoint(latitude=value.lat(), longitude=value.lng(),
+                       position=token_position)]
 
     tokens = []
     token_strings = []
@@ -761,6 +789,9 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     Args:
       request: A search_service_pb.ListIndexesRequest.
       response: An search_service_pb.ListIndexesResponse.
+
+    Raises:
+      ResponseTooLargeError: raised for testing admin console.
     """
 
 

@@ -87,6 +87,8 @@ else:
     if database:
       merged_kwargs['db'] = database
     merged_kwargs.update(kwargs)
+    if 'password' in merged_kwargs:
+      merged_kwargs['passwd'] = merged_kwargs.pop('password')
     host = merged_kwargs.get('host')
     if ((not host or host == 'localhost') and
         not merged_kwargs.get('unix_socket')):

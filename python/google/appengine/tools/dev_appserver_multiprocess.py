@@ -673,9 +673,11 @@ class DevProcess(object):
         'capability_service',
         'conversion',
         'datastore_v3',
+        'mail',
         'memcache',
         'taskqueue',
         'urlfetch',
+        'xmpp',
     )
     remote_api_stub.ConfigureRemoteApi(
         self.app_id, PATH_DEV_API_SERVER, lambda: ('', ''),

@@ -74,6 +74,7 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self._login_url = login_url
     self._logout_url = logout_url
     self._http_server_address = http_server_address
+    self.__scopes = None
 
     self.SetOAuthUser()
 
@@ -86,7 +87,8 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
                    email=_OAUTH_EMAIL,
                    domain=_OAUTH_AUTH_DOMAIN,
                    user_id=_OAUTH_USER_ID,
-                   is_admin=False):
+                   is_admin=False,
+                   scopes=None):
     """Set test OAuth user.
 
     Determines what user is returned by requests to GetOAuthUser.
@@ -97,11 +99,13 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       domain: Domain of oauth user.
       user_id: User ID of oauth user.
       is_admin:  Whether the user is an admin.
+      scopes: List of scopes that user is authenticated against.
     """
     self.__email = email
     self.__domain = domain
     self.__user_id = user_id
     self.__is_admin = is_admin
+    self.__scopes = scopes
 
   def _Dynamic_CreateLoginURL(self, request, response):
     """Trivial implementation of UserService.CreateLoginURL().
@@ -125,17 +129,22 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
         self._logout_url %
         urllib.quote(self._AddHostToContinueURL(request.destination_url())))
 
-  def _Dynamic_GetOAuthUser(self, unused_request, response):
+  def _Dynamic_GetOAuthUser(self, request, response):
     """Trivial implementation of UserService.GetOAuthUser().
 
     Args:
-      unused_request: a GetOAuthUserRequest
+      request: a GetOAuthUserRequest
       response: a GetOAuthUserResponse
     """
     if self.__email is None:
       raise apiproxy_errors.ApplicationError(
           user_service_pb.UserServiceError.OAUTH_INVALID_REQUEST)
     else:
+      if self.__scopes is not None:
+
+        if request.scope() not in self.__scopes:
+          raise apiproxy_errors.ApplicationError(
+              user_service_pb.UserServiceError.OAUTH_INVALID_TOKEN)
       response.set_email(self.__email)
       response.set_user_id(self.__user_id)
       response.set_auth_domain(self.__domain)

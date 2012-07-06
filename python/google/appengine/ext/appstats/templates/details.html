@@ -22,7 +22,7 @@
           api={{record.api_milliseconds}}ms
           overhead={{record.overhead_walltime_milliseconds}}ms
           {% if has_cost_data %}
-          cost={{record.combined_rpc_cost_microdollars}}
+          cost={{record.combined_rpc_cost_micropennies}}
           <br>
           billed_ops={{record.combined_rpc_billed_ops}}
           {% endif %}
@@ -210,7 +210,7 @@ function timelineClickHandler(zippyIndex, hash) {
 function renderChart() {
   var chart = new Gantt();
   {% for t in record.individual_stats_list %}
-    chart.add_bar('{{t.service_call_name|escape}}{% if has_cost_data %} [{{t.billed_ops_str|escape}}]{% endif %}',
+    chart.add_bar('{{t.service_call_name|escape}}',
         {{t.start_offset_milliseconds}}, {{t.duration_milliseconds}},
         {{t.api_milliseconds}},
         '{{t.duration_milliseconds}}ms{% if t.api_milliseconds %} ({{t.api_milliseconds}}ms api){% endif %}',

@@ -167,7 +167,7 @@ def CreateBlobImageDispatcher(images_stub):
         (blob_key, option) tuple parsed out of the URL.
       """
       path = urlparse.urlsplit(url)[2]
-      match = re.search('/_ah/img/([-\\w]+)([=]*)([-\\w]+)?', path)
+      match = re.search('/_ah/img/([-\\w:]+)([=]*)([-\\w]+)?', path)
       if not match or not match.group(1):
         raise ValueError, 'Failed to parse image url.'
       options = ''

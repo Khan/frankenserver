@@ -130,6 +130,10 @@ class UnsupportedSizeError(Error):
   """Specified size is not supported by requested operation."""
 
 
+class AccessDeniedError(Error):
+  """The application does not have permission to access the image."""
+
+
 class Image(object):
   """Image object to manipulate."""
 
@@ -716,6 +720,8 @@ class Image(object):
       LargeImageError when the image data given is too large to process.
       InvalidBlobKeyError when the blob key provided is invalid.
       TransformtionError when something errors during image manipulation.
+      AccessDeniedError: when the blobkey refers to a Google Storage object, and
+        the application does not have permission to access the object.
       Error when something unknown, but bad, happens.
     """
     if output_encoding not in OUTPUT_ENCODING_TYPES:
@@ -772,6 +778,9 @@ class Image(object):
       elif (e.application_error ==
             images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR):
         raise TransformationError()
+      elif (e.application_error ==
+            images_service_pb.ImagesServiceError.ACCESS_DENIED):
+        raise AccessDeniedError()
       else:
         raise Error()
 
@@ -1227,7 +1236,8 @@ IMG_SERVING_CROP_SIZES = [32, 48, 64, 72, 80, 104, 136, 144, 150, 160]
 def get_serving_url(blob_key,
                     size=None,
                     crop=False,
-                    secure_url=None):
+                    secure_url=None,
+                    filename=None):
   """Obtain a url that will serve the underlying image.
 
   This URL is served by a high-performance dynamic image serving infrastructure.
@@ -1256,6 +1266,7 @@ def get_serving_url(blob_key,
     size: int, size of resulting images
     crop: bool, True requests a cropped image, False a resized one.
     secure_url: bool, True requests a https url, False requests a http url.
+    filename: The filename of a Google Storage object to get the URL of.
 
   Returns:
     str, a url
@@ -1263,11 +1274,15 @@ def get_serving_url(blob_key,
   Raises:
     BlobKeyRequiredError: when no blobkey was specified in the ctor.
     UnsupportedSizeError: when size parameters uses unsupported sizes.
-    BadRequestError: when crop/size are present in wrong combination.
+    BadRequestError: when crop/size are present in wrong combination, or a
+      blob_key and a filename have been specified.
     TypeError: when secure_url is not a boolean type.
+    AccessDeniedError: when the blobkey refers to a Google Storage object, and
+      the application does not have permission to access the object.
   """
-  if not blob_key:
-    raise BlobKeyRequiredError("A Blobkey is required for this operation.")
+  if not blob_key and not filename:
+    raise BlobKeyRequiredError(
+        "A Blobkey or a filename is required for this operation.")
 
   if crop and not size:
     raise BadRequestError("Size should be set for crop operation")
@@ -1278,10 +1293,18 @@ def get_serving_url(blob_key,
   if secure_url and not isinstance(secure_url, bool):
     raise TypeError("secure_url must be boolean.")
 
+  if filename and blob_key:
+    raise BadRequestError("Cannot specify a blob_key and a filename.");
+
+  if filename:
+    _blob_key = blobstore.create_gs_key(filename)
+  else:
+    _blob_key = _extract_blob_key(blob_key)
+
   request = images_service_pb.ImagesGetUrlBaseRequest()
   response = images_service_pb.ImagesGetUrlBaseResponse()
 
-  request.set_blob_key(_extract_blob_key(blob_key))
+  request.set_blob_key(_blob_key)
 
   if secure_url:
     request.set_create_secure_url(secure_url)
@@ -1304,6 +1327,9 @@ def get_serving_url(blob_key,
     elif (e.application_error ==
           images_service_pb.ImagesServiceError.INVALID_BLOB_KEY):
       raise InvalidBlobKeyError()
+    elif (e.application_error ==
+          images_service_pb.ImagesServiceError.ACCESS_DENIED):
+      raise AccessDeniedError()
     else:
       raise Error()
   url = response.url()

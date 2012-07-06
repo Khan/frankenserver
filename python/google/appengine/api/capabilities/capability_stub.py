@@ -34,6 +34,20 @@ IsEnabledRequest = capabilities.IsEnabledRequest
 IsEnabledResponse = capabilities.IsEnabledResponse
 CapabilityConfig = capabilities.CapabilityConfig
 
+
+
+SUPPORTED_CAPABILITIES = (
+    'blobstore',
+    'datastore_v3',
+    'images',
+    'mail',
+    'memcache',
+    'taskqueue',
+    'urlfetch',
+    'xmpp',
+)
+
+
 class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
   """Python only capability service stub."""
 
@@ -44,7 +58,9 @@ class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
       service_name: Service name expected for all calls.
     """
     super(CapabilityServiceStub, self).__init__(service_name)
-    self._packages = {}
+
+
+    self._packages = dict.fromkeys(SUPPORTED_CAPABILITIES, True)
 
   def SetPackageEnabled(self, package, enabled):
     """Set all features of a given package to enabled.
@@ -68,16 +84,21 @@ class CapabilityServiceStub(apiproxy_stub.APIProxyStub):
       request: An IsEnabledRequest.
       response: An IsEnabledResponse.
     """
-    package_enabled = self._packages.get(request.package(), True)
-    if package_enabled:
-      response.set_summary_status(IsEnabledResponse.ENABLED)
-    else:
-      response.set_summary_status(IsEnabledResponse.DISABLED)
-
     default_config = response.add_config()
     default_config.set_package('')
     default_config.set_capability('')
-    if package_enabled:
-      default_config.set_status(CapabilityConfig.ENABLED)
+
+    try:
+      package_enabled = self._packages[request.package()]
+    except KeyError:
+      summary_status = IsEnabledResponse.UNKNOWN
+      config_status = CapabilityConfig.UNKNOWN
     else:
-      default_config.set_status(CapabilityConfig.DISABLED)
+      if package_enabled:
+        summary_status = IsEnabledResponse.ENABLED
+        config_status = CapabilityConfig.ENABLED
+      else:
+        summary_status = IsEnabledResponse.DISABLED
+        config_status = CapabilityConfig.DISABLED
+    response.set_summary_status(summary_status)
+    default_config.set_status(config_status)

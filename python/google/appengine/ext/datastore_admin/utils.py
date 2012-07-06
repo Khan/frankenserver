@@ -22,11 +22,14 @@
 
 
 import base64
+import collections
 import datetime
 import logging
 import os
 import random
 
+from google.appengine.datastore import entity_pb
+from google.appengine.api import datastore
 from google.appengine.api import lib_config
 from google.appengine.api import memcache
 from google.appengine.api import users
@@ -35,6 +38,7 @@ from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.mapreduce import control
 from google.appengine.ext.mapreduce import model
+from google.appengine.ext.mapreduce import operation
 from google.appengine.ext.mapreduce import util
 from google.appengine.ext.webapp import _template
 
@@ -556,3 +560,114 @@ def AbortAdminOperation(operation_key,
   for job in operation.active_job_ids:
     logging.info('Aborting Job %s', job)
     model.MapreduceControl.abort(job, config=_CreateDatastoreConfig())
+
+
+def FixKeys(entity_proto, app_id):
+  """Go over keys in the given entity and update the application id.
+
+  Args:
+    entity_proto: An EntityProto to be fixed up. All identifiable keys in the
+      proto will have the 'app' field reset to match app_id.
+    app_id: The desired application id, typically os.getenv('APPLICATION_ID').
+  """
+
+  def FixKey(mutable_key):
+    mutable_key.set_app(app_id)
+
+  def FixPropertyList(property_list):
+    for prop in property_list:
+      prop_value = prop.mutable_value()
+      if prop_value.has_referencevalue():
+        FixKey(prop_value.mutable_referencevalue())
+      elif prop.meaning() == entity_pb.Property.ENTITY_PROTO:
+        embeded_entity_proto = entity_pb.EntityProto()
+        try:
+          embeded_entity_proto.ParsePartialFromString(prop_value.stringvalue())
+        except Exception:
+          logging.exception('Failed to fix-keys for property %s of %s',
+                            prop.name(),
+                            entity_proto.key())
+        else:
+          FixKeys(embeded_entity_proto, app_id)
+          prop_value.set_stringvalue(
+              embeded_entity_proto.SerializePartialToString())
+
+
+  if entity_proto.has_key() and entity_proto.key().path().element_size():
+    FixKey(entity_proto.mutable_key())
+
+  FixPropertyList(entity_proto.property_list())
+  FixPropertyList(entity_proto.raw_property_list())
+
+
+class AllocateMaxIdPool(object):
+  """Mapper pool to keep track of all allocated ids.
+
+  Runs allocate_ids rpcs when flushed.
+
+  This code uses the knowloedge of allocate_id implementation detail.
+  Though we don't plan to change allocate_id logic, we don't really
+  want to depend on it either. We are using this details here to implement
+  batch-style remote allocate_ids.
+  """
+
+  def __init__(self, app_id):
+    self.app_id = app_id
+
+    self.ns_to_path_to_max_id = collections.defaultdict(dict)
+
+  def allocate_max_id(self, key):
+    """Record the key to allocate max id.
+
+    Args:
+      key: Datastore key.
+    """
+    path = key.to_path()
+    if len(path) == 2:
+
+
+      path_tuple = ('Foo', 1)
+      key_id = path[-1]
+    else:
+
+
+      path_tuple = (path[0], path[1], 'Foo', 1)
+
+
+      key_id = None
+      for path_element in path[2:]:
+        if isinstance(path_element, (int, long)):
+          key_id = max(key_id, path_element)
+
+    if not isinstance(key_id, (int, long)):
+
+      return
+
+
+    path_to_max_id = self.ns_to_path_to_max_id[key.namespace()]
+    path_to_max_id[path_tuple] = max(key_id, path_to_max_id.get(path_tuple, 0))
+
+  def flush(self):
+    for namespace, path_to_max_id in self.ns_to_path_to_max_id.iteritems():
+      for path, max_id in path_to_max_id.iteritems():
+        datastore.AllocateIds(db.Key.from_path(namespace=namespace,
+                                               _app=self.app_id,
+                                               *list(path)),
+                              max=max_id)
+    self.ns_to_path_to_max_id = collections.defaultdict(dict)
+
+
+class AllocateMaxId(operation.Operation):
+  """Mapper operation to allocate max id."""
+
+  def __init__(self, key, app_id):
+    self.key = key
+    self.app_id = app_id
+    self.pool_id = 'allocate_max_id_%s_pool' % self.app_id
+
+  def __call__(self, ctx):
+    pool = ctx.get_pool(self.pool_id)
+    if not pool:
+      pool = AllocateMaxIdPool(self.app_id)
+      ctx.register_pool(self.pool_id, pool)
+    pool.allocate_max_id(self.key)

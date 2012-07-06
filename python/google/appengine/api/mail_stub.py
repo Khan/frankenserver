@@ -85,6 +85,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._smtp_password = password
     self._enable_sendmail = enable_sendmail
     self._show_mail_body = show_mail_body
+
     self._cached_messages = []
 
   def _GenerateLog(self, method, message, log):
@@ -94,45 +95,49 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       message: Message to write to log.
       log: Log function of type string -> None
     """
-    log('MailService.%s' % method)
-    log('  From: %s' % message.sender())
+    log_message = []
+    log_message.append('MailService.%s' % method)
+    log_message.append('  From: %s' % message.sender())
 
 
     for address in message.to_list():
-      log('  To: %s' % address)
+      log_message.append('  To: %s' % address)
     for address in message.cc_list():
-      log('  Cc: %s' % address)
+      log_message.append('  Cc: %s' % address)
     for address in message.bcc_list():
-      log('  Bcc: %s' % address)
+      log_message.append('  Bcc: %s' % address)
 
     if message.replyto():
-      log('  Reply-to: %s' % message.replyto())
+      log_message.append('  Reply-to: %s' % message.replyto())
 
 
-    log('  Subject: %s' % message.subject())
+    log_message.append('  Subject: %s' % message.subject())
 
 
     if message.has_textbody():
-      log('  Body:')
-      log('    Content-type: text/plain')
-      log('    Data length: %d' % len(message.textbody()))
+      log_message.append('  Body:')
+      log_message.append('    Content-type: text/plain')
+      log_message.append('    Data length: %d' % len(message.textbody()))
       if self._show_mail_body:
-        log('-----\n' + message.textbody() + '\n-----')
+        log_message.append('-----\n' + message.textbody() + '\n-----')
 
 
     if message.has_htmlbody():
-      log('  Body:')
-      log('    Content-type: text/html')
-      log('    Data length: %d' % len(message.htmlbody()))
+      log_message.append('  Body:')
+      log_message.append('    Content-type: text/html')
+      log_message.append('    Data length: %d' % len(message.htmlbody()))
       if self._show_mail_body:
-        log('-----\n' + message.htmlbody() + '\n-----')
+        log_message.append('-----\n' + message.htmlbody() + '\n-----')
 
 
     for attachment in message.attachment_list():
-      log('  Attachment:')
-      log('    File name: %s' % attachment.filename())
-      log('    Data length: %s' % len(attachment.data()))
+      log_message.append('  Attachment:')
+      log_message.append('    File name: %s' % attachment.filename())
+      log_message.append('    Data length: %s' % len(attachment.data()))
 
+    log('\n'.join(log_message))
+
+  @apiproxy_stub.Synchronized
   def _CacheMessage(self, message):
     """Cache a message that were sent for later inspection.
 
@@ -142,6 +147,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._cached_messages.append(message)
 
 
+  @apiproxy_stub.Synchronized
   def get_sent_messages(self, to=None, sender=None, subject=None, body=None,
                         html=None):
     """Get a list of mail messages sent via the Mail API.

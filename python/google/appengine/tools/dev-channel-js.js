@@ -630,6 +630,10 @@ goog.string.toTitleCase = function(str, opt_delimiters) {
     return p1 + p2.toUpperCase()
   })
 };
+goog.string.parseInt = function(value) {
+  isFinite(value) && (value = "" + value);
+  return goog.isString(value) ? /^\s*-?0x/i.test(value) ? parseInt(value, 16) : parseInt(value, 10) : NaN
+};
 goog.asserts = {};
 goog.asserts.ENABLE_ASSERTS = goog.DEBUG;
 goog.asserts.AssertionError = function(messagePattern, messageArgs) {
@@ -1263,7 +1267,7 @@ goog.object.transpose = function(obj) {
   }
   return transposed
 };
-goog.object.PROTOTYPE_FIELDS_ = "constructor,hasOwnProperty,isPrototypeOf,propertyIsEnumerable,toLocaleString,toString,valueOf".split(",");
+goog.object.PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
 goog.object.extend = function(target, var_args) {
   for(var key, source, i = 1;i < arguments.length;i++) {
     source = arguments[i];
@@ -3252,7 +3256,12 @@ goog.Disposable.prototype.dispose = function() {
   }
 };
 goog.Disposable.prototype.disposeInternal = function() {
-  this.dependentDisposables_ && goog.disposeAll.apply(null, this.dependentDisposables_)
+  this.dependentDisposables_ && goog.disposeAll.apply(null, this.dependentDisposables_);
+  if(this.onDisposeCallbacks_) {
+    for(;this.onDisposeCallbacks_.length;) {
+      this.onDisposeCallbacks_.shift()()
+    }
+  }
 };
 goog.dispose = function(obj) {
   obj && "function" == typeof obj.dispose && obj.dispose()
@@ -3393,6 +3402,7 @@ goog.events.EventWrapper.prototype.unlisten = function() {
 goog.events.Listener = function() {
 };
 goog.events.Listener.counter_ = 0;
+goog.events.Listener.ENABLE_MONITORING = !1;
 goog.events.Listener.prototype.key = 0;
 goog.events.Listener.prototype.removed = !1;
 goog.events.Listener.prototype.callOnce = !1;
@@ -3644,9 +3654,8 @@ goog.events.fireListeners_ = function(map, obj, type, capture, eventObject) {
   return Boolean(retval)
 };
 goog.events.fireListener = function(listener, eventObject) {
-  var rv = listener.handleEvent(eventObject);
   listener.callOnce && goog.events.unlistenByKey(listener.key);
-  return rv
+  return listener.handleEvent(eventObject)
 };
 goog.events.getTotalListenerCount = function() {
   return goog.object.getCount(goog.events.listeners_)
@@ -4066,11 +4075,12 @@ goog.uri.utils.appendQueryData_ = function(buffer) {
 };
 goog.uri.utils.appendKeyValuePairs_ = function(key, value, pairs) {
   if(goog.isArray(value)) {
+    goog.asserts.assertArray(value);
     for(var j = 0;j < value.length;j++) {
-      pairs.push("&", key), "" !== value[j] && pairs.push("=", goog.string.urlEncode(value[j]))
+      goog.uri.utils.appendKeyValuePairs_(key, "" + value[j], pairs)
     }
   }else {
-    null != value && (pairs.push("&", key), "" !== value && pairs.push("=", goog.string.urlEncode(value)))
+    null != value && pairs.push("&", key, "" === value ? "" : "=", goog.string.urlEncode(value))
   }
 };
 goog.uri.utils.buildQueryDataBuffer_ = function(buffer, keysAndValues, opt_startIndex) {
@@ -4235,6 +4245,7 @@ goog.net.WrapperXmlHttpFactory.prototype.getOptions = function() {
 goog.net.XmlHttp = function() {
   return goog.net.XmlHttp.factory_.createInstance()
 };
+goog.net.XmlHttp.ASSUME_NATIVE_XHR = !1;
 goog.net.XmlHttp.getOptions = function() {
   return goog.net.XmlHttp.factory_.getOptions()
 };
@@ -4258,8 +4269,10 @@ goog.net.DefaultXmlHttpFactory.prototype.internalGetOptions = function() {
   progId && (options[goog.net.XmlHttp.OptionType.USE_NULL_FUNCTION] = !0, options[goog.net.XmlHttp.OptionType.LOCAL_REQUEST_ERROR] = !0);
   return options
 };
-goog.net.DefaultXmlHttpFactory.prototype.ieProgId_ = null;
 goog.net.DefaultXmlHttpFactory.prototype.getProgId_ = function() {
+  if(goog.net.XmlHttp.ASSUME_NATIVE_XHR) {
+    return""
+  }
   if(!this.ieProgId_ && "undefined" == typeof XMLHttpRequest && "undefined" != typeof ActiveXObject) {
     for(var ACTIVE_X_IDENTS = ["MSXML2.XMLHTTP.6.0", "MSXML2.XMLHTTP.3.0", "MSXML2.XMLHTTP", "Microsoft.XMLHTTP"], i = 0;i < ACTIVE_X_IDENTS.length;i++) {
       var candidate = ACTIVE_X_IDENTS[i];
@@ -4728,7 +4741,11 @@ goog.Uri.QueryData.createFromMap = function(map, opt_uri, opt_ignoreCase) {
   if("undefined" == typeof keys) {
     throw Error("Keys are undefined");
   }
-  return goog.Uri.QueryData.createFromKeysValues(keys, goog.structs.getValues(map), opt_uri, opt_ignoreCase)
+  for(var queryData = new goog.Uri.QueryData(null, null, opt_ignoreCase), values = goog.structs.getValues(map), i = 0;i < keys.length;i++) {
+    var key = keys[i], value = values[i];
+    goog.isArray(value) ? queryData.setValues(key, value) : queryData.add(key, value)
+  }
+  return queryData
 };
 goog.Uri.QueryData.createFromKeysValues = function(keys, values, opt_uri, opt_ignoreCase) {
   if(keys.length != values.length) {
@@ -4748,26 +4765,16 @@ goog.Uri.QueryData.prototype.getCount = function() {
 goog.Uri.QueryData.prototype.add = function(key, value) {
   this.ensureKeyMapInitialized_();
   this.invalidateCache_();
-  key = this.getKeyName_(key);
-  if(this.containsKey(key)) {
-    var current = this.keyMap_.get(key);
-    goog.isArray(current) ? current.push(value) : this.keyMap_.set(key, [current, value])
-  }else {
-    this.keyMap_.set(key, value)
-  }
+  var key = this.getKeyName_(key), values = this.keyMap_.get(key);
+  values || this.keyMap_.set(key, values = []);
+  values.push(value);
   this.count_++;
   return this
 };
 goog.Uri.QueryData.prototype.remove = function(key) {
   this.ensureKeyMapInitialized_();
   key = this.getKeyName_(key);
-  if(this.keyMap_.containsKey(key)) {
-    this.invalidateCache_();
-    var old = this.keyMap_.get(key);
-    goog.isArray(old) ? this.count_ -= old.length : this.count_--;
-    return this.keyMap_.remove(key)
-  }
-  return!1
+  return this.keyMap_.containsKey(key) ? (this.invalidateCache_(), this.count_ -= this.keyMap_.get(key).length, this.keyMap_.remove(key)) : !1
 };
 goog.Uri.QueryData.prototype.clear = function() {
   this.invalidateCache_();
@@ -4790,12 +4797,7 @@ goog.Uri.QueryData.prototype.containsValue = function(value) {
 goog.Uri.QueryData.prototype.getKeys = function() {
   this.ensureKeyMapInitialized_();
   for(var vals = this.keyMap_.getValues(), keys = this.keyMap_.getKeys(), rv = [], i = 0;i < keys.length;i++) {
-    var val = vals[i];
-    if(goog.isArray(val)) {
-      for(var j = 0;j < val.length;j++) {
-        rv.push(keys[i])
-      }
-    }else {
+    for(var val = vals[i], j = 0;j < val.length;j++) {
       rv.push(keys[i])
     }
   }
@@ -4817,17 +4819,18 @@ goog.Uri.QueryData.prototype.set = function(key, value) {
   this.ensureKeyMapInitialized_();
   this.invalidateCache_();
   key = this.getKeyName_(key);
-  if(this.containsKey(key)) {
-    var old = this.keyMap_.get(key);
-    goog.isArray(old) ? this.count_ -= old.length : this.count_--
-  }
-  this.keyMap_.set(key, value);
+  this.containsKey(key) && (this.count_ -= this.keyMap_.get(key).length);
+  this.keyMap_.set(key, [value]);
   this.count_++;
   return this
 };
 goog.Uri.QueryData.prototype.get = function(key, opt_default) {
   var values = key ? this.getValues(key) : [];
   return 0 < values.length ? values[0] : opt_default
+};
+goog.Uri.QueryData.prototype.setValues = function(key, values) {
+  this.remove(key);
+  0 < values.length && (this.invalidateCache_(), this.keyMap_.set(this.getKeyName_(key), goog.array.clone(values)), this.count_ += values.length)
 };
 goog.Uri.QueryData.prototype.toString = function() {
   if(this.encodedQuery_) {
@@ -4866,7 +4869,7 @@ goog.Uri.QueryData.prototype.setIgnoreCase = function(ignoreCase) {
   var resetKeys = ignoreCase && !this.ignoreCase_;
   resetKeys && (this.ensureKeyMapInitialized_(), this.invalidateCache_(), goog.structs.forEach(this.keyMap_, function(value, key) {
     var lowerCase = key.toLowerCase();
-    key != lowerCase && (this.remove(key), this.add(lowerCase, value))
+    key != lowerCase && (this.remove(key), this.setValues(lowerCase, value))
   }, this));
   this.ignoreCase_ = ignoreCase
 };

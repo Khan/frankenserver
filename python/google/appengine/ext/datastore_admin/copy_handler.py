@@ -33,13 +33,11 @@ This module also contains actual mapper code for copying data over.
 
 import logging
 import urllib
-import collections
 
-from google.appengine.api import datastore
 from google.appengine.api import capabilities
+from google.appengine.api import datastore
 from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import blobstore
-from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.datastore_admin import remote_api_put_stub
 from google.appengine.ext.datastore_admin import utils
@@ -99,8 +97,10 @@ class DoCopyHandler(webapp.RequestHandler):
 
   SUFFIX = 'copy.do'
 
-  COPY_HANDLER = 'google.appengine.ext.datastore_admin.copy_handler.' + 'RemoteCopyEntity.map'
-  INPUT_READER = 'google.appengine.ext.mapreduce.input_readers.' + 'ConsistentKeyReader'
+  COPY_HANDLER = ('google.appengine.ext.datastore_admin.copy_handler.'
+                  'RemoteCopyEntity.map')
+  INPUT_READER = ('google.appengine.ext.mapreduce.input_readers.'
+                  'ConsistentKeyReader')
   MAPREDUCE_DETAIL = utils.config.MAPREDUCE_PATH + '/detail?mapreduce_id='
 
   def get(self):
@@ -188,106 +188,6 @@ class DoCopyHandler(webapp.RequestHandler):
     return str(e)
 
 
-class AllocateMaxIdPool(object):
-  """Mapper pool to keep track of all allocated ids.
-
-  Runs allocate_ids rpcs when flushed.
-
-  This code uses the knowloedge of allocate_id implementation detail.
-  Though we don't plan to change allocate_id logic, we don't really
-  want to depend on it either. We are using this details here to implement
-  batch-style remote allocate_ids.
-  """
-
-  def __init__(self, app_id):
-    self.app_id = app_id
-
-    self.ns_to_path_to_max_id = collections.defaultdict(dict)
-
-  def allocate_max_id(self, key):
-    """Record the key to allocate max id.
-
-    Args:
-      key: Datastore key.
-    """
-    path = key.to_path()
-    if len(path) == 2:
-
-
-      path_tuple = ('Foo', 1)
-      id = path[-1]
-    else:
-
-
-      path_tuple = (path[0], path[1], 'Foo', 1)
-
-
-      id = None
-      for path_element in path[2:]:
-        if isinstance(path_element, (int, long)):
-          id = max(id, path_element)
-
-    if not isinstance(id, (int, long)):
-
-      return
-
-
-    path_to_max_id = self.ns_to_path_to_max_id[key.namespace()]
-    path_to_max_id[path_tuple] = max(id, path_to_max_id.get(path_tuple, 0))
-
-  def flush(self):
-    for namespace, path_to_max_id in self.ns_to_path_to_max_id.iteritems():
-      for path, max_id in path_to_max_id.iteritems():
-        datastore.AllocateIds(db.Key.from_path(namespace=namespace,
-                                               _app=self.app_id,
-                                               *list(path)),
-                              max=max_id)
-    self.ns_to_path_to_max_id = collections.defaultdict(dict)
-
-
-class AllocateMaxId(operation.Operation):
-  """Mapper operation to allocate max id."""
-
-  def __init__(self, key, app_id):
-    self.key = key
-    self.app_id = app_id
-    self.pool_id = 'allocate_max_id_%s_pool' % self.app_id
-
-  def __call__(self, ctx):
-    pool = ctx.get_pool(self.pool_id)
-    if not pool:
-      pool = AllocateMaxIdPool(self.app_id)
-      ctx.register_pool(self.pool_id, pool)
-    pool.allocate_max_id(self.key)
-
-
-
-
-def FixKeys(entity_proto, app_id):
-  """Go over keys in the given entity and update the application id.
-
-  Args:
-    entity_proto: An EntityProto to be fixed up. All identifiable keys in the
-      proto will have the 'app' field reset to match app_id.
-    app_id: The desired application id, typically os.getenv('APPLICATION_ID').
-  """
-
-  def FixKey(mutable_key):
-    mutable_key.set_app(app_id)
-
-  def FixPropertyList(property_list):
-    for prop in property_list:
-      prop_value = prop.mutable_value()
-      if prop_value.has_referencevalue():
-        FixKey(prop_value.mutable_referencevalue())
-
-
-  FixKey(entity_proto.mutable_key())
-
-  FixPropertyList(entity_proto.property_list())
-  FixPropertyList(entity_proto.raw_property_list())
-
-
 
 def KindPathFromKey(key):
   """Return kinds path as '/'-delimited string for a particular key."""
@@ -332,11 +232,11 @@ class CopyEntity(object):
     else:
       entity = datastore.Get(key)
     entity_proto = entity._ToPb()
-    FixKeys(entity_proto, target_app)
+    utils.FixKeys(entity_proto, target_app)
     target_entity = datastore.Entity._FromPb(entity_proto)
 
     yield operation.db.Put(target_entity)
-    yield AllocateMaxId(key, target_app)
+    yield utils.AllocateMaxId(key, target_app)
     yield operation.counters.Increment(KindPathFromKey(key))
 
 
@@ -347,6 +247,7 @@ class RemoteCopyEntity(CopyEntity):
   """
 
   def __init__(self):
+    super(RemoteCopyEntity, self).__init__()
     self.remote_api_stub_initialized = False
 
   def setup_stub(self):

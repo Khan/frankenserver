@@ -59,6 +59,7 @@ T__47=47
 T__44=44
 T__45=45
 T__48=48
+T__49=49
 UNICODE_ESC=35
 HEX_DIGIT=34
 UNDERSCORE=32
@@ -84,8 +85,8 @@ tokenNames = [
     "TIMES", "DIV", "LPAREN", "RPAREN", "LSQUARE", "INT", "RSQUARE", "NAME",
     "FLOAT", "PHRASE", "DIGIT", "QUOTE", "ESC_SEQ", "EXPONENT", "NAME_START",
     "WS", "ASCII_LETTER", "UNDERSCORE", "DOLLAR", "HEX_DIGIT", "UNICODE_ESC",
-    "OCTAL_ESC", "'.'", "','", "'abs'", "'count'", "'distance'", "'if'",
-    "'len'", "'log'", "'max'", "'min'", "'pow'", "'snippet'"
+    "OCTAL_ESC", "'.'", "','", "'abs'", "'count'", "'distance'", "'geopoint'",
+    "'if'", "'len'", "'log'", "'max'", "'min'", "'pow'", "'snippet'"
 ]
 
 
@@ -685,7 +686,7 @@ class ExpressionParser(Parser):
 
                 if (LA4_0 == MINUS) :
                     alt4 = 1
-                elif (LA4_0 == LPAREN or LA4_0 == INT or (NAME <= LA4_0 <= PHRASE) or (39 <= LA4_0 <= 48)) :
+                elif (LA4_0 == LPAREN or LA4_0 == INT or (NAME <= LA4_0 <= PHRASE) or (39 <= LA4_0 <= 49)) :
                     alt4 = 2
                 else:
                     nvae = NoViableAltException("", 4, 0, self.input)
@@ -811,7 +812,7 @@ class ExpressionParser(Parser):
                     alt5 = 2
                 elif LA5 == PHRASE:
                     alt5 = 3
-                elif LA5 == 39 or LA5 == 40 or LA5 == 41 or LA5 == 42 or LA5 == 43 or LA5 == 44 or LA5 == 45 or LA5 == 46 or LA5 == 47 or LA5 == 48:
+                elif LA5 == 39 or LA5 == 40 or LA5 == 41 or LA5 == 42 or LA5 == 43 or LA5 == 44 or LA5 == 45 or LA5 == 46 or LA5 == 47 or LA5 == 48 or LA5 == 49:
                     alt5 = 4
                 elif LA5 == LPAREN:
                     alt5 = 5
@@ -1492,7 +1493,7 @@ class ExpressionParser(Parser):
                 root_0 = self._adaptor.nil()
 
                 set41 = self.input.LT(1)
-                if (39 <= self.input.LA(1) <= 48):
+                if (39 <= self.input.LA(1) <= 49):
                     self.input.consume()
                     self._adaptor.addChild(root_0, self._adaptor.createWithPayload(set41))
                     self._state.errorRecovery = False
@@ -1572,25 +1573,25 @@ class ExpressionParser(Parser):
     FOLLOW_cmpExpr_in_expression92 = frozenset([])
     FOLLOW_EOF_in_expression94 = frozenset([1])
     FOLLOW_addExpr_in_cmpExpr107 = frozenset([1, 7, 8, 9, 10, 11, 12])
-    FOLLOW_cmpOp_in_cmpExpr110 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_cmpOp_in_cmpExpr110 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_addExpr_in_cmpExpr113 = frozenset([1])
     FOLLOW_set_in_cmpOp0 = frozenset([1])
     FOLLOW_multExpr_in_addExpr171 = frozenset([1, 13, 14])
-    FOLLOW_addOp_in_addExpr174 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_addOp_in_addExpr174 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_multExpr_in_addExpr177 = frozenset([1, 13, 14])
     FOLLOW_set_in_addOp0 = frozenset([1])
     FOLLOW_unary_in_multExpr211 = frozenset([1, 15, 16])
-    FOLLOW_multOp_in_multExpr214 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_multOp_in_multExpr214 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_unary_in_multExpr217 = frozenset([1, 15, 16])
     FOLLOW_set_in_multOp0 = frozenset([1])
-    FOLLOW_MINUS_in_unary251 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_MINUS_in_unary251 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_atom_in_unary253 = frozenset([1])
     FOLLOW_atom_in_unary268 = frozenset([1])
     FOLLOW_var_in_atom281 = frozenset([1])
     FOLLOW_num_in_atom287 = frozenset([1])
     FOLLOW_str_in_atom293 = frozenset([1])
     FOLLOW_fn_in_atom299 = frozenset([1])
-    FOLLOW_LPAREN_in_atom305 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_LPAREN_in_atom305 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_addExpr_in_atom307 = frozenset([18])
     FOLLOW_RPAREN_in_atom309 = frozenset([1])
     FOLLOW_name_in_var326 = frozenset([1])
@@ -1605,9 +1606,9 @@ class ExpressionParser(Parser):
     FOLLOW_set_in_num0 = frozenset([1])
     FOLLOW_PHRASE_in_str420 = frozenset([1])
     FOLLOW_fnName_in_fn433 = frozenset([17])
-    FOLLOW_LPAREN_in_fn435 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_LPAREN_in_fn435 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_cmpExpr_in_fn437 = frozenset([18, 38])
-    FOLLOW_38_in_fn440 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48])
+    FOLLOW_38_in_fn440 = frozenset([14, 17, 20, 22, 23, 24, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
     FOLLOW_cmpExpr_in_fn442 = frozenset([18, 38])
     FOLLOW_RPAREN_in_fn446 = frozenset([1])
     FOLLOW_set_in_fnName0 = frozenset([1])

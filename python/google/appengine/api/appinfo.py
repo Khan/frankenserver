@@ -34,9 +34,12 @@ configuration files.
 
 import logging
 import re
+import string
+import wsgiref.util
 
 from google.appengine.api import appinfo_errors
 from google.appengine.api import backendinfo
+from google.appengine.api import pagespeedinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
@@ -120,6 +123,14 @@ SERVER_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{1,%d}$' %
                                SERVER_VERSION_ID_MAX_LEN)
 
 _INSTANCES_REGEX = r'^([\d]+|automatic)$'
+_INSTANCE_CLASS_REGEX = r'^([fF](1|2|4)|[bB](1|2|4|8))$'
+
+
+
+
+_PENDING_LATENCY_REGEX = r'^(\d+((\.\d{1,3})?s|ms)|automatic)$'
+
+_IDLE_TIMEOUT_REGEX = r'^[\d]+(s|m)$'
 
 ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
@@ -177,6 +188,7 @@ MIME_TYPE = 'mime_type'
 SCRIPT = 'script'
 EXPIRATION = 'expiration'
 API_ENDPOINT = 'api_endpoint'
+HTTP_HEADERS = 'http_headers'
 
 
 APPLICATION = 'application'
@@ -206,11 +218,17 @@ THREADSAFE = 'threadsafe'
 API_CONFIG = 'api_config'
 CODE_LOCK = 'code_lock'
 ENV_VARIABLES = 'env_variables'
+PAGESPEED = 'pagespeed'
 
 
 INSTANCES = 'instances'
+CLASS = 'class'
+MINIMUM_PENDING_LATENCY = 'min_pending_latency'
+MAXIMUM_PENDING_LATENCY = 'max_pending_latency'
 MINIMUM_IDLE_INSTANCES = 'min_idle_instances'
 MAXIMUM_IDLE_INSTANCES = 'max_idle_instances'
+IDLE_TIMEOUT = 'idle_timeout'
+FAILFAST = 'failfast'
 
 
 PAGES = 'pages'
@@ -253,6 +271,43 @@ REQUIRED_LIBRARIES = {
 }
 
 
+
+_HTTP_SEPARATOR_CHARS = frozenset('()<>@,;:\\"/[]?={} \t')
+_HTTP_TOKEN_CHARS = frozenset(string.printable[:-5]) - _HTTP_SEPARATOR_CHARS
+_HTTP_TOKEN_RE = re.compile('[%s]+$' % re.escape(''.join(_HTTP_TOKEN_CHARS)))
+
+
+_HTTP_REQUEST_HEADERS = frozenset([
+    'accept',
+    'accept-charset',
+    'accept-encoding',
+    'accept-language',
+    'authorization',
+    'expect',
+    'from',
+    'host',
+    'if-match',
+    'if-modified-since',
+    'if-none-match',
+    'if-range',
+    'if-unmodified-since',
+    'max-forwards',
+    'proxy-authorization',
+    'range',
+    'referer',
+    'te',
+    'user-agent',
+])
+
+
+
+_MAX_COOKIE_LENGTH = 4096
+
+
+
+_MAX_URL_LENGTH = 2047
+
+
 class HandlerBase(validation.Validated):
   """Base class for URLMap and ApiConfigHandler."""
   ATTRIBUTES = {
@@ -276,6 +331,203 @@ class HandlerBase(validation.Validated):
 
       HANDLER_SCRIPT: validation.Optional(_FILES_REGEX)
   }
+
+
+class HttpHeadersDict(validation.ValidatedDict):
+  """A dict that limits keys and values what http_headers allows.
+
+  http_headers is an static handler key i.e. it applies to handlers with
+  static_dir or static_files keys. An example of how http_headers is used is
+
+  handlers:
+  - url: /static
+    static_dir: static
+    http_headers:
+      X-Foo-Header: foo value
+      X-Bar-Header: bar value
+  """
+
+
+  DISALLOWED_HEADERS = frozenset([
+
+
+
+
+      'content-encoding',
+      'content-length',
+      'date',
+      'server'
+  ])
+
+  MAX_HEADER_LENGTH = 500
+  MAX_HEADER_VALUE_LENGTHS = {
+      'set-cookie': _MAX_COOKIE_LENGTH,
+      'set-cookie2': _MAX_COOKIE_LENGTH,
+      'location': _MAX_URL_LENGTH}
+  MAX_LEN = 500
+
+  class KeyValidator(validation.Validator):
+    """Ensures that keys in HttpHeadersDict i.e. header names are valid.
+
+    An instance is used as HttpHeadersDict's KEY_VALIDATOR.
+    """
+
+    def Validate(self, name, unused_key=None):
+      """Returns argument, or raises an exception if it is invalid.
+
+      HTTP header names are defined by RFC 2616 section 4.2.
+
+      Args:
+        name: HTTP header field value.
+        unused_key: Unused.
+
+      Returns:
+        name argument, unchanged.
+
+      Raises:
+        appinfo_errors.InvalidHttpHeaderName: argument cannot be used as an HTTP
+          header name.
+      """
+      original_name = name
+
+
+      if isinstance(name, unicode):
+        try:
+          name = name.encode('ascii')
+        except UnicodeEncodeError:
+          raise appinfo_errors.InvalidHttpHeaderName(
+              'HTTP header values must not contain non-ASCII data')
+
+
+      name = name.lower()
+
+      if not _HTTP_TOKEN_RE.match(name):
+        raise appinfo_errors.InvalidHttpHeaderName(
+            'An HTTP header must be a non-empty RFC 2616 token.')
+
+
+      if name in _HTTP_REQUEST_HEADERS:
+        raise appinfo_errors.InvalidHttpHeaderName(
+            '%r can only be used in HTTP requests, not responses.'
+            % original_name)
+
+
+      if name.startswith('x-appengine'):
+        raise appinfo_errors.InvalidHttpHeaderName(
+            'HTTP header names that begin with X-Appengine are reserved.')
+
+      if wsgiref.util.is_hop_by_hop(name):
+        raise appinfo_errors.InvalidHttpHeaderName(
+            'Only use end-to-end headers may be used. See RFC 2616 section'
+            ' 13.5.1.')
+
+      if name in HttpHeadersDict.DISALLOWED_HEADERS:
+        raise appinfo_errors.InvalidHttpHeaderName(
+            '%s is a disallowed header.' % name)
+
+      return original_name
+
+  class ValueValidator(validation.Validator):
+    """Ensures that values in HttpHeadersDict i.e. header values are valid.
+
+    An instance is used as HttpHeadersDict's VALUE_VALIDATOR.
+    """
+
+    def Validate(self, value, key=None):
+      """Returns value, or raises an exception if it is invalid.
+
+      According to RFC 2616 section 4.2, header field values must consist "of
+      either *TEXT or combinations of token, separators, and quoted-string".
+
+      TEXT = <any OCTET except CTLs, but including LWS>
+
+      Args:
+        value: HTTP header field value.
+        key: HTTP header field name.
+
+      Returns:
+        value argument.
+
+      Raises:
+        appinfo_errors.InvalidHttpHeaderValue: argument cannot be used as an
+          HTTP header value.
+      """
+
+      if isinstance(value, unicode):
+        try:
+          value = value.encode('ascii')
+        except UnicodeEncodeError:
+          raise appinfo_errors.InvalidHttpHeaderValue(
+              'HTTP header values must not contain non-ASCII data')
+
+
+      key = key.lower()
+
+
+
+
+
+      printable = set(string.printable[:-5])
+      if not all(char in printable for char in value):
+        raise appinfo_errors.InvalidHttpHeaderValue(
+            'HTTP header field values must consist of printable characters.')
+
+      HttpHeadersDict.ValueValidator.AssertHeaderNotTooLong(key, value)
+
+      return value
+
+    @staticmethod
+    def AssertHeaderNotTooLong(name, value):
+      header_length = len('%s: %s\r\n' % (name, value))
+
+
+
+      if header_length >= HttpHeadersDict.MAX_HEADER_LENGTH:
+
+
+
+        try:
+          max_len = HttpHeadersDict.MAX_HEADER_VALUE_LENGTHS[name]
+        except KeyError:
+          raise appinfo_errors.InvalidHttpHeaderValue(
+              'HTTP header (name + value) is too long.')
+
+
+
+        if len(value) > max_len:
+          insert = name, len(value), max_len
+          raise appinfo_errors.InvalidHttpHeaderValue(
+              '%r header value has length %d, which exceed the maximum allowed,'
+              ' %d.' % insert)
+
+  KEY_VALIDATOR = KeyValidator()
+  VALUE_VALIDATOR = ValueValidator()
+
+  def Get(self, header_name):
+    """Gets a header value.
+
+    Args:
+      header_name: HTTP header name to look for.
+
+    Returns:
+      A header value that corresponds to header_name. If more than one such
+      value is in self, one of the values is selected arbitrarily, and
+      returned. The selection is not deterministic.
+    """
+    for name in self:
+      if name.lower() == header_name.lower():
+        return self[name]
+
+
+
+  def __setitem__(self, key, value):
+    is_addition = self.Get(key) is None
+    if is_addition and len(self) >= self.MAX_LEN:
+      raise appinfo_errors.TooManyHttpHeaders(
+          'Tried to add another header when the current set of HTTP headers'
+          ' already has the maximum allowed number of headers, %d.'
+          % HttpHeadersDict.MAX_LEN)
+    super(HttpHeadersDict, self).__setitem__(key, value)
 
 
 class URLMap(HandlerBase):
@@ -368,6 +620,7 @@ class URLMap(HandlerBase):
       MIME_TYPE: validation.Optional(str),
       EXPIRATION: validation.Optional(_EXPIRATION_REGEX),
       REQUIRE_MATCHING_FILE: validation.Optional(bool),
+      HTTP_HEADERS: validation.Optional(HttpHeadersDict),
 
 
       POSITION: validation.Optional(validation.Options(POSITION_HEAD,
@@ -377,6 +630,7 @@ class URLMap(HandlerBase):
       HANDLER_API_ENDPOINT: validation.Optional(validation.Options(
           (ON, ON_ALIASES),
           (OFF, OFF_ALIASES))),
+
   }
   ATTRIBUTES.update(HandlerBase.ATTRIBUTES)
 
@@ -386,8 +640,9 @@ class URLMap(HandlerBase):
 
   ALLOWED_FIELDS = {
       HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION,
-                             REQUIRE_MATCHING_FILE),
-      HANDLER_STATIC_DIR: (MIME_TYPE, EXPIRATION, REQUIRE_MATCHING_FILE),
+                             REQUIRE_MATCHING_FILE, HTTP_HEADERS),
+      HANDLER_STATIC_DIR: (MIME_TYPE, EXPIRATION, REQUIRE_MATCHING_FILE,
+                           HTTP_HEADERS),
       HANDLER_SCRIPT: (POSITION),
       HANDLER_API_ENDPOINT: (POSITION, SCRIPT),
   }
@@ -412,8 +667,8 @@ class URLMap(HandlerBase):
       UnexpectedHandlerAttribute: when an unexpected attribute is set for the
         discovered handler type.
 
-      HandlerTypeMissingAttribute: when the handler is missing a required
-        attribute for its handler type.
+      HandlerTypeMissingAttribute: when the handler is missing a
+        required attribute for its handler type.
     """
     for id_field in URLMap.ALLOWED_FIELDS.iterkeys():
 
@@ -456,17 +711,60 @@ class URLMap(HandlerBase):
     properly.
 
     Raises:
-      UnknownHandlerType when none of the no handler id attributes
-      are set.
-
-      UnexpectedHandlerAttribute when an unexpected attribute
-      is set for the discovered handler type.
-
-      HandlerTypeMissingAttribute when the handler is missing a
-      required attribute for its handler type.
+      UnknownHandlerType: when none of the no handler id attributes are set.
+      UnexpectedHandlerAttribute: when an unexpected attribute is set for the
+        discovered handler type.
+      HandlerTypeMissingAttribute: when the handler is missing a required
+        attribute for its handler type.
+      ContentTypeSpecifiedMultipleTimes: when mime_type is inconsistent with
+        http_headers.
     """
     super(URLMap, self).CheckInitialized()
-    self.GetHandlerType()
+    if self.GetHandlerType() in (STATIC_DIR, STATIC_FILES):
+
+
+
+
+
+
+
+
+
+
+
+      self.AssertUniqueContentType()
+
+  def AssertUniqueContentType(self):
+    """Makes sure that self.http_headers is consistent with self.mime_type.
+
+    Assumes self is a static handler i.e. either self.static_dir or
+    self.static_files is set (to not None).
+
+    Raises:
+      appinfo_errors.ContentTypeSpecifiedMultipleTimes: Raised when
+        self.http_headers contains a Content-Type header, and self.mime_type is
+        set. For example, the following configuration would be rejected:
+
+          handlers:
+          - url: /static
+            static_dir: static
+            mime_type: text/html
+            http_headers:
+              content-type: text/html
+
+        As this example shows, a configuration will be rejected when
+        http_headers and mime_type specify a content type, even when they
+        specify the same content type.
+    """
+    used_both_fields = self.mime_type and self.http_headers
+    if not used_both_fields:
+      return
+
+    content_type = self.http_headers.Get('Content-Type')
+    if content_type is not None:
+      raise appinfo_errors.ContentTypeSpecifiedMultipleTimes(
+          'http_header specified a Content-Type header of %r in a handler that'
+          ' also specified a mime_type of %r.' % (content_type, self.mime_type))
 
   def FixSecureDefaults(self):
     """Force omitted 'secure: ...' handler fields to 'secure: optional'.
@@ -758,8 +1056,13 @@ class ServerSettings(validation.Validated):
   """
   ATTRIBUTES = {
       INSTANCES: validation.Optional(_INSTANCES_REGEX),
+      CLASS: validation.Optional(_INSTANCE_CLASS_REGEX),
       MINIMUM_IDLE_INSTANCES: validation.Optional(_INSTANCES_REGEX),
       MAXIMUM_IDLE_INSTANCES: validation.Optional(_INSTANCES_REGEX),
+      MINIMUM_PENDING_LATENCY: validation.Optional(_PENDING_LATENCY_REGEX),
+      MAXIMUM_PENDING_LATENCY: validation.Optional(_PENDING_LATENCY_REGEX),
+      IDLE_TIMEOUT: validation.Optional(_IDLE_TIMEOUT_REGEX),
+      FAILFAST: validation.Optional(validation.TYPE_BOOL),
   }
 
 
@@ -918,6 +1221,7 @@ class AppInfoExternal(validation.Validated):
       API_CONFIG: validation.Optional(ApiConfigHandler),
       CODE_LOCK: validation.Optional(bool),
       ENV_VARIABLES: validation.Optional(EnvironmentVariables),
+      PAGESPEED: validation.Optional(pagespeedinfo.PagespeedEntry),
   }
 
   def CheckInitialized(self):

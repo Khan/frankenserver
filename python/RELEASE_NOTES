@@ -3,6 +3,67 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.7.0
+=============
+- You can now configure your custom domain to serve HTTPS requests with App
+  Engine. You can choose either an SNI, VIP, or SNI and VIP configuration. SNI
+  costs $9/month for 5 certificates. A VIP costs $99/month.
+    https://developers.google.com/appengine/docs/ssl
+- Premier customers now have the option to create applications to be served from
+  datacenters located in the European Union.
+- Developers can configure their HRD app to use Google's PageSpeed Service,
+  which automatically speeds up serving of content for your application. The
+  PageSpeed Service costs $0.39/gigabyte in addition to the normal App Engine
+  bandwidth charges.
+    https://developers.google.com/appengine/docs/adminconsole/performancesettings#pagespeed
+- The Search API now contains support for storing and searching on GeoPoints.
+- The total size of all application versions is now limited to 1 GB. In the
+  future, you'll be able to purchase additional storage for your application
+  code.
+- Logs API calls are now $.12/gigabyte for all data read from the Logs API over
+  the first 100MB.
+- You can now specify a time frame of up to 1 year for the retention of your
+  application logs. All storage above 1 GB is billed based on the prices for
+  logs storage.
+- You can now specify HTTP headers on static content for your application.
+- The HRD Blob Migration tool is now generally available.
+- After using the datastore backup utility, you can now restore that backup
+  to a new app id.
+- It will not be possible to create new authorizations for M/S applications to
+  access Cloud SQL instances.
+- You can now delete a Google Cloud Storage object using blobstore.delete().
+- You can now fetch a Google Cloud Storage object using blobstore.fetch().
+- You can now store keys for a Google Cloud Storage object in the datastore.
+- The create_upload_url call now works for Google Cloud Storage objects.
+- You can now use get_serving_url() and delete_serving_url() for Google
+  Cloud Storage buckets.
+- Projection queries are now supported in NDB.
+- In NDB, app and namespace are now keyword arguments to get_by_id().
+- Context().call_on_commit() added to NDB for adding a callback to be executed
+  upon successful commit of a transaction.
+- NDB Context.memcache_* ops now accept unicode.
+- NDB has added support for storing protorpc.Message objects.
+- Improved error messaging for multiple repeated=True levels with
+  StructuredProperty in NDB.
+- PyAMF is now fully launched.
+- We've increased various Search API limits. New limits are a maximum of 1000
+  documents returned from search() or list_documents(), a maximum of 1000
+  indexes returned from list_indexes(), and a maximum offset of 1000 for
+  search() or list_indexes()
+- Fixed an issue where the Search API did not enforce limits on NumberFields.
+- Fixed an issue in the SDK where SortExpression did not enforce the
+  presence of a default_value set when required.
+- Fixed an issue where lxml did not support unicode parsing.
+    http://code.google.com/p/googleappengine/issues/detail?id=7158
+- Fixed a javascript syntax error in the Admin Console.
+    http://code.google.com/p/googleappengine/issues/detail?id=7566
+- Fixed an issue in SDK admin viewer where a TemplateDoesNotExist error was
+  thrown when clicking on any Full-Text Search index.
+    http://code.google.com/p/googleappengine/issues/detail?id=7598
+- Fixed an issue in the Search API tab of the Admin Console where it threw an
+  error displaying non-ascii characters.
+    http://code.google.com/p/googleappengine/issues/detail?id=7601
+
 Version 1.6.6
 ===============================
 - On May 8, 2012 we released an experimental Search API.
@@ -107,7 +168,7 @@ Version 1.6.4
     http://code.google.com/p/appengine-ndb-experiment/source/browse/RELEASE_NOTES?name=sandbox
 - In the Python 2.7 runtime, Background threads are available as an
   experimental release when using App Engine backends.
-- Using the Blobstore API's serve_blob() method, your application can serve
+- Using the Blobstore API's send_blob() method, your application can serve
   objects hosted on Google Storage for Developers.
 - The Admin Console now provides a Memcache viewer that lists Memcache stats and
   can display Memcache content based on key.

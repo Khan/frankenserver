@@ -553,11 +553,14 @@ class Connection(object):
     Raises:
       OperationalError: Transport failure.
       DatabaseError: Error from SQL Service server.
+      TypeError: Invalid value provided for instance.
     """
 
 
 
     self._dsn = dsn
+    if not instance:
+      raise TypeError('Invalid value for instance (%s)' % instance)
     self._instance = instance
     self._database = database
     self._user = user
@@ -620,7 +623,12 @@ class Connection(object):
     """
     self.CheckOpen()
     request = sql_pb2.CloseConnectionRequest()
-    self.MakeRequest('CloseConnection', request)
+    try:
+      self.MakeRequest('CloseConnection', request)
+    except DatabaseError:
+
+
+      pass
     self._connection_id = None
 
   def CheckOpen(self):
@@ -694,8 +702,7 @@ class Connection(object):
     Raises:
       DatabaseError: Error from SQL Service server.
     """
-    if self._instance:
-      request.instance = self._instance
+    request.instance = self._instance
     if self._connection_id is not None:
       request.connection_id = self._connection_id
     if stub_method in ('Exec', 'ExecOp', 'GetMetadata'):

@@ -27,10 +27,11 @@ from search import AtomField
 from search import Cursor
 from search import DateField
 from search import Document
-from search import DocumentOperationResult
 from search import Error
 from search import Field
 from search import FieldExpression
+from search import GeoField
+from search import GeoPoint
 from search import HtmlField
 from search import Index
 from search import InternalError

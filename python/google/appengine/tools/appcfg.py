@@ -859,7 +859,7 @@ class PagespeedEntryUpload(object):
       rpcserver: The RPC server to use. Should be an instance of a subclass of
         AbstractRpcServer.
       config: The AppInfoExternal object derived from the app.yaml file.
-      pagespeed: The PagespeedInfoExternal object from pagespeed.yaml.
+      pagespeed: The PagespeedEntry object from config.
     """
     self.rpcserver = rpcserver
     self.config = config
@@ -867,11 +867,28 @@ class PagespeedEntryUpload(object):
 
   def DoUpload(self):
     """Uploads the pagespeed entries."""
-    StatusUpdate('Uploading PageSpeed configuration.')
-    self.rpcserver.Send('/api/pagespeed/update',
-                        app_id=self.config.application,
-                        version=self.config.version,
-                        payload=self.pagespeed.ToYAML())
+
+    pagespeed_yaml = ''
+    if self.pagespeed:
+      StatusUpdate('Uploading PageSpeed configuration.')
+      pagespeed_yaml = self.pagespeed.ToYAML()
+    try:
+      self.rpcserver.Send('/api/appversion/updatepagespeed',
+                          app_id=self.config.application,
+                          version=self.config.version,
+                          payload=pagespeed_yaml)
+    except urllib2.HTTPError, err:
+
+
+
+
+
+
+
+
+
+      if err.code != 404 or self.pagespeed is not None:
+        raise
 
 
 class DefaultVersionSet(object):
@@ -2001,7 +2018,7 @@ class AppVersionUpload(object):
       self.in_transaction = False
     else:
       success, unused_contents = RetryWithBackoff(
-          lambda: (self.IsServing(), None), PrintRetryMessage, 1, 1, 1, 60)
+          lambda: (self.IsServing(), None), PrintRetryMessage, 1, 2, 60, 20)
       if not success:
 
         logging.warning('Version still not serving, aborting.')
@@ -2093,16 +2110,12 @@ class AppVersionUpload(object):
     self.in_transaction = False
     self.files = {}
 
-  def DoUpload(self, paths, openfunc, max_size_override=None):
+  def DoUpload(self, paths, openfunc):
     """Uploads a new appversion with the given config and files to the server.
 
     Args:
       paths: An iterator that yields the relative paths of the files to upload.
       openfunc: A function that takes a path and returns a file-like object.
-      max_size_override: The maximum size file to upload (or None to use server
-        returned resource limits). For historic reasons, this size applies
-        to both files and blobs (while server resource limits can be
-        varied independently).
 
     Returns:
       An appinfo.AppInfoSummary if one was returned from the server, None
@@ -2124,11 +2137,7 @@ class AppVersionUpload(object):
         file_classification = FileClassification(self.config, path)
         try:
           file_length = GetFileLength(file_handle)
-
-
-          if max_size_override:
-            max_size = max_size_override
-          elif file_classification.IsApplicationFile():
+          if file_classification.IsApplicationFile():
             max_size = resource_limits['max_file_size']
           else:
             max_size = resource_limits['max_blob_size']
@@ -2426,10 +2435,6 @@ class AppCfgApp(object):
 
 
     self.options, self.args = self.parser.parse_args(argv[1:])
-    if self.options.max_size is not None:
-      print >>sys.stderr, """\
-WARNING: -S/--max_size is deprecated. The server provides the current value;
-you do not need to override the size except in rare cases."""
 
     if len(self.args) < 1:
       self._PrintHelpAndExit()
@@ -2815,7 +2820,7 @@ you do not need to override the size except in rare cases."""
     return appyaml
 
   def _ParseYamlFile(self, basepath, basename, parser):
-    """Parses the a yaml file.
+    """Parses a yaml file.
 
     Args:
       basepath: The base directory of the application.
@@ -2893,18 +2898,6 @@ you do not need to override the size except in rare cases."""
     """
     return self._ParseYamlFile(basepath, 'dos', dosinfo.LoadSingleDos)
 
-  def _ParsePagespeedYaml(self, basepath):
-    """Parses the pagespeed.yaml file.
-
-    Args:
-      basepath: the directory of the application.
-
-    Returns:
-      A PagespeedInfoExternal object or None if the file does not exist.
-    """
-    return self._ParseYamlFile(basepath, 'pagespeed',
-                               pagespeedinfo.LoadSinglePagespeed)
-
   def Help(self, action=None):
     """Prints help for a specific action.
 
@@ -2978,36 +2971,38 @@ you do not need to override the size except in rare cases."""
     appversion = AppVersionUpload(rpcserver, appyaml, backend, self.error_fh)
     return appversion.DoUpload(
         self.file_iterator(basepath, appyaml.skip_files, appyaml.runtime),
-        lambda path: self.opener(os.path.join(basepath, path), 'rb'),
-        self.options.max_size)
+        lambda path: self.opener(os.path.join(basepath, path), 'rb'))
 
   def Update(self):
     """Updates and deploys a new appversion and global app configs."""
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    appyaml = None
     rpcserver = self._GetRpcServer()
-
-    if self.options.skip_sdk_update_check:
-      logging.info('Skipping update check')
-    else:
+    if os.path.isdir(self.basepath):
+      appyaml = self._ParseAppInfoFromYaml(self.basepath)
 
 
 
-      updatecheck = self.update_check_class(rpcserver, appyaml)
-      updatecheck.CheckForUpdates()
 
-    if not self.args:
-
+      if self.options.skip_sdk_update_check:
+        logging.info('Skipping update check')
+      else:
+        updatecheck = self.update_check_class(rpcserver, appyaml)
+        updatecheck.CheckForUpdates()
       self.UpdateVersion(rpcserver, self.basepath, appyaml)
     else:
+      all_files = [self.basepath] + self.args
 
-      for yaml_path in self.args:
-
+      for yaml_path in all_files:
+        file_name = os.path.basename(yaml_path)
+        self.basepath = os.path.dirname(yaml_path)
+        if not self.basepath:
+          self.basepath = '.'
         server_yaml = self._ParseAppInfoFromYaml(self.basepath,
-                                                 os.path.splitext(yaml_path)[0])
+                                                 os.path.splitext(file_name)[0])
 
 
 
-        if not server_yaml.server and yaml_path != 'app.yaml':
+        if not server_yaml.server and file_name != 'app.yaml':
           ErrorUpdate("Error: 'server' parameter not specified in %s" %
                       yaml_path)
           continue
@@ -3054,11 +3049,18 @@ you do not need to override the size except in rare cases."""
       dos_upload.DoUpload()
 
 
-    pagespeed_yaml = self._ParsePagespeedYaml(self.basepath)
-    if pagespeed_yaml:
+    if appyaml:
       pagespeed_upload = PagespeedEntryUpload(
-          rpcserver, appyaml, pagespeed_yaml)
-      pagespeed_upload.DoUpload()
+          rpcserver, appyaml, appyaml.pagespeed)
+      try:
+        pagespeed_upload.DoUpload()
+      except urllib2.HTTPError, e:
+        ErrorUpdate('Error %d: --- begin server output ---\n'
+                    '%s\n--- end server output ---' %
+                    (e.code, e.read().rstrip('\n')))
+        print >> self.error_fh, (
+            'Your app was updated, but there was an error updating PageSpeed. '
+            'Please try the update again later.')
 
   def _UpdateOptions(self, parser):
     """Adds update-specific options to 'parser'.
@@ -3066,11 +3068,6 @@ you do not need to override the size except in rare cases."""
     Args:
       parser: An instance of OptionsParser.
     """
-    parser.add_option('-S', '--max_size', type='int', dest='max_size',
-                      default=None, metavar='SIZE',
-                      help='DEPRECATED: Maximum size of a file to upload. '
-                      'The server provides the current value; you do not need '
-                      'to override the size except in rare cases.')
     parser.add_option('--no_precompilation', action='store_false',
                       dest='precompilation', default=True,
                       help='Disable automatic Python precompilation.')
@@ -3162,21 +3159,6 @@ you do not need to override the size except in rare cases."""
     if dos_yaml:
       dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
       dos_upload.DoUpload()
-
-  def UpdatePagespeed(self):
-    """Updates any new or changed pagespeed configuration."""
-    if self.args:
-      self.parser.error('Expected a single <directory> argument.')
-
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    rpcserver = self._GetRpcServer()
-
-
-    pagespeed_yaml = self._ParsePagespeedYaml(self.basepath)
-    if pagespeed_yaml:
-      pagespeed_upload = PagespeedEntryUpload(
-          rpcserver, appyaml, pagespeed_yaml)
-      pagespeed_upload.DoUpload()
 
   def BackendsAction(self):
     """Placeholder; we never expect this action to be invoked."""
@@ -3306,6 +3288,36 @@ you do not need to override the size except in rare cases."""
                               backend=backend,
                               payload=backends_yaml.ToYAML())
     print >> self.out_fh, response
+
+  def Start(self):
+    """Starts a server."""
+    if len(self.args) < 1:
+      self.parser.error('Expected at least one <file> argument.')
+
+    servers_to_process = []
+    for yaml_path in self.args:
+      file_name = os.path.basename(yaml_path)
+      base_path = os.path.dirname(yaml_path)
+      if not base_path:
+        base_path = '.'
+      server_yaml = self._ParseAppInfoFromYaml(base_path,
+                                               os.path.splitext(file_name)[0])
+
+      if not server_yaml.server and file_name != 'app.yaml':
+        ErrorUpdate("Error: 'server' parameter not specified in %s" % yaml_path)
+        return
+
+      servers_to_process.append(server_yaml)
+
+    rpcserver = self._GetRpcServer()
+    for server_yaml in servers_to_process:
+
+
+
+      response = rpcserver.Send('/api/servers/start',
+                                app_id=server_yaml.application,
+                                server=server_yaml.server)
+      print >> self.out_fh, response
 
   def Rollback(self):
     """Does a rollback of an existing transaction for this app version."""
@@ -3880,15 +3892,6 @@ definitions from the optional queue.yaml file."""),
 The 'update_dos' command will update any new, removed or changed dos
 definitions from the optional dos.yaml file."""),
 
-      'update_pagespeed': Action(
-          function='UpdatePagespeed',
-          usage='%prog [options] update_pagespeed <directory>',
-          short_desc='Update application pagespeed definitions.',
-          long_desc="""
-The 'update_pagespeed' command will update your PageSpeed configuration
-from the optional pagesped.yaml file.""",
-          hidden=True),
-
       'backends': Action(
           function='BackendsAction',
           usage='%prog [options] backends <directory> <action>',
@@ -3997,6 +4000,16 @@ Expected a <directory> and <output_file> arguments."""),
           long_desc="""
 The 'cron_info' command will display the next 'number' runs (default 5) for
 each cron job defined in the cron.yaml file."""),
+
+
+      'start': Action(
+          function='Start',
+          hidden=True,
+          uses_basepath=False,
+          usage='%prog [options] start <file> [file, ...]',
+          short_desc='Start a backend.',
+          long_desc="""
+The 'start' command will put a backend into the START state."""),
 
 
 

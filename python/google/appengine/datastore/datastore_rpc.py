@@ -64,6 +64,8 @@ from google.appengine.api import apiproxy_stub_map
 
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
+
+from google.appengine.api.app_identity import app_identity
 from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 
@@ -1030,15 +1032,15 @@ class BaseConnection(object):
     This function is only guaranteed to return something other than
     UNKNOWN_DATASTORE when running in production and querying the current app.
     """
-
-
-
-
-
     current_app = datastore_types.ResolveAppId(None)
     if app not in (current_app, None):
       return BaseConnection.UNKNOWN_DATASTORE
-    if current_app.startswith('s~'):
+
+
+
+
+    partition, _, _ = app_identity._ParseFullAppId(current_app)
+    if partition:
       return BaseConnection.HIGH_REPLICATION_DATASTORE
     return BaseConnection.MASTER_SLAVE_DATASTORE
 

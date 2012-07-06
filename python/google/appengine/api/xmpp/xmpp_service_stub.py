@@ -79,18 +79,20 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       response: An XmppMessageResponse .
     """
     from_jid = self._GetFrom(request.from_jid())
-    self.log('Sending an XMPP Message:')
-    self.log('    From:')
-    self.log('       ' + from_jid)
-    self.log('    Body:')
-    self.log('       ' + request.body())
-    self.log('    Type:')
-    self.log('       ' + request.type())
-    self.log('    Raw Xml:')
-    self.log('       ' + str(request.raw_xml()))
-    self.log('    To JIDs:')
+    log_message = []
+    log_message.append('Sending an XMPP Message:')
+    log_message.append('    From:')
+    log_message.append('       ' + from_jid)
+    log_message.append('    Body:')
+    log_message.append('       ' + request.body())
+    log_message.append('    Type:')
+    log_message.append('       ' + request.type())
+    log_message.append('    Raw Xml:')
+    log_message.append('       ' + str(request.raw_xml()))
+    log_message.append('    To JIDs:')
     for jid in request.jid_list():
-      self.log('       ' + jid)
+      log_message.append('       ' + jid)
+    self.log('\n'.join(log_message))
 
     for jid in request.jid_list():
       response.add_status(xmpp_service_pb.XmppMessageResponse.NO_ERROR)
@@ -103,10 +105,12 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       response: An XmppInviteResponse .
     """
     from_jid = self._GetFrom(request.from_jid())
-    self.log('Sending an XMPP Invite:')
-    self.log('    From:')
-    self.log('       ' + from_jid)
-    self.log('    To: ' + request.jid())
+    log_message = []
+    log_message.append('Sending an XMPP Invite:')
+    log_message.append('    From:')
+    log_message.append('       ' + from_jid)
+    log_message.append('    To: ' + request.jid())
+    self.log('\n'.join(log_message))
 
   def _Dynamic_SendPresence(self, request, response):
     """Implementation of XmppService::SendPresence.
@@ -116,16 +120,18 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       response: An XmppSendPresenceResponse .
     """
     from_jid = self._GetFrom(request.from_jid())
-    self.log('Sending an XMPP Presence:')
-    self.log('    From:')
-    self.log('       ' + from_jid)
-    self.log('    To: ' + request.jid())
+    log_message = []
+    log_message.append('Sending an XMPP Presence:')
+    log_message.append('    From:')
+    log_message.append('       ' + from_jid)
+    log_message.append('    To: ' + request.jid())
     if request.type():
-      self.log('    Type: ' + request.type())
+      log_message.append('    Type: ' + request.type())
     if request.show():
-      self.log('    Show: ' + request.show())
+      log_message.append('    Show: ' + request.show())
     if request.status():
-      self.log('    Status: ' + request.status())
+      log_message.append('    Status: ' + request.status())
+    self.log('\n'.join(log_message))
 
   def _GetFrom(self, requested):
     """Validates that the from JID is valid.
@@ -193,11 +199,13 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       request: A CreateChannelRequest.
       response: A CreateChannelResponse.
     """
-    self.log('Sending a Create Channel:')
-    self.log('    Client ID:')
-    self.log('       ' + request.application_key())
+    log_message = []
+    log_message.append('Sending a Create Channel:')
+    log_message.append('    Client ID:')
+    log_message.append('       ' + request.application_key())
     if request.duration_minutes():
-      self.log('    Duration minutes: ' + request.duration_minutes())
+      log_message.append('    Duration minutes: ' + request.duration_minutes())
+    self.log('\n'.join(log_message))
 
   def _Dynamic_SendChannelMessage(self, request, response):
     """Implementation of XmppService::SendChannelMessage.
@@ -206,8 +214,10 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       request: A SendMessageRequest.
       response: A SendMessageRequest.
     """
-    self.log('Sending a Channel Message:')
-    self.log('    Client ID:')
-    self.log('       ' + request.application_key())
-    self.log('    Message:')
-    self.log('       ' + request.duration_minutes())
+    log_message = []
+    log_message.append('Sending a Channel Message:')
+    log_message.append('    Client ID:')
+    log_message.append('       ' + request.application_key())
+    log_message.append('    Message:')
+    log_message.append('       ' + request.duration_minutes())
+    self.log('\n'.join(log_message))

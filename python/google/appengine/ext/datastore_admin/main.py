@@ -66,6 +66,8 @@ PENDING_BACKUP_ACTIONS = {
 GET_ACTIONS = ENTITY_ACTIONS.copy()
 GET_ACTIONS.update(BACKUP_ACTIONS)
 GET_ACTIONS.update(PENDING_BACKUP_ACTIONS)
+GET_ACTIONS.update({'Import Backup Information':
+                    backup_handler.ConfirmBackupImportHandler.Render})
 
 
 def _GetDatastoreStats(kinds_list, use_stats_kinds=False):

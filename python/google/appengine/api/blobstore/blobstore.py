@@ -235,7 +235,8 @@ def _get_result_hook(rpc):
 def create_upload_url(success_path,
                       max_bytes_per_blob=None,
                       max_bytes_total=None,
-                      rpc=None):
+                      rpc=None,
+                      gs_bucket_name=None):
   """Create upload URL for POST form.
 
   Args:
@@ -246,6 +247,11 @@ def create_upload_url(success_path,
     max_bytes_total: The maximum size in bytes that the aggregate sizes of all
       of the blobs in the upload can be or None for no maximum size.
     rpc: Optional UserRPC object.
+    gs_bucket_name: The Google Storage bucket name that the blobs should be
+      uploaded to. The application's service account must have the correct
+      permissions to write to this bucket. The bucket name may be of the foramt
+      'bucket/path/', in which case the included path will be prepended to the
+      uploaded object name.
 
   Returns:
     The upload URL.
@@ -256,14 +262,18 @@ def create_upload_url(success_path,
       positive values.
   """
   rpc = create_upload_url_async(success_path,
-                                max_bytes_per_blob, max_bytes_total, rpc)
+                                max_bytes_per_blob=max_bytes_per_blob,
+                                max_bytes_total=max_bytes_total,
+                                rpc=rpc,
+                                gs_bucket_name=gs_bucket_name)
   return rpc.get_result()
 
 
 def create_upload_url_async(success_path,
                             max_bytes_per_blob=None,
                             max_bytes_total=None,
-                            rpc=None):
+                            rpc=None,
+                            gs_bucket_name=None):
   """Create upload URL for POST form -- async version.
 
   Args:
@@ -274,6 +284,11 @@ def create_upload_url_async(success_path,
     max_bytes_total: The maximum size in bytes that the aggregate sizes of all
       of the blobs in the upload can be or None for no maximum size.
     rpc: Optional UserRPC object.
+    gs_bucket_name: The Google Storage bucket name that the blobs should be
+      uploaded to. The application's service account must have the correct
+      permissions to write to this bucket. The bucket name may be of the foramt
+      'bucket/path/', in which case the included path will be prepended to the
+      uploaded object name.
 
   Returns:
     A UserRPC whose result will be the upload URL.
@@ -307,6 +322,11 @@ def create_upload_url_async(success_path,
         request.max_upload_size_per_blob_bytes()):
       raise ValueError('max_bytes_total can not be less'
                        ' than max_upload_size_per_blob_bytes')
+
+  if gs_bucket_name is not None:
+    if not isinstance(gs_bucket_name, basestring):
+      raise TypeError('gs_bucket_name must be a string.')
+    request.set_gs_bucket_name(gs_bucket_name)
 
   return _make_async_call(rpc, 'CreateUploadURL', request, response,
                           _get_result_hook, lambda rpc: rpc.response.url())
@@ -437,7 +457,7 @@ def create_gs_key(filename, rpc=None):
   """Create an encoded key for a Google Storage file.
 
   The created blob key will include short lived access token using the
-  applications service account for authorization.
+  application's service account for authorization.
 
   This blob key should not be stored permanently as the access token will
   expire.
@@ -448,7 +468,7 @@ def create_gs_key(filename, rpc=None):
 
   Returns:
     An encrypted blob key object that also contains a short term access token
-      that represents the applications service account.
+      that represents the application's service account.
   """
   rpc = create_gs_key_async(filename, rpc)
   return rpc.get_result()
@@ -458,7 +478,7 @@ def create_gs_key_async(filename, rpc=None):
   """Create an encoded key for a google storage file - async version.
 
   The created blob key will include short lived access token using the
-  applications service account for authorization.
+  application's service account for authorization.
 
   This blob key should not be stored permanently as the access token will
   expire.

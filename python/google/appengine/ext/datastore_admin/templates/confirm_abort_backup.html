@@ -15,10 +15,9 @@
         <input type="hidden" name="backup_id" value="{{backup.key}}">
       {% endfor %}
       <input type="hidden" name="namespace" value="{{namespace|escape}}">
-      <input type="hidden" name="app_id" value="{{app_id|escape}}">
       <input type="hidden" name="xsrf_token" value="{{xsrf_token|escape}}">
       <input type="Submit" value="Yes">
-      <a href="{{ cancel_url|escape }}"><button>No</button></a>
+      <a href="{{ cancel_url|escape }}">No</a>
     </form>
 
   {% else %}

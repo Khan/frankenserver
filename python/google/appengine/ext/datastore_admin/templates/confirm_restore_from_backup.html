@@ -8,8 +8,8 @@
     However, it will replace existing entities with the backed-up version for the following kinds:
     <form action="{{base_path}}/{{form_target}}" method="post" style="width:39.39em;">
       <input type="hidden" name="backup_id" value="{{backup.key}}">
-      <input type="hidden" name="app_id" value="{{app_id|escape}}">
       <input type="hidden" name="xsrf_token" value="{{xsrf_token|escape}}">
+      <input type="hidden" name="delete_backup_after_restore" value="{{delete_backup_after_restore}}">
       <ul>
         {% for kind in backup.kinds %}
           <li><input type="checkbox" name="kind" value="{{kind}}" checked="checked"/>{{ kind }}</li>
@@ -18,14 +18,37 @@
       {% if notreadonly_warning %}
       <div>
         <h4 style="padding:0;margin-top:1em;margin-bottom:0.46em;">WARNING</h4>
-        <p>The application is not in read-only mode and restore may
+        {% if original_app_warning %}
+          <ul><li>
+        {% else %}
+          <p>
+        {% endif %}
+        The application is not in read-only mode and restore may
         conflict with other changes.
         To place the application in read-only mode,
         please follow the instructions at
         <a href="https://developers.google.com/appengine/docs/adminconsole/applicationsettings#Disable_Datastore_Writes" target="_blank">
         Disable Datastore Writes</a>
-        </p>
-      </div>
+        {% if not original_app_warning %}
+          </p>
+          </div>
+        {% endif %}
+      {% endif %}
+      {% if original_app_warning %}
+        {% if not notreadonly_warning %}
+          <div>
+          <h4 style="padding:0;margin-top:1em;margin-bottom:0.46em;">WARNING</h4>
+          <p>
+        {% else %}
+          <li>
+        {% endif %}
+        The backup data comes from a different application, {{original_app_warning|escape}}.
+        {% if not notreadonly_warning %}
+          </p>
+        {% else %}
+          </li>
+        {% endif %}
+        </div>
       {% endif %}
       <p>Operation will be performed using the selected queue:
         {% if queues %}
@@ -39,7 +62,7 @@
         {% endif %}
       </p>
       <input type="submit" value="Restore">
-      <a href="{{ cancel_url|escape }}"><button>Cancel</button></a>
+      <a href="{{ cancel_url|escape }}">Cancel</a>
     </form>
   {% else %}
     <div class="ae-errorbox">Backup was not found.</div>

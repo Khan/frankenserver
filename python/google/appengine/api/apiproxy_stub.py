@@ -63,6 +63,7 @@ class APIProxyStub(object):
 
 
     self._mutex = threading.RLock()
+    self.__error = None
 
   def CreateRPC(self):
     """Creates RPC object instance.
@@ -91,8 +92,22 @@ class APIProxyStub(object):
     messages = []
     assert request.IsInitialized(messages), messages
 
-    method = getattr(self, '_Dynamic_' + call)
-    method(request, response)
+    if self.__error:
+
+
+      raise self.__error
+    else:
+      method = getattr(self, '_Dynamic_' + call)
+      method(request, response)
+
+  def SetError(self, error):
+    """Set an error condition that is always raised when calls made to stub.
+
+    Args:
+      error: An instance of apiproxy_errors.Error or None for no error.
+    """
+    assert error is None or isinstance(error, apiproxy_errors.Error)
+    self.__error = error
 
 
 def Synchronized(method):

@@ -1879,6 +1879,14 @@ class BlobType(StringType):
     return datastore_types.Blob
 
 
+class EmbeddedEntityType(BlobType):
+  def name(self):
+    return 'entity:proto'
+
+  def python_type(self):
+    return datastore_types.EmbeddedEntity
+
+
 class TimeType(DataType):
   _FORMAT = '%Y-%m-%d %H:%M:%S'
 
@@ -2166,6 +2174,7 @@ _DATA_TYPES = {
   types.UnicodeType: StringType(),
   datastore_types.Text: TextType(),
   datastore_types.Blob: BlobType(),
+  datastore_types.EmbeddedEntity: EmbeddedEntityType(),
   types.BooleanType: BoolType(),
   types.IntType: IntType(),
   types.LongType: LongType(),

@@ -114,9 +114,11 @@ THREAD_SAFE_SERVICES = frozenset((
     'capability_service',
     'channel',
     'conversion',
+    'mail',
     'memcache',
     'urlfetch',
     'user',
+    'xmpp',
 ))
 
 
@@ -298,6 +300,12 @@ def _SetupStubs(
     user_logout_url: A str containing the url that should be used for user
         logout.
   """
+
+
+
+
+
+  os.environ['APPLICATION_ID'] = app_id
 
 
 

@@ -20,7 +20,8 @@
 
 """PageSpeed configuration tools.
 
-Library for parsing pagespeed.yaml files and working with these in memory.
+Library for parsing pagespeed configuration data from app.yaml and working
+with these in memory.
 """
 
 
@@ -38,10 +39,12 @@ from google.appengine.api import yaml_object
 
 _URL_BLACKLIST_REGEX = r'http(s)?://\S{0,499}'
 _REWRITER_NAME_REGEX = r'[a-zA-Z0-9_]+'
+_DOMAINS_TO_REWRITE_REGEX = r'(http(s)?://)?[-a-zA-Z0-9_.*]+(:\d+)?'
 
 URL_BLACKLIST = 'url_blacklist'
 ENABLED_REWRITERS = 'enabled_rewriters'
 DISABLED_REWRITERS = 'disabled_rewriters'
+DOMAINS_TO_REWRITE = 'domains_to_rewrite'
 
 
 class MalformedPagespeedConfiguration(Exception):
@@ -52,8 +55,8 @@ class MalformedPagespeedConfiguration(Exception):
 
 
 
-class PagespeedInfoExternal(validation.Validated):
-  """Describes the format of a pagespeed.yaml file.
+class PagespeedEntry(validation.Validated):
+  """Describes the format of a pagespeed configuration from a yaml file.
 
   URL blacklist entries are patterns (with '?' and '*' as wildcards).  Any URLs
   that match a pattern on the blacklist will not be optimized by PageSpeed.
@@ -61,6 +64,12 @@ class PagespeedInfoExternal(validation.Validated):
   Rewriter names are strings (like 'CombineCss' or 'RemoveComments') describing
   individual PageSpeed rewriters.  A full list of valid rewriter names can be
   found in the PageSpeed documentation.
+
+  The domains-to-rewrite list is a whitelist of domain name patterns with '*' as
+  a wildcard, optionally starting with 'http://' or 'https://'.  If no protocol
+  is given, 'http://' is assumed.  A resource will only be rewritten if it is on
+  the same domain as the HTML that references it, or if its domain is on the
+  domains-to-rewrite list.
   """
   ATTRIBUTES = {
       URL_BLACKLIST: validation.Optional(
@@ -69,36 +78,37 @@ class PagespeedInfoExternal(validation.Validated):
           validation.Repeated(validation.Regex(_REWRITER_NAME_REGEX))),
       DISABLED_REWRITERS: validation.Optional(
           validation.Repeated(validation.Regex(_REWRITER_NAME_REGEX))),
+      DOMAINS_TO_REWRITE: validation.Optional(
+          validation.Repeated(validation.Regex(_DOMAINS_TO_REWRITE_REGEX))),
   }
 
 
-def LoadSinglePagespeed(pagespeed_info, open_fn=None):
-  """Load a pagespeed.yaml file or string and return a PagespeedInfoExternal.
+def LoadPagespeedEntry(pagespeed_entry, open_fn=None):
+  """Load a yaml file or string and return a PagespeedEntry.
 
   Args:
-    pagespeed_info: The contents of a pagespeed.yaml file as a string, or an
-      open file object.
+    pagespeed_entry: The contents of a pagespeed entry from a yaml file
+      as a string, or an open file object.
     open_fn: Function for opening files. Unused.
 
   Returns:
-    A PagespeedInfoExternal instance which represents the contents of the parsed
-    yaml file.
+    A PagespeedEntry instance which represents the contents of the parsed yaml.
 
   Raises:
-    yaml_errors.EventError: An error occured while parsing the yaml file.
+    yaml_errors.EventError: An error occured while parsing the yaml.
     MalformedPagespeedConfiguration: The configuration is parseable but invalid.
   """
-  builder = yaml_object.ObjectBuilder(PagespeedInfoExternal)
+  builder = yaml_object.ObjectBuilder(PagespeedEntry)
   handler = yaml_builder.BuilderHandler(builder)
   listener = yaml_listener.EventListener(handler)
-  listener.Parse(pagespeed_info)
+  listener.Parse(pagespeed_entry)
 
   parsed_yaml = handler.GetResults()
   if not parsed_yaml:
-    return PagespeedInfoExternal()
+    return PagespeedEntry()
 
   if len(parsed_yaml) > 1:
     raise MalformedPagespeedConfiguration(
-        'Multiple configuration sections in pagespeed.yaml')
+        'Multiple configuration sections in the yaml')
 
   return parsed_yaml[0]

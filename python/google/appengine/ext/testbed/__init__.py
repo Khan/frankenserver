@@ -120,6 +120,7 @@ from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import dict_blob_storage
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.channel import channel_service_stub
+from google.appengine.api.files import file_service_stub
 try:
   from google.appengine.api.images import images_stub
 except ImportError:
@@ -160,6 +161,7 @@ BLOBSTORE_SERVICE_NAME = 'blobstore'
 CAPABILITY_SERVICE_NAME = 'capability_service'
 CHANNEL_SERVICE_NAME = 'channel'
 DATASTORE_SERVICE_NAME = 'datastore_v3'
+FILES_SERVICE_NAME = 'file'
 IMAGES_SERVICE_NAME = 'images'
 MAIL_SERVICE_NAME = 'mail'
 MEMCACHE_SERVICE_NAME = 'memcache'
@@ -175,6 +177,7 @@ INIT_STUB_METHOD_NAMES = {
     CAPABILITY_SERVICE_NAME: 'init_capability_stub',
     CHANNEL_SERVICE_NAME: 'init_channel_stub',
     DATASTORE_SERVICE_NAME: 'init_datastore_v3_stub',
+    FILES_SERVICE_NAME: 'init_files_stub',
     IMAGES_SERVICE_NAME: 'init_images_stub',
     MAIL_SERVICE_NAME: 'init_mail_stub',
     MEMCACHE_SERVICE_NAME: 'init_memcache_stub',
@@ -216,6 +219,8 @@ class Testbed(object):
     self._activated = False
 
     self._enabled_stubs = {}
+
+    self._blob_storage = None
 
   def activate(self):
     """Activate the testbed.
@@ -262,6 +267,7 @@ class Testbed(object):
 
     os.environ.clear()
     os.environ.update(self._orig_env)
+    self._blob_storage = None
     self._activated = False
 
   def setup_env(self, overwrite=False, **kwargs):
@@ -371,6 +377,12 @@ class Testbed(object):
     stub = app_identity_stub.AppIdentityServiceStub()
     self._register_stub(APP_IDENTITY_SERVICE_NAME, stub)
 
+  def _get_blob_storage(self):
+    """Creates a blob storage for stubs if needed."""
+    if self._blob_storage is None:
+      self._blob_storage = dict_blob_storage.DictBlobStorage()
+    return self._blob_storage
+
   def init_blobstore_stub(self, enable=True):
     """Enable the blobstore stub.
 
@@ -382,8 +394,7 @@ class Testbed(object):
       self._disable_stub(BLOBSTORE_SERVICE_NAME)
       return
 
-    storage = dict_blob_storage.DictBlobStorage()
-    stub = blobstore_stub.BlobstoreServiceStub(storage)
+    stub = blobstore_stub.BlobstoreServiceStub(self._get_blob_storage())
     self._register_stub(BLOBSTORE_SERVICE_NAME, stub)
 
   def init_capability_stub(self, enable=True):
@@ -459,6 +470,20 @@ class Testbed(object):
 
   def _deactivate_datastore_v3_stub(self, stub):
     stub.Write()
+
+  def init_files_stub(self, enable=True):
+    """Enable files api stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(FILES_SERVICE_NAME)
+      return
+
+    stub = file_service_stub.FileServiceStub(self._get_blob_storage())
+    self._register_stub(FILES_SERVICE_NAME, stub)
 
   def init_images_stub(self, enable=True):
     """Enable the images stub.

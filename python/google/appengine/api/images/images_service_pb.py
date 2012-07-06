@@ -40,6 +40,8 @@ class ImagesServiceError(ProtocolBuffer.ProtocolMessage):
   BAD_IMAGE_DATA =    4
   IMAGE_TOO_LARGE =    5
   INVALID_BLOB_KEY =    6
+  ACCESS_DENIED =    7
+  OBJECT_NOT_FOUND =    8
 
   _ErrorCode_NAMES = {
     1: "UNSPECIFIED_ERROR",
@@ -48,6 +50,8 @@ class ImagesServiceError(ProtocolBuffer.ProtocolMessage):
     4: "BAD_IMAGE_DATA",
     5: "IMAGE_TOO_LARGE",
     6: "INVALID_BLOB_KEY",
+    7: "ACCESS_DENIED",
+    8: "OBJECT_NOT_FOUND",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

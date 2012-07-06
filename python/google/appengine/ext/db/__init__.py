@@ -3606,6 +3606,10 @@ class ReferenceProperty(Property):
 
     self.reference_class = self.data_type = reference_class
 
+  def make_value_from_datastore_index_value(self, index_value):
+    value = datastore_types.RestoreFromIndexValue(index_value, Key)
+    return self.make_value_from_datastore(value)
+
   def __property_config__(self, model_class, property_name):
     """Loads all of the references that point to this model.
 
@@ -3740,7 +3744,7 @@ class ReferenceProperty(Property):
 
     if value is not None and not isinstance(value, self.reference_class):
       raise KindError('Property %s must be an instance of %s' %
-                            (self.name, self.reference_class.kind()))
+                      (self.name, self.reference_class.kind()))
 
     return value
 

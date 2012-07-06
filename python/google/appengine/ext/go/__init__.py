@@ -128,7 +128,7 @@ def gab_work_dir():
                           'com.google.GoAppEngine')
     else:
 
-      base = os.path.join(os.getenv('HOME'), '.cache')
+      base = os.path.join(os.path.expanduser('~'), '.cache')
 
 
   if os.path.islink(base):
@@ -423,6 +423,9 @@ class GoApp:
       for k, v in env.items():
         if ENV_PASSTHROUGH.match(k):
           limited_env[k] = v
+
+      if 'SYSTEMROOT' in os.environ:
+        limited_env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
       self.proc_start = app_mtime
       self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'tcp:127.0.0.1:%d' % GO_HTTP_PORT,

@@ -54,11 +54,12 @@ __all__ = [
     'Cursor',
     'DateField',
     'Document',
-    'DocumentOperationResult',
     'Error',
     'Field',
     'FieldExpression',
     'HtmlField',
+    'GeoField',
+    'GeoPoint',
     'Index',
     'InternalError',
     'InvalidRequest',
@@ -90,12 +91,15 @@ _MAXIMUM_FIELD_NAME_LENGTH = 500
 _MAXIMUM_CURSOR_LENGTH = 10000
 _MAXIMUM_DOCUMENT_ID_LENGTH = 500
 _MAXIMUM_STRING_LENGTH = 500
-_MAXIMUM_DOCS_PER_REQUEST = 200
+_MAXIMUM_ADD_DOCS_PER_REQUEST = 200
 _MAXIMUM_EXPRESSION_LENGTH = 5000
 _MAXIMUM_QUERY_LENGTH = 1000
-_MAXIMUM_RETURNED_DOCUMENTS = 800
+_MAXIMUM_SEARCH_LIMIT = 1000
+_MAXIMUM_SEARCH_OFFSET = 1000
 _MAXIMUM_FOUND_COUNT_ACCURACY = 10000
 _MAXIMUM_FIELDS_TO_RETURN = 100
+_MAXIMUM_LIST_INDEXES_LIMIT = 1000
+_MAXIMUM_LIST_INDEXES_OFFSET = 1000
 
 _MAXIMUM_SORT_LIMIT = 10000
 
@@ -219,22 +223,6 @@ _ERROR_OPERATION_CODE_MAP = {
     search_service_pb.SearchServiceError.INTERNAL_ERROR:
     OperationResult.INTERNAL_ERROR
     }
-
-
-class _DocumentOperationResult(OperationResult):
-  """Represents result of individual operation of a batch index or removal.
-
-  This is an abstract class. Deprecated. Use OperationResult instead.
-  """
-
-  def __getattribute__(self, name):
-    warnings.warn('DocumentOperationResult.%s is deprecated. '
-                  'Use OperationResult.%s instead.' % (name, name))
-    return OperationResult.__getattribute__(self, name)
-
-
-DocumentOperationResult = _DocumentOperationResult(
-    code=OperationResult.OK, message=None)
 
 
 class AddResult(OperationResult):
@@ -659,8 +647,10 @@ def list_indexes(namespace='', offset=None, limit=20,
   namespace_manager.validate_namespace(namespace, exception=ValueError)
   params.set_namespace(namespace)
   if offset is not None:
-    params.set_offset(_CheckInteger(offset, 'offset', zero_ok=True))
-  params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False))
+    params.set_offset(_CheckInteger(offset, 'offset', zero_ok=True,
+                                    upper_bound=_MAXIMUM_LIST_INDEXES_OFFSET))
+  params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False,
+                                 upper_bound=_MAXIMUM_LIST_INDEXES_LIMIT))
   if start_index_name is not None:
     params.set_start_index_name(
         _ValidateString(start_index_name, "start_index_name",
@@ -696,9 +686,10 @@ class Field(object):
   """
 
 
-  TEXT, HTML, ATOM, DATE, NUMBER = ('TEXT', 'HTML', 'ATOM', 'DATE', 'NUMBER')
+  TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT = ('TEXT', 'HTML', 'ATOM', 'DATE',
+                                               'NUMBER', 'GEO_POINT')
 
-  _FIELD_TYPES = frozenset([TEXT, HTML, ATOM, DATE, NUMBER])
+  _FIELD_TYPES = frozenset([TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT])
 
   def __init__(self, name, value, language=None):
     """Initializer.
@@ -905,6 +896,11 @@ class NumberField(Field):
     NumberField(name='size', value=10)
   """
 
+  _MAX_NUMBER_VALUE = 2147483647
+
+
+  _MIN_NUMBER_VALUE = -2147483647
+
   def __init__(self, name, value=None):
     """Initializer.
 
@@ -914,15 +910,110 @@ class NumberField(Field):
 
     Raises:
       TypeError: If value is not numeric.
+      ValueError: If value is out of range.
     """
     Field.__init__(self, name, value)
 
   def _CheckValue(self, value):
-    return _CheckNumber(value, 'field value')
+    value = _CheckNumber(value, 'field value')
+    if value is not None and (value < NumberField._MIN_NUMBER_VALUE or
+                              value > NumberField._MAX_NUMBER_VALUE):
+      raise ValueError('value, %d must be between %d and %d' %
+                       (value, NumberField._MIN_NUMBER_VALUE,
+                        NumberField._MAX_NUMBER_VALUE))
+    return value
 
   def _CopyValueToProtocolBuffer(self, field_value_pb):
     field_value_pb.set_type(document_pb.FieldValue.NUMBER)
     field_value_pb.set_string_value(str(self.value))
+
+
+class GeoPoint(object):
+  """Represents a point on the Earth's surface, in lat, long coordinates."""
+
+  def __init__(self, latitude, longitude):
+    """Initializer.
+
+    Args:
+      latitude: The angle between the equatorial plan and a line that passes
+        through the GeoPoint, between -90 and 90 degrees.
+      longitude: The angle east or west from a reference meridian to another
+        meridian that passes through the GeoPoint, between -180 and 180 degrees.
+
+    Raises:
+      TypeError: If any of the parameters have invalid types, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have invalid values.
+    """
+    self._latitude = self._CheckLatitude(latitude)
+    self._longitude = self._CheckLongitude(longitude)
+
+  @property
+  def latitude(self):
+    """Returns the angle between equatorial plan and line thru the geo point."""
+    return self._latitude
+
+  @property
+  def longitude(self):
+    """Returns the angle from a reference meridian to another meridian."""
+    return self._longitude
+
+  def _CheckLatitude(self, value):
+    _CheckNumber(value, 'latitude')
+    if value < -90.0 or value > 90.0:
+      raise ValueError('latitude must be between -90 and 90 degrees '
+                       'inclusive, was %f' % value)
+    return value
+
+  def _CheckLongitude(self, value):
+    _CheckNumber(value, 'latitude')
+    if value < -180.0 or value > 180.0:
+      raise ValueError('longitude must be between -180 and 180 degrees '
+                       'inclusive, was %f' % value)
+    return value
+
+  def __repr__(self):
+    return _Repr(self,
+                 [('latitude', self.latitude),
+                  ('longitude', self.longitude)])
+
+
+def _CheckGeoPoint(geo_point):
+  """Checks geo_point is a GeoPoint and returns it."""
+  if not isinstance(geo_point, GeoPoint):
+    raise TypeError('geo_point must be a GeoPoint, got %s' %
+                    geo_point.__class__.__name__)
+  return geo_point
+
+
+class GeoField(Field):
+  """A Field that has a GeoPoint value.
+
+  The following example shows a geo field named place:
+
+    GeoField(name='place', value=GeoPoint(latitude=-33.84, longitude=151.26))
+  """
+
+  def __init__(self, name, value=None):
+    """Initializer.
+
+    Args:
+      name: The name of the field.
+      value: A GeoPoint value.
+
+    Raises:
+      TypeError: If value is not numeric.
+    """
+    Field.__init__(self, name, value)
+
+  def _CheckValue(self, value):
+    return _CheckGeoPoint(value)
+
+  def _CopyValueToProtocolBuffer(self, field_value_pb):
+    field_value_pb.set_type(document_pb.FieldValue.GEO)
+    geo_pb = field_value_pb.mutable_geo()
+    geo_pb.set_lat(self.value.latitude)
+    geo_pb.set_lng(self.value.longitude)
 
 
 def _GetValue(value_pb):
@@ -939,6 +1030,11 @@ def _GetValue(value_pb):
   if value_pb.type() == document_pb.FieldValue.NUMBER:
     if value_pb.has_string_value():
       return float(value_pb.string_value())
+    return None
+  if value_pb.type() == document_pb.FieldValue.GEO:
+    if value_pb.has_geo():
+      geo_pb = value_pb.geo()
+      return GeoPoint(latitude=geo_pb.lat(), longitude=geo_pb.lng())
     return None
   raise TypeError('unknown FieldValue type %d' % value_pb.type())
 
@@ -980,6 +1076,8 @@ def _NewFieldFromPb(pb):
     return DateField(name, value)
   elif val_type == document_pb.FieldValue.NUMBER:
     return NumberField(name, value)
+  elif val_type == document_pb.FieldValue.GEO:
+    return GeoField(name, value)
   return InvalidRequest('Unknown field value type %d' % val_type)
 
 
@@ -1164,6 +1262,8 @@ class FieldExpression(object):
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
+
+
     self._name = _CheckFieldName(_ConvertToUnicode(name))
     if expression is None:
       raise ValueError('expression must be a FieldExpression, got None')
@@ -1297,11 +1397,10 @@ def _CopySortExpressionToProtocolBuffer(sort_expression, pb):
   pb.set_sort_expression(sort_expression.expression.encode('utf-8'))
   if sort_expression.direction == SortExpression.ASCENDING:
     pb.set_sort_descending(False)
-  if sort_expression.default_value is not None:
-    if isinstance(sort_expression.default_value, basestring):
-      pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
-    else:
-      pb.set_default_value_numeric(sort_expression.default_value)
+  if isinstance(sort_expression.default_value, basestring):
+    pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
+  else:
+    pb.set_default_value_numeric(sort_expression.default_value)
   return pb
 
 
@@ -1350,38 +1449,42 @@ class SortExpression(object):
 
   _DIRECTIONS = frozenset([ASCENDING, DESCENDING])
 
-  def __init__(self, expression=None, direction=DESCENDING, default_value=None):
+  def __init__(self, expression, direction=DESCENDING, default_value=''):
     """Initializer.
 
     Args:
       expression: An expression to be evaluated on each matching document
-        to sort by. The expression can simply be a field name,
-        or some compound expression such as "score + count(likes) * 0.1"
-        which will add the score from a scorer to a count of the values
-        of a likes field times 0.1.
+        to sort by. The expression must evaluate to a text or numeric value.
+        The expression can simply be a field name, or some compound expression
+        such as "_score + count(likes) * 0.1" which will add the score from a
+        scorer to a count of the values of a likes field times 0.1.
       direction: The direction to sort the search results, either ASCENDING
         or DESCENDING
-      default_value: The default value of the expression, if no field
-        present nor can be calculated for a document. A text value must
-        be specified for text sorts. A numeric value must be specified for
-        numeric sorts.
+      default_value: The default value of the expression. The default_value is
+        returned if expression cannot be calculated, for example, if the
+        expression is a field name and no value for that named field exists.
+        A text value must be specified for text sorts. A numeric value must be
+        specified for numeric sorts.
 
     Raises:
       TypeError: If any of the parameters has an invalid type, or an unknown
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
     """
+
+
     self._expression = _ConvertToUnicode(expression)
     self._direction = self._CheckDirection(direction)
-    self._default_value = default_value
     if self._expression is None:
       raise TypeError('expression must be a SortExpression, got None')
     _CheckExpression(self._expression)
+    self._default_value = default_value
     if isinstance(self.default_value, basestring):
       self._default_value = _ConvertToUnicode(default_value)
       _CheckText(self._default_value, 'default_value')
-    elif self._default_value is not None:
-      _CheckNumber(self._default_value, 'default_value')
+    elif not isinstance(self._default_value, (int, long, float)):
+      raise TypeError('default_value must be text or numeric, got %s' %
+                      self._default_value.__class__.__name__)
 
   @property
   def expression(self):
@@ -1411,7 +1514,6 @@ class SortExpression(object):
 
 class ScoredDocument(Document):
   """Represents a scored document returned from a search."""
-
 
   def __init__(self, doc_id=None, fields=None, language='en', order_id=None,
                sort_scores=None, expressions=None, cursor=None, rank=None):
@@ -1759,14 +1861,14 @@ def _CheckLimit(limit):
   """Checks the limit of documents to return is an integer within range."""
   return _CheckInteger(
       limit, 'limit', zero_ok=False,
-      upper_bound=_MAXIMUM_RETURNED_DOCUMENTS)
+      upper_bound=_MAXIMUM_SEARCH_LIMIT)
 
 
 def _CheckOffset(offset):
   """Checks the offset in document list is an integer within range."""
   return _CheckInteger(
       offset, 'offset', zero_ok=True,
-      upper_bound=_MAXIMUM_RETURNED_DOCUMENTS)
+      upper_bound=_MAXIMUM_SEARCH_OFFSET)
 
 
 def _CheckNumberFoundAccuracy(number_found_accuracy):
@@ -1841,7 +1943,7 @@ class QueryOptions(object):
             cursor=Cursor(),
             sort_options=SortOptions(
                 expressions=[
-                    SortExpression(expression='subject', default_value='')],
+                    SortExpression(expression='subject')],
                 limit=1000),
             returned_fields=['author', 'subject', 'summary'],
             snippeted_fields=['content'])))
@@ -2037,7 +2139,7 @@ class Query(object):
               cursor=Cursor(),
               sort_options=SortOptions(
                   expressions=[
-                      SortExpression(expression='subject', default_value='')],
+                      SortExpression(expression='subject')],
                   limit=1000),
               returned_fields=['author', 'subject', 'summary'],
               snippeted_fields=['content'])))
@@ -2066,6 +2168,8 @@ class Query(object):
         (exclusive).
       options: A QueryOptions describing post-processing of search results.
     """
+
+
     self._query_string = _ConvertToUnicode(query_string)
     _CheckQuery(self._query_string)
     self._options = options
@@ -2159,8 +2263,12 @@ class Index(object):
 
   _CURSOR_TYPES = frozenset([RESPONSE_CURSOR, RESULT_CURSOR])
 
+  SEARCH, DATASTORE, CLOUD_STORAGE = ('SEARCH', 'DATASTORE', 'CLOUD_STORAGE')
+
+  _SOURCES = frozenset([SEARCH, DATASTORE, CLOUD_STORAGE])
+
   def __init__(self, name, namespace=None,
-               consistency=PER_DOCUMENT_CONSISTENT):
+               consistency=PER_DOCUMENT_CONSISTENT, source=SEARCH):
     """Initializer.
 
     Args:
@@ -2170,11 +2278,21 @@ class Index(object):
         namespace is used.
       consistency: The consistency mode of the index, either GLOBALLY_CONSISTENT
         or PER_DOCUMENT_CONSISTENT.
-
+      source: This feature is only available to Trusted Testers. The source of
+        the index:
+          SEARCH - The Index was created by adding documents throught this
+            search API.
+          DATASTORE - The Index was created as a side-effect of putting entities
+            into Datastore.
+          CLOUD_STORAGE - The Index was created as a side-effect of adding
+            objects into a Cloud Storage bucket.
     Raises:
       TypeError: If an unknown attribute is passed.
       ValueError: If an unknown consistency mode, or invalid namespace is given.
     """
+    if source not in self._SOURCES:
+      raise ValueError('source must be one of %s' % self._SOURCES)
+    self._source = source
     self._name = _CheckIndexName(_ConvertToUnicode(name))
     self._namespace = _ConvertToUnicode(namespace)
     if self._namespace is None:
@@ -2210,6 +2328,11 @@ class Index(object):
     """Returns the consistency mode of the index."""
     return self._consistency
 
+  @property
+  def source(self):
+    """Returns the source of the index."""
+    return self._source
+
   def __eq__(self, other):
     return (isinstance(other, self.__class__)
             and self.__dict__ == other.__dict__)
@@ -2222,6 +2345,7 @@ class Index(object):
 
   def __repr__(self):
     return _Repr(self, [('name', self.name), ('namespace', self.namespace),
+                        ('source', self.source),
                         ('consistency', self.consistency),
                         ('schema', self.schema)])
 
@@ -2256,7 +2380,7 @@ class Index(object):
         number indexed did not match requested.
       TypeError: If an unknown attribute is passed.
       ValueError: If documents is not a Document or iterable of Document
-        or number of the documents is larger than _MAXIMUM_DOCS_PER_REQUEST.
+        or number of the documents is larger than _MAXIMUM_ADD_DOCS_PER_REQUEST.
     """
 
     if isinstance(documents, basestring):
@@ -2270,7 +2394,7 @@ class Index(object):
     if not docs:
       return []
 
-    if len(docs) > _MAXIMUM_DOCS_PER_REQUEST:
+    if len(docs) > _MAXIMUM_ADD_DOCS_PER_REQUEST:
       raise ValueError("too many documents to index")
 
     request = search_service_pb.IndexDocumentRequest()
@@ -2328,14 +2452,14 @@ class Index(object):
         number removed did not match requested.
       ValueError: If document_ids is not a string or iterable of valid document
         identifiers or number of document ids is larger than
-        _MAXIMUM_DOCS_PER_REQUEST.
+        _MAXIMUM_ADD_DOCS_PER_REQUEST.
     """
     doc_ids = _ConvertToList(document_ids)
 
     if not doc_ids:
       return
 
-    if len(doc_ids) > _MAXIMUM_DOCS_PER_REQUEST:
+    if len(doc_ids) > _MAXIMUM_ADD_DOCS_PER_REQUEST:
       raise ValueError('too many documents to remove')
 
     request = search_service_pb.DeleteDocumentRequest()
@@ -2413,8 +2537,7 @@ class Index(object):
               options=QueryOptions(limit=20,
                   cursor=Cursor(),
                   sortOptions=SortOptions(
-                      expressions=[SortExpression(expression='subject',
-                                                  default_value='')],
+                      expressions=[SortExpression(expression='subject')],
                       limit=1000),
                   returned_fields=['author', 'subject', 'summary'],
                   snippeted_fields=['content'])))
@@ -2531,7 +2654,8 @@ class Index(object):
       params.set_start_doc_id(start_doc_id)
     params.set_include_start_doc(include_start_doc)
 
-    params.set_limit(limit)
+    params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False,
+                                   upper_bound=_MAXIMUM_SEARCH_LIMIT))
     params.set_keys_only(ids_only)
 
     response = search_service_pb.ListDocumentsResponse()
@@ -2560,9 +2684,22 @@ _CONSISTENCY_MODES_TO_PB_MAP = {
 
 
 
+_SOURCES_TO_PB_MAP = {
+    Index.SEARCH: search_service_pb.IndexSpec.SEARCH,
+    Index.DATASTORE: search_service_pb.IndexSpec.DATASTORE,
+    Index.CLOUD_STORAGE: search_service_pb.IndexSpec.CLOUD_STORAGE}
+
+
+
 _CONSISTENCY_PB_TO_MODES_MAP = {
     search_service_pb.IndexSpec.GLOBAL: Index.GLOBALLY_CONSISTENT,
     search_service_pb.IndexSpec.PER_DOCUMENT: Index.PER_DOCUMENT_CONSISTENT}
+
+
+_SOURCE_PB_TO_SOURCES_MAP = {
+    search_service_pb.IndexSpec.SEARCH: Index.SEARCH,
+    search_service_pb.IndexSpec.DATASTORE: Index.DATASTORE,
+    search_service_pb.IndexSpec.CLOUD_STORAGE: Index.CLOUD_STORAGE}
 
 
 def _CopyMetadataToProtocolBuffer(index, spec_pb):
@@ -2570,6 +2707,9 @@ def _CopyMetadataToProtocolBuffer(index, spec_pb):
   spec_pb.set_name(index.name.encode('utf-8'))
   spec_pb.set_namespace(index.namespace.encode('utf-8'))
   spec_pb.set_consistency(_CONSISTENCY_MODES_TO_PB_MAP.get(index.consistency))
+  if index.source != Index.SEARCH:
+    spec_pb.set_source(_SOURCES_TO_PB_MAP.get(index.source))
+
 
 _FIELD_TYPE_MAP = {
     document_pb.FieldValue.TEXT: Field.TEXT,
@@ -2577,6 +2717,7 @@ _FIELD_TYPE_MAP = {
     document_pb.FieldValue.ATOM: Field.ATOM,
     document_pb.FieldValue.DATE: Field.DATE,
     document_pb.FieldValue.NUMBER: Field.NUMBER,
+    document_pb.FieldValue.GEO: Field.GEO_POINT,
     }
 
 
@@ -2594,16 +2735,24 @@ def _NewSchemaFromPb(field_type_pb_list):
   return field_types
 
 
+def _NewIndexFromIndexSpecPb(index_spec_pb):
+  """Creates an Index from a search_service_pb.IndexSpec."""
+  consistency = _CONSISTENCY_PB_TO_MODES_MAP.get(index_spec_pb.consistency())
+  source = _SOURCE_PB_TO_SOURCES_MAP.get(index_spec_pb.source())
+  index = None
+  if index_spec_pb.has_namespace():
+    index = Index(name=index_spec_pb.name(),
+                  namespace=index_spec_pb.namespace(),
+                  consistency=consistency, source=source)
+  else:
+    index = Index(name=index_spec_pb.name(), consistency=consistency,
+                  source=source)
+  return index
+
+
 def _NewIndexFromPb(index_metadata_pb):
   """Creates an Index from a search_service_pb.IndexMetadata."""
-  spec_pb = index_metadata_pb.index_spec()
-  consistency = _CONSISTENCY_PB_TO_MODES_MAP.get(spec_pb.consistency())
-  index = None
-  if spec_pb.has_namespace():
-    index = Index(name=spec_pb.name(), namespace=spec_pb.namespace(),
-                  consistency=consistency)
-  else:
-    index = Index(name=spec_pb.name(), consistency=consistency)
+  index = _NewIndexFromIndexSpecPb(index_metadata_pb.index_spec())
   if index_metadata_pb.field_list():
     index._schema = _NewSchemaFromPb(index_metadata_pb.field_list())
   return index

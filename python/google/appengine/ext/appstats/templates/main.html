@@ -195,7 +195,7 @@
           overhead={{r.overhead_walltime_milliseconds}}ms
           {% if has_cost_data %}
           ({{r.combined_rpc_count}} RPC{{r.combined_rpc_count|pluralize}},
-            cost={{r.combined_rpc_cost_microdollars}},
+            cost={{r.combined_rpc_cost_micropennies}},
             billed_ops=[{{r.combined_rpc_billed_ops}}])
           {% endif %}
         </td>
@@ -208,7 +208,7 @@
         <td>{{item.total_amount_of_calls}}</td>
         {% if has_cost_data %}
         <td>{{item.total_cost_of_calls_microdollars}}</td>
-        <td>{% for bop in item.total_billed_ops %}{{bop.op.name}}:{{bop.num_ops}} {% endfor %}</td>
+        <td>{{item.total_billed_ops_str}}</td>
         {% endif %}
       </tr>
       {% endfor %}

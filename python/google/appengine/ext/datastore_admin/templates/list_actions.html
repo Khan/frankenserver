@@ -125,7 +125,7 @@
                 <input type="checkbox" name="backup_id" value="{{ pending_backup.key }}" id="{{ pending_backup.key }}">
               </td>
               <td class="id">
-                <span title="Kinds: {{ pending_backup.kinds|join:', '|truncatewords:20}}">{{ pending_backup.name }}</span>
+                <span title="Kinds: {{ pending_backup.kinds|join:', '|truncatewords:20|escape}}">{{ pending_backup.name }}{% if pending_backup.original_app %} (Imported from {{pending_backup.original_app|escape}}){% endif %}</span>
               </td>
               <td class="id">
                 {{ pending_backup.start_time }}
@@ -145,17 +145,17 @@
       </table>
     </form>
   {% endif %}
-  {% if backups %}
-    <p>
-    <div class="ae-table-caption">
-      <div class="ae-paginate">
-        <div class="g-section g-tpl-50-50 g-split">
-          <div class="g-unit g-first">
-            <strong>Backups</strong>
-          </div>
+  <p>
+  <div class="ae-table-caption">
+    <div class="ae-paginate">
+      <div class="g-section g-tpl-50-50 g-split">
+        <div class="g-unit g-first">
+          <strong>Backups</strong>
         </div>
       </div>
     </div>
+  </div>
+  {% if backups %}
     <form action="{{ base_path }}/" method="post">
       <input type="hidden" name="app_id" value="{{ app_id }}">
       <input type="hidden" name="cancel_url" value="{{ cancel_url }}">
@@ -175,7 +175,7 @@
                 <input type="checkbox" name="backup_id" value="{{ backup.key }}" id="{{ backup.key }}">
               </td>
               <td class="id">
-                <span title="Kinds: {{ backup.kinds|join:', '|truncatewords:20}}">{{ backup.name }}</span>
+                <span title="Kinds: {{ backup.kinds|join:', '|truncatewords:20|escape }}">{{ backup.name }}{% if backup.original_app %} (Imported from {{backup.original_app|escape}}){% endif %}</span>
               </td>
               <td class="id">
                 {{ backup.start_time }}
@@ -198,6 +198,13 @@
       </table>
     </form>
   {% endif %}
+  <div class="ae-table-caption">
+    <form action="{{ base_path }}/" method="post" >
+      <input type="hidden" name="cancel_url" value="{{ cancel_url }}">
+      <input type="submit" name="action" value="Import Backup Information" title="Import Backup Information or restore from Google Cloud Storage"/>
+      <input type="text" name="gs_handle" value="" size="50" title="Google Cloud Storage path of a backup info file or a bucket name"/>
+    </form>
+  </div>
   {% if active_operations %}
     <p>
     <div class="ae-table-caption">
