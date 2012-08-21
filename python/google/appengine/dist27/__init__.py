@@ -6,6 +6,7 @@ __all__ = [
   # These reside here.
   'httplib',
   'urllib',
+  'threading',
   ]
 
 MODULE_OVERRIDES = __all__ + [

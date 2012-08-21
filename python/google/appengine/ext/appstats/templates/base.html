@@ -25,6 +25,11 @@
             All costs displayed in micropennies (1 dollar equals 100 pennies, 1 penny equals 1 million micropennies)
           </div>
         </div>
+        {% if shell_ok %}
+          {% if not is_shell %}
+            <a href=shell>Try the interactive playground...</a>
+          {% endif %}
+        {% endif %}
       </div>
     </div>
     {# Header end #}

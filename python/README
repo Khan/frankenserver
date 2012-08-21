@@ -68,6 +68,7 @@ Options:
                              file stub data.
   --clear_prospective_search Clear the Prospective Search subscription index
                              (Default false).
+  --clear_search_indexes     Clear the Full Text Search indexes (Default false).
   --datastore_path=DS_FILE   Path to file to use for storing Datastore file
                              stub data.
                              (Default /tmp/dev_appserver.datastore)
@@ -103,6 +104,8 @@ Options:
                              (Default '%(mysql_socket)s')
   --require_indexes          Disallows queries that require composite indexes
                              not defined in index.yaml.
+  --search_indexes_path=PATH Path to file to use for storing Full Text Search
+                             indexes (Default %(search_indexes_path)s).
   --show_mail_body           Log the body of emails in mail stub.
                              (Default false)
   --skip_sdk_update_check    Skip checking for SDK updates. If false, fall back

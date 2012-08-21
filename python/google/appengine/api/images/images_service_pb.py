@@ -964,6 +964,8 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
   correct_exif_orientation_ = 0
   has_parse_metadata_ = 0
   parse_metadata_ = 0
+  has_transparent_substitution_rgb_ = 0
+  transparent_substitution_rgb_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -994,11 +996,25 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
 
   def has_parse_metadata(self): return self.has_parse_metadata_
 
+  def transparent_substitution_rgb(self): return self.transparent_substitution_rgb_
+
+  def set_transparent_substitution_rgb(self, x):
+    self.has_transparent_substitution_rgb_ = 1
+    self.transparent_substitution_rgb_ = x
+
+  def clear_transparent_substitution_rgb(self):
+    if self.has_transparent_substitution_rgb_:
+      self.has_transparent_substitution_rgb_ = 0
+      self.transparent_substitution_rgb_ = 0
+
+  def has_transparent_substitution_rgb(self): return self.has_transparent_substitution_rgb_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_correct_exif_orientation()): self.set_correct_exif_orientation(x.correct_exif_orientation())
     if (x.has_parse_metadata()): self.set_parse_metadata(x.parse_metadata())
+    if (x.has_transparent_substitution_rgb()): self.set_transparent_substitution_rgb(x.transparent_substitution_rgb())
 
   def Equals(self, x):
     if x is self: return 1
@@ -1006,6 +1022,8 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     if self.has_correct_exif_orientation_ and self.correct_exif_orientation_ != x.correct_exif_orientation_: return 0
     if self.has_parse_metadata_ != x.has_parse_metadata_: return 0
     if self.has_parse_metadata_ and self.parse_metadata_ != x.parse_metadata_: return 0
+    if self.has_transparent_substitution_rgb_ != x.has_transparent_substitution_rgb_: return 0
+    if self.has_transparent_substitution_rgb_ and self.transparent_substitution_rgb_ != x.transparent_substitution_rgb_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1016,17 +1034,20 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_correct_exif_orientation_): n += 1 + self.lengthVarInt64(self.correct_exif_orientation_)
     if (self.has_parse_metadata_): n += 2
+    if (self.has_transparent_substitution_rgb_): n += 1 + self.lengthVarInt64(self.transparent_substitution_rgb_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_correct_exif_orientation_): n += 1 + self.lengthVarInt64(self.correct_exif_orientation_)
     if (self.has_parse_metadata_): n += 2
+    if (self.has_transparent_substitution_rgb_): n += 1 + self.lengthVarInt64(self.transparent_substitution_rgb_)
     return n
 
   def Clear(self):
     self.clear_correct_exif_orientation()
     self.clear_parse_metadata()
+    self.clear_transparent_substitution_rgb()
 
   def OutputUnchecked(self, out):
     if (self.has_correct_exif_orientation_):
@@ -1035,6 +1056,9 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     if (self.has_parse_metadata_):
       out.putVarInt32(16)
       out.putBoolean(self.parse_metadata_)
+    if (self.has_transparent_substitution_rgb_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.transparent_substitution_rgb_)
 
   def OutputPartial(self, out):
     if (self.has_correct_exif_orientation_):
@@ -1043,6 +1067,9 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     if (self.has_parse_metadata_):
       out.putVarInt32(16)
       out.putBoolean(self.parse_metadata_)
+    if (self.has_transparent_substitution_rgb_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.transparent_substitution_rgb_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1052,6 +1079,9 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 16:
         self.set_parse_metadata(d.getBoolean())
+        continue
+      if tt == 24:
+        self.set_transparent_substitution_rgb(d.getVarInt32())
         continue
 
 
@@ -1063,6 +1093,7 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_correct_exif_orientation_: res+=prefix+("correct_exif_orientation: %s\n" % self.DebugFormatInt32(self.correct_exif_orientation_))
     if self.has_parse_metadata_: res+=prefix+("parse_metadata: %s\n" % self.DebugFormatBool(self.parse_metadata_))
+    if self.has_transparent_substitution_rgb_: res+=prefix+("transparent_substitution_rgb: %s\n" % self.DebugFormatInt32(self.transparent_substitution_rgb_))
     return res
 
 
@@ -1071,18 +1102,21 @@ class InputSettings(ProtocolBuffer.ProtocolMessage):
 
   kcorrect_exif_orientation = 1
   kparse_metadata = 2
+  ktransparent_substitution_rgb = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "correct_exif_orientation",
     2: "parse_metadata",
-  }, 2)
+    3: "transparent_substitution_rgb",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.NUMERIC,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -3063,7 +3097,172 @@ class ImagesGetUrlBaseResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ImagesGetUrlBaseResponse'
+class ImagesDeleteUrlBaseRequest(ProtocolBuffer.ProtocolMessage):
+  has_blob_key_ = 0
+  blob_key_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def blob_key(self): return self.blob_key_
+
+  def set_blob_key(self, x):
+    self.has_blob_key_ = 1
+    self.blob_key_ = x
+
+  def clear_blob_key(self):
+    if self.has_blob_key_:
+      self.has_blob_key_ = 0
+      self.blob_key_ = ""
+
+  def has_blob_key(self): return self.has_blob_key_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_blob_key()): self.set_blob_key(x.blob_key())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_blob_key_ != x.has_blob_key_: return 0
+    if self.has_blob_key_ and self.blob_key_ != x.blob_key_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_blob_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: blob_key not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.blob_key_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_blob_key_):
+      n += 1
+      n += self.lengthString(len(self.blob_key_))
+    return n
+
+  def Clear(self):
+    self.clear_blob_key()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.blob_key_)
+
+  def OutputPartial(self, out):
+    if (self.has_blob_key_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.blob_key_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_blob_key(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_blob_key_: res+=prefix+("blob_key: %s\n" % self.DebugFormatString(self.blob_key_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kblob_key = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "blob_key",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ImagesDeleteUrlBaseRequest'
+class ImagesDeleteUrlBaseResponse(ProtocolBuffer.ProtocolMessage):
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    return n
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def OutputPartial(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ImagesDeleteUrlBaseResponse'
 if _extension_runtime:
   pass
 
-__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','InputSettings','OutputSettings','ImagesTransformRequest','ImagesTransformResponse','CompositeImageOptions','ImagesCanvas','ImagesCompositeRequest','ImagesCompositeResponse','ImagesHistogramRequest','ImagesHistogram','ImagesHistogramResponse','ImagesGetUrlBaseRequest','ImagesGetUrlBaseResponse']
+__all__ = ['ImagesServiceError','ImagesServiceTransform','Transform','ImageData','InputSettings','OutputSettings','ImagesTransformRequest','ImagesTransformResponse','CompositeImageOptions','ImagesCanvas','ImagesCompositeRequest','ImagesCompositeResponse','ImagesHistogramRequest','ImagesHistogram','ImagesHistogramResponse','ImagesGetUrlBaseRequest','ImagesGetUrlBaseResponse','ImagesDeleteUrlBaseRequest','ImagesDeleteUrlBaseResponse']

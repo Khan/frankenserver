@@ -32,7 +32,9 @@ Methods defined in this module:
 
 
 
+import httplib
 import os
+import StringIO
 import threading
 import UserDict
 import urllib2
@@ -73,9 +75,9 @@ class _CaselessDict(UserDict.IterableUserDict):
   This class was lifted from os.py and slightly modified.
   """
 
-  def __init__(self):
-    UserDict.IterableUserDict.__init__(self)
+  def __init__(self, dict=None, **kwargs):
     self.caseless_keys = {}
+    UserDict.IterableUserDict.__init__(self, dict, **kwargs)
 
   def __setitem__(self, key, item):
     """Set dictionary item.
@@ -257,6 +259,7 @@ def fetch(url, payload=None, method=GET, headers={},
   of the returned structure, so HTTP errors like 404 do not result in an
   exception.
   """
+
   rpc = create_rpc(deadline=deadline)
   make_fetch_call(rpc, url, payload, method, headers,
                   allow_truncated, follow_redirects, validate_certificate)
@@ -274,6 +277,7 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
   Returns:
     The rpc object passed into the function.
   """
+
   assert rpc.service == 'urlfetch', repr(rpc.service)
   if isinstance(method, basestring):
     method = method.upper()
@@ -381,9 +385,7 @@ def _get_fetch_result(rpc):
     raise ResponseTooLargeError(result)
   return result
 
-
 Fetch = fetch
-
 
 class _URLFetchResult(object):
   """A Pythonic representation of our fetch response protocol buffer.
@@ -399,11 +401,11 @@ class _URLFetchResult(object):
     self.content = response_proto.content()
     self.status_code = response_proto.statuscode()
     self.content_was_truncated = response_proto.contentwastruncated()
-    self.headers = _CaselessDict()
     self.final_url = response_proto.finalurl() or None
-    for header_proto in response_proto.header_list():
-      self.headers[header_proto.key()] = header_proto.value()
-
+    self.header_msg = httplib.HTTPMessage(
+        StringIO.StringIO(''.join(['%s: %s\n' % (h.key(), h.value())
+                          for h in response_proto.header_list()] + ['\n'])))
+    self.headers = _CaselessDict(self.header_msg.items())
 
 def get_default_fetch_deadline():
   """Get the default value for create_rpc()'s deadline parameter."""

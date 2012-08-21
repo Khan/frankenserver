@@ -37,6 +37,7 @@ import re
 import sys
 import threading
 import time
+import warnings
 
 from google.net.proto import ProtocolBuffer
 from google.appengine.api import api_base_pb
@@ -273,7 +274,9 @@ class LogsBuffer(object):
     logs = self.parse_logs()
     self._clear()
 
-    while logs:
+    first_iteration = True
+    while logs or first_iteration:
+      first_iteration = False
       request = log_service_pb.FlushRequest()
       group = log_service_pb.UserAppLogGroup()
       byte_size = 0
@@ -294,7 +297,7 @@ class LogsBuffer(object):
         line.set_message(entry[2])
         byte_size += 1 + group.lengthString(line.ByteSize())
         n += 1
-      assert n > 0
+      assert n > 0 or not logs
       logs = logs[n:]
       request.set_logs(group.Encode())
       response = api_base_pb.VoidProto()
@@ -316,7 +319,7 @@ class LogsBuffer(object):
 
   def autoflush_enabled(self):
     """Indicates if the buffer will periodically flush logs during a request."""
-    return AUTOFLUSH_ENABLED and 'BACKEND_ID' in os.environ
+    return AUTOFLUSH_ENABLED
 
 
 
@@ -639,9 +642,13 @@ class RequestLog(object):
   def api_mcycles(self):
     """Number of machine cycles spent in API calls while processing request.
 
+    Deprecated. This value is no longer meaningful.
+
     Returns:
        Number of API machine cycles used as a long, or None if not available.
     """
+    warnings.warn('api_mcycles does not return a meaningful value.',
+                  DeprecationWarning, stacklevel=2)
     if self.__pb.has_api_mcycles():
       return self.__pb.api_mcycles()
     return None

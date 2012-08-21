@@ -125,9 +125,9 @@ class AbstractAdapter(object):
     raise NotImplementedError
 
   def pb_to_index(self, pb):
-   """Turn an entity_pb.CompositeIndex into a user-level Index
-   representation."""
-   raise NotImplementedError
+    """Turn an entity_pb.CompositeIndex into a user-level Index
+    representation."""
+    raise NotImplementedError
 
   def pb_to_query_result(self, pb, query_options):
     """Turn an entity_pb.EntityProto into a user-level query result."""
@@ -1373,20 +1373,6 @@ class BaseConnection(object):
     """
     return self.async_get(None, keys).get_result()
 
-
-
-
-
-  DEFAULT_MAX_ENTITY_GROUPS_PER_HIGH_REP_READ_RPC = 1
-
-  def __get_max_entity_groups_per_high_rep_read_rpc(self, config):
-    """Like __get_max_entity_groups_per_rpc but for HRD reads."""
-
-
-
-    return Configuration.max_entity_groups_per_rpc(
-        config, self.__config) or self.DEFAULT_MAX_ENTITY_GROUPS_PER_HIGH_REP_READ_RPC
-
   def async_get(self, config, keys, extra_hook=None):
     """Asynchronous Get operation.
 
@@ -1419,6 +1405,7 @@ class BaseConnection(object):
     base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_get_keys(config, self.__config) or
                  self.MAX_GET_KEYS)
+
     if base_req.has_strong():
       is_read_current = base_req.strong()
     else:
@@ -1431,16 +1418,11 @@ class BaseConnection(object):
 
 
 
-
-
-
-
     if is_read_current and not base_req.has_transaction():
-
-
-      max_egs_per_rpc = self.__get_max_entity_groups_per_high_rep_read_rpc(config)
+      max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
+
 
 
     pbsgen = self.__generate_pb_lists(

@@ -54,8 +54,9 @@ API_SERVING_PATTERN = '/_ah/api/.*'
 SPI_ROOT_FORMAT = 'http://127.0.0.1:%s/_ah/spi/%s'
 
 
-_API_REST_PATH_FORMAT = '{name}/{version}/%s'
+_API_REST_PATH_FORMAT = '{!name}/{!version}/%s'
 _PATH_VARIABLE_PATTERN = r'[a-zA-Z_][a-zA-Z_\d]*'
+_RESERVED_PATH_VARIABLE_PATTERN = r'!' + _PATH_VARIABLE_PATTERN
 _PATH_VALUE_PATTERN = r'[^:/?#\[\]{}]*'
 
 
@@ -156,20 +157,37 @@ class ApiConfigManager(object):
               self.SaveRestMethod(method_name, version, method)
 
   @staticmethod
-  def CompilePathPattern(path_pattern):
+  def CompilePathPattern(pattern):
     """Generates a compiled regex pattern for a path pattern.
 
-    e.g. '/{name}/{version}/notes/{id}'
-    returns re.compile(r'/(?P<name>[^:/?#\[\]{}]*)'
-                       r'/(?P<version>[^:/?#\[\]{}]*)'
+    e.g. '/{!name}/{!version}/notes/{id}'
+    returns re.compile(r'/([^:/?#\[\]{}]*)'
+                       r'/([^:/?#\[\]{}]*)'
                        r'/notes/(?P<id>[^:/?#\[\]{}]*)')
+    Note in this example that !name and !version are reserved variable names
+    used to match the API name and version that should not be migrated into the
+    method argument namespace.  As such they are not named in the regex, so
+    groupdict() excludes them.
 
     Args:
-      path_pattern: parameterized path pattern to be checked
+      pattern: parameterized path pattern to be checked
 
     Returns:
       compiled regex to match this path pattern
     """
+
+    def ReplaceReservedVariable(match):
+      """Replaces a {!variable} with a regex to match it not by name.
+
+      Args:
+        match: The matching regex group as sent by re.sub()
+
+      Returns:
+        Regex to match the variable by name, if the full pattern was matched.
+      """
+      if match.lastindex > 1:
+        return '%s(%s)' % (match.group(1), _PATH_VALUE_PATTERN)
+      return match.group(0)
 
     def ReplaceVariable(match):
       """Replaces a {variable} with a regex to match it by name.
@@ -185,9 +203,14 @@ class ApiConfigManager(object):
                                  _PATH_VALUE_PATTERN)
       return match.group(0)
 
-    path_re = re.sub('(/|^){(%s)}(?=/|$)' % _PATH_VARIABLE_PATTERN,
-                     ReplaceVariable, path_pattern) + '$'
-    return re.compile(path_re)
+
+
+
+    pattern = re.sub('(/|^){(%s)}(?=/|$)' % _RESERVED_PATH_VARIABLE_PATTERN,
+                     ReplaceReservedVariable, pattern, 2)
+    pattern = re.sub('(/|^){(%s)}(?=/|$)' % _PATH_VARIABLE_PATTERN,
+                     ReplaceVariable, pattern)
+    return re.compile(pattern + '$')
 
   def SaveRpcMethod(self, method_name, version, method):
     """Store JsonRpc api methods in a map for lookup at call time.
@@ -283,7 +306,7 @@ class ApiConfigManager(object):
       match = compiled_path_pattern.match(path)
       if match:
         params = match.groupdict()
-        version = params.get('version', '')
+        version = match.group(2)
         method_key = (http_method.lower(), version)
         method_name, method = methods.get(method_key, (None, None))
         if method is not None:

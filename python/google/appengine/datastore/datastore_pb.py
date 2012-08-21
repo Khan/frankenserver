@@ -4101,6 +4101,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   has_entity_ = 0
   entity_ = None
+  has_version_ = 0
+  version_ = 0
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -4125,15 +4127,31 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
 
   def has_entity(self): return self.has_entity_
 
+  def version(self): return self.version_
+
+  def set_version(self, x):
+    self.has_version_ = 1
+    self.version_ = x
+
+  def clear_version(self):
+    if self.has_version_:
+      self.has_version_ = 0
+      self.version_ = 0
+
+  def has_version(self): return self.has_version_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_entity()): self.mutable_entity().MergeFrom(x.entity())
+    if (x.has_version()): self.set_version(x.version())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_entity_ != x.has_entity_: return 0
     if self.has_entity_ and self.entity_ != x.entity_: return 0
+    if self.has_version_ != x.has_version_: return 0
+    if self.has_version_ and self.version_ != x.version_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4144,27 +4162,36 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_entity_): n += 1 + self.lengthString(self.entity_.ByteSize())
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_entity_): n += 1 + self.lengthString(self.entity_.ByteSizePartial())
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def Clear(self):
     self.clear_entity()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     if (self.has_entity_):
       out.putVarInt32(18)
       out.putVarInt32(self.entity_.ByteSize())
       self.entity_.OutputUnchecked(out)
+    if (self.has_version_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_)
 
   def OutputPartial(self, out):
     if (self.has_entity_):
       out.putVarInt32(18)
       out.putVarInt32(self.entity_.ByteSizePartial())
       self.entity_.OutputPartial(out)
+    if (self.has_version_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.version_)
 
   def TryMerge(self, d):
     while 1:
@@ -4175,6 +4202,9 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_entity().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.set_version(d.getVarInt64())
         continue
 
 
@@ -4188,6 +4218,7 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"entity <\n"
       res+=self.entity_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
     return res
 
 class GetResponse(ProtocolBuffer.ProtocolMessage):
@@ -4287,18 +4318,21 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   kEntityGroup = 1
   kEntityentity = 2
+  kEntityversion = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "Entity",
     2: "entity",
-  }, 2)
+    3: "version",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STARTGROUP,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

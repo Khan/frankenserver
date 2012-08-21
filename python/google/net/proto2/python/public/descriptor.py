@@ -28,7 +28,10 @@ from google.net.proto2.python.internal import api_implementation
 
 
 if api_implementation.Type() == 'cpp':
-  from google.net.proto2.python.internal import cpp_message
+  if api_implementation.Version() == 2:
+    from google.net.proto2.python.internal.cpp import _message
+  else:
+    from google.net.proto2.python.internal import cpp_message
 
 
 class Error(Exception):
@@ -58,6 +61,18 @@ class DescriptorBase(object):
     """Initialize the descriptor given its options message and the name of the
     class of the options message. The name of the class is required in case
     the options message is None and has to be created.
+    """
+    self._options = options
+    self._options_class_name = options_class_name
+
+
+    self.has_options = options is not None
+
+  def _SetOptions(self, options, options_class_name):
+    """Sets the descriptor's options
+
+    This function is used in generated proto2 files to update descriptor
+    options. It must not be used outside proto2.
     """
     self._options = options
     self._options_class_name = options_class_name
@@ -419,9 +434,15 @@ class FieldDescriptor(DescriptorBase):
     self.extension_scope = extension_scope
     if api_implementation.Type() == 'cpp':
       if is_extension:
-        self._cdescriptor = cpp_message.GetExtensionDescriptor(full_name)
+        if api_implementation.Version() == 2:
+          self._cdescriptor = _message.GetExtensionDescriptor(full_name)
+        else:
+          self._cdescriptor = cpp_message.GetExtensionDescriptor(full_name)
       else:
-        self._cdescriptor = cpp_message.GetFieldDescriptor(full_name)
+        if api_implementation.Version() == 2:
+          self._cdescriptor = _message.GetFieldDescriptor(full_name)
+        else:
+          self._cdescriptor = cpp_message.GetFieldDescriptor(full_name)
     else:
       self._cdescriptor = None
 
@@ -621,7 +642,10 @@ class FileDescriptor(DescriptorBase):
     self.serialized_pb = serialized_pb
     if (api_implementation.Type() == 'cpp' and
         self.serialized_pb is not None):
-      cpp_message.BuildFile(self.serialized_pb)
+      if api_implementation.Version() == 2:
+        _message.BuildFile(self.serialized_pb)
+      else:
+        cpp_message.BuildFile(self.serialized_pb)
 
   def CopyToProto(self, proto):
     """Copies this to a descriptor_pb2.FileDescriptorProto.

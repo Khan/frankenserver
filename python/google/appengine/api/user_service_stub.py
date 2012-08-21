@@ -49,12 +49,14 @@ _OAUTH_AUTH_DOMAIN = _DEFAULT_AUTH_DOMAIN
 class UserServiceStub(apiproxy_stub.APIProxyStub):
   """Trivial implementation of the UserService."""
 
+  _ACCEPTS_REQUEST_ID = True
+
   def __init__(self,
                login_url=_DEFAULT_LOGIN_URL,
                logout_url=_DEFAULT_LOGOUT_URL,
                service_name='user',
                auth_domain=_DEFAULT_AUTH_DOMAIN,
-               http_server_address=None):
+               request_data=None):
     """Initializer.
 
     Args:
@@ -62,18 +64,17 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       logout_url: String containing the URL to use for logging out.
       service_name: Service name expected for all calls.
       auth_domain: The authentication domain for the service e.g. "gmail.com".
-      http_server_address: The address of the application's HTTP server e.g.
-          "localhost:8080". If this is not set then the SERVER_NAME and
-          SERVER_PORT environment variables are used.
+      request_data: A apiproxy_stub.RequestData instance used to look up state
+          associated with the request that generated an API call.
 
     Note: Both the login_url and logout_url arguments must contain one format
     parameter, which will be replaced with the continuation URL where the user
     should be redirected after log-in or log-out has been completed.
     """
-    super(UserServiceStub, self).__init__(service_name)
+    super(UserServiceStub, self).__init__(service_name,
+                                          request_data=request_data)
     self._login_url = login_url
     self._logout_url = logout_url
-    self._http_server_address = http_server_address
     self.__scopes = None
 
     self.SetOAuthUser()
@@ -107,34 +108,42 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self.__is_admin = is_admin
     self.__scopes = scopes
 
-  def _Dynamic_CreateLoginURL(self, request, response):
+  def _Dynamic_CreateLoginURL(self, request, response, request_id):
     """Trivial implementation of UserService.CreateLoginURL().
 
     Args:
       request: a CreateLoginURLRequest
       response: a CreateLoginURLResponse
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     response.set_login_url(
         self._login_url %
-        urllib.quote(self._AddHostToContinueURL(request.destination_url())))
+        urllib.quote(self._AddHostToContinueURL(request.destination_url(),
+                                                request_id)))
 
-  def _Dynamic_CreateLogoutURL(self, request, response):
+  def _Dynamic_CreateLogoutURL(self, request, response, request_id):
     """Trivial implementation of UserService.CreateLogoutURL().
 
     Args:
       request: a CreateLogoutURLRequest
       response: a CreateLogoutURLResponse
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     response.set_logout_url(
         self._logout_url %
-        urllib.quote(self._AddHostToContinueURL(request.destination_url())))
+        urllib.quote(self._AddHostToContinueURL(request.destination_url(),
+                                                request_id)))
 
-  def _Dynamic_GetOAuthUser(self, request, response):
+  def _Dynamic_GetOAuthUser(self, request, response, request_id):
     """Trivial implementation of UserService.GetOAuthUser().
 
     Args:
       request: a GetOAuthUserRequest
       response: a GetOAuthUserResponse
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     if self.__email is None:
       raise apiproxy_errors.ApplicationError(
@@ -150,35 +159,35 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       response.set_auth_domain(self.__domain)
       response.set_is_admin(self.__is_admin)
 
-  def _Dynamic_CheckOAuthSignature(self, unused_request, response):
+  def _Dynamic_CheckOAuthSignature(self, unused_request, response, request_id):
     """Trivial implementation of UserService.CheckOAuthSignature().
 
     Args:
       unused_request: a CheckOAuthSignatureRequest
       response: a CheckOAuthSignatureResponse
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     response.set_oauth_consumer_key(_OAUTH_CONSUMER_KEY)
 
-  def _AddHostToContinueURL(self, continue_url):
+  def _AddHostToContinueURL(self, continue_url, request_id):
     """Adds the request host to the continue url if no host is specified.
 
     Args:
       continue_url: the URL which may or may not have a host specified
+      request_id: A unique string identifying the request associated with the
+          API call.
 
     Returns:
       string
     """
-    (protocol, host, path, parameters, query, fragment) = urlparse.urlparse(continue_url, 'http')
+    (protocol, host, path, parameters, query, fragment) = urlparse.urlparse(continue_url)
 
-    if host:
+    if host and protocol:
       return continue_url
 
-    if self._http_server_address:
-      host = self._http_server_address
-    else:
-      host = os.environ['SERVER_NAME']
-      if os.environ['SERVER_PORT'] != '80':
-        host = host + ":" + os.environ['SERVER_PORT']
+    protocol, host, _, _, _, _ = urlparse.urlparse(
+        self.request_data.get_request_url(request_id))
 
 
     if path == '':

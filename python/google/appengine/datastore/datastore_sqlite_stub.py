@@ -773,12 +773,12 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
           'INSERT INTO "%s!EntitiesByProperty" VALUES (?, ?, ?, ?)' % prefix,
           RowGenerator(group))
 
-  def MakeSyncCall(self, service, call, request, response):
+  def MakeSyncCall(self, service, call, request, response, request_id=None):
     """The main RPC entry point. service must be 'datastore_v3'."""
     self.AssertPbIsInitialized(request)
     try:
       apiproxy_stub.APIProxyStub.MakeSyncCall(self, service, call, request,
-                                              response)
+                                              response, request_id)
     except sqlite3.OperationalError, e:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.INTERNAL_ERROR,
                                              e.args[0])

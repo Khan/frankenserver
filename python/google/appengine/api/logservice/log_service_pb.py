@@ -3189,6 +3189,8 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
   count_ = 0
   has_total_size_ = 0
   total_size_ = 0
+  has_records_ = 0
+  records_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -3258,6 +3260,19 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
 
   def has_total_size(self): return self.has_total_size_
 
+  def records(self): return self.records_
+
+  def set_records(self, x):
+    self.has_records_ = 1
+    self.records_ = x
+
+  def clear_records(self):
+    if self.has_records_:
+      self.has_records_ = 0
+      self.records_ = 0
+
+  def has_records(self): return self.has_records_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3266,6 +3281,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if (x.has_end_time()): self.set_end_time(x.end_time())
     if (x.has_count()): self.set_count(x.count())
     if (x.has_total_size()): self.set_total_size(x.total_size())
+    if (x.has_records()): self.set_records(x.records())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3279,6 +3295,8 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if self.has_count_ and self.count_ != x.count_: return 0
     if self.has_total_size_ != x.has_total_size_: return 0
     if self.has_total_size_ and self.total_size_ != x.total_size_: return 0
+    if self.has_records_ != x.has_records_: return 0
+    if self.has_records_ and self.records_ != x.records_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3292,6 +3310,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
     if (self.has_total_size_): n += 1 + self.lengthVarInt64(self.total_size_)
+    if (self.has_records_): n += 1 + self.lengthVarInt64(self.records_)
     return n
 
   def ByteSizePartial(self):
@@ -3301,6 +3320,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
     if (self.has_total_size_): n += 1 + self.lengthVarInt64(self.total_size_)
+    if (self.has_records_): n += 1 + self.lengthVarInt64(self.records_)
     return n
 
   def Clear(self):
@@ -3309,6 +3329,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     self.clear_end_time()
     self.clear_count()
     self.clear_total_size()
+    self.clear_records()
 
   def OutputUnchecked(self, out):
     if (self.has_version_id_):
@@ -3326,6 +3347,9 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if (self.has_total_size_):
       out.putVarInt32(40)
       out.putVarInt64(self.total_size_)
+    if (self.has_records_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.records_)
 
   def OutputPartial(self, out):
     if (self.has_version_id_):
@@ -3343,6 +3367,9 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if (self.has_total_size_):
       out.putVarInt32(40)
       out.putVarInt64(self.total_size_)
+    if (self.has_records_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.records_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3362,6 +3389,9 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_total_size(d.getVarInt64())
         continue
+      if tt == 48:
+        self.set_records(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3375,6 +3405,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     if self.has_end_time_: res+=prefix+("end_time: %s\n" % self.DebugFormatInt32(self.end_time_))
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt64(self.count_))
     if self.has_total_size_: res+=prefix+("total_size: %s\n" % self.DebugFormatInt64(self.total_size_))
+    if self.has_records_: res+=prefix+("records: %s\n" % self.DebugFormatInt32(self.records_))
     return res
 
 
@@ -3386,6 +3417,7 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
   kend_time = 3
   kcount = 4
   ktotal_size = 5
+  krecords = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3394,7 +3426,8 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     3: "end_time",
     4: "count",
     5: "total_size",
-  }, 5)
+    6: "records",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3403,7 +3436,8 @@ class LogUsageRecord(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

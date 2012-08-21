@@ -43,6 +43,7 @@ Options:
                              file stub data.
   --clear_prospective_search Clear the Prospective Search subscription index
                              (Default false).
+  --clear_search_indexes     Clear the Full Text Search indexes (Default false).
   --datastore_path=DS_FILE   Path to file to use for storing Datastore file
                              stub data.
                              (Default %(datastore_path)s)
@@ -85,6 +86,8 @@ Options:
                              logs to enable later access. (Default false).
   --require_indexes          Disallows queries that require composite indexes
                              not defined in index.yaml.
+  --search_indexes_path=PATH Path to file to use for storing Full Text Search
+                             indexes (Default %(search_indexes_path)s).
   --show_mail_body           Log the body of emails in mail stub.
                              (Default false)
   --skip_sdk_update_check    Skip checking for SDK updates. If false, fall back
@@ -174,6 +177,7 @@ ARG_BACKENDS = 'backends'
 ARG_BLOBSTORE_PATH = 'blobstore_path'
 ARG_CLEAR_DATASTORE = 'clear_datastore'
 ARG_CLEAR_PROSPECTIVE_SEARCH = 'clear_prospective_search'
+ARG_CLEAR_SEARCH_INDEX = 'clear_search_indexes'
 ARG_DATASTORE_PATH = 'datastore_path'
 ARG_DEBUG_IMPORTS = 'debug_imports'
 ARG_DEFAULT_PARTITION = 'default_partition'
@@ -199,6 +203,7 @@ ARG_PERSIST_LOGS = 'persist_logs'
 ARG_PORT = 'port'
 ARG_PROSPECTIVE_SEARCH_PATH = 'prospective_search_path'
 ARG_REQUIRE_INDEXES = 'require_indexes'
+ARG_SEARCH_INDEX_PATH = 'search_indexes_path'
 ARG_SHOW_MAIL_BODY = 'show_mail_body'
 ARG_SKIP_SDK_UPDATE_CHECK = 'skip_sdk_update_check'
 ARG_SMTP_HOST = 'smtp_host'
@@ -214,11 +219,11 @@ ARG_USE_SQLITE = 'use_sqlite'
 
 
 SDK_PATH = os.path.dirname(
-             os.path.dirname(
                os.path.dirname(
-                 os.path.dirname(os_compat.__file__)
+                   os.path.dirname(
+                       os.path.dirname(os_compat.__file__)
+                   )
                )
-             )
            )
 
 
@@ -235,6 +240,7 @@ DEFAULT_ARGS = {
                                    'dev_appserver.blobstore'),
   ARG_CLEAR_DATASTORE: False,
   ARG_CLEAR_PROSPECTIVE_SEARCH: False,
+  ARG_CLEAR_SEARCH_INDEX: False,
   ARG_DATASTORE_PATH: os.path.join(tempfile.gettempdir(),
                                    'dev_appserver.datastore'),
   ARG_DEFAULT_PARTITION: 'dev',
@@ -255,6 +261,8 @@ DEFAULT_ARGS = {
   ARG_PROSPECTIVE_SEARCH_PATH: os.path.join(tempfile.gettempdir(),
                                             'dev_appserver.prospective_search'),
   ARG_REQUIRE_INDEXES: False,
+  ARG_SEARCH_INDEX_PATH: os.path.join(tempfile.gettempdir(),
+                                      'dev_appserver.searchindexes'),
   ARG_SHOW_MAIL_BODY: False,
   ARG_SKIP_SDK_UPDATE_CHECK: False,
   ARG_SMTP_HOST: '',
@@ -281,6 +289,7 @@ LONG_OPTIONS = [
     'blobstore_path=',
     'clear_datastore',
     'clear_prospective_search',
+    'clear_search_indexes',
     'datastore_path=',
     'debug',
     'debug_imports',
@@ -306,6 +315,7 @@ LONG_OPTIONS = [
     'persist_logs',
     'port=',
     'require_indexes',
+    'search_indexes_path=',
     'show_mail_body',
     'skip_sdk_update_check',
     'smtp_host=',
@@ -381,6 +391,9 @@ def ParseArguments(argv):
     if option == '--datastore_path':
       option_dict[ARG_DATASTORE_PATH] = expand_path(value)
 
+    if option == '--search_indexes_path':
+      option_dict[ARG_SEARCH_INDEX_PATH] = expand_path(value)
+
     if option == '--prospective_search_path':
       option_dict[ARG_PROSPECTIVE_SEARCH_PATH] = expand_path(value)
 
@@ -401,6 +414,9 @@ def ParseArguments(argv):
 
     if option == '--clear_prospective_search':
       option_dict[ARG_CLEAR_PROSPECTIVE_SEARCH] = True
+
+    if option == '--clear_search_indexes':
+      option_dict[ARG_CLEAR_SEARCH_INDEX] = True
 
     if option == '--require_indexes':
       option_dict[ARG_REQUIRE_INDEXES] = True

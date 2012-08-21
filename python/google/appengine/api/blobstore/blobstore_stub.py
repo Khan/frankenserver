@@ -36,6 +36,7 @@ Class:
 import base64
 import os
 import time
+import urlparse
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import datastore
@@ -64,6 +65,7 @@ class ConfigurationError(Error):
 
 
 _UPLOAD_SESSION_KIND = '__BlobUploadSession__'
+_GS_INFO_KIND = '__GsFileInfo__'
 
 
 def CreateUploadSession(creation,
@@ -159,6 +161,9 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
   info is the string encoded version of the session entity
   """
 
+  _ACCEPTS_REQUEST_ID = True
+  GS_BLOBKEY_PREFIX = 'encoded_gs_file:'
+
   def __init__(self,
                blob_storage,
                time_function=time.time,
@@ -227,7 +232,7 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
                                max_bytes_per_blob,
                                max_bytes_total)
 
-  def _Dynamic_CreateUploadURL(self, request, response):
+  def _Dynamic_CreateUploadURL(self, request, response, request_id):
     """Create upload URL implementation.
 
     Create a new upload session.  The upload session key is encoded in the
@@ -237,6 +242,8 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     Args:
       request: A fully initialized CreateUploadURLRequest instance.
       response: A CreateUploadURLResponse instance.
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     max_bytes_per_blob = None
     max_bytes_total = None
@@ -252,12 +259,13 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
                                   max_bytes_per_blob,
                                   max_bytes_total)
 
-    response.set_url('http://%s:%s/%s%s' % (self._GetEnviron('SERVER_NAME'),
-                                            self._GetEnviron('SERVER_PORT'),
-                                            self.__uploader_path,
-                                            session))
+    protocol, host, _, _, _, _ = urlparse.urlparse(
+        self.request_data.get_request_url(request_id))
 
-  def _Dynamic_DeleteBlob(self, request, response):
+    response.set_url('%s://%s/%s%s' % (protocol, host, self.__uploader_path,
+                                       session))
+
+  def _Dynamic_DeleteBlob(self, request, response, unused_request_id):
     """Delete a blob by its blob-key.
 
     Delete a blob from the blobstore using its blob-key.  Deleting blobs that
@@ -268,14 +276,19 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       response: Not used but should be a VoidProto.
     """
     for blob_key in request.blob_key_list():
-      key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
-                                          str(blob_key),
-                                          namespace='')
+      if blob_key.startswith(self.GS_BLOBKEY_PREFIX):
+        key = datastore_types.Key.from_path(_GS_INFO_KIND,
+                                            str(blob_key),
+                                            namespace='')
+      else:
+        key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
+                                            str(blob_key),
+                                            namespace='')
 
       datastore.Delete(key)
       self.__storage.DeleteBlob(blob_key)
 
-  def _Dynamic_FetchData(self, request, response):
+  def _Dynamic_FetchData(self, request, response, unused_request_id):
     """Fetch a blob fragment from a blob by its blob-key.
 
     Fetches a blob fragment using its blob-key.  Start index is inclusive,
@@ -328,7 +341,7 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     blob_file.seek(start_index)
     response.set_data(blob_file.read(fetch_size))
 
-  def _Dynamic_DecodeBlobKey(self, request, response):
+  def _Dynamic_DecodeBlobKey(self, request, response, unused_request_id):
     """Decode a given blob key: data is simply base64-decoded.
 
     Args:
@@ -338,7 +351,8 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     for blob_key in request.blob_key_list():
       response.add_decoded(blob_key.decode('base64'))
 
-  def _Dynamic_CreateEncodedGoogleStorageKey(self, request, response):
+  def _Dynamic_CreateEncodedGoogleStorageKey(self, request, response,
+                                             unused_request_id):
     """Create an encoded blob key that represents a bigstore file.
 
     For now we'll just base64 encode the bigstore filename, APIs that accept
@@ -351,7 +365,7 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       response: A CreateEncodedGoogleStorageKeyResponse instance.
     """
     filename = request.filename()
-    response.set_blob_key('encoded_gs_file:' +
+    response.set_blob_key( self.GS_BLOBKEY_PREFIX +
                           base64.urlsafe_b64encode(filename))
 
   def CreateBlob(self, blob_key, content):

@@ -163,9 +163,9 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Transaction(self, request, response):
     """Handle a Transaction request.
 
-    We handle transactions by accumulating Put requests on the client end, as
-    well as recording the key and hash of Get requests. When Commit is called,
-    Transaction is invoked, which verifies that all the entities in the
+    We handle transactions by accumulating Put and Delete requests on the client
+    end, as well as recording the key and hash of Get requests. When Commit is
+    called, Transaction is invoked, which verifies that all the entities in the
     precondition list still exist and their hashes match, then performs a
     transaction of its own to make the updates.
     """
@@ -211,10 +211,10 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
       delete_request = request.deletes()
       delete_request.mutable_transaction().CopyFrom(tx)
       self.__call('datastore_v3', 'Delete', delete_request,
-                 api_base_pb.VoidProto())
+                  datastore_pb.DeleteResponse())
 
 
-    self.__call('datastore_v3', 'Commit', tx, api_base_pb.VoidProto())
+    self.__call('datastore_v3', 'Commit', tx, datastore_pb.CommitResponse())
 
   def _Dynamic_GetIDsXG(self, request, response):
     self._Dynamic_GetIDs(request, response, is_xg=True)

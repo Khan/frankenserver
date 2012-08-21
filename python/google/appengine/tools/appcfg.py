@@ -160,6 +160,8 @@ def PrintUpdate(msg):
     msg: The string to print.
   """
   if verbosity > 0:
+    timestamp = datetime.datetime.now()
+    print >>sys.stderr, '%s' % datetime.datetime.now().strftime('%I:%M %p'),
     print >>sys.stderr, msg
 
 
@@ -2722,7 +2724,7 @@ class AppCfgApp(object):
           self.options.auth_local_webserver)
     else:
       if not self.rpc_server_class:
-        self.rpc_server_class = appengine_rpc.HttpRpcServer
+        self.rpc_server_class = appengine_rpc.HttpRpcServerWithOAuth2Suggestion
       get_user_credentials = GetUserCredentials
       source = GetSourceName()
 

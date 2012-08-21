@@ -94,6 +94,9 @@ else:
 from google.appengine.tools import appengine_rpc
 
 
+_REQUEST_ID_HEADER = 'HTTP_X_APPENGINE_REQUEST_ID'
+
+
 class Error(Exception):
   """Base class for exceptions in this module."""
 
@@ -195,6 +198,11 @@ class RemoteStub(object):
     request_pb.set_service_name(service)
     request_pb.set_method(call)
     request_pb.set_request(request.Encode())
+    if _REQUEST_ID_HEADER in os.environ:
+
+
+
+      request_pb.set_request_id(os.environ[_REQUEST_ID_HEADER])
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()

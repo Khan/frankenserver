@@ -41,6 +41,7 @@ from google.appengine.tools import os_compat
 import __builtin__
 import BaseHTTPServer
 import base64
+import binascii
 import cStringIO
 import cgi
 import cgitb
@@ -58,6 +59,7 @@ import os
 import select
 import shutil
 import simplejson
+import struct
 import tempfile
 import yaml
 
@@ -725,11 +727,21 @@ _IGNORE_REQUEST_HEADERS = frozenset(['content-type', 'content-length',
 
 
 _request_id = 0
+_request_time = 0
 
 
 def _generate_request_id_hash():
   """Generates a hash of the current request id."""
   return hashlib.sha1(str(_request_id)).hexdigest()[:8].upper()
+
+
+def _GenerateRequestLogId():
+  """Generates the request log id for the current request."""
+  sec = int(_request_time)
+  usec = int(1000000 * (_request_time - sec))
+  h = hashlib.sha1(str(_request_id)).digest()[:4]
+  packed = struct.Struct('> L L').pack(sec, usec)
+  return binascii.b2a_hex(packed + h)
 
 
 def GetGoogleSqlOAuth2RefreshToken(oauth_file_path):
@@ -795,6 +807,9 @@ def SetupEnvironment(cgi_path,
     env['AUTH_DOMAIN'] = auth_domain
 
   global _request_id
+  global _request_time
+  _request_time = time.time()
+  env['REQUEST_LOG_ID'] = _GenerateRequestLogId()
   env['REQUEST_ID_HASH'] = _generate_request_id_hash()
   _request_id += 1
 
@@ -3315,6 +3330,8 @@ def SetupStubs(app_id, **config):
     port: The port that this dev_appserver is bound to. Defaults to 8080
     address: The host that this dev_appsever is running on. Defaults to
       localhost.
+    search_index_path: Path to the file to store search indexes in.
+    clear_search_index: If the search indeces should be cleared on startup.
   """
 
   root_path = config.get('root_path', None)
@@ -3345,6 +3362,8 @@ def SetupStubs(app_id, **config):
   trusted = config.get('trusted', False)
   serve_port = config.get('port', 8080)
   serve_address = config.get('address', 'localhost')
+  clear_search_index = config.get('clear_search_indexes', False)
+  search_index_path = config.get('search_indexes_path', None)
 
 
 
@@ -3356,24 +3375,22 @@ def SetupStubs(app_id, **config):
 
   os.environ['REQUEST_ID_HASH'] = ''
 
-  if clear_prospective_search and prospective_search_path:
-
-    if os.path.lexists(prospective_search_path):
-      logging.info('Attempting to remove file at %s', prospective_search_path)
+  def RemoveFile(file_path):
+    if file_path and os.path.lexists(file_path):
+      logging.info('Attempting to remove file at %s', file_path)
       try:
-        remove(prospective_search_path)
+        remove(file_path)
       except OSError, e:
         logging.warning('Removing file failed: %s', e)
+
+  if clear_prospective_search and prospective_search_path:
+    RemoveFile(prospective_search_path)
 
   if clear_datastore:
-    path = datastore_path
+    RemoveFile(datastore_path)
 
-    if os.path.lexists(path):
-      logging.info('Attempting to remove file at %s', path)
-      try:
-        remove(path)
-      except OSError, e:
-        logging.warning('Removing file failed: %s', e)
+  if clear_search_index:
+    RemoveFile(search_index_path)
 
 
   if not multiprocess.GlobalProcess().MaybeConfigureRemoteDataApis():
@@ -3477,7 +3494,7 @@ def SetupStubs(app_id, **config):
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'search',
-      simple_search_stub.SearchServiceStub())
+      simple_search_stub.SearchServiceStub(index_file=search_index_path))
 
 
 
@@ -3529,6 +3546,11 @@ def TearDownStubs():
   if isinstance(datastore_stub, datastore_stub_util.BaseTransactionManager):
     logging.info('Applying all pending transactions and saving the datastore')
     datastore_stub.Write()
+
+  search_stub = apiproxy_stub_map.apiproxy.GetStub('search')
+  if isinstance(search_stub, simple_search_stub.SearchServiceStub):
+    logging.info('Saving search indexes')
+    search_stub.Write()
 
 
 def CreateImplicitMatcher(

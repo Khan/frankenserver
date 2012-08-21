@@ -43,6 +43,12 @@ from google.appengine.ext.appstats import datamodel_pb
 from google.appengine.ext.appstats import formatting
 
 
+def _to_micropennies_per_op(pennies, per):
+  """The price of a single op in micropennies."""
+
+  return (pennies * 1000000) / per
+
+
 class ConfigDefaults(object):
   """Configurable constants.
 
@@ -58,6 +64,13 @@ class ConfigDefaults(object):
 
   DEBUG = False
   DUMP_LEVEL = -1
+
+
+
+  SHELL_OK = os.getenv('SERVER_SOFTWARE', '').startswith('Dev')
+
+
+  DEFAULT_SCRIPT = "print 'Hello, world.'"
 
 
   KEY_DISTANCE = 100
@@ -111,6 +124,33 @@ class ConfigDefaults(object):
 
 
   DATASTORE_DETAILS = False
+
+
+  CALC_RPC_COSTS = False
+
+
+
+
+
+
+
+
+  DATASTORE_READ_OP_COST = _to_micropennies_per_op(7, 100000)
+
+
+  DATASTORE_WRITE_OP_COST = _to_micropennies_per_op(10, 100000)
+
+
+  DATASTORE_SMALL_OP_COST = _to_micropennies_per_op(1, 100000)
+
+
+  MAIL_RECIPIENT_COST = _to_micropennies_per_op(1, 1000)
+
+
+  CHANNEL_CREATE_COST = _to_micropennies_per_op(1, 100)
+
+
+  XMPP_STANZA_COST = _to_micropennies_per_op(10, 100000)
 
 
 
@@ -257,7 +297,7 @@ class Recorder(object):
       self.overhead += (now - pre_now)
 
   def record_datastore_details(self, call, request, response, trace):
-    """Records entity information relating to datastore related RPCs.
+    """Records additional information relating to datastore RPCs.
 
     Parses requests and responses of datastore related RPCs, and records
     the primary keys of entities that are put into the datastore or
@@ -270,6 +310,8 @@ class Recorder(object):
     information is recorded; For gets, a flag indicating if the
     requested entity key is present or not is recorded.
 
+    Also collects RPC costs.
+
     Args:
       call: The call name, e.g. 'Get'.
       request: The request protocol message corresponding to the call.
@@ -278,43 +320,99 @@ class Recorder(object):
     """
     if call == 'Put':
       self.record_put_details(response, trace)
+    elif call == 'Delete':
+      self.record_delete_details(response, trace)
+    elif call == 'Commit':
+      self.record_commit_details(response, trace)
     elif call in ('RunQuery', 'Next'):
       self.record_query_details(call, request, response, trace)
     elif call == 'Get':
       self.record_get_details(request, response, trace)
+    elif call == 'AllocateIds':
+      self.record_allocate_ids_details(trace)
 
 
   def record_put_details(self, response, trace):
-    """Records keys of entities written by datastore put calls.
+    """Records additional put details based on config options.
+
+    Details include: Keys of entities written and cost
+    information for the Put RPC.
 
     Args:
       response: The response protocol message of the Put RPC call.
       trace: IndividualStatsProto where information must be recorded.
     """
-    details = trace.mutable_datastore_details()
-    for key in response.key_list():
-      newent = details.add_keys_written()
-      newent.CopyFrom(key)
+    if config.DATASTORE_DETAILS:
+      details = trace.mutable_datastore_details()
+      for key in response.key_list():
+        newent = details.add_keys_written()
+        newent.CopyFrom(key)
+    if config.CALC_RPC_COSTS:
+      writes = response.cost().entity_writes() + response.cost().index_writes()
+      trace.set_call_cost_microdollars(writes * config.DATASTORE_WRITE_OP_COST)
+      _add_billed_op_to_trace(trace, writes,
+                              datamodel_pb.BilledOpProto.DATASTORE_WRITE)
+
+  def record_delete_details(self, response, trace):
+    """Records cost information for the Delete RPC.
+
+    Args:
+      response: The response protocol message of the Delete RPC call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    if config.CALC_RPC_COSTS:
+      writes = response.cost().entity_writes() + response.cost().index_writes()
+      trace.set_call_cost_microdollars(writes * config.DATASTORE_WRITE_OP_COST)
+      _add_billed_op_to_trace(trace, writes,
+                              datamodel_pb.BilledOpProto.DATASTORE_WRITE)
+
+  def record_commit_details(self, response, trace):
+    """Records cost information for the Commit RPC.
+
+    Args:
+      response: The response protocol message of the Commit RPC call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    if config.CALC_RPC_COSTS:
+      cost = response.cost()
+      writes = (cost.commitcost().requested_entity_puts() +
+                cost.commitcost().requested_entity_deletes() +
+                cost.index_writes())
+      trace.set_call_cost_microdollars(writes * config.DATASTORE_WRITE_OP_COST)
+      _add_billed_op_to_trace(trace, writes,
+                              datamodel_pb.BilledOpProto.DATASTORE_WRITE)
 
   def record_get_details(self, request, response, trace):
-    """Records keys of entities requested by datastore gets.
+    """Records additional get details based on config options.
 
-    Also records if each requested key was sucessfully fetched.
+    Details include: Keys of entities requested, whether or not the requested
+    key was successfully fetched, and cost information for the Get RPC.
 
     Args:
       request: The request protocol message of the Get RPC call.
       response: The response protocol message of the Get RPC call.
       trace: IndividualStatsProto where information must be recorded.
     """
-    details = trace.mutable_datastore_details()
-    for key in request.key_list():
-      newent = details.add_keys_read()
-      newent.CopyFrom(key)
-    for entity_present in response.entity_list():
-      details.add_get_successful_fetch(entity_present.has_entity())
+    if config.DATASTORE_DETAILS:
+      details = trace.mutable_datastore_details()
+      for key in request.key_list():
+        newent = details.add_keys_read()
+        newent.CopyFrom(key)
+      for entity_present in response.entity_list():
+        details.add_get_successful_fetch(entity_present.has_entity())
+    if config.CALC_RPC_COSTS:
+      keys_to_read = len(request.key_list())
+
+      trace.set_call_cost_microdollars(
+          keys_to_read * config.DATASTORE_READ_OP_COST)
+      _add_billed_op_to_trace(trace, keys_to_read,
+                              datamodel_pb.BilledOpProto.DATASTORE_READ)
 
   def record_query_details(self, call, request, response, trace):
-    """Records keys of entities fetched by a datastore query.
+    """Records additional query details based on config options.
+
+    Details include: Keys of entities fetched by a datastore query and cost
+    information.
 
     Information is recorded for both the RunQuery and Next calls.
     For RunQuery calls, we record the entity kind and ancestor (if
@@ -343,22 +441,101 @@ class Recorder(object):
         newent.CopyFrom(entity.key())
     if call == 'RunQuery':
 
-      if request.has_kind():
-        details.set_query_kind(request.kind())
-      if request.has_ancestor():
-        ancestor = details.mutable_query_ancestor()
-        ancestor.CopyFrom(request.ancestor())
+      if config.DATASTORE_DETAILS:
+        if request.has_kind():
+          details.set_query_kind(request.kind())
+        if request.has_ancestor():
+          ancestor = details.mutable_query_ancestor()
+          ancestor.CopyFrom(request.ancestor())
 
 
-      if response.has_cursor():
-        details.set_query_nextcursor(response.cursor().cursor())
+        if response.has_cursor():
+          details.set_query_nextcursor(response.cursor().cursor())
+
+      baseline_reads = 1
     elif call == 'Next':
 
 
 
-      details.set_query_thiscursor(request.cursor().cursor())
-      if response.has_cursor():
-        details.set_query_nextcursor(response.cursor().cursor())
+      if config.DATASTORE_DETAILS:
+        details.set_query_thiscursor(request.cursor().cursor())
+        if response.has_cursor():
+          details.set_query_nextcursor(response.cursor().cursor())
+      baseline_reads = 0
+
+    if config.CALC_RPC_COSTS:
+      num_results = len(response.result_list()) + response.skipped_results()
+      cost_micropennies = config.DATASTORE_READ_OP_COST * baseline_reads
+      if response.keys_only():
+
+        cost_micropennies += config.DATASTORE_SMALL_OP_COST * num_results
+        trace.set_call_cost_microdollars(cost_micropennies)
+        _add_billed_op_to_trace(trace, baseline_reads,
+                                datamodel_pb.BilledOpProto.DATASTORE_READ)
+        _add_billed_op_to_trace(trace, num_results,
+                                datamodel_pb.BilledOpProto.DATASTORE_SMALL)
+      else:
+
+        cost_micropennies += config.DATASTORE_READ_OP_COST * num_results
+        trace.set_call_cost_microdollars(cost_micropennies)
+        _add_billed_op_to_trace(trace, num_results + baseline_reads,
+                                datamodel_pb.BilledOpProto.DATASTORE_READ)
+
+  def record_allocate_ids_details(self, trace):
+    """Records cost information for the AllocateIds RPC.
+
+    Args:
+      trace: IndividualStatsProto where information must be recorded.
+    """
+
+    trace.set_call_cost_microdollars(config.DATASTORE_SMALL_OP_COST)
+    _add_billed_op_to_trace(trace, 1,
+                            datamodel_pb.BilledOpProto.DATASTORE_SMALL)
+
+  def record_xmpp_details(self, call, request, trace):
+    """Records information relating to xmpp RPCs.
+
+    Args:
+      call: The call name, e.g. 'SendMessage'.
+      request: The request protocol message corresponding to the call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    stanzas = 0
+    if call == 'SendMessage':
+      stanzas = request.jid_size()
+    elif call in ('GetPresence', 'SendPresence', 'SendInvite'):
+      stanzas = 1
+    trace.set_call_cost_microdollars(stanzas * config.XMPP_STANZA_COST)
+    _add_billed_op_to_trace(trace, stanzas,
+                            datamodel_pb.BilledOpProto.XMPP_STANZA)
+
+  def record_channel_details(self, call, trace):
+    """Records information relating to channel RPCs.
+
+    Args:
+      call: The call name, e.g. 'CreateChannel'.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    if call == 'CreateChannel':
+      trace.set_call_cost_microdollars(config.CHANNEL_CREATE_COST)
+      _add_billed_op_to_trace(trace, 1,
+                              datamodel_pb.BilledOpProto.CHANNEL_OPEN)
+
+  def record_mail_details(self, call, request, trace):
+    """Records information relating to mail RPCs.
+
+    Args:
+      call: The call name, e.g. 'Send'.
+      request: The request protocol message corresponding to the call.
+      trace: IndividualStatsProto where information must be recorded.
+    """
+    if call in ('Send', 'SendToAdmin'):
+      num_recipients = (request.to_size() + request.cc_size() +
+                        request.bcc_size())
+      trace.set_call_cost_microdollars(
+          config.MAIL_RECIPIENT_COST * num_recipients)
+      _add_billed_op_to_trace(trace, num_recipients,
+                              datamodel_pb.BilledOpProto.MAIL_RECIPIENT)
 
   def record_rpc_request(self, service, call, request, response, rpc):
     """Record the request of an RPC call.
@@ -403,9 +580,7 @@ class Recorder(object):
     key = '%s.%s' % (service, call)
     delta = int(1000 * (now - self.start_timestamp))
     sresp = format_value(response)
-    api_mcycles = 0
     if rpc is not None:
-      api_mcycles = rpc.cpu_usage_mcycles
 
 
       with self._lock:
@@ -415,13 +590,17 @@ class Recorder(object):
           if 0 <= index < len(self.traces):
             trace = self.traces[index]
             trace.set_response_data_summary(sresp)
-            trace.set_api_milliseconds(mcycles_to_msecs(api_mcycles))
-            trace.set_api_mcycles(api_mcycles)
             duration = delta - trace.start_offset_milliseconds()
             trace.set_duration_milliseconds(duration)
-            if config.DATASTORE_DETAILS and service == 'datastore_v3':
-              self.record_datastore_details(call, request,
-                                            response, trace)
+            if (config.CALC_RPC_COSTS or
+                config.DATASTORE_DETAILS) and service == 'datastore_v3':
+              self.record_datastore_details(call, request, response, trace)
+            elif config.CALC_RPC_COSTS and service == 'xmpp':
+              self.record_xmpp_details(call, request, trace)
+            elif config.CALC_RPC_COSTS and service == 'channel':
+              self.record_channel_details(call, trace)
+            elif config.CALC_RPC_COSTS and service == 'mail':
+              self.record_mail_details(call, request, trace)
             self.overhead += (time.time() - now)
             return
     else:
@@ -504,10 +683,9 @@ class Recorder(object):
   def get_both_protos_encoded(self):
     """Return a string representing all recorded info an encoded protobuf.
 
-    This calls self.get_full_proto() and calls the .Encode() method of
-    the resulting object; if the resulting string is too large, it
-    tries a number of increasingly aggressive strategies for chopping
-    the data down.
+    This constructs the full proto and calls its .Encode() method;
+    if the resulting string is too large, it tries a number of
+    increasingly aggressive strategies for chopping the data down.
     """
     proto = self.get_summary_proto()
     part_encoded = proto.Encode()
@@ -552,6 +730,12 @@ class Recorder(object):
     with self._lock:
       proto.individual_stats_list().extend(self.traces)
 
+  def get_full_proto(self):
+    """Return the full protobuf, wrapped in a StatsProto."""
+    proto = self.get_summary_proto()
+    self.add_full_info_to_proto(proto)
+    return StatsProto(proto)
+
   def json(self):
     """Return a JSON-ifyable representation of the pertinent data.
 
@@ -567,7 +751,7 @@ class Recorder(object):
              'request': t.request_data_summary(),
              'response': t.response_data_summary(),
              'duration': t.duration_milliseconds(),
-             'api': mcycles_to_msecs(t.api_mcycles()),
+             'api': 0,
              }
         traces.append(d)
     data = {
@@ -604,47 +788,54 @@ class Recorder(object):
       summary.set_http_status(status)
     duration = int(1000 * (self.end_timestamp - self.start_timestamp))
     summary.set_duration_milliseconds(duration)
-    api_mcycles = self.get_total_api_mcycles()
-    if api_mcycles:
-      summary.set_api_mcycles(api_mcycles)
     summary.set_overhead_walltime_milliseconds(int(self.overhead * 1000))
     rpc_stats = self.get_rpcstats().items()
-    rpc_stats.sort(key=lambda x: (-x[1], x[0]))
+    rpc_stats.sort(key=lambda x: (-x[1][0], x[0]))
     for key, value in rpc_stats:
       x = summary.add_rpc_stats()
       x.set_service_call_name(key)
-      x.set_total_amount_of_calls(value)
+      x.set_total_amount_of_calls(value[0])
+      x.set_total_cost_of_calls_microdollars(value[1])
+      for billed_op in value[2].itervalues():
+        x.total_billed_ops_list().append(billed_op)
     return summary
 
   def get_rpcstats(self):
     """Compute RPC statistics (how often each RPC endpoint is called).
 
     Returns:
-      A dict mapping 'service.call' keys to integers giving call counts.
+      A dict mapping 'service.call' keys to an array of objects giving call
+      counts (int), call costs (int), and billed ops (dict from op to pb).
     """
     rpcstats = {}
     with self._lock:
-      keys = [trace.service_call_name() for trace in self.traces]
-    for key in keys:
-      if key in rpcstats:
-        rpcstats[key] += 1
+      values = [[trace.service_call_name(), trace.call_cost_microdollars(),
+                 trace.billed_ops_list()] for trace in self.traces]
+    for value in values:
+      if value[0] in rpcstats:
+        stats_for_rpc = rpcstats[value[0]]
+
+        stats_for_rpc[0] += 1
+
+        stats_for_rpc[1] += value[1]
       else:
-        rpcstats[key] = 1
+        rpcstats[value[0]] = [1, value[1], {}]
+
+      _add_billed_ops_to_map(rpcstats[value[0]][2], value[2])
     return rpcstats
 
   def get_total_api_mcycles(self):
     """Compute the total amount of API time for all RPCs.
 
+    Deprecated. This value is no longer meaningful.
+
     Returns:
       An integer expressing megacycles.
     """
-    with self._lock:
-      traces_mc = [trace.api_mcycles() for trace in self.traces]
-    mcycles = 0
-    for trace_mc in traces_mc:
-      if isinstance(trace_mc, (int, long)):
-        mcycles += trace_mc
-    return mcycles
+    warnings.warn('get_total_api_mcycles does not return a meaningful value',
+                  DeprecationWarning,
+                  stacklevel=2)
+    return 0
 
   def dump(self, level=None):
     """Log the recorded data, for debugging.
@@ -672,11 +863,10 @@ class Recorder(object):
     with self._lock:
       for trace in self.traces:
         start = trace.start_offset_milliseconds()
-        logging.info('  TRACE  : [%s, %s, %s, %s]',
+        logging.info('  TRACE  : [%s, %s, %s]',
                      trace.start_offset_milliseconds(),
                      trace.service_call_name(),
-                     trace.duration_milliseconds(),
-                     trace.api_milliseconds())
+                     trace.duration_milliseconds())
         logging.info('    REQ  : %s', trace.request_data_summary())
         logging.info('    RESP : %s', trace.response_data_summary())
         if level <= 1:
@@ -820,11 +1010,50 @@ def format_value(val):
   return formatting._format_value(val, config.MAX_REPR, config.MAX_DEPTH)
 
 
+def billed_ops_to_str(billed_ops_list):
+  """Formats a list of BilledOpProtos for display in the appstats UI."""
+  ops_as_strs = []
+  for op in billed_ops_list:
+    op_name = datamodel_pb.BilledOpProto.BilledOp_Name(op.op())
+    ops_as_strs.append('%s:%s' % (op_name, op.num_ops()))
+  return ', '.join(ops_as_strs)
+
+
+def total_billed_ops_to_str(self):
+  """Formats a list of BilledOpProtos for display in the appstats UI.
+
+  We attach this method to AggregateRpcStatsProto, which keeps the
+  django-templates we use to render the appstats UI simpler and multi-language
+  friendly.
+
+  Args:
+    self: the linter is harrassing me, what am I supposed to put here?
+  Returns:
+    A display-friendly string representation of a list of BilledOpsProtos
+  """
+  return billed_ops_to_str(self.total_billed_ops_list())
+
+
+def individual_billed_ops_to_str(self):
+  """Formats a list of BilledOpProtos for display in the appstats UI.
+
+  We attach this method to IndividualRpcStatsProto, which keeps the
+  django-templates we use to render the appstats UI simpler and multi-language
+  friendly.
+
+  Args:
+    self: the linter is harrassing me, what am I supposed to put here?
+  Returns:
+    A display-friendly string representation of a list of BilledOpsProtos
+  """
+  return billed_ops_to_str(self.billed_ops_list())
+
+
 class StatsProto(object):
-  """A subclass if RequestStatProto with a number of extra attributes.
+  """A wrapper for RequestStatProto with a number of extra attributes.
 
   This exists mainly so that ui.py can pass an instance of this class
-  directly to a Django template, and hive the Django template access
+  directly to a Django template, and give the Django template access
   to formatted times and megacycles converted to milliseconds without
   using custom tags.  (Though arguably the latter would be more
   convenient for the Java version of Appstats.)
@@ -832,27 +1061,22 @@ class StatsProto(object):
   This adds the following methods:
 
   - .start_time_formatted(): .start_time_milliseconds() nicely formatted.
-  - .api_milliseconds(): .api_mcycles() converted to milliseconds.
   - .processor_milliseconds(): .processor_mcycles() converted to milliseconds.
   - .combined_rpc_count(): total number of RPCs, computed from
       .rpc_stats_list().  (This is cached as .__combined_rpc_count.)
+  - .combined_rpc_cost(): total cost of RPCs, computed from
+      .rpc_stats_list().  (This is cached as .__combined_rpc_cost.)
+  - .combined_rpc_billed_ops(): total billed ops for RPCs, computed from
+      .rpc_stats_list().  (This is cached as .__combined_rpc_billed_ops.)
 
   All these are methods to remain close in style to the protobuffer
   access methods.
-
-  In addition, each of the entries in .individual_stats_list() is given
-  a .api_milliseconds attribute (not a method, since we cannot subclass
-  the class used for these entries easily, but we can add attributes
-  to the instances in our constructor).
   """
 
-  def __init__(self, *args, **kwds):
-    self._proto = datamodel_pb.RequestStatProto(*args, **kwds)
-
-
-    for r in self.individual_stats_list():
-      if not r.has_api_milliseconds():
-        r.set_api_milliseconds(mcycles_to_msecs(r.api_mcycles()))
+  def __init__(self, proto=None):
+    if not isinstance(proto, datamodel_pb.RequestStatProto):
+      proto = datamodel_pb.RequestStatProto(proto)
+    self._proto = proto
 
   def __getattr__(self, key):
     return getattr(self._proto, key)
@@ -862,8 +1086,17 @@ class StatsProto(object):
     return format_time(self.start_timestamp_milliseconds() * 0.001)
 
   def api_milliseconds(self):
-    """Return an int giving .api_mcycles() converted to milliseconds."""
-    return mcycles_to_msecs(self.api_mcycles())
+    """Return an int giving .api_mcycles() converted to milliseconds.
+
+    Deprecated. This value is no longer meaningful.
+
+    Returns:
+      An integer expressing milliseconds.
+    """
+    warnings.warn('api_milliseconds does not return a meaningful value',
+                  DeprecationWarning,
+                  stacklevel=2)
+    return 0
 
   def processor_mcycles(self):
     warnings.warn('processor_mcycles does not return correct values',
@@ -887,9 +1120,36 @@ class StatsProto(object):
                                       for x in self.rpc_stats_list())
     return self.__combined_rpc_count
 
+  __combined_rpc_cost_micropennies = None
 
-def load_summary_protos():
+  def combined_rpc_cost_micropennies(self):
+    """Return the total cost of RPCs across .rpc_stats_list()."""
+    if self.__combined_rpc_cost_micropennies is None:
+      self.__combined_rpc_cost_micropennies = (
+          sum(x.total_cost_of_calls_microdollars()
+              for x in self.rpc_stats_list()))
+    return self.__combined_rpc_cost_micropennies
+
+  __combined_rpc_billed_ops = None
+
+  def combined_rpc_billed_ops(self):
+    """Return the total billed ops for RPCs across .rpc_stats_list()."""
+    if self.__combined_rpc_billed_ops is None:
+      combined_ops_dict = {}
+      for stats in self.rpc_stats_list():
+        _add_billed_ops_to_map(combined_ops_dict,
+                               stats.total_billed_ops_list())
+      self.__combined_rpc_billed_ops = billed_ops_to_str(
+          combined_ops_dict.itervalues())
+    return self.__combined_rpc_billed_ops
+
+
+def load_summary_protos(java_application=False):
   """Load all valid summary records from memcache.
+
+  Args:
+    java_application: Boolean. If true, this function is being invoked
+      by the download_appstats tool on a java application.
 
   Returns:
     A list of StatsProto instances, in reverse chronological order
@@ -899,6 +1159,9 @@ def load_summary_protos():
   since there are only that many distinct keys.  See also make_key().
   """
   tmpl = config.KEY_PREFIX + config.KEY_TEMPLATE + config.PART_SUFFIX
+  if java_application:
+
+    tmpl = '"' + tmpl + '"'
   keys = [tmpl % i
           for i in
           range(0, config.KEY_DISTANCE * config.KEY_MODULUS,
@@ -919,18 +1182,22 @@ def load_summary_protos():
   return records
 
 
-def load_full_proto(timestamp):
+def load_full_proto(timestamp, java_application=False):
   """Load the full record for a given timestamp.
 
   Args:
     timestamp: The start_timestamp of the record, as a float in seconds
       (see make_key() for details).
-
+    java_application: Boolean. If true, this function is being invoked
+      by the download_appstats tool on a java application.
   Returns:
     A StatsProto instance if the record exists and can be loaded;
     None otherwise.
   """
   full_key = make_key(timestamp) + config.FULL_SUFFIX
+  if java_application:
+
+    full_key = '"' + full_key + '"'
   full_binary = memcache.get(full_key, namespace=config.KEY_NAMESPACE)
   if full_binary is None:
     logging.info('No full record at %s', full_key)
@@ -1016,6 +1283,12 @@ def appstats_wsgi_middleware(app):
     save_status = [None]
 
     firepython_set_extension_data = environ.get('firepython.set_extension_data')
+
+
+    datamodel_pb.AggregateRpcStatsProto.total_billed_ops_str = (
+        total_billed_ops_to_str)
+    datamodel_pb.IndividualRpcStatsProto.billed_ops_str = (
+        individual_billed_ops_to_str)
 
     def appstats_start_response(status, headers, exc_info=None):
       """Inner wrapper function for the start_response() function argument.
@@ -1217,6 +1490,26 @@ def post_call_hook(service, call, request, response, rpc=None, error=None):
     if config.DEBUG:
       logging.debug('post_call_hook: recording %s.%s', service, call)
     recorder_proxy.record_rpc_response(service, call, request, response, rpc)
+
+
+def _add_billed_ops_to_map(billed_ops_dict, billed_ops_list):
+  """Add the BilledOpProtos in billed_ops_list to the given dict."""
+  for billed_op in billed_ops_list:
+    if billed_op.op() not in billed_ops_dict:
+      update_me = datamodel_pb.BilledOpProto()
+      update_me.set_op(billed_op.op())
+      update_me.set_num_ops(0)
+      billed_ops_dict[billed_op.op()] = update_me
+    update_me = billed_ops_dict[billed_op.op()]
+    update_me.set_num_ops(update_me.num_ops() + billed_op.num_ops())
+
+
+def _add_billed_op_to_trace(trace, num_ops, op):
+  """Adds a billed op to the given trace."""
+  if num_ops:
+    billed_op = trace.add_billed_ops()
+    billed_op.set_num_ops(num_ops)
+    billed_op.set_op(op)
 
 
 

@@ -125,7 +125,7 @@ try:
   from google.appengine.api.images import images_stub
 except ImportError:
   images_stub = None
-
+from google.appengine.api.logservice import logservice_stub
 from google.appengine.api.memcache import memcache_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.xmpp import xmpp_service_stub
@@ -139,7 +139,10 @@ from google.appengine.datastore import datastore_stub_util
 DEFAULT_ENVIRONMENT = {
     'APPLICATION_ID': 'testbed-test',
     'AUTH_DOMAIN': 'gmail.com',
+    'HTTP_HOST': 'testbed.example.com',
+    'CURRENT_VERSION_ID': 'testbed-version',
     'REQUEST_ID_HASH': 'testbed-request-id-hash',
+    'REQUEST_LOG_ID': 'testbed-request-log-id',
     'SERVER_NAME': 'testbed.example.com',
     'SERVER_SOFTWARE': 'Development/1.0 (testbed)',
     'SERVER_PORT': '80',
@@ -163,6 +166,7 @@ CHANNEL_SERVICE_NAME = 'channel'
 DATASTORE_SERVICE_NAME = 'datastore_v3'
 FILES_SERVICE_NAME = 'file'
 IMAGES_SERVICE_NAME = 'images'
+LOG_SERVICE_NAME = 'logservice'
 MAIL_SERVICE_NAME = 'mail'
 MEMCACHE_SERVICE_NAME = 'memcache'
 TASKQUEUE_SERVICE_NAME = 'taskqueue'
@@ -179,6 +183,7 @@ INIT_STUB_METHOD_NAMES = {
     DATASTORE_SERVICE_NAME: 'init_datastore_v3_stub',
     FILES_SERVICE_NAME: 'init_files_stub',
     IMAGES_SERVICE_NAME: 'init_images_stub',
+    LOG_SERVICE_NAME: 'init_logservice_stub',
     MAIL_SERVICE_NAME: 'init_mail_stub',
     MEMCACHE_SERVICE_NAME: 'init_memcache_stub',
     TASKQUEUE_SERVICE_NAME: 'init_taskqueue_stub',
@@ -504,6 +509,24 @@ class Testbed(object):
       raise StubNotSupportedError(msg)
     stub = images_stub.ImagesServiceStub()
     self._register_stub(IMAGES_SERVICE_NAME, stub)
+
+  def init_logservice_stub(self, enable=True, init_datastore_v3=True):
+    """Enable the log service stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+      service should be disabled.
+      init_datastore_v3: True, if the fake service for datastore
+      should be enabled as a depedency, False or None leave the
+      current (or the lack of) datastore service unaltered.
+    """
+    if not enable:
+      self._disable_stub(LOG_SERVICE_NAME)
+      return
+    if init_datastore_v3 and not self.get_stub(DATASTORE_SERVICE_NAME):
+      self.init_datastore_v3_stub()
+    stub = logservice_stub.LogServiceStub(True)
+    self._register_stub(LOG_SERVICE_NAME, stub)
 
   def init_mail_stub(self, enable=True, **stub_kw_args):
     """Enable the mail stub.

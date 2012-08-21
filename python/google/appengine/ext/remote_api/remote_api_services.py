@@ -26,13 +26,13 @@ This module is shared by both the remote_api_stub and the handler.
 import sys
 
 from google.appengine.api import api_base_pb
-from google.appengine.api.app_identity import app_identity_service_pb
-from google.appengine.api.channel import channel_service_pb
 from google.appengine.api import mail_service_pb
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import user_service_pb
+from google.appengine.api.app_identity import app_identity_service_pb
 from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.api.capabilities import capability_service_pb
+from google.appengine.api.channel import channel_service_pb
 from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.api.files import file_service_pb
 from google.appengine.api.images import images_service_pb
@@ -188,6 +188,9 @@ SERVICE_PB_MAP = {
     'system': {
         'GetSystemStats': (system_service_pb.GetSystemStatsRequest,
                            system_service_pb.GetSystemStatsResponse),
+        'StartBackgroundRequest': (
+            system_service_pb.StartBackgroundRequestRequest,
+            system_service_pb.StartBackgroundRequestResponse),
     },
     'taskqueue': {
         'Add': (taskqueue_service_pb.TaskQueueAddRequest,

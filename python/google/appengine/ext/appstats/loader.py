@@ -35,7 +35,7 @@ from google.appengine.ext.appstats import datamodel_pb
 from google.appengine.ext.appstats import recording
 
 
-def FromMemcache(filter_timestamp=0):
+def FromMemcache(filter_timestamp=0, java_application=False):
   """Reads appstats data from memcache.
 
   Get all appstats full records from memcache which
@@ -46,13 +46,16 @@ def FromMemcache(filter_timestamp=0):
     filter_timestamp: only retrieve records with timestamp
       (in milliseconds) higher than this value. If 0, all
       records are retrieved.
+    java_application: Boolean. If true, this function is being
+      called by the download_appstats tool for a Java
+      application.
 
   Returns:
     List of RequestStatProto protobufs.
   """
   records = []
   logging.info('Loading appstats summaries...')
-  summaries = recording.load_summary_protos()
+  summaries = recording.load_summary_protos(java_application)
   logging.info('Loaded %d summaries. Loading full records...',
                len(summaries))
   start_time = time.time()
@@ -69,7 +72,7 @@ def FromMemcache(filter_timestamp=0):
                    ' Skipping rest.', count)
       break
     timestamp = int(time_key) * 0.001
-    record = recording.load_full_proto(timestamp)
+    record = recording.load_full_proto(timestamp, java_application)
     if not record:
       missing_full_records += 1
       continue

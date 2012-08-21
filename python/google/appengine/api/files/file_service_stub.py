@@ -22,22 +22,21 @@
 
 
 import base64
-import cgi
 import datetime
 import os
 import random
 import string
 import StringIO
+import sys
 import tempfile
-import time
-import urllib
-import urlparse
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
 from google.appengine.api import blobstore as api_blobstore
+from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.files import blobstore as files_blobstore
+from google.appengine.api.files import file as files
 from google.appengine.api.files import file_service_pb
 from google.appengine.api.files import gs
 from google.appengine.ext import blobstore
@@ -45,9 +44,7 @@ from google.appengine.runtime import apiproxy_errors
 
 
 MAX_REQUEST_SIZE = 32 << 20
-
-GS_INFO_KIND = '__GsFileInfo__'
-
+GS_INFO_KIND = blobstore_stub._GS_INFO_KIND
 
 
 _now_function = datetime.datetime.now
@@ -191,21 +188,50 @@ class GoogleStorage(object):
       file info for a finalized file with given filename
     """
     blob_key = blobstore.create_gs_key(filename)
-    file_info = datastore.Get(
-        datastore.Key.from_path(GS_INFO_KIND,
-                                blob_key,
-                                namespace=''))
-    if file_info == None:
-      raise raise_error(
-          file_service_pb.FileServiceErrors.EXISTENCE_ERROR_METADATA_NOT_FOUND,
-          filename)
-    return file_info
+    try:
+      return datastore.Get(
+          datastore.Key.from_path(GS_INFO_KIND, blob_key, namespace=''))
+    except datastore_errors.EntityNotFoundError:
+      raise raise_error(file_service_pb.FileServiceErrors.EXISTENCE_ERROR,
+                        filename)
 
   def get_reader(self, filename):
     try:
       return self.blob_storage.OpenBlob(self.get_blob_key(filename))
     except IOError:
       return None
+
+  def listdir(self, request, response):
+    """listdir.
+
+    Args:
+      request: ListDir RPC request.
+      response: ListDir RPC response.
+
+    Returns:
+      A list of fully qualified filenames under a certain path sorted by in
+      char order.
+    """
+    path = request.path()
+    prefix = request.prefix() if request.has_prefix() else ''
+
+    q = datastore.Query(GS_INFO_KIND, namespace='')
+    fully_qualified_name = '/'.join([path, prefix])
+    if request.has_marker():
+      q['filename >'] = '/'.join([path, request.marker()])
+    else:
+      q['filename >='] = fully_qualified_name
+
+    if request.has_max_keys():
+      max_keys = request.max_keys()
+    else:
+      max_keys = sys.maxint
+    for gs_file_info in q.Get(max_keys):
+      filename = gs_file_info['filename']
+      if filename.startswith(fully_qualified_name):
+        response.add_filenames(filename)
+      else:
+        break
 
 
 class GoogleStorageFile(object):
@@ -366,7 +392,7 @@ class BlobstoreStorage(object):
         random.choice(string.ascii_uppercase + string.digits)
         for _ in range(64))
     filename = (_BLOBSTORE_DIRECTORY +
-                files_blobstore._CREATION_HANDLE_PREFIX +
+                files._CREATION_HANDLE_PREFIX +
                 base64.urlsafe_b64encode(random_str))
     self.blobstore_files.add(filename)
     self.blob_content_types[filename] = mime_type
@@ -570,8 +596,6 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_Open(self, request, response):
     """Handler for Open RPC call."""
     filename = request.filename()
-    content_type = request.content_type()
-    open_mode = request.open_mode()
 
     if request.exclusive_lock() and filename in self.open_files:
       raise_error(file_service_pb.FileServiceErrors.EXCLUSIVE_LOCK_FAILED)
@@ -635,3 +659,13 @@ class FileServiceStub(apiproxy_stub.APIProxyStub):
   def _Dynamic_GetDefaultGsBucketName(self, request, response):
     """Handler for GetDefaultGsBucketName RPC call."""
     response.set_default_gs_bucket_name('app_default_bucket')
+
+  def _Dynamic_ListDir(self, request, response):
+    """Handler for ListDir RPC call.
+
+    Only for dev app server. See b/6761691.
+    """
+    path = request.path()
+    if not path.startswith(_GS_PREFIX):
+      raise_error(file_service_pb.FileServiceErrors.UNSUPPORTED_FILE_SYSTEM)
+    self.gs_storage.listdir(request, response)

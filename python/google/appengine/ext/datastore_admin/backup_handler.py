@@ -722,9 +722,13 @@ class DoBackupRestoreHandler(BaseDoHandler):
           'backup_name': backup.name,
           'force_ops_writes': True
       }
+      shard_count = min(max(utils.MAPREDUCE_MIN_SHARDS,
+                            len(mapper_params['files'])),
+                        utils.MAPREDUCE_MAX_SHARDS)
       job = utils.StartMap(job_operation.key(), job_name,
                            self.BACKUP_RESTORE_HANDLER, self.INPUT_READER, None,
-                           mapper_params, mapreduce_params, queue_name=queue)
+                           mapper_params, mapreduce_params, queue_name=queue,
+                           shard_count=shard_count)
       return [('job', job)]
     except Exception:
       logging.exception('Failed to start a restore from backup job "%s".',

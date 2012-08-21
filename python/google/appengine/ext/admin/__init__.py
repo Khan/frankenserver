@@ -155,7 +155,7 @@ def urepr(value):
 
 def TruncateValue(value):
   """Truncates potentially very long string to a fixed maximum length."""
-  value = str(value)
+  value = ustr(value)
   if len(value) > 32:
     return value[:32] + '...'
   return value

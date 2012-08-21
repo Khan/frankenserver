@@ -53,7 +53,12 @@ from google.appengine.runtime import apiproxy_errors
 
 
 
+
+
 GS_INFO_KIND = "__GsFileInfo__"
+
+
+BLOB_SERVING_URL_KIND = "__BlobServingUrl__"
 
 MAX_REQUEST_SIZE = 32 << 20
 
@@ -264,7 +269,12 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
                                         request.transform_list(),
                                         correct_orientation)
 
-    response_value = self._EncodeImage(new_image, request.output())
+    substitution_rgb = None
+    if input_settings.has_transparent_substitution_rgb():
+      substitution_rgb = input_settings.transparent_substitution_rgb()
+    response_value = self._EncodeImage(new_image,
+                                       request.output(),
+                                       substitution_rgb)
     response.mutable_image().set_content(response_value)
     response.set_source_metadata(source_metadata)
 
@@ -279,14 +289,34 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       logging.info("Secure URLs will not be created using the development "
                    "application server.")
 
+    entity_info = datastore.Entity(BLOB_SERVING_URL_KIND,
+                                   name=request.blob_key(),
+                                   namespace="")
+    entity_info["blob_key"] = request.blob_key()
+    datastore.Put(entity_info)
+
     response.set_url("%s/_ah/img/%s" % (self._host_prefix, request.blob_key()))
 
-  def _EncodeImage(self, image, output_encoding):
+  def _Dynamic_DeleteUrlBase(self, request, response):
+    """Trivial implementation of ImagesService::DeleteUrlBase.
+
+    Args:
+      request: ImagesDeleteUrlBaseRequest, contains a blobkey to an image.
+      response: ImagesDeleteUrlBaseResonse - currently unused.
+    """
+    key = datastore.Key.from_path(BLOB_SERVING_URL_KIND,
+                                  request.blob_key(),
+                                  namespace="")
+    datastore.Delete(key)
+
+  def _EncodeImage(self, image, output_encoding, substitution_rgb=None):
     """Encode the given image and return it in string form.
 
     Args:
       image: PIL Image object, image to encode.
       output_encoding: ImagesTransformRequest.OutputSettings object.
+      substitution_rgb: The color to use for transparent pixels if the output
+        format does not support transparency.
 
     Returns:
       str with encoded image information in given encoding format.
@@ -306,7 +336,18 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
-      image = image.convert("RGB")
+      if substitution_rgb:
+
+
+
+        blue = substitution_rgb & 0xFF
+        green = (substitution_rgb >> 8) & 0xFF
+        red = (substitution_rgb >> 16) & 0xFF
+        background = Image.new("RGB", image.size, (red, green, blue))
+        background.paste(image, mask=image.split()[3])
+        image = background
+      else:
+        image = image.convert("RGB")
 
     image.save(image_string, image_encoding)
 

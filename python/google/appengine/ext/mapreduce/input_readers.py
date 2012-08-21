@@ -46,6 +46,7 @@ __all__ = [
     "DatastoreEntityInputReader",
     "DatastoreInputReader",
     "DatastoreKeyInputReader",
+    "RandomStringInputReader",
     "Error",
     "InputReader",
     "LogInputReader",
@@ -58,6 +59,8 @@ __all__ = [
 import base64
 import copy
 import logging
+import random
+import string
 import StringIO
 import time
 import zipfile
@@ -257,6 +260,7 @@ class AbstractDatastoreInputReader(InputReader):
   KEY_RANGE_PARAM = "key_range"
   NAMESPACE_RANGE_PARAM = "namespace_range"
   CURRENT_KEY_RANGE_PARAM = "current_key_range"
+  FILTERS_PARAM = "filters"
 
 
 
@@ -266,7 +270,8 @@ class AbstractDatastoreInputReader(InputReader):
                key_ranges=None,
                ns_range=None,
                batch_size=_BATCH_SIZE,
-               current_key_range=None):
+               current_key_range=None,
+               filters=None):
     """Create new AbstractDatastoreInputReader object.
 
     This is internal constructor. Use split_query in a concrete class instead.
@@ -279,6 +284,9 @@ class AbstractDatastoreInputReader(InputReader):
           key_ranges or ns_range can be non-None.
       batch_size: size of read batch as int.
       current_key_range: the current key_range.KeyRange being processed.
+      filters: optional list of filters to apply to the query. Each filter is
+        a tuple: (<property_name_as_str>, <query_operation_as_str>, <value>).
+        User filters are applied first.
     """
     assert key_ranges is not None or ns_range is not None, (
         "must specify one of 'key_ranges' or 'ns_range'")
@@ -293,7 +301,7 @@ class AbstractDatastoreInputReader(InputReader):
     self._ns_range = ns_range
     self._batch_size = int(batch_size)
     self._current_key_range = current_key_range
-
+    self._filters = filters
 
   @classmethod
   def _get_raw_entity_kind(cls, entity_kind):
@@ -303,7 +311,6 @@ class AbstractDatastoreInputReader(InputReader):
           "Assuming entity kind contains the dot.",
           entity_kind, cls.__name__)
     return entity_kind
-
 
   def __iter__(self):
     """Iterates over the given KeyRanges or NamespaceRange.
@@ -532,6 +539,20 @@ class AbstractDatastoreInputReader(InputReader):
             "Expected a single namespace string")
     if cls.NAMESPACES_PARAM in params:
       raise BadReaderParamsError("Multiple namespaces are no longer supported")
+    if cls.FILTERS_PARAM in params:
+      filters = params[cls.FILTERS_PARAM]
+      if not isinstance(filters, list):
+        raise BadReaderParamsError("Expected list for filters parameter")
+      for f in filters:
+        if not isinstance(f, tuple):
+          raise BadReaderParamsError("Filter should be a tuple: %s", f)
+        if len(f) != 3:
+          raise BadReaderParamsError("Filter should be a 3-tuple: %s", f)
+        if not isinstance(f[0], basestring):
+          raise BadReaderParamsError("First element should be string: %s", f)
+        if f[1] != "=":
+          raise BadReaderParamsError(
+              "Only equality filters are supported: %s", f)
 
   @classmethod
   def split_input(cls, mapper_spec):
@@ -561,6 +582,7 @@ class AbstractDatastoreInputReader(InputReader):
     shard_count = mapper_spec.shard_count
     namespace = params.get(cls.NAMESPACE_PARAM)
     app = params.get(cls._APP_PARAM)
+    filters = params.get(cls.FILTERS_PARAM)
 
     if namespace is None:
 
@@ -587,21 +609,27 @@ class AbstractDatastoreInputReader(InputReader):
         return [cls(entity_kind_name,
                     key_ranges=None,
                     ns_range=ns_range,
-                    batch_size=batch_size)
+                    batch_size=batch_size,
+                    filters=filters)
                 for ns_range in ns_ranges]
       elif not namespace_keys:
         return [cls(entity_kind_name,
                     key_ranges=None,
                     ns_range=namespace_range.NamespaceRange(),
-                    batch_size=shard_count)]
+                    batch_size=shard_count,
+                    filters=filters)]
       else:
         namespaces = [namespace_key.name() or ""
                       for namespace_key in namespace_keys]
     else:
       namespaces = [namespace]
 
-    return cls._split_input_from_params(
+    readers = cls._split_input_from_params(
         app, namespaces, entity_kind_name, params, shard_count)
+    if filters:
+      for reader in readers:
+        reader._filters = filters
+    return readers
 
   def to_json(self):
     """Serializes all the data in this query range into json form.
@@ -633,7 +661,8 @@ class AbstractDatastoreInputReader(InputReader):
                  self.NAMESPACE_RANGE_PARAM: namespace_range_json,
                  self.CURRENT_KEY_RANGE_PARAM: current_key_range_json,
                  self.ENTITY_KIND_PARAM: self._entity_kind,
-                 self.BATCH_SIZE_PARAM: self._batch_size}
+                 self.BATCH_SIZE_PARAM: self._batch_size,
+                 self.FILTERS_PARAM: self._filters}
     return json_dict
 
   @classmethod
@@ -673,7 +702,8 @@ class AbstractDatastoreInputReader(InputReader):
         key_ranges,
         ns_range,
         json[cls.BATCH_SIZE_PARAM],
-        current_key_range)
+        current_key_range,
+        filters=json.get(cls.FILTERS_PARAM))
 
 
 class DatastoreInputReader(AbstractDatastoreInputReader):
@@ -691,7 +721,8 @@ class DatastoreInputReader(AbstractDatastoreInputReader):
     cursor = None
     while True:
       query = k_range.make_ascending_query(
-          util.for_name(self._entity_kind))
+          util.for_name(self._entity_kind),
+          filters=self._filters)
       if isinstance(query, db.Query):
 
         if cursor:
@@ -755,7 +786,7 @@ class DatastoreKeyInputReader(AbstractDatastoreInputReader):
   def _iter_key_range(self, k_range):
     raw_entity_kind = self._get_raw_entity_kind(self._entity_kind)
     query = k_range.make_ascending_datastore_query(
-        raw_entity_kind, keys_only=True)
+        raw_entity_kind, keys_only=True, filters=self._filters)
     for key in query.Run(
         config=datastore_query.QueryOptions(batch_size=self._batch_size)):
       yield key, key
@@ -767,7 +798,7 @@ class DatastoreEntityInputReader(AbstractDatastoreInputReader):
   def _iter_key_range(self, k_range):
     raw_entity_kind = self._get_raw_entity_kind(self._entity_kind)
     query = k_range.make_ascending_datastore_query(
-        raw_entity_kind)
+        raw_entity_kind, self._filters)
     for entity in query.Run(
         config=datastore_query.QueryOptions(batch_size=self._batch_size)):
       yield entity.key(), entity
@@ -1320,6 +1351,98 @@ class BlobstoreZipLineInputReader(InputReader):
     return "blobstore.BlobKey(%r):[%d, %d]:%d" % (
         self._blob_key, self._start_file_index, self._end_file_index,
         self._next_offset())
+
+
+class RandomStringInputReader(InputReader):
+  """RandomStringInputReader generates random strings as output.
+
+  Primary usage is to populate output with testing entries.
+  """
+
+
+  COUNT = "count"
+
+  STRING_LENGTH = "string_length"
+
+
+  _MAX_SHARD_COUNT = 256
+
+  DEFAULT_STRING_LENGTH = 10
+
+  def __init__(self, count, string_length):
+    """Initialize input reader.
+
+    Args:
+      count: number of entries this shard should generate.
+      string_length: the length of generated random strings.
+    """
+    self._count = count
+    self._string_length = string_length
+
+  def __iter__(self):
+    ctx = context.get()
+
+    while self._count:
+      self._count -= 1
+      start_time = time.time()
+      content = "".join(random.choice(string.ascii_lowercase)
+                        for _ in range(self._string_length))
+      if ctx:
+        operation.counters.Increment(
+            COUNTER_IO_READ_MSEC, int((time.time() - start_time) * 1000))(ctx)
+        operation.counters.Increment(COUNTER_IO_READ_BYTES, len(content))(ctx)
+      yield content
+
+  @classmethod
+  def split_input(cls, mapper_spec):
+    params = _get_params(mapper_spec)
+    count = params[cls.COUNT]
+    string_length = cls.DEFAULT_STRING_LENGTH
+    if cls.STRING_LENGTH in params:
+      string_length = params[cls.STRING_LENGTH]
+
+    shard_count = min(cls._MAX_SHARD_COUNT, mapper_spec.shard_count)
+    count_per_shard = count // shard_count
+
+    mr_input_readers = [
+        cls(count_per_shard, string_length) for _ in range(shard_count)]
+
+    left = count - count_per_shard*shard_count
+    if left > 0:
+      mr_input_readers.append(cls(left, string_length))
+
+    return mr_input_readers
+
+  @classmethod
+  def validate(cls, mapper_spec):
+    if mapper_spec.input_reader_class() != cls:
+      raise BadReaderParamsError("Mapper input reader class mismatch")
+
+    params = _get_params(mapper_spec)
+    if cls.COUNT not in params:
+      raise BadReaderParamsError("Must specify %s" % cls.COUNT)
+    if not isinstance(params[cls.COUNT], int):
+      raise BadReaderParamsError("%s should be an int but is %s" %
+                                 (cls.COUNT, type(params[cls.COUNT])))
+    if params[cls.COUNT] <= 0:
+      raise BadReaderParamsError("%s should be a positive int")
+    if cls.STRING_LENGTH in params and not (
+        isinstance(params[cls.STRING_LENGTH], int) and
+        params[cls.STRING_LENGTH] > 0):
+      raise BadReaderParamsError("%s should be a positive int but is %s" %
+                                 (cls.STRING_LENGTH, params[cls.STRING_LENGTH]))
+    if (not isinstance(mapper_spec.shard_count, int) or
+        mapper_spec.shard_count <= 0):
+      raise BadReaderParamsError(
+          "shard_count should be a positive int but is %s" %
+          mapper_spec.shard_count)
+
+  @classmethod
+  def from_json(cls, json):
+    return cls(json[cls.COUNT], json[cls.STRING_LENGTH])
+
+  def to_json(self):
+    return {self.COUNT: self._count, self.STRING_LENGTH: self._string_length}
 
 
 class ConsistentKeyReader(DatastoreKeyInputReader):

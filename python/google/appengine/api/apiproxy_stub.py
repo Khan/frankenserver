@@ -30,13 +30,59 @@ from __future__ import with_statement
 
 
 
+import os
 import threading
+import urllib
 
 from google.appengine.api import apiproxy_rpc
 from google.appengine.runtime import apiproxy_errors
 
 
 MAX_REQUEST_SIZE = 1 << 20
+
+
+class RequestData(object):
+  """Allows stubs to lookup state linked to the request making the API call."""
+
+  def get_request_url(self, request_id):
+    """Returns the URL the request e.g. 'http://localhost:8080/foo?bar=baz'.
+
+    Args:
+      request_id: The string id of the request making the API call.
+
+    Returns:
+      The URL of the request as a string.
+    """
+    raise NotImplementedError()
+
+
+class _LocalRequestData(RequestData):
+  """Lookup information about a request using environment variables."""
+
+  def get_request_url(self, request_id):
+    """Returns the URL the request e.g. 'http://localhost:8080/foo?bar=baz'.
+
+    Args:
+      request_id: The string id of the request making the API call.
+
+    Returns:
+      The URL of the request as a string.
+    """
+    try:
+      host = os.environ['HTTP_HOST']
+    except KeyError:
+      host = os.environ['SERVER_NAME']
+      port = os.environ['SERVER_PORT']
+      if port != '80':
+        host += ':' + port
+    url = 'http://' + host
+    url += urllib.quote(os.environ.get('PATH_INFO', '/'))
+    if os.environ.get('QUERY_STRING'):
+      url += '?' + os.environ['QUERY_STRING']
+    return url
+
+
+_local_request_data = _LocalRequestData()
 
 
 class APIProxyStub(object):
@@ -48,7 +94,12 @@ class APIProxyStub(object):
     - Implement service methods as _Dynamic_<method>(request, response).
   """
 
-  def __init__(self, service_name, max_request_size=MAX_REQUEST_SIZE):
+
+
+  _ACCEPTS_REQUEST_ID = False
+
+  def __init__(self, service_name, max_request_size=MAX_REQUEST_SIZE,
+               request_data=None):
     """Constructor.
 
     Args:
@@ -56,9 +107,12 @@ class APIProxyStub(object):
       max_request_size: int, maximum allowable size of the incoming request.  A
         apiproxy_errors.RequestTooLargeError will be raised if the inbound
         request exceeds this size.  Default is 1 MB.
+      request_data: A RequestData instance used to look up state associated with
+          the request that generated an API call.
     """
     self.__service_name = service_name
     self.__max_request_size = max_request_size
+    self.request_data = request_data or _local_request_data
 
 
 
@@ -73,7 +127,7 @@ class APIProxyStub(object):
     """
     return apiproxy_rpc.RPC(stub=self)
 
-  def MakeSyncCall(self, service, call, request, response):
+  def MakeSyncCall(self, service, call, request, response, request_id=None):
     """The main RPC entry point.
 
     Args:
@@ -82,6 +136,8 @@ class APIProxyStub(object):
         the underlying services methods and impemented by _Dynamic_<call>.
       request: A protocol buffer of the type corresponding to 'call'.
       response: A protocol buffer of the type corresponding to 'call'.
+      request_id: A unique string identifying the request associated with the
+          API call.
     """
     assert service == self.__service_name, ('Expected "%s" service name, '
                                             'was "%s"' % (self.__service_name,
@@ -98,7 +154,10 @@ class APIProxyStub(object):
       raise self.__error
     else:
       method = getattr(self, '_Dynamic_' + call)
-      method(request, response)
+      if self._ACCEPTS_REQUEST_ID:
+        method(request, response, request_id)
+      else:
+        method(request, response)
 
   def SetError(self, error):
     """Set an error condition that is always raised when calls made to stub.

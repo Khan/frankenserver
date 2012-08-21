@@ -860,7 +860,7 @@ class Task(object):
     return (default_url, relative_url, query)
 
   @staticmethod
-  def __determine_eta_posix(eta=None, countdown=None, current_time=time.time):
+  def __determine_eta_posix(eta=None, countdown=None, current_time=None):
     """Determines the ETA for a task.
 
     If 'eta' and 'countdown' are both None, the current time will be used.
@@ -871,6 +871,8 @@ class Task(object):
         this may be timezone-aware or timezone-naive.
       countdown: Count in seconds into the future from the present time that
         the ETA should be assigned to.
+      current_time: Function that returns the current datetime. (Defaults to
+        time.time if None is provided.)
 
     Returns:
       A float giving a POSIX timestamp containing the ETA.
@@ -878,6 +880,9 @@ class Task(object):
     Raises:
       InvalidTaskError if the parameters are invalid.
     """
+    if not current_time:
+      current_time = time.time
+
     if eta is not None and countdown is not None:
       raise InvalidTaskError('May not use a countdown and ETA together')
     elif eta is not None:
@@ -1127,14 +1132,14 @@ class Task(object):
 class QueueStatistics(object):
   """Represents the current state of a Queue."""
 
-  _ATTRS = ['queue', 'tasks', 'executed_last_minute', 'executed_last_hour',
+  _ATTRS = ['queue', 'tasks', 'oldest_eta_usec', 'executed_last_minute',
             'in_flight', 'enforced_rate']
 
   def __init__(self,
                queue,
                tasks,
+               oldest_eta_usec=None,
                executed_last_minute=None,
-               executed_last_hour=None,
                in_flight=None,
                enforced_rate=None):
     """Constructor.
@@ -1142,15 +1147,16 @@ class QueueStatistics(object):
     Args:
       queue: The Queue instance this QueueStatistics is for.
       tasks: The number of tasks left.
+      oldest_eta_usec: The eta of the oldest non-completed task for the queue;
+        None if unknown.
       executed_last_minute: The number of tasks executed in the last minute.
-      executed_last_hour: The number of tasks executed in the last hour.
       in_flight: The number of tasks that are currently executing.
       enforced_rate: The current enforced rate. In tasks/second.
     """
     self.queue = queue
     self.tasks = tasks
+    self.oldest_eta_usec = oldest_eta_usec
     self.executed_last_minute = executed_last_minute
-    self.executed_last_hour = executed_last_hour
     self.in_flight = in_flight
     self.enforced_rate = enforced_rate
 
@@ -1188,10 +1194,14 @@ class QueueStatistics(object):
       A new QueueStatistics instance.
     """
     args = {'queue': queue, 'tasks': response.num_tasks()}
+    if response.oldest_eta_usec() >= 0:
+      args['oldest_eta_usec'] = response.oldest_eta_usec()
+    else:
+      args['oldest_eta_usec'] = None
+
     if response.has_scanner_info():
       scanner_info = response.scanner_info()
       args['executed_last_minute'] = scanner_info.executed_last_minute()
-      args['executed_last_hour'] = scanner_info.executed_last_hour()
       if scanner_info.has_requests_in_flight():
         args['in_flight'] = scanner_info.requests_in_flight()
       if scanner_info.has_enforced_rate():
@@ -1957,3 +1967,4 @@ def add(*args, **kwargs):
   queue_name = kwargs.pop('queue_name', _DEFAULT_QUEUE)
   return Task(*args, **kwargs).add(
       queue_name=queue_name, transactional=transactional)
+

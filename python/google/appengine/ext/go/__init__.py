@@ -84,6 +84,7 @@ HEADER_MAP = {
     'CONTENT_TYPE': 'Content-Type',
     'CURRENT_VERSION_ID': 'X-AppEngine-Inbound-Version-Id',
     'REMOTE_ADDR': 'X-AppEngine-Remote-Addr',
+    'REQUEST_LOG_ID': 'X-AppEngine-Request-Log-Id',
     'USER_EMAIL': 'X-AppEngine-Inbound-User-Email',
     'USER_ID': 'X-AppEngine-Inbound-User-Id',
     'USER_IS_ADMIN': 'X-AppEngine-Inbound-User-Is-Admin',
@@ -92,6 +93,14 @@ HEADER_MAP = {
 
 ENV_PASSTHROUGH = re.compile(
     r'^(BACKEND_PORT\..*|INSTANCE_ID|SERVER_SOFTWARE)$'
+)
+
+
+OS_ENV_PASSTHROUGH = (
+
+    'SYSTEMROOT',
+
+    'USER',
 )
 
 
@@ -423,9 +432,9 @@ class GoApp:
       for k, v in env.items():
         if ENV_PASSTHROUGH.match(k):
           limited_env[k] = v
-
-      if 'SYSTEMROOT' in os.environ:
-        limited_env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
+      for e in OS_ENV_PASSTHROUGH:
+        if e in os.environ:
+          limited_env[e] = os.environ[e]
       self.proc_start = app_mtime
       self.proc = subprocess.Popen([bin_name,
           '-addr_http', 'tcp:127.0.0.1:%d' % GO_HTTP_PORT,

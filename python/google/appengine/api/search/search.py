@@ -55,6 +55,7 @@ __all__ = [
     'DateField',
     'Document',
     'Error',
+    'ExpressionError',
     'Field',
     'FieldExpression',
     'HtmlField',
@@ -66,9 +67,25 @@ __all__ = [
     'ListIndexesResponse',
     'ListResponse',
     'MatchScorer',
+    'MAXIMUM_DOCUMENT_ID_LENGTH',
+    'MAXIMUM_DOCUMENTS_PER_ADD_REQUEST',
+    'MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH',
+    'MAXIMUM_EXPRESSION_LENGTH',
+    'MAXIMUM_FIELD_ATOM_LENGTH',
+    'MAXIMUM_FIELD_NAME_LENGTH',
+    'MAXIMUM_FIELD_VALUE_LENGTH',
+    'MAXIMUM_FIELDS_RETURNED_PER_SEARCH',
+    'MAXIMUM_INDEX_NAME_LENGTH',
+    'MAXIMUM_INDEXES_RETURNED_PER_LIST_REQUEST',
+    'MAXIMUM_LIST_INDEXES_OFFSET',
+    'MAXIMUM_NUMBER_FOUND_ACCURACY',
+    'MAXIMUM_QUERY_LENGTH',
+    'MAXIMUM_SEARCH_OFFSET',
+    'MAXIMUM_SORTED_DOCUMENTS',
     'NumberField',
     'OperationResult',
     'Query',
+    'QueryError',
     'QueryOptions',
     'RemoveDocumentError',
     'RemoveError',
@@ -83,29 +100,31 @@ __all__ = [
     'list_indexes',
     ]
 
-_MAXIMUM_INDEX_NAME_LENGTH = 100
-_MAXIMUM_FIELD_VALUE_LENGTH = 1024 * 1024
-_MAXIMUM_FIELD_ATOM_LENGTH = 500
-_LANGUAGE_LENGTH = 2
-_MAXIMUM_FIELD_NAME_LENGTH = 500
-_MAXIMUM_CURSOR_LENGTH = 10000
-_MAXIMUM_DOCUMENT_ID_LENGTH = 500
-_MAXIMUM_STRING_LENGTH = 500
-_MAXIMUM_ADD_DOCS_PER_REQUEST = 200
-_MAXIMUM_EXPRESSION_LENGTH = 5000
-_MAXIMUM_QUERY_LENGTH = 1000
-_MAXIMUM_SEARCH_LIMIT = 1000
-_MAXIMUM_SEARCH_OFFSET = 1000
-_MAXIMUM_FOUND_COUNT_ACCURACY = 10000
-_MAXIMUM_FIELDS_TO_RETURN = 100
-_MAXIMUM_LIST_INDEXES_LIMIT = 1000
-_MAXIMUM_LIST_INDEXES_OFFSET = 1000
+MAXIMUM_INDEX_NAME_LENGTH = 100
+MAXIMUM_FIELD_VALUE_LENGTH = 1024 * 1024
+MAXIMUM_FIELD_ATOM_LENGTH = 500
+MAXIMUM_FIELD_NAME_LENGTH = 500
+MAXIMUM_DOCUMENT_ID_LENGTH = 500
+MAXIMUM_DOCUMENTS_PER_ADD_REQUEST = 200
+MAXIMUM_EXPRESSION_LENGTH = 5000
+MAXIMUM_QUERY_LENGTH = 2000
+MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH = 1000
+MAXIMUM_SEARCH_OFFSET = 1000
 
-_MAXIMUM_SORT_LIMIT = 10000
+MAXIMUM_SORTED_DOCUMENTS = 10000
+MAXIMUM_NUMBER_FOUND_ACCURACY = 10000
+MAXIMUM_FIELDS_RETURNED_PER_SEARCH = 100
+MAXIMUM_INDEXES_RETURNED_PER_LIST_REQUEST = 1000
+MAXIMUM_LIST_INDEXES_OFFSET = 1000
+_LANGUAGE_LENGTH = 2
+_MAXIMUM_STRING_LENGTH = 500
+_MAXIMUM_CURSOR_LENGTH = 10000
 
 _VISIBLE_PRINTABLE_ASCII = frozenset(
     set(string.printable) - set(string.whitespace))
 _FIELD_NAME_PATTERN = '^[A-Za-z][A-Za-z0-9_]*$'
+
+_BASE_DATE = datetime.date(1970, 1, 1)
 
 
 _PROTO_FIELDS_STRING_VALUE = frozenset([document_pb.FieldValue.TEXT,
@@ -129,6 +148,14 @@ class InvalidRequest(Error):
   """Indicates an invalid request was made on the search API by the client."""
 
 
+class QueryError(Error):
+  """An error occurred while parsing a query input string."""
+
+
+class ExpressionError(Error):
+  """An error occurred while parsing an expression input string."""
+
+
 def _ConvertToUnicode(some_string):
   """Convert UTF-8 encoded string to unicode."""
   if some_string is None:
@@ -136,6 +163,13 @@ def _ConvertToUnicode(some_string):
   if isinstance(some_string, unicode):
     return some_string
   return unicode(some_string, 'utf-8')
+
+
+def _ConcatenateErrorMessages(prefix, status):
+  """Returns an error message combining prefix and status.error_detail()."""
+  if status.error_detail():
+    return prefix + ': ' + status.error_detail()
+  return prefix
 
 
 class OperationResult(object):
@@ -488,7 +522,7 @@ def _CheckIndexName(index_name):
 
   Index names must be visible printable ASCII and not start with '!'.
   """
-  _ValidateString(index_name, 'index name', _MAXIMUM_INDEX_NAME_LENGTH)
+  _ValidateString(index_name, 'index name', MAXIMUM_INDEX_NAME_LENGTH)
   return _ValidateVisiblePrintableAsciiNotReserved(index_name, 'index_name')
 
 
@@ -497,7 +531,7 @@ def _CheckFieldName(name):
 
   Field name pattern: "[A-Za-z][A-Za-z0-9_]*".
   """
-  _ValidateString(name, 'name', _MAXIMUM_FIELD_NAME_LENGTH)
+  _ValidateString(name, 'name', MAXIMUM_FIELD_NAME_LENGTH)
   if not re.match(_FIELD_NAME_PATTERN, name):
     raise ValueError('field name "%s" should match pattern: %s' %
                      (name, _FIELD_NAME_PATTERN))
@@ -506,8 +540,11 @@ def _CheckFieldName(name):
 
 def _CheckExpression(expression):
   """Checks whether the expression is a string."""
-  expression = _ValidateString(expression, max_len=_MAXIMUM_EXPRESSION_LENGTH)
-  expression_parser.Parse(expression)
+  expression = _ValidateString(expression, max_len=MAXIMUM_EXPRESSION_LENGTH)
+  try:
+    expression_parser.Parse(expression)
+  except expression_parser.ExpressionException, e:
+    raise ExpressionError('Failed to parse expression "%s"' % expression)
   return expression
 
 
@@ -548,25 +585,25 @@ def _CheckDocumentId(doc_id):
 
   Document ids must be visible printable ASCII and not start with '!'.
   """
-  _ValidateString(doc_id, 'doc_id', _MAXIMUM_DOCUMENT_ID_LENGTH)
+  _ValidateString(doc_id, 'doc_id', MAXIMUM_DOCUMENT_ID_LENGTH)
   _ValidateVisiblePrintableAsciiNotReserved(doc_id, 'doc_id')
   return doc_id
 
 
 def _CheckText(value, name='value', empty_ok=True):
   """Checks the field text is a valid string."""
-  return _ValidateString(value, name, _MAXIMUM_FIELD_VALUE_LENGTH, empty_ok)
+  return _ValidateString(value, name, MAXIMUM_FIELD_VALUE_LENGTH, empty_ok)
 
 
 def _CheckHtml(html):
   """Checks the field html is a valid HTML string."""
-  return _ValidateString(html, 'html', _MAXIMUM_FIELD_VALUE_LENGTH,
+  return _ValidateString(html, 'html', MAXIMUM_FIELD_VALUE_LENGTH,
                          empty_ok=True)
 
 
 def _CheckAtom(atom):
   """Checks the field atom is a valid string."""
-  return _ValidateString(atom, 'atom', _MAXIMUM_FIELD_ATOM_LENGTH,
+  return _ValidateString(atom, 'atom', MAXIMUM_FIELD_ATOM_LENGTH,
                          empty_ok=True)
 
 
@@ -593,7 +630,7 @@ def _CheckLanguage(language):
 
 def _CheckSortLimit(limit):
   """Checks the limit on number of docs to score is not too large."""
-  return _CheckInteger(limit, 'limit', upper_bound=_MAXIMUM_SORT_LIMIT)
+  return _CheckInteger(limit, 'limit', upper_bound=MAXIMUM_SORTED_DOCUMENTS)
 
 
 def _Repr(class_instance, ordered_dictionary):
@@ -648,20 +685,21 @@ def list_indexes(namespace='', offset=None, limit=20,
   params.set_namespace(namespace)
   if offset is not None:
     params.set_offset(_CheckInteger(offset, 'offset', zero_ok=True,
-                                    upper_bound=_MAXIMUM_LIST_INDEXES_OFFSET))
-  params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False,
-                                 upper_bound=_MAXIMUM_LIST_INDEXES_LIMIT))
+                                    upper_bound=MAXIMUM_LIST_INDEXES_OFFSET))
+  params.set_limit(_CheckInteger(
+      limit, 'limit', zero_ok=False,
+      upper_bound=MAXIMUM_INDEXES_RETURNED_PER_LIST_REQUEST))
   if start_index_name is not None:
     params.set_start_index_name(
         _ValidateString(start_index_name, "start_index_name",
-                        _MAXIMUM_INDEX_NAME_LENGTH,
+                        MAXIMUM_INDEX_NAME_LENGTH,
                         empty_ok=False))
   if include_start_index is not None:
     params.set_include_start_index(bool(include_start_index))
   if index_name_prefix is not None:
     params.set_index_name_prefix(
         _ValidateString(index_name_prefix, "index_name_prefix",
-                        _MAXIMUM_INDEX_NAME_LENGTH,
+                        MAXIMUM_INDEX_NAME_LENGTH,
                         empty_ok=False))
   params.set_fetch_schema(fetch_schema)
 
@@ -696,7 +734,7 @@ class Field(object):
 
     Args:
       name: The name of the field. Field names must have maximum length
-        _MAXIMUM_FIELD_NAME_LENGTH and match pattern "[A-Za-z][A-Za-z0-9_]*".
+        MAXIMUM_FIELD_NAME_LENGTH and match pattern "[A-Za-z][A-Za-z0-9_]*".
       value: The value of the field which can be a str, unicode or date.
       language: The ISO 693-1 two letter code of the language used in the value.
         See http://www.sil.org/iso639-3/codes.asp?order=639_1&letter=%25 for a
@@ -1246,8 +1284,8 @@ class FieldExpression(object):
   the query 'very important'.
   """
 
-  _MAXIMUM_EXPRESSION_LENGTH = 1000
-  _MAXIMUM_OPERATOR_LENGTH = 100
+  MAXIMUM_EXPRESSION_LENGTH = 1000
+  MAXIMUM_OPERATOR_LENGTH = 100
 
   def __init__(self, name, expression):
     """Initializer.
@@ -1255,15 +1293,16 @@ class FieldExpression(object):
     Args:
       name: The name of the computed field for the expression.
       expression: The expression to evaluate and return in a field with
-        given name in results.
+        given name in results. See
+        https://developers.google.com/appengine/docs/python/search/overview#Expressions
+        for a list of legal expressions.
 
     Raises:
       TypeError: If any of the parameters has an invalid type, or an unknown
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
+      ExpressionError: If the expression string is not parseable.
     """
-
-
     self._name = _CheckFieldName(_ConvertToUnicode(name))
     if expression is None:
       raise ValueError('expression must be a FieldExpression, got None')
@@ -1355,10 +1394,22 @@ class SortOptions(object):
 
 
 class MatchScorer(object):
-  """Sort documents in ascending order of score.
+  """Assigns a document score based on term frequency.
 
-  Match scorer assigns a document a score based on term frequency
-  divided by document frequency.
+  If you add a MatchScorer to a SortOptions as in the following code:
+
+      sort_opts = search.SortOptions(match_scorer=search.MatchScorer())
+
+  then, this will sort the documents in descending score order. The scores
+  will be positive. If you want to sort in ascending order, then use the
+  following code:
+
+      sort_opts = search.SortOptions(match_scorer=search.MatchScorer(),
+          expressions=[search.SortExpression(
+              expression='_score', direction=search.SortExpression.ASCENDING,
+              default_value=0.0)])
+
+  The scores in this case will be negative.
   """
 
   def __init__(self):
@@ -1375,10 +1426,22 @@ class MatchScorer(object):
 
 
 class RescoringMatchScorer(MatchScorer):
-  """Sort documents in ascending order of score weighted on document parts.
+  """Assigns a document score based on term frequency weighted by doc parts.
 
-  A rescoring match scorer assigns a document a score based on
-  a match scorer and further assigning weights to document parts.
+  If you add a RescoringMatchScorer to a SortOptions as in the following code:
+
+      sort_opts = search.SortOptions(match_scorer=search.RescoringMatchScorer())
+
+  then, this will sort the documents in descending score order. The scores
+  will be positive.  If you want to sort in ascending order, then use the
+  following code:
+
+      sort_opts = search.SortOptions(match_scorer=search.RescoringMatchScorer(),
+          expressions=[search.SortExpression(
+              expression='_score', direction=search.SortExpression.ASCENDING,
+              default_value=0.0)])
+
+  The scores in this case will be negative.
   """
 
   def __init__(self):
@@ -1399,6 +1462,9 @@ def _CopySortExpressionToProtocolBuffer(sort_expression, pb):
     pb.set_sort_descending(False)
   if isinstance(sort_expression.default_value, basestring):
     pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
+  elif isinstance(sort_expression.default_value, datetime.date):
+    pb.set_default_value_numeric(
+        (sort_expression.default_value - _BASE_DATE).days)
   else:
     pb.set_default_value_numeric(sort_expression.default_value)
   return pb
@@ -1433,7 +1499,29 @@ def _CopySortOptionsToProtocolBuffer(sort_options, params):
 
 
 class SortExpression(object):
-  """Sort by a user specified scoring expression."""
+  """Sort by a user specified scoring expression.
+
+  For example, the following will sort documents on a numeric field named
+  'length' in ascending order, assigning a default value of sys.maxint for
+  documents which do not specify a 'length' field.
+
+    SortExpression(expression='length',
+                   direction=sort.SortExpression.ASCENDING,
+                   default_value=sys.maxint)
+
+  The following example will sort documents on a date field named
+  'published_date' in descending order, assigning a default value of
+  1999-12-31 for documents which do not specify a 'published_date' field.
+
+    SortExpression(expression='published_date',
+                   default_value=datetime.date(year=1999, month=12, day=31))
+
+  The following example will sort documents on a text field named 'subject'
+  in descending order, assigning a default value of '' for documents which
+  do not specify a 'subject' field.
+
+    SortExpression(expression='subject')
+  """
 
 
   try:
@@ -1457,22 +1545,24 @@ class SortExpression(object):
         to sort by. The expression must evaluate to a text or numeric value.
         The expression can simply be a field name, or some compound expression
         such as "_score + count(likes) * 0.1" which will add the score from a
-        scorer to a count of the values of a likes field times 0.1.
+        scorer to a count of the values of a likes field times 0.1. See
+        https://developers.google.com/appengine/docs/python/search/overview#Expressions
+        for a list of legal expressions.
       direction: The direction to sort the search results, either ASCENDING
         or DESCENDING
       default_value: The default value of the expression. The default_value is
         returned if expression cannot be calculated, for example, if the
         expression is a field name and no value for that named field exists.
         A text value must be specified for text sorts. A numeric value must be
-        specified for numeric sorts.
+        specified for numeric sorts. A date value must be specified for date
+        sorts.
 
     Raises:
       TypeError: If any of the parameters has an invalid type, or an unknown
         attribute is passed.
       ValueError: If any of the parameters has an invalid value.
+      ExpressionError: If the expression string is not parseable.
     """
-
-
     self._expression = _ConvertToUnicode(expression)
     self._direction = self._CheckDirection(direction)
     if self._expression is None:
@@ -1482,8 +1572,8 @@ class SortExpression(object):
     if isinstance(self.default_value, basestring):
       self._default_value = _ConvertToUnicode(default_value)
       _CheckText(self._default_value, 'default_value')
-    elif not isinstance(self._default_value, (int, long, float)):
-      raise TypeError('default_value must be text or numeric, got %s' %
+    elif not isinstance(self._default_value, (int, long, float, datetime.date)):
+      raise TypeError('default_value must be text, numeric or date, got %s' %
                       self._default_value.__class__.__name__)
 
   @property
@@ -1849,11 +1939,14 @@ def _ToWebSafeString(per_result, internal_cursor):
 
 def _CheckQuery(query):
   """Checks a query is a valid query string."""
-  _ValidateString(query, 'query', _MAXIMUM_QUERY_LENGTH, empty_ok=True)
+  _ValidateString(query, 'query', MAXIMUM_QUERY_LENGTH, empty_ok=True)
   if query is None:
     raise TypeError('query must be unicode, got None')
   if query.strip():
-    query_parser.Parse(query)
+    try:
+      query_parser.Parse(query)
+    except query_parser.QueryException, e:
+      raise QueryError('Failed to parse query "%s"' % query)
   return query
 
 
@@ -1861,21 +1954,21 @@ def _CheckLimit(limit):
   """Checks the limit of documents to return is an integer within range."""
   return _CheckInteger(
       limit, 'limit', zero_ok=False,
-      upper_bound=_MAXIMUM_SEARCH_LIMIT)
+      upper_bound=MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH)
 
 
 def _CheckOffset(offset):
   """Checks the offset in document list is an integer within range."""
   return _CheckInteger(
       offset, 'offset', zero_ok=True,
-      upper_bound=_MAXIMUM_SEARCH_OFFSET)
+      upper_bound=MAXIMUM_SEARCH_OFFSET)
 
 
 def _CheckNumberFoundAccuracy(number_found_accuracy):
   """Checks the accuracy is an integer within range."""
   return _CheckInteger(
       number_found_accuracy, 'number_found_accuracy',
-      zero_ok=False, upper_bound=_MAXIMUM_FOUND_COUNT_ACCURACY)
+      zero_ok=False, upper_bound=MAXIMUM_NUMBER_FOUND_ACCURACY)
 
 
 def _CheckCursor(cursor):
@@ -1889,10 +1982,10 @@ def _CheckNumberOfFields(returned_expressions, snippeted_fields,
   """Checks the count of all field kinds is less than limit."""
   number_expressions = (len(returned_expressions) + len(snippeted_fields) +
                         len(returned_fields))
-  if number_expressions > _MAXIMUM_FIELDS_TO_RETURN:
+  if number_expressions > MAXIMUM_FIELDS_RETURNED_PER_SEARCH:
     raise ValueError(
         'too many fields, snippets or expressions to return  %d > maximum %d'
-        % (number_expressions, _MAXIMUM_FIELDS_TO_RETURN))
+        % (number_expressions, MAXIMUM_FIELDS_RETURNED_PER_SEARCH))
 
 
 class QueryOptions(object):
@@ -1976,6 +2069,8 @@ class QueryOptions(object):
     Raises:
       TypeError: If an unknown iterator_options or sort_options is passed.
       ValueError: If ids_only and returned_fields are used together.
+      ExpressionError: If one of the returned expression strings is not
+        parseable.
     """
     self._limit = _CheckLimit(limit)
     self._number_found_accuracy = _CheckNumberFoundAccuracy(
@@ -2165,11 +2260,13 @@ class Query(object):
           'category:televisions brand:sony price >= 300 price < 400'
         will return documents which have televisions in a category field, a
         sony brand and a price field which is 300 (inclusive) to 400
-        (exclusive).
+        (exclusive).  See
+        https://developers.google.com/appengine/docs/python/search/overview#Expressions
+        for a list of expressions that can be used in queries.
       options: A QueryOptions describing post-processing of search results.
+    Raises:
+      QueryError: If the query string is not parseable.
     """
-
-
     self._query_string = _ConvertToUnicode(query_string)
     _CheckQuery(self._query_string)
     self._options = options
@@ -2380,7 +2477,8 @@ class Index(object):
         number indexed did not match requested.
       TypeError: If an unknown attribute is passed.
       ValueError: If documents is not a Document or iterable of Document
-        or number of the documents is larger than _MAXIMUM_ADD_DOCS_PER_REQUEST.
+        or number of the documents is larger than
+        MAXIMUM_DOCUMENTS_PER_ADD_REQUEST.
     """
 
     if isinstance(documents, basestring):
@@ -2394,7 +2492,7 @@ class Index(object):
     if not docs:
       return []
 
-    if len(docs) > _MAXIMUM_ADD_DOCS_PER_REQUEST:
+    if len(docs) > MAXIMUM_DOCUMENTS_PER_ADD_REQUEST:
       raise ValueError("too many documents to index")
 
     request = search_service_pb.IndexDocumentRequest()
@@ -2420,7 +2518,9 @@ class Index(object):
 
     for status in response.status_list():
       if status.code() != search_service_pb.SearchServiceError.OK:
-        raise AddError('one or more add document operations failed', results)
+        raise AddError(
+            _ConcatenateErrorMessages(
+                'one or more add document operations failed', status), results)
     return results
 
   def _NewRemoveResultFromPb(self, status_pb, doc_id):
@@ -2452,14 +2552,14 @@ class Index(object):
         number removed did not match requested.
       ValueError: If document_ids is not a string or iterable of valid document
         identifiers or number of document ids is larger than
-        _MAXIMUM_ADD_DOCS_PER_REQUEST.
+        MAXIMUM_DOCUMENTS_PER_ADD_REQUEST.
     """
     doc_ids = _ConvertToList(document_ids)
 
     if not doc_ids:
       return
 
-    if len(doc_ids) > _MAXIMUM_ADD_DOCS_PER_REQUEST:
+    if len(doc_ids) > MAXIMUM_DOCUMENTS_PER_ADD_REQUEST:
       raise ValueError('too many documents to remove')
 
     request = search_service_pb.DeleteDocumentRequest()
@@ -2485,7 +2585,9 @@ class Index(object):
     for status in response.status_list():
       if status.code() != search_service_pb.SearchServiceError.OK:
         raise RemoveError(
-            'one or more remove document operations failed', results)
+            _ConcatenateErrorMessages(
+                'one or more remove document operations failed', status),
+            results)
 
   def _NewScoredDocumentFromPb(self, doc_pb, sort_scores, expressions, cursor):
     """Constructs a Document from a document_pb.Document protocol buffer."""
@@ -2654,8 +2756,9 @@ class Index(object):
       params.set_start_doc_id(start_doc_id)
     params.set_include_start_doc(include_start_doc)
 
-    params.set_limit(_CheckInteger(limit, 'limit', zero_ok=False,
-                                   upper_bound=_MAXIMUM_SEARCH_LIMIT))
+    params.set_limit(_CheckInteger(
+        limit, 'limit', zero_ok=False,
+        upper_bound=MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH))
     params.set_keys_only(ids_only)
 
     response = search_service_pb.ListDocumentsResponse()

@@ -36,6 +36,7 @@ from google.appengine.api import users
 from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import db
 from google.appengine.ext import webapp
+from google.appengine.ext.db import stats
 from google.appengine.ext.mapreduce import control
 from google.appengine.ext.mapreduce import model
 from google.appengine.ext.mapreduce import operation
@@ -45,7 +46,9 @@ from google.appengine.ext.webapp import _template
 MEMCACHE_NAMESPACE = '_ah-datastore_admin'
 XSRF_VALIDITY_TIME = 600
 KINDS_AND_SIZES_VAR = 'kinds_and_sizes'
-DEFAULT_SHARD_SIZE = 32
+MAPREDUCE_MIN_SHARDS = 8
+MAPREDUCE_DEFAULT_SHARDS = 32
+MAPREDUCE_MAX_SHARDS = 256
 
 
 DATASTORE_ADMIN_OPERATION_KIND = '_AE_DatastoreAdmin_Operation'
@@ -456,7 +459,8 @@ def StartMap(operation_key,
              mapper_params,
              mapreduce_params=None,
              start_transaction=True,
-             queue_name=None):
+             queue_name=None,
+             shard_count=MAPREDUCE_DEFAULT_SHARDS):
   """Start map as part of datastore admin operation.
 
   Will increase number of active jobs inside the operation and start new map.
@@ -471,6 +475,7 @@ def StartMap(operation_key,
     mapreduce_params: Custom mapreduce parameters.
     start_transaction: Specify if a new transaction should be started.
     queue_name: the name of the queue that will be used by the M/R.
+    shard_count: the number of shards the M/R will try to use.
 
   Returns:
     resulting map job id as string.
@@ -486,14 +491,13 @@ def StartMap(operation_key,
 
   def tx():
     operation = DatastoreAdminOperation.get(operation_key)
-
     job_id = control.start_map(
         job_name, handler_spec, reader_spec,
         mapper_params,
         output_writer_spec=writer_spec,
         mapreduce_parameters=mapreduce_params,
         base_path=config.MAPREDUCE_PATH,
-        shard_count=DEFAULT_SHARD_SIZE,
+        shard_count=shard_count,
         transactional=True,
         queue_name=queue_name,
         transactional_parent=operation)
@@ -540,15 +544,26 @@ def RunMapForKinds(operation_key,
       mapper_params['entity_kind'] = kind
       job_name = job_name_template % {'kind': kind, 'namespace':
                                       mapper_params.get('namespaces', '')}
+      shard_count = GetShardCount(kind)
       jobs.append(StartMap(operation_key, job_name, handler_spec, reader_spec,
                            writer_spec, mapper_params, mapreduce_params,
-                           queue_name=queue_name))
+                           queue_name=queue_name, shard_count=shard_count))
     return jobs
 
   except BaseException:
     AbortAdminOperation(operation_key,
                         _status=DatastoreAdminOperation.STATUS_FAILED)
     raise
+
+
+def GetShardCount(kind):
+  stat = stats.KindStat.all().filter('kind_name =', kind).get()
+  if stat:
+
+    return min(max(MAPREDUCE_MIN_SHARDS, stat.bytes // (32 * 1024 * 1024)),
+               MAPREDUCE_MAX_SHARDS)
+
+  return MAPREDUCE_DEFAULT_SHARDS
 
 
 def AbortAdminOperation(operation_key,

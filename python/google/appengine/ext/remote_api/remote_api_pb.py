@@ -42,6 +42,8 @@ class Request(ProtocolBuffer.ProtocolMessage):
   method_ = ""
   has_request_ = 0
   request_ = ""
+  has_request_id_ = 0
+  request_id_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -85,12 +87,26 @@ class Request(ProtocolBuffer.ProtocolMessage):
 
   def has_request(self): return self.has_request_
 
+  def request_id(self): return self.request_id_
+
+  def set_request_id(self, x):
+    self.has_request_id_ = 1
+    self.request_id_ = x
+
+  def clear_request_id(self):
+    if self.has_request_id_:
+      self.has_request_id_ = 0
+      self.request_id_ = ""
+
+  def has_request_id(self): return self.has_request_id_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_service_name()): self.set_service_name(x.service_name())
     if (x.has_method()): self.set_method(x.method())
     if (x.has_request()): self.set_request(x.request())
+    if (x.has_request_id()): self.set_request_id(x.request_id())
 
   def Equals(self, x):
     if x is self: return 1
@@ -100,6 +116,8 @@ class Request(ProtocolBuffer.ProtocolMessage):
     if self.has_method_ and self.method_ != x.method_: return 0
     if self.has_request_ != x.has_request_: return 0
     if self.has_request_ and self.request_ != x.request_: return 0
+    if self.has_request_id_ != x.has_request_id_: return 0
+    if self.has_request_id_ and self.request_id_ != x.request_id_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -123,6 +141,7 @@ class Request(ProtocolBuffer.ProtocolMessage):
     n += self.lengthString(len(self.service_name_))
     n += self.lengthString(len(self.method_))
     n += self.lengthString(len(self.request_))
+    if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
     return n + 3
 
   def ByteSizePartial(self):
@@ -136,12 +155,14 @@ class Request(ProtocolBuffer.ProtocolMessage):
     if (self.has_request_):
       n += 1
       n += self.lengthString(len(self.request_))
+    if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
     return n
 
   def Clear(self):
     self.clear_service_name()
     self.clear_method()
     self.clear_request()
+    self.clear_request_id()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -150,6 +171,9 @@ class Request(ProtocolBuffer.ProtocolMessage):
     out.putPrefixedString(self.method_)
     out.putVarInt32(34)
     out.putPrefixedString(self.request_)
+    if (self.has_request_id_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.request_id_)
 
   def OutputPartial(self, out):
     if (self.has_service_name_):
@@ -161,6 +185,9 @@ class Request(ProtocolBuffer.ProtocolMessage):
     if (self.has_request_):
       out.putVarInt32(34)
       out.putPrefixedString(self.request_)
+    if (self.has_request_id_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.request_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -174,6 +201,9 @@ class Request(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_request(d.getPrefixedString())
         continue
+      if tt == 42:
+        self.set_request_id(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -185,6 +215,7 @@ class Request(ProtocolBuffer.ProtocolMessage):
     if self.has_service_name_: res+=prefix+("service_name: %s\n" % self.DebugFormatString(self.service_name_))
     if self.has_method_: res+=prefix+("method: %s\n" % self.DebugFormatString(self.method_))
     if self.has_request_: res+=prefix+("request: %s\n" % self.DebugFormatString(self.request_))
+    if self.has_request_id_: res+=prefix+("request_id: %s\n" % self.DebugFormatString(self.request_id_))
     return res
 
 
@@ -194,20 +225,23 @@ class Request(ProtocolBuffer.ProtocolMessage):
   kservice_name = 2
   kmethod = 3
   krequest = 4
+  krequest_id = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     2: "service_name",
     3: "method",
     4: "request",
-  }, 4)
+    5: "request_id",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

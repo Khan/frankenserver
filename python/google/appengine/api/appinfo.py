@@ -246,22 +246,120 @@ OFF = 'off'
 OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
 
 
+class _VersionedLibrary(object):
+  """A versioned library supported by App Engine."""
+
+  def __init__(self,
+               name,
+               url,
+               description,
+               supported_versions,
+               default_version=None,
+               deprecated_versions=None,
+               experimental_versions=None):
+    """Initializer for _VersionedLibrary.
+
+    Args:
+      name: The name of the library e.g. "django".
+      url: The URL for the library's project page e.g.
+          "http://www.djangoproject.com/".
+      description: A short description of the library e.g. "A framework...".
+      supported_versions: A list of supported version names ordered by release
+          date e.g. ["v1", "v2", "v3"].
+      default_version: The version of the library that is enabled by default
+          in the Python 2.7 runtime or None if the library is not available by
+          default e.g. "v1".
+      deprecated_versions: A list of the versions of the library that have been
+          deprecated e.g. ["v1", "v2"].
+      experimental_versions: A list of the versions of the library that are
+          current experimental e.g. ["v1"].
+    """
+    self.name = name
+    self.url = url
+    self.description = description
+    self.supported_versions = supported_versions
+    self.default_version = default_version
+    self.deprecated_versions = deprecated_versions or []
+    self.experimental_versions = experimental_versions or []
+
+  @property
+  def non_deprecated_versions(self):
+    return [version for version in self.supported_versions
+            if version not in self.deprecated_versions]
 
 
-SUPPORTED_LIBRARIES = {
-    'django': ['1.2', '1.3'],
-    'jinja2': ['2.6'],
-    'lxml': ['2.3'],
-    'markupsafe': ['0.15'],
-    'numpy': ['1.6.1'],
-    'PIL': ['1.1.7'],
-    'PyAMF': ['0.6.1'],
-    'pycrypto': ['2.3'],
-    'setuptools': ['0.6c11'],
-    'webapp2': ['2.3', '2.5.1'],
-    'webob': ['1.1.1'],
-    'yaml': ['3.10'],
-}
+_SUPPORTED_LIBRARIES = [
+    _VersionedLibrary(
+        'django',
+        'http://www.djangoproject.com/',
+        'A full-featured web application framework for Python.',
+        ['1.2', '1.3']),
+    _VersionedLibrary(
+        'jinja2',
+        'http://jinja.pocoo.org/docs/',
+        'A modern and designer friendly templating language for Python.',
+        ['2.6']),
+    _VersionedLibrary(
+        'lxml',
+        'http://lxml.de/',
+        'A Pythonic binding for the C libraries libxml2 and libxslt.',
+        ['2.3']),
+    _VersionedLibrary(
+        'markupsafe',
+        'http://pypi.python.org/pypi/MarkupSafe',
+        'A XML/HTML/XHTML markup safe string for Python.',
+        ['0.15']),
+    _VersionedLibrary(
+        'numpy',
+        'http://numpy.scipy.org/',
+        'A general-purpose library for array-processing.',
+        ['1.6.1']),
+    _VersionedLibrary(
+        'PIL',
+        'http://www.pythonware.com/library/pil/handbook/',
+        'A library for creating and transforming images.',
+        ['1.1.7']),
+    _VersionedLibrary(
+        'PyAMF',
+        'http://www.pyamf.org/',
+        'A library that provides (AMF) Action Message Format functionality.',
+        ['0.6.1']),
+    _VersionedLibrary(
+        'pycrypto',
+        'https://www.dlitz.net/software/pycrypto/',
+        'A library of cryptogoogle.appengine._internal.graphy functions such as random number generation.',
+        ['2.3', '2.6']),
+    _VersionedLibrary(
+        'setuptools',
+        'http://pypi.python.org/pypi/setuptools',
+        'A library that provides package and module discovery capabilities.',
+        ['0.6c11']),
+    _VersionedLibrary(
+        'webapp2',
+        'http://webapp-improved.appspot.com/',
+        'A lightweight Python web framework.',
+        ['2.3', '2.5.1'],
+        default_version='2.3',
+        deprecated_versions=['2.3']
+        ),
+    _VersionedLibrary(
+        'webob',
+        'http://www.webob.org/',
+        'A library that provides wrappers around the WSGI request environment.',
+        ['1.1.1'],
+        default_version='1.1.1',
+        ),
+    _VersionedLibrary(
+        'yaml',
+        'http://www.yaml.org/',
+        'A library for YAML serialization and deserialization.',
+        ['3.10'],
+        default_version='3.10'
+        ),
+    ]
+
+_NAME_TO_SUPPORTED_LIBRARY = dict((library.name, library)
+                                  for library in _SUPPORTED_LIBRARIES)
 
 
 
@@ -269,6 +367,9 @@ REQUIRED_LIBRARIES = {
     ('jinja2', '2.6'): [('markupsafe', '0.15'), ('setuptools', '0.6c11')],
     ('jinja2', 'latest'): [('markupsafe', 'latest'), ('setuptools', 'latest')],
 }
+
+_USE_VERSION_FORMAT = ('use one of: "%s" or "latest" '
+                       '("latest" recommended for development only)')
 
 
 
@@ -1038,17 +1139,24 @@ class Library(validation.Validated):
   def CheckInitialized(self):
     """Raises if the library configuration is not valid."""
     super(Library, self).CheckInitialized()
-    if self.name not in SUPPORTED_LIBRARIES:
+    if self.name not in _NAME_TO_SUPPORTED_LIBRARY:
       raise appinfo_errors.InvalidLibraryName(
           'the library "%s" is not supported' % self.name)
+
+    supported_library = _NAME_TO_SUPPORTED_LIBRARY[self.name]
     if self.version != 'latest':
-      if self.version not in SUPPORTED_LIBRARIES[self.name]:
+      if self.version not in supported_library.supported_versions:
         raise appinfo_errors.InvalidLibraryVersion(
-            '%s version "%s" is not supported, '
-            'use one of: "%s" or "latest"' % (
+            ('%s version "%s" is not supported, ' + _USE_VERSION_FORMAT) % (
                 self.name,
                 self.version,
-                '", "'.join(SUPPORTED_LIBRARIES[self.name])))
+                '", "'.join(supported_library.non_deprecated_versions)))
+      elif self.version in supported_library.deprecated_versions:
+        logging.warning(
+            ('%s version "%s" is deprecated, ' + _USE_VERSION_FORMAT) % (
+                self.name,
+                self.version,
+                '", "'.join(supported_library.non_deprecated_versions)))
 
 
 class ServerSettings(validation.Validated):

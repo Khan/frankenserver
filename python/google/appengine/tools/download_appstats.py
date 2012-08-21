@@ -21,7 +21,7 @@
 """Script for downloading Appstats data using remote_api.
 
 Usage:
-  %prog [-s HOSTNAME] [-p PATH] [-o OUTPUTFILE] [-q] [APPID]
+  %prog [-s HOSTNAME] [-p PATH] [-o OUTPUTFILE] [-j] [-q] [-m] [APPID]
 
 If the -s HOSTNAME flag is not specified, the APPID must be specified.
 """
@@ -40,7 +40,10 @@ from google.appengine.ext.appstats import loader
 from google.appengine.ext.remote_api import remote_api_stub
 from google.appengine.tools import appengine_rpc
 
-DEFAULT_PATH = '/_ah/remote_api'
+
+
+DEFAULT_PATH_PYTHON = '/_ah/remote_api'
+DEFAULT_PATH_JAVA = '/remote_api'
 DEFAULT_FILE = 'appstats.pkl'
 
 
@@ -49,7 +52,8 @@ def auth_func():
 
 
 def download_appstats(servername, appid, path, secure,
-                      rpc_server_factory, filename, appdir, merge):
+                      rpc_server_factory, filename, appdir,
+                      merge, java_application):
   """Invoke remote_api to download appstats data."""
 
 
@@ -76,10 +80,10 @@ def download_appstats(servername, appid, path, secure,
   if not appid:
 
     appid = os.environ['APPLICATION_ID']
-  download_data(filename, merge)
+  download_data(filename, merge, java_application)
 
 
-def download_data(filename, merge):
+def download_data(filename, merge, java_application):
   """Download appstats data from memcache."""
   oldrecords = []
   oldfile = None
@@ -99,9 +103,10 @@ def download_data(filename, merge):
   if oldrecords:
 
     last_timestamp = oldrecords[0].start_timestamp_milliseconds()
-    records = loader.FromMemcache(last_timestamp)
+    records = loader.FromMemcache(filter_timestamp=last_timestamp,
+                                  java_application=java_application)
   else:
-    records = loader.FromMemcache()
+    records = loader.FromMemcache(java_application=java_application)
 
   merged_records = records + oldrecords
   try:
@@ -125,10 +130,14 @@ def main(argv):
                          'recommended. Defaults to %s.' % DEFAULT_FILE)
   parser.add_option('-p', '--path', dest='path',
                     help='The path on the server to the remote_api handler. '
-                         'Defaults to %s.' % DEFAULT_PATH)
+                         'Defaults to %s for python and %s for java. '
+                         % (DEFAULT_PATH_PYTHON, DEFAULT_PATH_JAVA))
   parser.add_option('-q', '--quiet',
                     action='store_false', dest='verbose', default=True,
                     help='do not print download status messages to stdout')
+  parser.add_option('-j', '--java',
+                    action='store_true', dest='java_application', default=False,
+                    help='set this for downloading from a java application')
   parser.add_option('-m', '--merge',
                     action='store_true', dest='merge', default=False,
                     help='if file exists, merge rather than overwrite')
@@ -153,7 +162,11 @@ def main(argv):
 
   servername = options.server
   appid = None
-  path = options.path or DEFAULT_PATH
+  if options.java_application:
+    default_path = DEFAULT_PATH_JAVA
+  else:
+    default_path = DEFAULT_PATH_PYTHON
+  path = options.path or default_path
   if args:
     if servername:
 
@@ -170,7 +183,7 @@ def main(argv):
     logging.getLogger().setLevel(logging.INFO)
   download_appstats(servername, appid, path, options.secure,
                     appengine_rpc.HttpRpcServer, options.filename,
-                    options.appdir, options.merge)
+                    options.appdir, options.merge, options.java_application)
 
 
 if __name__ == '__main__':

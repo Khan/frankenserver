@@ -3,8 +3,101 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.7.1
+===============================
+- The URLFetch API now supports multiple cookie headers.
+    http://code.google.com/p/googleappengine/issues/detail?id=3379
+- You can download 90 days worth of Usage Reports for your application from the
+  Billing History page of the Admin Console.
+- Task Queue requests now include an X-AppEngine-TaskExecutionCount that counts
+  the number of times a task was run by an instance.
+- Added support for multiple files to be deleted using the Files API.
+- Added support to delete files from Google Cloud Storage using the Files API.
+- Added a REQUEST_LOG_ID to be written in the logs and as an environment
+  variable. This can be used to later identifying that request in the
+  application logs.
+- The Memcache Viewer now supports namespaces.
+    http://code.google.com/p/googleappengine/issues/detail?id=7245
+- The Mail API now supports the following headers for outgoing mail: List-Id,
+  List-Unsubscribe, On-Behalf-Of, Resent-Date, Resent-From, Resent-To.
+    http://code.google.com/p/googleappengine/issues/detail?id=2559
+    http://code.google.com/p/googleappengine/issues/detail?id=7672
+- PyCrypto 2.6. is now supported in the Python 2.7 runtime.
+    http://code.google.com/p/googleappengine/issues/detail?id=7884
+- NDB now throws a BadProjectionError when trying to perform a projection query
+  on an unknown or unindexed property.
+- NDB Tasklets use the namespace from when it was called, not the namespace from
+  when it is performed.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=190
+- NDB Properties' string representation size is limited to the max string
+  length for Blob and Text properties.
+- Appstats provides an interactive shell for observing RPC behavior of calls
+  immediately.
+- Appstats now contains information about the cost of the RPCs made during the
+  request.
+- The Images API now supports specifying the default pixel color to fill in for
+  image types that don't support transparent images, such as JPEG.
+- We've added full asynchronous API support in the Images API.
+- Added an error to the Images API to indicate when a blob being referenced is
+  not found or not accessible.
+- Made the Python search limits public in the Search API.
+- Added namespace support for the Search API in the Python SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=7670
+- Added support in the Search API for simple sorting in the SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=7456
+- The Testbed testing framework now supports the Logservice API.
+- Added support in the Files API to list Google Cloud Storage files.
+- Improve the MapReduce File API Reader to support multiple files and file
+  formats.
+- Fixed an issue with the App Engine satisfaction survey in the Admin Console
+  which was released in 1.6.6, which will be re-enabled in this release.
+- Fixed an issue with Search API websafe cursors not being returned as a
+  websafe value.
+- Fixed an issue where SearchRequest was returning errors that weren't
+  available as search.Error subclasses.
+- Fixed an NDB issue where entities over 1000000 bytes where written to
+  memcache, causing failure.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=193
+- Fixed NDB AutoBatcher error handling.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=196
+- Fixed an issue where Appstats assuming all objects have a __class__ attribute
+  resulted in an error.
+    http://code.google.com/p/googleappengine/issues/detail?id=5668
+- Fixed an issue where there was unbalanced string quoting in Appstats
+  formatting.
+    http://code.google.com/p/googleappengine/issues/detail?id=5976
+- Fixed an issue where search indexes were not persisted in the SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=6791
+- Fixed an issue where an error in formatter.py in Appstats was being thrown.
+    http://code.google.com/p/googleappengine/issues/detail?id=7034
+- Fixed an issue in the SDK where the Search API did not support boolean queries
+  on a field.
+    http://code.google.com/p/googleappengine/issues/detail?id=7247
+- Fixed an issue where numeric and date comparators were not supported in the
+  Search API in the Python SDK.
+    http://code.google.com/p/googleappengine/issues/detail?id=7247
+- Fixed an issue where Appstats didn't show a detailed view of an RPC when using
+  the Python 2.7 runtime.
+    http://code.google.com/p/googleappengine/issues/detail?id=7558
+- Fixed a search issue where snippets failed to highlight when a capital letter
+  is used in a search term.
+    http://code.google.com/p/googleappengine/issues/detail?id=7665
+- Fixed an issue where the SDK Admin tool couldn't browse search indexes
+  containing unicode characters.
+    http://code.google.com/p/googleappengine/issues/detail?id=7791
+- Fixed an issue where traffic splitting by cookie was not working.
+    http://code.google.com/p/googleappengine/issues/detail?id=7813
+- Fixed an issue where RequestTooLargeError was being incorrectly thrown using
+  Python 2.7.
+    http://code.google.com/p/googleappengine/issues/detail?id=7820
+- Fixed a memcache race condition.
+    http://code.google.com/p/googleappengine/issues/detail?id=7864
+- Fixed a Search issue in the SDK where a query that does not match all search
+  terms resulted in divide-by-zero.
+    http://code.google.com/p/googleappengine/issues/detail?id=7943
+
 Version 1.7.0
-=============
+===============================
 - You can now configure your custom domain to serve HTTPS requests with App
   Engine. You can choose either an SNI, VIP, or SNI and VIP configuration. SNI
   costs $9/month for 5 certificates. A VIP costs $99/month.

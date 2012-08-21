@@ -34,18 +34,22 @@ else:
 class Scope(ProtocolBuffer.ProtocolMessage):
 
 
-  USER_BY_ID   =    1
+  USER_BY_CANONICAL_ID =    1
   USER_BY_EMAIL =    2
-  GROUP_BY_ID  =    3
+  GROUP_BY_CANONICAL_ID =    3
   GROUP_BY_EMAIL =    4
   GROUP_BY_DOMAIN =    5
+  ALL_USERS    =    6
+  ALL_AUTHENTICATED_USERS =    7
 
   _Type_NAMES = {
-    1: "USER_BY_ID",
+    1: "USER_BY_CANONICAL_ID",
     2: "USER_BY_EMAIL",
-    3: "GROUP_BY_ID",
+    3: "GROUP_BY_CANONICAL_ID",
     4: "GROUP_BY_EMAIL",
     5: "GROUP_BY_DOMAIN",
+    6: "ALL_USERS",
+    7: "ALL_AUTHENTICATED_USERS",
   }
 
   def Type_Name(cls, x): return cls._Type_NAMES.get(x, "")
@@ -101,30 +105,18 @@ class Scope(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_type_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: type not set.')
-    if (not self.has_value_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: value not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthVarInt64(self.type_)
-    n += self.lengthString(len(self.value_))
-    return n + 2
+    if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
+    if (self.has_value_): n += 1 + self.lengthString(len(self.value_))
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_type_):
-      n += 1
-      n += self.lengthVarInt64(self.type_)
-    if (self.has_value_):
-      n += 1
-      n += self.lengthString(len(self.value_))
+    if (self.has_type_): n += 1 + self.lengthVarInt64(self.type_)
+    if (self.has_value_): n += 1 + self.lengthString(len(self.value_))
     return n
 
   def Clear(self):
@@ -132,10 +124,12 @@ class Scope(ProtocolBuffer.ProtocolMessage):
     self.clear_value()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(8)
-    out.putVarInt32(self.type_)
-    out.putVarInt32(18)
-    out.putPrefixedString(self.value_)
+    if (self.has_type_):
+      out.putVarInt32(8)
+      out.putVarInt32(self.type_)
+    if (self.has_value_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.value_)
 
   def OutputPartial(self, out):
     if (self.has_type_):
@@ -206,20 +200,32 @@ class Entry(ProtocolBuffer.ProtocolMessage):
   Permission_Name = classmethod(Permission_Name)
 
   has_scope_ = 0
+  scope_ = None
   has_permission_ = 0
   permission_ = 0
   has_display_name_ = 0
   display_name_ = ""
 
   def __init__(self, contents=None):
-    self.scope_ = Scope()
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
-  def scope(self): return self.scope_
+  def scope(self):
+    if self.scope_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.scope_ is None: self.scope_ = Scope()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.scope_
 
-  def mutable_scope(self): self.has_scope_ = 1; return self.scope_
+  def mutable_scope(self): self.has_scope_ = 1; return self.scope()
 
-  def clear_scope(self):self.has_scope_ = 0; self.scope_.Clear()
+  def clear_scope(self):
+
+    if self.has_scope_:
+      self.has_scope_ = 0;
+      if self.scope_ is not None: self.scope_.Clear()
 
   def has_scope(self): return self.has_scope_
 
@@ -268,32 +274,20 @@ class Entry(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_scope_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: scope not set.')
-    elif not self.scope_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_permission_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: permission not set.')
+    if (self.has_scope_ and not self.scope_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(self.scope_.ByteSize())
-    n += self.lengthVarInt64(self.permission_)
+    if (self.has_scope_): n += 1 + self.lengthString(self.scope_.ByteSize())
+    if (self.has_permission_): n += 1 + self.lengthVarInt64(self.permission_)
     if (self.has_display_name_): n += 1 + self.lengthString(len(self.display_name_))
-    return n + 2
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_scope_):
-      n += 1
-      n += self.lengthString(self.scope_.ByteSizePartial())
-    if (self.has_permission_):
-      n += 1
-      n += self.lengthVarInt64(self.permission_)
+    if (self.has_scope_): n += 1 + self.lengthString(self.scope_.ByteSizePartial())
+    if (self.has_permission_): n += 1 + self.lengthVarInt64(self.permission_)
     if (self.has_display_name_): n += 1 + self.lengthString(len(self.display_name_))
     return n
 
@@ -303,11 +297,13 @@ class Entry(ProtocolBuffer.ProtocolMessage):
     self.clear_display_name()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.scope_.ByteSize())
-    self.scope_.OutputUnchecked(out)
-    out.putVarInt32(16)
-    out.putVarInt32(self.permission_)
+    if (self.has_scope_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.scope_.ByteSize())
+      self.scope_.OutputUnchecked(out)
+    if (self.has_permission_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.permission_)
     if (self.has_display_name_):
       out.putVarInt32(26)
       out.putPrefixedString(self.display_name_)
@@ -435,26 +431,20 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_owner_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: owner not set.')
     for p in self.entries_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.owner_))
+    if (self.has_owner_): n += 1 + self.lengthString(len(self.owner_))
     n += 1 * len(self.entries_)
     for i in xrange(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSize())
-    return n + 1
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_owner_):
-      n += 1
-      n += self.lengthString(len(self.owner_))
+    if (self.has_owner_): n += 1 + self.lengthString(len(self.owner_))
     n += 1 * len(self.entries_)
     for i in xrange(len(self.entries_)): n += self.lengthString(self.entries_[i].ByteSizePartial())
     return n
@@ -464,8 +454,9 @@ class AccessControlList(ProtocolBuffer.ProtocolMessage):
     self.clear_entries()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.owner_)
+    if (self.has_owner_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.owner_)
     for i in xrange(len(self.entries_)):
       out.putVarInt32(18)
       out.putVarInt32(self.entries_[i].ByteSize())
