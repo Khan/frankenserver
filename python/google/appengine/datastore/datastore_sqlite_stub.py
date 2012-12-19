@@ -138,6 +138,66 @@ INSERT OR IGNORE INTO IdSeq VALUES ('%(prefix)s', 1);
 """
 
 
+class SQLiteCursorWrapper(sqlite3.Cursor):
+  """Substitutes sqlite3.Cursor, with a cursor that logs commands.
+
+  Inherits from sqlite3.Cursor class and extends methods such as execute,
+  executemany and execute script, so it logs SQL calls.
+  """
+
+
+  def execute(self, sql, *args):
+    """Replaces execute() with a logging variant."""
+    if args:
+      parameters = []
+      for arg in args:
+        if isinstance(arg, buffer):
+          parameters.append('<blob>')
+        else:
+          parameters.append(repr(arg))
+      logging.debug('SQL Execute: %s - \n %s', sql,
+                    '\n '.join(str(param) for param in parameters))
+    else:
+      logging.debug(sql)
+    return super(SQLiteCursorWrapper, self).execute(sql, *args)
+
+  def executemany(self, sql, seq_parameters):
+    """Replaces executemany() with a logging variant."""
+    seq_parameters_list = list(seq_parameters)
+    logging.debug('SQL ExecuteMany: %s - \n %s', sql,
+                  '\n '.join(str(param) for param in seq_parameters_list))
+    return super(SQLiteCursorWrapper, self).executemany(sql,
+                                                        seq_parameters_list)
+
+
+  def executescript(self, sql):
+    """Replaces executescript() with a logging variant."""
+    logging.debug('SQL ExecuteScript: %s', sql)
+    return super(SQLiteCursorWrapper, self).executescript(sql)
+
+
+class SQLiteConnectionWrapper(sqlite3.Connection):
+  """Substitutes sqlite3.Connection with a connection that logs commands.
+
+  Inherits from sqlite3.Connection class and overrides cursor
+  replacing the default cursor with an instance of SQLiteCursorWrapper. This
+  automatically makes execute, executemany, executescript and others use the
+  SQLiteCursorWrapper.
+  """
+
+
+  def cursor(self):
+    """Substitutes standard cursor() with a SQLiteCursorWrapper to log queries.
+
+    Substitutes the standard sqlite.Cursor with SQLiteCursorWrapper to ensure
+    all cursor requests get intercepted.
+
+    Returns:
+      A SQLiteCursorWrapper Instance.
+    """
+    return super(SQLiteConnectionWrapper, self).cursor(SQLiteCursorWrapper)
+
+
 def ReferencePropertyToReference(refprop):
   ref = entity_pb.Reference()
   ref.set_app(refprop.app())
@@ -148,22 +208,61 @@ def ReferencePropertyToReference(refprop):
   return ref
 
 
-class _DedupingEntityIterator(object):
-  def __init__(self, cursor):
-    self.__cursor = cursor
-    self.__seen = set()
+def _DedupingEntityGenerator(cursor):
+  """Generator that removes duplicate entities from the results.
 
-  def __iter__(self):
-    return self
+  Generate datastore entities from a cursor, skipping the duplicates
 
-  def next(self):
-    row = self.__cursor.next()
-    while str(row[0]) in self.__seen:
-      row = self.__cursor.next()
-    self.__seen.add(str(row[0]))
-    entity = entity_pb.EntityProto(row[1])
+  Args:
+    cursor: a SQLite3.Cursor or subclass.
+
+  Yields:
+    Entities that do not share a key.
+  """
+  seen = set()
+  for row in cursor:
+    row_key, row_entity = row[:2]
+    encoded_row_key = str(row_key)
+    if encoded_row_key in seen:
+      continue
+
+    seen.add(encoded_row_key)
+    entity = entity_pb.EntityProto(row_entity)
     datastore_stub_util.PrepareSpecialPropertiesForLoad(entity)
-    return entity
+    yield entity
+
+
+def _ProjectionPartialEntityGenerator(cursor):
+  """Generator that creates partial entities for projection.
+
+  Generate partial datastore entities from a cursor, holding only the values
+  being projected. These entities might share a key.
+
+  Args:
+    cursor: a SQLite3.Cursor or subclass.
+
+  Yields:
+    Partial entities resulting from the projection.
+  """
+  for row in cursor:
+    entity_original = entity_pb.EntityProto(row[1])
+    entity = entity_pb.EntityProto()
+    entity.mutable_key().MergeFrom(entity_original.key())
+    entity.mutable_entity_group().MergeFrom(entity_original.entity_group())
+
+    for name, value_data in zip(row[2::2], row[3::2]):
+      prop_to_add = entity.add_property()
+      prop_to_add.set_name(ToUtf8(name))
+
+
+      value_decoder = sortable_pb_encoder.Decoder(
+          array.array('B', str(value_data)))
+      prop_to_add.mutable_value().Merge(value_decoder)
+      prop_to_add.set_multiple(False)
+
+    datastore_stub_util.PrepareSpecialPropertiesForLoad(entity)
+    yield entity
+
 
 def MakeEntityForQuery(query, *path):
   """Make an entity to be returned by a pseudo-kind query.
@@ -479,10 +578,20 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     self.__id_map = {}
     self.__id_lock = threading.Lock()
 
+    if self.__verbose:
+      sql_conn = SQLiteConnectionWrapper
+    else:
+      sql_conn = sqlite3.Connection
+
     self.__connection = sqlite3.connect(
         self.__datastore_file or ':memory:',
         timeout=_MAX_TIMEOUT,
-        check_same_thread=False)
+        check_same_thread=False,
+        factory=sql_conn)
+
+
+
+    self.__connection.text_factory = lambda x: unicode(x, 'utf-8', 'ignore')
 
 
     self.__connection_lock = threading.RLock()
@@ -530,7 +639,6 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     try:
       datastore_stub_util.BaseDatastore.Clear(self)
       datastore_stub_util.DatastoreStub.Clear(self)
-
       c = conn.execute(
           "SELECT tbl_name FROM sqlite_master WHERE type = 'table'")
       for row in c.fetchall():
@@ -549,6 +657,11 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     """
     pass
 
+  def Close(self):
+    """Closes the SQLite connection and releases the files."""
+    conn = self._GetConnection()
+    conn.close()
+
   @staticmethod
   def __MakeParamList(size):
     """Returns a comma separated list of sqlite substitution parameters.
@@ -562,12 +675,35 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
   @staticmethod
   def __GetEntityKind(key):
+    """Returns the kind of the Entity or Key.
+
+    It selects the kind of the last element of the entity_group element
+    list, as it contains the most specific type of the key.
+
+    Args:
+      key: A Key or EntityProto
+
+    Returns:
+      The kind of the sent Key or Entity
+    """
     if isinstance(key, entity_pb.EntityProto):
       key = key.key()
     return key.path().element_list()[-1].type()
 
   @staticmethod
   def __EncodeIndexPB(pb):
+    """Encodes a protobuf using sortable_pb_encoder to preserve entity order.
+
+    Using sortable_pb_encoder, encodes the protobuf, while using
+    the ordering semantics for the datastore, and validating for the special
+    case of uservalues ordering.
+
+    Args:
+      pb: An Entity protobuf.
+
+    Returns:
+      A buffer holding the encoded protobuf.
+    """
     if isinstance(pb, entity_pb.PropertyValue) and pb.has_uservalue():
 
       userval = entity_pb.PropertyValue()
@@ -580,9 +716,10 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     return buffer(encoder.buffer().tostring())
 
   @staticmethod
-  def __AddQueryParam(params, param):
-    params.append(param)
-    return len(params)
+  def __AddQueryParam(query_params, param):
+    """Adds a parameter to the query parameters."""
+    query_params.append(param)
+    return len(query_params)
 
   @staticmethod
   def _CreateFilterString(filter_list, params):
@@ -1016,14 +1153,23 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
     if not order_info or order_info[-1][0] != '__key__':
       orders.append(('Entities.__path__', datastore_pb.Query_Order.ASCENDING))
 
+    select_arg = 'Entities.__path__, Entities.entity '
+
+    if query.property_name_list():
+      for value_i in join_name_map.values():
+        select_arg += ', %s.name, %s.value' % (value_i, value_i)
+
     params = []
     format_args = (
+        select_arg,
         prefix,
         ' '.join(joins),
         self._CreateFilterString(filters, params),
         self.__CreateOrderString(orders))
-    query = ('SELECT Entities.__path__, Entities.entity '
-             'FROM "%s!Entities" AS Entities %s %s %s' % format_args)
+
+    query = ('SELECT %s FROM "%s!Entities" AS Entities %s %s %s' % format_args)
+
+    logging.debug(query)
     return query, params
 
   def __MergeJoinQuery(self, query, filter_info, order_info):
@@ -1119,7 +1265,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       db_cursor = conn.execute(sql_stmt, params)
       entities = (entity_pb.EntityProto(row[1]) for row in db_cursor.fetchall())
       return dict((datastore_types.ReferenceToKeyValue(entity.key()), entity)
-                   for entity in entities)
+                  for entity in entities)
     finally:
 
       self._ReleaseConnection(conn)
@@ -1129,7 +1275,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
     Args:
       conn: The SQLite connection.
-      query: A datastore_pb.Query protocol buffer.
+      query: A datastore_pb.Query protobuf.
     Returns:
       A QueryCursor object.
     """
@@ -1153,13 +1299,13 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
       sql_stmt, params = result
 
-      if self.__verbose:
-        logging.info("Executing statement '%s' with arguments %r",
-                     sql_stmt, [str(x) for x in params])
       conn = self._GetConnection()
-
       try:
-        db_cursor = _DedupingEntityIterator(conn.execute(sql_stmt, params))
+        if query.property_name_list():
+          db_cursor = _ProjectionPartialEntityGenerator(
+              conn.execute(sql_stmt, params))
+        else:
+          db_cursor = _DedupingEntityGenerator(conn.execute(sql_stmt, params))
         dsquery = datastore_stub_util._MakeQuery(query, filters, orders)
         cursor = datastore_stub_util.IteratorCursor(
             query, dsquery, orders, index_list, db_cursor)

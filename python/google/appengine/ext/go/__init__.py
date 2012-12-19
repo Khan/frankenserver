@@ -129,7 +129,7 @@ def pick_unused_port():
   raise dev_appserver.ExecuteError('could not pick an unused port')
 
 
-def gab_work_dir():
+def gab_work_dir(config, user, port):
   base = os.getenv('XDG_CACHE_HOME')
   if not base:
     if sys.platform == 'darwin':
@@ -147,7 +147,10 @@ def gab_work_dir():
 
       if e.errno != errno.EEXIST:
         raise
-  return os.path.join(base, 'dev_appserver_%s_go_app_work_dir')
+
+  app = re.sub(r'[.:]', '_', config.application)
+  return os.path.join(base,
+      'dev_appserver_%s_%s_%s_go_app_work_dir' % (app, user, port))
 
 
 def cleanup():
@@ -426,6 +429,7 @@ class GoApp:
           GO_APP_NAME, GO_HTTP_PORT, GO_API_PORT)
 
       limited_env = {
+          'GOROOT': self.goroot,
           'PWD': self.root_path,
           'TZ': 'UTC',
       }
@@ -457,7 +461,11 @@ class GoApp:
         '-dynamic',
         '-goroot', self.goroot,
         '-unsafe',
-        '-work_dir', GAB_WORK_DIR] + go_files
+        '-work_dir', GAB_WORK_DIR,
+    ]
+    if 'GOPATH' in os.environ:
+      gab_argv.extend(['-gopath', os.environ['GOPATH']])
+    gab_argv.extend(go_files)
     try:
       p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, env={})
@@ -476,13 +484,13 @@ def SigTermHandler(signum, frame):
   if OldSigTermHandler:
     OldSigTermHandler(signum, frame)
 
-def execute_go_cgi(root_path, handler_path, cgi_path, env, infile, outfile):
+def execute_go_cgi(root_path, config, handler_path, cgi_path,
+                   env, infile, outfile):
 
   global RAPI_HANDLER, GAB_WORK_DIR, GO_APP, GO_HTTP_PORT, GO_API_PORT
   global OldSigTermHandler
   if not RAPI_HANDLER:
-    user_port = '%s_%s' % (getpass.getuser(), env['SERVER_PORT'])
-    GAB_WORK_DIR = gab_work_dir() % user_port
+    GAB_WORK_DIR = gab_work_dir(config, getpass.getuser(), env['SERVER_PORT'])
     GO_HTTP_PORT = pick_unused_port()
     GO_API_PORT = pick_unused_port()
     atexit.register(cleanup)

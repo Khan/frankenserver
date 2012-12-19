@@ -79,6 +79,9 @@ _MAJOR_VERSION_ID_PATTERN = r'^(?:(?:(%s):)?)(%s)$' % (SERVER_ID_RE_STRING,
 
 _MAJOR_VERSION_ID_RE = re.compile(_MAJOR_VERSION_ID_PATTERN)
 
+_REQUEST_ID_PATTERN = r'^[\da-fA-F]+$'
+_REQUEST_ID_RE = re.compile(_REQUEST_ID_PATTERN)
+
 
 class Error(Exception):
   """Base error class for this module."""
@@ -416,13 +419,7 @@ class _LogQueryResult(object):
       self._end_time = time.time() + timeout
 
   def __iter__(self):
-    """Provides an iterator that yields log records one at a time.
-
-    This iterator yields items held locally first, and once these items have
-    been exhausted, it fetches more items via _advance() and yields them. The
-    number of items it holds is min(MAX_ITEMS_PER_FETCH, batch_size) - the
-    latter value can be provided by the user on an initial call to fetch().
-    """
+    """Provides an iterator that yields log records one at a time."""
     while True:
       for log_item in self._logs:
         yield RequestLog(log_item)
@@ -786,7 +783,7 @@ class AppLog(object):
     return self._message
 
 
-_FETCH_KWARGS = frozenset(['prototype_request', 'timeout'])
+_FETCH_KWARGS = frozenset(['prototype_request', 'timeout', 'batch_size'])
 
 
 @datastore_rpc._positional(0)
@@ -797,15 +794,14 @@ def fetch(start_time=None,
           include_incomplete=False,
           include_app_logs=False,
           version_ids=None,
-          batch_size=None,
+          request_ids=None,
           **kwargs):
   """Returns an iterator yielding an application's request and application logs.
 
   Logs will be returned by the iterator in reverse chronological order by
   request end time, or by last flush time for requests still in progress (if
-  requested).  The items yielded are
-  google.appengine.api.logservice.log_service_pb.RequestLog protocol buffer
-  objects, the contents of which are accessible via method calls.
+  requested).  The items yielded are RequestLog objects, the contents of which
+  are accessible via method calls.
 
   All parameters are optional.
 
@@ -830,8 +826,14 @@ def fetch(start_time=None,
       results, as a boolean.  Defaults to False.
     version_ids: A list of version ids whose logs should be queried against.
       Defaults to the application's current version id only.
-    batch_size: The number of log records that the iterator for this request
-      should request from the storage infrastructure at a time.
+    request_ids: If not None, indicates that instead of a time-based scan, logs
+      for the specified requests should be returned.  Malformed request IDs will
+      cause the entire request to be rejected, while any requests that are
+      unknown will be ignored. This option may not be combined with any
+      filtering options such as start_time, end_time, offset, or
+      minimum_log_level.  version_ids is ignored.  IDs that do not correspond to
+      a request log will be ignored.  Logs will be returned in the order
+      requested.
 
   Returns:
     An iterable object containing the logs that the user has queried for.
@@ -865,17 +867,6 @@ def fetch(start_time=None,
     except (TypeError, ProtocolBuffer.ProtocolBufferDecodeError):
       raise InvalidArgumentError('offset must be a string or read-only buffer')
 
-  if batch_size is not None:
-    if not isinstance(batch_size, (int, long)):
-      raise InvalidArgumentError('batch_size must be an integer')
-
-    if batch_size < 1:
-      raise InvalidArgumentError('batch_size must be greater than zero')
-
-    if batch_size > MAX_ITEMS_PER_FETCH:
-      raise InvalidArgumentError('batch_size specified is too large')
-    request.set_count(batch_size)
-
   if minimum_log_level is not None:
     if not isinstance(minimum_log_level, int):
       raise InvalidArgumentError('minimum_log_level must be an int')
@@ -906,6 +897,19 @@ def fetch(start_time=None,
 
   request.version_id_list()[:] = version_ids
 
+  if request_ids is not None:
+    if not isinstance(request_ids, list):
+      raise InvalidArgumentError('request_ids must be a list')
+    if not request_ids:
+      raise InvalidArgumentError('request_ids must not be empty')
+    if len(request_ids) != len(set(request_ids)):
+      raise InvalidArgumentError('request_ids must not contain duplicates')
+    for request_id in request_ids:
+      if not _REQUEST_ID_RE.match(request_id):
+        raise InvalidArgumentError(
+            '%s is not a valid request log id' % request_id)
+    request.request_id_list()[:] = request_ids
+
   prototype_request = kwargs.get('prototype_request')
   if prototype_request:
     if not isinstance(prototype_request, log_service_pb.LogReadRequest):
@@ -916,5 +920,17 @@ def fetch(start_time=None,
   if timeout is not None:
     if not isinstance(timeout, (float, int, long)):
       raise InvalidArgumentError('timeout must be a float or integer')
+
+  batch_size = kwargs.get('batch_size')
+  if batch_size is not None:
+    if not isinstance(batch_size, (int, long)):
+      raise InvalidArgumentError('batch_size must be an integer')
+
+    if batch_size < 1:
+      raise InvalidArgumentError('batch_size must be greater than zero')
+
+    if batch_size > MAX_ITEMS_PER_FETCH:
+      raise InvalidArgumentError('batch_size specified is too large')
+    request.set_count(batch_size)
 
   return _LogQueryResult(request, timeout=timeout)

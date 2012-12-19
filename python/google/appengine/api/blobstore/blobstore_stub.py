@@ -168,7 +168,8 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
                blob_storage,
                time_function=time.time,
                service_name='blobstore',
-               uploader_path='_ah/upload/'):
+               uploader_path='_ah/upload/',
+               request_data=None):
     """Constructor.
 
     Args:
@@ -177,8 +178,11 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       service_name: Service name expected for all calls.
       uploader_path: Path to upload handler pointed to by URLs generated
         by this service stub.
+      request_data: A apiproxy_stub.RequestData instance used to look up state
+        associated with the request that generated an API call.
     """
-    super(BlobstoreServiceStub, self).__init__(service_name)
+    super(BlobstoreServiceStub, self).__init__(service_name,
+                                               request_data=request_data)
     self.__storage = blob_storage
     self.__time_function = time_function
     self.__next_session_id = 1
@@ -353,11 +357,11 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_CreateEncodedGoogleStorageKey(self, request, response,
                                              unused_request_id):
-    """Create an encoded blob key that represents a bigstore file.
+    """Create an encoded blob key that represents a Google Storage file.
 
-    For now we'll just base64 encode the bigstore filename, APIs that accept
-    encoded blob keys will need to be able to support Google Storage files or
-    blobstore files based on decoding this key.
+    For now we'll just base64 encode the Google Storage filename, APIs that
+    accept encoded blob keys will need to be able to support Google Storage
+    files or blobstore files based on decoding this key.
 
     Args:
       request: A fully-initialized CreateEncodedGoogleStorageKeyRequest

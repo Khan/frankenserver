@@ -6187,6 +6187,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
   first_try_usec_ = 0
   has_tag_ = 0
   tag_ = ""
+  has_execution_count_ = 0
+  execution_count_ = 0
 
   def __init__(self, contents=None):
     self.header_ = []
@@ -6428,6 +6430,19 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
 
   def has_tag(self): return self.has_tag_
 
+  def execution_count(self): return self.execution_count_
+
+  def set_execution_count(self, x):
+    self.has_execution_count_ = 1
+    self.execution_count_ = x
+
+  def clear_execution_count(self):
+    if self.has_execution_count_:
+      self.has_execution_count_ = 0
+      self.execution_count_ = 0
+
+  def has_execution_count(self): return self.has_execution_count_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6447,6 +6462,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (x.has_retry_parameters()): self.mutable_retry_parameters().MergeFrom(x.retry_parameters())
     if (x.has_first_try_usec()): self.set_first_try_usec(x.first_try_usec())
     if (x.has_tag()): self.set_tag(x.tag())
+    if (x.has_execution_count()): self.set_execution_count(x.execution_count())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6483,6 +6499,8 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if self.has_first_try_usec_ and self.first_try_usec_ != x.first_try_usec_: return 0
     if self.has_tag_ != x.has_tag_: return 0
     if self.has_tag_ and self.tag_ != x.tag_: return 0
+    if self.has_execution_count_ != x.has_execution_count_: return 0
+    if self.has_execution_count_ and self.execution_count_ != x.execution_count_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6526,6 +6544,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_retry_parameters_): n += 2 + self.lengthString(self.retry_parameters_.ByteSize())
     if (self.has_first_try_usec_): n += 2 + self.lengthVarInt64(self.first_try_usec_)
     if (self.has_tag_): n += 2 + self.lengthString(len(self.tag_))
+    if (self.has_execution_count_): n += 2 + self.lengthVarInt64(self.execution_count_)
     return n + 3
 
   def ByteSizePartial(self):
@@ -6553,6 +6572,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_retry_parameters_): n += 2 + self.lengthString(self.retry_parameters_.ByteSizePartial())
     if (self.has_first_try_usec_): n += 2 + self.lengthVarInt64(self.first_try_usec_)
     if (self.has_tag_): n += 2 + self.lengthString(len(self.tag_))
+    if (self.has_execution_count_): n += 2 + self.lengthVarInt64(self.execution_count_)
     return n
 
   def Clear(self):
@@ -6572,6 +6592,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     self.clear_retry_parameters()
     self.clear_first_try_usec()
     self.clear_tag()
+    self.clear_execution_count()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(18)
@@ -6624,6 +6645,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_tag_):
       out.putVarInt32(202)
       out.putPrefixedString(self.tag_)
+    if (self.has_execution_count_):
+      out.putVarInt32(208)
+      out.putVarInt32(self.execution_count_)
 
   def OutputPartial(self, out):
     if (self.has_task_name_):
@@ -6679,6 +6703,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
     if (self.has_tag_):
       out.putVarInt32(202)
       out.putPrefixedString(self.tag_)
+    if (self.has_execution_count_):
+      out.putVarInt32(208)
+      out.putVarInt32(self.execution_count_)
 
   def TryMerge(self, d):
     while 1:
@@ -6738,6 +6765,9 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       if tt == 202:
         self.set_tag(d.getPrefixedString())
         continue
+      if tt == 208:
+        self.set_execution_count(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6781,6 +6811,7 @@ class TaskQueueQueryTasksResponse_Task(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_first_try_usec_: res+=prefix+("first_try_usec: %s\n" % self.DebugFormatInt64(self.first_try_usec_))
     if self.has_tag_: res+=prefix+("tag: %s\n" % self.DebugFormatString(self.tag_))
+    if self.has_execution_count_: res+=prefix+("execution_count: %s\n" % self.DebugFormatInt32(self.execution_count_))
     return res
 
 class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
@@ -6903,6 +6934,7 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
   kTaskretry_parameters = 23
   kTaskfirst_try_usec = 24
   kTasktag = 25
+  kTaskexecution_count = 26
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6931,7 +6963,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     23: "retry_parameters",
     24: "first_try_usec",
     25: "tag",
-  }, 25)
+    26: "execution_count",
+  }, 26)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6960,7 +6993,8 @@ class TaskQueueQueryTasksResponse(ProtocolBuffer.ProtocolMessage):
     23: ProtocolBuffer.Encoder.STRING,
     24: ProtocolBuffer.Encoder.NUMERIC,
     25: ProtocolBuffer.Encoder.STRING,
-  }, 25, ProtocolBuffer.Encoder.MAX_TYPE)
+    26: ProtocolBuffer.Encoder.NUMERIC,
+  }, 26, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

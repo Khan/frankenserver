@@ -78,7 +78,7 @@ LE=8
 
 class ExpressionLexer(Lexer):
 
-    grammarFileName = "blaze-out/host/genfiles/apphosting/api/search/genantlr/Expression.g"
+    grammarFileName = ""
     antlr_version = version_str_to_tuple("3.1.1")
     antlr_version_str = "3.1.1"
 

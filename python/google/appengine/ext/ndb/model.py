@@ -283,6 +283,7 @@ __author__ = 'guido@google.com (Guido van Rossum)'
 import copy
 import cPickle as pickle
 import datetime
+import logging
 import zlib
 
 from .google_imports import datastore_errors
@@ -339,7 +340,7 @@ class ReadonlyPropertyError(datastore_errors.Error):
 
 
 class ComputedPropertyError(ReadonlyPropertyError):
-  """Raised when attempting to set a value to a computed property."""
+  """Raised when attempting to set a value to or delete a computed property."""
 
 
 # Various imported limits.
@@ -1339,6 +1340,16 @@ class Property(ModelAttribute):
     Property subclasses can override this if they want the dictionary
     returned by entity._to_dict() to contain a different value.  The
     main use case is StructuredProperty and LocalStructuredProperty.
+
+    NOTES:
+
+    - If you override _get_for_dict() to return a different type, you
+      must override _validate() to accept values of that type and
+      convert them back to the original type.
+
+    - If you override _get_for_dict(), you must handle repeated values
+      and None correctly.  (See _StructuredGetForDictMixin for an
+      example.)  However, _validate() does not need to handle these.
     """
     return self._get_value(entity)
 
@@ -1668,6 +1679,17 @@ class PickleProperty(BlobProperty):
 
 class JsonProperty(BlobProperty):
   """A property whose value is any Json-encodable Python object."""
+
+  _json_type = None
+
+  @utils.positional(1 + BlobProperty._positional)
+  def __init__(self, name=None, compressed=False, json_type=None, **kwds):
+    super(JsonProperty, self).__init__(name=name, compressed=compressed, **kwds)
+    self._json_type = json_type
+
+  def _validate(self, value):
+    if self._json_type is not None and not isinstance(value, self._json_type):
+      raise TypeError('JSON property must be a %s' % self._json_type)
 
   # Use late import so the dependency is optional.
 
@@ -2006,6 +2028,13 @@ class _StructuredGetForDictMixin(Property):
   The behavior here is that sub-entities are converted to dictionaries
   by calling to_dict() on them (also doing the right thing for
   repeated properties).
+
+  NOTE: Even though the _validate() method in StructuredProperty and
+  LocalStructuredProperty are identical, they cannot be moved into
+  this shared base class.  The reason is subtle: _validate() is not a
+  regular method, but treated specially by _call_to_base_type() and
+  _call_shallow_validation(), and the class where it occurs matters
+  if it also defines _to_base_type().
   """
 
   def _get_for_dict(self, entity):
@@ -2134,6 +2163,9 @@ class StructuredProperty(_StructuredGetForDictMixin):
   IN = _IN
 
   def _validate(self, value):
+    if isinstance(value, dict):
+      # A dict is assumed to be the result of a _to_dict() call.
+      return self._modelclass(**value)
     if not isinstance(value, self._modelclass):
       raise datastore_errors.BadValueError('Expected %s instance, got %r' %
                                            (self._modelclass.__name__, value))
@@ -2211,9 +2243,24 @@ class StructuredProperty(_StructuredGetForDictMixin):
     next = parts[depth]
     rest = parts[depth + 1:]
     prop = self._modelclass._properties.get(next)
+    prop_is_fake = False
     if prop is None:
-      raise RuntimeError('Unable to find property %s of StructuredProperty %s.'
-                         % (next, self._name))
+      # Synthesize a fake property.  (We can't use Model._fake_property()
+      # because we need the property before we can determine the subentity.)
+      if rest:
+        # TODO: Handle this case, too.
+        logging.warn('Skipping unknown structured subproperty (%s) '
+                     'in repeated structured property (%s of %s)',
+                     name, self._name, entity.__class__.__name__)
+        return
+      # TODO: Figure out the value for indexed.  Unfortunately we'd
+      # need this passed in from _from_pb(), which would mean a
+      # signature change for _deserialize(), which might break valid
+      # end-user code that overrides it.
+      compressed = p.meaning_uri() == _MEANING_URI_COMPRESSED
+      prop = GenericProperty(next, compressed=compressed)
+      prop._code_name = next
+      prop_is_fake = True
 
     values = self._get_base_value_unwrapped_as_list(entity)
     # Find the first subentity that doesn't have a value for this
@@ -2232,6 +2279,12 @@ class StructuredProperty(_StructuredGetForDictMixin):
       subentity = self._modelclass()
       values = self._retrieve_value(entity)
       values.append(_BaseValue(subentity))
+    if prop_is_fake:
+      # Add the synthetic property to the subentity's _properties
+      # dict, so that it will be correctly deserialized.
+      # (See Model._fake_property() for comparison.)
+      subentity._clone_properties()
+      subentity._properties[prop._name] = prop
     prop._deserialize(subentity, p, depth + 1)
 
   def _prepare_for_put(self, entity):
@@ -2286,6 +2339,9 @@ class LocalStructuredProperty(_StructuredGetForDictMixin, BlobProperty):
     self._keep_keys = keep_keys
 
   def _validate(self, value):
+    if isinstance(value, dict):
+      # A dict is assumed to be the result of a _to_dict() call.
+      return self._modelclass(**value)
     if not isinstance(value, self._modelclass):
       raise datastore_errors.BadValueError('Expected %s instance, got %r' %
                                            (self._modelclass.__name__, value))
@@ -2528,6 +2584,9 @@ class ComputedProperty(GenericProperty):
   def _set_value(self, entity, value):
     raise ComputedPropertyError("Cannot assign to a ComputedProperty")
 
+  def _delete_value(self, entity):
+    raise ComputedPropertyError("Cannot delete a ComputedProperty")
+
   def _get_value(self, entity):
     # About projections and computed properties: if the computed
     # property itself is in the projection, don't recompute it; this
@@ -2632,6 +2691,8 @@ class Model(_NotEqualMixin):
     through the constructor, but can be assigned to entity attributes
     after the entity has been created.
     """
+    if len(args) > 1:
+      raise TypeError('Model constructor takes no positional arguments.')
     (self,) = args
     get_arg = self.__get_arg
     key = get_arg(kwds, 'key')
@@ -2758,6 +2819,27 @@ class Model(_NotEqualMixin):
     return cls.__name__
 
   @classmethod
+  def _class_name(cls):
+    """A hook for polymodel to override.
+
+    For regular models and expandos this is just an alias for
+    _get_kind().  For PolyModel subclasses, it returns the class name
+    (as set in the 'class' attribute thereof), whereas _get_kind()
+    returns the kind (the class name of the root class of a specific
+    PolyModel hierarchy).
+    """
+    return cls._get_kind()
+
+  @classmethod
+  def _default_filters(cls):
+    """Return an iterable of filters that are always to be applied.
+
+    This is used by PolyModel to quietly insert a filter for the
+    current class name.
+    """
+    return ()
+
+  @classmethod
   def _reset_kind_map(cls):
     """Clear the kind map.  Useful for testing."""
     # Preserve "system" kinds, like __namespace__
@@ -2798,7 +2880,7 @@ class Model(_NotEqualMixin):
       raise NotImplementedError('Cannot compare different model classes. '
                                 '%s is not %s' % (self.__class__.__name__,
                                                   other.__class_.__name__))
-    if self._projection != other._projection:
+    if set(self._projection) != set(other._projection):
       return False
     # It's all about determining inequality early.
     if len(self._properties) != len(other._properties):
@@ -3080,8 +3162,8 @@ class Model(_NotEqualMixin):
     # TODO: Disallow non-empty args and filter=.
     from .query import Query  # Import late to avoid circular imports.
     qry = Query(kind=cls._get_kind(), **kwds)
-    if args:
-      qry = qry.filter(*args)
+    qry = qry.filter(*cls._default_filters())
+    qry = qry.filter(*args)
     return qry
   query = _query
 
@@ -3089,7 +3171,7 @@ class Model(_NotEqualMixin):
   def _gql(cls, query_string, *args, **kwds):
     """Run a GQL query."""
     from .query import gql  # Import late to avoid circular imports.
-    return gql('SELECT * FROM %s %s' % (cls._get_kind(), query_string),
+    return gql('SELECT * FROM %s %s' % (cls._class_name(), query_string),
                *args, **kwds)
   gql = _gql
 
@@ -3373,6 +3455,8 @@ class Expando(Model):
     self._clone_properties()
     if isinstance(value, Model):
       prop = StructuredProperty(Model, name)
+    elif isinstance(value, dict):
+      prop = StructuredProperty(Expando, name)
     else:
       repeated = isinstance(value, list)
       indexed = self._default_indexed

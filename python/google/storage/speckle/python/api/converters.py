@@ -80,6 +80,11 @@ def Any2Str(arg):
   return str(arg)
 
 
+
+
+Thing2Literal = Any2Str
+
+
 @SwallowArgs
 def Bool2Str(arg):
   return str(arg).lower()

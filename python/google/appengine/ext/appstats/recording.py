@@ -150,6 +150,10 @@ class ConfigDefaults(object):
   CHANNEL_CREATE_COST = _to_micropennies_per_op(1, 100)
 
 
+
+  CHANNEL_PRESENCE_COST = _to_micropennies_per_op(10, 100000)
+
+
   XMPP_STANZA_COST = _to_micropennies_per_op(10, 100000)
 
 
@@ -520,6 +524,10 @@ class Recorder(object):
       trace.set_call_cost_microdollars(config.CHANNEL_CREATE_COST)
       _add_billed_op_to_trace(trace, 1,
                               datamodel_pb.BilledOpProto.CHANNEL_OPEN)
+    elif call == 'GetPresence':
+      trace.set_call_cost_microdollars(config.CHANNEL_PRESENCE_COST)
+      _add_billed_op_to_trace(trace, 1,
+                              datamodel_pb.BilledOpProto.CHANNEL_PRESENCE)
 
   def record_mail_details(self, call, request, trace):
     """Records information relating to mail RPCs.
@@ -700,7 +708,7 @@ class Recorder(object):
           frame.clear_variables()
       full_encoded = proto.Encode()
       if len(full_encoded) <= memcache.MAX_VALUE_SIZE:
-        logging.warn('Full proto too large to save, cleared variables.')
+        logging.info('Full proto too large to save, cleared variables.')
         return part_encoded, full_encoded
     if config.MAX_STACK > 0:
 
@@ -708,10 +716,10 @@ class Recorder(object):
         trace.clear_call_stack()
       full_encoded = proto.Encode()
       if len(full_encoded) <= memcache.MAX_VALUE_SIZE:
-        logging.warn('Full proto way too large to save, cleared frames.')
+        logging.info('Full proto way too large to save, cleared frames.')
         return part_encoded, full_encoded
 
-    logging.warn('Full proto WAY too large to save, clipped to 100 traces.')
+    logging.info('Full proto WAY too large to save, clipped to 100 traces.')
     del proto.individual_stats_list()[100:]
     full_encoded = proto.Encode()
     return part_encoded, full_encoded
@@ -735,32 +743,6 @@ class Recorder(object):
     proto = self.get_summary_proto()
     self.add_full_info_to_proto(proto)
     return StatsProto(proto)
-
-  def json(self):
-    """Return a JSON-ifyable representation of the pertinent data.
-
-    This is for FirePython/FireLogger so we must limit the volume by
-    omitting stack traces and environment.  Also, times and megacycles
-    are converted to integers representing milliseconds.
-    """
-    traces = []
-    with self._lock:
-      for t in self.traces:
-        d = {'start': t.start_offset_milliseconds(),
-             'call': t.service_call_name(),
-             'request': t.request_data_summary(),
-             'response': t.response_data_summary(),
-             'duration': t.duration_milliseconds(),
-             'api': 0,
-             }
-        traces.append(d)
-    data = {
-      'start': int(self.start_timestamp * 1000),
-      'duration': int((self.end_timestamp - self.start_timestamp) * 1000),
-      'overhead': int(self.overhead * 1000),
-      'traces': traces,
-      }
-    return data
 
   def get_summary_proto_encoded(self):
     """Return a string representing a summary an encoded protobuf.
@@ -833,7 +815,7 @@ class Recorder(object):
       An integer expressing megacycles.
     """
     warnings.warn('get_total_api_mcycles does not return a meaningful value',
-                  DeprecationWarning,
+                  UserWarning,
                   stacklevel=2)
     return 0
 
@@ -1094,20 +1076,20 @@ class StatsProto(object):
       An integer expressing milliseconds.
     """
     warnings.warn('api_milliseconds does not return a meaningful value',
-                  DeprecationWarning,
+                  UserWarning,
                   stacklevel=2)
     return 0
 
   def processor_mcycles(self):
     warnings.warn('processor_mcycles does not return correct values',
-                  DeprecationWarning,
+                  UserWarning,
                   stacklevel=2)
     return self._proto.processor_mcycles()
 
   def processor_milliseconds(self):
     """Return an int giving .processor_mcycles() converted to milliseconds."""
     warnings.warn('processor_milliseconds does not return correct values',
-                  DeprecationWarning,
+                  UserWarning,
                   stacklevel=2)
     return mcycles_to_msecs(self._proto.processor_mcycles())
 
@@ -1200,7 +1182,8 @@ def load_full_proto(timestamp, java_application=False):
     full_key = '"' + full_key + '"'
   full_binary = memcache.get(full_key, namespace=config.KEY_NAMESPACE)
   if full_binary is None:
-    logging.info('No full record at %s', full_key)
+
+    logging.debug('No full record at %s', full_key)
     return None
   try:
     full = StatsProto(full_binary)
@@ -1208,8 +1191,9 @@ def load_full_proto(timestamp, java_application=False):
     logging.warn('Bad full record at %s: %s', full_key, err)
     return None
   if full.start_timestamp_milliseconds() != int(timestamp * 1000):
-    logging.warn('Hash collision, record at %d has timestamp %d',
-                 int(timestamp * 1000), full.start_timestamp_milliseconds())
+
+    logging.debug('Hash collision, record at %d has timestamp %d',
+                  int(timestamp * 1000), full.start_timestamp_milliseconds())
     return None
   return full
 
@@ -1227,10 +1211,6 @@ class AppstatsDjangoMiddleware(object):
   recorded if that middleware is invoked before this middleware.
 
   See http://docs.djangoproject.com/en/dev/topics/http/middleware/.
-
-  Special note for FirePython users: when combining FirePython and
-  Appstats through Django middleware, place the FirePython middleware
-  first.  IOW FirePython must wrap Appstats, not the other way around.
   """
 
   def process_request(self, request):
@@ -1239,11 +1219,7 @@ class AppstatsDjangoMiddleware(object):
 
   def process_response(self, request, response):
     """Called by Django just before returning a response."""
-    firepython_set_extension_data = getattr(
-      request,
-      'firepython_set_extension_data',
-      None)
-    end_recording(response.status_code, firepython_set_extension_data)
+    end_recording(response.status_code)
     return response
 
 
@@ -1282,7 +1258,6 @@ def appstats_wsgi_middleware(app):
     start_recording(environ)
     save_status = [None]
 
-    firepython_set_extension_data = environ.get('firepython.set_extension_data')
 
 
     datamodel_pb.AggregateRpcStatsProto.total_billed_ops_str = (
@@ -1308,7 +1283,7 @@ def appstats_wsgi_middleware(app):
     try:
       result = app(environ, appstats_start_response)
     except Exception:
-      end_recording(500, firepython_set_extension_data)
+      end_recording(500)
       raise
     if result is not None:
       for value in result:
@@ -1316,7 +1291,7 @@ def appstats_wsgi_middleware(app):
     status = save_status[-1]
     if status is not None:
       status = status[:3]
-    end_recording(status, firepython_set_extension_data)
+    end_recording(status)
 
   return appstats_wsgi_wrapper
 
@@ -1430,9 +1405,9 @@ def end_recording(status, firepython_set_extension_data=None):
 
   Args:
     status: HTTP Status, a 3-digit integer.
-    firepython_set_extension_data: Optional function to be called
-      to pass the recorded data to FirePython.
   """
+  if firepython_set_extension_data is not None:
+    warnings.warn('Firepython is no longer supported')
   rec = recorder_proxy.get_for_current_request()
   recorder_proxy.clear_for_current_request()
   if config.DEBUG:
@@ -1441,16 +1416,6 @@ def end_recording(status, firepython_set_extension_data=None):
     try:
       rec.record_http_status(status)
       rec.save()
-
-
-
-
-
-      if (firepython_set_extension_data and
-          (os.getenv('SERVER_SOFTWARE', '').startswith('Dev') or
-           users.is_current_user_admin())):
-        logging.info('Passing data to firepython')
-        firepython_set_extension_data('appengine_appstats', rec.json())
     finally:
       memcache.delete(lock_key(), namespace=config.KEY_NAMESPACE)
 

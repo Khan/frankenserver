@@ -116,6 +116,7 @@ THREAD_SAFE_SERVICES = frozenset((
     'conversion',
     'mail',
     'memcache',
+    'remote_socket',
     'urlfetch',
     'user',
     'xmpp',

@@ -652,6 +652,11 @@ class CloseConnectionResponse(_message.Message):
 
 
 
+DESCRIPTOR.has_options = True
+DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), '\n\033com.google.protos.cloud.sql\020\002 \002(\002P\001xd\200\001\000\210\001\000\220\001\000')
+_EXECOPRESPONSE.fields_by_name['cached_payload'].has_options = True
+_EXECOPRESPONSE.fields_by_name['cached_payload']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), '\010\001')
+
 
 class _SqlService_ClientBaseStub(_client_stub_base_class):
   """Makes Stubby RPC calls to a SqlService server."""

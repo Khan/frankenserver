@@ -108,6 +108,12 @@ Options:
                              (Default '%(task_retry_seconds)s')
   --use_sqlite               Use the new, SQLite based datastore stub.
                              (Default false)
+  --port_sqlite_data         Converts the data from the file based datastore
+                             stub to the new SQLite stub, one time use only.
+                             (Default false)
+  --[enable|disable]_console Enables/disables the interactive console.
+                             (Default enabled if --address is unset,
+                              disabled if --address is set)
 """
 
 
@@ -193,6 +199,7 @@ ARG_MULTIPROCESS_API_SERVER = multiprocess.ARG_MULTIPROCESS_API_SERVER
 ARG_MULTIPROCESS_APP_INSTANCE_ID = multiprocess.ARG_MULTIPROCESS_APP_INSTANCE_ID
 ARG_MULTIPROCESS_BACKEND_ID = multiprocess.ARG_MULTIPROCESS_BACKEND_ID
 ARG_MULTIPROCESS_BACKEND_INSTANCE_ID = multiprocess.ARG_MULTIPROCESS_BACKEND_INSTANCE_ID
+ARG_MULTIPROCESS_FRONTEND_PORT = multiprocess.ARG_MULTIPROCESS_FRONTEND_PORT
 ARG_MULTIPROCESS_MIN_PORT = multiprocess.ARG_MULTIPROCESS_MIN_PORT
 ARG_MYSQL_HOST = 'mysql_host'
 ARG_MYSQL_PASSWORD = 'mysql_password'
@@ -216,6 +223,8 @@ ARG_TASK_RETRY_SECONDS = 'task_retry_seconds'
 
 ARG_TRUSTED = 'trusted'
 ARG_USE_SQLITE = 'use_sqlite'
+ARG_PORT_SQLITE_DATA = 'port_sqlite_data'
+ARG_CONSOLE = 'console'
 
 
 SDK_PATH = os.path.dirname(
@@ -273,6 +282,7 @@ DEFAULT_ARGS = {
   ARG_TASK_RETRY_SECONDS: 30,
   ARG_TRUSTED: False,
   ARG_USE_SQLITE: False,
+  ARG_PORT_SQLITE_DATA: False
 }
 
 
@@ -306,6 +316,7 @@ LONG_OPTIONS = [
     'multiprocess_app_instance_id=',
     'multiprocess_backend_id=',
     'multiprocess_backend_instance_id=',
+    'multiprocess_frontend_port=',
     'multiprocess_min_port=',
     'mysql_host=',
     'mysql_password=',
@@ -325,6 +336,9 @@ LONG_OPTIONS = [
     'task_retry_seconds=',
     'trusted',
     'use_sqlite',
+    'port_sqlite_data',
+    'enable_console',
+    'disable_console',
 ]
 
 
@@ -402,6 +416,9 @@ def ParseArguments(argv):
 
     if option == '--use_sqlite':
       option_dict[ARG_USE_SQLITE] = True
+
+    if option == '--port_sqlite_data':
+      option_dict[ARG_PORT_SQLITE_DATA] = True
 
     if option == '--high_replication':
       option_dict[ARG_HIGH_REPLICATION] = True
@@ -506,10 +523,19 @@ def ParseArguments(argv):
       option_dict[ARG_MULTIPROCESS_BACKEND_ID] = value
     if option == '--multiprocess_backend_instance_id':
       option_dict[ARG_MULTIPROCESS_BACKEND_INSTANCE_ID] = value
+    if option == '--multiprocess_frontend_port':
+      option_dict[ARG_MULTIPROCESS_FRONTEND_PORT] = value
 
     if option == '--default_partition':
       option_dict[ARG_DEFAULT_PARTITION] = value
 
+    if option == '--enable_console':
+      option_dict[ARG_CONSOLE] = True
+    if option == '--disable_console':
+      option_dict[ARG_CONSOLE] = False
+
+  option_dict.setdefault(ARG_CONSOLE,
+                         option_dict[ARG_ADDRESS] == DEFAULT_ARGS[ARG_ADDRESS])
   return args, option_dict
 
 
@@ -627,6 +653,9 @@ def main(argv):
                            version_tuple[0], version_tuple[1],
                            expected_version[0], expected_version[1]))
 
+  if appinfo.runtime == 'python':
+    appcfg.MigratePython27Notice()
+
   multiprocess.Init(argv, option_dict, root_path, appinfo)
   dev_process = multiprocess.GlobalProcess()
   port = option_dict[ARG_PORT]
@@ -636,6 +665,7 @@ def main(argv):
   static_caching = option_dict[ARG_STATIC_CACHING]
   persist_logs = option_dict[ARG_PERSIST_LOGS]
   skip_sdk_update_check = option_dict[ARG_SKIP_SDK_UPDATE_CHECK]
+  interactive_console = option_dict[ARG_CONSOLE]
 
   if (option_dict[ARG_ADMIN_CONSOLE_SERVER] != '' and
       not dev_process.IsSubprocess()):
@@ -653,7 +683,9 @@ def main(argv):
     logging.getLogger().setLevel(logging.WARNING)
 
   try:
-    dev_appserver.SetupStubs(appinfo.application, **option_dict)
+    dev_appserver.SetupStubs(appinfo.application,
+                             _use_atexit_for_datastore_stub=True,
+                             **option_dict)
   except:
     exc_type, exc_value, exc_traceback = sys.exc_info()
     logging.error(str(exc_type) + ': ' + str(exc_value))
@@ -661,6 +693,9 @@ def main(argv):
           exc_type, exc_value, exc_traceback)))
     return 1
 
+  frontend_port=option_dict.get(ARG_MULTIPROCESS_FRONTEND_PORT, None)
+  if frontend_port is not None:
+    frontend_port = int(frontend_port)
   http_server = dev_appserver.CreateServer(
       root_path,
       login_url,
@@ -670,7 +705,9 @@ def main(argv):
       allow_skipped_files=allow_skipped_files,
       static_caching=static_caching,
       default_partition=default_partition,
-      persist_logs=persist_logs)
+      persist_logs=persist_logs,
+      frontend_port=frontend_port,
+      interactive_console=interactive_console)
 
   signal.signal(signal.SIGTERM, SigTermHandler)
 

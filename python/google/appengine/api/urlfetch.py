@@ -355,27 +355,57 @@ def _get_fetch_result(rpc):
   """
   assert rpc.service == 'urlfetch', repr(rpc.service)
   assert rpc.method == 'Fetch', repr(rpc.method)
+
+  url = rpc.request.url()
+
   try:
     rpc.check_success()
   except apiproxy_errors.ApplicationError, err:
+    error_detail = ''
+    if err.error_detail:
+      error_detail = ' Error: ' + err.error_detail
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL):
-      raise InvalidURLError(str(err))
+      raise InvalidURLError(
+          'Invalid request URL: ' + url + error_detail)
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.CLOSED):
+      raise ConnectionClosedError(
+          'Connection closed unexpectedly by server at URL: ' + url)
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.TOO_MANY_REDIRECTS):
+      raise TooManyRedirectsError(
+          'Too many redirects at URL: ' + url + ' with redirect=true')
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.MALFORMED_REPLY):
+      raise MalformedReplyError(
+          'Malformed HTTP reply received from server at URL: '
+          + url + error_detail)
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.INTERNAL_TRANSIENT_ERROR):
+      raise InteralTransientError(
+          'Temporary error in fetching URL: ' + url + ', please re-try')
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.DNS_ERROR):
+      raise DNSLookupFailedError('DNS lookup failed for URL: ' + url)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.UNSPECIFIED_ERROR):
-      raise DownloadError(str(err))
+      raise DownloadError("Unspecified error in fetching URL: "
+                          + url + error_detail)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.FETCH_ERROR):
-      raise DownloadError(str(err))
+      raise DownloadError("Unable to fetch URL: " + url + error_detail)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.RESPONSE_TOO_LARGE):
-      raise ResponseTooLargeError(None)
+      raise ResponseTooLargeError('HTTP response too large from URL: ' + url)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.DEADLINE_EXCEEDED):
-      raise DeadlineExceededError(str(err))
+      raise DeadlineExceededError(
+          'Deadline exceeded while waiting for HTTP response from URL: ' + url)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.SSL_CERTIFICATE_ERROR):
-      raise SSLCertificateError(str(err))
+      raise SSLCertificateError(
+        'Invalid and/or missing SSL certificate for URL: ' + url)
     raise err
 
   response = rpc.response

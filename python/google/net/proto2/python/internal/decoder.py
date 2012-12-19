@@ -369,6 +369,14 @@ def StringDecoder(field_number, is_repeated, is_packed, key, new_default):
   local_DecodeVarint = _DecodeVarint
   local_unicode = unicode
 
+  def _ConvertToUnicode(byte_str):
+    try:
+      return local_unicode(byte_str, 'utf-8')
+    except UnicodeDecodeError, e:
+
+      e.reason = '%s in field: %s' % (e, key.full_name)
+      raise
+
   assert not is_packed
   if is_repeated:
     tag_bytes = encoder.TagBytes(field_number,
@@ -383,7 +391,7 @@ def StringDecoder(field_number, is_repeated, is_packed, key, new_default):
         new_pos = pos + size
         if new_pos > end:
           raise _DecodeError('Truncated string.')
-        value.append(local_unicode(buffer[pos:new_pos], 'utf-8'))
+        value.append(_ConvertToUnicode(buffer[pos:new_pos]))
 
         pos = new_pos + tag_len
         if buffer[new_pos:pos] != tag_bytes or new_pos == end:
@@ -396,7 +404,7 @@ def StringDecoder(field_number, is_repeated, is_packed, key, new_default):
       new_pos = pos + size
       if new_pos > end:
         raise _DecodeError('Truncated string.')
-      field_dict[key] = local_unicode(buffer[pos:new_pos], 'utf-8')
+      field_dict[key] = _ConvertToUnicode(buffer[pos:new_pos])
       return new_pos
     return DecodeField
 

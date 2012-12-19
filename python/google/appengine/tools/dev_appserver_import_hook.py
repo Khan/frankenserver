@@ -31,8 +31,6 @@ import os
 import pickle
 import random
 import re
-import select
-import socket
 import sys
 import urllib
 
@@ -48,10 +46,7 @@ except ImportError:
 
 
 from google.appengine import dist
-try:
-  from google.appengine import dist27
-except ImportError:
-  dist27 = None
+from google.appengine import dist27 as dist27
 
 from google.appengine.api import appinfo
 
@@ -125,42 +120,17 @@ def FakeUTime(path, times):
   raise OSError(errno.EPERM, "Operation not permitted", path)
 
 
-def FakeGetHostByAddr(addr):
-  """Fake version of socket.gethostbyaddr."""
-  raise NotImplementedError()
-
-
-def FakeGetProtoByName(protocolname):
-  """Fake version of socket.getprotobyname."""
-  raise NotImplementedError()
-
-
-def FakeGetServByPort(portnumber, protocolname=None):
-  """Fake version of socket.getservbyport."""
-  raise NotImplementedError()
-
-
-def FakeGetNameInfo(sockaddr, flags):
-  """Fake version of socket.getnameinfo."""
-  raise NotImplementedError()
-
-
-def FakeSocketRecvInto(buf, nbytes=0, flags=0):
-  """Fake version of socket.socket.recvinto."""
-  raise NotImplementedError()
-
-
-def FakeSocketRecvFromInto(buffer, nbytes=0, flags=0):
-  """Fake version of socket.socket.recvfrom_into."""
-  raise NotImplementedError()
-
-
 def FakeGetPlatform():
   """Fake distutils.util.get_platform on OS/X.  Pass-through otherwise."""
   if sys.platform == 'darwin':
     return 'macosx-'
   else:
     return distutils.util.get_platform()
+
+
+def FakeCryptoRandomOSRNGnew(*args, **kwargs):
+  from Crypto.Random.OSRNG import fallback
+  return fallback.new(*args, **kwargs)
 
 
 
@@ -264,6 +234,9 @@ class FakeFile(file):
                       if os.path.isfile(filename))
 
 
+  ALLOWED_FILES_RE = set([re.compile(r'.*/python27.zip$')])
+
+
 
 
 
@@ -318,8 +291,10 @@ class FakeFile(file):
 
           [os.path.join('Crypto')],
           GeneratePythonPaths('Crypto', '__init__'),
+          GeneratePythonPaths('Crypto', 'pct_warnings'),
           [os.path.join('Crypto', 'Cipher')],
           GeneratePythonPaths('Crypto', 'Cipher', '__init__'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'blockalgo'),
           GeneratePythonPaths('Crypto', 'Cipher', 'AES'),
           GeneratePythonPaths('Crypto', 'Cipher', 'ARC2'),
           GeneratePythonPaths('Crypto', 'Cipher', 'ARC4'),
@@ -327,31 +302,67 @@ class FakeFile(file):
           GeneratePythonPaths('Crypto', 'Cipher', 'CAST'),
           GeneratePythonPaths('Crypto', 'Cipher', 'DES'),
           GeneratePythonPaths('Crypto', 'Cipher', 'DES3'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'PKCS1_OAEP'),
+          GeneratePythonPaths('Crypto', 'Cipher', 'PKCS1_v1_5'),
           GeneratePythonPaths('Crypto', 'Cipher', 'XOR'),
           [os.path.join('Crypto', 'Hash')],
           GeneratePythonPaths('Crypto', 'Hash', '__init__'),
+          GeneratePythonPaths('Crypto', 'Hash', 'hashalgo'),
           GeneratePythonPaths('Crypto', 'Hash', 'HMAC'),
-          os.path.join('Crypto', 'Hash', 'MD2'),
-          os.path.join('Crypto', 'Hash', 'MD4'),
+          GeneratePythonPaths('Crypto', 'Hash', 'MD2'),
+          GeneratePythonPaths('Crypto', 'Hash', 'MD4'),
           GeneratePythonPaths('Crypto', 'Hash', 'MD5'),
           GeneratePythonPaths('Crypto', 'Hash', 'SHA'),
-          os.path.join('Crypto', 'Hash', 'SHA256'),
-          os.path.join('Crypto', 'Hash', 'RIPEMD'),
+          GeneratePythonPaths('Crypto', 'Hash', 'SHA224'),
+          GeneratePythonPaths('Crypto', 'Hash', 'SHA256'),
+          GeneratePythonPaths('Crypto', 'Hash', 'SHA384'),
+          GeneratePythonPaths('Crypto', 'Hash', 'SHA512'),
+          GeneratePythonPaths('Crypto', 'Hash', 'RIPEMD'),
           [os.path.join('Crypto', 'Protocol')],
           GeneratePythonPaths('Crypto', 'Protocol', '__init__'),
           GeneratePythonPaths('Crypto', 'Protocol', 'AllOrNothing'),
           GeneratePythonPaths('Crypto', 'Protocol', 'Chaffing'),
+          GeneratePythonPaths('Crypto', 'Protocol', 'KDF'),
           [os.path.join('Crypto', 'PublicKey')],
           GeneratePythonPaths('Crypto', 'PublicKey', '__init__'),
           GeneratePythonPaths('Crypto', 'PublicKey', 'DSA'),
+          GeneratePythonPaths('Crypto', 'PublicKey', '_DSA'),
           GeneratePythonPaths('Crypto', 'PublicKey', 'ElGamal'),
           GeneratePythonPaths('Crypto', 'PublicKey', 'RSA'),
+          GeneratePythonPaths('Crypto', 'PublicKey', '_RSA'),
           GeneratePythonPaths('Crypto', 'PublicKey', 'pubkey'),
           GeneratePythonPaths('Crypto', 'PublicKey', 'qNEW'),
+          GeneratePythonPaths('Crypto', 'PublicKey', '_slowmath'),
+          [os.path.join('Crypto', 'Random')],
+          GeneratePythonPaths('Crypto', 'Random', '__init__'),
+          GeneratePythonPaths('Crypto', 'Random', 'random'),
+          GeneratePythonPaths('Crypto', 'Random', '_UserFriendlyRNG'),
+          [os.path.join('Crypto', 'Random', 'OSRNG')],
+          GeneratePythonPaths('Crypto', 'Random', 'OSRNG', '__init__'),
+          GeneratePythonPaths('Crypto', 'Random', 'OSRNG', 'fallback'),
+          GeneratePythonPaths('Crypto', 'Random', 'OSRNG', 'nt'),
+          GeneratePythonPaths('Crypto', 'Random', 'OSRNG', 'posix'),
+          GeneratePythonPaths('Crypto', 'Random', 'OSRNG', 'rng_base'),
+          [os.path.join('Crypto', 'Random', 'Fortuna')],
+          GeneratePythonPaths('Crypto', 'Random', 'Fortuna', '__init__'),
+          GeneratePythonPaths('Crypto', 'Random', 'Fortuna',
+                              'FortunaAccumulator'),
+          GeneratePythonPaths('Crypto', 'Random', 'Fortuna',
+                              'FortunaGenerator'),
+          GeneratePythonPaths('Crypto', 'Random', 'Fortuna', 'SHAd256'),
+          [os.path.join('Crypto', 'Signature')],
+          GeneratePythonPaths('Crypto', 'Signature', '__init__'),
+          GeneratePythonPaths('Crypto', 'Signature', 'PKCS1_PSS'),
+          GeneratePythonPaths('Crypto', 'Signature', 'PKCS1_v1_5'),
           [os.path.join('Crypto', 'Util')],
           GeneratePythonPaths('Crypto', 'Util', '__init__'),
+          GeneratePythonPaths('Crypto', 'Util', 'asn1'),
+          GeneratePythonPaths('Crypto', 'Util', 'Counter'),
           GeneratePythonPaths('Crypto', 'Util', 'RFC1751'),
           GeneratePythonPaths('Crypto', 'Util', 'number'),
+          GeneratePythonPaths('Crypto', 'Util', '_number_new'),
+          GeneratePythonPaths('Crypto', 'Util', 'py3compat'),
+          GeneratePythonPaths('Crypto', 'Util', 'python_compat'),
           GeneratePythonPaths('Crypto', 'Util', 'randpool'),
           ]))
 
@@ -560,6 +571,11 @@ class FakeFile(file):
     if logical_filename in FakeFile.ALLOWED_FILES:
       return True
 
+    for regex in FakeFile.ALLOWED_FILES_RE:
+      match = regex.match(logical_filename)
+      if match and match.end() == len(logical_filename):
+        return True
+
     if logical_filename in FakeFile.ALLOWED_SITE_PACKAGE_FILES:
       return True
 
@@ -733,8 +749,25 @@ class HardenedModulesHook(object):
       'MD2',
       'MD4',
       'RIPEMD',
+      'RIPEMD160',
       'SHA256',
       'XOR',
+
+      '_AES',
+      '_ARC2',
+      '_ARC4',
+      '_Blowfish',
+      '_CAST',
+      '_DES',
+      '_DES3',
+      '_MD2',
+      '_MD4',
+      '_RIPEMD160',
+      '_SHA224',
+      '_SHA256',
+      '_SHA384',
+      '_SHA512',
+      '_XOR',
 
       '_Crypto_Cipher__AES',
       '_Crypto_Cipher__ARC2',
@@ -848,6 +881,18 @@ class HardenedModulesHook(object):
     'jinja2': ['_debugsupport', '_speedups'],
     'lxml': ['etree', 'objectify'],
     'markupsafe': ['_speedups'],
+    'matplotlib': [
+      'ft2font',
+      'ttconv',
+      '_png',
+      '_backend_agg',
+      '_path',
+      '_image',
+      '_cntr',
+      'nxutils',
+      '_delaunay',
+      '_tri',
+    ],
     'numpy': [
       '_capi',
       '_compiled_base',
@@ -986,132 +1031,11 @@ class HardenedModulesHook(object):
           'WUNTRACED',
           'W_OK',
           'X_OK',
+          '_get_exports_list',
       ],
 
 
       'signal': [
-      ],
-
-      'socket': [
-
-          '_GLOBAL_DEFAULT_TIMEOUT',
-
-
-          'AF_INET',
-
-          'SOCK_STREAM',
-          'SOCK_DGRAM',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          'error',
-          'gaierror',
-          'herror',
-          'timeout',
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-          'ssl',
-
-
-
-
-          '_fileobject',
-
-      ],
-
-      'select': [
-
-
-
-
-
       ],
 
       'ssl': [
@@ -1152,23 +1076,12 @@ class HardenedModulesHook(object):
           '__doc__': None,
       },
 
-      'socket': {
-          'ssl': None,
-
-
-
-
-
-
-
-
-
-
-
-      },
-
       'distutils.util': {
           'get_platform': FakeGetPlatform,
+      },
+
+      'Crypto.Random.OSRNG': {
+          'new': FakeCryptoRandomOSRNGnew,
       },
   }
 
@@ -1187,9 +1100,7 @@ class HardenedModulesHook(object):
                imp_module=imp,
                os_module=os,
                dummy_thread_module=dummy_thread,
-               pickle_module=pickle,
-               socket_module=socket,
-               select_module=select):
+               pickle_module=pickle):
     """Initializer.
 
     Args:
@@ -1208,10 +1119,6 @@ class HardenedModulesHook(object):
     self._os = os_module
     self._dummy_thread = dummy_thread_module
     self._pickle = pickle
-    self._socket = socket_module
-
-    self._socket.buffer = buffer
-    self._select = select_module
     self._indent_level = 0
     self._app_code_path = app_code_path
     self._white_list_c_modules = list(self._WHITE_LIST_C_MODULES)
@@ -1229,11 +1136,9 @@ class HardenedModulesHook(object):
         ['getpid', 'getuid', 'sys'])
 
 
-
-
-      self._white_list_partial_modules['socket'] = (
-        list(self._white_list_partial_modules['socket']) +
-        ['getdefaulttimeout', 'setdefaulttimeout'])
+      for k in self._white_list_partial_modules.keys():
+        if k.startswith('Crypto'):
+          del self._white_list_partial_modules[k]
 
 
       webob_path = os.path.join(SDK_ROOT, 'lib', 'webob_1_1_1')
@@ -1355,7 +1260,7 @@ class HardenedModulesHook(object):
     if name in sys.builtin_module_names:
       name = 'py_%s' % name
     if self._config and self._config.runtime == 'python27':
-      if dist27 is not None and name in dist27.MODULE_OVERRIDES:
+      if name in dist27.MODULE_OVERRIDES:
         return True
     else:
       if name in dist.__all__:
@@ -1372,7 +1277,7 @@ class HardenedModulesHook(object):
     if self._config and self._config.runtime == 'python27':
 
 
-      if dist27 is not None and name in dist27.__all__:
+      if name in dist27.__all__:
         providing_dist = dist27
     fullname = '%s.%s' % (providing_dist.__name__, name)
     __import__(fullname, {}, {})
@@ -1449,6 +1354,12 @@ class HardenedModulesHook(object):
       if topmodule in self.__PY27_OPTIONAL_ALLOWED_MODULES:
         py27_optional = True
         py27_enabled = topmodule in self._enabled_modules
+
+
+
+      elif topmodule == 'Crypto':
+        py27_optional = True
+        py27_enabled = 'pycrypto' in self._enabled_modules
 
 
 
@@ -1707,10 +1618,6 @@ class HardenedModulesHook(object):
       module.__name__ = 'cPickle'
     elif submodule_fullname == 'os':
       module.__dict__.update(self._os.__dict__)
-    elif submodule_fullname == 'socket':
-      module.__dict__.update(self._socket.__dict__)
-    elif submodule_fullname == 'select':
-      module.__dict__.update(self._select.__dict__)
     elif submodule_fullname == 'ssl':
       pass
     elif self.StubModuleExists(submodule_fullname):

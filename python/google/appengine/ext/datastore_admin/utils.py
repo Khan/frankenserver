@@ -54,9 +54,11 @@ MAPREDUCE_MAX_SHARDS = 256
 DATASTORE_ADMIN_OPERATION_KIND = '_AE_DatastoreAdmin_Operation'
 BACKUP_INFORMATION_KIND = '_AE_Backup_Information'
 BACKUP_INFORMATION_FILES_KIND = '_AE_Backup_Information_Kind_Files'
+BACKUP_INFORMATION_KIND_TYPE_INFO = '_AE_Backup_Information_Kind_Type_Info'
 DATASTORE_ADMIN_KINDS = (DATASTORE_ADMIN_OPERATION_KIND,
                          BACKUP_INFORMATION_KIND,
-                         BACKUP_INFORMATION_FILES_KIND)
+                         BACKUP_INFORMATION_FILES_KIND,
+                         BACKUP_INFORMATION_KIND_TYPE_INFO)
 
 
 class ConfigDefaults(object):
@@ -415,6 +417,7 @@ class DatastoreAdminOperation(db.Model):
   completed_jobs = db.IntegerProperty(default=0)
   last_updated = db.DateTimeProperty(default=DEFAULT_LAST_UPDATED_VALUE,
                                      auto_now=True)
+  status_info = db.StringProperty(default='', indexed=False)
 
   @classmethod
   def kind(cls):
@@ -487,6 +490,8 @@ def StartMap(operation_key,
       str(operation_key))
   mapreduce_params['done_callback'] = '%s/%s' % (config.BASE_PATH,
                                                  MapreduceDoneHandler.SUFFIX)
+  if queue_name is not None:
+    mapreduce_params['done_callback_queue'] = queue_name
   mapreduce_params['force_writes'] = 'True'
 
   def tx():
@@ -550,9 +555,10 @@ def RunMapForKinds(operation_key,
                            queue_name=queue_name, shard_count=shard_count))
     return jobs
 
-  except BaseException:
+  except BaseException, ex:
     AbortAdminOperation(operation_key,
-                        _status=DatastoreAdminOperation.STATUS_FAILED)
+                        _status=DatastoreAdminOperation.STATUS_FAILED,
+                        _status_info='%s: %s' % (ex.__class__.__name__, ex))
     raise
 
 
@@ -567,14 +573,21 @@ def GetShardCount(kind):
 
 
 def AbortAdminOperation(operation_key,
-                        _status=DatastoreAdminOperation.STATUS_ABORTED):
+                        _status=DatastoreAdminOperation.STATUS_ABORTED,
+                        _status_info=''):
   """Aborts active jobs."""
   operation = DatastoreAdminOperation.get(operation_key)
   operation.status = _status
+  operation.status_info = _status_info
   operation.put(config=_CreateDatastoreConfig())
   for job in operation.active_job_ids:
     logging.info('Aborting Job %s', job)
     model.MapreduceControl.abort(job, config=_CreateDatastoreConfig())
+
+
+def get_kind_from_entity_pb(entity):
+  element_list = entity.key().path().element_list()
+  return element_list[-1].type() if element_list else None
 
 
 def FixKeys(entity_proto, app_id):
@@ -595,17 +608,17 @@ def FixKeys(entity_proto, app_id):
       if prop_value.has_referencevalue():
         FixKey(prop_value.mutable_referencevalue())
       elif prop.meaning() == entity_pb.Property.ENTITY_PROTO:
-        embeded_entity_proto = entity_pb.EntityProto()
+        embedded_entity_proto = entity_pb.EntityProto()
         try:
-          embeded_entity_proto.ParsePartialFromString(prop_value.stringvalue())
+          embedded_entity_proto.ParsePartialFromString(prop_value.stringvalue())
         except Exception:
           logging.exception('Failed to fix-keys for property %s of %s',
                             prop.name(),
                             entity_proto.key())
         else:
-          FixKeys(embeded_entity_proto, app_id)
+          FixKeys(embedded_entity_proto, app_id)
           prop_value.set_stringvalue(
-              embeded_entity_proto.SerializePartialToString())
+              embedded_entity_proto.SerializePartialToString())
 
 
   if entity_proto.has_key() and entity_proto.key().path().element_size():

@@ -389,12 +389,20 @@ class FieldDescriptor(DescriptorBase):
       TYPE_FLOAT: CPPTYPE_FLOAT,
       TYPE_ENUM: CPPTYPE_ENUM,
       TYPE_INT64: CPPTYPE_INT64,
+      TYPE_SINT64: CPPTYPE_INT64,
+      TYPE_SFIXED64: CPPTYPE_INT64,
       TYPE_UINT64: CPPTYPE_UINT64,
+      TYPE_FIXED64: CPPTYPE_UINT64,
       TYPE_INT32: CPPTYPE_INT32,
+      TYPE_SFIXED32: CPPTYPE_INT32,
+      TYPE_SINT32: CPPTYPE_INT32,
       TYPE_UINT32: CPPTYPE_UINT32,
+      TYPE_FIXED32: CPPTYPE_UINT32,
+      TYPE_BYTES: CPPTYPE_STRING,
       TYPE_STRING: CPPTYPE_STRING,
       TYPE_BOOL: CPPTYPE_BOOL,
-      TYPE_MESSAGE: CPPTYPE_MESSAGE
+      TYPE_MESSAGE: CPPTYPE_MESSAGE,
+      TYPE_GROUP: CPPTYPE_MESSAGE
       }
 
 
@@ -405,6 +413,12 @@ class FieldDescriptor(DescriptorBase):
   LABEL_REQUIRED      = 2
   LABEL_REPEATED      = 3
   MAX_LABEL           = 3
+
+
+
+  MAX_FIELD_NUMBER = (1 << 29) - 1
+  FIRST_RESERVED_FIELD_NUMBER = 19000
+  LAST_RESERVED_FIELD_NUMBER = 19999
 
   def __init__(self, name, full_name, index, number, type, cpp_type, label,
                default_value, message_type, enum_type, containing_type,

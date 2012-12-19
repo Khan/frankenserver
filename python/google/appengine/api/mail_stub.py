@@ -224,11 +224,16 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
 
 
 
-      tos = [mime_message[to] for to in ['To', 'Cc', 'Bcc'] if mime_message[to]]
-      sendmail_command = '%s %s' % (sendmail_command, ' '.join(tos))
+      tos = []
+      for to in ('To', 'Cc', 'Bcc'):
+        if mime_message[to]:
+          tos.extend("'%s'" % addr.strip().replace("'", r"'\''")
+                     for addr in mime_message[to].split(','))
+
+      command = '%s %s' % (sendmail_command, ' '.join(tos))
 
       try:
-        child = popen(sendmail_command,
+        child = popen(command,
                       shell=True,
                       stdin=subprocess.PIPE,
                       stdout=subprocess.PIPE)

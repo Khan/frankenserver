@@ -22,6 +22,7 @@
 
 
 from google.appengine._internal import antlr3
+from google.appengine._internal.antlr3 import tree
 from google.appengine.api.search import QueryLexer
 from google.appengine.api.search import QueryParser
 
@@ -93,21 +94,43 @@ def _SimplifyNode(node):
   """Simplifies the node removing singleton conjunctions and others."""
   if not node.getType():
     return _SimplifyNode(node.children[0])
-  elif node.getType() is QueryParser.CONJUNCTION and node.getChildCount() is 1:
+  elif node.getType() == QueryParser.CONJUNCTION and node.getChildCount() == 1:
     return _SimplifyNode(node.children[0])
-  elif node.getType() is QueryParser.DISJUNCTION and node.getChildCount() is 1:
+  elif node.getType() == QueryParser.DISJUNCTION and node.getChildCount() == 1:
     return _SimplifyNode(node.children[0])
-  elif (node.getType() is QueryParser.RESTRICTION and node.getChildCount() is 2
-        and node.children[0].getType() is QueryParser.GLOBAL):
+  elif (node.getType() == QueryParser.RESTRICTION and node.getChildCount() == 2
+        and node.children[0].getType() == QueryParser.GLOBAL):
     return _SimplifyNode(node.children[1])
-  elif (node.getType() is QueryParser.VALUE and node.getChildCount() is 2 and
-        (node.children[0].getType() is QueryParser.WORD or
-         node.children[0].getType() is QueryParser.STRING or
-         node.children[0].getType() is QueryParser.NUMBER)):
+  elif (node.getType() == QueryParser.VALUE and node.getChildCount() == 2 and
+        (node.children[0].getType() == QueryParser.WORD or
+         node.children[0].getType() == QueryParser.STRING or
+         node.children[0].getType() == QueryParser.NUMBER)):
     return _SimplifyNode(node.children[1])
-  elif ((node.getType() is QueryParser.EQ or node.getType() is QueryParser.HAS)
-        and node.getChildCount() is 1):
+  elif ((node.getType() == QueryParser.EQ or node.getType() == QueryParser.HAS)
+        and node.getChildCount() == 1):
     return _SimplifyNode(node.children[0])
   for i, child in enumerate(node.children):
     node.setChild(i, _SimplifyNode(child))
   return node
+
+
+def CreateQueryNode(text, type):
+  token = tree.CommonTreeAdaptor().createToken(tokenType=type, text=text)
+  return tree.CommonTree(token)
+
+
+def GetQueryNodeText(node):
+  """Returns the text from the node, handling that it could be unicode."""
+  return node.getText().encode('utf-8')
+
+
+def GetPhraseQueryNodeText(node):
+  """Returns the text from a query node."""
+  text = GetQueryNodeText(node)
+  if text:
+
+
+
+    if text[0] == '"' and text[-1] == '"':
+      text = text[1:-1]
+  return text

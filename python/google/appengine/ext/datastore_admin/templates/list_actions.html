@@ -258,6 +258,7 @@
           <th scope="col" class="id">Description</th>
           <th scope="col" class="id">Completed steps</th>
           <th scope="col" class="id">Status</th>
+          <th scope="col" class="id">Status info</th>
         </tr>
       </thead>
       <tbody>
@@ -271,6 +272,9 @@
             </td>
             <td class="id">
               {{operation.status}}
+            </td>
+            <td class="id">
+              {{operation.status_info}}
             </td>
           </tr>
         {% endfor %}

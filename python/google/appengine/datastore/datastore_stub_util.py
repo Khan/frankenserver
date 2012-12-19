@@ -45,6 +45,7 @@ import atexit
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore_admin
+from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.datastore import datastore_index
@@ -93,6 +94,27 @@ _MAX_EG_PER_TXN = 5
 _BLOB_MEANINGS = frozenset((entity_pb.Property.BLOB,
                             entity_pb.Property.ENTITY_PROTO,
                             entity_pb.Property.TEXT))
+
+
+
+
+
+
+
+_RETRIES = 3
+
+
+
+_INITIAL_RETRY_DELAY_MS = 100
+
+
+
+_RETRY_DELAY_MULTIPLIER = 2
+
+
+
+_MAX_RETRY_DELAY_MS = 120000
+
 
 def _GetScatterProperty(entity_proto):
   """Gets the scatter property for an object.
@@ -163,6 +185,21 @@ def _PrepareSpecialProperties(entity_proto, is_load):
       special_property = property_func(entity_proto)
       if special_property:
         entity_proto.property_list().append(special_property)
+
+
+def _GetPropertyTuple(entity, property_names):
+  """Computes a unique tuple for an entity on the given names of properties.
+
+  Args:
+    entity: The entity_pb.EntityProto to extract values from.
+    property_names: The names of the properties from which to extract values.
+
+  Returns:
+    A tuple containing the desired properties.
+  """
+  return tuple(prop.SerializePartialToString()
+               for prop in entity.property_list()
+               if prop.name() in property_names)
 
 
 def PrepareSpecialPropertiesForStore(entity_proto):
@@ -269,13 +306,18 @@ def CheckAppId(request_trusted, request_app_id, app_id):
         'app "%s" cannot access app "%s"\'s data' % (request_app_id, app_id))
 
 
-def CheckReference(request_trusted, request_app_id, key):
+def CheckReference(request_trusted,
+                   request_app_id,
+                   key,
+                   require_id_or_name=True):
   """Check this key.
 
   Args:
     request_trusted: If the request is trusted.
     request_app_id: The application ID of the app making the request.
     key: entity_pb.Reference
+    require_id_or_name: Boolean indicating if we should enforce the presence of
+      an id or name in the last element of the key's path.
 
   Raises:
     apiproxy_errors.ApplicationError: if the key is invalid
@@ -286,6 +328,14 @@ def CheckReference(request_trusted, request_app_id, key):
   CheckAppId(request_trusted, request_app_id, key.app())
 
   Check(key.path().element_size() > 0, 'key\'s path cannot be empty')
+
+  if require_id_or_name:
+
+    last_element = key.path().element_list()[-1]
+    has_id_or_name = ((last_element.has_id() and last_element.id() != 0) or
+                      (last_element.has_name() and last_element.name() != ""))
+    if not has_id_or_name:
+      raise datastore_errors.BadRequestError('missing key id/name')
 
   for elem in key.path().element_list():
     Check(not elem.has_id() or not elem.has_name(),
@@ -305,7 +355,7 @@ def CheckEntity(request_trusted, request_app_id, entity):
   """
 
 
-  CheckReference(request_trusted, request_app_id, entity.key())
+  CheckReference(request_trusted, request_app_id, entity.key(), False)
   for prop in entity.property_list():
     CheckProperty(request_trusted, request_app_id, prop)
   for prop in entity.raw_property_list():
@@ -457,6 +507,17 @@ def CheckQuery(query, filters, orders, max_query_components):
     Check(query.name_space() == ancestor.name_space(),
           'query namespace is %s but ancestor namespace is %s' %
               (query.name_space(), ancestor.name_space()))
+
+
+  if query.group_by_property_name_size():
+    group_by_set = set(query.group_by_property_name_list())
+    for order in orders:
+      if not group_by_set:
+        break
+      Check(order.property() in group_by_set,
+            'items in the group by clause must be specified first '
+            'in the ordering')
+      group_by_set.remove(order.property())
 
 
 
@@ -856,13 +917,18 @@ class BaseCursor(object):
 
     self.keys_only = query.keys_only()
     self.property_names = set(query.property_name_list())
+    self.group_by = set(query.group_by_property_name_list())
     self.app = query.app()
     self.cursor = self._AcquireCursorID()
 
     self.__order_compare_entities = dsquery._order.cmp_for_filter(
         dsquery._filter_predicate)
-    self.__order_property_names = set(
-        order.property() for order in orders if order.property() != '__key__')
+    if self.group_by:
+      self.__cursor_properties = self.group_by
+    else:
+      self.__cursor_properties = set(order.property() for order in orders)
+      self.__cursor_properties.add('__key__')
+      self.__cursor_properties = frozenset(self.__cursor_properties)
     self.__index_list = index_list
 
   def _PopulateResultMetadata(self, query_result, compile,
@@ -896,7 +962,13 @@ class BaseCursor(object):
       entity: a entity_pb.EntityProto entity.
       cursor: a compiled cursor as returned by _DecodeCompiledCursor.
     """
-    x = self.__order_compare_entities(entity, cursor[0])
+    comparison_entity = entity_pb.EntityProto()
+    for prop in entity.property_list():
+      if prop.name() in self.__cursor_properties:
+        comparison_entity.add_property().MergeFrom(prop)
+    if cursor[0].has_key():
+      comparison_entity.mutable_key().MergeFrom(entity.key())
+    x = self.__order_compare_entities(comparison_entity, cursor[0])
     if cursor[1]:
       return x < 0
     else:
@@ -919,9 +991,12 @@ class BaseCursor(object):
 
 
 
-    remaining_properties = self.__order_property_names.copy()
+    remaining_properties = set(self.__cursor_properties)
+
     cursor_entity = entity_pb.EntityProto()
-    cursor_entity.mutable_key().CopyFrom(position.key())
+    if position.has_key():
+      cursor_entity.mutable_key().CopyFrom(position.key())
+      remaining_properties.remove('__key__')
     for indexvalue in position.indexvalue_list():
       property = cursor_entity.add_property()
       property.set_name(indexvalue.property())
@@ -945,9 +1020,12 @@ class BaseCursor(object):
 
 
       position = compiled_cursor.add_position()
-      position.mutable_key().MergeFrom(last_result.key())
+
+
+      if '__key__' in self.__cursor_properties:
+        position.mutable_key().MergeFrom(last_result.key())
       for prop in last_result.property_list():
-        if prop.name() in self.__order_property_names:
+        if prop.name() in self.__cursor_properties:
           indexvalue = position.add_indexvalue()
           indexvalue.set_property(prop.name())
           indexvalue.mutable_value().CopyFrom(prop.value())
@@ -972,6 +1050,7 @@ class IteratorCursor(BaseCursor):
     self.__last_result = None
     self.__next_result = None
     self.__results = results
+    self.__distincts = set()
     self.__done = False
 
 
@@ -1014,7 +1093,14 @@ class IteratorCursor(BaseCursor):
     if self.__done:
       raise StopIteration
     try:
-      self.__next_result = self.__results.next()
+      while True:
+        self.__next_result = self.__results.next()
+        if not self.group_by:
+          break
+        next_group = _GetPropertyTuple(self.__next_result, self.group_by)
+        if next_group not in self.__distincts:
+          self.__distincts.add(next_group)
+          break
     except StopIteration:
       self._Done()
     if (self.__end_cursor and
@@ -1097,6 +1183,17 @@ class ListCursor(BaseCursor):
       results: list of entity_pb.EntityProto
     """
     super(ListCursor, self).__init__(query, dsquery, orders, index_list)
+
+
+    if self.group_by:
+      distincts = set()
+      new_results = []
+      for result in results:
+        properties = _GetPropertyTuple(result, self.group_by)
+        if properties not in distincts:
+          distincts.add(properties)
+          new_results.append(result)
+      results = new_results
 
     if query.has_compiled_cursor() and query.compiled_cursor().position_list():
       start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
@@ -1302,8 +1399,8 @@ class LiveTxn(object):
               'operating on too many entity groups in a single transaction.')
       else:
         Check(len(self._entity_groups) < 1,
-              'can\'t operate on multiple entity groups in a single '
-              'transaction.')
+              "cross-groups transaction need to be explicitly "
+              "specified (xg=True)")
       tracker = EntityGroupTracker(entity_group)
       self._entity_groups[key] = tracker
 
@@ -2323,6 +2420,7 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     Returns:
       A list containing the entity or None if no entity exists.
     """
+
     if not raw_keys:
       return []
 
@@ -2511,6 +2609,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
   def _RunInTxn(self, values, app, op):
     """Runs the given values in a separate Txn.
 
+    Retries up to _RETRIES times on CONCURRENT_TRANSACTION errors.
+
     Args:
       values: A list of arguments to op.
       app: The app to create the Txn on.
@@ -2519,10 +2619,25 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     Returns:
       The cost of the txn.
     """
-    txn = self._BeginTransaction(app, False)
-    for value in values:
-      op(txn, value)
-    return txn.Commit()
+    retries = 0
+    backoff = _INITIAL_RETRY_DELAY_MS / 1000.0
+    while True:
+      try:
+        txn = self._BeginTransaction(app, False)
+        for value in values:
+          op(txn, value)
+        return txn.Commit()
+      except apiproxy_errors.ApplicationError, e:
+        if e.application_error == datastore_pb.Error.CONCURRENT_TRANSACTION:
+
+          retries += 1
+          if retries <= _RETRIES:
+            time.sleep(backoff)
+            backoff *= _RETRY_DELAY_MULTIPLIER
+            if backoff * 1000.0 > _MAX_RETRY_DELAY_MS:
+              backoff = _MAX_RETRY_DELAY_MS / 1000.0
+            continue
+        raise
 
   def _CheckHasIndex(self, query, trusted=False, calling_app=None):
     """Checks if the query can be satisfied given the existing indexes.

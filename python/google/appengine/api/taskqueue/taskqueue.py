@@ -1214,8 +1214,8 @@ class QueueStatistics(object):
 
     Args:
       queue_or_queues: An iterable of either Queue instances, or an iterator of
-          strings corrosponding to queue names, or a Queue instance or a string
-          corrosponding to a queue name.
+          strings corresponding to queue names, or a Queue instance or a string
+          corresponding to a queue name.
 
     Returns:
       If an iterable (other than string) is provided as input, a list of of

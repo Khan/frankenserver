@@ -66,6 +66,12 @@ _implementation_version = int(_implementation_version_str)
 
 
 
+_always_return_unicode = os.getenv(
+    'PROTOCOL_BUFFERS_PYTHON_ALWAYS_UNICODE', '0') == '1'
+
+
+
+
 
 
 def Type():
@@ -74,3 +80,8 @@ def Type():
 
 def Version():
   return _implementation_version
+
+
+
+def AlwaysReturnUnicode():
+  return _always_return_unicode

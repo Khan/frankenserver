@@ -135,6 +135,11 @@ def GetSourceName():
   return "Google-remote_api-1.0"
 
 
+def HashEntity(entity):
+  """Return a very-likely-unique hash of an entity."""
+  return hashlib.sha1(entity.Encode()).digest()
+
+
 class TransactionData(object):
   """Encapsulates data about an individual transaction."""
 
@@ -160,6 +165,9 @@ class RemoteStub(object):
 
   You can use this to stub out any service that the remote server supports.
   """
+
+
+  _local = threading.local()
 
   def __init__(self, server, path, _test_stub_map=None):
     """Constructs a new RemoteStub that communicates with the specified server.
@@ -193,16 +201,25 @@ class RemoteStub(object):
     finally:
       self._PostHookHandler(service, call, request, response)
 
+  @classmethod
+  def _GetRequestId(cls):
+    """Returns the id of the request associated with the current thread."""
+    return cls._local.request_id
+
+  @classmethod
+  def _SetRequestId(cls, request_id):
+    """Set the id of the request associated with the current thread."""
+    cls._local.request_id = request_id
+
   def _MakeRealSyncCall(self, service, call, request, response):
     request_pb = remote_api_pb.Request()
     request_pb.set_service_name(service)
     request_pb.set_method(call)
     request_pb.set_request(request.Encode())
-    if _REQUEST_ID_HEADER in os.environ:
+    if hasattr(self._local, 'request_id'):
 
 
-
-      request_pb.set_request_id(os.environ[_REQUEST_ID_HEADER])
+      request_pb.set_request_id(self._local.request_id)
 
     response_pb = remote_api_pb.Response()
     encoded_request = request_pb.Encode()
@@ -274,12 +291,30 @@ class RemoteDatastoreStub(RemoteStub):
 
   def _Dynamic_RunQuery(self, query, query_result, cursor_id = None):
     if query.has_transaction():
-      raise apiproxy_errors.ApplicationError(
-          datastore_pb.Error.BAD_REQUEST,
-          'Remote API does not support queries inside transactions')
+      txdata = self.__transactions[query.transaction().handle()]
+      tx_result = remote_api_pb.TransactionQueryResult()
+      super(RemoteDatastoreStub, self).MakeSyncCall(
+          'remote_datastore', 'TransactionQuery', query, tx_result)
+      query_result.CopyFrom(tx_result.result())
 
-    super(RemoteDatastoreStub, self).MakeSyncCall(
-        'datastore_v3', 'RunQuery', query, query_result)
+
+
+
+      eg_key = tx_result.entity_group_key()
+      encoded_eg_key = eg_key.Encode()
+      eg_hash = None
+      if tx_result.has_entity_group():
+        eg_hash = HashEntity(tx_result.entity_group())
+      old_key, old_hash = txdata.preconditions.get(encoded_eg_key, (None, None))
+      if old_key is None:
+        txdata.preconditions[encoded_eg_key] = (eg_key, eg_hash)
+      elif old_hash != eg_hash:
+        raise apiproxy_errors.ApplicationError(
+            datastore_pb.Error.CONCURRENT_TRANSACTION,
+            'Transaction precondition failed.')
+    else:
+      super(RemoteDatastoreStub, self).MakeSyncCall(
+          'datastore_v3', 'RunQuery', query, query_result)
 
     if cursor_id is None:
       self.__local_cursor_lock.acquire()
@@ -356,7 +391,7 @@ class RemoteDatastoreStub(RemoteStub):
       for key, entity in zip(newkeys, entities):
         entity_hash = None
         if entity.has_entity():
-          entity_hash = hashlib.sha1(entity.entity().Encode()).digest()
+          entity_hash = HashEntity(entity.entity())
         txdata.preconditions[key.Encode()] = (key, entity_hash)
 
 

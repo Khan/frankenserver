@@ -38,6 +38,7 @@ from email import MIMEBase
 from email import MIMEMultipart
 from email import MIMEText
 from email import Parser
+import email.header
 import logging
 
 from google.appengine.api import api_base_pb
@@ -539,6 +540,42 @@ def _to_str(value):
   return value
 
 
+def _decode_and_join_header(header, separator=u' '):
+  """Helper function to decode RFC2047 encoded headers.
+
+  Args:
+    header: RFC2047 encoded str (or just a plain old str) to convert to unicode.
+    separator: The separator to use when joining separately encoded pieces of
+        the header.
+
+  Returns:
+    unicode of decoded header or just header if it was None or ''.
+  """
+  if not header:
+
+    return header
+  return separator.join(unicode(s, c or 'us-ascii')
+                        for s, c in email.header.decode_header(header))
+
+
+def _decode_address_list_field(address_list):
+  """Helper function to decode (potentially RFC2047 encoded) address lists.
+
+  Args:
+    address_list: a single str header, or list of str headers.
+
+  Returns:
+    unicode of decoded header or list of str headers.
+  """
+  if not address_list:
+    return None
+
+  if len(address_list) == 1:
+    return _decode_and_join_header(address_list[0])
+  else:
+    return map(_decode_and_join_header, address_list)
+
+
 class EncodedPayload(object):
   """Wrapper for a payload that contains encoding information.
 
@@ -1002,6 +1039,9 @@ class _EmailMessageBase(object):
       else:
         filename = mime_message.get_param('filename',
                                           header='content-disposition')
+        if filename:
+
+          filename = email.utils.collapse_rfc2231_value(filename)
         if not filename:
           filename = mime_message.get_param('name')
 
@@ -1042,15 +1082,15 @@ class _EmailMessageBase(object):
     """
     mime_message = _parse_mime_message(mime_message)
 
-    sender = mime_message['from']
+    sender = _decode_and_join_header(mime_message['from'])
     if sender:
       self.sender = sender
 
-    reply_to = mime_message['reply-to']
+    reply_to = _decode_and_join_header(mime_message['reply-to'])
     if reply_to:
       self.reply_to = reply_to
 
-    subject = mime_message['subject']
+    subject = _decode_and_join_header(mime_message['subject'], separator=u'')
     if subject:
       self.subject = subject
 
@@ -1172,26 +1212,17 @@ class EmailMessage(_EmailMessageBase):
     mime_message = _parse_mime_message(mime_message)
     super(EmailMessage, self).update_from_mime_message(mime_message)
 
-    to = mime_message.get_all('to')
+    to = _decode_address_list_field(mime_message.get_all('to'))
     if to:
-      if len(to) == 1:
-        self.to = to[0]
-      else:
-        self.to = to
+      self.to = to
 
-    cc = mime_message.get_all('cc')
+    cc = _decode_address_list_field(mime_message.get_all('cc'))
     if cc:
-      if len(cc) == 1:
-        self.cc = cc[0]
-      else:
-        self.cc = cc
+      self.cc = cc
 
-    bcc = mime_message.get_all('bcc')
+    bcc = _decode_address_list_field(mime_message.get_all('bcc'))
     if bcc:
-      if len(bcc) == 1:
-        self.bcc = bcc[0]
-      else:
-        self.bcc = bcc
+      self.bcc = bcc
 
 
 class AdminEmailMessage(_EmailMessageBase):

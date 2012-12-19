@@ -31,9 +31,16 @@ code.
 
 
 import logging
+import sys
 import types
 
+from google.appengine import runtime
 from google.appengine.api import lib_config
+
+
+
+
+_DEADLINE_DURING_LOADING = 22
 
 
 class Error(Exception):
@@ -187,6 +194,27 @@ class WsgiRequest(object):
     """
     try:
       handler = _config_handle.add_wsgi_middleware(self._LoadHandler())
+    except runtime.DeadlineExceededError:
+
+
+
+
+
+
+
+
+      exc_info = sys.exc_info()
+      try:
+        logging.error('', exc_info=exc_info)
+      except runtime.DeadlineExceededError:
+
+        logging.exception('Deadline exception occurred while logging a '
+                          'deadline exception.')
+
+
+
+        logging.error('Original exception:', exc_info=exc_info)
+      return {'error': _DEADLINE_DURING_LOADING}
     except:
       logging.exception('')
       return {'error': 1}

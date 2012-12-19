@@ -3263,6 +3263,7 @@ class QueueJoinThread(threading.Thread):
       queue: The queue for this thread to join.
     """
     threading.Thread.__init__(self)
+    self.setDaemon(True)
     assert isinstance(queue, (Queue.Queue, ReQueue))
     self.queue = queue
 

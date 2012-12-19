@@ -3,6 +3,252 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.7.4
+===============================
+- Background threads is now a GA feature.
+- Traffic Splitting is now a GA feature.
+- Task Queue Statistics is now a GA feature.
+- Logs API now has the ability to fetch requests based on a list of
+  request_ids. Currently, this only works in production and is not supported
+  in dev_appserver.
+- Python Interpreter has been upgraded to 2.7.3.
+- WebOb 1.2.3 is now available for Python 2.7. Users using the undocumented
+  1.2.2 should update their app, since that version will be removed in the
+  next release.
+- DISTINCT for Datastore queries is now available as an experimental feature.
+- Matplotlib v1.1.1 is now available as an experimental feature.
+- The decommissioned Conversion API has been removed.
+- Added a warning that the interactive console will be disabled if a user runs
+  dev_appserver with the --address flag.
+- JSON properties are now restrictable to list or dictionaries in NDB.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=223
+- Users can now set how many columns can be viewed in the Datastore Viewer via
+  a drop-down menu which customizes the number of columns displayed.
+    http://code.google.com/p/googleappengine/issues/detail?id=8158
+- Fixed an issue with expandos throwing an error when containing nested
+  expandos in NDB.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=216
+- Fixed an issue with properties not being added to structured properties in
+  NDB.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=220
+- Fixed an issue with PyCrypto raising an ImportError when installing
+  globally into site-packages.
+    http://code.google.com/p/googleappengine/issues/detail?id=1627
+- Fixed an issue with PyCrypto not working with OSX 10.8 or Ubuntu Precise.
+    http://code.google.com/p/googleappengine/issues/detail?id=7925
+- Fixed an issue with backends.get_instance returning thread ID instead of
+  integer instance ID in production.
+    http://code.google.com/p/googleappengine/issues/detail?id=8338
+- Fixed an issue with Datastore Backup failing when a schema has a very large
+  number of properties.
+    http://code.google.com/p/googleappengine/issues/detail?id=8363
+- Fixed an issue with dev_appserver not reloading changed code.
+    http://code.google.com/p/googleappengine/issues/detail?id=8383
+- Fixed an issue with custom ordered queries not working using sqlite on the
+  dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=8390
+- Fixed an issue with users being unable to change Authentication Type after
+  app creation in the Admin Console.
+    http://code.google.com/p/googleappengine/issues/detail?id=8394
+
+Version 1.7.3
+===============================
+- Django 1.4 is now supported in Python 2.7
+- The file-based implementation of the Datastore stub will be deprecated soon.
+- A warning message informing users that SQLLite stub will be the default
+  stub soon is now displayed.
+- Datastore Index stats now report type instead of representation-type.
+- Rich sort expressions beyond single field names are now supported in the
+  Search API for dev_appserver.
+- search.MIN_NUMBER_VALUE and search.MAX_NUMBER_VALUE are now public in the
+  Search API.
+- Globally Consistent Indexes are now deprecated in the Search API.
+- search.list_indexes() has been deprecated and replaced with
+  search.get_indexes() in the Search API.
+- Index.list_documents() has been deprecated and replaced with
+  Index.get_range() in the Search API.
+- Added method Index.get(doc_id) to get a document by its ID in the Search API
+- Index.add() has been deprecated and renamed to Index.put() in the Search API.
+- Index.remove() has been deprecated and renamed to Index.delete() in the
+  Search API.
+- The AddDocumentError and RemoveDocumentError classes, which were already
+  deprecated, have been removed from the Search API.
+- OperationCode.object_id and OperationCode.document_id, which were already
+  deprecated, have been removed from the Search API.
+- Users can now change authentication options after app creation
+    http://code.google.com/p/googleappengine/issues/detail?id=483
+- Fixed an issue with Datastore backup/restore finalization steps only looking
+  at the default queue in Admin Console.
+- Fixed an NDB issue with Structured Properties not converting dict properly.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=207
+- Fixed an NDB issue where multiple async transactions corrupt old
+  Datastore connections.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=209
+- Fixed an NDB issue with fetch() with offset > 1000 returning an empty list.
+    http://code.google.com/p/appengine-ndb-experiment/issues/detail?id=210
+- Fixed an issue with 2 factor authentication not giving useful error messages.
+    http://code.google.com/p/googleappengine/issues/detail?id=8020
+- Fixed an issue in the Search API snippeting breaking if the field contains
+  a single word in dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=8171
+- Fixed an issue with PyCrypto AES cipher not running on dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=8188
+
+Version 1.7.2
+===============================
+- Paid applications can now upload Static files and Code > 1GB. Additional
+  storage will be billed at $0.13/GB per month.  Free applications will
+  continue to be provided 1GB of storage at no charge. Free quota will apply
+  per application.
+- PyCrypto 2.6 is now a GA feature for Python 2.7
+- The Conversion API will be decommissioned soon. Developers using this API
+  will receive a warning message. Please find an alternative document
+  conversion/OCR service.
+- You can now fetch Task Queue Statistics. This allows you to fetch
+  statistics and information about your task queue from within your
+  application. Statistics include information such as the number of tasks
+  in a queue, how many tasks were executed in the last minute and enforced
+  rate.  This is an experimental feature.
+- Added Timezone selection widget in Admin Console Admin Logs.
+- Added a warning message about caching when modifying or deleting datastore
+  entities.
+- Added a flush cache button to dev_appserver and Admin Console.
+- Attempting to update multiple entity groups in a single transaction
+  in Datastore now throws an error suggesting to use XG transactions.
+- Search API now has a string maximum length limit of 2000 characters.
+- We now allow a user with multiple google accounts the ability to create an
+  app if they are an SMS verified user.
+    http://code.google.com/p/googleappengine/issues/detail?id=1419
+- A more useful error message now displays when a deployment fails
+  due to local date/time settings being improperly set.
+    http://code.google.com/p/googleappengine/issues/detail?id=2033
+- Cron Descriptions may now include non-ASCII characters.
+    http://code.google.com/p/googleappengine/issues/detail?id=2641
+- App Config Service Delete App Version Call Count quota raised to
+  10,000/day.
+    http://code.google.com/p/googleappengine/issues/detail?id=2808
+- Queries with transactions are now supported in Remote API.
+    http://code.google.com/p/googleappengine/issues/detail?id=3643
+- There are now more descriptive error messages for Datastore Admin
+  deadline exceeded errors in stack trace.
+    http://code.google.com/p/googleappengine/issues/detail?id=5413
+- Replaced error code “Administrators cannot be removed right now”
+  with a more descriptive message.
+    http://code.google.com/p/googleappengine/issues/detail?id=7080
+- Fixed an issue with namespace dropdown in Admin Console appearing blank
+  even though the URL specified namespace is correct.
+- Fixed an issue where Model.get_by_id() returns none in dev_appserver
+  whereas this is not allowed in production.
+- Fixed an issue with dev_appserver app_identity.get_default_version_hostname()
+- Fixed an issue with mail service sendToAdmins() failing when using
+  multi-arg message constructor.
+- Fixed an issue with dev_appserver for mimetypes.guess_type()
+- Fixed an issue with runtime failing to use scope with OAuth under certain
+  conditions.
+- Fixed an issue with AppConfigNotFound error.
+    http://code.google.com/p/googleappengine/issues/detail?id=686
+- Fixed an issue with static path with + in dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=888
+- Fixed an issue with support for models with large numbers of properties in
+  Admin Console Dataviewer where previously the page would fail to render.
+    http://code.google.com/p/googleappengine/issues/detail?id=937
+- Fixed an issue with multi-line string property not editing correctly
+  in Dataviewer.
+    http://code.google.com/p/googleappengine/issues/detail?id=1725
+- Fixed an issue with URLFetch mimetools.Message parsing incorrectly.
+    http://code.google.com/p/googleappengine/issues/detail?id=2011
+- Fixed an issue with the behavior of Expires header in dev_appserver
+    http://code.google.com/p/googleappengine/issues/detail?id=2106
+- Fixed an issue with Content-Disposition header being removed if filename
+  contains utf-8 characters.
+    http://code.google.com/p/googleappengine/issues/detail?id=2212
+- Fixed an issue with incoming Mail API where encoded headers failed to
+  decode.
+    http://code.google.com/p/googleappengine/issues/detail?id=2288
+- Fixed an issue with non-ascii text displaying incorrect values
+  when posted by URL created by blobstore.create_upload_url()
+    http://code.google.com/p/googleappengine/issues/detail?id=2749
+- Fixed an issue with using sendmail in Mail API.
+    http://code.google.com/p/googleappengine/issues/detail?id=3106
+- Fixed an issue with appcfg.py cron_info giving the wrong timezone information.
+    http://code.google.com/p/googleappengine/issues/detail?id=3307
+- Fixed an issue with Paging link in Datastore viewer not working with # or &
+    http://code.google.com/p/googleappengine/issues/detail?id=3591
+- Fixed an issue with rounding errors in crop image transform on dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=3647
+- Fixed an issue with TypeError being incorrectly raised when attachment
+  has Character Set and Language Information.
+    http://code.google.com/p/googleappengine/issues/detail?id=3836
+- Fixed an issue with Mail API attachments in unicode failing
+  in_check_attachments()
+    http://code.google.com/p/googleappengine/issues/detail?id=3900
+- Fixed an issue with ereporter not reporting errors when applications
+  use namespaces.
+    http://code.google.com/p/googleappengine/issues/detail?id=4212
+- Fixed an issue with Dataviewer GQL stripping new lines after initial run
+  and a user paginates results.
+    http://code.google.com/p/googleappengine/issues/detail?id=4246
+- Fixed an issue with Python Unicode prefix in Datastore viewer.
+    http://code.google.com/p/googleappengine/issues/detail?id=4275
+- Fixed an issue with get_serving_url for images giving non-cacheable URLs
+  in dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=4402
+- Fixed an issue with fancy_urllib using squid proxy server with
+  authentication.
+    http://code.google.com/p/googleappengine/issues/detail?id=4849
+- Fixed an issue with custom admin page not displaying when restricted to
+  only admins.
+    http://code.google.com/p/googleappengine/issues/detail?id=5117
+- Fixed an issue with dev_appserver_import_hook.py handling Crypto import
+  accounts.
+    http://code.google.com/p/googleappengine/issues/detail?id=4612
+- Fixed an issue with Remote API gzip compression for transmitted data.
+    http://code.google.com/p/googleappengine/issues/detail?id=5298
+- Fixed an issue with remote API shell not having pwd in Python Path.
+    http://code.google.com/p/googleappengine/issues/detail?id=5317
+- Fixed an issue with Admin Console Logs < 30 minutes not being available.
+    http://code.google.com/p/googleappengine/issues/detail?id=5494
+- Fixed an issue with Apps that are using Mail API reporting
+  “No Provider for address type rfc822” error.
+    http://code.google.com/p/googleappengine/issues/detail?id=5769
+- Fixed an issue with concurrent write access to Datastore stubs.
+    http://code.google.com/p/googleappengine/issues/detail?id=6058
+- Fixed an issue with Viewers being able to prohibit code downloads.
+    http://code.google.com/p/googleappengine/issues/detail?id=6255
+- Fixed an issue with billing applications that are disabled.
+    http://code.google.com/p/googleappengine/issues/detail?id=6344
+- Fixed an issue with deploying to an existing version
+  when an app has 10 versions.
+    http://code.google.com/p/googleappengine/issues/detail?id=6803
+- Fixed an issue with bulkloader “model” class not uploading correctly.
+    http://code.google.com/p/googleappengine/issues/detail?id=6907
+- Fixed an issue with TextProperty in Datastore viewer.
+    http://code.google.com/p/googleappengine/issues/detail?id=6997
+- Fixed an issue with appcfg.py request_logs failing with ~oauth2
+    http://code.google.com/p/googleappengine/issues/detail?id=7011
+- Fixed an issue with editing a bytestring field in Datastore viewer.
+    http://code.google.com/p/googleappengine/issues/detail?id=7046
+- Fixed an issue with dev_appserver clearing after restart. This is a
+  Windows only bug.
+    http://code.google.com/p/googleappengine/issues/detail?id=7244
+- Fixed an issue with Cron schedule failing on 1st day of month.
+    http://code.google.com/p/googleappengine/issues/detail?id=7286
+- Fixed an issue with gzip compression for application/plist content type.
+    http://code.google.com/p/googleappengine/issues/detail?id=7641
+- Fixed an issue with datetime.datetime.fromtimestamp() in python 2.7
+    http://code.google.com/p/googleappengine/issues/detail?id=7819
+- A note about an upcoming change: starting with the 1.7.3 release
+  of App Engine, data statistics will report statistics on property type
+  usage by indexes using the documented property type names ("Integer",
+  "Key", etc, see
+  https://developers.google.com/appengine/docs/python/datastore/stats)
+  rather than the current property representation names ("INT64",
+  "REFERENCE", etc, see http://goo.gl/db5dT). This will affect the
+  __Stat_PropertyType__, __Stat_PropertyType_Kind__,
+  __Stat_PropertyType_PropertyName_Kind__ and their per-namespace equivalents.
+  This will also affect the displayed "Breakdown by Property Type" under the
+  "Datastore Statistics" in your application's console.
+
 Version 1.7.1
 ===============================
 - The URLFetch API now supports multiple cookie headers.

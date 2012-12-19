@@ -28,9 +28,12 @@ on proto classes.  For usage, see:
 class EnumTypeWrapper(object):
   """A utility for finding the names of enum values."""
 
+  DESCRIPTOR = None
+
   def __init__(self, enum_type):
     """Inits EnumTypeWrapper with an EnumDescriptor."""
     self._enum_type = enum_type
+    self.DESCRIPTOR = enum_type;
 
   def Name(self, number):
     """Returns a string containing the name of an enum value."""

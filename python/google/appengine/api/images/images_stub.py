@@ -30,8 +30,12 @@ import datetime
 import logging
 import re
 import time
-import simplejson
 import StringIO
+
+try:
+  import json as simplejson
+except ImportError:
+  import simplejson
 
 try:
   import PIL

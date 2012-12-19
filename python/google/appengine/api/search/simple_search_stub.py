@@ -37,7 +37,6 @@ import logging
 import math
 import os
 import random
-import re
 import string
 import tempfile
 import threading
@@ -51,44 +50,20 @@ from google.appengine.api.search import query_parser
 from google.appengine.api.search import QueryParser
 from google.appengine.api.search import search
 from google.appengine.api.search import search_service_pb
+from google.appengine.api.search import search_util
+from google.appengine.api.search.stub import document_matcher
+from google.appengine.api.search.stub import expression_evaluator
+from google.appengine.api.search.stub import simple_tokenizer
+from google.appengine.api.search.stub import tokens
 from google.appengine.runtime import apiproxy_errors
 
 __all__ = ['IndexConsistencyError',
-           'GeoPoint',
-           'Number',
            'Posting',
            'PostingList',
-           'Quote',
            'RamInvertedIndex',
            'SearchServiceStub',
            'SimpleIndex',
-           'SimpleTokenizer',
-           'Token',
-           'UnsupportedOnDevError',
           ]
-
-
-_TEXT_DOCUMENT_FIELD_TYPES = [
-    document_pb.FieldValue.ATOM,
-    document_pb.FieldValue.TEXT,
-    document_pb.FieldValue.HTML,
-    ]
-
-_TEXT_QUERY_TYPES = [
-    QueryParser.NAME,
-    QueryParser.PHRASE,
-    QueryParser.TEXT,
-    ]
-
-_NUMBER_DOCUMENT_FIELD_TYPES = [
-    document_pb.FieldValue.NUMBER,
-    ]
-
-_NUMBER_QUERY_TYPES = [
-    QueryParser.FLOAT,
-    QueryParser.INT,
-    QueryParser.NUMBER,
-    ]
 
 _VISIBLE_PRINTABLE_ASCII = frozenset(
     set(string.printable) - set(string.whitespace))
@@ -96,115 +71,6 @@ _VISIBLE_PRINTABLE_ASCII = frozenset(
 
 class IndexConsistencyError(Exception):
   """Indicates attempt to create index with same name different consistency."""
-
-
-class UnsupportedOnDevError(Exception):
-  """Indicates attempt to perform an action unsupported on the dev server."""
-
-
-def _Repr(class_instance, ordered_dictionary):
-  """Generates an unambiguous representation for instance and ordered dict."""
-  return 'search.%s(%s)' % (class_instance.__class__.__name__, ', '.join(
-      ["%s='%s'" % (key, value)
-       for (key, value) in ordered_dictionary if value]))
-
-
-def _TreeRepr(tree, depth=0):
-  """Generate a string representation of an ANTLR parse tree for debugging."""
-
-  def _NodeRepr(node):
-    text = str(node.getType())
-    if node.getText():
-      text = '%s: %s' % (text, node.getText())
-    return text
-
-  children = ''
-  if tree.children:
-    children = '\n' + '\n'.join([_TreeRepr(child, depth=depth+1)
-                                 for child in tree.children if child])
-  return depth * '  ' + _NodeRepr(tree) + children
-
-
-class Token(object):
-  """Represents a token, usually a word, extracted from some document field."""
-
-  def __init__(self, chars=None, position=None, field_name=None):
-    """Initializer.
-
-    Args:
-      chars: The string representation of the token.
-      position: The position of the token in the sequence from the document
-        field.
-      field_name: The name of the field the token occured in.
-
-    Raises:
-      TypeError: If an unknown argument is passed.
-    """
-    self._chars = chars
-    self._position = position
-    self._field_name = field_name
-
-  @property
-  def chars(self):
-    """Returns a list of fields of the document."""
-    value = self._chars
-    if not isinstance(value, basestring):
-      value = str(self._chars)
-    if self._field_name:
-      return self._field_name + ':' + value
-    return value
-
-  @property
-  def position(self):
-    """Returns a list of fields of the document."""
-    return self._position
-
-  def RestrictField(self, field_name):
-    """Creates a copy of this Token and sets field_name."""
-    return Token(chars=self.chars, position=self.position,
-                 field_name=field_name)
-
-  def __repr__(self):
-    return _Repr(self, [('chars', self.chars), ('position', self.position)])
-
-  def __eq__(self, other):
-    return self.chars == other.chars
-
-  def __hash__(self):
-    return hash(self.chars)
-
-
-class Quote(Token):
-  """Represents a single or double quote in a document field or query."""
-
-  def __init__(self, **kwargs):
-    Token.__init__(self, **kwargs)
-
-
-class Number(Token):
-  """Represents a number in a document field or query."""
-
-  def __init__(self, **kwargs):
-    Token.__init__(self, **kwargs)
-
-
-class GeoPoint(Token):
-  """Represents a geo point in a document field or query."""
-
-  def __init__(self, **kwargs):
-    self._latitude = kwargs.pop('latitude')
-    self._longitude = kwargs.pop('longitude')
-    Token.__init__(self, **kwargs)
-
-  @property
-  def latitude(self):
-    """Returns the angle between equatorial plan and line thru the geo point."""
-    return self._latitude
-
-  @property
-  def longitude(self):
-    """Returns the angle from a reference meridian to another meridian."""
-    return self._longitude
 
 
 class Posting(object):
@@ -250,74 +116,8 @@ class Posting(object):
     return self._positions
 
   def __repr__(self):
-    return _Repr(self, [('doc_id', self.doc_id), ('positions', self.positions)])
-
-
-class SimpleTokenizer(object):
-  """A tokenizer which converts text to lower case and splits on whitespace."""
-
-  def __init__(self, split_restricts=True):
-    self._split_restricts = split_restricts
-    self._html_pattern = re.compile(r'<[^>]*>')
-
-  def TokenizeText(self, text, token_position=0):
-    """Tokenizes the text into a sequence of Tokens."""
-    return self._TokenizeForType(field_type=document_pb.FieldValue.TEXT,
-                                 value=text, token_position=token_position)
-
-  def TokenizeValue(self, field_value, token_position=0):
-    """Tokenizes a document_pb.FieldValue into a sequence of Tokens."""
-    if field_value.type() is document_pb.FieldValue.GEO:
-      return self._TokenizeForType(field_type=field_value.type(),
-                                   value=field_value.geo(),
-                                   token_position=token_position)
-    return self._TokenizeForType(field_type=field_value.type(),
-                                 value=field_value.string_value(),
-                                 token_position=token_position)
-
-  def _TokenizeString(self, value, field_type):
-    if field_type is document_pb.FieldValue.HTML:
-      return self._StripHtmlTags(value).lower().split()
-    if field_type is document_pb.FieldValue.ATOM:
-      return [value.lower()]
-    return value.lower().split()
-
-  def _StripHtmlTags(self, value):
-    """Replace HTML tags with spaces."""
-    return self._html_pattern.sub(' ', value)
-
-  def _TokenizeForType(self, field_type, value, token_position=0):
-    """Tokenizes value into a sequence of Tokens."""
-    if field_type is document_pb.FieldValue.NUMBER:
-      return [Token(chars=value, position=token_position)]
-
-    if field_type is document_pb.FieldValue.GEO:
-      return [GeoPoint(latitude=value.lat(), longitude=value.lng(),
-                       position=token_position)]
-
-    tokens = []
-    token_strings = []
-
-    if not self._split_restricts:
-      token_strings = value.lower().split()
-    else:
-      token_strings = self._TokenizeString(value, field_type)
-    for token in token_strings:
-      if ':' in token and self._split_restricts:
-        for subtoken in token.split(':'):
-          tokens.append(Token(chars=subtoken, position=token_position))
-          token_position += 1
-      elif '"' in token:
-        for subtoken in token.split('"'):
-          if not subtoken:
-            tokens.append(Quote(chars='"', position=token_position))
-          else:
-            tokens.append(Token(chars=subtoken, position=token_position))
-          token_position += 1
-      else:
-        tokens.append(Token(chars=token, position=token_position))
-        token_position += 1
-    return tokens
+    return search_util.Repr(
+        self, [('doc_id', self.doc_id), ('positions', self.positions)])
 
 
 class PostingList(object):
@@ -360,7 +160,7 @@ class PostingList(object):
     return iter(self._postings)
 
   def __repr__(self):
-    return _Repr(self, [('postings', self.postings)])
+    return search_util.Repr(self, [('postings', self.postings)])
 
 
 class _ScoredDocument(object):
@@ -369,6 +169,7 @@ class _ScoredDocument(object):
   def __init__(self, document, score):
     self._document = document
     self._score = score
+    self._expressions = {}
 
   @property
   def document(self):
@@ -378,8 +179,13 @@ class _ScoredDocument(object):
   def score(self):
     return self._score
 
+  @property
+  def expressions(self):
+    return self._expressions
+
   def __repr__(self):
-    return _Repr(self, [('document', self.document), ('score', self.score)])
+    return search_util.Repr(
+        self, [('document', self.document), ('score', self.score)])
 
 
 class _DocumentStatistics(object):
@@ -418,7 +224,7 @@ class _DocumentStatistics(object):
     return hash(self.term_stats)
 
   def __repr__(self):
-    return _Repr(self, [('term_stats', self.term_stats)])
+    return search_util.Repr(self, [('term_stats', self.term_stats)])
 
 
 class RamInvertedIndex(object):
@@ -514,250 +320,14 @@ class RamInvertedIndex(object):
     return self._schema
 
   def __repr__(self):
-    return _Repr(self, [('_inverted_index', self._inverted_index),
-                        ('_schema', self._schema),
-                        ('document_count', self.document_count)])
+    return search_util.Repr(self, [('_inverted_index', self._inverted_index),
+                                   ('_schema', self._schema),
+                                   ('document_count', self.document_count)])
 
 
 def _ScoreRequested(params):
   """Returns True if match scoring requested, False otherwise."""
   return params.has_scorer_spec() and params.scorer_spec().has_scorer()
-
-
-def _GetFieldInDocument(document, field_name):
-  """Find and return the field with the provided name in the document."""
-  for f in document.field_list():
-    if f.name() == field_name:
-      return f
-  return None
-
-
-def _GetQueryNodeText(node):
-  """Returns the text from the node, handling that it could be unicode."""
-  return node.getText().encode('utf-8')
-
-
-def _DateValueForField(string_value):
-  """Returns the date object associated with a date field."""
-  date_parts = [int(part) for part in string_value.split('-')]
-  return datetime.date(*date_parts)
-
-
-class _DocumentMatcher(object):
-  """A class to match documents with a query."""
-
-  def __init__(self, query, parser, inverted_index):
-    self._query = query
-    self._inverted_index = inverted_index
-    self._parser = parser
-
-  def _PostingsForToken(self, token):
-    """Returns the postings for the token."""
-    return self._inverted_index.GetPostingsForToken(token)
-
-  def _MakeToken(self, value):
-    """Makes a token from the given value."""
-    return self._parser.TokenizeText(value)[0]
-
-  def _PostingsForFieldToken(self, field, value):
-    """Returns postings for the value occurring in the given field."""
-    token = field + ':' + value
-    token = self._MakeToken(token)
-    return self._PostingsForToken(token)
-
-  def _SplitPhrase(self, phrase):
-    """Returns the list of tokens for the phrase."""
-    phrase = phrase[1:len(phrase) - 1]
-    return self._parser.TokenizeText(phrase)
-
-  def _MatchPhrase(self, field, match, document):
-    """Match a textual field with a phrase query node."""
-    phrase = self._SplitPhrase(_GetQueryNodeText(match))
-    if not phrase:
-      return True
-    field_text = self._parser.TokenizeText(field.value().string_value())
-
-    posting = None
-    for post in self._PostingsForFieldToken(field.name(), phrase[0].chars):
-      if post.doc_id == document.id():
-        posting = post
-        break
-    if not posting:
-      return False
-
-    def ExtractWords(tokens):
-      return (token.chars for token in tokens)
-
-    for position in posting.positions:
-
-
-
-
-      match_words = zip(ExtractWords(field_text[position:]),
-                        ExtractWords(phrase))
-      if len(match_words) != len(phrase):
-        continue
-
-
-      match = True
-      for doc_word, match_word in match_words:
-        if doc_word != match_word:
-          match = False
-
-      if match:
-        return True
-    return False
-
-  def _MatchTextField(self, field, match, document):
-    """Check if a textual field matches a query tree node."""
-
-    if (match.getType() in (QueryParser.TEXT, QueryParser.NAME) or
-        match.getType() in _NUMBER_QUERY_TYPES):
-      matching_docids = [
-          post.doc_id for post in self._PostingsForFieldToken(
-              field.name(), _GetQueryNodeText(match))]
-      return document.id() in matching_docids
-
-    if match.getType() is QueryParser.PHRASE:
-      return self._MatchPhrase(field, match, document)
-
-    if match.getType() is QueryParser.CONJUNCTION:
-      return all(self._MatchTextField(field, child, document)
-                 for child in match.children)
-
-    if match.getType() is QueryParser.DISJUNCTION:
-      return any(self._MatchTextField(field, child, document)
-                 for child in match.children)
-
-    if match.getType() is QueryParser.NEGATION:
-      return not self._MatchTextField(field, match.children[0], document)
-
-
-    return False
-
-  def _MatchDateField(self, field, match, document):
-    """Check if a date field matches a query tree node."""
-
-
-    return self._MatchComparableField(
-        field, match, _DateValueForField, _TEXT_QUERY_TYPES, document)
-
-
-  def _MatchNumericField(self, field, match, document):
-    """Check if a numeric field matches a query tree node."""
-    return self._MatchComparableField(
-        field, match, float, _NUMBER_QUERY_TYPES, document)
-
-
-  def _MatchComparableField(
-      self, field, match, cast_to_type, query_node_types,
-      document):
-    """A generic method to test matching for comparable types.
-
-    Comparable types are defined to be anything that supports <, >, <=, >=, ==
-    and !=. For our purposes, this is numbers and dates.
-
-    Args:
-      field: The document_pb.Field to test
-      match: The query node to match against
-      cast_to_type: The type to cast the node string values to
-      query_node_types: The query node types that would be valid matches
-      document: The document that the field is in
-
-    Returns:
-      True iff the field matches the query.
-
-    Raises:
-      UnsupportedOnDevError: Raised when an unsupported operator is used, or
-      when the query node is of the wrong type.
-    """
-
-    field_val = cast_to_type(field.value().string_value())
-
-    op = QueryParser.EQ
-
-    if match.getType() in query_node_types:
-      try:
-        match_val = cast_to_type(_GetQueryNodeText(match))
-      except ValueError:
-        return False
-    elif match.children:
-      op = match.getType()
-      try:
-        match_val = cast_to_type(_GetQueryNodeText(match.children[0]))
-      except ValueError:
-        return False
-    else:
-      return False
-
-    if op is QueryParser.EQ:
-      return field_val == match_val
-    if op is QueryParser.NE:
-      return field_val != match_val
-    if op is QueryParser.GT:
-      return field_val > match_val
-    if op is QueryParser.GE:
-      return field_val >= match_val
-    if op is QueryParser.LT:
-      return field_val < match_val
-    if op is QueryParser.LE:
-      return field_val <= match_val
-    raise UnsupportedOnDevError(
-        'Operator %s not supported for numerical fields on development server.'
-        % match.getText())
-
-  def _MatchField(self, field_query_node, match, document):
-    """Check if a field matches a query tree."""
-
-    if isinstance(field_query_node, str):
-      field = _GetFieldInDocument(document, field_query_node)
-    else:
-      field = _GetFieldInDocument(document, field_query_node.getText())
-    if not field:
-      return False
-
-    if field.value().type() in _TEXT_DOCUMENT_FIELD_TYPES:
-      return self._MatchTextField(field, match, document)
-
-    if field.value().type() in _NUMBER_DOCUMENT_FIELD_TYPES:
-      return self._MatchNumericField(field, match, document)
-
-    if field.value().type() == document_pb.FieldValue.DATE:
-      return self._MatchDateField(field, match, document)
-
-    raise UnsupportedOnDevError(
-        'Matching to field type of field "%s" (type=%d) is unsupported on '
-        'dev server' % (field.name(), field.value().type()))
-
-  def _MatchGlobal(self, match, document):
-    for field in document.field_list():
-      if self._MatchField(field.name(), match, document):
-        return True
-    return False
-
-  def _CheckMatch(self, node, document):
-    """Check if a document matches a query tree."""
-
-    if node.getType() is QueryParser.CONJUNCTION:
-      return all(self._CheckMatch(child, document) for child in node.children)
-
-    if node.getType() is QueryParser.DISJUNCTION:
-      return any(self._CheckMatch(child, document) for child in node.children)
-
-    if node.getType() is QueryParser.NEGATION:
-      return not self._CheckMatch(node.children[0], document)
-
-    if node.getType() is QueryParser.RESTRICTION:
-      field, match = node.children
-      return self._MatchField(field, match, document)
-
-    return self._MatchGlobal(node, document)
-
-  def Matches(self, document):
-    return self._CheckMatch(self._query, document)
-
-  def FilterDocuments(self, documents):
-    return (doc for doc in documents if self.Matches(doc))
 
 
 class SimpleIndex(object):
@@ -766,8 +336,8 @@ class SimpleIndex(object):
   def __init__(self, index_spec):
     self._index_spec = index_spec
     self._documents = {}
-    self._parser = SimpleTokenizer(split_restricts=False)
-    self._inverted_index = RamInvertedIndex(SimpleTokenizer())
+    self._parser = simple_tokenizer.SimpleTokenizer(split_restricts=False)
+    self._inverted_index = RamInvertedIndex(simple_tokenizer.SimpleTokenizer())
 
   @property
   def index_spec(self):
@@ -815,7 +385,7 @@ class SimpleIndex(object):
 
   def _DocumentCountForTerm(self, term):
     """Returns the document count for documents containing the term."""
-    return len(self._PostingsForToken(Token(chars=term)))
+    return len(self._PostingsForToken(tokens.Token(chars=term)))
 
   def _InverseDocumentFrequency(self, term):
     """Returns inverse document frequency of term."""
@@ -845,19 +415,33 @@ class SimpleIndex(object):
 
   def _CollectTerms(self, node):
     """Get all search terms for scoring."""
-    if node.getType() in _TEXT_QUERY_TYPES:
-      return set([_GetQueryNodeText(node)])
+    if node.getType() in search_util.TEXT_QUERY_TYPES:
+      return set([query_parser.GetQueryNodeText(node).strip('"')])
+    elif node.children:
+      if node.getType() == QueryParser.RESTRICTION and len(node.children) > 1:
+        children = node.children[1:]
+      else:
+        children = node.children
+
+      result = set()
+      for term_set in (self._CollectTerms(child) for child in children):
+        result.update(term_set)
+      return result
+    return set()
+
+  def _CollectFields(self, node):
+    if node.getType() == QueryParser.RESTRICTION and node.children:
+      return set([query_parser.GetQueryNodeText(node.children[0])])
     elif node.children:
       result = set()
-      for term_set in (self._CollectTerms(child) for child in node.children):
+      for term_set in (self._CollectFields(child) for child in node.children):
         result.update(term_set)
       return result
     return set()
 
   def _Evaluate(self, node, score=True):
     """Retrieve scored results for a search query."""
-    doc_match = _DocumentMatcher(
-        node, self._parser, self._inverted_index)
+    doc_match = document_matcher.DocumentMatcher(node, self._inverted_index)
 
     matched_documents = doc_match.FilterDocuments(self._documents.itervalues())
     terms = self._CollectTerms(node)
@@ -886,19 +470,23 @@ class SimpleIndex(object):
 
     def SortKey(scored_doc):
       """Return the sort key for a document based on the request parameters."""
-      field = _GetFieldInDocument(
-          scored_doc.document, sort_spec.sort_expression())
-      if not field:
-        return default_value
-
-      string_val = field.value().string_value()
-      if field.value().type() in _NUMBER_DOCUMENT_FIELD_TYPES:
-        return float(string_val)
-      if field.value().type() is document_pb.FieldValue.DATE:
-        return _DateValueForField(string_val)
-      return string_val
+      val = expression_evaluator.ExpressionEvaluator(
+          scored_doc, self._inverted_index).ValueOf(
+              sort_spec.sort_expression(), default_value=default_value)
+      if isinstance(val, datetime.datetime):
+        return search_util.EpochTime(val)
+      return val
 
     return sorted(docs, key=SortKey, reverse=sort_spec.sort_descending())
+
+  def _AttachExpressions(self, docs, search_params):
+    if search_params.has_field_spec():
+      for doc in docs:
+        evaluator = expression_evaluator.ExpressionEvaluator(
+            doc, self._inverted_index)
+        for expr in search_params.field_spec().expression_list():
+          evaluator.Evaluate(expr)
+    return docs
 
   def Search(self, search_request):
     """Searches the simple index for ."""
@@ -914,6 +502,8 @@ class SimpleIndex(object):
     score = _ScoreRequested(search_request)
     docs = self._Evaluate(query_tree, score=score)
     docs = self._Sort(docs, search_request, score)
+    docs = self._AttachExpressions(docs, search_request)
+
     return docs
 
   def GetSchema(self):
@@ -921,9 +511,9 @@ class SimpleIndex(object):
     return self._inverted_index.GetSchema()
 
   def __repr__(self):
-    return _Repr(self, [('_index_spec', self._index_spec),
-                        ('_documents', self._documents),
-                        ('_inverted_index', self._inverted_index)])
+    return search_util.Repr(self, [('_index_spec', self._index_spec),
+                                   ('_documents', self._documents),
+                                   ('_inverted_index', self._inverted_index)])
 
 
 class SearchServiceStub(apiproxy_stub.APIProxyStub):
@@ -933,6 +523,11 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
   NOT a subclass of SearchService itself.  Services are provided by
   the methods prefixed by "_Dynamic_".
   """
+
+
+
+
+  _VERSION = 1
 
   def __init__(self, service_name='search', index_file=None):
     """Constructor.
@@ -1235,10 +830,20 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       search_result = response.add_result()
       self._CopyDocument(result.document, search_result.mutable_document(),
                          field_spec, ids_only)
-      if cursor_type is search_service_pb.SearchParams.PER_RESULT:
+      if cursor_type == search_service_pb.SearchParams.PER_RESULT:
         search_result.set_cursor(result.document.id())
       if score:
         search_result.add_score(result.score)
+      for field, expression in result.expressions.iteritems():
+        expr = search_result.add_expression()
+        expr.set_name(field)
+        if (isinstance(expression, float) or
+            isinstance(expression, long) or
+            isinstance(expression, int)):
+          expr.mutable_value().set_string_value(str(expression))
+          expr.mutable_value().set_type(document_pb.FieldValue.NUMBER)
+        else:
+          expr.mutable_value().set_string_value(expression)
 
   def _Dynamic_Search(self, request, response):
     """A local implementation of SearchService.Search RPC.
@@ -1268,10 +873,10 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     offset = 0
     if params.has_cursor():
-      positions = [i for i in range(len(results)) if results[i].document.id() is
-                   params.cursor()]
-      if positions:
-        offset = positions[0] + 1
+      for i, result in enumerate(results):
+        if result.document.id() == params.cursor():
+          offset = i + 1
+          break
     elif params.has_offset():
       offset = params.offset()
 
@@ -1289,7 +894,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     self._FillSearchResponse(results, position_range, params.cursor_type(),
                              _ScoreRequested(params), response, field_spec,
                              params.keys_only())
-    if (params.cursor_type() is search_service_pb.SearchParams.SINGLE and
+    if (params.cursor_type() == search_service_pb.SearchParams.SINGLE and
         len(position_range)):
       response.set_cursor(
           results[position_range[len(position_range) - 1]].document.id())
@@ -1297,7 +902,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
 
   def __repr__(self):
-    return _Repr(self, [('__indexes', self.__indexes)])
+    return search_util.Repr(self, [('__indexes', self.__indexes)])
 
   def Write(self):
     """Write search indexes to the index file.
@@ -1317,7 +922,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     pickler = pickle.Pickler(tmpfile, protocol=1)
     pickler.fast = True
-    pickler.dump(self.__indexes)
+    pickler.dump((self._VERSION, self.__indexes))
 
     tmpfile.close()
 
@@ -1338,14 +943,18 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     self.__index_file_lock.acquire()
     try:
       if os.path.isfile(self.__index_file):
-        return pickle.load(open(self.__index_file, 'rb'))
+        version, indexes = pickle.load(open(self.__index_file, 'rb'))
+        if version == self._VERSION:
+          return indexes
+        logging.warning(
+            'Saved search indexes are not compatible with this version of the '
+            'SDK. Search indexes have been cleared.')
       else:
         logging.warning(
             'Could not read search indexes from %s', self.__index_file)
     except (AttributeError, LookupError, ImportError, NameError, TypeError,
             ValueError, pickle.PickleError), e:
-      raise apiproxy_errors.ApplicationError(
-          search_service_pb.SearchServiceError.INTERNAL_ERROR,
+      logging.warning(
           'Could not read indexes from %s. Try running with the '
           '--clear_search_index flag. Cause:\n%r' % (self.__index_file, e))
     finally:
@@ -1360,4 +969,6 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     """
     if not self.__index_file:
       return
-    self.__indexes = self._ReadFromFile()
+    read_indexes = self._ReadFromFile()
+    if read_indexes:
+      self.__indexes = read_indexes

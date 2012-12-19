@@ -36,10 +36,14 @@ from __future__ import with_statement
 
 import cgi
 import cStringIO
+import httplib
 try:
+
   import json
 except ImportError:
+
   import simplejson as json
+
 import logging
 import mimetools
 import re
@@ -98,19 +102,248 @@ class ApiRequest(object):
     self.body_obj = json.loads(self.body) if self.body else {}
     self.request_id = None
 
-  def IsRpc(self):
+  def _IsRpc(self):
 
 
 
-    return self.path.startswith('rpc')
+
+
+
+
+
+    return self.path == 'rpc'
+
+
+class DiscoveryApiProxy(object):
+  """Proxies discovery service requests to a known cloud endpoint."""
+
+
+
+  _DISCOVERY_PROXY_HOST = 'webapis-discovery.appspot.com'
+  _STATIC_PROXY_HOST = 'webapis-discovery.appspot.com'
+  _DISCOVERY_API_PATH_PREFIX = '/_ah/api/discovery/v1/'
+
+  def _DispatchRequest(self, path, body):
+    """Proxies GET request to discovery service API.
+
+    Args:
+      path: URL path relative to discovery service.
+      body: HTTP POST request body.
+
+    Returns:
+      HTTP response body or None if it failed.
+    """
+    full_path = self._DISCOVERY_API_PATH_PREFIX + path
+    headers = {'Content-type': 'application/json'}
+    connection = httplib.HTTPSConnection(self._DISCOVERY_PROXY_HOST)
+    try:
+      connection.request('POST', full_path, body, headers)
+      response = connection.getresponse()
+      response_body = response.read()
+      if response.status != 200:
+        logging.error('Discovery API proxy failed on %s with %d.\r\n'
+                      'Request: %s\r\nResponse: %s',
+                      full_path, response.status, body, response_body)
+        return None
+      return response_body
+    finally:
+      connection.close()
+
+  def GenerateDiscoveryDoc(self, api_config, api_format):
+    """Generates a discovery document from an API file.
+
+    Args:
+      api_config: .api file contents as string.
+      api_format: 'rest' or 'rpc' depending on the which kind of discvoery doc.
+
+    Returns:
+      Discovery doc as JSON string.
+
+    Raises:
+      ValueError: When api_format is invalid.
+    """
+    if api_format not in ['rest', 'rpc']:
+      raise ValueError('Invalid API format')
+    path = 'apis/generate/' + api_format
+    request_dict = {'config': json.dumps(api_config)}
+    request_body = json.dumps(request_dict)
+    return self._DispatchRequest(path, request_body)
+
+  def GenerateDirectory(self, api_configs):
+    """Generates an API directory from a list of API files.
+
+    Args:
+      api_configs: list of strings which are the .api file contents.
+
+    Returns:
+      API directory as JSON string.
+    """
+    request_dict = {'configs': api_configs}
+    request_body = json.dumps(request_dict)
+    return self._DispatchRequest('apis/generate/directory', request_body)
+
+  def GetStaticFile(self, path):
+    """Returns static content via a GET request.
+
+    Args:
+      path: URL path after the domain.
+
+    Returns:
+      Tuple of (response, response_body):
+        response: HTTPResponse object.
+        response_body: Response body as string.
+    """
+    connection = httplib.HTTPSConnection(self._STATIC_PROXY_HOST)
+    try:
+      connection.request('GET', path, None, {})
+      response = connection.getresponse()
+      response_body = response.read()
+    finally:
+      connection.close()
+    return response, response_body
+
+
+class DiscoveryService(object):
+  """Implements the local devserver discovery service.
+
+     This has a static minimal version of the discoverable part of the
+     discovery .api file.
+     It only handles returning the discovery doc and directory, and ignores
+     directory parameters to filter the results.
+
+     The discovery docs/directory are created by calling a cloud endpoint
+     discovery service to generate the discovery docs/directory from an .api
+     file/set of .api files.
+  """
+
+  _GET_REST_API = 'apisdev.getRest'
+  _GET_RPC_API = 'apisdev.getRpc'
+  _LIST_API = 'apisdev.list'
+  API_CONFIG = {
+      'name': 'discovery',
+      'version': 'v1',
+      'methods': {
+          'discovery.apis.getRest': {
+              'path': 'apis/{api}/{version}/rest',
+              'httpMethod': 'GET',
+              'rosyMethod': _GET_REST_API,
+          },
+          'discovery.apis.getRpc': {
+              'path': 'apis/{api}/{version}/rpc',
+              'httpMethod': 'GET',
+              'rosyMethod': _GET_RPC_API,
+          },
+          'discovery.apis.list': {
+              'path': 'apis',
+              'httpMethod': 'GET',
+              'rosyMethod': _LIST_API,
+          },
+      }
+  }
+
+  def __init__(self, config_manager, api_request, outfile):
+    """Initializes an instance of the DiscoveryService.
+
+    Args:
+      config_manager: an instance of ApiConfigManager.
+      api_request: an instance of ApiRequest.
+      outfile: the CGI file object to write the response to.
+    """
+    self._config_manager = config_manager
+    self._params = json.loads(api_request.body or '{}')
+    self._outfile = outfile
+    self._discovery_proxy = DiscoveryApiProxy()
+
+  def _SendSuccessResponse(self, response):
+    """Sends an HTTP 200 json success response.
+
+    Args:
+      response: Response body as string to return.
+
+    Returns:
+      Sends back an HTTP 200 json success response.
+    """
+    headers = {'Content-Type': 'application/json; charset=UTF-8'}
+    return SendCGIResponse('200', headers, response, self._outfile)
+
+  def _GetRpcOrRest(self, api_format):
+    """Sends back HTTP response with API directory.
+
+    Args:
+      api_format: Either 'rest' or 'rpc'. Sends CGI response containing
+        the discovery doc for the api/version.
+
+    Returns:
+      None.
+    """
+    api = self._params['api']
+    version = self._params['version']
+    lookup_key = (api, version)
+    api_config = self._config_manager.configs.get(lookup_key)
+    if not api_config:
+      logging.warn('No discovery doc for version %s of api %s', version, api)
+      SendCGINotFoundResponse(self._outfile)
+      return
+    doc = self._discovery_proxy.GenerateDiscoveryDoc(api_config, api_format)
+    if not doc:
+      error_msg = ('Failed to convert .api to discovery doc for '
+                   'version %s of api %s') % (version, api)
+      logging.error('%s', error_msg)
+      SendCGIErrorResponse(error_msg, self._outfile)
+      return
+    self._SendSuccessResponse(doc)
+
+  def _GetRest(self):
+    return self._GetRpcOrRest('rest')
+
+  def _GetRpc(self):
+    return self._GetRpcOrRest('rpc')
+
+  def _List(self):
+    """Sends HTTP response containing the API directory."""
+    api_configs = []
+    for api_config in self._config_manager.configs.itervalues():
+
+
+
+      if not api_config == self.API_CONFIG:
+        api_configs.append(json.dumps(api_config))
+    directory = self._discovery_proxy.GenerateDirectory(api_configs)
+    if not directory:
+      logging.error('Failed to get API directory')
+
+
+      SendCGINotFoundResponse(self._outfile)
+      return
+    self._SendSuccessResponse(directory)
+
+  def HandleDiscoveryRequest(self, path):
+    """Returns the result of a discovery service request.
+
+    Args:
+      path: the SPI API path
+
+    Returns:
+      JSON string with result of discovery service API request.
+    """
+    if path == self._GET_REST_API:
+      self._GetRest()
+    elif path == self._GET_RPC_API:
+      self._GetRpc()
+    elif path == self._LIST_API:
+      self._List()
+    else:
+      return False
+    return True
 
 
 class ApiConfigManager(object):
   """Manages loading api configs and method lookup."""
 
   def __init__(self):
-    self.__rpc_method_dict = {}
-    self.__rest_methods = []
+    self._rpc_method_dict = {}
+    self._rest_methods = []
+    self.configs = {}
 
   @staticmethod
   def HasSpiEndpoint(config):
@@ -123,6 +356,11 @@ class ApiConfigManager(object):
       True if any handler is registered for (/_ah/spi/.*).
     """
     return any(h.url.startswith('/_ah/spi/') for h in config.handlers)
+
+  def _AddDiscoveryConfig(self):
+    lookup_key = (DiscoveryService.API_CONFIG['name'],
+                  DiscoveryService.API_CONFIG['version'])
+    self.configs[lookup_key] = DiscoveryService.API_CONFIG
 
   def ParseApiConfigResponse(self, body):
     """Parses a json api config and registers methods for dispatch.
@@ -142,6 +380,7 @@ class ApiConfigManager(object):
       logging.error('Can not parse BackendService.getApiConfigs response: %s',
                     body)
     else:
+      self._AddDiscoveryConfig()
       for api_config_json in response_obj.get('items', []):
         try:
           config = json.loads(api_config_json)
@@ -149,12 +388,14 @@ class ApiConfigManager(object):
           logging.error('Can not parse API config: %s',
                         api_config_json)
         else:
-          version = config.get('version', '')
-          if config.has_key('methods'):
-            for method_name, method in config.get('methods', {}).iteritems():
-              method['api'] = config
-              self.SaveRpcMethod(method_name, version, method)
-              self.SaveRestMethod(method_name, version, method)
+          lookup_key = config.get('name', ''), config.get('version', '')
+          self.configs[lookup_key] = config
+
+      for config in self.configs.itervalues():
+        version = config.get('version', '')
+        for method_name, method in config.get('methods', {}).iteritems():
+          self.SaveRpcMethod(method_name, version, method)
+          self.SaveRestMethod(method_name, version, method)
 
   @staticmethod
   def CompilePathPattern(pattern):
@@ -210,7 +451,7 @@ class ApiConfigManager(object):
                      ReplaceReservedVariable, pattern, 2)
     pattern = re.sub('(/|^){(%s)}(?=/|$)' % _PATH_VARIABLE_PATTERN,
                      ReplaceVariable, pattern)
-    return re.compile(pattern + '$')
+    return re.compile(pattern + '/?$')
 
   def SaveRpcMethod(self, method_name, version, method):
     """Store JsonRpc api methods in a map for lookup at call time.
@@ -222,12 +463,12 @@ class ApiConfigManager(object):
       version: Version of the API
       method: method descriptor (as in the api config file).
     """
-    self.__rpc_method_dict[(method_name, version)] = method
+    self._rpc_method_dict[(method_name, version)] = method
 
   def LookupRpcMethod(self, method_name, version):
     """Lookup the JsonRPC method at call time.
 
-    The method is looked up in self.__rpc_method_dict, the dictionary that
+    The method is looked up in self._rpc_method_dict, the dictionary that
     it is saved in for SaveRpcMethod().
 
     Args:
@@ -237,13 +478,13 @@ class ApiConfigManager(object):
     Returns:
       Method descriptor as specified in the API configuration.
     """
-    method = self.__rpc_method_dict.get((method_name, version))
+    method = self._rpc_method_dict.get((method_name, version))
     return method
 
   def SaveRestMethod(self, method_name, version, method):
     """Store Rest api methods in a list for lookup at call time.
 
-    The list is self.__rest_methods, a list of tuples:
+    The list is self._rest_methods, a list of tuples:
       [(<compiled_path>, <path_pattern>, <method_dict>), ...]
     where:
       <compiled_path> is a compiled regex to match against the incoming URL
@@ -275,12 +516,12 @@ class ApiConfigManager(object):
     """
     path_pattern = _API_REST_PATH_FORMAT % method.get('path', '')
     http_method = method.get('httpMethod', '').lower()
-    for _, path, methods in self.__rest_methods:
+    for _, path, methods in self._rest_methods:
       if path == path_pattern:
         methods[(http_method, version)] = method_name, method
         break
     else:
-      self.__rest_methods.append(
+      self._rest_methods.append(
           (self.CompilePathPattern(path_pattern),
            path_pattern,
            {(http_method, version): (method_name, method)}))
@@ -288,7 +529,7 @@ class ApiConfigManager(object):
   def LookupRestMethod(self, path, http_method):
     """Look up the rest method at call time.
 
-    The method is looked up in self.__rest_methods, the list it is saved
+    The method is looked up in self._rest_methods, the list it is saved
     in for SaveRestMethod.
 
     Args:
@@ -302,7 +543,7 @@ class ApiConfigManager(object):
         <method> is the descriptor as specified in the API configuration. -and-
         <params> is a dict of path parameters matched in the rest request.
     """
-    for compiled_path_pattern, unused_path, methods in self.__rest_methods:
+    for compiled_path_pattern, unused_path, methods in self._rest_methods:
       match = compiled_path_pattern.match(path)
       if match:
         params = match.groupdict()
@@ -312,6 +553,7 @@ class ApiConfigManager(object):
         if method is not None:
           break
     else:
+      logging.warn('No endpoint found for path: %s', path)
       method_name = None
       method = None
       params = None
@@ -336,6 +578,8 @@ def CreateApiserverDispatcher(config_manager=None):
   class ApiserverDispatcher(dev_appserver.URLDispatcher):
     """Dispatcher that handles requests to the built-in apiserver handlers."""
 
+    _API_EXPLORER_URL = 'https://developers.google.com/apis-explorer/?base='
+
     class RequestState(object):
       """Enum tracking request state."""
       INIT = 0
@@ -346,11 +590,67 @@ def CreateApiserverDispatcher(config_manager=None):
 
 
     def __init__(self, config_manager=None, *args, **kwargs):
+      self._is_rpc = None
       self._request_stage = self.RequestState.INIT
+      self._is_batch = False
       if config_manager is None:
         config_manager = ApiConfigManager()
       self.config_manager = config_manager
+      self._dispatchers = []
+      self._AddDispatcher('/_ah/api/explorer/?$',
+                          self.HandleApiExplorerRequest)
+      self._AddDispatcher('/_ah/api/static/.*$',
+                          self.HandleApiStaticRequest)
       dev_appserver.URLDispatcher.__init__(self, *args, **kwargs)
+
+    def _AddDispatcher(self, path_regex, dispatch_function):
+      """Add a request path and dispatch handler.
+
+      Args:
+        path_regex: Regex path to match against incoming requests.
+        dispatch_function: Function to call for these requests.  The function
+          should take (request, outfile, base_env_dict) as arguments and
+          return True.
+      """
+      self._dispatchers.append((re.compile(path_regex), dispatch_function))
+
+    def _EndRequest(self):
+      """End the request and clean up.
+
+      Sets the request state to END and cleans up any variables that
+      need it.
+      """
+      self._request_stage = self.RequestState.END
+      self._is_batch = False
+
+    def IsRpc(self):
+      """Check if the current request is an RPC request.
+
+      This should only be used after Dispatch, where this info is cached.
+
+      Returns:
+        True if the current request is an RPC.  False if not.
+      """
+      assert self._is_rpc is not None
+      return self._is_rpc
+
+    def DispatchNonApiRequests(self, request, outfile, base_env_dict):
+      """Dispatch this request if this is a request to a reserved URL.
+
+      Args:
+        request: AppServerRequest.
+        outfile: The response file.
+        base_env_dict: Dictionary of CGI environment parameters if available.
+          Defaults to None.
+
+      Returns:
+        False if the request doesn't match one of the reserved URLs this
+        handles.  True if it is handled.
+      """
+      for path_regex, dispatch_function in self._dispatchers:
+        if path_regex.match(request.relative_url):
+          return dispatch_function(request, outfile, base_env_dict)
+      return False
 
     def Dispatch(self,
                  request,
@@ -366,11 +666,12 @@ def CreateApiserverDispatcher(config_manager=None):
         request: AppServerRequest.
         outfile: The response file.
         base_env_dict: Dictionary of CGI environment parameters if available.
-                       Defaults to None.
+          Defaults to None.
 
       Returns:
-        AppServerRequest internal redirect for normal calls or
-        None for error conditions (e.g. method not found -> 404)
+        AppServerRequest internal redirect for normal API calls or
+        None for error conditions (e.g. method not found -> 404) and
+        other calls not requiring the GetApiConfigs redirect.
       """
       if self._request_stage != self.RequestState.INIT:
         return self.FailRequest('Dispatch in unexpected state', outfile)
@@ -378,12 +679,66 @@ def CreateApiserverDispatcher(config_manager=None):
       if not base_env_dict:
         return self.FailRequest('CGI Environment Not Available', outfile)
 
+      if self.DispatchNonApiRequests(request, outfile, base_env_dict):
+        return None
+
 
       self.request = ApiRequest(base_env_dict, dev_appserver, request)
 
 
+
+
+
+      self._is_rpc = self.request._IsRpc()
+
+
       self._request_stage = self.RequestState.GET_API_CONFIGS
       return self.GetApiConfigs(base_env_dict, dev_appserver)
+
+    def HandleApiExplorerRequest(self, unused_request, outfile, base_env_dict):
+      """Handler for requests to _ah/api/explorer.
+
+      Args:
+        unused_request: AppServerRequest.
+        outfile: The response file.
+        base_env_dict: Dictionary of CGI environment parameters
+          if available. Defaults to None.
+
+      Returns:
+        True
+        We will redirect these requests to the google apis explorer.
+      """
+      base_url = 'http://%s:%s/_ah/api' % (base_env_dict['SERVER_NAME'],
+                                           base_env_dict['SERVER_PORT'])
+      redirect_url = self._API_EXPLORER_URL + base_url
+      SendCGIRedirectResponse(redirect_url, outfile)
+      return True
+
+    def HandleApiStaticRequest(self, request, outfile, unused_base_env_dict):
+      """Handler for requests to _ah/api/static/.*.
+
+      Args:
+        request: AppServerRequest.
+        outfile: The response file.
+        unused_base_env_dict: Dictionary of CGI environment parameters
+          if available. Defaults to None.
+
+      Returns:
+        True
+        We will redirect these requests to an endpoint proxy.
+      """
+      discovery_api_proxy = DiscoveryApiProxy()
+      response, body = discovery_api_proxy.GetStaticFile(request.relative_url)
+      if response.status == 200:
+        SendCGIResponse('200',
+                        {'Content-Type': response.getheader('Content-Type')},
+                        body, outfile)
+      else:
+        logging.error('Discovery API proxy failed on %s with %d. Details: %s',
+                      request.relative_url, response.status, body)
+        SendCGIResponse(response.status, dict(response.getheaders()), body,
+                        outfile)
+      return True
 
     def EndRedirect(self, dispatched_output, outfile):
       """Handle the end of getApiConfigs and SPI complete notification.
@@ -508,20 +863,23 @@ def CreateApiserverDispatcher(config_manager=None):
       Returns:
         AppServerRequest for redirect or None to send immediate CGI response.
       """
-      if self.request.IsRpc():
-        method = self.LookupRpcMethod()
+      if self.IsRpc():
+        method_config = self.LookupRpcMethod()
         params = None
       else:
-        method, params = self.LookupRestMethod()
-      if method:
-        self.TransformRequest(params)
-        self._request_stage = self.RequestState.SPI_CALL
-        return BuildCGIRequest(self.request.cgi_env, self.request,
-                               dev_appserver)
+        method_config, params = self.LookupRestMethod()
+      if method_config:
+        self.TransformRequest(params, method_config)
+        discovery_service = DiscoveryService(self.config_manager, self.request,
+                                             outfile)
+
+        if not discovery_service.HandleDiscoveryRequest(self.request.path):
+          self._request_stage = self.RequestState.SPI_CALL
+          return BuildCGIRequest(self.request.cgi_env, self.request,
+                                 dev_appserver)
       else:
-        self._request_stage = self.RequestState.END
-        return SendCGIResponse('404', {'Content-Type': 'text/plain'},
-                               'Not Found', outfile)
+        self._EndRequest()
+        return SendCGINotFoundResponse(outfile)
 
     def HandleSpiResponse(self, dispatched_output, outfile):
       """Handle SPI response, transforming output as needed.
@@ -536,10 +894,21 @@ def CreateApiserverDispatcher(config_manager=None):
 
       response = dev_appserver.AppServerResponse(
           response_file=dispatched_output)
-      headers, body = self.ParseCgiResponse(response)
-      if self.request.IsRpc():
+      response_headers, body = self.ParseCgiResponse(response)
+
+
+
+      headers = {}
+      for header, value in response_headers.items():
+        if (header.lower() == 'content-type' and
+            not value.lower().startswith('application/json')):
+          return self.FailRequest('Non-JSON reply: %s' % body, outfile)
+        elif header.lower() not in ('content-length', 'content-type'):
+          headers[header] = value
+
+      if self.IsRpc():
         body = self.TransformJsonrpcResponse(body)
-      self._request_stage = self.RequestState.END
+      self._EndRequest()
       return SendCGIResponse(response.status_code, headers, body, outfile)
 
     def FailRequest(self, message, outfile):
@@ -552,9 +921,8 @@ def CreateApiserverDispatcher(config_manager=None):
       Returns:
         None
       """
-      self._request_stage = self.RequestState.END
-      return SendCGIResponse('500', {'Content-Type': 'text/plain'},
-                             message, outfile)
+      self._EndRequest()
+      return SendCGIErrorResponse(message, outfile)
 
     def LookupRestMethod(self):
       """Looks up and returns rest method for the currently-pending request.
@@ -579,15 +947,30 @@ def CreateApiserverDispatcher(config_manager=None):
       """
       if not self.request.body_obj:
         return None
-      method_name = self.request.body_obj.get('method', '')
+      try:
+        method_name = self.request.body_obj.get('method', '')
+      except AttributeError:
+
+
+
+
+        if len(self.request.body_obj) != 1:
+          raise NotImplementedError('Batch requests with more than 1 element '
+                                    'not supported in dev_appserver.  Found '
+                                    '%d elements.' % len(self.request.body_obj))
+        logging.info('Converting batch request to single request.')
+        self.request.body_obj = self.request.body_obj[0]
+        method_name = self.request.body_obj.get('method', '')
+        self._is_batch = True
+
       version = self.request.body_obj.get('apiVersion', '')
       self.request.method_name = method_name
       return self.config_manager.LookupRpcMethod(method_name, version)
 
-    def TransformRequest(self, params):
+    def TransformRequest(self, params, method_config):
       """Transforms self.request to apiserving request.
 
-      This method uses self.request to determint the currently-pending request.
+      This method uses self.request to determine the currently-pending request.
       This method accepts a rest-style or RPC-style request.
 
       Side effects:
@@ -596,12 +979,13 @@ def CreateApiserverDispatcher(config_manager=None):
 
       Args:
         params: Path parameters dictionary for rest request
+        method_config: API config of the method to be called
       """
-      if self.request.IsRpc():
+      if self.IsRpc():
         self.TransformJsonrpcRequest()
       else:
         self.TransformRestRequest(params)
-      self.request.path = self.request.method_name
+      self.request.path = method_config.get('rosyMethod', '')
 
     def TransformRestRequest(self, params):
       """Translates a Rest request/response into an apiserving request/response.
@@ -616,7 +1000,8 @@ def CreateApiserverDispatcher(config_manager=None):
       body_obj = json.loads(self.request.body or '{}')
       if params:
         body_obj.update(params)
-
+      if self.request.parameters:
+        body_obj.update(self.request.parameters)
       self.request.body = json.dumps(body_obj)
 
     def TransformJsonrpcRequest(self):
@@ -627,7 +1012,20 @@ def CreateApiserverDispatcher(config_manager=None):
         method name, and moving request parameters to the body.)
       """
       body_obj = json.loads(self.request.body) if self.request.body else {}
-      self.request.request_id = body_obj.get('id')
+      try:
+        self.request.request_id = body_obj.get('id')
+      except AttributeError:
+
+
+
+
+        assert self._is_batch
+        if len(body_obj) != 1:
+          raise NotImplementedError('Batch requests with more than 1 element '
+                                    'not supported in dev_appserver.  Found '
+                                    '%d elements.' % len(self.request.body_obj))
+        body_obj = body_obj[0]
+        self.request.request_id = body_obj.get('id')
       body_obj = body_obj.get('params', {})
       self.request.body = json.dumps(body_obj)
 
@@ -647,6 +1045,8 @@ def CreateApiserverDispatcher(config_manager=None):
       body_obj = {'result': json.loads(response_body)}
       if self.request.request_id is not None:
         body_obj['id'] = self.request.request_id
+      if self._is_batch:
+        body_obj = [body_obj]
       return json.dumps(body_obj)
 
   return ApiserverDispatcher(config_manager)
@@ -704,6 +1104,19 @@ def WriteHeaders(headers, outfile, content_len=None):
     outfile.write('Content-Length: %s\r\n' % content_len)
 
 
+def SendCGINotFoundResponse(outfile):
+  SendCGIResponse('404', {'Content-Type': 'text/plain'}, 'Not Found', outfile)
+
+
+def SendCGIErrorResponse(message, outfile):
+  body = json.dumps({'error': {'message': message}})
+  SendCGIResponse('500', {'Content-Type': 'application/json'}, body, outfile)
+
+
+def SendCGIRedirectResponse(redirect_location, outfile):
+  SendCGIResponse('302', {'Location': redirect_location}, None, outfile)
+
+
 def SendCGIResponse(status, headers, content, outfile):
   """Dump reformatted response to CGI outfile.
 
@@ -717,7 +1130,8 @@ def SendCGIResponse(status, headers, content, outfile):
     None
   """
   outfile.write('Status: %s\r\n' % status)
-  WriteHeaders(headers, outfile, len(content))
+  WriteHeaders(headers, outfile, len(content) if content else None)
   outfile.write('\r\n')
-  outfile.write(content)
+  if content:
+    outfile.write(content)
   outfile.seek(0)

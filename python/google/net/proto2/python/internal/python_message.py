@@ -44,10 +44,12 @@ try:
 except ImportError:
   from StringIO import StringIO
 import copy_reg
+import logging
 import struct
 import weakref
 
 
+from google.net.proto2.python.internal import api_implementation
 from google.net.proto2.python.internal import containers
 from google.net.proto2.python.internal import decoder
 from google.net.proto2.python.internal import encoder
@@ -249,7 +251,7 @@ def _DefaultValueConstructorForField(field):
   """
 
   if field.label == _FieldDescriptor.LABEL_REPEATED:
-    if field.default_value != []:
+    if field.has_default_value and field.default_value != []:
       raise ValueError('Repeated field default value not empty list: %s' % (
           field.default_value))
     if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
@@ -262,10 +264,17 @@ def _DefaultValueConstructorForField(field):
       return MakeRepeatedMessageDefault
     else:
       type_checker = type_checkers.GetTypeChecker(field.cpp_type, field.type)
-      def MakeRepeatedScalarDefault(message):
-        return containers.RepeatedScalarFieldContainer(
-            message._listener_for_children, type_checker)
-      return MakeRepeatedScalarDefault
+      if (field.type == _FieldDescriptor.TYPE_STRING and
+          api_implementation.AlwaysReturnUnicode()):
+        def MakeRepeatedStringDefault(message):
+          return containers.RepeatedStringFieldContainer(
+              message._listener_for_children, type_checker, field)
+        return MakeRepeatedStringDefault
+      else:
+        def MakeRepeatedScalarDefault(message):
+          return containers.RepeatedScalarFieldContainer(
+              message._listener_for_children, type_checker)
+        return MakeRepeatedScalarDefault
 
   if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
 
@@ -277,6 +286,8 @@ def _DefaultValueConstructorForField(field):
     return MakeSubMessageDefault
 
   def MakeScalarDefault(message):
+
+
     return field.default_value
   return MakeScalarDefault
 
@@ -432,6 +443,8 @@ def _AddPropertiesForNonRepeatedScalarField(field, cls):
   valid_values = set()
 
   def getter(self):
+
+
     return self._fields.get(field, default_value)
   getter.__module__ = None
   getter.__doc__ = 'Getter for %s.' % proto_field_name
@@ -448,7 +461,22 @@ def _AddPropertiesForNonRepeatedScalarField(field, cls):
 
 
   doc = 'Magic attribute generated for "%s" proto field.' % proto_field_name
-  setattr(cls, property_name, property(getter, setter, doc=doc))
+
+  if (field.type == _FieldDescriptor.TYPE_STRING and
+      api_implementation.AlwaysReturnUnicode()):
+
+    def string_getter(self):
+      val = self._fields.get(field, default_value)
+      if isinstance(val, str):
+        logging.warning('string field %s value converted from byte string '
+                        '(see http://goto/pyprotounicode)',
+                        field.full_name)
+        return unicode(val, 'ascii')
+      return val
+
+    setattr(cls, property_name, property(string_getter, setter, doc=doc))
+  else:
+    setattr(cls, property_name, property(getter, setter, doc=doc))
 
 
 def _AddPropertiesForNonRepeatedCompositeField(field, cls):
@@ -748,8 +776,8 @@ def _AddSerializeToStringMethod(message_descriptor, cls):
     errors = []
     if not self.IsInitialized():
       raise message_mod.EncodeError(
-          'Message is missing required fields: ' +
-          ','.join(self.FindInitializationErrors()))
+          'Message %s is missing required fields: %s' % (
+          self.DESCRIPTOR.full_name, ','.join(self.FindInitializationErrors())))
     return self.SerializePartialToString()
   cls.SerializeToString = SerializeToString
 
@@ -903,7 +931,8 @@ def _AddMergeFromMethod(cls):
   def MergeFrom(self, msg):
     if not isinstance(msg, cls):
       raise TypeError(
-          "Parameter to MergeFrom() must be instance of same class.")
+          "Parameter to MergeFrom() must be instance of same class: "
+          "expected %s got %s." % (cls.__name__, type(msg).__name__))
 
     assert msg is not self
     self._Modified()

@@ -59,6 +59,7 @@ import os
 import sys
 
 from django.core import exceptions
+from django.db import backends
 from django.db.backends import signals
 from django.utils import safestring
 
@@ -195,6 +196,32 @@ def Connect(driver_name=None, oauth2_refresh_token=None, **kwargs):
   return driver.connect(**kwargs)
 
 
+class DatabaseOperations(base.DatabaseOperations):
+  """DatabaseOperations for use with rdbms."""
+
+
+  def last_executed_query(self, cursor, sql, params):
+    """Returns the query last executed by the given cursor.
+
+    Placeholders found in the given sql string will be replaced with actual
+    values from the params list.
+
+    Args:
+      cursor: The database Cursor.
+      sql: The raw query containing placeholders.
+      params: The sequence of parameters.
+
+    Returns:
+      The string representing the query last executed by the cursor.
+    """
+
+
+
+
+    return backends.BaseDatabaseOperations.last_executed_query(
+        self, cursor, sql, params)
+
+
 class DatabaseWrapper(base.DatabaseWrapper):
   """Django DatabaseWrapper for use with rdbms.
 
@@ -206,6 +233,18 @@ class DatabaseWrapper(base.DatabaseWrapper):
   def __init__(self, *args, **kwargs):
     super(DatabaseWrapper, self).__init__(*args, **kwargs)
     self.client = client.DatabaseClient(self)
+    try:
+      self.ops = DatabaseOperations()
+    except TypeError:
+
+      self.ops = DatabaseOperations(self)
+
+  def _valid_connection(self):
+    """Disable ping on every operation."""
+    if self.connection is not None:
+      return True
+    else:
+      return False
 
   def _cursor(self):
     if not self._valid_connection():

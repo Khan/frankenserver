@@ -97,6 +97,25 @@ def _positional(max_pos_args):
   return positional_decorator
 
 
+def _GetDatastoreType(app=None):
+  """Tries to get the datastore type for the given app.
+
+  This function is only guaranteed to return something other than
+  UNKNOWN_DATASTORE when running in production and querying the current app.
+  """
+  current_app = datastore_types.ResolveAppId(None)
+  if app not in (current_app, None):
+    return BaseConnection.UNKNOWN_DATASTORE
+
+
+
+
+  partition, _, _ = app_identity._ParseFullAppId(current_app)
+  if partition:
+    return BaseConnection.HIGH_REPLICATION_DATASTORE
+  return BaseConnection.MASTER_SLAVE_DATASTORE
+
+
 class AbstractAdapter(object):
   """Abstract interface between protobufs and user-level classes.
 
@@ -930,7 +949,6 @@ class BaseConnection(object):
 
   UNKNOWN_DATASTORE = 0
   MASTER_SLAVE_DATASTORE = 1
-
   HIGH_REPLICATION_DATASTORE = 2
 
   @_positional(1)
@@ -1032,17 +1050,7 @@ class BaseConnection(object):
     This function is only guaranteed to return something other than
     UNKNOWN_DATASTORE when running in production and querying the current app.
     """
-    current_app = datastore_types.ResolveAppId(None)
-    if app not in (current_app, None):
-      return BaseConnection.UNKNOWN_DATASTORE
-
-
-
-
-    partition, _, _ = app_identity._ParseFullAppId(current_app)
-    if partition:
-      return BaseConnection.HIGH_REPLICATION_DATASTORE
-    return BaseConnection.MASTER_SLAVE_DATASTORE
+    return _GetDatastoreType(app)
 
   def wait_for_all_pending_rpcs(self):
     """Wait for all currently pending RPCs to complete."""

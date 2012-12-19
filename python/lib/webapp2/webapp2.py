@@ -54,7 +54,7 @@ except ImportError: # pragma: no cover
                     "so webapp2 won't be thread-safe!")
 
 
-__version_info__ = (2, 5, 1)
+__version_info__ = (2, 5, 2)
 __version__ = '.'.join(str(n) for n in __version_info__)
 
 #: Base HTTP exception, set here as public interface.
@@ -115,7 +115,7 @@ class Request(webob.Request):
     """Abstraction for an HTTP request.
 
     Most extra methods and attributes are ported from webapp. Check the
-    `WebOb documentation <WebOb>`_ for the ones not listed here.
+    `WebOb`_ documentation for the ones not listed here.
     """
 
     #: A reference to the active :class:`WSGIApplication` instance.
@@ -249,12 +249,12 @@ class Request(webob.Request):
             value = int(value)
         except ValueError:
             value = default
-            if value is not None:
-                if max_value is not None:
-                    value = min(value, max_value)
+        if value is not None:
+            if max_value is not None:
+                value = min(value, max_value)
 
-                if min_value is not None:
-                    value = max(value, min_value)
+            if min_value is not None:
+                value = max(value, min_value)
 
         return value
 
@@ -339,7 +339,7 @@ class Response(webob.Response):
     """Abstraction for an HTTP response.
 
     Most extra methods and attributes are ported from webapp. Check the
-    `WebOb documentation <WebOb>`_ for the ones not listed here.
+    `WebOb`_ documentation for the ones not listed here.
 
     Differences from webapp.Response:
 
@@ -1474,7 +1474,6 @@ class WSGIApplication(object):
         self.debug = debug
         self.registry = {}
         self.error_handlers = {}
-        self.set_globals(app=self)
         self.config = self.config_class(config)
         self.router = self.router_class(routes)
 

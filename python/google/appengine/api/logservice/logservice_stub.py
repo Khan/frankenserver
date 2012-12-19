@@ -404,7 +404,7 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
     response.clear_offset()
 
 
-    if request.version_id_size() != 1:
+    if request.version_id_size() < 1:
       raise apiproxy_errors.ApplicationError(
           log_service_pb.LogServiceError.INVALID_REQUEST)
 
@@ -489,6 +489,11 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
     if index == limit:
       response.mutable_offset().set_request_id(str(result.key()))
+
+
+  def _Dynamic_Usage(self, request, response):
+    """Dummy method for compatibility."""
+    raise apiproxy_errors.CapabilityDisabledError('Usage not allowed in tests.')
 
   def get_status(self):
     """Internal method for dev_appserver to read the status."""

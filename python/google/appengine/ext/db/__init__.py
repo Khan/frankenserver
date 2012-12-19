@@ -641,11 +641,7 @@ class Property(object):
         raise BadValueError('Property %s is required' % self.name)
     else:
       if self.choices:
-        match = False
-        for choice in self.choices:
-          if choice == value:
-            match = True
-        if not match:
+        if value not in self.choices:
           raise BadValueError('Property %s is %r; must be one of %r' %
                               (self.name, value, self.choices))
     if self.validator is not None:
@@ -1231,9 +1227,9 @@ class Model(object):
 
     Returns:
       If a single key was given: a Model instance associated with key
-      for provided class if it exists in the datastore, otherwise
-      None; if a list of keys was given: a list whose items are either
-      a Model instance or None.
+      for the provided class if it exists in the datastore, otherwise
+      None. If a list of keys was given: a list where list[i] is the
+      Model instance for keys[i], or None if no instance exists.
 
     Raises:
       KindError if any of the retreived objects are not instances of the
@@ -1530,9 +1526,9 @@ def get(keys, **kwargs):
 
     Returns:
       If a single key was given: a Model instance associated with key
-      for if it exists in the datastore, otherwise None; if a list of
-      keys was given: a list whose items are either a Model instance or
-      None.
+      if it exists in the datastore, otherwise None. If a list of keys was
+      given: a list where list[i] is the Model instance for keys[i], or
+      None if no instance exists.
   """
   return get_async(keys, **kwargs).get_result()
 
@@ -1564,7 +1560,8 @@ def put(models, **kwargs):
       specified as a keyword argument.
 
   Returns:
-    A Key or a list of Keys (corresponding to the argument's plurality).
+    A Key if models is an instance, a list of Keys in the same order
+    as models if models is a list.
 
   Raises:
     TransactionFailedError if the data could not be committed.
@@ -2038,6 +2035,22 @@ class _BaseQuery(object):
     """
     raise NotImplementedError
 
+  def is_distinct(self):
+    """Returns true if the projection query should be distinct.
+
+    This is equivalent to the SQL syntax: SELECT DISTINCT. It is only available
+    for projection queries, it is not valid to specify distinct without also
+    specifying projection properties.
+
+    Distinct projection queries on entities with multi-valued properties will
+    return the same entity multiple times, once for each unique combination of
+    properties included in the projection.
+
+    Returns:
+      True if this projection query is distinct.
+    """
+    raise NotImplementedError
+
   def _get_query(self):
     """Subclass must override (and not call their super method).
 
@@ -2392,13 +2405,14 @@ class Query(_BaseQuery):
 
 
   _keys_only = False
+  _distinct = False
   _projection = None
   _namespace = None
   _app = None
   __ancestor = None
 
   def __init__(self, model_class=None, keys_only=False, cursor=None,
-               namespace=None, _app=None, projection=None):
+               namespace=None, _app=None, distinct=False, projection=None):
     """Constructs a query over instances of the given Model.
 
     Args:
@@ -2408,6 +2422,8 @@ class Query(_BaseQuery):
         in the projection this query should produce or None. Setting a
         projection is similar to specifying 'SELECT prop1, prop2, ...' in SQL.
         See _BaseQuery.projection for details on projection queries.
+      distinct: A boolean, true if the projection should be distinct.
+        See _BaseQuery.is_distinct for details on distinct queries.
       cursor: A compiled query from which to resume.
       namespace: The namespace to use for this query.
     """
@@ -2421,6 +2437,8 @@ class Query(_BaseQuery):
       self._namespace = namespace
     if _app is not None:
       self._app = _app
+    if distinct:
+      self._distinct = True
 
     self.__query_sets = [{}]
     self.__orderings = []
@@ -2431,6 +2449,9 @@ class Query(_BaseQuery):
 
   def projection(self):
     return self._projection
+
+  def is_distinct(self):
+    return self._distinct
 
   def _get_query(self,
                  _query_class=datastore.Query,
@@ -2451,6 +2472,7 @@ class Query(_BaseQuery):
                            query_set,
                            keys_only=self._keys_only,
                            projection=self._projection,
+                           distinct=self._distinct,
                            compile=True,
                            cursor=self._cursor,
                            end_cursor=self._end_cursor,
@@ -2696,6 +2718,9 @@ class GqlQuery(_BaseQuery):
 
   def projection(self):
     return self._proto_query.projection()
+
+  def is_distinct(self):
+    return self._proto_query.is_distinct()
 
   def bind(self, *args, **kwds):
     """Bind arguments (positional or keyword) to the query.

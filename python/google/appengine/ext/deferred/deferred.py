@@ -102,6 +102,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 
+_DEFAULT_LOG_LEVEL = logging.INFO
 _TASKQUEUE_HEADERS = {"Content-Type": "application/octet-stream"}
 _DEFAULT_URL = "/_ah/queue/deferred"
 _DEFAULT_QUEUE = "default"
@@ -117,6 +118,16 @@ class PermanentTaskFailure(Error):
 
 class SingularTaskFailure(Error):
   """Indicates that a task failed once."""
+
+
+def set_log_level(log_level):
+  """Sets the log level deferred will log to in normal circumstances.
+
+  Args:
+    log_level: one of logging log levels, e.g. logging.DEBUG, logging.INFO, etc.
+  """
+  global _DEFAULT_LOG_LEVEL
+  _DEFAULT_LOG_LEVEL = log_level
 
 
 def run(data):
@@ -288,7 +299,7 @@ class TaskHandler(webapp.RequestHandler):
 
     headers = ["%s:%s" % (k, v) for k, v in self.request.headers.items()
                if k.lower().startswith("x-appengine-")]
-    logging.info(", ".join(headers))
+    logging.log(_DEFAULT_LOG_LEVEL, ", ".join(headers))
 
     run(self.request.body)
 

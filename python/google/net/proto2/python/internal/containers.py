@@ -30,6 +30,8 @@ are:
 """
 
 
+import logging
+
 
 class BaseContainer(object):
 
@@ -171,6 +173,51 @@ class RepeatedScalarFieldContainer(BaseContainer):
       return other._values == self._values
 
     return other == self._values
+
+
+class RepeatedStringFieldContainer(RepeatedScalarFieldContainer):
+
+
+  __slots__ = ['_field']
+
+  def __init__(self, message_listener, type_checker, field):
+    """
+    Args:
+      message_listener: A MessageListener implementation.
+        The RepeatedScalarFieldContainer will call this object's
+        Modified() method when it is modified.
+      type_checker: A type_checkers.ValueChecker instance to run on elements
+        inserted into this container.
+      field: The FieldDescriptor of the field the container belongs to.
+    """
+    super(RepeatedStringFieldContainer, self).__init__(message_listener,
+                                                       type_checker)
+    self._field = field
+
+  def __getitem__(self, key):
+    """Retrieves item by the specified key."""
+    val = self._values[key]
+    if isinstance(val, str):
+      logging.warning('string field %s value converted from byte string '
+                      '(see http://goto/pyprotounicode)',
+                      self._field.full_name)
+      return unicode(val, 'ascii')
+    return val
+
+  def __getslice__(self, start, stop):
+    """Retrieves the subset of items from between the specified indices."""
+    vals = self._values[start:stop]
+    logged = False
+    for i, val in enumerate(vals):
+      if isinstance(val, str):
+        if not logged:
+          logging.warning(
+              'string field %s value(s) converted from byte string(s) '
+              '(see http://goto/pyprotounicode)',
+              self._field.full_name)
+          logged = True
+        vals[i] = unicode(val, 'ascii')
+    return vals
 
 
 class RepeatedCompositeFieldContainer(BaseContainer):

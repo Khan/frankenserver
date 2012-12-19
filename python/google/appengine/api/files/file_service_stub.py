@@ -23,12 +23,13 @@
 
 import base64
 import datetime
+import hashlib
 import os
 import random
 import string
 import StringIO
-import sys
 import tempfile
+import time
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import datastore
@@ -48,6 +49,10 @@ GS_INFO_KIND = blobstore_stub._GS_INFO_KIND
 
 
 _now_function = datetime.datetime.now
+
+
+def _to_seconds(datetime_obj):
+  return int(time.mktime(datetime_obj.timetuple()))
 
 
 def _random_string(length):
@@ -120,7 +125,7 @@ class GoogleStorage(object):
 
   @staticmethod
   def get_blob_key(key):
-    """Converts a bigstore key into a base64 encoded blob key/filename."""
+    """Converts a Google Storage key into a base64 encoded blob key/filename."""
     return base64.urlsafe_b64encode(key)
 
   def is_finalized(self, filename):
@@ -225,7 +230,7 @@ class GoogleStorage(object):
     if request.has_max_keys():
       max_keys = request.max_keys()
     else:
-      max_keys = sys.maxint
+      max_keys = 2**31-1
     for gs_file_info in q.Get(max_keys):
       filename = gs_file_info['filename']
       if filename.startswith(fully_qualified_name):
@@ -288,6 +293,8 @@ class GoogleStorageFile(object):
     file_stat.set_filename(file_info['filename'])
     file_stat.set_finalized(True)
     file_stat.set_length(file_info['size'])
+    file_stat.set_ctime(_to_seconds(file_info['creation']))
+    file_stat.set_mtime(_to_seconds(file_info['creation']))
     file_stat.set_content_type(file_service_pb.FileContentType.RAW)
     response.set_more_files_found(False)
 
@@ -346,6 +353,7 @@ class BlobstoreStorage(object):
 
 
     self.blob_content_types = {}
+
 
     self.blob_file_names = {}
 
@@ -440,6 +448,16 @@ class BlobstoreStorage(object):
       return f
     return self.data_files[filename]
 
+  def get_md5_from_blob(self, blobkey):
+    """Get md5 hexdigest of the blobfile with blobkey."""
+    try:
+      f = self.blob_storage.OpenBlob(blobkey)
+      file_md5 = hashlib.md5()
+      file_md5.update(f.read())
+      return file_md5.hexdigest()
+    finally:
+      f.close()
+
   def append(self, filename, data):
     """Append data to file."""
     self._get_data_file(filename).write(data)
@@ -480,20 +498,32 @@ class BlobstoreFile(object):
       if not self.file_storage.has_blobstore_file(self.filename):
         raise_error(file_service_pb.FileServiceErrors.EXISTENCE_ERROR)
 
+      if self.file_storage.is_finalized(self.filename):
+        raise_error(file_service_pb.FileServiceErrors.FINALIZATION_ERROR,
+                    'File is already finalized')
+
       self.mime_content_type = self.file_storage.get_content_type(self.filename)
       self.blob_file_name = self.file_storage.get_blob_file_name(self.filename)
     else:
-      blob_info = blobstore.BlobInfo.get(self.ticket)
+      if self.ticket.startswith(files._CREATION_HANDLE_PREFIX):
+        blobkey = self.file_storage.get_blob_key(self.ticket)
+        if not blobkey:
+          raise_error(file_service_pb.FileServiceErrors.FINALIZATION_ERROR,
+                      'Blobkey not found.')
+      else:
+        blobkey = self.ticket
+
+      blob_info = blobstore.BlobInfo.get(blobkey)
+
       if not blob_info:
-        raise_error(file_service_pb.FileServiceErrors.FINALIZATION_ERROR)
+        raise_error(file_service_pb.FileServiceErrors.FINALIZATION_ERROR,
+                    'Blobinfo not found.')
+
       self.blob_reader = blobstore.BlobReader(blob_info)
       self.mime_content_type = blob_info.content_type
+
     if content_type != file_service_pb.FileContentType.RAW:
       raise_error(file_service_pb.FileServiceErrors.WRONG_CONTENT_TYPE)
-
-    if self.file_storage.is_finalized(self.filename):
-      raise_error(file_service_pb.FileServiceErrors.FINALIZATION_ERROR,
-                  'File is already finalized')
 
   @property
   def is_appending(self):
@@ -508,9 +538,11 @@ class BlobstoreFile(object):
     """
     file_info = self.file_storage.stat(self.filename)
     file_stat = response.add_stat()
-    file_stat.set_filename(file_info['filename'])
+    file_stat.set_filename(self.filename)
     file_stat.set_finalized(True)
     file_stat.set_length(file_info['size'])
+    file_stat.set_ctime(_to_seconds(file_info['creation']))
+    file_stat.set_mtime(_to_seconds(file_info['creation']))
     file_stat.set_content_type(file_service_pb.FileContentType.RAW)
     response.set_more_files_found(False)
 
@@ -560,6 +592,7 @@ class BlobstoreFile(object):
     blob_info['filename'] = self.blob_file_name
     blob_info['size'] = size
     blob_info['creation_handle'] = self.ticket
+    blob_info['md5_hash'] = self.file_storage.get_md5_from_blob(blob_key)
     datastore.Put(blob_info)
 
     blob_file = datastore.Entity('__BlobFileIndex__',

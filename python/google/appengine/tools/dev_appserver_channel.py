@@ -105,8 +105,16 @@ def CreateChannelDispatcher(channel_service_stub):
         outfile.write(open(path).read())
       elif page == 'dev':
         token = param_dict['channel'][0]
-        if not self._channel_service_stub.is_valid_token(token):
-          outfile.write('Status: 401\r\n\r\n')
+        (syntax_valid, time_valid) = (
+            self._channel_service_stub.check_token_validity(token))
+        if not (syntax_valid and time_valid):
+
+
+          if not syntax_valid:
+            token_error = 'Invalid+token.'
+          else:
+            token_error = 'Token+timed+out.'
+          outfile.write('Status: 401 %s\r\n\r\n' % token_error)
           return
 
         outfile.write('Status: 200\r\n')

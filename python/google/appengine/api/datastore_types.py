@@ -53,6 +53,7 @@ import time
 import urlparse
 from xml.sax import saxutils
 from google.appengine.datastore import datastore_pb
+from google.appengine.datastore import sortable_pb_encoder
 from google.appengine.api import datastore_errors
 from google.appengine.api import users
 from google.appengine.api import namespace_manager
@@ -2112,7 +2113,10 @@ def PropertyValueToKeyValue(prop_value):
   if prop_value.has_booleanvalue():
     return (entity_pb.PropertyValue.kbooleanValue, prop_value.booleanvalue())
   if prop_value.has_doublevalue():
-    return (entity_pb.PropertyValue.kdoubleValue, prop_value.doublevalue())
+
+    encoder = sortable_pb_encoder.Encoder()
+    encoder.putDouble(prop_value.doublevalue())
+    return (entity_pb.PropertyValue.kdoubleValue, tuple(encoder.buf))
   if prop_value.has_pointvalue():
     return (entity_pb.PropertyValue.kPointValueGroup,
             prop_value.pointvalue().x(), prop_value.pointvalue().y())

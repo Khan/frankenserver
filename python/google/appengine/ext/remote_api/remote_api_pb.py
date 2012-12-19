@@ -965,7 +965,204 @@ class TransactionRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.TransactionRequest'
+class TransactionQueryResult(ProtocolBuffer.ProtocolMessage):
+  has_result_ = 0
+  has_entity_group_key_ = 0
+  has_entity_group_ = 0
+  entity_group_ = None
+
+  def __init__(self, contents=None):
+    self.result_ = QueryResult()
+    self.entity_group_key_ = Reference()
+    self.lazy_init_lock_ = thread.allocate_lock()
+    if contents is not None: self.MergeFromString(contents)
+
+  def result(self): return self.result_
+
+  def mutable_result(self): self.has_result_ = 1; return self.result_
+
+  def clear_result(self):self.has_result_ = 0; self.result_.Clear()
+
+  def has_result(self): return self.has_result_
+
+  def entity_group_key(self): return self.entity_group_key_
+
+  def mutable_entity_group_key(self): self.has_entity_group_key_ = 1; return self.entity_group_key_
+
+  def clear_entity_group_key(self):self.has_entity_group_key_ = 0; self.entity_group_key_.Clear()
+
+  def has_entity_group_key(self): return self.has_entity_group_key_
+
+  def entity_group(self):
+    if self.entity_group_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.entity_group_ is None: self.entity_group_ = EntityProto()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.entity_group_
+
+  def mutable_entity_group(self): self.has_entity_group_ = 1; return self.entity_group()
+
+  def clear_entity_group(self):
+
+    if self.has_entity_group_:
+      self.has_entity_group_ = 0;
+      if self.entity_group_ is not None: self.entity_group_.Clear()
+
+  def has_entity_group(self): return self.has_entity_group_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_result()): self.mutable_result().MergeFrom(x.result())
+    if (x.has_entity_group_key()): self.mutable_entity_group_key().MergeFrom(x.entity_group_key())
+    if (x.has_entity_group()): self.mutable_entity_group().MergeFrom(x.entity_group())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_result_ != x.has_result_: return 0
+    if self.has_result_ and self.result_ != x.result_: return 0
+    if self.has_entity_group_key_ != x.has_entity_group_key_: return 0
+    if self.has_entity_group_key_ and self.entity_group_key_ != x.entity_group_key_: return 0
+    if self.has_entity_group_ != x.has_entity_group_: return 0
+    if self.has_entity_group_ and self.entity_group_ != x.entity_group_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_result_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: result not set.')
+    elif not self.result_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_entity_group_key_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: entity_group_key not set.')
+    elif not self.entity_group_key_.IsInitialized(debug_strs): initialized = 0
+    if (self.has_entity_group_ and not self.entity_group_.IsInitialized(debug_strs)): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.result_.ByteSize())
+    n += self.lengthString(self.entity_group_key_.ByteSize())
+    if (self.has_entity_group_): n += 1 + self.lengthString(self.entity_group_.ByteSize())
+    return n + 2
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_result_):
+      n += 1
+      n += self.lengthString(self.result_.ByteSizePartial())
+    if (self.has_entity_group_key_):
+      n += 1
+      n += self.lengthString(self.entity_group_key_.ByteSizePartial())
+    if (self.has_entity_group_): n += 1 + self.lengthString(self.entity_group_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_result()
+    self.clear_entity_group_key()
+    self.clear_entity_group()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.result_.ByteSize())
+    self.result_.OutputUnchecked(out)
+    out.putVarInt32(18)
+    out.putVarInt32(self.entity_group_key_.ByteSize())
+    self.entity_group_key_.OutputUnchecked(out)
+    if (self.has_entity_group_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.entity_group_.ByteSize())
+      self.entity_group_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_result_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.result_.ByteSizePartial())
+      self.result_.OutputPartial(out)
+    if (self.has_entity_group_key_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.entity_group_key_.ByteSizePartial())
+      self.entity_group_key_.OutputPartial(out)
+    if (self.has_entity_group_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.entity_group_.ByteSizePartial())
+      self.entity_group_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_result().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_entity_group_key().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_entity_group().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_result_:
+      res+=prefix+"result <\n"
+      res+=self.result_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_entity_group_key_:
+      res+=prefix+"entity_group_key <\n"
+      res+=self.entity_group_key_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_entity_group_:
+      res+=prefix+"entity_group <\n"
+      res+=self.entity_group_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kresult = 1
+  kentity_group_key = 2
+  kentity_group = 3
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "result",
+    2: "entity_group_key",
+    3: "entity_group",
+  }, 3)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.TransactionQueryResult'
 if _extension_runtime:
   pass
 
-__all__ = ['Request','ApplicationError','Response','TransactionRequest','TransactionRequest_Precondition']
+__all__ = ['Request','ApplicationError','Response','TransactionRequest','TransactionRequest_Precondition','TransactionQueryResult']

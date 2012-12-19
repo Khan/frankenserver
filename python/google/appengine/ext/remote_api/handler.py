@@ -63,7 +63,6 @@ import google
 import logging
 import os
 import pickle
-import sys
 import wsgiref.handlers
 import yaml
 import hashlib
@@ -71,13 +70,17 @@ import hashlib
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import datastore_types
 from google.appengine.api import lib_config
 from google.appengine.api import users
 from google.appengine.datastore import datastore_pb
+from google.appengine.datastore import datastore_rpc
 from google.appengine.ext import webapp
+from google.appengine.ext.db import metadata
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.ext.remote_api import remote_api_services
 from google.appengine.runtime import apiproxy_errors
+from google.appengine.datastore import entity_pb
 
 
 
@@ -159,6 +162,58 @@ class RemoteDatastoreStub(apiproxy_stub.APIProxyStub):
     next_request.mutable_cursor().CopyFrom(runquery_response.cursor())
     next_request.set_count(request.limit())
     self.__call('datastore_v3', 'Next', next_request, response)
+
+  def _Dynamic_TransactionQuery(self, request, response):
+    if not request.has_ancestor():
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'No ancestor in transactional query.')
+
+    app_id = datastore_types.ResolveAppId(None)
+    if (datastore_rpc._GetDatastoreType(app_id) !=
+        datastore_rpc.BaseConnection.HIGH_REPLICATION_DATASTORE):
+      raise apiproxy_errors.ApplicationError(
+          datastore_pb.Error.BAD_REQUEST,
+          'remote_api supports transactional queries only in the '
+          'high-replication datastore.')
+
+
+    entity_group_key = entity_pb.Reference()
+    entity_group_key.CopyFrom(request.ancestor())
+    group_path = entity_group_key.mutable_path()
+    root = entity_pb.Path_Element()
+    root.MergeFrom(group_path.element(0))
+    group_path.clear_element()
+    group_path.add_element().CopyFrom(root)
+    eg_element = group_path.add_element()
+    eg_element.set_type(metadata.EntityGroup.KIND_NAME)
+    eg_element.set_id(metadata.EntityGroup.ID)
+
+
+    begin_request = datastore_pb.BeginTransactionRequest()
+    begin_request.set_app(app_id)
+    tx = datastore_pb.Transaction()
+    self.__call('datastore_v3', 'BeginTransaction', begin_request, tx)
+
+
+    request.mutable_transaction().CopyFrom(tx)
+    self.__call('datastore_v3', 'RunQuery', request, response.mutable_result())
+
+
+    get_request = datastore_pb.GetRequest()
+    get_request.mutable_transaction().CopyFrom(tx)
+    get_request.add_key().CopyFrom(entity_group_key)
+    get_response = datastore_pb.GetResponse()
+    self.__call('datastore_v3', 'Get', get_request, get_response)
+    entity_group = get_response.entity(0)
+
+
+    response.mutable_entity_group_key().CopyFrom(entity_group_key)
+    if entity_group.has_entity():
+      response.mutable_entity_group().CopyFrom(entity_group.entity())
+
+
+    self.__call('datastore_v3', 'Commit', tx, datastore_pb.CommitResponse())
 
   def _Dynamic_Transaction(self, request, response):
     """Handle a Transaction request.
@@ -298,7 +353,23 @@ class ApiCallHandler(webapp.RequestHandler):
     if not self.CheckIsAdmin():
       return
 
-    self.response.headers['Content-Type'] = 'application/octet-stream'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    self.response.headers['Content-Type'] = 'text/plain'
+
     response = remote_api_pb.Response()
     try:
       request = remote_api_pb.Request()
