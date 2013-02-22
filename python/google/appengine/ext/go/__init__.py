@@ -363,6 +363,7 @@ class GoApp:
     self.root_path = root_path
     self.proc = None
     self.proc_start = 0
+    self.last_extras_hash = None
     self.goroot = os.path.join(
 
         up(__file__, 5),
@@ -410,11 +411,21 @@ class GoApp:
 
 
 
+
     rebuild, restart = False, False
     if go_mtime >= bin_mtime:
       rebuild, restart = True, True
     elif app_mtime > self.proc_start:
       restart = True
+    if not rebuild:
+
+
+
+      h = self.extras_hash(go_files)
+      if h != self.last_extras_hash:
+        logging.info('extra-app files hash changed to %s; rebuilding', h)
+        self.last_extras_hash = h
+        rebuild, restart = True, True
 
     if restart and self.proc:
       quiet_kill(self.proc.pid)
@@ -449,11 +460,8 @@ class GoApp:
       tee.start()
       wait_until_go_app_ready(self.proc, tee)
 
-  def build(self, go_files):
-    logging.info('building ' + GO_APP_NAME)
-    if not os.path.exists(GAB_WORK_DIR):
-      os.makedirs(GAB_WORK_DIR)
-    gab_argv = [
+  def _gab_args(self):
+    argv = [
         os.path.join(self.goroot, 'bin', 'go-app-builder'),
         '-app_base', self.root_path,
         '-arch', self.arch,
@@ -464,8 +472,14 @@ class GoApp:
         '-work_dir', GAB_WORK_DIR,
     ]
     if 'GOPATH' in os.environ:
-      gab_argv.extend(['-gopath', os.environ['GOPATH']])
-    gab_argv.extend(go_files)
+      argv.extend(['-gopath', os.environ['GOPATH']])
+    return argv
+
+  def build(self, go_files):
+    logging.info('building ' + GO_APP_NAME)
+    if not os.path.exists(GAB_WORK_DIR):
+      os.makedirs(GAB_WORK_DIR)
+    gab_argv = self._gab_args() + go_files
     try:
       p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
                            stderr=subprocess.PIPE, env={})
@@ -474,6 +488,19 @@ class GoApp:
       raise Exception('cannot call go-app-builder', e)
     if gab_retcode != 0:
       raise dev_appserver.CompileError(p.stdout.read() + '\n' + p.stderr.read())
+
+  def extras_hash(self, go_files):
+    logging.info('checking extra files')
+    gab_argv = self._gab_args() + ['-print_extras_hash'] + go_files
+    try:
+      p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, env={})
+      gab_retcode = p.wait()
+    except Exception, e:
+      raise Exception('cannot call go-app-builder', e)
+    if gab_retcode != 0:
+      raise dev_appserver.CompileError(p.stderr.read())
+    return p.stdout.read()
 
 
 OldSigTermHandler = None

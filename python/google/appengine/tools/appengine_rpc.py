@@ -376,7 +376,9 @@ class AbstractRpcServer(object):
         tries += 1
         url = "%s://%s%s" % (self.scheme, self.host, request_path)
         if kwargs:
-          url += "?" + urllib.urlencode(kwargs)
+
+
+          url += "?" + urllib.urlencode(sorted(kwargs.items()))
         req = self._CreateRequest(url=url, data=payload)
         req.add_header("Content-Type", content_type)
 

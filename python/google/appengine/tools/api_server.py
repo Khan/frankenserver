@@ -53,7 +53,6 @@ from google.appengine.api.app_identity import app_identity_stub
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
 from google.appengine.api.capabilities import capability_stub
-from google.appengine.api.conversion import conversion_stub
 from google.appengine.api.channel import channel_service_stub
 from google.appengine.api.files import file_service_stub
 from google.appengine.api.logservice import logservice_stub
@@ -113,7 +112,7 @@ THREAD_SAFE_SERVICES = frozenset((
     'app_identity_service',
     'capability_service',
     'channel',
-    'conversion',
+    'logservice',
     'mail',
     'memcache',
     'remote_socket',
@@ -235,11 +234,12 @@ def _SetupStubs(
     trusted,
     blobstore_path,
     use_sqlite,
+    auto_id_policy,
     high_replication,
     datastore_path,
     datastore_require_indexes,
     images_host_prefix,
-    persist_logs,
+    logs_path,
     mail_smtp_host,
     mail_smtp_port,
     mail_smtp_user,
@@ -263,6 +263,9 @@ def _SetupStubs(
         storage.
     use_sqlite: A bool indicating whether DatastoreSqliteStub or
         DatastoreFileStub should be used.
+    auto_id_policy: One of datastore_stub_util.SEQUENTIAL or .SCATTERED,
+        indicating whether the Datastore stub should assign IDs sequentially
+        or scattered.
     high_replication: A bool indicating whether to use the high replication
         consistency model.
     datastore_path: The path to the file that should be used for datastore
@@ -273,8 +276,7 @@ def _SetupStubs(
         is executed without the required indexes.
     images_host_prefix: The URL prefix (protocol://host:port) to preprend to
         image urls on calls to images.GetUrlBase.
-    persist_logs: A bool indicating if request and application logs should be
-         persisted for later access.
+    logs_path: Path to the file to store the logs data in.
     mail_smtp_host: The SMTP hostname that should be used when sending e-mails.
         If None then the mail_enable_sendmail argument is considered.
     mail_smtp_port: The SMTP port number that should be used when sending
@@ -334,24 +336,22 @@ def _SetupStubs(
       'channel',
       channel_service_stub.ChannelServiceStub())
 
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'conversion',
-      conversion_stub.ConversionServiceStub())
-
   if use_sqlite:
     datastore = datastore_sqlite_stub.DatastoreSqliteStub(
         app_id,
         datastore_path,
         datastore_require_indexes,
         trusted,
-        root_path=application_root)
+        root_path=application_root,
+        auto_id_policy=auto_id_policy)
   else:
     datastore = datastore_file_stub.DatastoreFileStub(
         app_id,
         datastore_path,
         datastore_require_indexes,
         trusted,
-        root_path=application_root)
+        root_path=application_root,
+        auto_id_policy=auto_id_policy)
 
   if high_replication:
     datastore.SetConsistencyPolicy(
@@ -383,7 +383,7 @@ def _SetupStubs(
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'logservice',
-      logservice_stub.LogServiceStub(persist_logs))
+      logservice_stub.LogServiceStub(logs_path=logs_path))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'mail',
@@ -479,6 +479,12 @@ def ParseCommandArguments(args):
 
 
   parser.add_argument('--datastore_path', default=None)
+
+  parser.add_argument('--auto_id_policy', default='sequential',
+      type=lambda s: s.lower(),
+      choices=(datastore_stub_util.SEQUENTIAL,
+               datastore_stub_util.SCATTERED))
+
   parser.add_argument('--use_sqlite',
                       action=boolean_action.BooleanAction,
                       const=True,
@@ -497,10 +503,7 @@ def ParseCommandArguments(args):
                       default=False)
 
 
-  parser.add_argument('--persist_logs',
-                      action=boolean_action.BooleanAction,
-                      const=True,
-                      default=False)
+  parser.add_argument('--logs_path', default=None)
 
 
   parser.add_argument('--enable_sendmail',
@@ -556,6 +559,7 @@ class APIServerProcess(object):
                application_host=None,
                application_port=None,
                application_root=None,
+               auto_id_policy=None,
                blobstore_path=None,
                clear_datastore=None,
                clear_prospective_search=None,
@@ -563,7 +567,7 @@ class APIServerProcess(object):
                enable_sendmail=None,
                enable_task_running=None,
                high_replication=None,
-               persist_logs=None,
+               logs_path=None,
                prospective_search_path=None,
                require_indexes=None,
                show_mail_body=None,
@@ -592,6 +596,8 @@ class APIServerProcess(object):
           8000.
       application_root: The path to the directory containing the user's
           application e.g. "/home/bquinlan/myapp".
+      auto_id_policy: One of "sequential" or "scattered", indicating whether
+        the Datastore stub should assign IDs sequentially or scattered.
       blobstore_path: The path to the file that should be used for blobstore
           storage.
       clear_datastore: Clears the file at datastore_path, emptying the
@@ -606,8 +612,7 @@ class APIServerProcess(object):
           be run automatically or it the must be manually triggered.
       high_replication: A bool indicating whether to use the high replication
           consistency model.
-      persist_logs: A bool indicating if request and application logs should be
-           persisted for later access.
+      logs_path: Path to the file to store the logs data in.
       prospective_search_path: The path to the file that should be used to
           save prospective search subscriptions.
       require_indexes: A bool indicating if the same production
@@ -645,6 +650,7 @@ class APIServerProcess(object):
     self._BindArgument('--application_port', application_port)
     self._BindArgument('--application_root', application_root)
     self._BindArgument('--application', app_id)
+    self._BindArgument('--auto_id_policy', auto_id_policy)
     self._BindArgument('--blobstore_path', blobstore_path)
     self._BindArgument('--clear_datastore', clear_datastore)
     self._BindArgument('--clear_prospective_search', clear_prospective_search)
@@ -652,7 +658,7 @@ class APIServerProcess(object):
     self._BindArgument('--enable_sendmail', enable_sendmail)
     self._BindArgument('--enable_task_running', enable_task_running)
     self._BindArgument('--high_replication', high_replication)
-    self._BindArgument('--persist_logs', persist_logs)
+    self._BindArgument('--logs_path', logs_path)
     self._BindArgument('--prospective_search_path', prospective_search_path)
     self._BindArgument('--require_indexes', require_indexes)
     self._BindArgument('--show_mail_body', show_mail_body)
@@ -779,10 +785,11 @@ def main():
               blobstore_path=args.blobstore_path,
               datastore_path=args.datastore_path,
               use_sqlite=args.use_sqlite,
+              auto_id_policy=args.auto_id_policy,
               high_replication=args.high_replication,
               datastore_require_indexes=args.require_indexes,
               images_host_prefix=application_address,
-              persist_logs=args.persist_logs,
+              logs_path=args.logs_path,
               mail_smtp_host=args.smtp_host,
               mail_smtp_port=args.smtp_port,
               mail_smtp_user=args.smtp_user,

@@ -74,6 +74,7 @@ from protorpc.wsgi import service
 
 from google.appengine.ext.endpoints import api_backend_service
 from google.appengine.ext.endpoints import api_config
+from google.appengine.ext.endpoints import api_exceptions
 
 package = 'google.appengine.endpoints'
 
@@ -81,55 +82,16 @@ package = 'google.appengine.endpoints'
 __all__ = [
     'api_server',
     'EndpointsErrorMessage',
-    'BadRequestException',
-    'ForbiddenException',
-    'InternalServerErrorException',
-    'NotFoundException',
     'package',
-    'ServiceException',
-    'UnauthorizedException',
 ]
 
 
-class ServiceException(remote.ApplicationError):
-  """Base class for exceptions in endpoints."""
-
-  def __init__(self, message=None):
-    super(ServiceException, self).__init__(message,
-                                           httplib.responses[self.http_status])
-
-
-class BadRequestException(ServiceException):
-  """Bad request exception that is mapped to a 400 response."""
-  http_status = httplib.BAD_REQUEST
-
-
-class ForbiddenException(ServiceException):
-  """Forbidden exception that is mapped to a 403 response."""
-  http_status = httplib.FORBIDDEN
-
-
-class InternalServerErrorException(ServiceException):
-  """Internal server exception that is mapped to a 500 response."""
-  http_status = httplib.INTERNAL_SERVER_ERROR
-
-
-class NotFoundException(ServiceException):
-  """Not found exception that is mapped to a 404 response."""
-  http_status = httplib.NOT_FOUND
-
-
-class UnauthorizedException(ServiceException):
-  """Unauthorized exception that is mapped to a 401 response."""
-  http_status = httplib.UNAUTHORIZED
-
-
 _ERROR_NAME_MAP = dict((httplib.responses[c.http_status], c) for c in [
-    BadRequestException,
-    ForbiddenException,
-    InternalServerErrorException,
-    NotFoundException,
-    UnauthorizedException,
+    api_exceptions.BadRequestException,
+    api_exceptions.ForbiddenException,
+    api_exceptions.InternalServerErrorException,
+    api_exceptions.NotFoundException,
+    api_exceptions.UnauthorizedException,
     ])
 
 _ALL_JSON_CONTENT_TYPES = frozenset([protojson.CONTENT_TYPE] +

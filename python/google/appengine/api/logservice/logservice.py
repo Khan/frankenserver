@@ -476,8 +476,14 @@ class RequestLog(object):
     return 'RequestLog(\'%s\')' % base64.b64encode(self.__pb.Encode())
 
   def __str__(self):
-    return ('<RequestLog(app_id=%s, version_id=%s, request_id=%s)>' %
-            (self.app_id, self.version_id, base64.b64encode(self.request_id)))
+    if self.server_id == 'default':
+      return ('<RequestLog(app_id=%s, version_id=%s, request_id=%s)>' %
+              (self.app_id, self.version_id, base64.b64encode(self.request_id)))
+    else:
+      return ('<RequestLog(app_id=%s, server_id=%s, version_id=%s, '
+              'request_id=%s)>' %
+              (self.app_id, self.server_id, self.version_id,
+               base64.b64encode(self.request_id)))
 
   @property
   def _pb(self):
@@ -487,6 +493,11 @@ class RequestLog(object):
   def app_id(self):
     """Application id that handled this request, as a string."""
     return self.__pb.app_id()
+
+  @property
+  def server_id(self):
+    """Server id that handled this request, as a string."""
+    return self.__pb.server_id()
 
   @property
   def version_id(self):
@@ -793,6 +804,7 @@ def fetch(start_time=None,
           minimum_log_level=None,
           include_incomplete=False,
           include_app_logs=False,
+          server_versions=None,
           version_ids=None,
           request_ids=None,
           **kwargs):
@@ -824,8 +836,13 @@ def fetch(start_time=None,
       not yet finished, as a boolean.  Defaults to False.
     include_app_logs: Whether or not to include application level logs in the
       results, as a boolean.  Defaults to False.
+    server_versions: A list of tuples of the form (server, version), that
+      indicate that the logs for the given server/version combination should be
+      fetched.  Duplicate tuples will be ignored.  This kwarg may not be used
+      in conjunction with the 'version_ids' kwarg.
     version_ids: A list of version ids whose logs should be queried against.
-      Defaults to the application's current version id only.
+      Defaults to the application's current version id only.  This kwarg may not
+      be used in conjunction with the 'server_versions' kwarg.
     request_ids: If not None, indicates that instead of a time-based scan, logs
       for the specified requests should be returned.  Malformed request IDs will
       cause the entire request to be rejected, while any requests that are
@@ -884,18 +901,46 @@ def fetch(start_time=None,
     raise InvalidArgumentError('include_app_logs must be a boolean')
   request.set_include_app_logs(include_app_logs)
 
-  if version_ids is None:
+  if version_ids and server_versions:
+    raise InvalidArgumentError('version_ids and server_versions may not be '
+                               'used at the same time.')
+
+  if version_ids is None and server_versions is None:
+
+
     version_id = os.environ['CURRENT_VERSION_ID']
-    version_ids = [version_id.split('.')[0]]
-  else:
+    request.add_server_version().set_version_id(version_id.split('.')[0])
+
+  if server_versions:
+    if not isinstance(server_versions, list):
+      raise InvalidArgumentError('server_versions must be a list')
+
+    req_server_versions = set()
+    for entry in server_versions:
+      if not isinstance(entry, (list, tuple)):
+        raise InvalidArgumentError('server_versions list entries must all be '
+                                   'tuples or lists.')
+      if len(entry) != 2:
+        raise InvalidArgumentError('server_versions list entries must all be '
+                                   'of length 2.')
+      req_server_versions.add((entry[0], entry[1]))
+
+    for server, version in sorted(req_server_versions):
+      req_server_version = request.add_server_version()
+
+
+      if server != 'default':
+        req_server_version.set_server_id(server)
+      req_server_version.set_version_id(version)
+
+  if version_ids:
     if not isinstance(version_ids, list):
       raise InvalidArgumentError('version_ids must be a list')
     for version_id in version_ids:
       if not _MAJOR_VERSION_ID_RE.match(version_id):
         raise InvalidArgumentError(
             'version_ids must only contain valid major version identifiers')
-
-  request.version_id_list()[:] = version_ids
+      request.add_server_version().set_version_id(version_id)
 
   if request_ids is not None:
     if not isinstance(request_ids, list):

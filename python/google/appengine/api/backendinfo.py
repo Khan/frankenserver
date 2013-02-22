@@ -46,7 +46,7 @@ else:
 
 NAME_REGEX = r'(?!-)[a-z\d\-]{1,100}'
 FILE_REGEX = r'(?!\^).*(?!\$).{1,256}'
-CLASS_REGEX =  r'^[bB](1|2|4|8)$'
+CLASS_REGEX = r'^[bB](1|2|4|8|4_1G)$'
 OPTIONS_REGEX = r'^[a-z, ]*$'
 STATE_REGEX = r'^(START|STOP|DISABLED)$'
 

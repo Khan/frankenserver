@@ -39,6 +39,7 @@ import datetime
 import itertools
 import logging
 import os
+import random
 import re
 import time
 import urllib
@@ -74,13 +75,16 @@ from google.appengine.runtime import apiproxy_errors
 
 
 XSRF_ACTION = 'backup'
-BUCKET_PATTERN = (r'^([a-zA-Z0-9]+(\-[a-zA-Z0-9]+)*)'
-                  r'(\.([a-zA-Z0-9]+(\-[a-zA-Z0-9]+)*))*$')
+BUCKET_PATTERN = (r'^([a-zA-Z0-9]+([\-_]+[a-zA-Z0-9]+)*)'
+                  r'(\.([a-zA-Z0-9]+([\-_]+[a-zA-Z0-9]+)*))*$')
 MAX_BUCKET_LEN = 222
 MIN_BUCKET_LEN = 3
 MAX_BUCKET_SEGMENT_LEN = 63
 NUM_KINDS_DEFERRED_THRESHOLD = 10
 MAX_BLOBS_PER_DELETE = 500
+TEST_WRITE_FILENAME_PREFIX = 'datastore_backup_write_test'
+MAX_KEYS_LIST_SIZE = 100
+MAX_TEST_FILENAME_TRIES = 10
 
 MEANING_TO_PRIMITIVE_TYPE = {
     entity_pb.Property.GD_WHEN: backup_pb2.EntitySchema.DATE_TIME,
@@ -110,8 +114,6 @@ class ConfirmBackupHandler(webapp.RequestHandler):
     Args:
       handler: the webapp.RequestHandler invoking the method
     """
-    namespace = handler.request.get('namespace', None)
-    has_namespace = namespace is not None
     kinds = handler.request.get_all('kind')
     sizes_known, size_total, remainder = utils.ParseKindsAndSizes(kinds)
     notreadonly_warning = capabilities.CapabilitySet(
@@ -125,14 +127,23 @@ class ConfirmBackupHandler(webapp.RequestHandler):
         'size_total': size_total,
         'queues': None,
         'cancel_url': handler.request.get('cancel_url'),
-        'has_namespace': has_namespace,
-        'namespace': namespace,
+        'namespaces': get_namespaces(handler.request.get('namespace', None)),
         'xsrf_token': utils.CreateXsrfToken(XSRF_ACTION),
         'notreadonly_warning': notreadonly_warning,
         'blob_warning': blob_warning,
         'backup_name': 'datastore_backup_%s' % time.strftime('%Y_%m_%d')
     }
     utils.RenderToResponse(handler, 'confirm_backup.html', template_params)
+
+
+def get_namespaces(selected_namespace):
+  namespaces = [('--All--', '*', selected_namespace is None)]
+  for ns in datastore.Query('__namespace__', keys_only=True).Run():
+    ns_name = ns.name() or ''
+    namespaces.append((ns_name or '--Default--',
+                       ns_name,
+                       ns_name == selected_namespace))
+  return namespaces
 
 
 class ConfirmDeleteBackupHandler(webapp.RequestHandler):
@@ -344,7 +355,10 @@ class BaseDoHandler(webapp.RequestHandler):
     raise NotImplementedError
 
   def _GetBasicMapperParams(self):
-    return {'namespace': self.request.get('namespace', None)}
+    namespace = self.request.get('namespace', None)
+    if namespace == '*':
+      namespace = None
+    return {'namespace': namespace}
 
   def post(self):
     """Handler for post requests to datastore_admin/backup.do.
@@ -385,13 +399,14 @@ class BackupValidationException(Exception):
   pass
 
 
-def _perform_backup(kinds,
+def _perform_backup(kinds, selected_namespace,
                     filesystem, gs_bucket_name, backup,
                     queue, mapper_params, max_jobs):
   """Triggers backup mapper jobs.
 
   Args:
     kinds: a sequence of kind names
+    selected_namespace: The selected namespace or None for all
     filesystem: files.BLOBSTORE_FILESYSTEM or files.GS_FILESYSTEM
         or None to default to blobstore
     gs_bucket_name: the GS file system bucket in which to store the backup
@@ -426,9 +441,7 @@ def _perform_backup(kinds,
     bucket_name, path = parse_gs_handle(gs_bucket_name)
     gs_bucket_name = ('%s/%s' % (bucket_name, path)).rstrip('/')
     validate_gs_bucket_name(bucket_name)
-    if not is_accessible_bucket_name(bucket_name):
-      raise BackupValidationException(
-          'Bucket "%s" is not accessible' % bucket_name)
+    verify_bucket_writable(bucket_name)
   elif filesystem == files.BLOBSTORE_FILESYSTEM:
     pass
   else:
@@ -441,6 +454,8 @@ def _perform_backup(kinds,
     backup_info.filesystem = filesystem
     backup_info.name = backup
     backup_info.kinds = kinds
+    if selected_namespace is not None:
+      backup_info.namespaces = [selected_namespace]
     backup_info.put(force_writes=True)
     mapreduce_params = {
         'done_callback_handler': BACKUP_COMPLETE_HANDLER,
@@ -510,8 +525,12 @@ class BackupLinkHandler(webapp.RequestHandler):
         if not utils.IsKindNameVisible(kind):
           self.errorResponse('Invalid kind %s.' % kind)
           return
-      mapper_params = {'namespace': None}
+      namespace = self.request.get('namespace', None)
+      if namespace == '*':
+        namespace = None
+      mapper_params = {'namespace': namespace}
       _perform_backup(kinds,
+                      namespace,
                       self.request.get('filesystem'),
                       self.request.get('gs_bucket_name'),
                       backup_name,
@@ -559,6 +578,7 @@ class DoBackupHandler(BaseDoHandler):
         raise BackupValidationException('Backup "%s" already exists.' % backup)
       mapper_params = self._GetBasicMapperParams()
       backup_result = _perform_backup(self.request.get_all('kind'),
+                                      mapper_params.get('namespace'),
                                       self.request.get('filesystem'),
                                       self.request.get('gs_bucket_name'),
                                       backup,
@@ -756,6 +776,10 @@ class DoBackupRestoreHandler(BaseDoHandler):
     if not backup:
       return [('error', 'Invalid Backup id.')]
 
+    if backup.gs_handle:
+      if not is_readable_gs_handle(backup.gs_handle):
+        return [('error', 'Backup not readable')]
+
     queue = self.request.get('queue')
     job_name = 'datastore_backup_restore_%s' % re.sub(r'[^\w]', '_',
                                                       backup.name)
@@ -862,6 +886,7 @@ class BackupInformation(db.Model):
 
   name = db.StringProperty()
   kinds = db.StringListProperty()
+  namespaces = db.StringListProperty()
   filesystem = db.StringProperty(default=files.BLOBSTORE_FILESYSTEM)
   start_time = db.DateTimeProperty(auto_now_add=True)
   active_jobs = db.StringListProperty()
@@ -1600,6 +1625,60 @@ def is_accessible_bucket_name(bucket_name):
       'Authorization': 'OAuth %s' % auth_token,
       'x-goog-api-version': '2'})
   return result and result.status_code == 200
+
+
+def verify_bucket_writable(bucket_name):
+  """Verify the application can write to the specified bucket.
+
+  Args:
+    bucket_name: The bucket to verify.
+
+  Raises:
+    BackupValidationException: If the bucket is not writable.
+  """
+  path = '/gs/%s' % bucket_name
+  try:
+    file_names = files.gs.listdir(path,
+                                  {'prefix': TEST_WRITE_FILENAME_PREFIX,
+                                   'max_keys': MAX_KEYS_LIST_SIZE})
+  except (files.InvalidParameterError, files.PermissionDeniedError):
+    raise BackupValidationException('Bucket "%s" not accessible' % bucket_name)
+  except files.InvalidFileNameError:
+    raise BackupValidationException('Bucket "%s" does not exist' % bucket_name)
+  file_name = '%s/%s.tmp' % (path, TEST_WRITE_FILENAME_PREFIX)
+  file_name_try = 0
+  while True:
+    if file_name_try >= MAX_TEST_FILENAME_TRIES:
+
+
+      return
+    if file_name not in file_names:
+      break
+    gen = random.randint(0, 9999)
+    file_name = '%s/%s_%s.tmp' % (path, TEST_WRITE_FILENAME_PREFIX, gen)
+    file_name_try += 1
+  try:
+    test_file = files.open(files.gs.create(file_name), 'a', exclusive_lock=True)
+    try:
+      test_file.write('test')
+    finally:
+      test_file.close(finalize=True)
+  except files.PermissionDeniedError:
+    raise BackupValidationException('Bucket "%s" is not writable' % bucket_name)
+  try:
+    files.delete(file_name)
+  except (files.InvalidArgumentError, files.InvalidFileNameError, IOError):
+    logging.warn('Failed to delete test file %s', file_name)
+
+
+def is_readable_gs_handle(gs_handle):
+  """Return True if the application can read the specified gs_handle."""
+  try:
+    with files.open(gs_handle) as bak_file:
+      bak_file.read(1)
+  except files.PermissionDeniedError:
+    return False
+  return True
 
 
 

@@ -27,9 +27,13 @@ try:
   import json
 except ImportError:
   import simplejson as json
+import logging
+
+from protorpc import message_types
 
 from google.appengine.ext.endpoints import api_backend
 from google.appengine.ext.endpoints import api_exceptions
+
 
 __all__ = [
     'ApiConfigRegistry',
@@ -137,3 +141,19 @@ class BackendServiceImpl(api_backend.BackendService):
 
     configs = self.__api_config_registry.all_api_configs()
     return api_backend.ApiConfigList(items=configs)
+
+  def logMessages(self, request):
+    """Write a log message from the Swarm FE to the log.
+
+    Args:
+      request: A log message request.
+
+    Returns:
+      Void message.
+    """
+    Level = api_backend.LogMessagesRequest.LogMessage.Level
+    for message in request.messages:
+      level = message.level if message.level is not None else Level.info
+      logging.log(level.number, message.message)
+
+    return message_types.VoidMessage()

@@ -64,12 +64,20 @@ class XmppServiceStub(apiproxy_stub.APIProxyStub):
       request: A PresenceRequest.
       response: A PresenceResponse.
     """
-    jid = request.jid()
     self._GetFrom(request.from_jid())
-    if jid[0] < 'm':
-      response.set_is_available(True)
-    else:
-      response.set_is_available(False)
+    self._FillInPresenceResponse(request.jid(), response)
+
+  def _Dynamic_BulkGetPresence(self, request, response):
+    self._GetFrom(request.from_jid())
+    for jid in request.jid_list():
+      subresponse = response.add_presence_response()
+      self._FillInPresenceResponse(jid, subresponse)
+
+  def _FillInPresenceResponse(self, jid, response):
+    """Arbitrarily fill in a presence response or subresponse."""
+    response.set_is_available(jid[0] < 'm')
+    response.set_valid(jid.count('@') == 1)
+    response.set_presence(1)
 
   def _Dynamic_SendMessage(self, request, response):
     """Implementation of XmppService::SendMessage.

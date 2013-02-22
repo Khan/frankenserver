@@ -19,6 +19,9 @@
 """Interface to the BackendService that serves API configurations."""
 
 
+import logging
+
+from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
 
@@ -27,6 +30,7 @@ package = 'google.appengine.endpoints'
 
 __all__ = [
     'GetApiConfigsRequest',
+    'LogMessagesRequest',
     'ApiConfigList',
     'BackendService',
     'package',
@@ -41,6 +45,26 @@ class GetApiConfigsRequest(messages.Message):
 class ApiConfigList(messages.Message):
   """List of API configuration file contents."""
   items = messages.StringField(1, repeated=True)
+
+
+class LogMessagesRequest(messages.Message):
+  """Request body for log messages sent by Swarm FE."""
+
+  class LogMessage(messages.Message):
+    """A single log message within a LogMessagesRequest."""
+
+    class Level(messages.Enum):
+      """Levels that can be specified for a log message."""
+      debug = logging.DEBUG
+      info = logging.INFO
+      warning = logging.WARNING
+      error = logging.ERROR
+      critical = logging.CRITICAL
+
+    level = messages.EnumField(Level, 1)
+    message = messages.StringField(2, required=True)
+
+  messages = messages.MessageField(LogMessage, 1, repeated=True)
 
 
 class BackendService(remote.Service):
@@ -62,5 +86,17 @@ class BackendService(remote.Service):
 
     Returns:
       List of ApiConfigMessages
+    """
+    raise NotImplementedError()
+
+  @remote.method(LogMessagesRequest, message_types.VoidMessage)
+  def logMessages(self, request):
+    """Write a log message from the Swarm FE to the log.
+
+    Args:
+      request: A log message request.
+
+    Returns:
+      Void message.
     """
     raise NotImplementedError()

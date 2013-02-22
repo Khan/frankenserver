@@ -48,8 +48,6 @@ from google.appengine.runtime import apiproxy_errors
 
 
 __all__ = [
-    'AddError',
-    'AddResult',
     'AtomField',
     'Cursor',
     'DateField',
@@ -68,8 +66,6 @@ __all__ = [
     'Index',
     'InternalError',
     'InvalidRequest',
-    'ListIndexesResponse',
-    'ListResponse',
     'MatchScorer',
     'MAXIMUM_DOCUMENT_ID_LENGTH',
     'MAXIMUM_DOCUMENTS_PER_ADD_REQUEST',
@@ -100,8 +96,6 @@ __all__ = [
     'Query',
     'QueryError',
     'QueryOptions',
-    'RemoveError',
-    'RemoveResult',
     'RescoringMatchScorer',
     'ScoredDocument',
     'SearchResults',
@@ -109,7 +103,6 @@ __all__ = [
     'SortOptions',
     'TextField',
     'TransientError',
-    'list_indexes',
     ]
 
 MAXIMUM_INDEX_NAME_LENGTH = 100
@@ -263,56 +256,12 @@ _ERROR_OPERATION_CODE_MAP = {
     }
 
 
-class AddResult(OperationResult):
-  """Deprecated. The result of indexing a single object."""
-
-  def __init__(self, code, message=None, id=None):
-    warnings.warn('AddResult is deprecated; use PutResult instead',
-                  DeprecationWarning, stacklevel=2)
-    super(AddResult, self).__init__(code, message, id)
-
-
 class PutResult(OperationResult):
   """The result of indexing a single object."""
 
 
-class RemoveResult(OperationResult):
-  """Deprecated. The result of deleting a single document."""
-
-  def __init__(self, code, message=None, id=None):
-    warnings.warn('RemoveResult is deprecated; use RemoveResult instead',
-                  DeprecationWarning, stacklevel=2)
-    super(RemoveResult, self).__init__(code, message, id)
-
-
 class DeleteResult(OperationResult):
   """The result of deleting a single document."""
-
-
-class AddError(Error):
-  """Indicates some error occurred indexing one of the objects requested.
-
-  Deprecated.
-  """
-
-  def __init__(self, message, results):
-    """Initializer.
-
-    Args:
-      message: A message detailing the cause of the failure to index some
-        document.
-      results: A list of AddResult corresponding to the list of objects
-        requested to be indexed.
-    """
-    warnings.warn('AddError is deprecated; use PutError instead',
-                  DeprecationWarning, stacklevel=2)
-    super(AddError, self).__init__(message)
-    self._results = results
-
-  @property
-  def results(self):
-    """Returns AddResult list corresponding to objects indexed."""
-    return self._results
 
 
 class PutError(Error):
@@ -333,31 +282,6 @@ class PutError(Error):
   @property
   def results(self):
     """Returns PutResult list corresponding to objects indexed."""
-    return self._results
-
-
-class RemoveError(Error):
-  """Indicates some error occured deleting some object requested.
-
-  Deprecated: from 1.7.4 onwards, use DeleteError."""
-
-  def __init__(self, message, results):
-    """Initializer.
-
-    Args:
-      message: A message detailing the cause of the failure to remove some
-        document.
-      results: A list of RemoveResult corresponding to the list of Ids of
-        objects requested to be removed.
-    """
-    warnings.warn('RemoveError is deprecated; use DeleteError instead',
-                  DeprecationWarning, stacklevel=2)
-    super(RemoveError, self).__init__(message)
-    self._results = results
-
-  @property
-  def results(self):
-    """Returns RemoveResult list corresponding to Documents removed."""
     return self._results
 
 
@@ -678,7 +602,7 @@ def _CheckDocument(document):
 
   Raises:
     ValueError if the document is invalid in a way that would trigger an
-    AddError from the server.
+    PutError from the server.
   """
   no_repeat_names = set()
   for field in document.fields:
@@ -702,53 +626,11 @@ def _Repr(class_instance, ordered_dictionary):
        if value is not None and value != []]))
 
 
-def _ListIndexesResponsePbToListIndexesResponse(response):
-  """Returns a ListIndexesResponse constructed from list_indexes response pb."""
-  return ListIndexesResponse(
-      indexes=[_NewIndexFromPb(index)
-               for index in response.index_metadata_list()])
-
-
 def _ListIndexesResponsePbToGetResponse(response):
-  """Returns a GetResponse constructed from list_indexes response pb."""
+  """Returns a GetResponse constructed from get_indexes response pb."""
   return GetResponse(
       results=[_NewIndexFromPb(index)
                for index in response.index_metadata_list()])
-
-
-def list_indexes(namespace='', offset=None, limit=20,
-                 start_index_name=None, include_start_index=True,
-                 index_name_prefix=None, fetch_schema=False, **kwargs):
-  """Returns a list of available indexes.
-
-  Deprecated: From 1.7.3, use get_indexes.
-
-  Args:
-    namespace: The namespace of indexes to be returned. If not set
-      then the current namespace is used.
-    offset: The offset of the first returned index.
-    limit: The number of indexes to return.
-    start_index_name: The name of the first index to be returned.
-    include_start_index: Whether or not to return the start index.
-    index_name_prefix: The prefix used to select returned indexes.
-    fetch_schema: Whether to retrieve Schema for each Index or not.
-
-  Returns:
-    The ListIndexesResponse containing a list of available indexes.
-
-  Raises:
-    InternalError: If the request fails on internal servers.
-    TypeError: If an invalid argument is passed.
-  """
-  warnings.warn('list_indexes is deprecated; use get_indexes instead',
-                DeprecationWarning, stacklevel=2)
-  response = _GetIndexes(
-      namespace=namespace, offset=offset, limit=limit,
-      start_index_name=start_index_name,
-      include_start_index=include_start_index,
-      index_name_prefix=index_name_prefix,
-      fetch_schema=fetch_schema, **kwargs)
-  return _ListIndexesResponsePbToListIndexesResponse(response)
 
 
 def get_indexes(namespace='', offset=None, limit=20,
@@ -1908,59 +1790,6 @@ class SearchResults(object):
                         ('cursor', self.cursor)])
 
 
-class ListResponse(object):
-  """Represents the result of executing a list request on an index.
-
-  For example, the following code shows how a response could be used
-  to determine which documents were successfully removed or not.
-
-  Deprecated: from 1.7.3, use GetResponse.
-
-  response = index.list_documents()
-  for document in response:
-    print "document ", document
-  """
-
-  def __init__(self, results=None):
-    """Initializer.
-
-    Args:
-      results: The results returned from an index ordered by Id.
-
-    Raises:
-      TypeError: If any of the parameters have an invalid type, or an unknown
-        attribute is passed.
-      ValueError: If any of the parameters have an invalid value.
-    """
-    self._results = _GetList(results)
-
-  def __iter__(self):
-    for result in self.results:
-      yield result
-
-  @property
-  def documents(self):
-    """Returns a list of documents ordered by Id from the index.
-
-    Deprecated. Use ListResponse.results.
-
-    Returns:
-      the list of documents
-    """
-    warnings.warn('documents is deprecated. '
-                  'Use ListResponse.results instead',
-                  DeprecationWarning, stacklevel=2)
-    return self._results
-
-  @property
-  def results(self):
-    """Returns a list of results ordered by Id from the index."""
-    return self._results
-
-  def __repr__(self):
-    return _Repr(self, [('results', self.results)])
-
-
 class GetResponse(object):
   """Represents the result of executing a get request.
 
@@ -1996,45 +1825,6 @@ class GetResponse(object):
 
   def __repr__(self):
     return _Repr(self, [('results', self.results)])
-
-
-class ListIndexesResponse(object):
-  """Represents the result of executing a list indexes request.
-
-  For example, the following code shows how the response can be
-  used to get available Indexes.
-
-  for index in search.list_indexes(fetch_schema=True):
-    print "index ", index.name
-    print index.schema
-
-  Deprecated: From 1.7.4, use GetIndexesResponse.
-  """
-
-  def __init__(self, indexes=None):
-    """Initializer.
-
-    Args:
-      indexes: A list of available Indexes.
-
-    Raises:
-      TypeError: If any of the parameters have an invalid type, or an unknown
-        attribute is passed.
-      ValueError: If any of the parameters have an invalid value.
-    """
-    self._indexes = _GetList(indexes)
-
-  def __iter__(self):
-    for index in self.indexes:
-      yield index
-
-  @property
-  def indexes(self):
-    """Returns a list of available Indexes."""
-    return self._indexes
-
-  def __repr__(self):
-    return _Repr(self, [('indexes', self.indexes)])
 
 
 class Cursor(object):
@@ -2583,7 +2373,7 @@ class Index(object):
   def schema(self):
     """Returns the schema mapping field names to list of types supported.
 
-    Only valid for Indexes returned by search.list_indexes method."""
+    Only valid for Indexes returned by search.get_indexes method."""
     return self._schema
 
   @property
@@ -2630,14 +2420,6 @@ class Index(object):
                         ('consistency', self._consistency),
                         ('schema', self.schema)])
 
-  def _NewAddResultFromPb(self, status_pb, doc_id):
-    """Constructs AddResult from RequestStatus pb and doc_id."""
-    message = None
-    if status_pb.has_error_detail():
-      message = _DecodeUTF8(status_pb.error_detail())
-    code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
-    return AddResult(code=code, message=message, id=_DecodeUTF8(doc_id))
-
   def _NewPutResultFromPb(self, status_pb, doc_id):
     """Constructs PutResult from RequestStatus pb and doc_id."""
     message = None
@@ -2646,80 +2428,10 @@ class Index(object):
     code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
     return PutResult(code=code, message=message, id=_DecodeUTF8(doc_id))
 
-  def _NewAddResultList(self, response):
-    return [self._NewAddResultFromPb(status, doc_id)
-            for status, doc_id in zip(response.status_list(),
-                                      response.doc_id_list())]
-
   def _NewPutResultList(self, response):
     return [self._NewPutResultFromPb(status, doc_id)
             for status, doc_id in zip(response.status_list(),
                                       response.doc_id_list())]
-
-  def add(self, documents):
-    """Deprecated. Index the collection of documents.
-
-    If any of the documents are already in the index, then reindex them with
-    their corresponding fresh document. If any of the documents fail to be
-    indexed, then none of the documents will be indexed.
-
-    Args:
-      documents: A Document or iterable of Documents to index.
-
-    Returns:
-      A list of AddResult, one per Document requested to be indexed.
-
-    Raises:
-      AddError: If one or more documents failed to index or
-        number indexed did not match requested.
-      TypeError: If an unknown attribute is passed.
-      ValueError: If documents is not a Document or iterable of Document
-        or number of the documents is larger than
-        MAXIMUM_DOCUMENTS_PER_ADD_REQUEST.
-    """
-    warnings.warn('add is deprecated. Use put instead',
-                  DeprecationWarning, stacklevel=2)
-
-    if isinstance(documents, basestring):
-      raise TypeError('documents must be a Document or sequence of '
-                      'Documents, got %s' % documents.__class__.__name__)
-    try:
-      docs = list(iter(documents))
-    except TypeError:
-      docs = [documents]
-
-    if not docs:
-      return []
-
-    if len(docs) > MAXIMUM_DOCUMENTS_PER_ADD_REQUEST:
-      raise ValueError('too many documents to index')
-
-    request = search_service_pb.IndexDocumentRequest()
-    response = search_service_pb.IndexDocumentResponse()
-
-    params = request.mutable_params()
-    _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
-    for document in docs:
-      doc_pb = params.add_document()
-      _CopyDocumentToProtocolBuffer(document, doc_pb)
-
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'IndexDocument', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
-
-    results = self._NewAddResultList(response)
-
-    if response.status_size() != len(docs):
-      raise AddError('did not index requested number of documents', results)
-
-    for status in response.status_list():
-      if status.code() != search_service_pb.SearchServiceError.OK:
-        raise AddError(
-            _ConcatenateErrorMessages(
-                'one or more add document operations failed', status), results)
-    return results
 
   def put(self, documents):
     """Index the collection of documents.
@@ -2784,15 +2496,6 @@ class Index(object):
                 'one or more put document operations failed', status), results)
     return results
 
-  def _NewRemoveResultFromPb(self, status_pb, doc_id):
-    """Constructs RemoveResult from RequestStatus pb and doc_id."""
-    message = None
-    if status_pb.has_error_detail():
-      message = _DecodeUTF8(status_pb.error_detail())
-    code = _ERROR_OPERATION_CODE_MAP[status_pb.code()]
-
-    return RemoveResult(code=code, message=message, id=doc_id)
-
   def _NewDeleteResultFromPb(self, status_pb, doc_id):
     """Constructs DeleteResult from RequestStatus pb and doc_id."""
     message = None
@@ -2802,70 +2505,9 @@ class Index(object):
 
     return DeleteResult(code=code, message=message, id=doc_id)
 
-  def _NewRemoveResultList(self, document_ids, response):
-    return [self._NewRemoveResultFromPb(status, doc_id)
-            for status, doc_id in zip(response.status_list(), document_ids)]
-
   def _NewDeleteResultList(self, document_ids, response):
     return [self._NewDeleteResultFromPb(status, doc_id)
             for status, doc_id in zip(response.status_list(), document_ids)]
-
-  def remove(self, document_ids):
-    """Delete the documents with the corresponding document ids from the index.
-
-    If no document exists for the identifier in the list, then that document
-    identifier is ignored. If any document remove fails, then no documents
-    will be removed.
-
-    Deprecated: from 1.7.4, use Index.delete.
-
-    Args:
-      document_ids: A single identifier or list of identifiers of documents
-        to remove.
-
-    Raises:
-      RemoveError: If one or more documents failed to remove or
-        number removed did not match requested.
-      ValueError: If document_ids is not a string or iterable of valid document
-        identifiers or number of document ids is larger than
-        MAXIMUM_DOCUMENTS_PER_ADD_REQUEST.
-    """
-    warnings.warn('remove is deprecated. Use delete instead',
-                  DeprecationWarning, stacklevel=2)
-    doc_ids = _ConvertToList(document_ids)
-
-    if not doc_ids:
-      return
-
-    if len(doc_ids) > MAXIMUM_DOCUMENTS_PER_ADD_REQUEST:
-      raise ValueError('too many documents to remove')
-
-    request = search_service_pb.DeleteDocumentRequest()
-    response = search_service_pb.DeleteDocumentResponse()
-    params = request.mutable_params()
-    _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
-    for document_id in doc_ids:
-      _CheckDocumentId(document_id)
-      params.add_doc_id(document_id)
-
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'DeleteDocument', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
-
-    results = self._NewRemoveResultList(doc_ids, response)
-
-    if response.status_size() != len(doc_ids):
-      raise RemoveError(
-          'did not remove requested number of documents', results)
-
-    for status in response.status_list():
-      if status.code() != search_service_pb.SearchServiceError.OK:
-        raise RemoveError(
-            _ConcatenateErrorMessages(
-                'one or more remove document operations failed', status),
-            results)
 
   def delete(self, document_ids):
     """Delete the documents with the corresponding document ids from the index.
@@ -3098,14 +2740,6 @@ class Index(object):
       cursor = query.options.cursor
     return self._NewSearchResults(response, cursor)
 
-  def _NewListResponse(self, response):
-    """Returns a ListResponse from the list_documents response pb."""
-    documents = []
-    for doc_proto in response.document_list():
-      documents.append(_NewDocumentFromPb(doc_proto))
-
-    return ListResponse(results=documents)
-
   def _NewGetResponse(self, response):
     """Returns a GetResponse from the list_documents response pb."""
     documents = []
@@ -3113,35 +2747,6 @@ class Index(object):
       documents.append(_NewDocumentFromPb(doc_proto))
 
     return GetResponse(results=documents)
-
-  def list_documents(self, start_doc_id=None, include_start_doc=True,
-                     limit=100, ids_only=False, **kwargs):
-    """List documents in the index, in doc_id order.
-
-    Deprecated. Use get_range instead.
-
-    Args:
-      start_doc_id: String containing the document Id from which to list
-        documents from. By default, starts at the first document Id.
-      include_start_doc: If true, include the document with the Id specified by
-        the start_doc_id parameter.
-      limit: The maximum number of documents to return.
-      ids_only: If true, the documents returned only contain their keys.
-
-    Returns:
-      A ListResponse containing a list of Documents, ordered by Id.
-
-    Raises:
-      Error: Some subclass of Error is raised if an error occurred processing
-        the request.
-      TypeError: An unknown attribute is passed in.
-    """
-    warnings.warn('list_documents is deprecated. Use get_range instead',
-                  DeprecationWarning, stacklevel=2)
-    response = self._GetResponse(
-        start_id=start_doc_id, include_start_object=include_start_doc,
-        limit=limit, ids_only=ids_only, **kwargs)
-    return self._NewListResponse(response)
 
   def _GetResponse(self, start_id=None, include_start_object=True,
                    limit=100, ids_only=False, **kwargs):

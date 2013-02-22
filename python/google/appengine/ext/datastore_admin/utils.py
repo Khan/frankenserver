@@ -548,7 +548,7 @@ def RunMapForKinds(operation_key,
     for kind in kinds:
       mapper_params['entity_kind'] = kind
       job_name = job_name_template % {'kind': kind, 'namespace':
-                                      mapper_params.get('namespaces', '')}
+                                      mapper_params.get('namespace', '')}
       shard_count = GetShardCount(kind)
       jobs.append(StartMap(operation_key, job_name, handler_spec, reader_spec,
                            writer_spec, mapper_params, mapreduce_params,

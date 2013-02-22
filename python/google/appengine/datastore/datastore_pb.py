@@ -544,8 +544,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   strong_ = 0
   has_distinct_ = 0
   distinct_ = 0
-  has_min_safe_time_microseconds_ = 0
-  min_safe_time_microseconds_ = 0
+  has_min_safe_time_seconds_ = 0
+  min_safe_time_seconds_ = 0
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -893,18 +893,18 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def has_distinct(self): return self.has_distinct_
 
-  def min_safe_time_microseconds(self): return self.min_safe_time_microseconds_
+  def min_safe_time_seconds(self): return self.min_safe_time_seconds_
 
-  def set_min_safe_time_microseconds(self, x):
-    self.has_min_safe_time_microseconds_ = 1
-    self.min_safe_time_microseconds_ = x
+  def set_min_safe_time_seconds(self, x):
+    self.has_min_safe_time_seconds_ = 1
+    self.min_safe_time_seconds_ = x
 
-  def clear_min_safe_time_microseconds(self):
-    if self.has_min_safe_time_microseconds_:
-      self.has_min_safe_time_microseconds_ = 0
-      self.min_safe_time_microseconds_ = 0
+  def clear_min_safe_time_seconds(self):
+    if self.has_min_safe_time_seconds_:
+      self.has_min_safe_time_seconds_ = 0
+      self.min_safe_time_seconds_ = 0
 
-  def has_min_safe_time_microseconds(self): return self.has_min_safe_time_microseconds_
+  def has_min_safe_time_seconds(self): return self.has_min_safe_time_seconds_
 
   def safe_replica_name_size(self): return len(self.safe_replica_name_)
   def safe_replica_name_list(self): return self.safe_replica_name_
@@ -947,7 +947,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.property_name_size()): self.add_property_name(x.property_name(i))
     for i in xrange(x.group_by_property_name_size()): self.add_group_by_property_name(x.group_by_property_name(i))
     if (x.has_distinct()): self.set_distinct(x.distinct())
-    if (x.has_min_safe_time_microseconds()): self.set_min_safe_time_microseconds(x.min_safe_time_microseconds())
+    if (x.has_min_safe_time_seconds()): self.set_min_safe_time_seconds(x.min_safe_time_seconds())
     for i in xrange(x.safe_replica_name_size()): self.add_safe_replica_name(x.safe_replica_name(i))
 
   def Equals(self, x):
@@ -1003,8 +1003,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_distinct_ != x.has_distinct_: return 0
     if self.has_distinct_ and self.distinct_ != x.distinct_: return 0
-    if self.has_min_safe_time_microseconds_ != x.has_min_safe_time_microseconds_: return 0
-    if self.has_min_safe_time_microseconds_ and self.min_safe_time_microseconds_ != x.min_safe_time_microseconds_: return 0
+    if self.has_min_safe_time_seconds_ != x.has_min_safe_time_seconds_: return 0
+    if self.has_min_safe_time_seconds_ and self.min_safe_time_seconds_ != x.min_safe_time_seconds_: return 0
     if len(self.safe_replica_name_) != len(x.safe_replica_name_): return 0
     for e1, e2 in zip(self.safe_replica_name_, x.safe_replica_name_):
       if e1 != e2: return 0
@@ -1058,7 +1058,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.group_by_property_name_)
     for i in xrange(len(self.group_by_property_name_)): n += self.lengthString(len(self.group_by_property_name_[i]))
     if (self.has_distinct_): n += 3
-    if (self.has_min_safe_time_microseconds_): n += 2 + self.lengthVarInt64(self.min_safe_time_microseconds_)
+    if (self.has_min_safe_time_seconds_): n += 2 + self.lengthVarInt64(self.min_safe_time_seconds_)
     n += 2 * len(self.safe_replica_name_)
     for i in xrange(len(self.safe_replica_name_)): n += self.lengthString(len(self.safe_replica_name_[i]))
     return n + 1
@@ -1095,7 +1095,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.group_by_property_name_)
     for i in xrange(len(self.group_by_property_name_)): n += self.lengthString(len(self.group_by_property_name_[i]))
     if (self.has_distinct_): n += 3
-    if (self.has_min_safe_time_microseconds_): n += 2 + self.lengthVarInt64(self.min_safe_time_microseconds_)
+    if (self.has_min_safe_time_seconds_): n += 2 + self.lengthVarInt64(self.min_safe_time_seconds_)
     n += 2 * len(self.safe_replica_name_)
     for i in xrange(len(self.safe_replica_name_)): n += self.lengthString(len(self.safe_replica_name_[i]))
     return n
@@ -1124,7 +1124,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.clear_property_name()
     self.clear_group_by_property_name()
     self.clear_distinct()
-    self.clear_min_safe_time_microseconds()
+    self.clear_min_safe_time_seconds()
     self.clear_safe_replica_name()
 
   def OutputUnchecked(self, out):
@@ -1203,9 +1203,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.group_by_property_name_)):
       out.putVarInt32(274)
       out.putPrefixedString(self.group_by_property_name_[i])
-    if (self.has_min_safe_time_microseconds_):
+    if (self.has_min_safe_time_seconds_):
       out.putVarInt32(280)
-      out.putVarInt64(self.min_safe_time_microseconds_)
+      out.putVarInt64(self.min_safe_time_seconds_)
     for i in xrange(len(self.safe_replica_name_)):
       out.putVarInt32(290)
       out.putPrefixedString(self.safe_replica_name_[i])
@@ -1287,9 +1287,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.group_by_property_name_)):
       out.putVarInt32(274)
       out.putPrefixedString(self.group_by_property_name_[i])
-    if (self.has_min_safe_time_microseconds_):
+    if (self.has_min_safe_time_seconds_):
       out.putVarInt32(280)
-      out.putVarInt64(self.min_safe_time_microseconds_)
+      out.putVarInt64(self.min_safe_time_seconds_)
     for i in xrange(len(self.safe_replica_name_)):
       out.putVarInt32(290)
       out.putPrefixedString(self.safe_replica_name_[i])
@@ -1382,7 +1382,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
         self.add_group_by_property_name(d.getPrefixedString())
         continue
       if tt == 280:
-        self.set_min_safe_time_microseconds(d.getVarInt64())
+        self.set_min_safe_time_seconds(d.getVarInt64())
         continue
       if tt == 290:
         self.add_safe_replica_name(d.getPrefixedString())
@@ -1461,7 +1461,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
       res+=prefix+("group_by_property_name%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     if self.has_distinct_: res+=prefix+("distinct: %s\n" % self.DebugFormatBool(self.distinct_))
-    if self.has_min_safe_time_microseconds_: res+=prefix+("min_safe_time_microseconds: %s\n" % self.DebugFormatInt64(self.min_safe_time_microseconds_))
+    if self.has_min_safe_time_seconds_: res+=prefix+("min_safe_time_seconds: %s\n" % self.DebugFormatInt64(self.min_safe_time_seconds_))
     cnt=0
     for e in self.safe_replica_name_:
       elm=""
@@ -1501,7 +1501,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kproperty_name = 33
   kgroup_by_property_name = 34
   kdistinct = 24
-  kmin_safe_time_microseconds = 35
+  kmin_safe_time_seconds = 35
   ksafe_replica_name = 36
 
   _TEXT = _BuildTagLookupTable({
@@ -1533,7 +1533,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
     32: "strong",
     33: "property_name",
     34: "group_by_property_name",
-    35: "min_safe_time_microseconds",
+    35: "min_safe_time_seconds",
     36: "safe_replica_name",
   }, 36)
 
@@ -3734,6 +3734,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
   failover_ms_ = 0
   has_strong_ = 0
   strong_ = 0
+  has_allow_deferred_ = 0
+  allow_deferred_ = 0
 
   def __init__(self, contents=None):
     self.key_ = []
@@ -3801,6 +3803,19 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_strong(self): return self.has_strong_
 
+  def allow_deferred(self): return self.allow_deferred_
+
+  def set_allow_deferred(self, x):
+    self.has_allow_deferred_ = 1
+    self.allow_deferred_ = x
+
+  def clear_allow_deferred(self):
+    if self.has_allow_deferred_:
+      self.has_allow_deferred_ = 0
+      self.allow_deferred_ = 0
+
+  def has_allow_deferred(self): return self.has_allow_deferred_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3808,6 +3823,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
     if (x.has_strong()): self.set_strong(x.strong())
+    if (x.has_allow_deferred()): self.set_allow_deferred(x.allow_deferred())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3820,6 +3836,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_failover_ms_ and self.failover_ms_ != x.failover_ms_: return 0
     if self.has_strong_ != x.has_strong_: return 0
     if self.has_strong_ and self.strong_ != x.strong_: return 0
+    if self.has_allow_deferred_ != x.has_allow_deferred_: return 0
+    if self.has_allow_deferred_ and self.allow_deferred_ != x.allow_deferred_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3836,6 +3854,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
     if (self.has_failover_ms_): n += 1 + self.lengthVarInt64(self.failover_ms_)
     if (self.has_strong_): n += 2
+    if (self.has_allow_deferred_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -3845,6 +3864,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
     if (self.has_failover_ms_): n += 1 + self.lengthVarInt64(self.failover_ms_)
     if (self.has_strong_): n += 2
+    if (self.has_allow_deferred_): n += 2
     return n
 
   def Clear(self):
@@ -3852,6 +3872,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_transaction()
     self.clear_failover_ms()
     self.clear_strong()
+    self.clear_allow_deferred()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.key_)):
@@ -3868,6 +3889,9 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_strong_):
       out.putVarInt32(32)
       out.putBoolean(self.strong_)
+    if (self.has_allow_deferred_):
+      out.putVarInt32(40)
+      out.putBoolean(self.allow_deferred_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.key_)):
@@ -3884,6 +3908,9 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_strong_):
       out.putVarInt32(32)
       out.putBoolean(self.strong_)
+    if (self.has_allow_deferred_):
+      out.putVarInt32(40)
+      out.putBoolean(self.allow_deferred_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3905,6 +3932,9 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 32:
         self.set_strong(d.getBoolean())
+        continue
+      if tt == 40:
+        self.set_allow_deferred(d.getBoolean())
         continue
 
 
@@ -3928,6 +3958,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_failover_ms_: res+=prefix+("failover_ms: %s\n" % self.DebugFormatInt64(self.failover_ms_))
     if self.has_strong_: res+=prefix+("strong: %s\n" % self.DebugFormatBool(self.strong_))
+    if self.has_allow_deferred_: res+=prefix+("allow_deferred: %s\n" % self.DebugFormatBool(self.allow_deferred_))
     return res
 
 
@@ -3938,6 +3969,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
   ktransaction = 2
   kfailover_ms = 3
   kstrong = 4
+  kallow_deferred = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3945,7 +3977,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     2: "transaction",
     3: "failover_ms",
     4: "strong",
-  }, 4)
+    5: "allow_deferred",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3953,7 +3986,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -3962,6 +3996,8 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   has_entity_ = 0
   entity_ = None
+  has_key_ = 0
+  key_ = None
   has_version_ = 0
   version_ = 0
 
@@ -3988,6 +4024,25 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
 
   def has_entity(self): return self.has_entity_
 
+  def key(self):
+    if self.key_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.key_ is None: self.key_ = Reference()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.key_
+
+  def mutable_key(self): self.has_key_ = 1; return self.key()
+
+  def clear_key(self):
+
+    if self.has_key_:
+      self.has_key_ = 0;
+      if self.key_ is not None: self.key_.Clear()
+
+  def has_key(self): return self.has_key_
+
   def version(self): return self.version_
 
   def set_version(self, x):
@@ -4005,12 +4060,15 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_entity()): self.mutable_entity().MergeFrom(x.entity())
+    if (x.has_key()): self.mutable_key().MergeFrom(x.key())
     if (x.has_version()): self.set_version(x.version())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_entity_ != x.has_entity_: return 0
     if self.has_entity_ and self.entity_ != x.entity_: return 0
+    if self.has_key_ != x.has_key_: return 0
+    if self.has_key_ and self.key_ != x.key_: return 0
     if self.has_version_ != x.has_version_: return 0
     if self.has_version_ and self.version_ != x.version_: return 0
     return 1
@@ -4018,22 +4076,26 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_entity_ and not self.entity_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_key_ and not self.key_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_entity_): n += 1 + self.lengthString(self.entity_.ByteSize())
+    if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSize())
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_entity_): n += 1 + self.lengthString(self.entity_.ByteSizePartial())
+    if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSizePartial())
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def Clear(self):
     self.clear_entity()
+    self.clear_key()
     self.clear_version()
 
   def OutputUnchecked(self, out):
@@ -4044,6 +4106,10 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(24)
       out.putVarInt64(self.version_)
+    if (self.has_key_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.key_.ByteSize())
+      self.key_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_entity_):
@@ -4053,6 +4119,10 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(24)
       out.putVarInt64(self.version_)
+    if (self.has_key_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.key_.ByteSizePartial())
+      self.key_.OutputPartial(out)
 
   def TryMerge(self, d):
     while 1:
@@ -4067,6 +4137,12 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_version(d.getVarInt64())
         continue
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_key().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -4079,6 +4155,10 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"entity <\n"
       res+=self.entity_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_key_:
+      res+=prefix+"key <\n"
+      res+=self.key_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
     return res
 
@@ -4086,6 +4166,7 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.entity_ = []
+    self.deferred_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def entity_size(self): return len(self.entity_)
@@ -4104,15 +4185,35 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   def clear_entity(self):
     self.entity_ = []
+  def deferred_size(self): return len(self.deferred_)
+  def deferred_list(self): return self.deferred_
+
+  def deferred(self, i):
+    return self.deferred_[i]
+
+  def mutable_deferred(self, i):
+    return self.deferred_[i]
+
+  def add_deferred(self):
+    x = Reference()
+    self.deferred_.append(x)
+    return x
+
+  def clear_deferred(self):
+    self.deferred_ = []
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.entity_size()): self.add_entity().CopyFrom(x.entity(i))
+    for i in xrange(x.deferred_size()): self.add_deferred().CopyFrom(x.deferred(i))
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.entity_) != len(x.entity_): return 0
     for e1, e2 in zip(self.entity_, x.entity_):
+      if e1 != e2: return 0
+    if len(self.deferred_) != len(x.deferred_): return 0
+    for e1, e2 in zip(self.deferred_, x.deferred_):
       if e1 != e2: return 0
     return 1
 
@@ -4120,40 +4221,61 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     initialized = 1
     for p in self.entity_:
       if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.deferred_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
     n += 2 * len(self.entity_)
     for i in xrange(len(self.entity_)): n += self.entity_[i].ByteSize()
+    n += 1 * len(self.deferred_)
+    for i in xrange(len(self.deferred_)): n += self.lengthString(self.deferred_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 2 * len(self.entity_)
     for i in xrange(len(self.entity_)): n += self.entity_[i].ByteSizePartial()
+    n += 1 * len(self.deferred_)
+    for i in xrange(len(self.deferred_)): n += self.lengthString(self.deferred_[i].ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_entity()
+    self.clear_deferred()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.entity_)):
       out.putVarInt32(11)
       self.entity_[i].OutputUnchecked(out)
       out.putVarInt32(12)
+    for i in xrange(len(self.deferred_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.deferred_[i].ByteSize())
+      self.deferred_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.entity_)):
       out.putVarInt32(11)
       self.entity_[i].OutputPartial(out)
       out.putVarInt32(12)
+    for i in xrange(len(self.deferred_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.deferred_[i].ByteSizePartial())
+      self.deferred_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 11:
         self.add_entity().TryMerge(d)
+        continue
+      if tt == 42:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_deferred().TryMerge(tmp)
         continue
 
 
@@ -4171,6 +4293,14 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
       cnt+=1
+    cnt=0
+    for e in self.deferred_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("deferred%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
@@ -4179,21 +4309,27 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   kEntityGroup = 1
   kEntityentity = 2
+  kEntitykey = 4
   kEntityversion = 3
+  kdeferred = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "Entity",
     2: "entity",
     3: "version",
-  }, 3)
+    4: "key",
+    5: "deferred",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STARTGROUP,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

@@ -52,6 +52,18 @@ class NotSupportedWithAutoScalingError(Error):
   """The requested operation is not supported for auto-scaling servers."""
 
 
+class ServerAlreadyStartedError(Error):
+  """The server is already started."""
+
+
+class ServerAlreadyStoppedError(Error):
+  """The server is already stopped."""
+
+
+class BackgroundThreadLimitReachedError(Error):
+  """The instance is at its background thread capacity."""
+
+
 class Dispatcher(object):
   """Provides information about and dispatches requests to servers."""
 
@@ -196,7 +208,7 @@ class Dispatcher(object):
     raise NotImplementedError()
 
   def add_async_request(self, method, relative_url, headers, body, source_ip,
-                        port, server_name=None, version=None, instance_id=None):
+                        server_name=None, version=None, instance_id=None):
     """Dispatch an HTTP request asynchronously.
 
     Args:
@@ -205,7 +217,6 @@ class Dispatcher(object):
       headers: A list of (key, value) tuples where key and value are both str.
       body: A str containing the request body.
       source_ip: The source ip address for the request.
-      port: The port that will receive the request.
       server_name: An optional str containing the server name to service this
           request. If unset, the request will be dispatched to the default
           server.
@@ -217,6 +228,25 @@ class Dispatcher(object):
     """
     raise NotImplementedError()
 
+  def send_background_request(self, server_name, version, instance,
+                              background_request_id):
+    """Dispatch a background thread request.
+
+    Args:
+      server_name: A str containing the server name to service this
+          request.
+      version: A str containing the version to service this request.
+      instance: The instance to service this request.
+      background_request_id: A str containing the unique background thread
+          request identifier.
+
+    Raises:
+      NotSupportedWithAutoScalingError: The provided server/version uses
+          automatic scaling.
+      BackgroundThreadLimitReachedError: The instance is at its background
+          thread capacity.
+    """
+    raise NotImplementedError()
 
 
 
@@ -418,7 +448,7 @@ class _LocalFakeDispatcher(Dispatcher):
                     '_LocalFakeDispatcher')
 
   def add_async_request(self, method, relative_url, headers, body, source_ip,
-                        port, server_name=None, version=None, instance_id=None):
+                        server_name=None, version=None, instance_id=None):
     """Dispatch an HTTP request asynchronously.
 
     Args:
@@ -427,7 +457,6 @@ class _LocalFakeDispatcher(Dispatcher):
       headers: A list of (key, value) tuples where key and value are both str.
       body: A str containing the request body.
       source_ip: The source ip address for the request.
-      port: The port that will receive the request.
       server_name: An optional str containing the server name to service this
           request. If unset, the request will be dispatched to the default
           server.
@@ -439,6 +468,28 @@ class _LocalFakeDispatcher(Dispatcher):
     """
     logging.warning('Request dispatching is not supported with '
                     '_LocalFakeDispatcher')
+
+  def send_background_request(self, server_name, version, instance,
+                              background_request_id):
+    """Dispatch a background thread request.
+
+    Args:
+      server_name: A str containing the server name to service this
+          request.
+      version: A str containing the version to service this request.
+      instance: The instance to service this request.
+      background_request_id: A str containing the unique background thread
+          request identifier.
+
+    Raises:
+      NotSupportedWithAutoScalingError: The provided server/version uses
+          automatic scaling.
+      BackgroundThreadLimitReachedError: The instance is at its background
+          thread capacity.
+    """
+    logging.warning('Request dispatching is not supported with '
+                    '_LocalFakeDispatcher')
+    raise BackgroundThreadLimitReachedError()
 
 _local_dispatcher = _LocalFakeDispatcher()
 
@@ -479,14 +530,15 @@ class RequestInfo(object):
     """
     raise NotImplementedError()
 
-  def get_instance_id(self, request_id):
-    """Returns the ID of the instance serving this request.
+  def get_instance(self, request_id):
+    """Returns the instance serving this request.
 
     Args:
       request_id: The string id of the request making the API call.
 
     Returns:
-      A str containing the instance ID.
+      An opaque representation of the instance serving this request. It should
+      only be passed to dispatcher methods expecting an instance.
     """
     raise NotImplementedError()
 
@@ -546,16 +598,17 @@ class _LocalRequestInfo(RequestInfo):
     """
     return '1'
 
-  def get_instance_id(self, request_id):
-    """Returns the ID of the instance serving this request.
+  def get_instance(self, request_id):
+    """Returns the instance serving this request.
 
     Args:
       request_id: The string id of the request making the API call.
 
     Returns:
-      A str containing the instance ID.
+      An opaque representation of the instance serving this request. It should
+      only be passed to dispatcher methods expecting an instance.
     """
-    return '0'
+    return object()
 
   def get_dispatcher(self):
     """Returns the Dispatcher.

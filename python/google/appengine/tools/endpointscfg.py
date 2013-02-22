@@ -29,12 +29,12 @@ service to generate a client library for a target language (currently Java or
 Python)
 
 Example:
-  endpointscfg.py gen_client_lib -l java -o . greetings-v0.1-rest.api
+  endpointscfg.py gen_client_lib java -o . greetings-v0.1-rest.api
 
 The get_client_lib subcommand does both of the above commands at once.
 
 Example:
-  endpointscfg.py get_client_lib -o . -f rest -l java postservice.GreetingsV1
+  endpointscfg.py get_client_lib java -o . -f rest postservice.GreetingsV1
 """
 
 from __future__ import with_statement
@@ -54,6 +54,7 @@ from google.appengine.ext.endpoints import api_config
 
 DISCOVERY_DOC_BASE = ('https://webapis-discovery.appspot.com/_ah/api/'
                       'discovery/v1/apis/generate/')
+CLIENT_LIBRARY_BASE = 'http://google-api-client-libraries.appspot.com/generate'
 
 
 def _WriteFile(output_path, name, content):
@@ -68,16 +69,18 @@ def _WriteFile(output_path, name, content):
     The full path to the written file.
   """
   path = os.path.join(output_path, name)
-  with open(path, 'w') as f:
+  with open(path, 'wb') as f:
     f.write(content)
   return path
 
 
-def GenApiConfig(service_class_names):
+def GenApiConfig(service_class_names, generator=None):
   """Write an API configuration for endpoints annotated ProtoRPC services.
 
   Args:
     service_class_names: A list of fully qualified ProtoRPC service classes.
+    generator: An generator object that produces API config strings using its
+      pretty_print_config_to_json method.
 
   Raises:
     TypeError: If any service classes don't inherit from remote.Service.
@@ -88,7 +91,7 @@ def GenApiConfig(service_class_names):
       service in JSON format.
   """
   service_map = {}
-  generator = api_config.ApiConfigGenerator()
+  generator = generator or api_config.ApiConfigGenerator()
   for service_class_name in service_class_names:
     module_name, base_service_class_name = service_class_name.rsplit('.', 1)
     module = __import__(module_name, fromlist=base_service_class_name)
@@ -155,8 +158,7 @@ def GenClientLib(discovery_path, language, output_path):
     discovery_doc = f.read()
 
   body = urllib.urlencode({'lang': language, 'content': discovery_doc})
-  request = urllib2.Request(
-      'http://google-api-client-libraries.appspot.com/generate', body)
+  request = urllib2.Request(CLIENT_LIBRARY_BASE, body)
   with contextlib.closing(urllib2.urlopen(request)) as response:
     content = response.read()
     client_name = re.sub(r'\.discovery$', '.zip',

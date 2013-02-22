@@ -190,7 +190,7 @@ class HttpRpcServerHttpLib2(object):
     self.http.timeout = timeout
     url = '%s://%s%s' % (self.scheme, self.host, request_path)
     if kwargs:
-      url += '?' + urllib.urlencode(kwargs)
+      url += '?' + urllib.urlencode(sorted(kwargs.items()))
     headers = {}
     if self.extra_headers:
       headers.update(self.extra_headers)

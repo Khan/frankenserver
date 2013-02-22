@@ -46,7 +46,7 @@ from google.appengine.runtime import apiproxy_errors
 
 
 
-MAXIMUM_CLIENT_ID_LENGTH = 64
+MAXIMUM_CLIENT_ID_LENGTH = 256
 
 
 MAXIMUM_TOKEN_DURATION_MINUTES = 24 * 60

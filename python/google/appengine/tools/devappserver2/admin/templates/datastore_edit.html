@@ -1,0 +1,94 @@
+{% extends "skeleton.html" %}
+
+{% block title %}Datastore Editor - {% if key %}Edit Entity{% else %}New Entity{% endif %}{% endblock %}
+
+{% block page_head %}
+  <script>{% include "datastore_edit.js" %}</script>
+{% endblock %}
+
+{% block body %}
+<div>
+  <h3>{% if key %}Edit &quot;{{ kind }}&quot; Entity{% else %}New &quot;{{ kind }}&quot;Entity{% endif %}</h3>
+
+  <form action="{{ request.path }}" method="post">
+    <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
+    <input type="hidden" name="next" value="{{ next }}"/>
+    <table>
+      {% if key %}
+        {% if namespace %}
+          <tr>
+            <td>Namespace</td>
+            <td>{{ namespace }}</td>
+          </tr>
+        {% endif %}
+      {% endif %}
+      <tr>
+        <td>Entity Kind</td>
+        <td>
+          {{ kind }}
+          <input type="hidden" name="kind" value="{{ kind }}"/>
+        </td>
+      </tr>
+      {% if key %}
+        <tr>
+          <td>Entity Key</td>
+          <td>
+            {{ key }}
+            <input type="hidden" name="key" value="{{ key }}"/>
+          </td>
+        </tr>
+      {% endif %}
+      {% if key_name %}
+        <tr>
+          <td>Key Name</td>
+          <td>
+            {{ key_name }}
+          </td>
+        </tr>
+      {% endif %}
+      {% if key_id %}
+        <tr>
+          <td>ID</td>
+          <td>
+            {{ key_id }}
+          </td>
+        </tr>
+      {% endif %}
+      {% if parent_key %}
+        <tr>
+          <td>Parent</td>
+          <td>
+            {{ parent_key }}<br />
+            <a href="/datastore/edit/{{parent_key}}?next={{ request.uri }}">{{ parent_key_string }}</a>
+          </td>
+        </tr>
+      {% endif %}
+      {% if not key %}
+        {% if namespace %}
+          <tr>
+            <td>Namespace ({{ namespace }})</td>
+            <td><input type="text" name="namespace" value="{{ namespace }}"/></td>
+          </tr>
+        {% endif %}
+      {% endif %}
+      {% for field in fields %}
+        <tr>
+          <td>
+            {{ field.0 }}&nbsp;({{ field.1 }})
+          </td>
+          <td><div>{{ field.2|safe }}</div></td>
+        </tr>
+      {% endfor %}
+      <tr>
+        <td></td>
+        <td>
+          <input class="ae-button" type="submit" value="Save Changes"/>
+          {% if key %}
+            <input id="delete_button" class="ae-button" type="submit" name="action:delete" value="Delete"/>
+          {% endif %}
+        </td>
+      </tr>
+    </table>
+  </form>
+</div>
+{% endblock %}

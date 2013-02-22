@@ -43,7 +43,13 @@ try:
   from PIL import Image
 except ImportError:
   import _imaging
-  import Image
+  # Try importing the 'Image' module directly. If that fails, try
+  # importing it from the 'PIL' package (this is necessary to also
+  # cover "pillow" package installations).
+  try:
+    import Image
+  except ImportError:
+    from PIL import Image
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
@@ -643,10 +649,10 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
     width, height = image.size
 
-    box = (int(transform.crop_left_x() * width),
-           int(transform.crop_top_y() * height),
-           int(transform.crop_right_x() * width),
-           int(transform.crop_bottom_y() * height))
+    box = (int(round(left_x * width)),
+           int(round(top_y * height)),
+           int(round(right_x * width)),
+           int(round(bottom_y * height)))
 
     return image.crop(box)
 

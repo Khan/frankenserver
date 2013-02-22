@@ -152,6 +152,75 @@ _PYTHON_TYPE_TO_JDBC_TYPE = {
     }
 
 
+
+_EXCEPTION_TO_ERROR_CODES = {
+    ProgrammingError: (
+        1007,
+        1064,
+        1102,
+        1103,
+        1110,
+        1111,
+        1112,
+        1113,
+        1146,
+        1149,
+        1179,
+        ),
+    DataError: (
+        1265,
+        1263,
+        1264,
+        1230,
+        1171,
+        1406,
+        1441,
+        ),
+    NotSupportedError: (
+        1196,
+        1235,
+        1289,
+        1286,
+        ),
+    IntegrityError: (
+        1062,
+        1169,
+        1216,
+        1452,
+        1217,
+        1451,
+        1215,
+        ),
+    }
+
+
+
+
+_ERROR_CODE_TO_EXCEPTION = {}
+for error, codes in _EXCEPTION_TO_ERROR_CODES.iteritems():
+  for code in codes:
+    _ERROR_CODE_TO_EXCEPTION[code] = error
+
+
+def _ToDbApiException(sql_exception):
+  """Returns a DB-API exception type appropriate for the given sql_exception.
+
+  Args:
+    sql_exception: The client_pb2.SqlException.
+
+  Returns:
+    The appropriate DatabaseError subclass for the error code in the given
+    sql_exception.
+  """
+  exception = _ERROR_CODE_TO_EXCEPTION.get(sql_exception.code)
+  if not exception:
+    if sql_exception.code < 1000:
+      exception = InternalError
+    else:
+      exception = OperationalError
+  return exception(sql_exception.code, sql_exception.message)
+
+
 def _ConvertFormatToQmark(statement, args):
   """Replaces '%s' or '%(name)s' with '?'.
 
@@ -404,10 +473,6 @@ class Cursor(object):
     Raises:
       DatabaseError: A SQL exception occurred.
     """
-    if result.HasField('sql_exception'):
-      raise DatabaseError('%d: %s' % (result.sql_exception.code,
-                                      result.sql_exception.message))
-
     if result.HasField('rows'):
       description = self._GetDescription(result)
       if description:
@@ -876,8 +941,7 @@ class Connection(object):
 
     if (hasattr(response, 'sql_exception') and
         response.HasField('sql_exception')):
-      raise DatabaseError('%d: %s' % (response.sql_exception.code,
-                                      response.sql_exception.message))
+      raise _ToDbApiException(response.sql_exception)
     return response
 
   def _MakeRetriableRequest(self, stub_method, request):
@@ -900,11 +964,9 @@ class Connection(object):
     sql_exception = response.sql_exception
     if (sql_exception.application_error_code !=
         client_error_code_pb2.SqlServiceClientError.ERROR_TIMEOUT):
-      raise DatabaseError('%d: %s' % (sql_exception.code,
-                                      sql_exception.message))
+      raise _ToDbApiException(sql_exception)
     if time.clock() >= absolute_deadline_seconds:
-      raise DatabaseError('%d: %s' % (sql_exception.code,
-                                      sql_exception.message))
+      raise _ToDbApiException(sql_exception)
     return self._Retry(stub_method, request.request_id,
                        absolute_deadline_seconds)
 
@@ -946,8 +1008,7 @@ class Connection(object):
       sql_exception = response.sql_exception
       if (sql_exception.application_error_code !=
           client_error_code_pb2.SqlServiceClientError.ERROR_RESPONSE_PENDING):
-        raise DatabaseError('%d: %s' % (response.sql_exception.code,
-                                        response.sql_exception.message))
+        raise _ToDbApiException(response.sql_exception)
 
   def _ConvertCachedResponse(self, stub_method, exec_op_response):
     """Converts the cached response or RPC error.
@@ -981,8 +1042,7 @@ class Connection(object):
       raise InternalError('Found unexpected stub_method: %s' % (stub_method))
     response.ParseFromString(exec_op_response.cached_payload)
     if response.HasField('sql_exception'):
-      raise DatabaseError('%d: %s' % (response.sql_exception.code,
-                                      response.sql_exception.message))
+      raise _ToDbApiException(response.sql_exception)
     return response
 
   def MakeRequestImpl(self, stub_method, request):

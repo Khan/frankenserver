@@ -71,9 +71,9 @@ from google.appengine.api import taskqueue
 from google.appengine.api import users
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.api.taskqueue import taskqueue_stub
+from google.appengine.datastore import datastore_stats_generator
 from google.appengine.ext import db
 from google.appengine.ext import webapp
-from google.appengine.ext.admin import datastore_stats_generator
 from google.appengine.ext.db import metadata
 from google.appengine.ext.webapp import _template
 from google.appengine.ext.webapp import util
@@ -676,12 +676,13 @@ class TasksPageHandler(BaseRequestHandler):
 
   def _generate_page_params(self, page_dict):
     """Generate the params for a page link."""
-    params = {
-        'queue': self.queue_name,
-        'start_eta': page_dict['start_eta'],
-        'start_name': page_dict['start_name'],
-        'per_page': self.per_page,
-        'page_no': page_dict['number']}
+    params = [
+        ('queue', self.queue_name),
+        ('start_eta', page_dict['start_eta']),
+        ('start_name', page_dict['start_name']),
+        ('per_page', self.per_page),
+        ('page_no', page_dict['number']),
+        ]
     return urllib.urlencode(params)
 
   def generate_page_dicts(self, start_tasks, end_tasks):
@@ -717,7 +718,7 @@ class TasksPageHandler(BaseRequestHandler):
 
     page_map[1] = {'start_name': '', 'start_eta': 0, 'number': 1}
 
-    pages = sorted(page_map.values(), key=lambda page: page['number'])
+    pages = sorted(sorted(page_map.values()), key=lambda page: page['number'])
 
     for page in pages:
       page['url'] = self._generate_page_params(page)
@@ -1533,7 +1534,7 @@ class DatastoreEditHandler(DatastoreRequestHandler):
 
     fields = []
     key_values = self.get_key_values(sample_entities)
-    for key, sample_values in key_values.iteritems():
+    for key, sample_values in sorted(key_values.iteritems()):
       if entity and entity.has_key(key):
         data_type = DataType.get(entity[key])
       else:
@@ -1642,7 +1643,8 @@ class DatastoreStatsHandler(BaseRequestHandler):
       msg = 'No processing requested'
 
     uri = self.request.path_url
-    self.redirect('%s?%s' % (uri, urllib.urlencode(dict(msg=msg, status=status))))
+    self.redirect('%s?%s' % (uri, urllib.urlencode(
+        [('msg', msg), ('status', status)])))
 
   def generate_stats(self, _app=None):
     """Generate datastore stats."""

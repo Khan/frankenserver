@@ -33,7 +33,6 @@ from google.appengine.api.app_identity import app_identity_service_pb
 from google.appengine.api.blobstore import blobstore_service_pb
 from google.appengine.api.capabilities import capability_service_pb
 from google.appengine.api.channel import channel_service_pb
-from google.appengine.api.conversion import conversion_service_pb
 from google.appengine.api.files import file_service_pb
 from google.appengine.api.images import images_service_pb
 from google.appengine.api.logservice import log_service_pb
@@ -83,10 +82,6 @@ SERVICE_PB_MAP = {
                           channel_service_pb.CreateChannelResponse),
         'SendChannelMessage': (channel_service_pb.SendMessageRequest,
                                api_base_pb.VoidProto),
-    },
-    'conversion': {
-        'Convert': (conversion_service_pb.ConversionRequest,
-                    conversion_service_pb.ConversionResponse),
     },
     'datastore_v3': {
         'Get':        (datastore_pb.GetRequest, datastore_pb.GetResponse),
@@ -306,6 +301,8 @@ SERVICE_PB_MAP = {
     'xmpp': {
         'GetPresence': (xmpp_service_pb.PresenceRequest,
                         xmpp_service_pb.PresenceResponse),
+        'BulkGetPresence': (xmpp_service_pb.BulkPresenceRequest,
+                            xmpp_service_pb.BulkPresenceResponse),
         'SendMessage': (xmpp_service_pb.XmppMessageRequest,
                         xmpp_service_pb.XmppMessageResponse),
         'SendInvite':  (xmpp_service_pb.XmppInviteRequest,

@@ -33,6 +33,7 @@ import bisect
 import copy
 import cPickle as pickle
 import datetime
+import functools
 import logging
 import math
 import os
@@ -457,27 +458,49 @@ class SimpleIndex(object):
     if not search_params.sort_spec_size():
       return sorted(docs, key=lambda doc: doc.document.order_id(), reverse=True)
 
-
-    sort_spec = search_params.sort_spec(0)
-
-    if not (sort_spec.has_default_value_text() or
-            sort_spec.has_default_value_numeric()):
-      raise Exception('A default value must be specified for sorting.')
-    elif sort_spec.has_default_value_text():
-      default_value = sort_spec.default_value_text()
-    else:
-      default_value = sort_spec.default_value_numeric()
-
     def SortKey(scored_doc):
-      """Return the sort key for a document based on the request parameters."""
-      val = expression_evaluator.ExpressionEvaluator(
-          scored_doc, self._inverted_index).ValueOf(
-              sort_spec.sort_expression(), default_value=default_value)
-      if isinstance(val, datetime.datetime):
-        return search_util.EpochTime(val)
-      return val
+      """Return the sort key for a document based on the request parameters.
 
-    return sorted(docs, key=SortKey, reverse=sort_spec.sort_descending())
+      Arguments:
+        scored_doc: The document to score
+
+      Returns:
+        The sort key of a document. The sort key is a tuple, where the nth
+        element in the tuple corresponds to the value of the nth sort expression
+        evaluated on the document.
+
+      Raises:
+        Exception: if no default value is specified.
+      """
+      expr_vals = []
+      for sort_spec in search_params.sort_spec_list():
+        if not (sort_spec.has_default_value_text() or
+                sort_spec.has_default_value_numeric()):
+          raise Exception('A default value must be specified for sorting.')
+        elif sort_spec.has_default_value_text():
+          default_value = sort_spec.default_value_text()
+        else:
+          default_value = sort_spec.default_value_numeric()
+        val = expression_evaluator.ExpressionEvaluator(
+            scored_doc, self._inverted_index).ValueOf(
+                sort_spec.sort_expression(), default_value=default_value)
+        if isinstance(val, datetime.datetime):
+          val = search_util.EpochTime(val)
+        expr_vals.append(val)
+      return tuple(expr_vals)
+
+    def SortCmp(x, y):
+      """The comparison function for sort keys."""
+
+
+      for i, val_tuple in enumerate(zip(x, y)):
+        cmp_val = cmp(*val_tuple)
+        if cmp_val:
+          if search_params.sort_spec(i).sort_descending():
+            return -cmp_val
+          return cmp_val
+      return 0
+    return sorted(docs, key=SortKey, cmp=SortCmp)
 
   def _AttachExpressions(self, docs, search_params):
     if search_params.has_field_spec():
@@ -492,18 +515,16 @@ class SimpleIndex(object):
     """Searches the simple index for ."""
     query = urllib.unquote(search_request.query())
     query = query.strip()
-    if not query:
-      return [_ScoredDocument(document, 0) for document in
-              copy.copy(self._documents.values())]
-    if not isinstance(query, unicode):
-      query = unicode(query, 'utf-8')
-    query_tree = query_parser.Simplify(query_parser.Parse(query))
-
     score = _ScoreRequested(search_request)
-    docs = self._Evaluate(query_tree, score=score)
+    if not query:
+      docs = [_ScoredDocument(doc, 0.0) for doc in self._documents.values()]
+    else:
+      if not isinstance(query, unicode):
+        query = unicode(query, 'utf-8')
+      query_tree = query_parser.Simplify(query_parser.Parse(query))
+      docs = self._Evaluate(query_tree, score=score)
     docs = self._Sort(docs, search_request, score)
     docs = self._AttachExpressions(docs, search_request)
-
     return docs
 
   def GetSchema(self):
@@ -953,7 +974,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         logging.warning(
             'Could not read search indexes from %s', self.__index_file)
     except (AttributeError, LookupError, ImportError, NameError, TypeError,
-            ValueError, pickle.PickleError), e:
+            ValueError, pickle.PickleError, IOError), e:
       logging.warning(
           'Could not read indexes from %s. Try running with the '
           '--clear_search_index flag. Cause:\n%r' % (self.__index_file, e))

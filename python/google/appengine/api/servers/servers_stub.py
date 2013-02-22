@@ -99,10 +99,11 @@ class ServersServiceStub(apiproxy_stub.APIProxyStub):
     try:
       dispatcher.start_server(server, version)
     except (request_info.ServerDoesNotExistError,
-            request_info.VersionDoesNotExistError):
+            request_info.VersionDoesNotExistError,
+            request_info.NotSupportedWithAutoScalingError):
       raise apiproxy_errors.ApplicationError(
           servers_service_pb.ServersServiceError.INVALID_VERSION)
-    except request_info.NotSupportedWithAutoScalingError:
+    except request_info.ServerAlreadyStartedError:
       raise apiproxy_errors.ApplicationError(
           servers_service_pb.ServersServiceError.UNEXPECTED_STATE)
 
@@ -112,10 +113,11 @@ class ServersServiceStub(apiproxy_stub.APIProxyStub):
           request, request_id)
       dispatcher.stop_server(server, version)
     except (request_info.ServerDoesNotExistError,
-            request_info.VersionDoesNotExistError):
+            request_info.VersionDoesNotExistError,
+            request_info.NotSupportedWithAutoScalingError):
       raise apiproxy_errors.ApplicationError(
           servers_service_pb.ServersServiceError.INVALID_VERSION)
-    except request_info.NotSupportedWithAutoScalingError:
+    except request_info.ServerAlreadyStoppedError:
       raise apiproxy_errors.ApplicationError(
           servers_service_pb.ServersServiceError.UNEXPECTED_STATE)
 

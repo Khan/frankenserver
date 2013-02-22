@@ -242,7 +242,8 @@ class UploadCGIHandler(object):
                            form,
                            boundary=None,
                            max_bytes_per_blob=None,
-                           max_bytes_total=None):
+                           max_bytes_total=None,
+                           bucket_name=None):
     """Generate a new post from original form.
 
     Also responsible for storing blobs in the datastore.
@@ -256,6 +257,7 @@ class UploadCGIHandler(object):
         in the form is allowed to be.
       max_bytes_total: The maximum size in bytes that the total of all blobs
         in the form is allowed to be.
+      bucket_name: The name of the Google Storage bucket to uplad the file.
 
     Returns:
       A MIMEMultipart instance representing the new HTTP post which should be
@@ -387,6 +389,10 @@ class UploadCGIHandler(object):
         headers['Content-Length'] = str(content_length)
         headers[blobstore.UPLOAD_INFO_CREATION_HEADER] = (
             blobstore._format_creation(creation))
+        if bucket_name:
+          headers[blobstore.CLOUD_STORAGE_OBJECT_HEADER] = (
+              '/gs/%s/fake-%s-%s' % (bucket_name, blob_entity.key().name(),
+                                     blob_key))
         headers['Content-MD5'] = blob_key
         for key, value in headers.iteritems():
           external.add_header(key, value)
@@ -424,7 +430,8 @@ class UploadCGIHandler(object):
                                 form,
                                 boundary=None,
                                 max_bytes_per_blob=None,
-                                max_bytes_total=None):
+                                max_bytes_total=None,
+                                bucket_name=None):
     """Generate a new post string from original form.
 
     Args:
@@ -436,6 +443,7 @@ class UploadCGIHandler(object):
         in the form is allowed to be.
       max_bytes_total: The maximum size in bytes that the total of all blobs
         in the form is allowed to be.
+      bucket_name: The name of the Google Storage bucket to uplad the file.
 
     Returns:
       A string rendering of a MIMEMultipart instance.
@@ -443,7 +451,8 @@ class UploadCGIHandler(object):
     message = self._GenerateMIMEMessage(form,
                                         boundary=boundary,
                                         max_bytes_per_blob=max_bytes_per_blob,
-                                        max_bytes_total=max_bytes_total)
+                                        max_bytes_total=max_bytes_total,
+                                        bucket_name=bucket_name)
     message_out = cStringIO.StringIO()
     gen = generator.Generator(message_out, maxheaderlen=0)
     gen.flatten(message, unixfrom=False)

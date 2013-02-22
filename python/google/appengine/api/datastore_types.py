@@ -303,7 +303,7 @@ def SetNamespace(proto, namespace):
 
 def PartitionString(value, separator):
   """Equivalent to python2.5 str.partition()
-     TODO(gmariani) use str.partition() when python 2.5 is adopted.
+     TODO use str.partition() when python 2.5 is adopted.
 
   Args:
     value: String to be partitioned
@@ -727,7 +727,7 @@ class Key(object):
   def __cmp__(self, other):
     """Returns negative, zero, or positive when comparing two keys.
 
-    TODO(ryanb): for API v2, we should change this to make incomplete keys, ie
+    TODO: for API v2, we should change this to make incomplete keys, ie
     keys without an id or name, not equal to any other keys.
 
     Args:

@@ -71,14 +71,13 @@ try:
 
   __import__('MySQLdb.constants', globals(), locals(), ['*'])
 except ImportError:
-  logging.warning('The rdbms API is not available because the MySQLdb '
-                  'library could not be loaded.')
-
 
   def connect(instance=None, database=None):
-    raise NotImplementedError(
-        'Unable to find the MySQLdb library. Please see the SDK '
-        'documentation for installation instructions.')
+    logging.error('The rdbms API (Google Cloud SQL) is not available because '
+                  'the MySQLdb library could not be loaded. Please see the SDK '
+                  'documentation for installation instructions.')
+
+    raise NotImplementedError('Unable to find the MySQLdb library')
 else:
 
 
@@ -91,7 +90,15 @@ else:
       merged_kwargs['passwd'] = merged_kwargs.pop('password')
     host = merged_kwargs.get('host')
     if ((not host or host == 'localhost') and
-        not merged_kwargs.get('unix_socket')):
+        not merged_kwargs.get('unix_socket') and
+        os.name == 'posix'):
+
+
+
+
+
+
+
       socket = FindUnixSocket()
       if socket:
         merged_kwargs['unix_socket'] = socket

@@ -1141,7 +1141,7 @@ class HardenedModulesHook(object):
           del self._white_list_partial_modules[k]
 
 
-      webob_path = os.path.join(SDK_ROOT, 'lib', 'webob_1_1_1')
+      webob_path = os.path.join(SDK_ROOT, 'lib', 'webob-1.1.1')
       if webob_path not in sys.path:
         sys.path.insert(1, webob_path)
 
@@ -1171,7 +1171,7 @@ class HardenedModulesHook(object):
                 sys.modules.pop('django', None)
             sitedir = os.path.join(SDK_ROOT,
                                    'lib',
-                                   'django_%s' % version.replace('.', '_'))
+                                   'django-%s' % version)
             if os.path.isdir(sitedir):
               logging.debug('Enabling Django version %s at %s',
                             version, sitedir)

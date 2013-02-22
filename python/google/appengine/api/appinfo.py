@@ -201,6 +201,7 @@ SCRIPT = 'script'
 EXPIRATION = 'expiration'
 API_ENDPOINT = 'api_endpoint'
 HTTP_HEADERS = 'http_headers'
+APPLICATION_READABLE = 'application_readable'
 
 
 APPLICATION = 'application'
@@ -332,10 +333,10 @@ _SUPPORTED_LIBRARIES = [
         ['0.15']),
     _VersionedLibrary(
         'matplotlib',
-        'http://matplotlib.sourceforge.net/',
+        'http://matplotlib.org/',
         'A 2D plotting library which produces publication-quality figures.',
-        ['1.1.1'],
-        experimental_versions=['1.1.1']
+        ['1.1.1', '1.2.0'],
+        experimental_versions=['1.1.1', '1.2.0']
         ),
     _VersionedLibrary(
         'numpy',
@@ -402,6 +403,9 @@ _NAME_TO_SUPPORTED_LIBRARY = dict((library.name, library)
 REQUIRED_LIBRARIES = {
     ('jinja2', '2.6'): [('markupsafe', '0.15'), ('setuptools', '0.6c11')],
     ('jinja2', 'latest'): [('markupsafe', 'latest'), ('setuptools', 'latest')],
+    ('matplotlib', '1.1.1'): [('numpy', '1.6.1')],
+    ('matplotlib', '1.2.0'): [('numpy', '1.6.1')],
+    ('matplotlib', 'latest'): [('numpy', 'latest')],
 }
 
 _USE_VERSION_FORMAT = ('use one of: "%s" or "latest" '
@@ -749,6 +753,7 @@ class URLMap(HandlerBase):
 
       HANDLER_STATIC_FILES: validation.Optional(_FILES_REGEX),
       UPLOAD: validation.Optional(_FILES_REGEX),
+      APPLICATION_READABLE: validation.Optional(bool),
 
 
       HANDLER_STATIC_DIR: validation.Optional(_FILES_REGEX),
@@ -777,9 +782,10 @@ class URLMap(HandlerBase):
 
   ALLOWED_FIELDS = {
       HANDLER_STATIC_FILES: (MIME_TYPE, UPLOAD, EXPIRATION,
-                             REQUIRE_MATCHING_FILE, HTTP_HEADERS),
+                             REQUIRE_MATCHING_FILE, HTTP_HEADERS,
+                             APPLICATION_READABLE),
       HANDLER_STATIC_DIR: (MIME_TYPE, EXPIRATION, REQUIRE_MATCHING_FILE,
-                           HTTP_HEADERS),
+                           HTTP_HEADERS, APPLICATION_READABLE),
       HANDLER_SCRIPT: (POSITION),
       HANDLER_API_ENDPOINT: (POSITION, SCRIPT),
   }
@@ -1506,7 +1512,8 @@ class AppInfoExternal(validation.Validated):
           required_libraries.append(Library(name=required_name,
                                             version=required_version))
 
-    return self.libraries + required_libraries
+    return [Library(**library.ToDict())
+            for library in self.libraries + required_libraries]
 
   def GetNormalizedLibraries(self):
     """Returns a list of normalized Library instances for this configuration.

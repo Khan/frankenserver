@@ -221,6 +221,9 @@ DEFAULT_REQUEST_LIMIT = 8
 MAXIMUM_INCREASE_DURATION = 5.0
 MAXIMUM_HOLD_DURATION = 12.0
 
+AUTH_FAILED_MESSAGE = ('Authentication Failed: Incorrect credentials or '
+                       'unsupported authentication type (e.g. OpenId).')
+
 
 def ImportStateMessage(state):
   """Converts a numeric state identifier to a status message."""
@@ -4236,7 +4239,7 @@ def _PerformBulkload(arg_dict,
       try:
         return_code = app.Run()
       except AuthenticationError:
-        logger.info('Authentication Failed')
+        logger.error(AUTH_FAILED_MESSAGE)
     finally:
       loader.finalize()
   elif download or dump or create_config:
@@ -4270,7 +4273,7 @@ def _PerformBulkload(arg_dict,
       try:
         return_code = app.Run()
       except AuthenticationError:
-        logger.info('Authentication Failed')
+        logger.error(AUTH_FAILED_MESSAGE)
       except KindStatError:
         logger.error('Unable to download kind stats for all-kinds download.')
         logger.error('Kind stats are generated periodically by the appserver')
@@ -4305,7 +4308,7 @@ def _PerformBulkload(arg_dict,
       try:
         return_code = app.Run()
       except AuthenticationError:
-        logger.info('Authentication Failed')
+        logger.error(AUTH_FAILED_MESSAGE)
     finally:
       mapper.finalize()
   return return_code

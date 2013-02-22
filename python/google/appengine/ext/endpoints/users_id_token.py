@@ -125,7 +125,7 @@ def _is_auth_info_available():
           _ENV_USE_OAUTH_SCOPE in os.environ)
 
 
-def _maybe_set_current_user_vars(method):
+def _maybe_set_current_user_vars(method, api_info=None):
   """Get user information from the id_token or oauth token in the request.
 
   Used internally by Endpoints to set up environment variables for user
@@ -134,6 +134,8 @@ def _maybe_set_current_user_vars(method):
   Args:
     method: The class method that's handling this request.  This method
       should be annotated with @endpoints.method.
+    api_info: An api_config._ApiInfo instance. Optional. If None, will attempt
+      to parse api_info from the implicit instance of the method.
   """
   if _is_auth_info_available():
     return
@@ -142,9 +144,35 @@ def _maybe_set_current_user_vars(method):
   os.environ[_ENV_AUTH_EMAIL] = ''
   os.environ[_ENV_AUTH_DOMAIN] = ''
 
-  if (not method.method_info.scopes and
-      not method.method_info.audiences and
-      not method.method_info.allowed_client_ids):
+
+
+
+  try:
+    api_info = api_info or method.im_self.api_info
+  except AttributeError:
+
+
+
+
+
+    logging.warning('AttributeError when accessing %s.im_self.  An unbound '
+                    'method was probably passed as an endpoints handler.',
+                    method.__name__)
+    scopes = method.method_info.scopes
+    audiences = method.method_info.audiences
+    allowed_client_ids = method.method_info.allowed_client_ids
+  else:
+    scopes = (method.method_info.scopes
+              if method.method_info.scopes is not None
+              else api_info.scopes)
+    audiences = (method.method_info.audiences
+                 if method.method_info.audiences is not None
+                 else api_info.audiences)
+    allowed_client_ids = (method.method_info.allowed_client_ids
+                          if method.method_info.allowed_client_ids is not None
+                          else api_info.allowed_client_ids)
+
+  if not scopes and not audiences and not allowed_client_ids:
 
 
 
@@ -170,13 +198,9 @@ def _maybe_set_current_user_vars(method):
 
 
 
-  if ((method.method_info.scopes == [_EMAIL_SCOPE] or
-       method.method_info.scopes == (_EMAIL_SCOPE,)) and
-      method.method_info.audiences and
-      method.method_info.allowed_client_ids):
+  if ((scopes == [_EMAIL_SCOPE] or scopes == (_EMAIL_SCOPE,)) and
+      audiences and allowed_client_ids):
     logging.info('Checking for id_token.')
-    audiences = method.method_info.audiences
-    allowed_client_ids = method.method_info.allowed_client_ids
     time_now = long(time.time())
     user = _get_id_token_user(token, audiences, allowed_client_ids, time_now,
                               memcache)
@@ -186,15 +210,14 @@ def _maybe_set_current_user_vars(method):
       return
 
 
-  if method.method_info.scopes:
+  if scopes:
     logging.info('Checking for oauth token.')
     result = urlfetch.fetch(
         '%s?%s' % (_TOKENINFO_URL, urllib.urlencode({'access_token': token})))
     if result.status_code == 200:
       token_info = json.loads(result.content)
-      _set_oauth_user_vars(token_info, method.method_info.audiences,
-                           method.method_info.allowed_client_ids,
-                           method.method_info.scopes, _is_local_dev())
+      _set_oauth_user_vars(token_info, audiences, allowed_client_ids,
+                           scopes, _is_local_dev())
 
 
 def _get_id_token_user(token, audiences, allowed_client_ids, time_now, cache):

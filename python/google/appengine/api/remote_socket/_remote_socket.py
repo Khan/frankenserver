@@ -439,40 +439,34 @@ def select(rlist, wlist, xlist, timeout=None):
   state_map = {}
   rlist_out, wlist_out, xlist_out = [], [], []
 
-  def _SetState(socket_descriptor, event, value):
-    state = state_map.setdefault(socket_descriptor, {
-        'events': 0, 'r_objects': [], 'w_objects': []})
-    state['events'] |= event
-    if event == POLLIN:
-      state['r_objects'].append(value)
-    elif event == POLLOUT:
-      state['w_objects'].append(value)
+  def _SetState(request, sock, event):
+    socket_descriptor = sock._SocketDescriptor()
+    state = state_map.setdefault(socket_descriptor, { 'observed_events': 0, })
+
+    if ((event == POLLIN and sock._shutdown_read) or
+        (event == POLLOUT and sock._shutdown_write)):
+      state['observed_events'] |= event
+      request.set_timeout_seconds(0.0)
+      return
+
+    poll_event = state.get('poll_event')
+    if not poll_event:
+      poll_event = request.add_events()
+      poll_event.set_socket_descriptor(socket_descriptor)
+      poll_event.set_observed_events(0)
+      state['poll_event'] = poll_event
+    poll_event.set_requested_events(poll_event.requested_events()|event)
+
+  request = remote_socket_service_pb.PollRequest()
+  if timeout is not None:
+    request.set_timeout_seconds(timeout)
 
   for value in rlist:
-    handle = _GetSocket(value)
-    if handle._shutdown_read:
-      rlist_out.append(value)
-      timeout = 0.0
-    else:
-      _SetState(handle._SocketDescriptor(), POLLIN, value)
+    _SetState(request, _GetSocket(value), POLLIN)
   for value in wlist:
-    handle = _GetSocket(value)
-    if handle._shutdown_write:
-      wlist_out.append(value)
-      timeout = 0.0
-    else:
-      _SetState(handle._SocketDescriptor(), POLLOUT, value)
+    _SetState(request, _GetSocket(value), POLLOUT)
 
-  if state_map:
-    request = remote_socket_service_pb.PollRequest()
-    if timeout is not None:
-      request.set_timeout_seconds(timeout)
-    for socket_descriptor, state in state_map.items():
-      event = request.add_events()
-      event.set_socket_descriptor(socket_descriptor)
-      event.set_requested_events(state['events'])
-      event.set_observed_events(0)
-
+  if request.events_size():
     reply = remote_socket_service_pb.PollReply()
 
     try:
@@ -481,10 +475,17 @@ def select(rlist, wlist, xlist, timeout=None):
       raise _SystemExceptionFromAppError(e)
 
     for event in reply.events_list():
-      if event.observed_events() & POLLIN:
-        rlist_out.extend(state_map[event.socket_descriptor()]['r_objects'])
-      if event.observed_events() & POLLOUT:
-        wlist_out.extend(state_map[event.socket_descriptor()]['w_objects'])
+      state_map[event.socket_descriptor()][
+          'observed_events'] |= event.observed_events()
+
+  for value in rlist:
+    state = state_map[_GetSocket(value)._SocketDescriptor()]
+    if state['observed_events'] & POLLIN:
+      rlist_out.append(value)
+  for value in wlist:
+    state = state_map[_GetSocket(value)._SocketDescriptor()]
+    if state['observed_events'] & POLLOUT:
+      wlist_out.append(value)
 
   return (rlist_out, wlist_out, xlist_out)
 

@@ -3,6 +3,51 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.7.5
+===============================
+- New instance classes F4_1G and B4_1G are now available.  These instances have
+  compute capacity equal to F4/B4 but with a maximum of 1G RAM instead
+  of 512MB.
+- The Logs API stub now uses sqlite in the dev_appserver.  Please note that the
+  --persist_logs flag is still needed in order for logs to be saved.
+- The deprecated classes and functions AddError, AddResult,
+  ListIndexesResponse, ListResponse, RemoveError, RemoveResult, and
+  list_indexes were removed from the Search API in the SDK.  If your app
+  references any of these classes or functions, you must deploy a new version
+  without these references before the next release of App Engine. If you do not
+  do this, your app may stop working in production.
+- The Conversion API, which was decommissioned last release, has been removed
+  from the SDK.  In a future release, the API will be removed from the runtime
+  and any attempt to import the library will raise an exception. Applications
+  in production that import the library should be fixed as soon as possible.
+- Matplotlib v1.2.0 is now available as an experimental feature.
+- Django 1.4 has been upgraded to 1.4.3. This is an experimental feature.
+- We are including a preview of a new and improved version of our development
+  server.  The new version is faster, provides more faithful support for
+  complex multi-threaded applications, has better support for Datastore and
+  supports more libraries.  Try dev_appserver2.py in the SDK. This is an
+  experimental feature. For more information, please visit
+  http://code.google.com/p/appengine-devappserver2-experiment/
+- The Channel API now has the ability to send channel messages from any app
+  version or backend regardless of where the channel was created.
+    http://code.google.com/p/googleappengine/issues/detail?id=5123
+- The URL Fetch service now supports PATCH method requests.
+    http://code.google.com/p/googleappengine/issues/detail?id=6316
+- The Mail API can now send mail bounce notifications to the app.  The
+  notification will be delivered to /_ah/bounce if mail_bounce inbound
+  services are enabled.
+    http://code.google.com/p/googleappengine/issues/detail?id=7451
+- The Blobstore service now returns the created filename instead of the blobKey
+  when using Cloud Storage
+    http://code.google.com/p/googleappengine/issues/detail?id=8337
+- Fixed an issue with os.urandom throwing an exception in dev_appserver2 when
+  using OS X.
+    http://code.google.com/p/appengine-devappserver2-experiment/issues/
+    detail?id=23
+- Fixed an issue with time.tzset not existing in dev_appserver2 for Windows.
+    https://code.google.com/p/appengine-devappserver2-experiment/issues/
+    detail?id=26
+
 Version 1.7.4
 ===============================
 - Background threads is now a GA feature.

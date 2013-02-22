@@ -1,0 +1,13 @@
+#mail label {
+  display: block;
+  font-weight: bold;
+}
+
+#mail fieldset,
+#mail .fieldset {
+  margin-bottom: 8px;
+}
+
+#mail-submit {
+  margin-top: 2em;
+}
