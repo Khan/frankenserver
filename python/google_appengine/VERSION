@@ -1,0 +1,10 @@
+release: "1.7.6"
+timestamp: 1360882848
+api_versions: ['1']
+supported_api_versions:
+  python:
+    api_versions: ['1']
+  python27:
+    api_versions: ['1']
+  go:
+    api_versions: ['go1']
