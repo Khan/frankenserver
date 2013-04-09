@@ -34,6 +34,7 @@ from __future__ import with_statement
 
 
 
+import base64
 import cgi
 import cStringIO
 import httplib
@@ -59,7 +60,7 @@ SPI_ROOT_FORMAT = 'http://127.0.0.1:%s/_ah/spi/%s'
 
 
 _API_REST_PATH_FORMAT = '{!name}/{!version}/%s'
-_PATH_VARIABLE_PATTERN = r'[a-zA-Z_][a-zA-Z_\d]*'
+_PATH_VARIABLE_PATTERN = r'[a-zA-Z_][a-zA-Z_.\d]*'
 _RESERVED_PATH_VARIABLE_PATTERN = r'!' + _PATH_VARIABLE_PATTERN
 _PATH_VALUE_PATTERN = r'[^:/?#\[\]{}]*'
 _CORS_HEADER_ORIGIN = 'Origin'.lower()
@@ -69,6 +70,81 @@ _CORS_HEADER_ALLOW_ORIGIN = 'Access-Control-Allow-Origin'
 _CORS_HEADER_ALLOW_METHODS = 'Access-Control-Allow-Methods'
 _CORS_HEADER_ALLOW_HEADERS = 'Access-Control-Allow-Headers'
 _CORS_ALLOWED_METHODS = frozenset(('DELETE', 'GET', 'PATCH', 'POST', 'PUT'))
+_INVALID_ENUM_TEMPLATE = 'Invalid string value: %r. Allowed values: %r'
+
+
+class RequestRejectionError(Exception):
+  """Base class for rejected requests.
+
+  To be raised when parsing the request values and comparing them against the
+  generated discovery document.
+  """
+
+  def Message(self): raise NotImplementedError
+  def Errors(self): raise NotImplementedError
+
+  def ToJson(self):
+    """JSON string representing the rejected value.
+
+    Calling this will fail on the base class since it relies on Message and
+    Errors being implemented on the class. It is up to a subclass to implement
+    these methods.
+
+    Returns:
+      JSON string representing the rejected value.
+    """
+    return json.dumps({
+        'error': {
+            'errors': self.Errors(),
+            'code': 400,
+            'message': self.Message(),
+        },
+    })
+
+
+class EnumRejectionError(RequestRejectionError):
+  """Custom request rejection exception for enum values."""
+
+
+  def __init__(self, parameter_name, value, allowed_values):
+    """Constructor for EnumRejectionError.
+
+    Args:
+      parameter_name: String; the name of the enum parameter which had a value
+        rejected.
+      value: The actual value passed in for the enum. Usually string.
+      allowed_values: List of strings allowed for the enum.
+    """
+    self.parameter_name = parameter_name
+    self.value = value
+    self.allowed_values = allowed_values
+
+
+  def Message(self):
+    """A descriptive message describing the error."""
+    return _INVALID_ENUM_TEMPLATE % (self.value, self.allowed_values)
+
+
+
+  def Errors(self):
+    """A list containing the errors associated with the rejection.
+
+    Intended to mimic those returned from an API in production in Google's API
+    infrastructure.
+
+    Returns:
+      A list with a single element that is a dictionary containing the error
+        information.
+    """
+    return [
+        {
+            'domain': 'global',
+            'reason': 'invalidParameter',
+            'message': self.Message(),
+            'locationType': 'parameter',
+            'location': self.parameter_name,
+        },
+    ]
 
 
 class ApiRequest(object):
@@ -105,7 +181,7 @@ class ApiRequest(object):
       self.query = ''
     assert self.path.startswith(self.API_PREFIX)
     self.path = self.path[len(self.API_PREFIX):]
-    self.parameters = cgi.parse_qs(self.query)
+    self.parameters = cgi.parse_qs(self.query, keep_blank_values=True)
     self.body_obj = json.loads(self.body) if self.body else {}
     self.request_id = None
 
@@ -384,7 +460,7 @@ class ApiConfigManager(object):
     try:
       response_obj = json.loads(body)
     except ValueError, unused_err:
-      logging.error('Can not parse BackendService.getApiConfigs response: %s',
+      logging.error('Cannot parse BackendService.getApiConfigs response: %s',
                     body)
     else:
       self._AddDiscoveryConfig()
@@ -400,9 +476,135 @@ class ApiConfigManager(object):
 
       for config in self.configs.itervalues():
         version = config.get('version', '')
-        for method_name, method in config.get('methods', {}).iteritems():
+
+
+
+
+
+        sorted_methods = self._GetSortedMethods(config.get('methods', {}))
+
+        for method_name, method in sorted_methods:
           self.SaveRpcMethod(method_name, version, method)
           self.SaveRestMethod(method_name, version, method)
+
+  def _GetSortedMethods(self, methods):
+    """Get a copy of 'methods' sorted the same way AppEngine sorts them.
+
+    Args:
+      methods: Json configuration of an API's methods.
+
+    Returns:
+      The same configuration with the methods sorted based on what order
+      they'll be checked by the server.
+    """
+    if not methods:
+      return methods
+
+
+    def _SortMethodsComparison(method_info1, method_info2):
+      """Sort method info by path and http_method.
+
+      Args:
+        method_info1: Method name and info for the first method to compare.
+        method_info2: Method name and info for the method to compare to.
+
+      Returns:
+        Negative if the first method should come first, positive if the
+        first method should come after the second.  Zero if they're
+        equivalent.
+      """
+
+      def _ScorePath(path):
+        """Calculate the score for this path, used for comparisons.
+
+        Higher scores have priority, and if scores are equal, the path text
+        is sorted alphabetically.  Scores are based on the number and location
+        of the constant parts of the path.  The server has some special handling
+        for variables with regexes, which we don't handle here.
+
+        Args:
+          path: The request path that we're calculating a score for.
+
+        Returns:
+          The score for the given path.
+        """
+
+
+
+
+
+        score = 0
+        parts = path.split('/')
+        for part in parts:
+          score <<= 1
+          if not part or part[0] != '{':
+
+            score += 1
+
+
+
+        score <<= 31 - len(parts)
+        return score
+
+
+      path_score1 = _ScorePath(method_info1[1].get('path', ''))
+      path_score2 = _ScorePath(method_info2[1].get('path', ''))
+      if path_score1 != path_score2:
+        return path_score2 - path_score1
+
+
+      path_result = cmp(method_info1[1].get('path', ''),
+                        method_info2[1].get('path', ''))
+      if path_result != 0:
+        return path_result
+
+
+      method_result = cmp(method_info1[1].get('httpMethod', ''),
+                          method_info2[1].get('httpMethod', ''))
+      return method_result
+
+    return sorted(methods.items(), _SortMethodsComparison)
+
+  @staticmethod
+  def _ToSafePathParamName(matched_parameter):
+    """Creates a safe string to be used as a regex group name.
+
+    Only alphanumeric characters and underscore are allowed in variable name
+    tokens, and numeric are not allowed as the first character.
+
+    We cast the matched_parameter to base32 (since the alphabet is safe),
+    strip the padding (= not safe) and prepend with _, since we know a token
+    can begin with underscore.
+
+    Args:
+      matched_parameter: String; parameter matched from URL template.
+
+    Returns:
+      String, safe to be used as a regex group name.
+    """
+    return '_' + base64.b32encode(matched_parameter).rstrip('=')
+
+  @staticmethod
+  def _FromSafePathParamName(safe_parameter):
+    """Takes a safe regex group name and converts it back to the original value.
+
+    Only alphanumeric characters and underscore are allowed in variable name
+    tokens, and numeric are not allowed as the first character.
+
+    The safe_parameter is a base32 representation of the actual value.
+
+    Args:
+      safe_parameter: String, safe regex group name.
+
+    Returns:
+      String; parameter matched from URL template.
+    """
+    assert safe_parameter.startswith('_')
+    safe_parameter_as_base32 = safe_parameter[1:]
+
+    padding_length = - len(safe_parameter_as_base32) % 8
+    padding = '=' * padding_length
+    return base64.b32decode(safe_parameter_as_base32 + padding)
 
   @staticmethod
   def CompilePathPattern(pattern):
@@ -440,6 +642,11 @@ class ApiConfigManager(object):
     def ReplaceVariable(match):
       """Replaces a {variable} with a regex to match it by name.
 
+      Changes the string corresponding to the variable name to the base32
+      representation of the string, prepended by an underscore. This is
+      necessary because we can have message variable names in URL patterns
+      (e.g. via {x.y}) but the character '.' can't be in a regex group name.
+
       Args:
         match: The matching regex group as sent by re.sub()
 
@@ -447,7 +654,8 @@ class ApiConfigManager(object):
         Regex to match the variable by name, if the full pattern was matched.
       """
       if match.lastindex > 1:
-        return '%s(?P<%s>%s)' % (match.group(1), match.group(2),
+        var_name = ApiConfigManager._ToSafePathParamName(match.group(2))
+        return '%s(?P<%s>%s)' % (match.group(1), var_name,
                                  _PATH_VALUE_PATTERN)
       return match.group(0)
 
@@ -533,6 +741,22 @@ class ApiConfigManager(object):
            path_pattern,
            {(http_method, version): (method_name, method)}))
 
+  @staticmethod
+  def _GetPathParams(match):
+    """Gets path parameters from a regular expression match.
+
+    Args:
+      match: _sre.SRE_Match object for a path.
+
+    Returns:
+      A dictionary containing the variable names converted from base64
+    """
+    result = {}
+    for var_name, value in match.groupdict().iteritems():
+      actual_var_name = ApiConfigManager._FromSafePathParamName(var_name)
+      result[actual_var_name] = value
+    return result
+
   def LookupRestMethod(self, path, http_method):
     """Look up the rest method at call time.
 
@@ -553,7 +777,7 @@ class ApiConfigManager(object):
     for compiled_path_pattern, unused_path, methods in self._rest_methods:
       match = compiled_path_pattern.match(path)
       if match:
-        params = match.groupdict()
+        params = self._GetPathParams(match)
         version = match.group(2)
         method_key = (http_method.lower(), version)
         method_name, method = methods.get(method_key, (None, None))
@@ -877,14 +1101,18 @@ def CreateApiserverDispatcher(config_manager=None):
       else:
         method_config, params = self.LookupRestMethod()
       if method_config:
-        self.TransformRequest(params, method_config)
-        discovery_service = DiscoveryService(self.config_manager, self.request,
-                                             outfile)
+        try:
+          self.TransformRequest(params, method_config)
+          discovery_service = DiscoveryService(self.config_manager,
+                                               self.request, outfile)
 
-        if not discovery_service.HandleDiscoveryRequest(self.request.path):
-          self._request_stage = self.RequestState.SPI_CALL
-          return BuildCGIRequest(self.request.cgi_env, self.request,
-                                 dev_appserver)
+          if not discovery_service.HandleDiscoveryRequest(self.request.path):
+            self._request_stage = self.RequestState.SPI_CALL
+            return BuildCGIRequest(self.request.cgi_env, self.request,
+                                   dev_appserver)
+        except RequestRejectionError, rejection_error:
+          self._EndRequest()
+          return SendCGIRejectedResponse(rejection_error, outfile)
       else:
         self._EndRequest()
         cors_handler = ApiserverDispatcher.__CheckCorsHeaders(self.request)
@@ -1040,11 +1268,137 @@ def CreateApiserverDispatcher(config_manager=None):
       if self.IsRpc():
         self.TransformJsonrpcRequest()
       else:
-        self.TransformRestRequest(params)
+        method_params = method_config.get('request', {}).get('parameters', {})
+        self.TransformRestRequest(params, method_params)
       self.request.path = method_config.get('rosyMethod', '')
 
-    def TransformRestRequest(self, params):
+    def _CheckEnum(self, parameter_name, value, field_parameter):
+      """Checks if the parameter value is valid if an enum.
+
+      If the parameter is not an enum, does nothing. If it is, verifies that
+      its value is valid.
+
+      Args:
+        parameter_name: String; The name of the parameter, which is either just
+          a variable name or the name with the index appended. For example 'var'
+          or 'var[2]'.
+        value: String or list of Strings; The value(s) to be used as enum(s) for
+          the parameter.
+        field_parameter: The dictionary containing information specific to the
+          field in question. This is retrieved from request.parameters in the
+          method config.
+
+      Raises:
+        EnumRejectionError: If the given value is not among the accepted
+          enum values in the field parameter.
+      """
+      if 'enum' not in field_parameter:
+        return
+
+      enum_values = [enum['backendValue']
+                     for enum in field_parameter['enum'].values()
+                     if 'backendValue' in enum]
+      if value not in enum_values:
+        raise EnumRejectionError(parameter_name, value, enum_values)
+
+    def _CheckParameter(self, parameter_name, value, field_parameter):
+      """Checks if the parameter value is valid against all parameter rules.
+
+      First checks if the value is a list and recursively calls _CheckParameter
+      on the values in the list. Otherwise, checks all parameter rules for the
+      the current value.
+
+      In the list case, '[index-of-value]' is appended to the parameter name for
+      error reporting purposes.
+
+      Currently only checks if value adheres to enum rule, but more can be
+      added.
+
+      Args:
+        parameter_name: String; The name of the parameter, which is either just
+          a variable name or the name with the index appended in the recursive
+          case. For example 'var' or 'var[2]'.
+        value: String or List of values; The value(s) to be used for the
+          parameter.
+        field_parameter: The dictionary containing information specific to the
+          field in question. This is retrieved from request.parameters in the
+          method config.
+      """
+      if isinstance(value, list):
+        for index, element in enumerate(value):
+          parameter_name_index = '%s[%d]' % (parameter_name, index)
+          self._CheckParameter(parameter_name_index, element, field_parameter)
+        return
+
+      self._CheckEnum(parameter_name, value, field_parameter)
+
+    def _AddMessageField(self, field_name, value, params):
+      """Converts a . delimitied field name to a message field in parameters.
+
+      For example:
+        {'a.b.c': ['foo']}
+      becomes:
+        {'a': {'b': {'c': ['foo']}}}
+
+      Args:
+        field_name: String; the . delimitied name to be converted into a
+          dictionary.
+        value: The value to be set.
+        params: The dictionary holding all the parameters, where the value is
+          eventually set.
+      """
+      if '.' not in field_name:
+        params[field_name] = value
+        return
+
+      root, remaining = field_name.split('.', 1)
+      sub_params = params.setdefault(root, {})
+      self._AddMessageField(remaining, value, sub_params)
+
+    def _UpdateFromBody(self, destination, source):
+      """Updates the dictionary for an API payload with the request body.
+
+      The values from the body should override those already in the payload, but
+      for nested fields (message objects), the values can be combined
+      recursively.
+
+      Args:
+        destination: A dictionary containing an API payload parsed from the
+          path and query parameters in a request.
+        source: The object parsed from the body of the request.
+      """
+      for key, value in source.iteritems():
+        destination_value = destination.get(key)
+        if isinstance(value, dict) and isinstance(destination_value, dict):
+          self._UpdateFromBody(destination_value, value)
+        else:
+          destination[key] = value
+
+    def TransformRestRequest(self, params, method_parameters):
       """Translates a Rest request/response into an apiserving request/response.
+
+      The request can receive values from the path, query and body and combine
+      them before sending them along to the SPI server. In cases of collision,
+      objects from the body take precedence over those from the query, which in
+      turn take precedence over those from the path.
+
+      In the case that a repeated value occurs in both the query and the path,
+      those values can be combined, but if that value also occurred in the body,
+      it would override any other values.
+
+      In the case of nested values from message fields, non-colliding values
+      from subfields can be combined. For example, if '?a.c=10' occurs in the
+      query string and "{'a': {'b': 11}}" occurs in the body, then they will be
+      combined as
+
+      {
+        'a': {
+          'b': 11,
+          'c': 10,
+        }
+      }
+
+      before being sent to the SPI server.
 
       Side effects:
         Updates self.request to apiserving format. (e.g. updating path to be the
@@ -1052,12 +1406,48 @@ def CreateApiserverDispatcher(config_manager=None):
 
       Args:
         params: URL path parameter dict extracted by config_manager lookup.
+        method_parameters: Dictionary; The parameters for the request from the
+          API config of the method.
       """
-      body_obj = json.loads(self.request.body or '{}')
-      if params:
-        body_obj.update(params)
+      body_obj = {}
+
+      for key, value in params.iteritems():
+
+
+        body_obj[key] = [value]
+
       if self.request.parameters:
-        body_obj.update(self.request.parameters)
+
+        for key, value in self.request.parameters.iteritems():
+          if key in body_obj:
+            body_obj[key] = value + body_obj[key]
+          else:
+            body_obj[key] = value
+
+
+
+      for key, value in body_obj.items():
+        current_parameter = method_parameters.get(key, {})
+        repeated = current_parameter.get('repeated', False)
+
+        if not repeated:
+          body_obj[key] = body_obj[key][0]
+
+
+
+
+
+
+
+        self._CheckParameter(key, body_obj[key], current_parameter)
+
+        message_value = body_obj.pop(key)
+        self._AddMessageField(key, message_value, body_obj)
+
+      if self.request.body_obj:
+        self._UpdateFromBody(body_obj, self.request.body_obj)
+
+      self.request.body_obj = body_obj
       self.request.body = json.dumps(body_obj)
 
     def TransformJsonrpcRequest(self):
@@ -1168,6 +1558,12 @@ def SendCGINotFoundResponse(outfile, cors_handler=None):
 def SendCGIErrorResponse(message, outfile, cors_handler=None):
   body = json.dumps({'error': {'message': message}})
   SendCGIResponse('500', {'Content-Type': 'application/json'}, body, outfile,
+                  cors_handler=cors_handler)
+
+
+def SendCGIRejectedResponse(rejection_error, outfile, cors_handler=None):
+  body = rejection_error.ToJson()
+  SendCGIResponse('400', {'Content-Type': 'application/json'}, body, outfile,
                   cors_handler=cors_handler)
 
 

@@ -135,7 +135,7 @@ SERVER_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' %
 
 _IDLE_INSTANCES_REGEX = r'^([\d]+|automatic)$'
 _INSTANCES_REGEX = r'^[\d]+$'
-_INSTANCE_CLASS_REGEX = r'^([sS](1|2|4|8))$'
+_INSTANCE_CLASS_REGEX = r'^([sS](1|2|4|8|4_1G))$'
 
 
 
@@ -335,7 +335,15 @@ _SUPPORTED_LIBRARIES = [
         'http://matplotlib.org/',
         'A 2D plotting library which produces publication-quality figures.',
         ['1.1.1', '1.2.0'],
-        experimental_versions=['1.1.1', '1.2.0']
+        experimental_versions=['1.1.1', '1.2.0'],
+        deprecated_versions=['1.1.1'],
+        ),
+    _VersionedLibrary(
+        'MySQLdb',
+        'http://mysql-python.sourceforge.net/',
+        'A Python DB API v2.0 compatible interface to MySQL.',
+        ['1.2.4b4'],
+        experimental_versions=['1.2.4b4']
         ),
     _VersionedLibrary(
         'numpy',
@@ -1235,6 +1243,16 @@ class VmSettings(validation.ValidatedDict):
   KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
   VALUE_VALIDATOR = str
 
+  @classmethod
+  def Merge(cls, vm_settings_one, vm_settings_two):
+
+    result_vm_settings = (vm_settings_two or {}).copy()
+
+
+
+    result_vm_settings.update(vm_settings_one or {})
+    return VmSettings(**result_vm_settings) if result_vm_settings else None
+
 
 class EnvironmentVariables(validation.ValidatedDict):
   """Class representing a mapping of environment variable key value pairs."""
@@ -1258,6 +1276,7 @@ class AppInclude(validation.Validated):
       HANDLERS: validation.Optional(validation.Repeated(URLMap)),
       ADMIN_CONSOLE: validation.Optional(AdminConsole),
       MANUAL_SCALING: validation.Optional(ManualScaling),
+      VM_SETTINGS: validation.Optional(VmSettings),
 
 
 
@@ -1334,6 +1353,10 @@ class AppInclude(validation.Validated):
     appyaml.admin_console = AdminConsole.Merge(appyaml.admin_console,
                                                appinclude.admin_console)
 
+
+    appyaml.vm_settings = VmSettings.Merge(appyaml.vm_settings,
+                                           appinclude.vm_settings)
+
     return appyaml
 
   @classmethod
@@ -1377,6 +1400,11 @@ class AppInclude(validation.Validated):
     appinclude_one.admin_console = (
         AdminConsole.Merge(appinclude_one.admin_console,
                            appinclude_two.admin_console))
+
+
+    appinclude_one.vm_settings = VmSettings.Merge(
+        appinclude_one.vm_settings,
+        appinclude_two.vm_settings)
 
     return appinclude_one
 

@@ -321,18 +321,20 @@ class HttpRpcServerOauth2(HttpRpcServerHttpLib2):
         debug_data=debug_data, secure=secure, ignore_certs=ignore_certs,
         rpc_tries=rpc_tries)
 
-    if save_cookies:
-      self.storage = oauth2client_file.Storage(
-          os.path.expanduser('~/.appcfg_oauth2_tokens'))
-    else:
-      self.storage = NoStorage()
-
-    if not isinstance(source, tuple) or len(source) != 3:
+    if not isinstance(source, tuple) or len(source) not in (3, 4):
       raise TypeError('Source must be tuple (client_id, client_secret, scope).')
 
     self.client_id = source[0]
     self.client_secret = source[1]
     self.scope = source[2]
+    oauth2_credential_file = (len(source) > 3 and source[3]
+                              or '~/.appcfg_oauth2_tokens')
+
+    if save_cookies:
+      self.storage = oauth2client_file.Storage(
+          os.path.expanduser(oauth2_credential_file))
+    else:
+      self.storage = NoStorage()
 
     self.refresh_token = refresh_token
     if refresh_token:

@@ -3,6 +3,49 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.7.7
+===============================
+- The Sockets API, which allows applications to make outgoing TCP connections
+  and send/receive UDP packets to the Internet using both IPv4 and IPv6, is now
+  available as an experimental feature for billed apps.
+- The ftplib module is now restored.  It depends on the experimental Sockets
+  API.
+- Billing enabled apps will no longer be subject to a $2.10 minimum weekly
+  spend.  Instead, apps will only be charged for their actual usage.
+- Matplotlib 1.1.1, an experimental feature, is being deprecated and will be
+  removed in 1.7.8. Please switch to matplotlib 1.2.0.
+- Fixed an issue where the dev_appserver Datastore auto ids assigned by the
+  scattered id policy were too large to be represented as floating point
+  numbers.
+- Fixed an issue where the dev_appserver threw an exception on any Search API
+  call that used an index that was originally created as GLOBALLY consistent.
+- Fixed an issue with NDB not serializing projection entities correctly.
+    https://code.google.com/p/appengine-ndb-experiment/issues/detail?id=215
+- Fixed an issue with NDB not projecting structured properties correctly.
+    https://code.google.com/p/appengine-ndb-experiment/issues/detail?id=227
+- Fixed an issue with task queues failing to resolve backend addresses in
+  the new dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=5105
+- Fixed an issue with the Search API allowing multiple documents with no IDs
+  to be in one put request.
+    https://code.google.com/p/googleappengine/issues/detail?id=8553
+- Fixed an issue with sort by doc_id not translating correctly causing
+  InvalidRequest errors on the Search API.
+    https://code.google.com/p/googleappengine/issues/detail?id=8958
+- Fixed an issue with the Search admin UI where an Internal Server Error
+  was served.
+    https://code.google.com/p/googleappengine/issues/detail?id=9005
+- Fixed an issue with Prospective Search failing in the new dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=9003
+- Fixed an issue with the new dev_appserver failing with ImportError.
+    https://code.google.com/p/googleappengine/issues/detail?id=9008
+- Fixed an issue with Sqlite3 being unable to open a database file in the new
+  dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=9031
+- Fixed an issue with serving urls that contain unicode characters in the new
+  dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=9040
+
 Version 1.7.6
 ===============================
 - The new and improved development appserver, which was previewed last release,

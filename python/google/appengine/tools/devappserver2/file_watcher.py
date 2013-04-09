@@ -19,39 +19,18 @@
 
 import sys
 import types
-import warnings
 
-from google.appengine.tools.devappserver2 import fsevents_file_watcher
 from google.appengine.tools.devappserver2 import inotify_file_watcher
+from google.appengine.tools.devappserver2 import mtime_file_watcher
 from google.appengine.tools.devappserver2 import win32_file_watcher
-
-
-class DummyFileWatcher(object):
-  def start(self):
-    """Start watching a directory for changes."""
-
-  def quit(self):
-    """Stop watching a directory for changes."""
-
-  def has_changes(self):
-    """Returns True if the watched directory has changed since the last call.
-
-    start() must be called before this method.
-
-    Returns:
-      Returns True if the watched directory has changed since the last call to
-      has_changes or, if has_changes has never been called, since start was
-      called. The result is always False in this dummy implementation.
-    """
-    return False
 
 
 class _MultipleFileWatcher(object):
   """A FileWatcher than can watch many directories."""
 
-  def __init__(self, directories):
-    self._file_watchers = [get_file_watcher([directory]) for directory
-                           in directories]
+  def __init__(self, directories, use_mtime_file_watcher):
+    self._file_watchers = [get_file_watcher([directory], use_mtime_file_watcher)
+                           for directory in directories]
 
   def start(self):
     for watcher in self._file_watchers:
@@ -71,11 +50,14 @@ class _MultipleFileWatcher(object):
     return has_changes
 
 
-def get_file_watcher(directories):
+def get_file_watcher(directories, use_mtime_file_watcher):
   """Returns an instance that monitors a hierarchy of directories.
 
   Args:
     directories: A list representing the paths of the directories to monitor.
+    use_mtime_file_watcher: A bool containing whether to use mtime polling to
+        monitor file changes even if other options are available on the current
+        platform.
 
   Returns:
     A FileWatcher appropriate for the current platform. start() must be called
@@ -83,25 +65,24 @@ def get_file_watcher(directories):
   """
   assert not isinstance(directories, types.StringTypes), 'expected list got str'
   if len(directories) != 1:
-    return _MultipleFileWatcher(directories)
+    return _MultipleFileWatcher(directories, use_mtime_file_watcher)
 
   directory = directories[0]
-  if sys.platform.startswith('linux'):
+  if use_mtime_file_watcher:
+    return mtime_file_watcher.MtimeFileWatcher(directory)
+  elif sys.platform.startswith('linux'):
     return inotify_file_watcher.InotifyFileWatcher(directory)
   elif sys.platform.startswith('win'):
     return win32_file_watcher.Win32FileWatcher(directory)
-  elif sys.platform.startswith('darwin'):
-    if fsevents_file_watcher.FSEventsFileWatcher.is_available():
-      return fsevents_file_watcher.FSEventsFileWatcher(directory)
-    else:
-      warnings.warn('Detecting source code changes is not supported because '
-                    'your Python version does not include PyObjC '
-                    '(http://pyobjc.sourceforge.net/). Please install PyObjC '
-                    'or, if that is not practical, file a bug at '
-                    'http://code.google.com/p/'
-                    'appengine-devappserver2-experiment/issues/list.')
-  else:
-    warnings.warn('Detecting source code changes is not supported on your '
-                  'platform. Please file a bug at http://code.google.com/p/'
-                  'appengine-devappserver2-experiment/issues/list.')
-  return DummyFileWatcher()
+  return mtime_file_watcher.MtimeFileWatcher(directory)
+
+  # NOTE: The Darwin-specific watcher implementation (found in the deleted file
+  # fsevents_file_watcher.py) was incorrect - the Mac OS X FSEvents
+  # implementation does not detect changes in symlinked files or directories. It
+  # also does not provide file-level change precision before Mac OS 10.7.
+  #
+  # It is still possible to provide an efficient implementation by watching all
+  # symlinked directories and using mtime checking for symlinked files. On any
+  # change in a directory, it would have to be rescanned to see if a new
+  # symlinked file or directory was added. It also might be possible to use
+  # kevents instead of the Carbon API to detect files changes.

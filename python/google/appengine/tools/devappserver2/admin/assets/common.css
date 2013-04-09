@@ -303,7 +303,6 @@ Component: Text Fields and Textareas
 ------------------------------------------------------------------*/
 input[type=text], textarea {
   background-color: #FFF;
-  line-height: 27px;
   padding-left: 8px;
   color: #333;
   border: 1px solid #d9d9d9;
@@ -316,6 +315,7 @@ input[type=text], textarea {
 }
 input[type=text] {
   height: 29px;
+  line-height: 27px;
 }
 input[type=text]:hover, textarea:hover {
   border: 1px solid #b9b9b9;
@@ -625,4 +625,5 @@ ol, ul, li {
   width: 185px;
   float: left;
   font-weight: bold;
+  overflow: inherit;
 }

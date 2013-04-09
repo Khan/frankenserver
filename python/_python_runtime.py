@@ -52,9 +52,9 @@ def _get_dir_path(sibling):
   Raises:
     ValueError: If no proper path could be determined.
   """
-  dir_paths = [os.path.abspath(os.path.dirname(
-      os.path.realpath(__file__.replace('.pyc', 'py')))),
-               os.path.abspath(os.path.dirname(__file__.replace('.pyc', 'py')))]
+  py_file = __file__.replace('.pyc', '.py')
+  dir_paths = [os.path.abspath(os.path.dirname(os.path.realpath(py_file))),
+               os.path.abspath(os.path.dirname(py_file))]
   for dir_path in dir_paths:
     sibling_path = os.path.join(dir_path, sibling)
     if os.path.exists(sibling_path):
@@ -96,7 +96,6 @@ EXTRA_PATHS = _STUB_DEPENDENCIES + [
     _DIR_PATH,
 
     os.path.join(_DIR_PATH, 'lib', 'simplejson'),
-    os.path.join(_DIR_PATH, 'lib', 'google.appengine._internal.graphy'),
 
 
     os.path.join(_DIR_PATH, 'lib', 'django-1.4'),

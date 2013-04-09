@@ -525,7 +525,8 @@ def RunMapForKinds(operation_key,
                    writer_spec,
                    mapper_params,
                    mapreduce_params=None,
-                   queue_name=None):
+                   queue_name=None,
+                   max_shard_count=None):
   """Run mapper job for all entities in specified kinds.
 
   Args:
@@ -539,6 +540,7 @@ def RunMapForKinds(operation_key,
     mapper_params: custom parameters to pass to mapper.
     mapreduce_params: dictionary parameters relevant to the whole job.
     queue_name: the name of the queue that will be used by the M/R.
+    max_shard_count: maximum value for shards count.
 
   Returns:
     Ids of all started mapper jobs as list of strings.
@@ -549,7 +551,7 @@ def RunMapForKinds(operation_key,
       mapper_params['entity_kind'] = kind
       job_name = job_name_template % {'kind': kind, 'namespace':
                                       mapper_params.get('namespace', '')}
-      shard_count = GetShardCount(kind)
+      shard_count = GetShardCount(kind, max_shard_count)
       jobs.append(StartMap(operation_key, job_name, handler_spec, reader_spec,
                            writer_spec, mapper_params, mapreduce_params,
                            queue_name=queue_name, shard_count=shard_count))
@@ -562,12 +564,16 @@ def RunMapForKinds(operation_key,
     raise
 
 
-def GetShardCount(kind):
+def GetShardCount(kind, max_shard_count=None):
   stat = stats.KindStat.all().filter('kind_name =', kind).get()
   if stat:
 
-    return min(max(MAPREDUCE_MIN_SHARDS, stat.bytes // (32 * 1024 * 1024)),
-               MAPREDUCE_MAX_SHARDS)
+    shard_count = min(max(MAPREDUCE_MIN_SHARDS,
+                          stat.bytes // (32 * 1024 * 1024)),
+                      MAPREDUCE_MAX_SHARDS)
+    if max_shard_count and max_shard_count < shard_count:
+      shard_count = max_shard_count
+    return shard_count
 
   return MAPREDUCE_DEFAULT_SHARDS
 

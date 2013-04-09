@@ -2446,6 +2446,9 @@ class AppCfgApp(object):
     parser.add_option('--oauth2_client_secret', action='store',
                       dest='oauth2_client_secret', default=None,
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option('--oauth2_credential_file', action='store',
+                      dest='oauth2_credential_file', default=None,
+                      help=optparse.SUPPRESS_HELP)
     parser.add_option('--noauth_local_webserver', action='store_false',
                       dest='auth_local_webserver', default=True,
                       help='Do not run a local web server to handle redirects '
@@ -2521,7 +2524,8 @@ class AppCfgApp(object):
 
       source = (self.oauth_client_id,
                 self.oauth_client_secret,
-                self.oauth_scopes)
+                self.oauth_scopes,
+                self.options.oauth2_credential_file)
 
       appengine_rpc_httplib2.tools.FLAGS.auth_local_webserver = (
           self.options.auth_local_webserver)
@@ -2803,7 +2807,11 @@ class AppCfgApp(object):
       gopath = os.environ.get('GOPATH')
       if os.path.isdir(goroot) and gopath:
         app_paths = list(paths)
-        go_files = [f for f in app_paths if f.endswith('.go')]
+        go_files = [f for f in app_paths
+                    if f.endswith('.go') and not appyaml.nobuild_files.match(f)]
+        if not go_files:
+          raise Exception('no Go source files to upload '
+                          '(-nobuild_files applied)')
         gab_argv = [
             os.path.join(goroot, 'bin', 'go-app-builder'),
             '-app_base', self.basepath,
@@ -3003,6 +3011,8 @@ class AppCfgApp(object):
     if cron_yaml:
       cron_upload = CronEntryUpload(rpcserver, appyaml, cron_yaml)
       cron_upload.DoUpload()
+    else:
+      print >>sys.stderr, 'Could not find cron configuration. No action taken.'
 
   def UpdateIndexes(self):
     """Updates indexes."""
@@ -3018,6 +3028,8 @@ class AppCfgApp(object):
     if index_defs:
       index_upload = IndexDefinitionUpload(rpcserver, appyaml, index_defs)
       index_upload.DoUpload()
+    else:
+      print >>sys.stderr, 'Could not find index configuration. No action taken.'
 
   def UpdateQueues(self):
     """Updates any new or changed task queue definitions."""
@@ -3032,6 +3044,8 @@ class AppCfgApp(object):
     if queue_yaml:
       queue_upload = QueueEntryUpload(rpcserver, appyaml, queue_yaml)
       queue_upload.DoUpload()
+    else:
+      print >>sys.stderr, 'Could not find queue configuration. No action taken.'
 
   def UpdateDispatch(self):
     """Updates new or changed dispatch definitions."""
@@ -3052,6 +3066,9 @@ class AppCfgApp(object):
       rpcserver.Send('/api/dispatch/update',
                      app_id=dispatch_yaml.application,
                      payload=dispatch_yaml.ToYAML())
+    else:
+      print >>sys.stderr, ('Could not find dispatch configuration. No action'
+                           ' taken.')
 
   def UpdateDos(self):
     """Updates any new or changed dos definitions."""
@@ -3066,6 +3083,8 @@ class AppCfgApp(object):
     if dos_yaml:
       dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
       dos_upload.DoUpload()
+    else:
+      print >>sys.stderr, 'Could not find dos configuration. No action taken.'
 
   def BackendsAction(self):
     """Placeholder; we never expect this action to be invoked."""

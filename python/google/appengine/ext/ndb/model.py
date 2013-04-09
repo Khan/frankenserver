@@ -1261,7 +1261,8 @@ class Property(ModelAttribute):
     """Descriptor protocol: delete the value from the entity."""
     self._delete_value(entity)
 
-  def _serialize(self, entity, pb, prefix='', parent_repeated=False):
+  def _serialize(self, entity, pb, prefix='', parent_repeated=False,
+                 projection=None):
     """Internal helper to serialize this property to a protocol buffer.
 
     Subclasses may override this method.
@@ -1273,18 +1274,32 @@ class Property(ModelAttribute):
         (if present, must end in '.').
       parent_repeated: True if the parent (or an earlier ancestor)
         is a repeated Property.
+      projection: A list or tuple of strings representing the projection for
+        the model instance, or None if the instance is not a projection.
     """
     values = self._get_base_value_unwrapped_as_list(entity)
     for val in values:
+      name = prefix + self._name
+      if projection and name not in projection:
+        continue
       if self._indexed:
         p = pb.add_property()
       else:
         p = pb.add_raw_property()
-      p.set_name(prefix + self._name)
+      p.set_name(name)
       p.set_multiple(self._repeated or parent_repeated)
       v = p.mutable_value()
       if val is not None:
         self._db_set_value(v, p, val)
+        if projection:
+          # Projected properties have the INDEX_VALUE meaning and only contain
+          # the original property's name and value.
+          new_p = entity_pb.Property()
+          new_p.set_name(p.name())
+          new_p.set_meaning(entity_pb.Property.INDEX_VALUE)
+          new_p.set_multiple(False)
+          new_p.mutable_value().CopyFrom(v)
+          p.CopyFrom(new_p)
 
   def _deserialize(self, entity, p, unused_depth=1):
     """Internal helper to deserialize this property from a protocol buffer.
@@ -1632,10 +1647,11 @@ class GeoPtProperty(Property):
       raise datastore_errors.BadValueError('Expected GeoPt, got %r' %
                                            (value,))
 
-  def _db_set_value(self, v, unused_p, value):
+  def _db_set_value(self, v, p, value):
     if not isinstance(value, GeoPt):
       raise TypeError('GeoPtProperty %s can only be set to GeoPt values; '
                       'received %r' % (self._name, value))
+    p.set_meaning(entity_pb.Property.GEORSS_POINT)
     pv = v.mutable_pointvalue()
     pv.set_x(value.lat)
     pv.set_y(value.lon)
@@ -2195,7 +2211,8 @@ class StructuredProperty(_StructuredGetForDictMixin):
         ok = subprop._has_value(subent, rest[1:])
     return ok
 
-  def _serialize(self, entity, pb, prefix='', parent_repeated=False):
+  def _serialize(self, entity, pb, prefix='', parent_repeated=False,
+                 projection=None):
     # entity -> pb; pb is an EntityProto message
     values = self._get_base_value_unwrapped_as_list(entity)
     for value in values:
@@ -2203,11 +2220,13 @@ class StructuredProperty(_StructuredGetForDictMixin):
         # TODO: Avoid re-sorting for repeated values.
         for unused_name, prop in sorted(value._properties.iteritems()):
           prop._serialize(value, pb, prefix + self._name + '.',
-                          self._repeated or parent_repeated)
+                          self._repeated or parent_repeated,
+                          projection=projection)
       else:
         # Serialize a single None
         super(StructuredProperty, self)._serialize(
-          entity, pb, prefix=prefix, parent_repeated=parent_repeated)
+          entity, pb, prefix=prefix, parent_repeated=parent_repeated,
+          projection=projection)
 
   def _deserialize(self, entity, p, depth=1):
     if not self._repeated:
@@ -2516,6 +2535,7 @@ class GenericProperty(Property):
       v.set_int64value(ival)
       p.set_meaning(entity_pb.Property.GD_WHEN)
     elif isinstance(value, GeoPt):
+      p.set_meaning(entity_pb.Property.GEORSS_POINT)
       pv = v.mutable_pointvalue()
       pv.set_x(value.lat)
       pv.set_y(value.lon)
@@ -2716,7 +2736,7 @@ class Model(_NotEqualMixin):
     self._set_attributes(kwds)
     # Set the projection last, otherwise it will prevent _set_attributes().
     if projection:
-      self._projection = tuple(projection)
+      self._set_projection(projection)
 
   @classmethod
   def __get_arg(cls, kwds, kwd):
@@ -2912,7 +2932,7 @@ class Model(_NotEqualMixin):
       self._key_to_pb(pb)
 
     for unused_name, prop in sorted(self._properties.iteritems()):
-      prop._serialize(self, pb)
+      prop._serialize(self, pb, projection=self._projection)
 
     return pb
 
@@ -2962,7 +2982,6 @@ class Model(_NotEqualMixin):
     return ent
 
   def _set_projection(self, projection):
-    self._projection = tuple(projection)
     by_prefix = {}
     for propname in projection:
       if '.' in propname:
@@ -2971,10 +2990,12 @@ class Model(_NotEqualMixin):
           by_prefix[head].append(tail)
         else:
           by_prefix[head] = [tail]
+    self._projection = tuple(projection)
     for propname, proj in by_prefix.iteritems():
       prop = self._properties.get(propname)
       subval = prop._get_base_value_unwrapped_as_list(self)
       for item in subval:
+        assert item is not None
         item._set_projection(proj)
 
   def _get_property_for(self, p, indexed=True, depth=0):

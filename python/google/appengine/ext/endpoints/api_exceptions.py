@@ -24,7 +24,7 @@ from protorpc import remote
 
 
 class ServiceException(remote.ApplicationError):
-  """Base class for exceptions in endpoints."""
+  """Base class for request/service exceptions in Endpoints."""
 
   def __init__(self, message=None):
     super(ServiceException, self).__init__(message,

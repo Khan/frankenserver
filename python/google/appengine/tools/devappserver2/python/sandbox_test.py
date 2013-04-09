@@ -358,7 +358,7 @@ class PathRestrictingImportHookTest(unittest.TestCase):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(imp, 'find_module')
     self.mox.StubOutWithMock(stubs.FakeFile, 'is_file_accessible')
-    self.hook = sandbox.PathRestrictingImportHook()
+    self.hook = sandbox.PathRestrictingImportHook([re.compile(r'lxml(\..*)?$')])
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -416,6 +416,15 @@ class PathRestrictingImportHookTest(unittest.TestCase):
                                                (None, None, imp.PY_FROZEN)))
     self.mox.ReplayAll()
     self.assertIsNone(self.hook.find_module('foo.bar', ['foo']))
+
+  def test_enabled_c_library(self):
+    imp.find_module('lxmla', ['foo']).AndReturn((None, 'lxmla.py',
+                                                 (None, None, imp.PY_SOURCE)))
+    stubs.FakeFile.is_file_accessible('lxmla.py').AndReturn(False)
+    self.mox.ReplayAll()
+    self.assertEqual(self.hook, self.hook.find_module('lxmla', ['foo']))
+    self.assertIsNone(self.hook.find_module('lxml', None))
+    self.assertIsNone(self.hook.find_module('lxml.html', None))
 
   def test_load_module(self):
     self.assertRaises(ImportError, self.hook.load_module, 'os')

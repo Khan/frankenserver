@@ -374,6 +374,8 @@ class EndpointsDispatcher(object):
     # incoming request here has had its path modified.
     if orig_request.is_rpc():
       body = self.transform_jsonrpc_response(spi_request, body)
+    else:
+      body = self.transform_rest_response(body)
 
     cors_handler = EndpointsDispatcher.__CheckCorsHeaders(orig_request)
     return util.send_wsgi_response(response.status, response.headers, body,
@@ -492,8 +494,23 @@ class EndpointsDispatcher(object):
     request.body = json.dumps(request.body_json)
     return request
 
+  def transform_rest_response(self, response_body):
+    """Translates an apiserving REST response so it's ready to return.
+
+    Currently, the only thing that needs to be fixed here is indentation,
+    so it's consistent with what the live app will return.
+
+    Args:
+      response_body: A string containing the backend response.
+
+    Returns:
+      A reformatted version of the response JSON.
+    """
+    body_json = json.loads(response_body)
+    return json.dumps(body_json, indent=1, sort_keys=True)
+
   def transform_jsonrpc_response(self, spi_request, response_body):
-    """Translates a apiserving response to a JsonRpc response.
+    """Translates an apiserving response to a JsonRpc response.
 
     Args:
       spi_request: An ApiRequest, the transformed request that was sent to the
@@ -502,11 +519,11 @@ class EndpointsDispatcher(object):
         back to JsonRPC.
 
     Returns:
-      A string with the updated, JsonRPC-formatted request body
+      A string with the updated, JsonRPC-formatted request body.
     """
     body_json = {'result': json.loads(response_body)}
     if spi_request.request_id is not None:
       body_json['id'] = spi_request.request_id
     if spi_request.is_batch():
       body_json = [body_json]
-    return json.dumps(body_json)
+    return json.dumps(body_json, indent=1, sort_keys=True)

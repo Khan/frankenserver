@@ -18,6 +18,9 @@
 
 import collections
 import logging
+import threading
+import urlparse
+import wsgiref.headers
 
 from google.appengine.api import request_info
 from google.appengine.tools.devappserver2 import constants
@@ -26,11 +29,26 @@ from google.appengine.tools.devappserver2 import scheduled_executor
 from google.appengine.tools.devappserver2 import server
 from google.appengine.tools.devappserver2 import start_response_utils
 from google.appengine.tools.devappserver2 import thread_executor
+from google.appengine.tools.devappserver2 import wsgi_server
 
 _THREAD_POOL = thread_executor.ThreadExecutor()
 
 ResponseTuple = collections.namedtuple('ResponseTuple',
                                        ['status', 'headers', 'content'])
+
+
+class PortRegistry(object):
+  def __init__(self):
+    self._ports = {}
+    self._ports_lock = threading.RLock()
+
+  def add(self, port, servr, inst):
+    with self._ports_lock:
+      self._ports[port] = (servr, inst)
+
+  def get(self, port):
+    with self._ports_lock:
+      return self._ports[port]
 
 
 class Dispatcher(request_info.Dispatcher):
@@ -46,7 +64,11 @@ class Dispatcher(request_info.Dispatcher):
                port,
                runtime_stderr_loglevel,
 
-               cloud_sql_config):
+               python_config,
+               cloud_sql_config,
+               server_to_max_instances,
+               use_mtime_file_watcher,
+               automatic_restart):
     """Initializer for Dispatcher.
 
     Args:
@@ -59,12 +81,25 @@ class Dispatcher(request_info.Dispatcher):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      server_to_max_instances: A mapping between a server name and the maximum
+          number of instances that can be created (this overrides the settings
+          found in the configuration argument) e.g.
+          {'default': 10, 'backend': 15}.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
+      automatic_restart: If True then instances will be restarted when a
+          file or configuration change that effects them is detected.
     """
     self._configuration = configuration
 
+    self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = None
     self._api_port = None
@@ -74,7 +109,15 @@ class Dispatcher(request_info.Dispatcher):
     self._port = port
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._server_name_to_server = {}
+    self._dispatch_server = None
+    self._quit_event = threading.Event()  # Set when quit() has been called.
+    self._update_checking_thread = threading.Thread(
+        target=self._loop_checking_for_updates)
+    self._server_to_max_instances = server_to_max_instances or {}
+    self._use_mtime_file_watcher = use_mtime_file_watcher
+    self._automatic_restart = automatic_restart
     self._executor = scheduled_executor.ScheduledExecutor(_THREAD_POOL)
+    self._port_registry = PortRegistry()
 
   def start(self, api_port, request_data):
     """Starts the configured servers.
@@ -88,6 +131,15 @@ class Dispatcher(request_info.Dispatcher):
     self._request_data = request_data
     port = self._port
     self._executor.start()
+    if self._configuration.dispatch:
+      self._dispatch_server = wsgi_server.WsgiServer((self._host, port), self)
+      self._dispatch_server.start()
+      logging.info('Starting dispatcher running at: http://%s:%s', self._host,
+                   self._dispatch_server.port)
+      self._update_checking_thread.start()
+      if port:
+        port += 1
+      self._port_registry.add(self._dispatch_server.port, None, None)
     for server_configuration in self._configuration.servers:
       self._server_configurations[
           server_configuration.server_name] = server_configuration
@@ -97,49 +149,69 @@ class Dispatcher(request_info.Dispatcher):
       logging.info('Starting server "%s" running at: http://%s',
                    server_configuration.server_name, servr.balanced_address)
 
+  @property
+  def dispatch_port(self):
+    """The port that the dispatch HTTP server for the Server is listening on."""
+    assert self._dispatch_server, 'dispatch server not running'
+    assert self._dispatch_server.ready, 'dispatch server not ready'
+    return self._dispatch_server.port
+
+  @property
+  def host(self):
+    """The host that the HTTP server for this Dispatcher is listening on."""
+    return self._host
+
+  @property
+  def dispatch_address(self):
+    """The address of the dispatch HTTP server e.g. "localhost:8080"."""
+    if self.dispatch_port != 80:
+      return '%s:%s' % (self.host, self.dispatch_port)
+    else:
+      return self.host
+
+  def _check_for_updates(self):
+    self._configuration.dispatch.check_for_updates()
+
+  def _loop_checking_for_updates(self):
+    """Loops until the Dispatcher exits, reloading dispatch.yaml config."""
+    while not self._quit_event.is_set():
+      self._check_for_updates()
+      self._quit_event.wait(timeout=1)
+
   def quit(self):
     """Quits all servers."""
     self._executor.quit()
+    self._quit_event.set()
+    if self._dispatch_server:
+      self._dispatch_server.quit()
     for servr in self._server_name_to_server.values():
       servr.quit()
 
   def _create_server(self, server_configuration, port):
+    max_instances = self._server_to_max_instances.get(
+        server_configuration.server_name)
+    server_args = (server_configuration,
+                   self._host,
+                   port,
+                   self._api_port,
+                   self._runtime_stderr_loglevel,
+
+                   self._python_config,
+                   self._cloud_sql_config,
+                   self._port,
+                   self._port_registry,
+                   self._request_data,
+                   self,
+                   max_instances,
+                   self._use_mtime_file_watcher,
+                   self._automatic_restart)
     if server_configuration.manual_scaling:
-      servr = server.ManualScalingServer(
-          server_configuration,
-          self._host,
-          port,
-          self._api_port,
-          self._runtime_stderr_loglevel,
-
-          self._cloud_sql_config,
-          self._port,
-          self._request_data,
-          self)
+      servr = server.ManualScalingServer(*server_args)
     elif server_configuration.basic_scaling:
-      servr = server.BasicScalingServer(
-          server_configuration,
-          self._host,
-          port,
-          self._api_port,
-          self._runtime_stderr_loglevel,
-
-          self._cloud_sql_config,
-          self._port,
-          self._request_data,
-          self)
+      servr = server.BasicScalingServer(*server_args)
     else:
-      servr = server.AutoScalingServer(
-          server_configuration,
-          self._host,
-          port,
-          self._api_port,
-          self._runtime_stderr_loglevel,
+      servr = server.AutoScalingServer(*server_args)
 
-          self._cloud_sql_config,
-          self._port,
-          self._request_data,
-          self)
     if port != 0:
       port += 1
     return servr, port
@@ -389,7 +461,10 @@ class Dispatcher(request_info.Dispatcher):
           service this request. If unset, the request will be dispatched to
           according to the load-balancing for the server and version.
     """
-    servr = self._get_server(server_name, version)
+    if server_name:
+      servr = self._get_server(server_name, version)
+    else:
+      servr = self._server_for_request(urlparse.urlsplit(relative_url).path)
     inst = servr.get_instance(instance_id) if instance_id else None
     port = servr.get_instance_port(instance_id) if instance_id else (
         servr.balanced_port)
@@ -415,23 +490,36 @@ class Dispatcher(request_info.Dispatcher):
       body: A str containing the request body.
       source_ip: The source ip address for the request.
       server_name: An optional str containing the server name to service this
-          request. If unset, the request will be dispatched to the default
-          server.
+          request. If unset, the request will be dispatched according to the
+          host header and relative_url.
       version: An optional str containing the version to service this request.
-          If unset, the request will be dispatched to the default version.
+          If unset, the request will be dispatched according to the host header
+          and relative_url.
       instance_id: An optional str containing the instance_id of the instance to
-          service this request. If unset, the request will be dispatched to
-          according to the load-balancing for the server and version.
+          service this request. If unset, the request will be dispatched
+          according to the host header and relative_url and, if applicable, the
+          load-balancing for the server and version.
       fake_login: A bool indicating whether login checks should be bypassed,
           i.e. "login: required" should be ignored for this request.
 
     Returns:
-      A ResponseTuple containing the response information for the HTTP request.
+      A request_info.ResponseTuple containing the response information for the
+      HTTP request.
     """
-    servr = self._get_server(server_name, version)
-    inst = servr.get_instance(instance_id) if instance_id else None
-    port = servr.get_instance_port(instance_id) if instance_id else (
-        servr.balanced_port)
+    if server_name:
+      servr = self._get_server(server_name, version)
+      inst = servr.get_instance(instance_id) if instance_id else None
+    else:
+      headers_dict = wsgiref.headers.Headers(headers)
+      servr, inst = self._resolve_target(
+          headers_dict['Host'], urlparse.urlsplit(relative_url).path)
+    if inst:
+      try:
+        port = servr.get_instance_port(inst.instance_id)
+      except request_info.NotSupportedWithAutoScalingError:
+        port = servr.balanced_port
+    else:
+      port = servr.balanced_port
     environ = servr.build_request_environ(method, relative_url, headers, body,
                                           source_ip, port,
                                           fake_login=fake_login)
@@ -440,12 +528,58 @@ class Dispatcher(request_info.Dispatcher):
                                     start_response,
                                     servr,
                                     inst)
-    return ResponseTuple(start_response.status,
-                         start_response.response_headers,
-                         start_response.merged_response(response))
+    return request_info.ResponseTuple(start_response.status,
+                                      start_response.response_headers,
+                                      start_response.merged_response(response))
+
+  def _resolve_target(self, hostname, path):
+    """Returns the server and instance that should handle this request.
+
+    Args:
+      hostname: A string containing the value of the host header in the request
+          or None if one was not present.
+      path: A string containing the path of the request.
+
+    Returns:
+      A tuple (servr, inst) where:
+        servr: The server.Server that should handle this request.
+        inst: The instance.Instance that should handle this request or None if
+            the server's load balancing should decide on the instance.
+
+    Raises:
+      request_info.ServerDoesNotExistError: if hostname is not known.
+    """
+    if self._port == 80:
+      default_address = self.host
+    else:
+      default_address = '%s:%s' % (self.host, self._port)
+    if not hostname or hostname == default_address:
+      return self._server_for_request(path), None
+
+    default_address_offset = hostname.find(default_address)
+    if default_address_offset > 0:
+      prefix = hostname[:default_address_offset - 1]
+      if '.' in prefix:
+        raise request_info.ServerDoesNotExistError(
+            'Server does not exist: %s' % prefix)
+      return self._get_server(prefix, None), None
+
+    else:
+      if ':' in hostname:
+        port = int(hostname.split(':', 1)[1])
+      else:
+        port = 80
+      try:
+        servr, inst = self._port_registry.get(port)
+      except KeyError:
+        raise request_info.ServerDoesNotExistError(
+            'No server found at: %s' % hostname)
+    if not servr:
+      servr = self._server_for_request(path)
+    return servr, inst
 
   def _handle_request(self, environ, start_response, servr,
-                      inst, request_type=instance.NORMAL_REQUEST,
+                      inst=None, request_type=instance.NORMAL_REQUEST,
                       catch_and_log_exceptions=False):
     """Dispatch a WSGI request.
 
@@ -472,3 +606,16 @@ class Dispatcher(request_info.Dispatcher):
         logging.exception('Internal error while handling request.')
       else:
         raise
+
+  def __call__(self, environ, start_response):
+    return self._handle_request(
+        environ, start_response, self._server_for_request(environ['PATH_INFO']))
+
+  def _server_for_request(self, path):
+    dispatch = self._configuration.dispatch
+    if dispatch:
+      for url, server_name in dispatch.dispatch:
+        if (url.path_exact and path == url.path or
+            not url.path_exact and path.startswith(url.path)):
+          return self._get_server(server_name, None)
+    return self._get_server(None, None)

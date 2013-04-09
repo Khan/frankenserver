@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block body %}
-<div>
+<div id="console">
   <h3>Interactive Console</h3>
   {% if servers %}
   <form id="console-form" action="{{ request.uri }}" method="post">
@@ -24,7 +24,7 @@
       <input id="restart_button" type="button" class="ae-button" value="Restart Instance">
     </div>
     <div>
-      <textarea id="code_text" name="code" rows="10" cols="80"></textarea>
+      <textarea id="code_text" name="code" rows="20" cols="80"></textarea>
     </div>
     <input id="execute_button" type="submit" class="ae-button ae-button-submit" value="Execute">
   </form>

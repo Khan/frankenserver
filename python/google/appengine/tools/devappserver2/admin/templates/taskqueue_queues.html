@@ -86,7 +86,7 @@
           <form action="" method="post">
           <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
           <input type="hidden" name="queue" value="{{ queue.name }}"/>
-          <input type="submit" name="action:purgequeue" value="Purge Queue"
+          <input type="submit" class="ae-button" name="action:purgequeue" value="Purge Queue"
           onclick="return confirm('Are you sure you want to purge all ' +
                                   'tasks from {{ queue.name }}?');"/>
           </form>

@@ -438,7 +438,7 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
   def test_handle_spi_response_rest(self):
     orig_request = test_utils.build_request('/_ah/api/test', '{}')
     spi_request = orig_request.copy()
-    body = '{"some": "response"}'
+    body = json.dumps({'some': 'response'}, indent=1)
     spi_response = dispatcher.ResponseTuple('200 OK', [('a', 'b')], body)
     response = self.server.handle_spi_response(orig_request, spi_request,
                                                spi_response,
@@ -485,6 +485,18 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
     self.assertEqual({'sample': 'body'},
                      json.loads(new_request.body))
     self.assertEqual('42', new_request.request_id)
+
+  def test_transform_rest_response(self):
+    """Verify the response is reformatted correctly."""
+    orig_response = '{"sample": "test", "value1": {"value2": 2}}'
+    expected_response = ('{\n'
+                         ' "sample": "test", \n'
+                         ' "value1": {\n'
+                         '  "value2": 2\n'
+                         ' }\n'
+                         '}')
+    self.assertEqual(expected_response,
+                     self.server.transform_rest_response(orig_response))
 
   def test_transform_json_rpc_response(self):
     """Verify request_id inserted into the body, and body into body.result."""

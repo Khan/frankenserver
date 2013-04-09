@@ -33,6 +33,8 @@
 """Utility functions for use with the mapreduce library."""
 
 
+
+
 __all__ = [
     "create_datastore_write_config",
     "for_name",
@@ -48,7 +50,6 @@ __all__ = [
 import base64
 import cgi
 import inspect
-import logging
 import zlib
 import types
 import urllib
@@ -108,9 +109,7 @@ def for_name(fq_name, recursive=False):
     else:
       raise ImportError("Could not find '%s' on path '%s'" % (
                         short_name, module_name))
-  except ImportError, e:
-    logging.debug("Could not import %s from %s. Will try recursively.",
-                  short_name, module_name, exc_info=True)
+  except ImportError:
 
 
     try:

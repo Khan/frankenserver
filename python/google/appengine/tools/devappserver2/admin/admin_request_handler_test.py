@@ -141,5 +141,28 @@ class GetSDKVersionTest(unittest.TestCase):
     self.mox.VerifyAll()
 
 
+class ByteSizeFormatTest(unittest.TestCase):
+  """Tests for the _byte_size_format jinja2 filter."""
+
+  def testOneByte(self):
+    self.assertEqual('1 Byte',
+                     admin_request_handler._byte_size_format('1'))
+
+  def testLessThan1KiB(self):
+    self.assertEqual('123 Bytes',
+                     admin_request_handler._byte_size_format('123'))
+
+  def testLessThan1MiB(self):
+    self.assertEqual('5.5 KiB (5678 Bytes)',
+                     admin_request_handler._byte_size_format('5678'))
+
+  def testLessThan1GiB(self):
+    self.assertEqual('11.8 MiB (12345678 Bytes)',
+                     admin_request_handler._byte_size_format('12345678'))
+
+  def testGreaterThan1GiB(self):
+    self.assertEqual('1.1 GiB (1234567890 Bytes)',
+                     admin_request_handler._byte_size_format('1234567890'))
+
 if __name__ == '__main__':
   unittest.main()

@@ -26,6 +26,7 @@ import mox
 
 from google.appengine.api import appinfo
 from google.appengine.api import backendinfo
+from google.appengine.api import dispatchinfo
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import errors
 
@@ -347,6 +348,111 @@ class TestBackendsConfiguration(unittest.TestCase):
     self.mox.VerifyAll()
 
 
+class TestDispatchConfiguration(unittest.TestCase):
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(os.path, 'getmtime')
+    self.mox.StubOutWithMock(
+        application_configuration.DispatchConfiguration,
+        '_parse_configuration')
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  def test_good_configuration(self):
+    info = dispatchinfo.DispatchInfoExternal(
+        application='appid',
+        dispatch=[
+            dispatchinfo.DispatchEntry(url='*/path', server='foo'),
+            dispatchinfo.DispatchEntry(url='domain.com/path', server='bar'),
+            dispatchinfo.DispatchEntry(url='*/path/*', server='baz'),
+            dispatchinfo.DispatchEntry(url='*.domain.com/path/*', server='foo'),
+            ])
+
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(123.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndReturn(info)
+
+    self.mox.ReplayAll()
+    config = application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml')
+    self.mox.VerifyAll()
+
+    self.assertEqual(123.456, config._mtime)
+    self.assertEqual(2, len(config.dispatch))
+    self.assertEqual(vars(dispatchinfo.ParsedURL('*/path')),
+                     vars(config.dispatch[0][0]))
+    self.assertEqual('foo', config.dispatch[0][1])
+    self.assertEqual(vars(dispatchinfo.ParsedURL('*/path/*')),
+                     vars(config.dispatch[1][0]))
+    self.assertEqual('baz', config.dispatch[1][1])
+
+  def test_check_for_updates_no_modification(self):
+    info = dispatchinfo.DispatchInfoExternal(
+        application='appid',
+        dispatch=[])
+
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(123.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndReturn(info)
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(123.456)
+
+    self.mox.ReplayAll()
+    config = application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml')
+    config.check_for_updates()
+    self.mox.VerifyAll()
+
+  def test_check_for_updates_with_invalid_modification(self):
+    info = dispatchinfo.DispatchInfoExternal(
+        application='appid',
+        dispatch=[
+            dispatchinfo.DispatchEntry(url='*/path', server='bar'),
+            ])
+
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(123.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndReturn(info)
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(124.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndRaise(Exception)
+
+    self.mox.ReplayAll()
+    config = application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml')
+    self.assertEqual('bar', config.dispatch[0][1])
+    config.check_for_updates()
+    self.mox.VerifyAll()
+    self.assertEqual('bar', config.dispatch[0][1])
+
+  def test_check_for_updates_with_modification(self):
+    info = dispatchinfo.DispatchInfoExternal(
+        application='appid',
+        dispatch=[
+            dispatchinfo.DispatchEntry(url='*/path', server='bar'),
+            ])
+    new_info = dispatchinfo.DispatchInfoExternal(
+        application='appid',
+        dispatch=[
+            dispatchinfo.DispatchEntry(url='*/path', server='foo'),
+            ])
+
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(123.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndReturn(info)
+    os.path.getmtime('/appdir/dispatch.yaml').AndReturn(124.456)
+    application_configuration.DispatchConfiguration._parse_configuration(
+        '/appdir/dispatch.yaml').AndReturn(new_info)
+
+    self.mox.ReplayAll()
+    config = application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml')
+    self.assertEqual('bar', config.dispatch[0][1])
+    config.check_for_updates()
+    self.mox.VerifyAll()
+    self.assertEqual('foo', config.dispatch[0][1])
+
+
 class TestBackendConfiguration(unittest.TestCase):
   def setUp(self):
     self.mox = mox.Mox()
@@ -511,6 +617,11 @@ class ServerConfigurationStub(object):
     self.server_name = server_name
 
 
+class DispatchConfigurationStub(object):
+  def __init__(self, dispatch):
+    self.dispatch = dispatch
+
+
 class TestApplicationConfiguration(unittest.TestCase):
   """Tests for application_configuration.ApplicationConfiguration."""
 
@@ -521,6 +632,7 @@ class TestApplicationConfiguration(unittest.TestCase):
     self.mox.StubOutWithMock(os.path, 'exists')
     self.mox.StubOutWithMock(application_configuration, 'ServerConfiguration')
     self.mox.StubOutWithMock(application_configuration, 'BackendsConfiguration')
+    self.mox.StubOutWithMock(application_configuration, 'DispatchConfiguration')
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -681,6 +793,69 @@ class TestApplicationConfiguration(unittest.TestCase):
     self.mox.VerifyAll()
     self.assertEqual('myapp', config.app_id)
     self.assertSequenceEqual([server_config, backend_config], config.servers)
+
+  def test_yaml_files_with_backends_and_dispatch_yaml(self):
+    os.path.isdir('/appdir/app.yaml').AndReturn(False)
+    server_config = ServerConfigurationStub(server_name='default')
+    application_configuration.ServerConfiguration(
+        '/appdir/app.yaml').AndReturn(server_config)
+
+    os.path.isdir('/appdir/backends.yaml').AndReturn(False)
+    backend_config = ServerConfigurationStub(server_name='backend')
+    backends_config = self.mox.CreateMock(
+        application_configuration.BackendsConfiguration)
+    backends_config.get_backend_configurations().AndReturn([backend_config])
+    application_configuration.BackendsConfiguration(
+        os.path.join('/appdir', 'app.yaml'),
+        os.path.join('/appdir', 'backends.yaml')).AndReturn(backends_config)
+    os.path.isdir('/appdir/dispatch.yaml').AndReturn(False)
+    dispatch_config = DispatchConfigurationStub(
+        [(None, 'default'), (None, 'backend')])
+    application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml').AndReturn(dispatch_config)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ApplicationConfiguration(
+        ['/appdir/app.yaml', '/appdir/backends.yaml', '/appdir/dispatch.yaml'])
+    self.mox.VerifyAll()
+    self.assertEqual('myapp', config.app_id)
+    self.assertSequenceEqual([server_config, backend_config], config.servers)
+    self.assertEqual(dispatch_config, config.dispatch)
+
+  def test_yaml_files_dispatch_yaml_and_no_default_server(self):
+    os.path.isdir('/appdir/app.yaml').AndReturn(False)
+    server_config = ServerConfigurationStub(server_name='not-default')
+    application_configuration.ServerConfiguration(
+        '/appdir/app.yaml').AndReturn(server_config)
+
+    os.path.isdir('/appdir/dispatch.yaml').AndReturn(False)
+    dispatch_config = DispatchConfigurationStub([(None, 'default')])
+    application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml').AndReturn(dispatch_config)
+
+    self.mox.ReplayAll()
+    self.assertRaises(errors.InvalidAppConfigError,
+                      application_configuration.ApplicationConfiguration,
+                      ['/appdir/app.yaml', '/appdir/dispatch.yaml'])
+    self.mox.VerifyAll()
+
+  def test_yaml_files_dispatch_yaml_and_missing_dispatch_target(self):
+    os.path.isdir('/appdir/app.yaml').AndReturn(False)
+    server_config = ServerConfigurationStub(server_name='default')
+    application_configuration.ServerConfiguration(
+        '/appdir/app.yaml').AndReturn(server_config)
+
+    os.path.isdir('/appdir/dispatch.yaml').AndReturn(False)
+    dispatch_config = DispatchConfigurationStub(
+        [(None, 'default'), (None, 'fake-server')])
+    application_configuration.DispatchConfiguration(
+        '/appdir/dispatch.yaml').AndReturn(dispatch_config)
+
+    self.mox.ReplayAll()
+    self.assertRaises(errors.InvalidAppConfigError,
+                      application_configuration.ApplicationConfiguration,
+                      ['/appdir/app.yaml', '/appdir/dispatch.yaml'])
+    self.mox.VerifyAll()
 
 if __name__ == '__main__':
   unittest.main()

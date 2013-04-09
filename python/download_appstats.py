@@ -56,8 +56,9 @@ def get_dir_path(sibling):
   Raises:
     ValueError: If no proper path could be determined.
   """
-  dir_paths = [os.path.abspath(os.path.dirname(os.path.realpath(__file__))),
-               os.path.abspath(os.path.dirname(__file__))]
+  py_file = __file__.replace('.pyc', '.py')
+  dir_paths = [os.path.abspath(os.path.dirname(os.path.realpath(py_file))),
+               os.path.abspath(os.path.dirname(py_file))]
   for dir_path in dir_paths:
     sibling_path = os.path.join(dir_path, sibling)
     if os.path.exists(sibling_path):
@@ -92,7 +93,6 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'webapp2-2.5.2'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
   os.path.join(DIR_PATH, 'lib', 'simplejson'),
-  os.path.join(DIR_PATH, 'lib', 'google.appengine._internal.graphy'),
 ]
 
 API_SERVER_EXTRA_PATHS = [

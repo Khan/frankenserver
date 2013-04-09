@@ -383,7 +383,7 @@ class Key(object):
 
       self.__reference = entity_pb.Reference()
 
-  def to_path(self, _default_id=None):
+  def to_path(self, _default_id=None, _decode=True, _fail=True):
     """Construct the "path" of this key as a list.
 
     Returns:
@@ -397,11 +397,21 @@ class Key(object):
 
 
 
+
+    def Decode(s):
+      if _decode:
+        try:
+          return s.decode('utf-8')
+        except UnicodeDecodeError:
+          if _fail:
+            raise
+      return s
+
     path = []
     for path_element in self.__reference.path().element_list():
-      path.append(path_element.type().decode('utf-8'))
+      path.append(Decode(path_element.type()))
       if path_element.has_name():
-        path.append(path_element.name().decode('utf-8'))
+        path.append(Decode(path_element.name()))
       elif path_element.has_id():
         path.append(path_element.id())
       elif _default_id is not None:
@@ -742,10 +752,10 @@ class Key(object):
       return -2
 
     self_args = [self.__reference.app(), self.__reference.name_space()]
-    self_args += self.to_path(_default_id=0)
+    self_args += self.to_path(_default_id=0, _decode=False)
 
     other_args = [other.__reference.app(), other.__reference.name_space()]
-    other_args += other.to_path(_default_id=0)
+    other_args += other.to_path(_default_id=0, _decode=False)
 
     for self_component, other_component in zip(self_args, other_args):
       comparison = cmp(self_component, other_component)
@@ -763,7 +773,7 @@ class Key(object):
     Returns:
       int
     """
-    args = self.to_path(_default_id=0)
+    args = self.to_path(_default_id=0, _fail=False)
     args.append(self.__reference.app())
     return hash(type(args)) ^ hash(tuple(args))
 

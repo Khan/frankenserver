@@ -125,7 +125,7 @@ def _is_auth_info_available():
           _ENV_USE_OAUTH_SCOPE in os.environ)
 
 
-def _maybe_set_current_user_vars(method, api_info=None):
+def _maybe_set_current_user_vars(method, api_info=None, request=None):
   """Get user information from the id_token or oauth token in the request.
 
   Used internally by Endpoints to set up environment variables for user
@@ -136,6 +136,7 @@ def _maybe_set_current_user_vars(method, api_info=None):
       should be annotated with @endpoints.method.
     api_info: An api_config._ApiInfo instance. Optional. If None, will attempt
       to parse api_info from the implicit instance of the method.
+    request: The current request, or None.
   """
   if _is_auth_info_available():
     return
@@ -178,17 +179,9 @@ def _maybe_set_current_user_vars(method, api_info=None):
 
     return
 
-  auth_header = os.environ.get('HTTP_AUTHORIZATION')
-  if not auth_header:
-    return
-
-  allowed_auth_schemes = ('OAuth', 'Bearer')
-  for auth_scheme in allowed_auth_schemes:
-    if auth_header.startswith(auth_scheme):
-      token = auth_header[len(auth_scheme) + 1:]
-      break
-  else:
-    return
+  token = _get_token(request)
+  if not token:
+    return None
 
 
 
@@ -218,6 +211,41 @@ def _maybe_set_current_user_vars(method, api_info=None):
       token_info = json.loads(result.content)
       _set_oauth_user_vars(token_info, audiences, allowed_client_ids,
                            scopes, _is_local_dev())
+
+
+def _get_token(request):
+  """Get the auth token for this request.
+
+  Auth token may be specified in either the Authorization header or
+  as a query param (either access_token or bearer_token).  We'll check in
+  this order:
+    1. Authorization header.
+    2. bearer_token query param.
+    3. access_token query param.
+
+  Args:
+    request: The current request, or None.
+
+  Returns:
+    The token in the request or None.
+  """
+
+  auth_header = os.environ.get('HTTP_AUTHORIZATION')
+  if auth_header:
+    allowed_auth_schemes = ('OAuth', 'Bearer')
+    for auth_scheme in allowed_auth_schemes:
+      if auth_header.startswith(auth_scheme):
+        return auth_header[len(auth_scheme) + 1:]
+
+
+    return None
+
+
+  if request:
+    for key in ('bearer_token', 'access_token'):
+      token, _ = request.get_unrecognized_field_info(key)
+      if token:
+        return token
 
 
 def _get_id_token_user(token, audiences, allowed_client_ids, time_now, cache):
@@ -361,7 +389,7 @@ def _verify_parsed_token(parsed_token, audiences, allowed_client_ids):
 
 
 
-  cid = parsed_token.get('cid')
+  cid = parsed_token.get('azp')
   if aud != cid and aud not in audiences:
     logging.warning('Audience not allowed: %s', aud)
     return False

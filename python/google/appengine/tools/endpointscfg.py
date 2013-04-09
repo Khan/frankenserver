@@ -25,8 +25,7 @@ Example:
   endpointscfg.py gen_discovery_doc -o . -f rest postservice.GreetingsV1
 
 The gen_client_lib subcommand takes a discovery document and calls a cloud
-service to generate a client library for a target language (currently Java or
-Python)
+service to generate a client library for a target language (currently just Java)
 
 Example:
   endpointscfg.py gen_client_lib java -o . greetings-v0.1-rest.api
@@ -60,7 +59,11 @@ from google.appengine.ext.endpoints import api_config
 
 DISCOVERY_DOC_BASE = ('https://webapis-discovery.appspot.com/_ah/api/'
                       'discovery/v1/apis/generate/')
-CLIENT_LIBRARY_BASE = 'http://google-api-client-libraries.appspot.com/generate'
+CLIENT_LIBRARY_BASE = 'https://google-api-client-libraries.appspot.com/generate'
+
+
+class ServerRequestException(Exception):
+  """Exception for problems with the request to a server."""
 
 
 def _WriteFile(output_path, name, content):
@@ -129,7 +132,7 @@ def GenDiscoveryDoc(service_class_names, doc_format,
       this value is the fallback. Defaults to None.
 
   Raises:
-    urllib2.HTTPError: If fetching the generated discovery doc fails.
+    ServerRequestException: If fetching the generated discovery doc fails.
 
   Returns:
     A mapping from service names to discovery docs.
@@ -144,11 +147,16 @@ def GenDiscoveryDoc(service_class_names, doc_format,
     request = urllib2.Request(DISCOVERY_DOC_BASE + doc_format, body)
     request.add_header('content-type', 'application/json')
 
-    with contextlib.closing(urllib2.urlopen(request)) as response:
-      content = response.read()
-      _, base_service_class_name = service_class_name.rsplit('.', 1)
-      discovery_name = base_service_class_name + '.discovery'
-      output_files.append(_WriteFile(output_path, discovery_name, content))
+    try:
+      with contextlib.closing(urllib2.urlopen(request)) as response:
+        content = response.read()
+        _, base_service_class_name = service_class_name.rsplit('.', 1)
+        discovery_name = base_service_class_name + '.discovery'
+        output_files.append(_WriteFile(output_path, discovery_name, content))
+    except urllib2.HTTPError, error:
+      raise ServerRequestException(
+          'HTTP %s (%s) error when communicating with URL: %s' % (
+              error.code, error.reason, error.filename))
 
   return output_files
 
@@ -159,12 +167,12 @@ def GenClientLib(discovery_path, language, output_path):
   Args:
     discovery_path: Path to the discovery doc used to generate the client
       library.
-    language: The client library language to generate. (java|python)
+    language: The client library language to generate. (java)
     output_path: The directory to output the client library zip to.
 
   Raises:
     IOError: If reading the discovery doc fails.
-    urllib2.HTTPError: If fetching the generated client library fails.
+    ServerRequestException: If fetching the generated client library fails.
 
   Returns:
     The path to the zipped client library.
@@ -172,13 +180,41 @@ def GenClientLib(discovery_path, language, output_path):
   with open(discovery_path) as f:
     discovery_doc = f.read()
 
+  client_name = re.sub(r'\.discovery$', '.zip',
+                       os.path.basename(discovery_path))
+
+  _GenClientLibFromContents(discovery_doc, language, output_path, client_name)
+
+
+def _GenClientLibFromContents(discovery_doc, language, output_path,
+                              client_name):
+  """Write a client library from a discovery doc, using a cloud service to file.
+
+  Args:
+    discovery_doc: A string, the contents of the discovery doc used to
+      generate the client library.
+    language: A string, the client library language to generate. (java)
+    output_path: A string, the directory to output the client library zip to.
+    client_name: A string, the filename used to save the client lib.
+
+  Raises:
+    IOError: If reading the discovery doc fails.
+    ServerRequestException: If fetching the generated client library fails.
+
+  Returns:
+    The path to the zipped client library.
+  """
+
   body = urllib.urlencode({'lang': language, 'content': discovery_doc})
   request = urllib2.Request(CLIENT_LIBRARY_BASE, body)
-  with contextlib.closing(urllib2.urlopen(request)) as response:
-    content = response.read()
-    client_name = re.sub(r'\.discovery$', '.zip',
-                         os.path.basename(discovery_path))
-    return _WriteFile(output_path, client_name, content)
+  try:
+    with contextlib.closing(urllib2.urlopen(request)) as response:
+      content = response.read()
+      return _WriteFile(output_path, client_name, content)
+  except urllib2.HTTPError, error:
+    raise ServerRequestException(
+        'HTTP %s (%s) error when communicating with URL: %s' % (
+            error.code, error.reason, error.filename))
 
 
 def GetClientLib(service_class_names, doc_format, language,
@@ -188,7 +224,7 @@ def GetClientLib(service_class_names, doc_format, language,
   Args:
     service_class_names: A list of fully qualified ProtoRPC service names.
     doc_format: The requested format for the discovery doc. (rest|rpc)
-    language: The client library language to generate. (java|python)
+    language: The client library language to generate. (java)
     output_path: The directory to output the discovery docs to.
     hostname: A string hostname which will be used as the default version
       hostname. If no hostname is specificied in the @endpoints.api decorator,
@@ -317,7 +353,7 @@ def MakeParser(prog):
       parser.add_argument('-o', '--output', default='.',
                           help='The directory to store output files')
     if 'language' in args:
-      parser.add_argument('language', choices=['java', 'python'],
+      parser.add_argument('language', choices=['java'],
                           help='The target output programming language')
     if 'service' in args:
       parser.add_argument('service', nargs='+',

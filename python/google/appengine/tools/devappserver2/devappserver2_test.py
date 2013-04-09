@@ -165,5 +165,41 @@ class PortParserTest(unittest.TestCase):
     self.assertRaises(argparse.ArgumentTypeError, devappserver2.PortParser(),
                       'a port')
 
+
+class ParseMaxServerInstancesTest(unittest.TestCase):
+
+  def test_single_valid_arg(self):
+    self.assertEqual(1, devappserver2.parse_max_server_instances('1'))
+
+  def test_single_zero_arg(self):
+    self.assertRaises(argparse.ArgumentTypeError,
+                      devappserver2.parse_max_server_instances, '0')
+
+  def test_single_nonint_arg(self):
+    self.assertRaises(argparse.ArgumentTypeError,
+                      devappserver2.parse_max_server_instances, 'cat')
+
+  def test_multiple_valid_args(self):
+    self.assertEqual(
+        {'default': 10,
+         'foo': 5},
+        devappserver2.parse_max_server_instances('default:10,foo:5'))
+
+  def test_multiple_non_colon(self):
+    self.assertRaises(
+        argparse.ArgumentTypeError,
+        devappserver2.parse_max_server_instances, 'default:10,foo')
+
+  def test_multiple_non_int(self):
+    self.assertRaises(
+        argparse.ArgumentTypeError,
+        devappserver2.parse_max_server_instances, 'default:cat')
+
+  def test_duplicate_servers(self):
+    self.assertRaises(
+        argparse.ArgumentTypeError,
+        devappserver2.parse_max_server_instances, 'default:5,default:10')
+
+
 if __name__ == '__main__':
   unittest.main()

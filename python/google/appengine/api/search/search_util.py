@@ -37,19 +37,12 @@ TEXT_DOCUMENT_FIELD_TYPES = [
     ]
 
 TEXT_QUERY_TYPES = [
-    QueryParser.NAME,
-    QueryParser.PHRASE,
+    QueryParser.STRING,
     QueryParser.TEXT,
     ]
 
 NUMBER_DOCUMENT_FIELD_TYPES = [
     document_pb.FieldValue.NUMBER,
-    ]
-
-NUMBER_QUERY_TYPES = [
-    QueryParser.FLOAT,
-    QueryParser.INT,
-    QueryParser.NUMBER,
     ]
 
 

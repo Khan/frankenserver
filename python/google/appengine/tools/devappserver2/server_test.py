@@ -32,6 +32,7 @@ from google.appengine.api import request_info
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import constants
+from google.appengine.tools.devappserver2 import dispatcher
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import server
 from google.appengine.tools.devappserver2 import start_response_utils
@@ -79,11 +80,6 @@ class ServerConfigurationStub(object):
 class ServerFacade(server.Server):
   def __init__(self,
                server_configuration=ServerConfigurationStub(),
-               host='fakehost',
-               balanced_port=0,
-               api_port=8080,
-
-               request_data=None,
                instance_factory=None,
                ready=True):
     super(ServerFacade, self).__init__(
@@ -93,10 +89,15 @@ class ServerFacade(server.Server):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=dispatcher.PortRegistry(),
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=None,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -113,11 +114,7 @@ class ServerFacade(server.Server):
 class AutoScalingServerFacade(server.AutoScalingServer):
   def __init__(self,
                server_configuration=ServerConfigurationStub(),
-               host='fakehost',
                balanced_port=0,
-               api_port=8080,
-
-               request_data=None,
                instance_factory=None,
                max_instances=None,
                ready=True):
@@ -128,10 +125,15 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=dispatcher.PortRegistry(),
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=max_instances,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -148,11 +150,7 @@ class AutoScalingServerFacade(server.AutoScalingServer):
 class ManualScalingServerFacade(server.ManualScalingServer):
   def __init__(self,
                server_configuration=ServerConfigurationStub(),
-               host='fakehost',
                balanced_port=0,
-               api_port=8080,
-
-               request_data=None,
                instance_factory=None,
                ready=True):
     super(ManualScalingServerFacade, self).__init__(
@@ -162,10 +160,15 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=dispatcher.PortRegistry(),
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=None,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -181,12 +184,9 @@ class ManualScalingServerFacade(server.ManualScalingServer):
 
 class BasicScalingServerFacade(server.BasicScalingServer):
   def __init__(self,
-               server_configuration=ServerConfigurationStub(),
                host='fakehost',
+               server_configuration=ServerConfigurationStub(),
                balanced_port=0,
-               api_port=8080,
-
-               request_data=None,
                instance_factory=None,
                ready=True):
     super(BasicScalingServerFacade, self).__init__(
@@ -196,10 +196,15 @@ class BasicScalingServerFacade(server.BasicScalingServer):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=dispatcher.PortRegistry(),
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=None,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -532,7 +537,25 @@ class TestAutoScalingServerAddInstance(unittest.TestCase):
     inst.start().AndReturn(False)
 
     self.mox.ReplayAll()
-    self.assertEqual(inst, s._add_instance(permit_warmup=True))
+    self.assertIsNone(s._add_instance(permit_warmup=True))
+    self.mox.VerifyAll()
+
+    self.assertEqual(1, len(s._instances))
+
+  def test_max_instances(self):
+    s = AutoScalingServerFacade(instance_factory=self.factory,
+                                max_instances=1)
+    self.mox.StubOutWithMock(s._condition, 'notify')
+
+    inst = self.mox.CreateMock(instance.Instance)
+    self.factory.new_instance(mox.Regex('[a-f0-9]{36}'),
+                              expect_ready_request=False).AndReturn(inst)
+    inst.start().AndReturn(True)
+    s._condition.notify(10)
+
+    self.mox.ReplayAll()
+    self.assertEqual(inst, s._add_instance(permit_warmup=False))
+    self.assertEqual(None, s._add_instance(permit_warmup=False))
     self.mox.VerifyAll()
 
     self.assertEqual(1, len(s._instances))
@@ -609,6 +632,26 @@ class TestAutoScalingInstancePoolHandleScriptRequest(unittest.TestCase):
   def test_handle_new_instance(self):
     self.auto_server._choose_instance(0.1).AndReturn(None)
     self.auto_server._add_instance(permit_warmup=False).AndReturn(self.inst)
+
+    self.inst.handle(
+        self.environ, self.start_response, self.url_map, self.match,
+        self.request_id, instance.NORMAL_REQUEST).AndReturn(
+            self.response)
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        self.response,
+        self.auto_server._handle_script_request(self.environ,
+                                                self.start_response,
+                                                self.url_map,
+                                                self.match,
+                                                self.request_id))
+    self.mox.VerifyAll()
+
+  def test_handle_new_instance_none_returned(self):
+    self.auto_server._choose_instance(0.1).AndReturn(None)
+    self.auto_server._add_instance(permit_warmup=False).AndReturn(None)
+    self.auto_server._choose_instance(0.2).AndReturn(self.inst)
 
     self.inst.handle(
         self.environ, self.start_response, self.url_map, self.match,
@@ -1229,9 +1272,10 @@ class TestManualScalingServerAddInstance(unittest.TestCase):
     servr = ManualScalingServerFacade(instance_factory=self.factory)
 
     inst = self.mox.CreateMock(instance.Instance)
-    wsgi_servr = self.WsgiServer(12345)
     self.mox.StubOutWithMock(server._THREAD_POOL, 'submit')
     self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'start')
+    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'port')
+    wsgi_server.WsgiServer.port = 12345
     self.factory.new_instance(0, expect_ready_request=True).AndReturn(inst)
     wsgi_server.WsgiServer.start()
     server._THREAD_POOL.submit(servr._start_instance,
@@ -1241,6 +1285,7 @@ class TestManualScalingServerAddInstance(unittest.TestCase):
     servr._add_instance()
     self.mox.VerifyAll()
     self.assertIn(inst, servr._instances)
+    self.assertEqual((servr, inst), servr._port_registry.get(12345))
 
   def test_add_while_stopped(self):
     servr = ManualScalingServerFacade(instance_factory=self.factory)
@@ -1248,6 +1293,8 @@ class TestManualScalingServerAddInstance(unittest.TestCase):
 
     inst = self.mox.CreateMock(instance.Instance)
     self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'start')
+    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'port')
+    wsgi_server.WsgiServer.port = 12345
     self.mox.StubOutWithMock(server._THREAD_POOL, 'submit')
     self.factory.new_instance(0, expect_ready_request=True).AndReturn(inst)
     wsgi_server.WsgiServer.start()
@@ -1257,6 +1304,7 @@ class TestManualScalingServerAddInstance(unittest.TestCase):
     self.mox.VerifyAll()
 
     self.assertIn(inst, servr._instances)
+    self.assertEqual((servr, inst), servr._port_registry.get(12345))
 
 
 class TestManualScalingInstancePoolHandleScriptRequest(unittest.TestCase):
@@ -2160,10 +2208,13 @@ class TestInteractiveCommandServer(unittest.TestCase):
         api_port=9000,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=dispatcher.PortRegistry(),
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        use_mtime_file_watcher=False)
     self.mox.StubOutWithMock(self.servr._instance_factory, 'new_instance')
     self.mox.StubOutWithMock(self.servr, '_handle_request')
     self.mox.StubOutWithMock(self.servr, 'build_request_environ')

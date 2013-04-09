@@ -405,15 +405,34 @@ class TestInstance(unittest.TestCase):
   def test_wait_with_capacity(self):
     inst = instance.Instance(self.request_data, 'name', self.proxy,
                              max_concurrent_requests=1)
+    inst._started = True
     self.mox.StubOutWithMock(inst._condition, 'wait')
     self.mox.stubs.Set(time, 'time', lambda: 0)
     self.mox.ReplayAll()
     self.assertTrue(inst.wait(1))
     self.mox.VerifyAll()
 
+  def test_wait_waiting_for_can_accept(self):
+    inst = instance.Instance(self.request_data, 'name', self.proxy,
+                             max_concurrent_requests=1,
+                             expect_ready_request=True)
+    inst._started = True
+    self.mox.StubOutWithMock(inst._condition, 'wait')
+    self.time = 0
+    self.mox.stubs.Set(time, 'time', lambda: self.time)
+
+    def advance_time(*unused_args):
+      self.time += 10
+
+    inst._condition.wait(1).WithSideEffects(advance_time)
+    self.mox.ReplayAll()
+    self.assertFalse(inst.wait(1))
+    self.mox.VerifyAll()
+
   def test_wait_timed_out_with_capacity(self):
     inst = instance.Instance(self.request_data, 'name', self.proxy,
                              max_concurrent_requests=1)
+    inst._started = True
     self.mox.StubOutWithMock(inst._condition, 'wait')
     self.mox.ReplayAll()
     self.assertTrue(inst.wait(0))
@@ -422,6 +441,7 @@ class TestInstance(unittest.TestCase):
   def test_wait_without_capacity(self):
     inst = instance.Instance(self.request_data, 'name', self.proxy,
                              max_concurrent_requests=0)
+    inst._started = True
     self.mox.StubOutWithMock(inst._condition, 'wait')
     self.time = 0
     self.mox.stubs.Set(time, 'time', lambda: self.time)
@@ -437,6 +457,7 @@ class TestInstance(unittest.TestCase):
   def test_wait_timed_out_without_capacity(self):
     inst = instance.Instance(self.request_data, 'name', self.proxy,
                              max_concurrent_requests=0)
+    inst._started = True
     self.mox.StubOutWithMock(inst._condition, 'wait')
     self.mox.ReplayAll()
     self.assertFalse(inst.wait(0))

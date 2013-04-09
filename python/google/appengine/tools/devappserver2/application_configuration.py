@@ -31,6 +31,7 @@ import types
 from google.appengine.api import appinfo
 from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
+from google.appengine.api import dispatchinfo
 from google.appengine.tools.devappserver2 import errors
 
 # Constants passed to functions registered with
@@ -459,6 +460,54 @@ class BackendConfiguration(object):
     return changes
 
 
+class DispatchConfiguration(object):
+  """Stores dispatcher configuration information."""
+
+  def __init__(self, yaml_path):
+    self._yaml_path = yaml_path
+    self._mtime = os.path.getmtime(self._yaml_path)
+    self._process_dispatch_entries(self._parse_configuration(self._yaml_path))
+
+  @staticmethod
+  def _parse_configuration(configuration_path):
+    # TODO: It probably makes sense to catch the exception raised
+    # by LoadSingleDispatch() and re-raise it using a module-specific exception.
+    with open(configuration_path) as f:
+      return dispatchinfo.LoadSingleDispatch(f)
+
+  def check_for_updates(self):
+    mtime = os.path.getmtime(self._yaml_path)
+    if mtime > self._mtime:
+      self._mtime = mtime
+      try:
+        dispatch_info_external = self._parse_configuration(self._yaml_path)
+      except Exception, e:
+        failure_message = str(e)
+        logging.error('Configuration is not valid: %s', failure_message)
+        return
+      self._process_dispatch_entries(dispatch_info_external)
+
+  def _process_dispatch_entries(self, dispatch_info_external):
+    path_only_entries = []
+    hostname_entries = []
+    for entry in dispatch_info_external.dispatch:
+      parsed_url = dispatchinfo.ParsedURL(entry.url)
+      if parsed_url.host:
+        hostname_entries.append(entry)
+      else:
+        path_only_entries.append((parsed_url, entry.server))
+    if hostname_entries:
+      logging.warning(
+          'Hostname routing is not supported by the development server. The '
+          'following dispatch entries will not match any requests:\n%s',
+          '\n\t'.join(str(entry) for entry in hostname_entries))
+    self._entries = path_only_entries
+
+  @property
+  def dispatch(self):
+    return self._entries
+
+
 class ApplicationConfiguration(object):
   """Stores application configuration information."""
 
@@ -469,6 +518,7 @@ class ApplicationConfiguration(object):
       yaml_paths: A list of strings containing the paths to yaml files.
     """
     self.servers = []
+    self.dispatch = None
     if len(yaml_paths) == 1 and os.path.isdir(yaml_paths[0]):
       directory_path = yaml_paths[0]
       for app_yaml_path in [os.path.join(directory_path, 'app.yaml'),
@@ -496,6 +546,12 @@ class ApplicationConfiguration(object):
         self.servers.extend(
             BackendsConfiguration(yaml_path.replace('backends.y', 'app.y'),
                                   yaml_path).get_backend_configurations())
+      elif (yaml_path.endswith('dispatch.yaml') or
+            yaml_path.endswith('dispatch.yml')):
+        if self.dispatch:
+          raise errors.InvalidAppConfigError(
+              'Multiple dispatch.yaml files specified')
+        self.dispatch = DispatchConfiguration(yaml_path)
       else:
         server_configuration = ServerConfiguration(yaml_path)
         self.servers.append(server_configuration)
@@ -513,6 +569,17 @@ class ApplicationConfiguration(object):
         raise errors.InvalidAppConfigError('Duplicate server: %s' %
                                            server.server_name)
       server_names.add(server.server_name)
+    if self.dispatch:
+      if 'default' not in server_names:
+        raise errors.InvalidAppConfigError(
+            'A default server must be specified.')
+      missing_servers = (
+          set(server_name for _, server_name in self.dispatch.dispatch) -
+          server_names)
+      if missing_servers:
+        raise errors.InvalidAppConfigError(
+            'Servers %s specified in dispatch.yaml are not defined by a yaml '
+            'file.' % sorted(missing_servers))
 
   @property
   def app_id(self):

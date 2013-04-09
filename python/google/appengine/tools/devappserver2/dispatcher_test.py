@@ -24,6 +24,7 @@ import google
 import mox
 
 from google.appengine.api import appinfo
+from google.appengine.api import dispatchinfo
 from google.appengine.api import request_info
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import constants
@@ -35,6 +36,7 @@ from google.appengine.tools.devappserver2 import server
 class ApplicationConfigurationStub(object):
   def __init__(self, servers):
     self.servers = servers
+    self.dispatch = None
 
 
 class ServerConfigurationStub(object):
@@ -62,6 +64,11 @@ class ServerConfigurationStub(object):
     pass
 
 
+class DispatchConfigurationStub(object):
+  def __init__(self):
+    self.dispatch = []
+
+
 SERVER_CONFIGURATIONS = [
     ServerConfigurationStub(application='app',
                             server_name='default',
@@ -86,10 +93,15 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=None,
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=None,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
 
   def start(self):
     pass
@@ -118,10 +130,15 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         api_port=8080,
         runtime_stderr_loglevel=1,
 
+        python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
+        port_registry=None,
         request_data=None,
-        dispatcher=None)
+        dispatcher=None,
+        max_instances=None,
+        use_mtime_file_watcher=False,
+        automatic_restarts=True)
 
   def start(self):
     pass
@@ -148,13 +165,18 @@ class DispatcherTest(unittest.TestCase):
   def setUp(self):
     self.mox = mox.Mox()
     api_server.test_setup_stubs()
+    self.dispatch_config = DispatchConfigurationStub()
     app_config = ApplicationConfigurationStub(SERVER_CONFIGURATIONS)
     self.dispatcher = dispatcher.Dispatcher(app_config,
                                             'localhost',
                                             1,
                                             1,
 
-                                            cloud_sql_config=None)
+                                            python_config=None,
+                                            cloud_sql_config=None,
+                                            server_to_max_instances={},
+                                            use_mtime_file_watcher=False,
+                                            automatic_restart=True)
     self.server1 = AutoScalingServerFacade(app_config.servers[0],
                                            balanced_port=1,
                                            host='localhost')
@@ -169,6 +191,7 @@ class DispatcherTest(unittest.TestCase):
         (self.server2, 3))
     self.mox.ReplayAll()
     self.dispatcher.start(12345, object())
+    app_config.dispatch = self.dispatch_config
     self.mox.VerifyAll()
     self.mox.StubOutWithMock(server.Server, 'build_request_environ')
 
@@ -272,7 +295,10 @@ class DispatcherTest(unittest.TestCase):
 
   def test_add_request(self):
     dummy_environ = object()
+    self.mox.StubOutWithMock(self.dispatcher, '_resolve_target')
     self.mox.StubOutWithMock(self.dispatcher, '_handle_request')
+    self.dispatcher._resolve_target(None, '/foo').AndReturn(
+        (self.dispatcher._server_name_to_server['default'], None))
     self.dispatcher._server_name_to_server['default'].build_request_environ(
         'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
         'body', '1.2.3.4', 1, fake_login=True).AndReturn(
@@ -319,6 +345,97 @@ class DispatcherTest(unittest.TestCase):
     self.mox.ReplayAll()
     self.dispatcher._handle_request({'foo': 'bar'}, start_response, servr, None,
                                     catch_and_log_exceptions=True)
+    self.mox.VerifyAll()
+
+  def test_call(self):
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    self.mox.StubOutWithMock(self.dispatcher, '_handle_request')
+    servr = object()
+    environ = {'PATH_INFO': '/foo', 'QUERY_STRING': 'bar=baz'}
+    start_response = object()
+    self.dispatcher._server_for_request('/foo').AndReturn(servr)
+    self.dispatcher._handle_request(environ, start_response, servr)
+    self.mox.ReplayAll()
+    self.dispatcher(environ, start_response)
+    self.mox.VerifyAll()
+
+  def test_server_for_request(self):
+
+    class FakeDict(dict):
+      def __contains__(self, key):
+        return True
+
+      def __getitem__(self, key):
+        return key
+
+    self.dispatcher._server_name_to_server = FakeDict()
+    self.dispatch_config.dispatch = [
+        (dispatchinfo.ParsedURL('*/path'), '1'),
+        (dispatchinfo.ParsedURL('*/other_path/*'), '2'),
+        (dispatchinfo.ParsedURL('*/other_path/'), '3'),
+        (dispatchinfo.ParsedURL('*/other_path'), '3'),
+        ]
+    self.assertEqual('1', self.dispatcher._server_for_request('/path'))
+    self.assertEqual('2', self.dispatcher._server_for_request('/other_path/'))
+    self.assertEqual('2', self.dispatcher._server_for_request('/other_path/a'))
+    self.assertEqual('3',
+                     self.dispatcher._server_for_request('/other_path'))
+    self.assertEqual('default',
+                     self.dispatcher._server_for_request('/undispatched'))
+
+  def test_resolve_target(self):
+    servr = object()
+    inst = object()
+    self.dispatcher._port_registry.add(8080, servr, inst)
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    self.mox.ReplayAll()
+    self.assertEqual((servr, inst),
+                     self.dispatcher._resolve_target('localhost:8080', '/foo'))
+    self.mox.VerifyAll()
+
+  def test_resolve_target_no_hostname(self):
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    servr = object()
+    self.dispatcher._server_for_request('/foo').AndReturn(servr)
+    self.mox.ReplayAll()
+    self.assertEqual((servr, None),
+                     self.dispatcher._resolve_target(None, '/foo'))
+    self.mox.VerifyAll()
+
+  def test_resolve_target_dispatcher_port(self):
+    self.dispatcher._port_registry.add(80, None, None)
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    servr = object()
+    self.dispatcher._server_for_request('/foo').AndReturn(servr)
+    self.mox.ReplayAll()
+    self.assertEqual((servr, None),
+                     self.dispatcher._resolve_target('localhost', '/foo'))
+    self.mox.VerifyAll()
+
+  def test_resolve_target_unknown_port(self):
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    self.mox.ReplayAll()
+    self.assertRaises(request_info.ServerDoesNotExistError,
+                      self.dispatcher._resolve_target, 'localhost:100', '/foo')
+    self.mox.VerifyAll()
+
+  def test_resolve_target_server_prefix(self):
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    self.mox.StubOutWithMock(self.dispatcher, '_get_server')
+    servr = object()
+    self.dispatcher._get_server('backend', None).AndReturn(servr)
+    self.mox.ReplayAll()
+    self.assertEqual((servr, None),
+                     self.dispatcher._resolve_target('backend.localhost:1',
+                                                     '/foo'))
+    self.mox.VerifyAll()
+
+  def test_resolve_target_instance_server_prefix(self):
+    self.mox.StubOutWithMock(self.dispatcher, '_server_for_request')
+    self.mox.ReplayAll()
+    self.assertRaises(request_info.ServerDoesNotExistError,
+                      self.dispatcher._resolve_target, '1.backend.localhost:1',
+                      '/foo')
     self.mox.VerifyAll()
 
 

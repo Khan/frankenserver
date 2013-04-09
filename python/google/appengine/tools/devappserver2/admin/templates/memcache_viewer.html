@@ -20,7 +20,7 @@
     Hit ratio: {{ hitratio }}% (hits: {{ stats.hits }} misses: {{ stats.misses }})
   </div>
   <div>
-    Size of cache: items: {{ stats["items"] }} size: {{ stats.bytes|filesizeformat }}
+    Size of cache: items: {{ stats["items"] }} size: {{ stats.bytes|bytesizeformat }}
           <form id="flush_form" action="{{ request.path }}" method="post">
             <input type="hidden" name="xsrf_token" value="{{ xsrf_token }}"/>
             <input type="submit" class="ae-button" name="action:flush" value="Flush Cache" onclick="return confirm('Are you sure you want to flush all keys from the cache?');"/>

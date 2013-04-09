@@ -26,6 +26,7 @@ from search import DateField
 from search import DeleteError
 from search import DeleteResult
 from search import Document
+from search import DOCUMENT_ID_FIELD_NAME
 from search import Error
 from search import ExpressionError
 from search import Field
@@ -38,6 +39,7 @@ from search import HtmlField
 from search import Index
 from search import InternalError
 from search import InvalidRequest
+from search import LANGUAGE_FIELD_NAME
 from search import MatchScorer
 from search import MAXIMUM_DOCUMENT_ID_LENGTH
 from search import MAXIMUM_DOCUMENTS_PER_PUT_REQUEST
@@ -61,10 +63,13 @@ from search import PutResult
 from search import Query
 from search import QueryError
 from search import QueryOptions
+from search import RANK_FIELD_NAME
 from search import RescoringMatchScorer
+from search import SCORE_FIELD_NAME
 from search import ScoredDocument
 from search import SearchResults
 from search import SortExpression
 from search import SortOptions
 from search import TextField
+from search import TIMESTAMP_FIELD_NAME
 from search import TransientError

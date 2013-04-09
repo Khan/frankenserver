@@ -48,7 +48,7 @@ class SearchIndexesListHandler(BaseSearchHandler):
     indexes = resp.results[:self._MAX_RESULTS_PER_PAGE]
 
     values = {
-        'namespace': namespace,
+        'namespace': namespace or '',
         'has_namespace': namespace is not None,
         'indexes': indexes}
     self._handle_paging(start, has_more, values)

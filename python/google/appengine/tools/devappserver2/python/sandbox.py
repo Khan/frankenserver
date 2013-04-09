@@ -45,10 +45,10 @@ DEFAULT_ENCODING = 'ascii'
 _C_MODULES = frozenset(['numpy', 'Crypto', 'lxml', 'PIL'])
 
 NAME_TO_CMODULE_WHITELIST_REGEX = {
-    'numpy': re.compile(r'numpy\.'),
-    'pycrypto': re.compile(r'Crypto\.'),
-    'lxml': re.compile(r'lxml\.'),
-    'PIL': re.compile(r'(PIL\..*|_imaging|_imagingft|_imagingmath)$'),
+    'numpy': re.compile(r'numpy(\..*)?$'),
+    'pycrypto': re.compile(r'Crypto(\..*)?$'),
+    'lxml': re.compile(r'lxml(\..*)?$'),
+    'PIL': re.compile(r'(PIL(\..*)?|_imaging|_imagingft|_imagingmath)$'),
 }
 
 # Maps App Engine third-party library names to the Python package name for
@@ -139,17 +139,17 @@ def enable_sandbox(config):
   __builtin__.open = stubs.FakeFile
   types.FileType = stubs.FakeFile
   sys.platform = 'linux3'
-
+  enabled_library_regexes = [
+      NAME_TO_CMODULE_WHITELIST_REGEX[lib.name] for lib in config.libraries
+      if lib.name in NAME_TO_CMODULE_WHITELIST_REGEX]
   sys.meta_path = [
       StubModuleImportHook(),
       ModuleOverrideImportHook(_MODULE_OVERRIDE_POLICIES),
       BuiltinImportHook(),
-      CModuleImportHook(
-          [NAME_TO_CMODULE_WHITELIST_REGEX[lib.name] for lib in config.libraries
-           if lib.name in NAME_TO_CMODULE_WHITELIST_REGEX]),
+      CModuleImportHook(enabled_library_regexes),
       path_override_hook,
       PyCryptoRandomImportHook,
-      PathRestrictingImportHook()
+      PathRestrictingImportHook(enabled_library_regexes)
       ]
   sys.path_importer_cache = {}
   sys.path = python_lib_paths[:]
@@ -165,9 +165,6 @@ def enable_sandbox(config):
   runtime.PatchStartNewThread(thread)
   threading._start_new_thread = thread.start_new_thread
 
-  __import__('site')
-  # Set the path again because site messes with it.
-  sys.path = python_lib_paths[:]
   os.chdir(config.application_root)
   sandboxed_os = __import__('os')
   request_environment.PatchOsEnviron(sandboxed_os)
@@ -189,7 +186,8 @@ def _find_shared_object_c_module():
 
 def _should_keep_module(name):
   """Returns True if the module should be retained after sandboxing."""
-  return (name in ('__builtin__', 'sys', 'codecs', 'encodings', 'google') or
+  return (name in ('__builtin__', 'sys', 'codecs', 'encodings', 'site',
+                   'google') or
           name.startswith('google.') or name.startswith('encodings.') or
 
           # Making mysql available is a hack to make the CloudSQL functionality
@@ -299,7 +297,7 @@ class BaseImportHook(object):
       if result is not None:
         break
     else:
-      raise ImportError
+      raise ImportError('No module named %s' % fullname)
     if isinstance(result, tuple):
       return result + (None,)
     else:
@@ -409,8 +407,7 @@ class BaseImportHook(object):
     all_modules = fullname.split('.')
     parent_module_fullname = '.'.join(all_modules[:-1])
     if parent_module_fullname:
-      if __import__(fullname) is None:
-        raise ImportError('Could not find module %s' % fullname)
+      __import__(parent_module_fullname)
       return sys.modules[parent_module_fullname]
     return None
 
@@ -568,8 +565,6 @@ class PathOverrideImportHook(BaseImportHook):
         self._modules[module] = module_path
         if isinstance(module_path, str):
           package_dir = os.path.join(module_path, module)
-          # Packages need to be added to accessible paths so their submodules
-          # are accessible.
           if os.path.isdir(package_dir):
             if module == 'PIL':
               self.extra_sys_paths.append(package_dir)
@@ -823,8 +818,8 @@ class BuiltinImportHook(object):
       return self
     return None
 
-  def load_module(self, unused_fullname):
-    raise ImportError
+  def load_module(self, fullname):
+    raise ImportError('No module named %s' % fullname)
 
 
 class CModuleImportHook(object):
@@ -857,8 +852,8 @@ class CModuleImportHook(object):
       return self
     return None
 
-  def load_module(self, unused_fullname):
-    raise ImportError
+  def load_module(self, fullname):
+    raise ImportError('No module named %s' % fullname)
 
 
 class PathRestrictingImportHook(object):
@@ -872,7 +867,12 @@ class PathRestrictingImportHook(object):
       imp.PY_FROZEN,
       ])
 
+  def __init__(self, enabled_regexes):
+    self._enabled_regexes = enabled_regexes
+
   def find_module(self, fullname, path=None):
+    if any(regex.match(fullname) for regex in self._enabled_regexes):
+      return None
     _, _, submodule_name = fullname.rpartition('.')
     try:
       f, filename, description = imp.find_module(submodule_name, path)
@@ -882,12 +882,14 @@ class PathRestrictingImportHook(object):
       f.close()
     _, _, file_type = description
     if (file_type in self._EXCLUDED_TYPES or
-        stubs.FakeFile.is_file_accessible(filename)):
+        stubs.FakeFile.is_file_accessible(filename) or
+        (filename.endswith('.pyc') and
+         os.path.exists(filename.replace('.pyc', '.py')))):
       return None
     return self
 
-  def load_module(self, unused_fullname):
-    raise ImportError
+  def load_module(self, fullname):
+    raise ImportError('No module named %s' % fullname)
 
 
 class PyCryptoRandomImportHook(BaseImportHook):

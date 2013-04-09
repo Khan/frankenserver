@@ -56,7 +56,7 @@ class ApiConfigManager(object):
     try:
       response_obj = json.loads(body)
     except ValueError, unused_err:
-      logging.error('Can not parse BackendService.getApiConfigs response: %s',
+      logging.error('Cannot parse BackendService.getApiConfigs response: %s',
                     body)
     else:
       with self._config_lock:
@@ -73,9 +73,85 @@ class ApiConfigManager(object):
 
         for config in self.configs.itervalues():
           version = config.get('version', '')
-          for method_name, method in config.get('methods', {}).iteritems():
+          sorted_methods = self._get_sorted_methods(config.get('methods', {}))
+
+          for method_name, method in sorted_methods:
             self._save_rpc_method(method_name, version, method)
             self._save_rest_method(method_name, version, method)
+
+  def _get_sorted_methods(self, methods):
+    """Get a copy of 'methods' sorted the way they would be on the live server.
+
+    Args:
+      methods: JSON configuration of an API's methods.
+
+    Returns:
+      The same configuration with the methods sorted based on what order
+      they'll be checked by the server.
+    """
+    if not methods:
+      return methods
+
+    # Comparison function we'll use to sort the methods:
+    def _sorted_methods_comparison(method_info1, method_info2):
+      """Sort method info by path and http_method.
+
+      Args:
+        method_info1: Method name and info for the first method to compare.
+        method_info2: Method name and info for the method to compare to.
+
+      Returns:
+        Negative if the first method should come first, positive if the
+        first method should come after the second.  Zero if they're
+        equivalent.
+      """
+
+      def _score_path(path):
+        """Calculate the score for this path, used for comparisons.
+
+        Higher scores have priority, and if scores are equal, the path text
+        is sorted alphabetically.  Scores are based on the number and location
+        of the constant parts of the path.  The server has some special handling
+        for variables with regexes, which we don't handle here.
+
+        Args:
+          path: The request path that we're calculating a score for.
+
+        Returns:
+          The score for the given path.
+        """
+
+        score = 0
+        parts = path.split('/')
+        for part in parts:
+          score <<= 1
+          if not part or part[0] != '{':
+            # Found a constant.
+            score += 1
+        # Shift by 31 instead of 32 because some (!) versions of Python like
+        # to convert the int to a long if we shift by 32, and the sorted()
+        # function that uses this blows up if it receives anything but an int.
+        score <<= 31 - len(parts)
+        return score
+
+      # Higher path scores come first.
+      path_score1 = _score_path(method_info1[1].get('path', ''))
+      path_score2 = _score_path(method_info2[1].get('path', ''))
+      if path_score1 != path_score2:
+        return path_score2 - path_score1
+
+      # Compare by path text next, sorted alphabetically.
+      path_result = cmp(method_info1[1].get('path', ''),
+                        method_info2[1].get('path', ''))
+      if path_result != 0:
+        return path_result
+
+      # All else being equal, sort by HTTP method.
+      method_result = cmp(method_info1[1].get('httpMethod', ''),
+                          method_info2[1].get('httpMethod', ''))
+      return method_result
+
+    return sorted(methods.items(), _sorted_methods_comparison)
 
   def lookup_rpc_method(self, method_name, version):
     """Lookup the JsonRPC method at call time.

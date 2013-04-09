@@ -417,10 +417,11 @@ class Instance(object):
       reached or the instance has been quit.
     """
     with self._condition:
-      while (time.time() < timeout_time and not self.remaining_request_capacity
+      while (time.time() < timeout_time and not
+             (self.remaining_request_capacity and self.can_accept_requests)
              and not self.has_quit):
         self._condition.wait(timeout_time - time.time())
-      return bool(self.remaining_request_capacity)
+      return bool(self.remaining_request_capacity and self.can_accept_requests)
 
 
 class InstanceFactory(object):

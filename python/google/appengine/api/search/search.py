@@ -54,6 +54,7 @@ __all__ = [
     'DeleteError',
     'DeleteResult',
     'Document',
+    'DOCUMENT_ID_FIELD_NAME',
     'Error',
     'ExpressionError',
     'Field',
@@ -66,6 +67,7 @@ __all__ = [
     'Index',
     'InternalError',
     'InvalidRequest',
+    'LANGUAGE_FIELD_NAME',
     'MatchScorer',
     'MAXIMUM_DOCUMENT_ID_LENGTH',
     'MAXIMUM_DOCUMENTS_PER_PUT_REQUEST',
@@ -93,12 +95,15 @@ __all__ = [
     'Query',
     'QueryError',
     'QueryOptions',
+    'RANK_FIELD_NAME',
     'RescoringMatchScorer',
+    'SCORE_FIELD_NAME',
     'ScoredDocument',
     'SearchResults',
     'SortExpression',
     'SortOptions',
     'TextField',
+    'TIMESTAMP_FIELD_NAME',
     'TransientError',
     ]
 
@@ -118,6 +123,19 @@ MAXIMUM_NUMBER_FOUND_ACCURACY = 10000
 MAXIMUM_FIELDS_RETURNED_PER_SEARCH = 100
 MAXIMUM_INDEXES_RETURNED_PER_GET_REQUEST = 1000
 MAXIMUM_GET_INDEXES_OFFSET = 1000
+
+
+DOCUMENT_ID_FIELD_NAME = '_doc_id'
+
+LANGUAGE_FIELD_NAME = '_lang'
+
+RANK_FIELD_NAME = '_rank'
+
+SCORE_FIELD_NAME = '_score'
+
+
+
+TIMESTAMP_FIELD_NAME = '_timestamp'
 
 
 
@@ -1633,16 +1651,16 @@ class ScoredDocument(Document):
       fields: An iterable of Field instances representing the content of the
         document.
       language: The code of the language used in the field values.
-      rank: The rank of this document. A rank must be a non-negative integer
-        less than sys.maxint. If not specified, the number of seconds since
-        1st Jan 2011 is used. Documents are returned in descending order of
-        their rank.
       sort_scores: The list of scores assigned during sort evaluation. Each
         sort dimension is included. Positive scores are used for ascending
         sorts; negative scores for descending.
       expressions: The list of computed fields which are the result of
         expressions requested.
       cursor: A cursor associated with the document.
+      rank: The rank of this document. A rank must be a non-negative integer
+        less than sys.maxint. If not specified, the number of seconds since
+        1st Jan 2011 is used. Documents are returned in descending order of
+        their rank.
 
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
@@ -2441,14 +2459,16 @@ class Index(object):
     seen_docs = {}
     for document in docs:
       doc_id = document.doc_id
-      if doc_id in seen_docs:
-        if document != seen_docs[doc_id]:
-          raise ValueError('Different documents with the same ID found in the '
-                           'same call to Index.put()')
+      if doc_id:
+        if doc_id in seen_docs:
+          if document != seen_docs[doc_id]:
+            raise ValueError(
+                'Different documents with the same ID found in the '
+                'same call to Index.put()')
 
 
-        continue
-      seen_docs[doc_id] = document
+          continue
+        seen_docs[doc_id] = document
       doc_pb = params.add_document()
       _CopyDocumentToProtocolBuffer(document, doc_pb)
 
@@ -2460,7 +2480,7 @@ class Index(object):
 
     results = self._NewPutResultList(response)
 
-    if response.status_size() != len(seen_docs):
+    if response.status_size() != len(params.document_list()):
       raise PutError('did not index requested number of documents', results)
 
     for status in response.status_list():

@@ -172,7 +172,7 @@ goog.bindJs_ = function(fn, selfObj, var_args) {
   }
 };
 goog.bind = function(fn, selfObj, var_args) {
-  goog.bind = Function.prototype.bind && -1 != Function.prototype.bind.toString().indexOf("native code") ? goog.bindNative_ : goog.bindJs_;
+  Function.prototype.bind && -1 != Function.prototype.bind.toString().indexOf("native code") ? goog.bind = goog.bindNative_ : goog.bind = goog.bindJs_;
   return goog.bind.apply(null, arguments)
 };
 goog.partial = function(fn, var_args) {
@@ -315,6 +315,9 @@ goog.string.caseInsensitiveStartsWith = function(str, prefix) {
 };
 goog.string.caseInsensitiveEndsWith = function(str, suffix) {
   return 0 == goog.string.caseInsensitiveCompare(suffix, str.substr(str.length - suffix.length, suffix.length))
+};
+goog.string.caseInsensitiveEquals = function(str1, str2) {
+  return str1.toLowerCase() == str2.toLowerCase()
 };
 goog.string.subs = function(str, var_args) {
   for(var i = 1;i < arguments.length;i++) {
@@ -1143,7 +1146,7 @@ goog.math.longestCommonSubsequence = function(array1, array2, opt_compareFn, opt
   }
   for(i = 1;i <= length1;i++) {
     for(j = 1;j <= length1;j++) {
-      arr[i][j] = compare(array1[i - 1], array2[j - 1]) ? arr[i - 1][j - 1] + 1 : Math.max(arr[i - 1][j], arr[i][j - 1])
+      compare(array1[i - 1], array2[j - 1]) ? arr[i][j] = arr[i - 1][j - 1] + 1 : arr[i][j] = Math.max(arr[i - 1][j], arr[i][j - 1])
     }
   }
   for(var result = [], i = length1, j = length2;0 < i && 0 < j;) {
@@ -1745,7 +1748,7 @@ goog.dom.getDocumentScroll = function() {
 };
 goog.dom.getDocumentScroll_ = function(doc) {
   var el = goog.dom.getDocumentScrollElement_(doc), win = goog.dom.getWindow_(doc);
-  return new goog.math.Coordinate(win.pageXOffset || el.scrollLeft, win.pageYOffset || el.scrollTop)
+  return goog.userAgent.IE && goog.userAgent.isVersion("10") && win.pageYOffset != el.scrollTop ? new goog.math.Coordinate(el.scrollLeft, el.scrollTop) : new goog.math.Coordinate(win.pageXOffset || el.scrollLeft, win.pageYOffset || el.scrollTop)
 };
 goog.dom.getDocumentScrollElement = function() {
   return goog.dom.getDocumentScrollElement_(document)
@@ -3448,9 +3451,6 @@ goog.debug.LogManager.createLogger_ = function(name) {
   }
   return goog.debug.LogManager.loggers_[name] = logger
 };
-goog.debug.errorHandlerWeakDep = {protectEntryPoint:function(fn) {
-  return fn
-}};
 goog.reflect = {};
 goog.reflect.object = function(type, object) {
   return object
@@ -3619,12 +3619,6 @@ goog.events.BrowserEvent.prototype.preventDefault = function() {
 };
 goog.events.BrowserEvent.prototype.disposeInternal = function() {
 };
-goog.events.EventWrapper = function() {
-};
-goog.events.EventWrapper.prototype.listen = function() {
-};
-goog.events.EventWrapper.prototype.unlisten = function() {
-};
 goog.events.Listenable = function() {
 };
 goog.events.Listenable.USE_LISTENABLE_INTERFACE = !1;
@@ -3670,6 +3664,7 @@ goog.events.Listener.prototype.init = function(listener, proxy, src, type, captu
 goog.events.Listener.prototype.handleEvent = function(eventObject) {
   return this.isFunctionListener_ ? this.listener.call(this.handler || this.src, eventObject) : this.listener.handleEvent.call(this.listener, eventObject)
 };
+goog.events.STRICT_EVENT_TARGET = !0;
 goog.events.listeners_ = {};
 goog.events.listenerTree_ = {};
 goog.events.sources_ = {};
@@ -3689,6 +3684,7 @@ goog.events.listen = function(src, type, listener, opt_capt, opt_handler) {
   goog.events.listeners_[key] = listenableKey;
   return key
 };
+goog.events.CUSTOM_EVENT_ATTR = "customEvent_";
 goog.events.listen_ = function(src, type, listener, callOnce, opt_capt, opt_handler) {
   if(!type) {
     throw Error("Invalid event type");
@@ -3722,7 +3718,7 @@ goog.events.listen_ = function(src, type, listener, callOnce, opt_capt, opt_hand
   listenerArray.push(listenerObj);
   goog.events.sources_[srcUid] || (goog.events.sources_[srcUid] = []);
   goog.events.sources_[srcUid].push(listenerObj);
-  src.addEventListener ? (src == goog.global || !src.customEvent_) && src.addEventListener(type, proxy, capture) : src.attachEvent(goog.events.getOnString_(type), proxy);
+  src.addEventListener ? src == goog.global || !src[goog.events.CUSTOM_EVENT_ATTR] ? src.addEventListener(type, proxy, capture) : goog.events.STRICT_EVENT_TARGET && src.assertInitialized() : src.attachEvent(goog.events.getOnString_(type), proxy);
   return listenerObj
 };
 goog.events.getProxy = function() {
@@ -3783,7 +3779,7 @@ goog.events.unlistenByKey = function(key) {
     return src.unlistenByKey(listener)
   }
   var type = listener.type, proxy = listener.proxy, capture = listener.capture;
-  src.removeEventListener ? (src == goog.global || !src.customEvent_) && src.removeEventListener(type, proxy, capture) : src.detachEvent && src.detachEvent(goog.events.getOnString_(type), proxy);
+  src.removeEventListener ? (src == goog.global || !src[goog.events.CUSTOM_EVENT_ATTR]) && src.removeEventListener(type, proxy, capture) : src.detachEvent && src.detachEvent(goog.events.getOnString_(type), proxy);
   var srcUid = goog.getUid(src);
   if(goog.events.sources_[srcUid]) {
     var sourcesArray = goog.events.sources_[srcUid];
@@ -3838,6 +3834,14 @@ goog.events.removeAll = function(opt_obj, opt_type) {
       }
     }
   }
+  return count
+};
+goog.events.removeAllNativeListeners = function() {
+  var count = 0;
+  goog.object.forEach(goog.events.listeners_, function(listener, key) {
+    var src = listener.src;
+    !goog.events.Listenable.isImplementedBy(src) && !src[goog.events.CUSTOM_EVENT_ATTR] && (goog.events.unlistenByKey(key), count++)
+  });
   return count
 };
 goog.events.getListeners = function(obj, type, capture) {
@@ -3927,8 +3931,9 @@ goog.events.getTotalListenerCount = function() {
 };
 goog.events.dispatchEvent = function(src, e) {
   if(goog.events.Listenable.USE_LISTENABLE_INTERFACE) {
-    return src.dispatchEvent(e)
+    return goog.events.STRICT_EVENT_TARGET && goog.asserts.assert(goog.events.Listenable.isImplementedBy(src), "Can not use goog.events.dispatchEvent with non-goog.events.Listenable instance."), src.dispatchEvent(e)
   }
+  goog.events.STRICT_EVENT_TARGET && (goog.asserts.assert(goog.events.STRICT_EVENT_TARGET && src[goog.events.CUSTOM_EVENT_ATTR], "Can not use goog.events.dispatchEvent with non-goog.events.EventTarget instance."), src.assertInitialized());
   var type = e.type || e, map = goog.events.listenerTree_;
   if(!(type in map)) {
     return!0
@@ -4053,12 +4058,13 @@ goog.debug.entryPointRegistry.register(function(transformer) {
 });
 goog.events.EventTarget = function() {
   goog.Disposable.call(this);
-  goog.events.Listenable.USE_LISTENABLE_INTERFACE && (this.eventTargetListeners_ = {}, this.reallyDisposed_ = !1, this.actualEventTarget_ = this)
+  this.eventTargetListeners_ = {};
+  this.actualEventTarget_ = this
 };
 goog.inherits(goog.events.EventTarget, goog.Disposable);
 goog.events.Listenable.USE_LISTENABLE_INTERFACE && goog.events.Listenable.addImplementation(goog.events.EventTarget);
 goog.events.EventTarget.MAX_ANCESTORS_ = 1E3;
-goog.events.EventTarget.prototype.customEvent_ = !0;
+goog.events.EventTarget.prototype[goog.events.CUSTOM_EVENT_ATTR] = !0;
 goog.events.EventTarget.prototype.parentEventTarget_ = null;
 goog.events.EventTarget.prototype.getParentEventTarget = function() {
   return this.parentEventTarget_
@@ -4071,9 +4077,7 @@ goog.events.EventTarget.prototype.removeEventListener = function(type, handler, 
 };
 goog.events.EventTarget.prototype.dispatchEvent = function(e) {
   if(goog.events.Listenable.USE_LISTENABLE_INTERFACE) {
-    if(this.reallyDisposed_) {
-      return!0
-    }
+    this.assertInitialized();
     var ancestorsTree, ancestor = this.getParentEventTarget();
     if(ancestor) {
       ancestorsTree = [];
@@ -4087,15 +4091,18 @@ goog.events.EventTarget.prototype.dispatchEvent = function(e) {
 };
 goog.events.EventTarget.prototype.disposeInternal = function() {
   goog.events.EventTarget.superClass_.disposeInternal.call(this);
-  goog.events.Listenable.USE_LISTENABLE_INTERFACE ? (this.removeAllListeners(), this.reallyDisposed_ = !0) : goog.events.removeAll(this);
+  goog.events.Listenable.USE_LISTENABLE_INTERFACE ? this.removeAllListeners() : goog.events.removeAll(this);
   this.parentEventTarget_ = null
+};
+goog.events.EventTarget.prototype.assertInitialized = function() {
+  goog.events.STRICT_EVENT_TARGET && goog.asserts.assert(this.eventTargetListeners_, "Event target is not initialized. Did you call superclass (goog.events.EventTarget) constructor?")
 };
 goog.events.Listenable.USE_LISTENABLE_INTERFACE && (goog.events.EventTarget.prototype.listen = function(type, listener, opt_useCapture, opt_listenerScope) {
   return this.listenInternal_(type, listener, !1, opt_useCapture, opt_listenerScope)
 }, goog.events.EventTarget.prototype.listenOnce = function(type, listener, opt_useCapture, opt_listenerScope) {
   return this.listenInternal_(type, listener, !0, opt_useCapture, opt_listenerScope)
 }, goog.events.EventTarget.prototype.listenInternal_ = function(type, listener, callOnce, opt_useCapture, opt_listenerScope) {
-  goog.asserts.assert(!this.reallyDisposed_, "Can not listen on disposed object.");
+  this.assertInitialized();
   var listenerArray = this.eventTargetListeners_[type] || (this.eventTargetListeners_[type] = []), listenerObj, index = goog.events.EventTarget.findListenerIndex_(listenerArray, listener, opt_useCapture, opt_listenerScope);
   if(-1 < index) {
     return listenerObj = listenerArray[index], callOnce || (listenerObj.callOnce = !1), listenerObj
@@ -4137,7 +4144,6 @@ goog.events.Listenable.USE_LISTENABLE_INTERFACE && (goog.events.EventTarget.prot
   }
   return count
 }, goog.events.EventTarget.prototype.fireListeners = function(type, capture, eventObject) {
-  goog.asserts.assert(!this.reallyDisposed_, "Can not fire listeners after dispose() completed.");
   if(!(type in this.eventTargetListeners_)) {
     return!0
   }
@@ -4765,8 +4771,8 @@ goog.net.XhrIo.prototype.send = function(url, opt_method, opt_content, opt_heade
   opt_headers && goog.structs.forEach(opt_headers, function(value, key) {
     headers.set(key, value)
   });
-  var contentIsFormData = goog.global.FormData && content instanceof goog.global.FormData;
-  "POST" == method && (!headers.containsKey(goog.net.XhrIo.CONTENT_TYPE_HEADER) && !contentIsFormData) && headers.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
+  var contentTypeKey = goog.array.find(headers.getKeys(), goog.net.XhrIo.isContentTypeHeader_), contentIsFormData = goog.global.FormData && content instanceof goog.global.FormData;
+  "POST" == method && (!contentTypeKey && !contentIsFormData) && headers.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
   goog.structs.forEach(headers, function(value, key) {
     this.xhr_.setRequestHeader(key, value)
   }, this);
@@ -4777,6 +4783,9 @@ goog.net.XhrIo.prototype.send = function(url, opt_method, opt_content, opt_heade
   }catch(err$$0) {
     this.logger_.fine(this.formatMsg_("Send error: " + err$$0.message)), this.error_(goog.net.ErrorCode.EXCEPTION, err$$0)
   }
+};
+goog.net.XhrIo.isContentTypeHeader_ = function(header) {
+  return goog.string.caseInsensitiveEquals(goog.net.XhrIo.CONTENT_TYPE_HEADER, header)
 };
 goog.net.XhrIo.prototype.createXhr = function() {
   return this.xmlHttpFactory_ ? this.xmlHttpFactory_.createInstance() : goog.net.XmlHttp()

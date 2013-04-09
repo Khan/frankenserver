@@ -419,7 +419,7 @@ class SimpleIndex(object):
     if node.getType() in search_util.TEXT_QUERY_TYPES:
       return set([query_parser.GetQueryNodeText(node).strip('"')])
     elif node.children:
-      if node.getType() == QueryParser.RESTRICTION and len(node.children) > 1:
+      if node.getType() == QueryParser.EQ and len(node.children) > 1:
         children = node.children[1:]
       else:
         children = node.children
@@ -431,7 +431,7 @@ class SimpleIndex(object):
     return set()
 
   def _CollectFields(self, node):
-    if node.getType() == QueryParser.RESTRICTION and node.children:
+    if node.getType() == QueryParser.EQ and node.children:
       return set([query_parser.GetQueryNodeText(node.children[0])])
     elif node.children:
       result = set()
@@ -521,7 +521,7 @@ class SimpleIndex(object):
     else:
       if not isinstance(query, unicode):
         query = unicode(query, 'utf-8')
-      query_tree = query_parser.Simplify(query_parser.Parse(query))
+      query_tree = query_parser.ParseAndSimplify(query)
       docs = self._Evaluate(query_tree, score=score)
     docs = self._Sort(docs, search_request, score)
     docs = self._AttachExpressions(docs, search_request)
@@ -887,6 +887,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         return
     except IndexConsistencyError, exception:
       self._InvalidRequest(response.mutable_status(), exception)
+      response.set_matched_count(0)
       return
 
     params = request.params()

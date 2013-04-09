@@ -32,6 +32,7 @@ import logging
 from protorpc import message_types
 
 from google.appengine.ext.endpoints import api_backend
+from google.appengine.ext.endpoints import api_config
 from google.appengine.ext.endpoints import api_exceptions
 
 
@@ -46,29 +47,68 @@ class ApiConfigRegistry(object):
 
   def __init__(self):
 
-    self.__api_roots = set()
+    self.__registered_classes = set()
 
-    self.__api_configs = []
-
+    self.__api_configs = set()
 
     self.__api_methods = {}
 
 
-
-  def register_api(self, api_root_url, config_contents):
-    """Register a single API given its config contents.
+  def register_spi(self, config_contents):
+    """Register a single SPI and its config contents.
 
     Args:
-      api_root_url: URL that uniquely identifies this APIs root.
       config_contents: String containing API configuration.
     """
-    if api_root_url in self.__api_roots:
+    if config_contents is None:
       return
-    self.__api_roots.add(api_root_url)
-    self.__api_configs.append(config_contents)
-    self.__register_methods(config_contents)
+    parsed_config = json.loads(config_contents)
+    if not self.__register_class(parsed_config):
+      return
 
-  def __register_methods(self, config_file):
+    self.__api_configs.add(config_contents)
+    self.__register_methods(parsed_config)
+
+  def __register_class(self, parsed_config):
+    """Register the class implementing this config, so we only add it once.
+
+    Args:
+      parsed_config: The JSON object with the API configuration being added.
+
+    Returns:
+      True if the class has been registered and it's fine to add this
+      configuration.  False if this configuration shouldn't be added.
+    """
+    methods = parsed_config.get('methods')
+    if not methods:
+      return True
+
+
+
+
+    service_class = None
+    for method in methods.itervalues():
+      rosy_method = method.get('rosyMethod')
+      if rosy_method and '.' in rosy_method:
+        method_class = rosy_method.split('.', 1)[0]
+        if service_class is None:
+          service_class = method_class
+        elif service_class != method_class:
+          raise api_config.ApiConfigurationError(
+              'SPI registered with multiple classes within one '
+              'configuration (%s and %s).  Each call to register_spi should '
+              'only contain the methods from a single class.  Call '
+              'repeatedly for multiple classes.' % (service_class,
+                                                    method_class))
+
+    if service_class is not None:
+      if service_class in self.__registered_classes:
+
+        return False
+      self.__registered_classes.add(service_class)
+    return True
+
+  def __register_methods(self, parsed_config):
     """Register all methods from the given api config file.
 
     Methods are stored in a map from method_name to rosyMethod,
@@ -76,15 +116,12 @@ class ApiConfigRegistry(object):
     If no rosyMethod was specified the value will be None.
 
     Args:
-      config_file: json string containing api config.
+      parsed_config: The JSON object with the API configuration being added.
     """
-    try:
-      parsed_config = json.loads(config_file)
-    except (TypeError, ValueError):
-      return None
     methods = parsed_config.get('methods')
     if not methods:
-      return None
+      return
+
     for method_name, method in methods.iteritems():
       self.__api_methods[method_name] = method.get('rosyMethod')
 
@@ -101,7 +138,7 @@ class ApiConfigRegistry(object):
 
   def all_api_configs(self):
     """Return a list of all API configration specs as registered above."""
-    return self.__api_configs
+    return list(self.__api_configs)
 
 
 class BackendServiceImpl(api_backend.BackendService):

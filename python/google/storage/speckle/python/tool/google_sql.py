@@ -219,6 +219,9 @@ def main(argv):
     sys.exit(1)
 
   instance = args[0]
+
+
+  instance_alias = instance.replace(':', '#')
   database = None
   if len(args) == 2:
     database = args[1]
@@ -232,11 +235,11 @@ def main(argv):
   database = DatabaseConfig(instance, database, options.oauth_credentials_path)
   db.add_driver(GoogleSqlDriver.NAME, GoogleSqlDriver)
   sql_cmd_config = config.SQLCmdConfig(None)
-  sql_cmd_config.add('__googlesql__', instance, None, None, database,
+  sql_cmd_config.add('__googlesql__', instance_alias, None, None, database,
                      GoogleSqlDriver.NAME, None, None)
   sql_cmd = GoogleSqlCmd(sql_cmd_config)
   sql_cmd.set_output_encoding(options.output_encoding)
-  sql_cmd.set_database(instance)
+  sql_cmd.set_database(instance_alias)
   sql_cmd.cmdloop()
 
 

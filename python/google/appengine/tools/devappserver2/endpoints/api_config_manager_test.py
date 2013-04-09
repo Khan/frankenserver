@@ -56,6 +56,103 @@ class ApiConfigManagerTest(unittest.TestCase):
         'guestbook_api.foo.bar', 'X')
     self.assertEqual(fake_method, actual_method)
 
+  def test_parse_api_config_order_length(self):
+    test_method_info = (
+        ('guestbook_api.foo.bar', 'greetings/{gid}', 'baz.bim'),
+        ('guestbook_api.list', 'greetings', 'greetings.list'),
+        ('guestbook_api.f3', 'greetings/{gid}/sender/property/blah',
+         'greetings.f3'),
+        ('guestbook_api.shortgreet', 'greet', 'greetings.short_greeting'))
+    methods = {}
+    for method_name, path, rosy_method in test_method_info:
+      method = {'httpMethod': 'GET',
+                'path': path,
+                'rosyMethod': rosy_method}
+      methods[method_name] = method
+    config = json.dumps({'name': 'guestbook_api',
+                         'version': 'X',
+                         'methods': methods})
+    self.config_manager.parse_api_config_response(
+        json.dumps({'items': [config]}))
+    # Make sure all methods appear in the result.
+    for method_name, _, _ in test_method_info:
+      self.assertIsNotNone(
+          self.config_manager.lookup_rpc_method(method_name, 'X'))
+    # Make sure paths and partial paths return the right methods.
+    self.assertEqual(
+        self.config_manager.lookup_rest_method(
+            'guestbook_api/X/greetings', 'GET')[0],
+        'guestbook_api.list')
+    self.assertEqual(
+        self.config_manager.lookup_rest_method(
+            'guestbook_api/X/greetings/1', 'GET')[0],
+        'guestbook_api.foo.bar')
+    self.assertEqual(
+        self.config_manager.lookup_rest_method(
+            'guestbook_api/X/greetings/2/sender/property/blah', 'GET')[0],
+        'guestbook_api.f3')
+    self.assertEqual(
+        self.config_manager.lookup_rest_method(
+            'guestbook_api/X/greet', 'GET')[0],
+        'guestbook_api.shortgreet')
+
+  def test_get_sorted_methods1(self):
+    test_method_info = (
+        ('name1', 'greetings', 'POST'),
+        ('name2', 'greetings', 'GET'),
+        ('name3', 'short/but/many/constants', 'GET'),
+        ('name4', 'greetings', ''),
+        ('name5', 'greetings/{gid}', 'GET'),
+        ('name6', 'greetings/{gid}', 'PUT'),
+        ('name7', 'a/b/{var}/{var2}', 'GET'))
+    methods = {}
+    for method_name, path, http_method in test_method_info:
+      method = {'httpMethod': http_method,
+                'path': path}
+      methods[method_name] = method
+    sorted_methods = self.config_manager._get_sorted_methods(methods)
+
+    expected_data = [
+        ('name3', 'short/but/many/constants', 'GET'),
+        ('name7', 'a/b/{var}/{var2}', 'GET'),
+        ('name4', 'greetings', ''),
+        ('name2', 'greetings', 'GET'),
+        ('name1', 'greetings', 'POST'),
+        ('name5', 'greetings/{gid}', 'GET'),
+        ('name6', 'greetings/{gid}', 'PUT')]
+    expected_methods = [(name, {'httpMethod': http_method, 'path': path})
+                        for name, path, http_method in expected_data]
+    self.assertEqual(expected_methods, sorted_methods)
+
+  def test_get_sorted_methods2(self):
+    test_method_info = (
+        ('name1', 'abcdefghi', 'GET'),
+        ('name2', 'foo', 'GET'),
+        ('name3', 'greetings', 'GET'),
+        ('name4', 'bar', 'POST'),
+        ('name5', 'baz', 'GET'),
+        ('name6', 'baz', 'PUT'),
+        ('name7', 'baz', 'DELETE'))
+    methods = {}
+    for method_name, path, http_method in test_method_info:
+      method = {'httpMethod': http_method,
+                'path': path}
+      methods[method_name] = method
+    sorted_methods = self.config_manager._get_sorted_methods(methods)
+
+    # Single-part paths should be sorted by path name, http_method.
+    expected_data = [
+        ('name1', 'abcdefghi', 'GET'),
+        ('name4', 'bar', 'POST'),
+        ('name7', 'baz', 'DELETE'),
+        ('name5', 'baz', 'GET'),
+        ('name6', 'baz', 'PUT'),
+        ('name2', 'foo', 'GET'),
+        ('name3', 'greetings', 'GET')]
+    expected_methods = [(name, {'httpMethod': http_method, 'path': path})
+                        for name, path, http_method in expected_data]
+    self.assertEqual(expected_methods, sorted_methods)
+
   def test_parse_api_config_invalid_api_config(self):
     fake_method = {'httpMethod': 'GET',
                    'path': 'greetings/{gid}',

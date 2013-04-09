@@ -44,6 +44,7 @@
           <th scope="col" class="id">Entity Kind</th>
           <th scope="col" class="id"># Entities</th>
           <th scope="col" class="id">Avg. Size/Entity</th>
+          <th scope="col" class="id">Entities Size</th>
           <th scope="col" class="id">Total Size</th>
         </tr>
       </thead>
@@ -60,6 +61,7 @@
             {% if kind.count %}
               <td class="id">{{ kind.count }}</td>
               <td class="id">{{ kind.average_bytes_str }}</td>
+              <td class="id">{{ kind.entity_bytes_str }}</td>
               <td class="id">{{ kind.total_bytes_str }}</td>
             {% else %}
               <td class="id" style="color: #666667;">Stats not available</td>
@@ -71,7 +73,7 @@
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="5">
+          <td colspan="6">
             {% for action in action_list %}
               <input type="submit" name="action"
                 class="goog-button" value="{{ action }}">

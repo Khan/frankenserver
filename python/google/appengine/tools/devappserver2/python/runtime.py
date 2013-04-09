@@ -21,6 +21,7 @@ import base64
 import os
 import sys
 import time
+import traceback
 
 import google
 
@@ -30,6 +31,27 @@ from google.appengine.tools.devappserver2 import request_rewriter
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import wsgi_server
 from google.appengine.tools.devappserver2.python import sandbox
+
+
+_STARTUP_FAILURE_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+<title>Startup Script Failure</title>
+</head>
+
+<body>
+<b>Debugger startup failed: {exception_message}</b>
+<details>
+  <summary>Configuration</summary>
+  <pre><code>{config}</code></pre>
+</details>
+<details>
+  <summary>Traceback</summary>
+  <pre><code>{traceback}</code></pre>
+</details>
+</body>
+</html>"""
 
 
 def setup_stubs(config):
@@ -71,19 +93,51 @@ def setup_stubs(config):
     rdbms_mysqldb.SetConnectKwargs(**connect_kwargs)
 
 
+class StartupScriptFailureApplication(object):
+  """A PEP-333 application that displays startup script failure information."""
+
+  def __init__(self, config, exception_message, formatted_traceback):
+    self._config = config
+    self._exception_message = exception_message
+    self._formatted_traceback = formatted_traceback
+
+  def __call__(self, environ, start_response):
+    start_response('500 Internal Server Error',
+                   [('Content-Type', 'text/html')])
+    yield _STARTUP_FAILURE_TEMPLATE.format(
+        exception_message=self._exception_message,
+        config=str(self._config),
+        traceback=self._formatted_traceback)
+
+
 def main():
   config = runtime_config_pb2.Config()
   config.ParseFromString(base64.b64decode(sys.stdin.read()))
-  setup_stubs(config)
-  sandbox.enable_sandbox(config)
-  # This import needs to be after enabling the sandbox so the runtime
-  # implementation imports the sandboxed version of the logging module.
-  from google.appengine.tools.devappserver2.python import request_handler
+  debugging_app = None
+  if config.python_config and config.python_config.startup_script:
+    global_vars = {'config': config}
+    try:
+      execfile(config.python_config.startup_script, global_vars)
+    except Exception, e:
+      debugging_app = StartupScriptFailureApplication(config,
+                                                      str(e),
+                                                      traceback.format_exc())
 
-  server = wsgi_server.WsgiServer(
-      ('localhost', 0),
-      request_rewriter.runtime_rewriter_middleware(
-          request_handler.RequestHandler(config)))
+  if debugging_app:
+    server = wsgi_server.WsgiServer(
+        ('localhost', 0),
+        debugging_app)
+  else:
+    setup_stubs(config)
+    sandbox.enable_sandbox(config)
+    # This import needs to be after enabling the sandbox so the runtime
+    # implementation imports the sandboxed version of the logging module.
+    from google.appengine.tools.devappserver2.python import request_handler
+
+    server = wsgi_server.WsgiServer(
+        ('localhost', 0),
+        request_rewriter.runtime_rewriter_middleware(
+            request_handler.RequestHandler(config)))
   server.start()
   print server.port
   sys.stdout.close()

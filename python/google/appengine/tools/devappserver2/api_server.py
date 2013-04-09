@@ -371,7 +371,8 @@ def setup_stubs(
       taskqueue_stub.TaskQueueServiceStub(
           root_path=application_root,
           auto_task_running=taskqueue_auto_run_tasks,
-          default_http_server=taskqueue_default_http_server))
+          default_http_server=taskqueue_default_http_server,
+          request_data=request_data))
   apiproxy_stub_map.apiproxy.GetStub('taskqueue').StartBackgroundExecution()
 
   apiproxy_stub_map.apiproxy.RegisterStub(

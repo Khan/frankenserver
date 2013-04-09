@@ -53,7 +53,7 @@ from google.appengine.runtime import apiproxy_errors
 
 
 
-MAX_REQUEST_SIZE = 5 << 20
+MAX_REQUEST_SIZE = 10 << 20
 
 MAX_RESPONSE_SIZE = 2 ** 25
 

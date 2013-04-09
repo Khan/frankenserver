@@ -36,12 +36,27 @@ def _urlencode_filter(value):
     return urllib.urlencode(value)
 
 
+def _byte_size_format(value):
+  byte_count = int(value)
+  if byte_count == 1:
+    return '1 Byte'
+  elif byte_count < 1024:
+    return '%d Bytes' % byte_count
+  elif byte_count < 1024 ** 2:
+    return '%.1f KiB (%d Bytes)' % (byte_count/1024.0, byte_count)
+  elif byte_count < 1024 ** 3:
+    return '%.1f MiB (%d Bytes)' % (byte_count/1024.0 ** 2, byte_count)
+  else:
+    return '%.1f GiB (%d Bytes)' % (byte_count/1024.0 ** 3, byte_count)
+
+
 TEMPLATE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), 'templates'))
 admin_template_environment = jinja2.Environment(
     loader=jinja2.FileSystemLoader(TEMPLATE_PATH),
     autoescape=True)
 admin_template_environment.filters['urlencode'] = _urlencode_filter
+admin_template_environment.filters['bytesizeformat'] = _byte_size_format
 
 _DEFAULT_SDK_VERSION = '(Internal)'
 

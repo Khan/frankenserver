@@ -417,22 +417,22 @@ def _flatten_params(params):
   return param_list
 
 
-def _MakeAsyncCall(rpc, method, request, response, get_result_hook):
+def _MakeAsyncCall(method, request, response, get_result_hook=None, rpc=None):
   """Internal helper to schedule an asynchronous RPC.
 
   Args:
-    rpc: None or a UserRPC object.
-    method: Method name, e.g. 'Get'.
-    request: Request protobuf.
-    response: Response protobuf.
-    get_result_hook: None or hook function used to process results
+    method: The name of the taskqueue_service method that should be called,
+      e.g. 'BulkAdd'.
+    request: The protocol buffer containing the request argument.
+    response: The protocol buffer to be populated with the response.
+    get_result_hook: An optional hook function used to process results
       (See UserRPC.make_call() for more info).
+    rpc: An optional UserRPC object that will be used to make the call.
 
   Returns:
-    A UserRPC object; either the one passed in as the first argument,
-    or a new one (if the first argument was None).
+    A UserRPC object; either the one passed in as the rpc argument,
+    or a new one if no rpc was passed in.
   """
-
   if rpc is None:
     rpc = create_rpc()
   assert rpc.service == 'taskqueue', repr(rpc.service)
@@ -1383,11 +1383,11 @@ class QueueStatistics(object):
     if requested_app_id:
       request.set_app_id(requested_app_id)
 
-    return _MakeAsyncCall(rpc,
-                          'FetchQueueStats',
+    return _MakeAsyncCall('FetchQueueStats',
                           request,
                           response,
-                          ResultHook)
+                          ResultHook,
+                          rpc)
 
 
 class Queue(object):
@@ -1609,11 +1609,11 @@ class Queue(object):
       task_names.add(task.name)
       request.add_task_name(task.name)
 
-    return _MakeAsyncCall(rpc,
-                          'Delete',
+    return _MakeAsyncCall('Delete',
                           request,
                           response,
-                          ResultHook)
+                          ResultHook,
+                          rpc)
 
   @staticmethod
   def _ValidateLeaseSeconds(lease_seconds):
@@ -1661,11 +1661,11 @@ class Queue(object):
             Task._FromQueryAndOwnResponseTask(queue_name, response_task))
       return tasks
 
-    return _MakeAsyncCall(rpc,
-                          'QueryAndOwnTasks',
+    return _MakeAsyncCall('QueryAndOwnTasks',
                           request,
                           response,
-                          ResultHook)
+                          ResultHook,
+                          rpc)
 
   def lease_tasks_async(self, lease_seconds, max_tasks, rpc=None):
     """Asynchronously leases a number of tasks from the Queue.
@@ -1980,11 +1980,11 @@ class Queue(object):
           'Transactional request size must be less than %d; found %d' %
           (MAX_TRANSACTIONAL_REQUEST_SIZE_BYTES, request.ByteSize()))
 
-    return _MakeAsyncCall(rpc,
-                          'BulkAdd',
+    return _MakeAsyncCall('BulkAdd',
                           request,
                           response,
-                          ResultHook)
+                          ResultHook,
+                          rpc)
 
   def __FillTaskQueueRetryParameters(self,
                                      retry_options,

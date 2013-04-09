@@ -120,8 +120,36 @@ _MAX_RETRY_DELAY_MS = 120000
 
 SEQUENTIAL = 'sequential'
 SCATTERED = 'scattered'
-_SCATTERED_ID_BIT = 1 << 62
-_MAX_SCATTERED_ID_COUNTER = 1 << 61
+
+
+
+
+
+_MAX_SEQUENTIAL_BIT = 52
+
+
+
+
+_MAX_SEQUENTIAL_COUNTER = (1 << _MAX_SEQUENTIAL_BIT) - 1
+
+
+
+_MAX_SEQUENTIAL_ID = _MAX_SEQUENTIAL_COUNTER
+
+
+
+
+_MAX_SCATTERED_COUNTER = (1 << (_MAX_SEQUENTIAL_BIT - 1)) - 1
+
+
+
+
+
+_MAX_SCATTERED_ID = _MAX_SEQUENTIAL_ID + 1 + _MAX_SCATTERED_COUNTER
+
+
+
+_SCATTER_SHIFT = 64 - _MAX_SEQUENTIAL_BIT + 1
 
 
 def _GetScatterProperty(entity_proto):
@@ -195,19 +223,19 @@ def _PrepareSpecialProperties(entity_proto, is_load):
         entity_proto.property_list().append(special_property)
 
 
-def _GetPropertyTuple(entity, property_names):
-  """Computes a unique tuple for an entity on the given names of properties.
+def _GetGroupByKey(entity, property_names):
+  """Computes a key value that uniquely identifies the 'group' of an entity.
 
   Args:
-    entity: The entity_pb.EntityProto to extract values from.
-    property_names: The names of the properties from which to extract values.
+    entity: The entity_pb.EntityProto for which to create the group key.
+    property_names: The names of the properties in the group by clause.
 
   Returns:
-    A tuple containing the desired properties.
+    A hashable value that uniquely identifies the entity's 'group'.
   """
-  return tuple(prop.SerializePartialToString()
-               for prop in entity.property_list()
-               if prop.name() in property_names)
+  return frozenset((prop.name(), prop.value().SerializeToString())
+                   for prop in entity.property_list()
+                   if prop.name() in property_names)
 
 
 def PrepareSpecialPropertiesForStore(entity_proto):
@@ -1105,7 +1133,7 @@ class IteratorCursor(BaseCursor):
         self.__next_result = self.__results.next()
         if not self.group_by:
           break
-        next_group = _GetPropertyTuple(self.__next_result, self.group_by)
+        next_group = _GetGroupByKey(self.__next_result, self.group_by)
         if next_group not in self.__distincts:
           self.__distincts.add(next_group)
           break
@@ -1197,9 +1225,9 @@ class ListCursor(BaseCursor):
       distincts = set()
       new_results = []
       for result in results:
-        properties = _GetPropertyTuple(result, self.group_by)
-        if properties not in distincts:
-          distincts.add(properties)
+        key_value = _GetGroupByKey(result, self.group_by)
+        if key_value not in distincts:
+          distincts.add(key_value)
           new_results.append(result)
       results = new_results
 
@@ -3170,7 +3198,7 @@ def ReverseBitsInt64(v):
 def ToScatteredId(v):
   """Map counter value v to the scattered ID space.
 
-  Reverse bits 0-60 and set bit 62 to prevent collisions with sequential IDs.
+  Translate to scattered ID space, then reverse bits.
 
   Args:
     v: Counter value from which to produce ID.
@@ -3182,16 +3210,15 @@ def ToScatteredId(v):
     datastore_errors.BadArgumentError if counter value exceeds the range of
   the scattered ID space.
   """
-  if v >= _MAX_SCATTERED_ID_COUNTER:
+  if v >= _MAX_SCATTERED_COUNTER:
     raise datastore_errors.BadArgumentError('counter value too large (%d)' %v)
-
-  return long(ReverseBitsInt64(v << 3) | _SCATTERED_ID_BIT)
+  return _MAX_SEQUENTIAL_ID + 1 + long(ReverseBitsInt64(v << _SCATTER_SHIFT))
 
 
 def IdToCounter(k):
   """Map ID k to the counter value from which it was generated.
 
-  Determine whether k is sequential or scattered ID by testing bit 62.
+  Determine whether k is sequential or scattered ID.
 
   Args:
     k: ID from which to infer counter value.
@@ -3199,14 +3226,14 @@ def IdToCounter(k):
   Returns:
     Tuple of integers (counter_value, id_space).
   """
-  if k & _SCATTERED_ID_BIT:
-    counter_value = long(ReverseBitsInt64(k) >> 3)
-    id_space = SCATTERED
-    return counter_value, id_space
+  if k > _MAX_SCATTERED_ID:
+    return 0, SCATTERED
+  elif k > _MAX_SEQUENTIAL_ID and k <= _MAX_SCATTERED_ID:
+    return long(ReverseBitsInt64(k) >> _SCATTER_SHIFT), SCATTERED
+  elif k > 0:
+    return long(k), SEQUENTIAL
   else:
-    counter_value = long(k)
-    id_space = SEQUENTIAL
-    return counter_value, id_space
+    raise datastore_errors.BadArgumentError('invalid id (%d)' % k)
 
 
 def CompareEntityPbByKey(a, b):

@@ -516,6 +516,14 @@ class socket(object):
   A socket object represents one endpoint of a network connection.
   """
 
+  def __del__(self):
+    if not self._serialized:
+      self.close()
+
+  def __getstate__(self):
+    self._serialized = True
+    return self.__dict__
+
 
 
   def __init__(self, family=AF_INET, type=SOCK_STREAM, proto=0, _create=False):
@@ -531,11 +539,12 @@ class socket(object):
           (proto == IPPROTO_UDP and type != SOCK_DGRAM)):
         raise error(errno.EPROTONOSUPPORT, os.strerror(errno.EPROTONOSUPPORT))
 
-    self._family = family
-    self._type = type
-    self._proto = proto
+    self.family = family
+    self.type = type
+    self.proto = proto
     self._created = False
     self._fileno = None
+    self._serialized = False
     self.settimeout(getdefaulttimeout())
     self._Clear()
 
@@ -559,14 +568,14 @@ class socket(object):
 
     request = remote_socket_service_pb.CreateSocketRequest()
 
-    if self._family == AF_INET:
+    if self.family == AF_INET:
       request.set_family(remote_socket_service_pb.CreateSocketRequest.IPv4)
-    elif self._family == AF_INET6:
+    elif self.family == AF_INET6:
       request.set_family(remote_socket_service_pb.CreateSocketRequest.IPv6)
 
-    if self._type == SOCK_STREAM:
+    if self.type == SOCK_STREAM:
       request.set_protocol(remote_socket_service_pb.CreateSocketRequest.TCP)
-    elif self._type == SOCK_DGRAM:
+    elif self.type == SOCK_DGRAM:
       request.set_protocol(remote_socket_service_pb.CreateSocketRequest.UDP)
 
     if address:
@@ -605,14 +614,14 @@ class socket(object):
 
   def _GetPackedAddr(self, addr):
     if addr == '<broadcast>':
-      if self._family == AF_INET6:
+      if self.family == AF_INET6:
         return '\xff' * 16
       else:
         return '\xff' * 4
     for res in getaddrinfo(addr, '0',
-                           self._family, self._type, self._proto,
+                           self.family, self.type, self.proto,
                            AI_NUMERICSERV|AI_PASSIVE):
-      return inet_pton(self._family, res[4][0])
+      return inet_pton(self.family, res[4][0])
 
   def _SetProtoFromAddr(self, proto, address, hostname_hint=None):
     address, port = address
@@ -674,7 +683,7 @@ class socket(object):
       raise error(errno.EBADF, os.strerror(errno.EBADF))
     if self._connected:
       raise error(errno.EINVAL, os.strerror(errno.EINVAL))
-    if self._type != SOCK_STREAM:
+    if self.type != SOCK_STREAM:
       raise error(errno.EOPNOTSUPP, os.strerror(errno.EOPNOTSUPP))
     self._bound = True
     self._listen = True
@@ -716,7 +725,7 @@ class socket(object):
     except apiproxy_errors.ApplicationError, e:
       raise _SystemExceptionFromAppError(e)
 
-    ret = socket(self._family, self._type, self._proto)
+    ret = socket(self.family, self.type, self.proto)
     ret._socket_descriptor = reply.new_socket_descriptor()
     ret._created = True
     ret._bound = True
@@ -805,7 +814,7 @@ class socket(object):
       raise _SystemExceptionFromAppError(e)
 
     return (
-        inet_ntop(self._family, reply.peer_ip().packed_address()),
+        inet_ntop(self.family, reply.peer_ip().packed_address()),
         reply.peer_ip().port())
 
   def getsockname(self):
@@ -831,7 +840,7 @@ class socket(object):
       raise _SystemExceptionFromAppError(e)
 
     return (
-        inet_ntop(self._family, reply.proxy_external_ip().packed_address()),
+        inet_ntop(self.family, reply.proxy_external_ip().packed_address()),
         reply.proxy_external_ip().port())
 
   def recv(self, buffersize, flags=0):
@@ -870,7 +879,7 @@ class socket(object):
     request.set_socket_descriptor(self._socket_descriptor)
     request.set_data_size(buffersize)
     request.set_flags(flags)
-    if self._type == SOCK_STREAM:
+    if self.type == SOCK_STREAM:
       if not self._connected:
         raise error(errno.ENOTCONN, os.strerror(errno.ENOTCONN))
     if self._shutdown_read:
@@ -890,7 +899,7 @@ class socket(object):
     address = None
     if reply.has_received_from():
       address = (
-          inet_ntop(self._family, reply.received_from().packed_address()),
+          inet_ntop(self.family, reply.received_from().packed_address()),
           reply.received_from().port())
 
     return reply.data(), address
@@ -958,7 +967,7 @@ class socket(object):
     if address:
       if self._connected:
         raise error(errno.EISCONN, os.strerror(errno.EISCONN))
-      if self._type != SOCK_DGRAM:
+      if self.type != SOCK_DGRAM:
         raise error(errno.ENOTCONN, os.strerror(errno.ENOTCONN))
       self._SetProtoFromAddr(request.mutable_send_to(), address)
     else:
@@ -977,7 +986,7 @@ class socket(object):
 
     nbytes = reply.data_sent()
     assert nbytes >= 0
-    if self._type == SOCK_STREAM:
+    if self.type == SOCK_STREAM:
       self._stream_offset += nbytes
     return nbytes
 

@@ -65,6 +65,7 @@ class InotifyFileWatcher(object):
     self._directory_to_subdirs = {}
     self._inotify_events = ''
     self._inotify_fd = None
+    self._inotify_poll = None
 
 
   def _remove_watch_for_path(self, path):
@@ -138,6 +139,8 @@ class InotifyFileWatcher(object):
       error.errno = ctypes.get_errno()
       error.strerror = errno.errorcode[ctypes.get_errno()]
       raise error
+    self._inotify_poll = select.poll()
+    self._inotify_poll.register(self._inotify_fd, select.POLLIN)
     self._add_watch_for_path(self._directory)
 
   def quit(self):
@@ -155,8 +158,7 @@ class InotifyFileWatcher(object):
     """
     paths = set()
     while True:
-      rlist, _, _ = select.select([self._inotify_fd], [], [], 0)
-      if not rlist:
+      if not self._inotify_poll.poll(0):
         break
 
       self._inotify_events += os.read(self._inotify_fd, 1024)

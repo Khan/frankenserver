@@ -18,6 +18,7 @@
 
 
 import httplib
+import logging
 import select
 import socket
 import threading
@@ -30,6 +31,9 @@ from cherrypy import wsgiserver
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import thread_executor
+
+
+_HAS_POLL = hasattr(select, 'poll')
 
 
 class BindError(errors.Error):
@@ -81,10 +85,11 @@ class SelectThread(object):
 
   def __init__(self):
     self._lock = threading.Lock()
-    # self._sockets is a frozenset and self._socket_to_callback is never mutated
-    # so they can be snapshotted by the select thread without needing to copy.
-    self._sockets = frozenset()
-    self._socket_to_callback = {}
+    # self._file_descriptors is a frozenset and
+    # self._file_descriptor_to_callback is never mutated so they can be
+    # snapshotted by the select thread without needing to copy.
+    self._file_descriptors = frozenset()
+    self._file_descriptor_to_callback = {}
     self._select_thread = threading.Thread(target=self._loop_forever)
     self._select_thread.daemon = True
 
@@ -99,18 +104,18 @@ class SelectThread(object):
       callback: A callable with no args to be called when s is ready for a read.
     """
     with self._lock:
-      self._sockets = self._sockets.union([s])
-      new_socket_to_callback = self._socket_to_callback.copy()
-      new_socket_to_callback[s] = callback
-      self._socket_to_callback = new_socket_to_callback
+      self._file_descriptors = self._file_descriptors.union([s.fileno()])
+      new_file_descriptor_to_callback = self._file_descriptor_to_callback.copy()
+      new_file_descriptor_to_callback[s.fileno()] = callback
+      self._file_descriptor_to_callback = new_file_descriptor_to_callback
 
   def remove_socket(self, s):
     """Remove a watched socket."""
     with self._lock:
-      self._sockets = self._sockets.difference([s])
-      new_socket_to_callback = self._socket_to_callback.copy()
-      del new_socket_to_callback[s]
-      self._socket_to_callback = new_socket_to_callback
+      self._file_descriptors = self._file_descriptors.difference([s.fileno()])
+      new_file_descriptor_to_callback = self._file_descriptor_to_callback.copy()
+      del new_file_descriptor_to_callback[s.fileno()]
+      self._file_descriptor_to_callback = new_file_descriptor_to_callback
 
   def _loop_forever(self):
     while True:
@@ -118,12 +123,23 @@ class SelectThread(object):
 
   def _select(self):
     with self._lock:
-      sockets = self._sockets
-      socket_to_callback = self._socket_to_callback
-    if sockets:
-      ready_sockets, _, _ = select.select(sockets, [], [], 1)
-      for s in ready_sockets:
-        socket_to_callback[s]()
+      fds = self._file_descriptors
+      fd_to_callback = self._file_descriptor_to_callback
+    if fds:
+      if _HAS_POLL:
+        # With 100 file descriptors, it is approximately 5x slower to
+        # recreate and reinitialize the Poll object on every call to _select
+        # rather reuse one. But the absolute cost of contruction,
+        # initialization and calling poll(0) is ~25us so code simplicity
+        # wins.
+        poll = select.poll()
+        for fd in fds:
+          poll.register(fd, select.POLLIN)
+        ready_file_descriptors = [fd for fd, _ in poll.poll(1)]
+      else:
+        ready_file_descriptors, _, _ = select.select(fds, [], [], 1)
+      for fd in ready_file_descriptors:
+        fd_to_callback[fd]()
     else:
       # select([], [], [], 1) is not supported on Windows.
       time.sleep(1)
@@ -132,18 +148,18 @@ _SELECT_THREAD = SelectThread()
 _SELECT_THREAD.start()
 
 
-class WsgiServer(wsgiserver.CherryPyWSGIServer):
+class _SingleAddressWsgiServer(wsgiserver.CherryPyWSGIServer):
   """A WSGI server that uses a shared SelectThread and thread pool."""
 
   def __init__(self, host, app):
-    """Constructs a WsgiServer.
+    """Constructs a _SingleAddressWsgiServer.
 
     Args:
       host: A (hostname, port) tuple containing the hostname and port to bind.
           The port can be 0 to allow any port.
       app: A WSGI app to handle requests.
     """
-    super(WsgiServer, self).__init__(host, self)
+    super(_SingleAddressWsgiServer, self).__init__(host, self)
     self._lock = threading.Lock()
     self._app = app  # Protected by _lock.
     self._error = None  # Protected by _lock.
@@ -155,7 +171,7 @@ class WsgiServer(wsgiserver.CherryPyWSGIServer):
     self.request_queue_size = 100
 
   def start(self):
-    """Starts the WsgiServer.
+    """Starts the _SingleAddressWsgiServer.
 
     This is a modified version of the base class implementation. Changes:
       - Removed unused functionality (Unix domain socket and SSL support).
@@ -173,9 +189,9 @@ class WsgiServer(wsgiserver.CherryPyWSGIServer):
       info = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
                                 socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
     except socket.gaierror:
-      if ':' in self.bind_addr[0]:
-        info = [(socket.AF_INET6, socket.SOCK_STREAM, 0, '', self.bind_addr +
-                 (0, 0))]
+      if ':' in host:
+        info = [(socket.AF_INET6, socket.SOCK_STREAM, 0, '',
+                 self.bind_addr + (0, 0))]
       else:
         info = [(socket.AF_INET, socket.SOCK_STREAM, 0, '', self.bind_addr)]
 
@@ -202,7 +218,7 @@ class WsgiServer(wsgiserver.CherryPyWSGIServer):
     _SELECT_THREAD.add_socket(self.socket, self.tick)
 
   def quit(self):
-    """Quits the WsgiServer."""
+    """Quits the _SingleAddressWsgiServer."""
     _SELECT_THREAD.remove_socket(self.socket)
     self.requests.stop(timeout=1)
 
@@ -231,3 +247,78 @@ class WsgiServer(wsgiserver.CherryPyWSGIServer):
     else:
       start_response('%d %s' % (error, httplib.responses[error]), [])
       return []
+
+
+class WsgiServer(object):
+  def __init__(self, host, app):
+    """Constructs a WsgiServer.
+
+    Args:
+      host: A (hostname, port) tuple containing the hostname and port to bind.
+          The port can be 0 to allow any port.
+      app: A WSGI app to handle requests.
+    """
+    self.bind_addr = host
+    self._app = app
+    self._servers = []
+
+  def start(self):
+    """Starts the WsgiServer.
+
+    This starts multiple _SingleAddressWsgiServers to bind the address in all
+    address families.
+
+    Raises:
+      BindError: The address could not be bound.
+    """
+    host, port = self.bind_addr
+    try:
+      info = socket.getaddrinfo(host, port, socket.AF_UNSPEC,
+                                socket.SOCK_STREAM, 0, socket.AI_PASSIVE)
+    except socket.gaierror:
+      if ':' in host:
+        info = [(socket.AF_INET6, socket.SOCK_STREAM, 0, '', self.bind_addr)]
+      else:
+        info = [(socket.AF_INET, socket.SOCK_STREAM, 0, '', self.bind_addr)]
+
+    self.socket = None
+    for res in info:
+      _, _, _, _, bind_addr = res
+      server = _SingleAddressWsgiServer(bind_addr[:2], self._app)
+      try:
+        server.start()
+      except BindError:
+        logging.debug('Failed to bind "%s:%s"', bind_addr[0], bind_addr[1])
+        continue
+      else:
+        self._servers.append(server)
+    if not self._servers:
+      raise BindError('Unable to bind %s:%s' % self.bind_addr)
+
+  def quit(self):
+    """Quits the WsgiServer."""
+    for server in self._servers:
+      server.quit()
+
+  @property
+  def port(self):
+    """Returns the port that the server is bound to."""
+    return self._servers[0].socket.getsockname()[1]
+
+  def set_app(self, app):
+    """Sets the PEP-333 app to use to serve requests."""
+    self._app = app
+
+    for server in self._servers:
+      server.set_app(app)
+
+  def set_error(self, error):
+    """Sets the HTTP status code to serve for all requests."""
+    self._error = error
+    self._app = None
+    for server in self._servers:
+      server.set_error(error)
+
+  @property
+  def ready(self):
+    return all(server.ready for server in self._servers)

@@ -108,8 +108,6 @@ class DatastoreStatsProcessor(object):
     """Process all the entities in a given namespace."""
 
     all_query = datastore.Query(namespace=namespace, _app=self.app_id)
-    all_query['__key__ >='] = datastore_types.Key.from_path(
-        ' ', 1L, namespace=namespace, _app=self.app_id)
 
 
     for entity in all_query.Run():

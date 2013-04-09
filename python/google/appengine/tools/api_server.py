@@ -41,12 +41,14 @@ import time
 import traceback
 import urllib2
 import urlparse
+import wsgiref.headers
 
 import google
 import yaml
 
 
 from google.appengine.api import mail_stub
+from google.appengine.api import request_info
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api.app_identity import app_identity_stub
@@ -745,6 +747,61 @@ class APIServerProcess(object):
         self._process.kill()
 
 
+class ApiServerDispatcher(request_info._LocalFakeDispatcher):
+  """An api_server Dispatcher implementation."""
+
+  def add_request(self, method, relative_url, headers, body, source_ip,
+                  server_name=None, version=None, instance_id=None):
+    """Process an HTTP request.
+
+    Args:
+      method: A str containing the HTTP method of the request.
+      relative_url: A str containing path and query string of the request.
+      headers: A list of (key, value) tuples where key and value are both str.
+      body: A str containing the request body.
+      source_ip: The source ip address for the request.
+      server_name: An optional str containing the server name to service this
+          request. If unset, the request will be dispatched to the default
+          server.
+      version: An optional str containing the version to service this request.
+          If unset, the request will be dispatched to the default version.
+      instance_id: An optional str containing the instance_id of the instance to
+          service this request. If unset, the request will be dispatched to
+          according to the load-balancing for the server and version.
+
+    Returns:
+      A request_info.ResponseTuple containing the response information for the
+      HTTP request.
+    """
+    try:
+      header_dict = wsgiref.headers.Headers(headers)
+      connection_host = header_dict.get('host')
+      connection = httplib.HTTPConnection(connection_host)
+
+
+      connection.putrequest(
+          method, relative_url,
+          skip_host='host' in header_dict,
+          skip_accept_encoding='accept-encoding' in header_dict)
+
+      for header_key, header_value in headers:
+        connection.putheader(header_key, header_value)
+      connection.endheaders()
+      connection.send(body)
+
+      response = connection.getresponse()
+      response.read()
+      response.close()
+
+      return request_info.ResponseTuple(
+          '%d %s' % (response.status, response.reason), [], '')
+    except (httplib.HTTPException, socket.error):
+      logging.exception(
+          'An error occured while sending a %s request to "%s%s"',
+          method, connection_host, relative_url)
+      return request_info.ResponseTuple('0', [], '')
+
+
 def main():
 
   logging.basicConfig(
@@ -779,6 +836,7 @@ def main():
   else:
     application_address = None
 
+  request_info._local_dispatcher = ApiServerDispatcher()
   _SetupStubs(app_id=args.application,
               application_root=args.application_root,
               trusted=args.trusted,

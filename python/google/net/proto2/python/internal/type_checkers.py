@@ -34,6 +34,7 @@ TYPE_TO_DESERIALIZE_METHOD: A dictionary with field types and deserialization
 """
 
 
+from google.net.proto2.python.internal import api_implementation
 from google.net.proto2.python.internal import decoder
 from google.net.proto2.python.internal import encoder
 from google.net.proto2.python.internal import wire_format
@@ -42,21 +43,23 @@ from google.net.proto2.python.public import descriptor
 _FieldDescriptor = descriptor.FieldDescriptor
 
 
-def GetTypeChecker(cpp_type, field_type):
+def GetTypeChecker(field):
   """Returns a type checker for a message field of the specified types.
 
   Args:
-    cpp_type: C++ type of the field (see descriptor.py).
-    field_type: Protocol message field type (see descriptor.py).
+    field: FieldDescriptor object for this field.
 
   Returns:
     An instance of TypeChecker which can be used to verify the types
     of values assigned to a field of the specified type.
   """
-  if (cpp_type == _FieldDescriptor.CPPTYPE_STRING and
-      field_type == _FieldDescriptor.TYPE_STRING):
+  if (field.cpp_type == _FieldDescriptor.CPPTYPE_STRING and
+      field.type == _FieldDescriptor.TYPE_STRING):
     return UnicodeValueChecker()
-  return _VALUE_CHECKERS[cpp_type]
+  if (field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM and
+      api_implementation.EnumCheckEnabled()):
+    return EnumValueChecker(field.enum_type)
+  return _VALUE_CHECKERS[field.cpp_type]
 
 
 
@@ -98,6 +101,23 @@ class IntValueChecker(object):
       raise TypeError(message)
     if not self._MIN <= proposed_value <= self._MAX:
       raise ValueError('Value out of range: %d' % proposed_value)
+    return proposed_value
+
+
+class EnumValueChecker(object):
+
+  """Checker used for enum fields.  Performs type-check and range check."""
+
+  def __init__(self, enum_type):
+    self._enum_type = enum_type
+
+  def CheckValue(self, proposed_value):
+    if not isinstance(proposed_value, (int, long)):
+      message = ('%.1024r has type %s, but expected one of: %s' %
+                 (proposed_value, type(proposed_value), (int, long)))
+      raise TypeError(message)
+    if proposed_value not in self._enum_type.values_by_number:
+      raise ValueError('Unknown enum value: %d' % proposed_value)
     return proposed_value
 
 
@@ -160,6 +180,7 @@ _VALUE_CHECKERS = {
     _FieldDescriptor.CPPTYPE_FLOAT: TypeChecker(
         float, int, long),
     _FieldDescriptor.CPPTYPE_BOOL: TypeChecker(bool, int),
+
     _FieldDescriptor.CPPTYPE_ENUM: Int32ValueChecker(),
     _FieldDescriptor.CPPTYPE_STRING: TypeChecker(str),
     }

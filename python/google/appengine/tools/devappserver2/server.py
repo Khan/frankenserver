@@ -29,6 +29,7 @@ import re
 import string
 import threading
 import time
+import urllib
 import urlparse
 import wsgiref.headers
 
@@ -258,6 +259,9 @@ class Server(object):
       runtime_config.cloud_sql_config.CopyFrom(self._cloud_sql_config)
 
 
+    if (self._python_config and
+        self._server_configuration.runtime.startswith('python')):
+      runtime_config.python_config.CopyFrom(self._python_config)
     return runtime_config
 
   def _maybe_restart_instances(self, config_changed, file_changed):
@@ -317,10 +321,15 @@ class Server(object):
                api_port,
                runtime_stderr_loglevel,
 
+               python_config,
                cloud_sql_config,
                default_version_port,
+               port_registry,
                request_data,
-               dispatcher):
+               dispatcher,
+               max_instances,
+               use_mtime_file_watcher,
+               automatic_restarts):
     """Initializer for Server.
 
     Args:
@@ -335,13 +344,25 @@ class Server(object):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
       default_version_port: An int containing the port of the default version.
+      port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
+          with a mapping of port to Server and Instance.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
       dispatcher: A Dispatcher instance that can be used to make HTTP requests.
+      max_instances: The maximum number of instances to create for this server.
+          If None then there is no limit on the number of created instances.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
+      automatic_restarts: If True then instances will be restarted when a
+          file or configuration change that effects them is detected.
     """
     self._server_configuration = server_configuration
     self._name = server_configuration.server_name
@@ -350,18 +371,27 @@ class Server(object):
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._balanced_port = balanced_port
 
+    self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = request_data
     self._instance_factory = self._create_instance_factory(
         self._server_configuration)
     self._dispatcher = dispatcher
-    self._watcher = file_watcher.get_file_watcher(
-        [self._server_configuration.application_root] +
-        self._instance_factory.get_restart_directories())
+    self._max_instances = max_instances
+    self._automatic_restarts = automatic_restarts
+    self._use_mtime_file_watcher = use_mtime_file_watcher
+    if self._automatic_restarts:
+      self._watcher = file_watcher.get_file_watcher(
+          [self._server_configuration.application_root] +
+          self._instance_factory.get_restart_directories(),
+          self._use_mtime_file_watcher)
+    else:
+      self._watcher = None
 
     self._handler_lock = threading.Lock()
     self._handlers = self._create_url_handlers()
     self._default_version_port = default_version_port
+    self._port_registry = port_registry
 
     self._balanced_server = wsgi_server.WsgiServer(
         (self._host, self._balanced_port), self)
@@ -490,9 +520,10 @@ class Server(object):
           hostname = '%s:%s' % (environ['SERVER_NAME'], environ['SERVER_PORT'])
 
         if environ.get('QUERY_STRING'):
-          resource = '%s?%s' % (environ['PATH_INFO'], environ['QUERY_STRING'])
+          resource = '%s?%s' % (urllib.quote(environ['PATH_INFO']),
+                                environ['QUERY_STRING'])
         else:
-          resource = environ['PATH_INFO']
+          resource = urllib.quote(environ['PATH_INFO'])
         email, _, _ = login.get_user_info(environ.get('HTTP_COOKIE', ''))
         method = environ.get('REQUEST_METHOD', 'GET')
         http_version = environ.get('SERVER_PROTOCOL', 'HTTP/1.0')
@@ -519,9 +550,11 @@ class Server(object):
           status_code = int(status.split(' ', 1)[0])
           content_length = int(headers.get('Content-Length', 0))
           logservice.end_request(request_id, status_code, content_length)
-          logging.info('"%(method)s %(resource)s %(http_version)s" '
+          logging.info('%(server_name)s: '
+                       '"%(method)s %(resource)s %(http_version)s" '
                        '%(status)d %(content_length)s',
-                       {'method': method,
+                       {'server_name': self.name,
+                        'method': method,
                         'resource': resource,
                         'http_version': http_version,
                         'status': status_code,
@@ -672,10 +705,13 @@ class Server(object):
                                       self._api_port,
                                       self._runtime_stderr_loglevel,
 
+                                      self._python_config,
                                       self._cloud_sql_config,
                                       self._default_version_port,
+                                      self._port_registry,
                                       self._request_data,
-                                      self._dispatcher)
+                                      self._dispatcher,
+                                      self._use_mtime_file_watcher)
     else:
       raise NotImplementedError('runtime does not support interactive commands')
 
@@ -690,7 +726,6 @@ class Server(object):
     else:
       host = self.host
     environ = {constants.FAKE_IS_ADMIN_HEADER: '1',
-               'HTTP_HOST': host,
                'CONTENT_LENGTH': str(len(body)),
                'PATH_INFO': url.path,
                'QUERY_STRING': url.query,
@@ -708,6 +743,7 @@ class Server(object):
     if fake_login:
       environ[constants.FAKE_LOGGED_IN_HEADER] = '1'
     util.put_headers_in_environ(headers, environ)
+    environ['HTTP_HOST'] = host
     return environ
 
 
@@ -768,10 +804,15 @@ class AutoScalingServer(Server):
                api_port,
                runtime_stderr_loglevel,
 
+               python_config,
                cloud_sql_config,
                default_version_port,
+               port_registry,
                request_data,
-               dispatcher):
+               dispatcher,
+               max_instances,
+               use_mtime_file_watcher,
+               automatic_restarts):
     """Initializer for AutoScalingServer.
 
     Args:
@@ -786,13 +827,25 @@ class AutoScalingServer(Server):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
       default_version_port: An int containing the port of the default version.
+      port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
+          with a mapping of port to Server and Instance.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
       dispatcher: A Dispatcher instance that can be used to make HTTP requests.
+      max_instances: The maximum number of instances to create for this server.
+          If None then there is no limit on the number of created instances.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
+      automatic_restarts: If True then instances will be restarted when a
+          file or configuration change that effects them is detected.
     """
     super(AutoScalingServer, self).__init__(server_configuration,
                                             host,
@@ -800,10 +853,15 @@ class AutoScalingServer(Server):
                                             api_port,
                                             runtime_stderr_loglevel,
 
+                                            python_config,
                                             cloud_sql_config,
                                             default_version_port,
+                                            port_registry,
                                             request_data,
-                                            dispatcher)
+                                            dispatcher,
+                                            max_instances,
+                                            use_mtime_file_watcher,
+                                            automatic_restarts)
 
     self._process_automatic_scaling(
         self._server_configuration.automatic_scaling)
@@ -824,7 +882,9 @@ class AutoScalingServer(Server):
   def start(self):
     """Start background management of the Server."""
     self._balanced_server.start()
-    self._watcher.start()
+    self._port_registry.add(self.balanced_port, self, None)
+    if self._watcher:
+      self._watcher.start()
     self._instance_adjustment_thread.start()
 
   def quit(self):
@@ -833,12 +893,15 @@ class AutoScalingServer(Server):
     self._instance_adjustment_thread.join()
     # The instance adjustment thread depends on the balanced server and the
     # watcher so wait for it exit before quitting them.
-    self._watcher.quit()
+    if self._watcher:
+      self._watcher.quit()
     self._balanced_server.quit()
-    for inst in self.instances:
-      inst.quit(force=True)
     with self._condition:
+      instances = self._instances
+      self._instances = set()
       self._condition.notify_all()
+    for inst in instances:
+      inst.quit(force=True)
 
   @property
   def instances(self):
@@ -931,9 +994,16 @@ class AutoScalingServer(Server):
       timeout_time = start_time + self._min_pending_latency
       # Loop until an instance is available to handle the request.
       while True:
+        if self._quit_event.is_set():
+          return self._error_response(environ, start_response, 404)
         inst = self._choose_instance(timeout_time)
         if not inst:
           inst = self._add_instance(permit_warmup=False)
+          if not inst:
+            # No instance is available nor can a new one be created, so loop
+            # waiting for one to be free.
+            timeout_time = time.time() + 0.2
+            continue
 
         try:
           logging.debug('Dispatching request to %s after %0.4fs pending',
@@ -959,8 +1029,15 @@ class AutoScalingServer(Server):
           warmup request if it is configured to receive them.
 
     Returns:
-      The newly created instance.Instance.
+      The newly created instance.Instance. Returns None if no new instance
+      could be created because the maximum number of instances have already
+      been created.
     """
+    if self._max_instances is not None:
+      with self._condition:
+        if len(self._instances) >= self._max_instances:
+          return None
+
     perform_warmup = permit_warmup and (
         'warmup' in (self._server_configuration.inbound_services or []))
 
@@ -969,10 +1046,13 @@ class AutoScalingServer(Server):
         expect_ready_request=perform_warmup)
 
     with self._condition:
+      if self._quit_event.is_set():
+        return None
       self._instances.add(inst)
 
     if not inst.start():
-      return inst
+      return None
+
     if perform_warmup:
       self._async_warmup(inst)
     else:
@@ -1090,7 +1170,7 @@ class AutoScalingServer(Server):
           now >
           (self._last_instance_quit_time + self._MIN_SECONDS_BETWEEN_QUITS)):
       for inst in not_required_instances:
-        if not  inst.num_outstanding_requests:
+        if not inst.num_outstanding_requests:
           try:
             inst.quit()
           except instance.CannotQuitServingInstance:
@@ -1099,14 +1179,15 @@ class AutoScalingServer(Server):
             self._last_instance_quit_time = now
             logging.debug('Quit instance: %s', inst)
             with self._condition:
-              self._instances.remove(inst)
+              self._instances.discard(inst)
               break
 
   def _loop_adjusting_instances(self):
     """Loops until the Server exits, reloading, adding or removing Instances."""
     while not self._quit_event.is_set():
       if self.ready:
-        self._handle_changes()
+        if self._automatic_restarts:
+          self._handle_changes()
         self._adjust_instances()
       self._quit_event.wait(timeout=1)
 
@@ -1141,10 +1222,15 @@ class ManualScalingServer(Server):
                api_port,
                runtime_stderr_loglevel,
 
+               python_config,
                cloud_sql_config,
                default_version_port,
+               port_registry,
                request_data,
-               dispatcher):
+               dispatcher,
+               max_instances,
+               use_mtime_file_watcher,
+               automatic_restarts):
     """Initializer for ManualScalingServer.
 
     Args:
@@ -1159,13 +1245,25 @@ class ManualScalingServer(Server):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
       default_version_port: An int containing the port of the default version.
+      port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
+          with a mapping of port to Server and Instance.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
       dispatcher: A Dispatcher instance that can be used to make HTTP requests.
+      max_instances: The maximum number of instances to create for this server.
+          If None then there is no limit on the number of created instances.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
+      automatic_restarts: If True then instances will be restarted when a
+          file or configuration change that effects them is detected.
     """
     super(ManualScalingServer, self).__init__(server_configuration,
                                               host,
@@ -1173,10 +1271,15 @@ class ManualScalingServer(Server):
                                               api_port,
                                               runtime_stderr_loglevel,
 
+                                              python_config,
                                               cloud_sql_config,
                                               default_version_port,
+                                              port_registry,
                                               request_data,
-                                              dispatcher)
+                                              dispatcher,
+                                              max_instances,
+                                              use_mtime_file_watcher,
+                                              automatic_restarts)
 
     self._process_manual_scaling(server_configuration.manual_scaling)
 
@@ -1197,10 +1300,17 @@ class ManualScalingServer(Server):
   def start(self):
     """Start background management of the Server."""
     self._balanced_server.start()
-    self._watcher.start()
+    self._port_registry.add(self.balanced_port, self, None)
+    if self._watcher:
+      self._watcher.start()
     self._change_watcher_thread.start()
     with self._instances_change_lock:
-      for _ in xrange(self._initial_num_instances):
+      if self._max_instances is not None:
+        initial_num_instances = min(self._max_instances,
+                                    self._initial_num_instances)
+      else:
+        initial_num_instances = self._initial_num_instances
+      for _ in xrange(initial_num_instances):
         self._add_instance()
 
   def quit(self):
@@ -1209,14 +1319,17 @@ class ManualScalingServer(Server):
     self._change_watcher_thread.join()
     # The instance adjustment thread depends on the balanced server and the
     # watcher so wait for it exit before quitting them.
-    self._watcher.quit()
+    if self._watcher:
+      self._watcher.quit()
     self._balanced_server.quit()
     for wsgi_servr in self._wsgi_servers:
       wsgi_servr.quit()
-    for inst in self._instances:
-      inst.quit(force=True)
     with self._condition:
+      instances = self._instances
+      self._instances = []
       self._condition.notify_all()
+    for inst in instances:
+      inst.quit(force=True)
 
   def get_instance_port(self, instance_id):
     """Returns the port of the HTTP server for an instance."""
@@ -1344,17 +1457,18 @@ class ManualScalingServer(Server):
     """Creates and adds a new instance.Instance to the Server.
 
     This must be called with _instances_change_lock held.
-
-    Returns:
-      The newly created instance.Instance.
     """
     instance_id = self.get_num_instances()
+    assert self._max_instances is None or instance_id < self._max_instances
     inst = self._instance_factory.new_instance(instance_id,
                                                expect_ready_request=True)
     wsgi_servr = wsgi_server.WsgiServer(
         (self._host, 0), functools.partial(self._handle_request, inst=inst))
     wsgi_servr.start()
+    self._port_registry.add(wsgi_servr.port, self, inst)
     with self._condition:
+      if self._quit_event.is_set():
+        return
       self._wsgi_servers.append(wsgi_servr)
       self._instances.append(inst)
       suspended = self._suspended
@@ -1419,7 +1533,8 @@ class ManualScalingServer(Server):
     """Loops until the InstancePool is done watching for file changes."""
     while not self._quit_event.is_set():
       if self.ready:
-        self._handle_changes()
+        if self._automatic_restarts:
+          self._handle_changes()
       self._quit_event.wait(timeout=1)
 
   def get_num_instances(self):
@@ -1428,6 +1543,9 @@ class ManualScalingServer(Server):
         return len(self._instances)
 
   def set_num_instances(self, instances):
+    if self._max_instances is not None:
+      instances = min(instances, self._max_instances)
+
     with self._instances_change_lock:
       with self._condition:
         running_instances = self.get_num_instances()
@@ -1479,13 +1597,18 @@ class ManualScalingServer(Server):
         raise request_info.ServerAlreadyStartedError()
       self._suspended = False
       with self._condition:
+        if self._quit_event.is_set():
+          return
         wsgi_servers = self._wsgi_servers
       instances_to_start = []
       for instance_id, wsgi_servr in enumerate(wsgi_servers):
         inst = self._instance_factory.new_instance(instance_id,
                                                    expect_ready_request=True)
         wsgi_servr.set_app(functools.partial(self._handle_request, inst=inst))
+        self._port_registry.add(wsgi_servr.port, self, inst)
         with self._condition:
+          if self._quit_event.is_set():
+            return
           self._instances[instance_id] = inst
 
         instances_to_start.append((wsgi_servr, inst))
@@ -1496,6 +1619,8 @@ class ManualScalingServer(Server):
     """Restarts the the server, replacing all running instances."""
     with self._instances_change_lock:
       with self._condition:
+        if self._quit_event.is_set():
+          return
         instances_to_stop = self._instances[:]
         wsgi_servers = self._wsgi_servers[:]
       instances_to_start = []
@@ -1503,8 +1628,11 @@ class ManualScalingServer(Server):
         inst = self._instance_factory.new_instance(instance_id,
                                                    expect_ready_request=True)
         wsgi_servr.set_app(functools.partial(self._handle_request, inst=inst))
+        self._port_registry.add(wsgi_servr.port, self, inst)
         instances_to_start.append(inst)
       with self._condition:
+        if self._quit_event.is_set():
+          return
         self._instances[:] = instances_to_start
     for inst, wsgi_servr in zip(instances_to_stop, wsgi_servers):
       self._async_suspend_instance(inst, wsgi_servr.port)
@@ -1561,7 +1689,11 @@ class BasicScalingServer(Server):
       self._populate_default_basic_scaling(basic_scaling)
     else:
       basic_scaling = self._DEFAULT_BASIC_SCALING
-    self._max_instances = int(basic_scaling.max_instances)
+    if self._max_instances is not None:
+      self._max_instances = min(self._max_instances,
+                                int(basic_scaling.max_instances))
+    else:
+      self._max_instances = int(basic_scaling.max_instances)
     self._instance_idle_timeout = self._parse_idle_timeout(
         basic_scaling.idle_timeout)
 
@@ -1572,10 +1704,15 @@ class BasicScalingServer(Server):
                api_port,
                runtime_stderr_loglevel,
 
+               python_config,
                cloud_sql_config,
                default_version_port,
+               port_registry,
                request_data,
-               dispatcher):
+               dispatcher,
+               max_instances,
+               use_mtime_file_watcher,
+               automatic_restarts):
     """Initializer for BasicScalingServer.
 
     Args:
@@ -1590,13 +1727,25 @@ class BasicScalingServer(Server):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
       default_version_port: An int containing the port of the default version.
+      port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
+          with a mapping of port to Server and Instance.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
       dispatcher: A Dispatcher instance that can be used to make HTTP requests.
+      max_instances: The maximum number of instances to create for this server.
+          If None then there is no limit on the number of created instances.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
+      automatic_restarts: If True then instances will be restarted when a
+          file or configuration change that effects them is detected.
     """
     super(BasicScalingServer, self).__init__(server_configuration,
                                              host,
@@ -1604,11 +1753,15 @@ class BasicScalingServer(Server):
                                              api_port,
                                              runtime_stderr_loglevel,
 
+                                             python_config,
                                              cloud_sql_config,
                                              default_version_port,
+                                             port_registry,
                                              request_data,
-                                             dispatcher)
-
+                                             dispatcher,
+                                             max_instances,
+                                             use_mtime_file_watcher,
+                                             automatic_restarts)
     self._process_basic_scaling(server_configuration.basic_scaling)
 
     self._instances = []  # Protected by self._condition.
@@ -1633,10 +1786,13 @@ class BasicScalingServer(Server):
   def start(self):
     """Start background management of the Server."""
     self._balanced_server.start()
-    self._watcher.start()
+    self._port_registry.add(self.balanced_port, self, None)
+    if self._watcher:
+      self._watcher.start()
     self._change_watcher_thread.start()
-    for wsgi_servr in self._wsgi_servers:
+    for wsgi_servr, inst in zip(self._wsgi_servers, self._instances):
       wsgi_servr.start()
+      self._port_registry.add(wsgi_servr.port, self, inst)
 
   def quit(self):
     """Stops the Server."""
@@ -1644,14 +1800,17 @@ class BasicScalingServer(Server):
     self._change_watcher_thread.join()
     # The instance adjustment thread depends on the balanced server and the
     # watcher so wait for it exit before quitting them.
-    self._watcher.quit()
+    if self._watcher:
+      self._watcher.quit()
     self._balanced_server.quit()
     for wsgi_servr in self._wsgi_servers:
       wsgi_servr.quit()
-    for inst in self._instances:
-      inst.quit(force=True)
     with self._condition:
+      instances = self._instances
+      self._instances = []
       self._condition.notify_all()
+    for inst in instances:
+      inst.quit(force=True)
 
   def get_instance_port(self, instance_id):
     """Returns the port of the HTTP server for an instance."""
@@ -1806,6 +1965,8 @@ class BasicScalingServer(Server):
 
   def _start_instance(self, instance_id):
     with self._condition:
+      if self._quit_event.is_set():
+        return
       wsgi_servr = self._wsgi_servers[instance_id]
       inst = self._instances[instance_id]
     if inst.start():
@@ -1828,7 +1989,7 @@ class BasicScalingServer(Server):
   def _choose_instance(self, timeout_time):
     """Returns an Instance to handle a request or None if all are busy."""
     with self._condition:
-      while time.time() < timeout_time:
+      while time.time() < timeout_time and not self._quit_event.is_set():
         for inst in self._instances:
           if inst.can_accept_requests:
             return inst
@@ -1837,6 +1998,8 @@ class BasicScalingServer(Server):
           if inst:
             break
           self._condition.wait(timeout_time - time.time())
+      else:
+        return None
     if inst:
       inst.wait(timeout_time)
     return inst
@@ -1867,7 +2030,8 @@ class BasicScalingServer(Server):
     while not self._quit_event.is_set():
       if self.ready:
         self._shutdown_idle_instances()
-        self._handle_changes()
+        if self._automatic_restarts:
+          self._handle_changes()
       self._quit_event.wait(timeout=1)
 
   def _shutdown_idle_instances(self):
@@ -1882,8 +2046,10 @@ class BasicScalingServer(Server):
           new_instance = self._instance_factory.new_instance(
               instance_id, expect_ready_request=True)
           self._instances[instance_id] = new_instance
-          self._wsgi_servers[instance_id].set_app(
+          wsgi_servr = self._wsgi_servers[instance_id]
+          wsgi_servr.set_app(
               functools.partial(self._handle_request, inst=new_instance))
+          self._port_registry.add(wsgi_servr.port, self, new_instance)
     for inst, wsgi_servr in instances_to_stop:
       logging.debug('Shutting down %r', inst)
       self._stop_instance(inst, wsgi_servr)
@@ -1897,6 +2063,8 @@ class BasicScalingServer(Server):
     instances_to_stop = []
     instances_to_start = []
     with self._condition:
+      if self._quit_event.is_set():
+        return
       for instance_id, inst in enumerate(self._instances):
         if self._instance_running[instance_id]:
           instances_to_stop.append((inst, self._wsgi_servers[instance_id]))
@@ -1904,8 +2072,10 @@ class BasicScalingServer(Server):
               instance_id, expect_ready_request=True)
           self._instances[instance_id] = new_instance
           instances_to_start.append(instance_id)
-          self._wsgi_servers[instance_id].set_app(
+          wsgi_servr = self._wsgi_servers[instance_id]
+          wsgi_servr.set_app(
               functools.partial(self._handle_request, inst=new_instance))
+          self._port_registry.add(wsgi_servr.port, self, new_instance)
     for instance_id in instances_to_start:
       self._async_start_instance(instance_id)
     for inst, wsgi_servr in instances_to_stop:
@@ -1942,10 +2112,13 @@ class InteractiveCommandServer(Server):
                api_port,
                runtime_stderr_loglevel,
 
+               python_config,
                cloud_sql_config,
                default_version_port,
+               port_registry,
                request_data,
-               dispatcher):
+               dispatcher,
+               use_mtime_file_watcher):
     """Initializer for InteractiveCommandServer.
 
     Args:
@@ -1962,13 +2135,21 @@ class InteractiveCommandServer(Server):
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
 
+      python_config: A runtime_config_pb2.PythonConfig instance containing
+          Python runtime-specific configuration. If None then defaults are
+          used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
       default_version_port: An int containing the port of the default version.
+      port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
+          with a mapping of port to Server and Instance.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
       dispatcher: A Dispatcher instance that can be used to make HTTP requests.
+      use_mtime_file_watcher: A bool containing whether to use mtime polling to
+          monitor file changes even if other options are available on the
+          current platform.
     """
     super(InteractiveCommandServer, self).__init__(
         server_configuration,
@@ -1977,10 +2158,15 @@ class InteractiveCommandServer(Server):
         api_port,
         runtime_stderr_loglevel,
 
+        python_config,
         cloud_sql_config,
         default_version_port,
+        port_registry,
         request_data,
-        dispatcher)
+        dispatcher,
+        max_instances=1,
+        use_mtime_file_watcher=use_mtime_file_watcher,
+        automatic_restarts=True)
     # Use a single instance so that state is consistent across requests.
     self._inst_lock = threading.Lock()
     self._inst = None

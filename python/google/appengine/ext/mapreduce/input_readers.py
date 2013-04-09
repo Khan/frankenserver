@@ -245,7 +245,8 @@ class FileInputReader(InputReader):
     filename must be of format '/gs/bucket/filename'.
     filename pattern has format '/gs/bucket/prefix*'.
     filename pattern will be expanded to filenames with the given prefix.
-    Please see google.appengine.api.files.gs.parseGlob for supported patterns.
+    Please see parseGlob in the file api.files.gs.py which is included in the
+    App Engine SDK for supported patterns.
 
     Example:
       ["/gs/bucket1/file1", "/gs/bucket2/*", "/gs/bucket3/p*"]

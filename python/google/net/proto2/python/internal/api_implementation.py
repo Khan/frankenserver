@@ -83,6 +83,11 @@ _implementation_version = int(_implementation_version_str)
 
 
 
+_checked_enums = os.getenv('PYPROTO_CHECK_ENUMS', '0') == '1'
+
+
+
+
 
 
 def Type():
@@ -91,3 +96,8 @@ def Type():
 
 def Version():
   return _implementation_version
+
+
+
+def EnumCheckEnabled():
+  return _checked_enums

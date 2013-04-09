@@ -19,6 +19,7 @@
 
 import logging
 import os
+import os.path
 import sys
 import threading
 
@@ -107,7 +108,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
     """Returns a list of directories changes in which should trigger a restart.
 
     Returns:
-      A list of directory paths in the GOPATH. Changes (i.e. files added,
+      A list of src directory paths in the GOPATH. Changes (i.e. files added,
       deleted or modified) in these directories will trigger a restart of all
       instances created with this factory.
     """
@@ -117,9 +118,10 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
       return []
     else:
       if sys.platform.startswith('win32'):
-        return go_path.split(';')
+        roots = go_path.split(';')
       else:
-        return go_path.split(':')
+        roots = go_path.split(':')
+      return [os.path.join(r, 'src') for r in roots]
 
   def files_changed(self):
     """Called when a file relevant to the factory *might* have changed."""

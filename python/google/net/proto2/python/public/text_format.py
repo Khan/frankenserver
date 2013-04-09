@@ -42,9 +42,11 @@ class ParseError(Exception):
   """Thrown in case of ASCII parsing error."""
 
 
-def MessageToString(message, as_utf8=False, as_one_line=False):
+def MessageToString(message, as_utf8=False, as_one_line=False,
+                    pointy_brackets=False):
   out = cStringIO.StringIO()
-  PrintMessage(message, out, as_utf8=as_utf8, as_one_line=as_one_line)
+  PrintMessage(message, out, as_utf8=as_utf8, as_one_line=as_one_line,
+               pointy_brackets=pointy_brackets)
   result = out.getvalue()
   out.close()
   if as_one_line:
@@ -52,16 +54,20 @@ def MessageToString(message, as_utf8=False, as_one_line=False):
   return result
 
 
-def PrintMessage(message, out, indent=0, as_utf8=False, as_one_line=False):
+def PrintMessage(message, out, indent=0, as_utf8=False, as_one_line=False,
+                 pointy_brackets=False):
   for field, value in message.ListFields():
     if field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
       for element in value:
-        PrintField(field, element, out, indent, as_utf8, as_one_line)
+        PrintField(field, element, out, indent, as_utf8, as_one_line,
+                   pointy_brackets=pointy_brackets)
     else:
-      PrintField(field, value, out, indent, as_utf8, as_one_line)
+      PrintField(field, value, out, indent, as_utf8, as_one_line,
+                 pointy_brackets=pointy_brackets)
 
 
-def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False):
+def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
+               pointy_brackets=False):
   """Print a single field name/value pair.  For repeated fields, the value
   should be a single element."""
 
@@ -87,27 +93,37 @@ def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False):
 
     out.write(': ')
 
-  PrintFieldValue(field, value, out, indent, as_utf8, as_one_line)
+  PrintFieldValue(field, value, out, indent, as_utf8, as_one_line,
+                  pointy_brackets=pointy_brackets)
   if as_one_line:
     out.write(' ')
   else:
     out.write('\n')
 
 
-def PrintFieldValue(field, value, out, indent=0,
-                    as_utf8=False, as_one_line=False):
+def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
+                    as_one_line=False, pointy_brackets=False):
   """Print a single field value (not including name).  For repeated fields,
   the value should be a single element."""
 
+  if pointy_brackets:
+    openb = '<'
+    closeb = '>'
+  else:
+    openb = '{'
+    closeb = '}'
+
   if field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_MESSAGE:
     if as_one_line:
-      out.write(' { ')
-      PrintMessage(value, out, indent, as_utf8, as_one_line)
-      out.write('}')
+      out.write(' %s ' % openb)
+      PrintMessage(value, out, indent, as_utf8, as_one_line,
+                   pointy_brackets=pointy_brackets)
+      out.write(closeb)
     else:
-      out.write(' {\n')
-      PrintMessage(value, out, indent + 2, as_utf8, as_one_line)
-      out.write(' ' * indent + '}')
+      out.write(' %s\n' % openb)
+      PrintMessage(value, out, indent + 2, as_utf8, as_one_line,
+                   pointy_brackets=pointy_brackets)
+      out.write(' ' * indent + closeb)
   elif field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_ENUM:
     enum_value = field.enum_type.values_by_number.get(value, None)
     if enum_value is not None:
@@ -117,9 +133,15 @@ def PrintFieldValue(field, value, out, indent=0,
   elif field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_STRING:
     out.write('\"')
     if type(value) is unicode:
-      out.write(_CEscape(value.encode('utf-8'), as_utf8))
+      out_value = value.encode('utf-8')
     else:
-      out.write(_CEscape(value, as_utf8))
+      out_value = value
+    if field.type == descriptor.FieldDescriptor.TYPE_BYTES:
+
+      out_as_utf8 = False
+    else:
+      out_as_utf8 = as_utf8
+    out.write(_CEscape(out_value, out_as_utf8))
     out.write('\"')
   elif field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_BOOL:
     if value:

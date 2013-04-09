@@ -17,10 +17,13 @@
 """An abstraction around the source and executable for a Go application."""
 
 
+import atexit
 import errno
 import logging
 import os
 import os.path
+import shutil
+import sys
 import subprocess
 import tempfile
 
@@ -31,7 +34,17 @@ from google.appengine.tools.devappserver2 import safe_subprocess
 
 _SDKROOT = os.path.dirname(os.path.dirname(google.__file__))
 _GOROOT = os.path.join(_SDKROOT, 'goroot')
+
 _GAB_PATH = os.path.join(_GOROOT, 'bin', 'go-app-builder')
+if sys.platform.startswith('win'):
+  _GAB_PATH += '.exe'
+
+
+def _rmtree(directory):
+  try:
+    shutil.rmtree(directory)
+  except:
+    pass
 
 
 class BuildError(errors.Error):
@@ -89,6 +102,8 @@ class GoApplication(object):
       raise BuildError('no compiler found found in goroot (%s)' % _GOROOT)
 
   def _get_gab_args(self):
+    # Go's regexp package does not implicitly anchor to the start.
+    nobuild_files = '^' + str(self._server_configuration.nobuild_files)
     gab_args = [
         _GAB_PATH,
         '-app_base', self._server_configuration.application_root,
@@ -96,6 +111,7 @@ class GoApplication(object):
         '-binary_name', '_go_app',
         '-dynamic',
         '-goroot', _GOROOT,
+        '-nobuild_files', nobuild_files,
         '-unsafe',
         '-work_dir', self._work_dir]
     if 'GOPATH' in os.environ:
@@ -117,13 +133,13 @@ class GoApplication(object):
         if not file_name.endswith('.go'):
           continue
         full_path = os.path.join(root, file_name)
-        if self._server_configuration.skip_files.match(full_path):
+        rel_path = os.path.relpath(
+            full_path, self._server_configuration.application_root)
+        if self._server_configuration.skip_files.match(rel_path):
           continue
-        if self._server_configuration.nobuild_files.match(full_path):
+        if self._server_configuration.nobuild_files.match(rel_path):
           continue
 
-        rel_path = os.path.relpath(full_path,
-                                   self._server_configuration.application_root)
         try:
           go_file_to_mtime[rel_path] = os.path.getmtime(full_path)
         except OSError as e:
@@ -175,6 +191,7 @@ class GoApplication(object):
                                                 gab_stderr,
                                                 ' '.join(gab_args)))
     else:
+      logging.debug('Build succeeded:\n%s\n%s', gab_stdout, gab_stderr)
       self._go_executable = os.path.join(self._work_dir, '_go_app')
 
   def maybe_build(self, maybe_modified_since_last_build):
@@ -191,6 +208,7 @@ class GoApplication(object):
     """
     if not self._work_dir:
       self._work_dir = tempfile.mkdtemp('appengine-go-bin')
+      atexit.register(_rmtree, self._work_dir)
 
     if not os.path.exists(_GAB_PATH):
       # TODO: This message should be more useful i.e. point the
