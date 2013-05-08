@@ -1,5 +1,9 @@
 (function() { var goog = goog || {};
 goog.global = this;
+goog.define = function(name, defaultValue) {
+  var value = defaultValue;
+  goog.exportPath_(name, value)
+};
 goog.DEBUG = !0;
 goog.LOCALE = "en";
 goog.TRUSTED_SITE = !0;
@@ -257,6 +261,9 @@ goog.inherits = function(childCtor, parentCtor) {
 };
 goog.base = function(me, opt_methodName, var_args) {
   var caller = arguments.callee.caller;
+  if(goog.DEBUG && !caller) {
+    throw Error("arguments.caller not defined.  goog.base() expects not to be running in strict mode. See http://www.ecma-international.org/ecma-262/5.1/#sec-C");
+  }
   if(caller.superClass_) {
     return caller.superClass_.constructor.apply(me, Array.prototype.slice.call(arguments, 1))
   }
@@ -1576,13 +1583,15 @@ goog.userAgent.VERSION = goog.userAgent.determineVersion_();
 goog.userAgent.compare = function(v1, v2) {
   return goog.string.compareVersions(v1, v2)
 };
-goog.userAgent.isVersionCache_ = {};
-goog.userAgent.isVersion = function(version) {
-  return goog.userAgent.ASSUME_ANY_VERSION || goog.userAgent.isVersionCache_[version] || (goog.userAgent.isVersionCache_[version] = 0 <= goog.string.compareVersions(goog.userAgent.VERSION, version))
+goog.userAgent.isVersionOrHigherCache_ = {};
+goog.userAgent.isVersionOrHigher = function(version) {
+  return goog.userAgent.ASSUME_ANY_VERSION || goog.userAgent.isVersionOrHigherCache_[version] || (goog.userAgent.isVersionOrHigherCache_[version] = 0 <= goog.string.compareVersions(goog.userAgent.VERSION, version))
 };
-goog.userAgent.isDocumentMode = function(documentMode) {
+goog.userAgent.isVersion = goog.userAgent.isVersionOrHigher;
+goog.userAgent.isDocumentModeOrHigher = function(documentMode) {
   return goog.userAgent.IE && goog.userAgent.DOCUMENT_MODE >= documentMode
 };
+goog.userAgent.isDocumentMode = goog.userAgent.isDocumentModeOrHigher;
 var JSCompiler_inline_result$$0;
 var doc$$inline_1 = goog.global.document;
 if(!doc$$inline_1 || !goog.userAgent.IE) {
@@ -1593,7 +1602,7 @@ if(!doc$$inline_1 || !goog.userAgent.IE) {
 }
 goog.userAgent.DOCUMENT_MODE = JSCompiler_inline_result$$0;
 goog.dom = {};
-goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentMode(9) || goog.userAgent.GECKO && goog.userAgent.isVersion("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersion("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE};
+goog.dom.BrowserFeature = {CAN_ADD_NAME_OR_TYPE_ATTRIBUTES:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), CAN_USE_CHILDREN_ATTRIBUTE:!goog.userAgent.GECKO && !goog.userAgent.IE || goog.userAgent.IE && goog.userAgent.isDocumentMode(9) || goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9.1"), CAN_USE_INNER_TEXT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), CAN_USE_PARENT_ELEMENT_PROPERTY:goog.userAgent.IE || goog.userAgent.OPERA || goog.userAgent.WEBKIT, INNER_HTML_NEEDS_SCOPED_ELEMENT:goog.userAgent.IE};
 goog.dom.classes = {};
 goog.dom.classes.set = function(element, className) {
   element.className = className
@@ -1748,7 +1757,7 @@ goog.dom.getDocumentScroll = function() {
 };
 goog.dom.getDocumentScroll_ = function(doc) {
   var el = goog.dom.getDocumentScrollElement_(doc), win = goog.dom.getWindow_(doc);
-  return goog.userAgent.IE && goog.userAgent.isVersion("10") && win.pageYOffset != el.scrollTop ? new goog.math.Coordinate(el.scrollLeft, el.scrollTop) : new goog.math.Coordinate(win.pageXOffset || el.scrollLeft, win.pageYOffset || el.scrollTop)
+  return goog.userAgent.IE && goog.userAgent.isVersionOrHigher("10") && win.pageYOffset != el.scrollTop ? new goog.math.Coordinate(el.scrollLeft, el.scrollTop) : new goog.math.Coordinate(win.pageXOffset || el.scrollLeft, win.pageYOffset || el.scrollTop)
 };
 goog.dom.getDocumentScrollElement = function() {
   return goog.dom.getDocumentScrollElement_(document)
@@ -3018,9 +3027,10 @@ goog.structs.Set.prototype.isSubsetOf = function(col) {
 goog.structs.Set.prototype.__iterator__ = function() {
   return this.map_.__iterator__(!1)
 };
+goog.debug.LOGGING_ENABLED = goog.DEBUG;
 goog.debug.catchErrors = function(logFunc, opt_cancel, opt_target) {
   var target = opt_target || goog.global, oldErrorHandler = target.onerror, retVal = !!opt_cancel;
-  goog.userAgent.WEBKIT && !goog.userAgent.isVersion("535.3") && (retVal = !retVal);
+  goog.userAgent.WEBKIT && !goog.userAgent.isVersionOrHigher("535.3") && (retVal = !retVal);
   target.onerror = function(message, url, line) {
     oldErrorHandler && oldErrorHandler(message, url, line);
     logFunc({message:message, fileName:url, line:line});
@@ -3355,9 +3365,12 @@ goog.debug.Logger.prototype.getChildren = function() {
   return this.children_
 };
 goog.debug.Logger.prototype.setLevel = function(level) {
-  goog.debug.Logger.ENABLE_HIERARCHY ? this.level_ = level : (goog.asserts.assert(!this.name_, "Cannot call setLevel() on a non-root logger when goog.debug.Logger.ENABLE_HIERARCHY is false."), goog.debug.Logger.rootLevel_ = level)
+  goog.debug.LOGGING_ENABLED && (goog.debug.Logger.ENABLE_HIERARCHY ? this.level_ = level : (goog.asserts.assert(!this.name_, "Cannot call setLevel() on a non-root logger when goog.debug.Logger.ENABLE_HIERARCHY is false."), goog.debug.Logger.rootLevel_ = level))
 };
 goog.debug.Logger.prototype.getEffectiveLevel = function() {
+  if(!goog.debug.LOGGING_ENABLED) {
+    return goog.debug.Logger.Level.OFF
+  }
   if(!goog.debug.Logger.ENABLE_HIERARCHY) {
     return goog.debug.Logger.rootLevel_
   }
@@ -3371,10 +3384,10 @@ goog.debug.Logger.prototype.getEffectiveLevel = function() {
   return null
 };
 goog.debug.Logger.prototype.isLoggable = function(level) {
-  return level.value >= this.getEffectiveLevel().value
+  return goog.debug.LOGGING_ENABLED && level.value >= this.getEffectiveLevel().value
 };
 goog.debug.Logger.prototype.log = function(level, msg, opt_exception) {
-  this.isLoggable(level) && this.doLogRecord_(this.getLogRecord(level, msg, opt_exception))
+  goog.debug.LOGGING_ENABLED && this.isLoggable(level) && this.doLogRecord_(this.getLogRecord(level, msg, opt_exception))
 };
 goog.debug.Logger.prototype.getLogRecord = function(level, msg, opt_exception) {
   var logRecord = goog.debug.LogBuffer.isBufferingEnabled() ? goog.debug.LogBuffer.getInstance().addRecord(level, msg, this.name_) : new goog.debug.LogRecord(level, String(msg), this.name_);
@@ -3382,16 +3395,16 @@ goog.debug.Logger.prototype.getLogRecord = function(level, msg, opt_exception) {
   return logRecord
 };
 goog.debug.Logger.prototype.severe = function(msg, opt_exception) {
-  this.log(goog.debug.Logger.Level.SEVERE, msg, opt_exception)
+  goog.debug.LOGGING_ENABLED && this.log(goog.debug.Logger.Level.SEVERE, msg, opt_exception)
 };
 goog.debug.Logger.prototype.warning = function(msg, opt_exception) {
-  this.log(goog.debug.Logger.Level.WARNING, msg, opt_exception)
+  goog.debug.LOGGING_ENABLED && this.log(goog.debug.Logger.Level.WARNING, msg, opt_exception)
 };
 goog.debug.Logger.prototype.info = function(msg, opt_exception) {
-  this.log(goog.debug.Logger.Level.INFO, msg, opt_exception)
+  goog.debug.LOGGING_ENABLED && this.log(goog.debug.Logger.Level.INFO, msg, opt_exception)
 };
 goog.debug.Logger.prototype.fine = function(msg, opt_exception) {
-  this.log(goog.debug.Logger.Level.FINE, msg, opt_exception)
+  goog.debug.LOGGING_ENABLED && this.log(goog.debug.Logger.Level.FINE, msg, opt_exception)
 };
 goog.debug.Logger.prototype.doLogRecord_ = function(logRecord) {
   goog.debug.Logger.logToProfilers("log:" + logRecord.getMessage());
@@ -3468,8 +3481,8 @@ goog.reflect.canAccessProperty = function(obj, prop) {
   return!1
 };
 goog.events = {};
-goog.events.BrowserFeature = {HAS_W3C_BUTTON:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), HAS_W3C_EVENT_SUPPORT:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), SET_KEY_CODE_TO_PREVENT_DEFAULT:goog.userAgent.IE && !goog.userAgent.isVersion("9"), HAS_NAVIGATOR_ONLINE_PROPERTY:!goog.userAgent.WEBKIT || goog.userAgent.isVersion("528"), HAS_HTML5_NETWORK_EVENT_SUPPORT:goog.userAgent.GECKO && goog.userAgent.isVersion("1.9b") || goog.userAgent.IE && goog.userAgent.isVersion("8") || goog.userAgent.OPERA && 
-goog.userAgent.isVersion("9.5") || goog.userAgent.WEBKIT && goog.userAgent.isVersion("528"), HTML5_NETWORK_EVENTS_FIRE_ON_BODY:goog.userAgent.GECKO && !goog.userAgent.isVersion("8") || goog.userAgent.IE && !goog.userAgent.isVersion("9"), TOUCH_ENABLED:"ontouchstart" in goog.global || !(!goog.global.document || !(document.documentElement && "ontouchstart" in document.documentElement)) || !(!goog.global.navigator || !goog.global.navigator.msMaxTouchPoints)};
+goog.events.BrowserFeature = {HAS_W3C_BUTTON:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), HAS_W3C_EVENT_SUPPORT:!goog.userAgent.IE || goog.userAgent.isDocumentMode(9), SET_KEY_CODE_TO_PREVENT_DEFAULT:goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), HAS_NAVIGATOR_ONLINE_PROPERTY:!goog.userAgent.WEBKIT || goog.userAgent.isVersionOrHigher("528"), HAS_HTML5_NETWORK_EVENT_SUPPORT:goog.userAgent.GECKO && goog.userAgent.isVersionOrHigher("1.9b") || goog.userAgent.IE && goog.userAgent.isVersionOrHigher("8") || 
+goog.userAgent.OPERA && goog.userAgent.isVersionOrHigher("9.5") || goog.userAgent.WEBKIT && goog.userAgent.isVersionOrHigher("528"), HTML5_NETWORK_EVENTS_FIRE_ON_BODY:goog.userAgent.GECKO && !goog.userAgent.isVersionOrHigher("8") || goog.userAgent.IE && !goog.userAgent.isVersionOrHigher("9"), TOUCH_ENABLED:"ontouchstart" in goog.global || !(!goog.global.document || !(document.documentElement && "ontouchstart" in document.documentElement)) || !(!goog.global.navigator || !goog.global.navigator.msMaxTouchPoints)};
 goog.disposable = {};
 goog.disposable.IDisposable = function() {
 };
@@ -3621,13 +3634,13 @@ goog.events.BrowserEvent.prototype.disposeInternal = function() {
 };
 goog.events.Listenable = function() {
 };
-goog.events.Listenable.USE_LISTENABLE_INTERFACE = !1;
-goog.events.Listenable.IMPLEMENTED_BY_PROP_ = "__closure_listenable";
+goog.events.Listenable.USE_LISTENABLE_INTERFACE = !0;
+goog.events.Listenable.IMPLEMENTED_BY_PROP = "closure_listenable_" + (1E6 * Math.random() | 0);
 goog.events.Listenable.addImplementation = function(cls) {
-  cls.prototype[goog.events.Listenable.IMPLEMENTED_BY_PROP_] = !0
+  cls.prototype[goog.events.Listenable.IMPLEMENTED_BY_PROP] = !0
 };
 goog.events.Listenable.isImplementedBy = function(obj) {
-  return!(!obj || !obj[goog.events.Listenable.IMPLEMENTED_BY_PROP_])
+  return!(!obj || !obj[goog.events.Listenable.IMPLEMENTED_BY_PROP])
 };
 goog.events.ListenableKey = function() {
 };

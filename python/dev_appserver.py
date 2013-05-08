@@ -74,12 +74,8 @@ _DIR_PATH = _get_dir_path(os.path.join('lib', 'ipaddr'))
 _SCRIPT_DIR = os.path.join(_DIR_PATH, 'google', 'appengine', 'tools')
 _DEVAPPSERVER2_DIR = os.path.join(
     _DIR_PATH, 'google', 'appengine', 'tools', 'devappserver2')
-
-
-
-
-_PYTHON_RUNTIME_DIR = os.path.join(
-    _DIR_PATH, 'google', 'appengine', 'tools', 'devappserver2', 'python')
+_PHP_RUNTIME_DIR = os.path.join(_DEVAPPSERVER2_DIR, 'php')
+_PYTHON_RUNTIME_DIR = os.path.join(_DEVAPPSERVER2_DIR, 'python')
 
 _STUB_DEPENDENCIES = [
     os.path.join(_DIR_PATH, 'lib', 'antlr3'),
@@ -117,12 +113,11 @@ _DEVAPPSERVER2_PATHS = _STUB_DEPENDENCIES + [
     os.path.join(_DIR_PATH, 'lib', 'webapp2-2.5.1'),
     ]
 
-
-
-
-
-
-
+_PHP_RUNTIME_PATHS = [
+    os.path.join(_DIR_PATH, 'lib', 'concurrent'),
+    os.path.join(_DIR_PATH, 'lib', 'cherrypy'),
+    os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
+    ]
 
 _PYTHON_RUNTIME_PATHS = [
     _DIR_PATH,
@@ -137,25 +132,19 @@ _PYTHON_RUNTIME_PATHS = [
 
 _BOOTSTAP_NAME_TO_REAL_NAME = {
     'dev_appserver.py': 'devappserver2.py',
-
-
-
+    '_php_runtime.py': 'runtime.py',
     '_python_runtime.py': 'runtime.py',
     }
 
 _SCRIPT_TO_DIR = {
     'dev_appserver.py': _DEVAPPSERVER2_DIR,
-
-
-
+    '_php_runtime.py': _PHP_RUNTIME_DIR,
     '_python_runtime.py': _PYTHON_RUNTIME_DIR,
     }
 
 _SYS_PATH_ADDITIONS = {
     'dev_appserver.py': _DEVAPPSERVER2_PATHS,
-
-
-
+    '_php_runtime.py': _PHP_RUNTIME_PATHS,
     '_python_runtime.py': _PYTHON_RUNTIME_PATHS,
     }
 

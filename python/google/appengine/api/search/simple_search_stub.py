@@ -71,7 +71,7 @@ _VISIBLE_PRINTABLE_ASCII = frozenset(
 
 
 class IndexConsistencyError(Exception):
-  """Indicates attempt to create index with same name different consistency."""
+  """Deprecated 1.7.7. Accessed index with same name different consistency."""
 
 
 class Posting(object):
@@ -596,11 +596,6 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         self.__indexes[namespace][index_spec.name()] = index
       else:
         return None
-    elif index.index_spec.consistency() != index_spec.consistency():
-      raise IndexConsistencyError(
-          'Cannot create index of same name with different consistency mode '
-          '(found %s, requested %s)' % (
-              index.index_spec.consistency(), index_spec.consistency()))
     return index
 
   def _Dynamic_IndexDocument(self, request, response):
@@ -613,11 +608,8 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       response: An search_service_pb.IndexDocumentResponse.
     """
     params = request.params()
-    try:
-      index = self._GetIndex(params.index_spec(), create=True)
-      index.IndexDocuments(params.document_list(), response)
-    except IndexConsistencyError, exception:
-      self._InvalidRequest(response.add_status(), exception)
+    index = self._GetIndex(params.index_spec(), create=True)
+    index.IndexDocuments(params.document_list(), response)
 
   def _Dynamic_DeleteDocument(self, request, response):
     """A local implementation of SearchService.DeleteDocument RPC.
@@ -628,14 +620,11 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     """
     params = request.params()
     index_spec = params.index_spec()
-    try:
-      index = self._GetIndex(index_spec)
-      if index is None:
-        self._UnknownIndex(response.add_status(), index_spec)
-        return
-      index.DeleteDocuments(params.doc_id_list(), response)
-    except IndexConsistencyError, exception:
-      self._InvalidRequest(response.add_status(), exception)
+    index = self._GetIndex(index_spec)
+    if index is None:
+      self._UnknownIndex(response.add_status(), index_spec)
+      return
+    index.DeleteDocuments(params.doc_id_list(), response)
 
   def _Dynamic_ListIndexes(self, request, response):
     """A local implementation of SearchService.ListIndexes RPC.
@@ -879,14 +868,10 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       return
 
     index = None
-    try:
-      index = self._GetIndex(request.params().index_spec())
-      if index is None:
-        self._UnknownIndex(response.mutable_status(),
-                           request.params().index_spec())
-        return
-    except IndexConsistencyError, exception:
-      self._InvalidRequest(response.mutable_status(), exception)
+    index = self._GetIndex(request.params().index_spec())
+    if index is None:
+      self._UnknownIndex(response.mutable_status(),
+                         request.params().index_spec())
       response.set_matched_count(0)
       return
 

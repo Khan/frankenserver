@@ -56,8 +56,7 @@ def GetTypeChecker(field):
   if (field.cpp_type == _FieldDescriptor.CPPTYPE_STRING and
       field.type == _FieldDescriptor.TYPE_STRING):
     return UnicodeValueChecker()
-  if (field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM and
-      api_implementation.EnumCheckEnabled()):
+  if field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM:
     return EnumValueChecker(field.enum_type)
   return _VALUE_CHECKERS[field.cpp_type]
 
@@ -180,8 +179,6 @@ _VALUE_CHECKERS = {
     _FieldDescriptor.CPPTYPE_FLOAT: TypeChecker(
         float, int, long),
     _FieldDescriptor.CPPTYPE_BOOL: TypeChecker(bool, int),
-
-    _FieldDescriptor.CPPTYPE_ENUM: Int32ValueChecker(),
     _FieldDescriptor.CPPTYPE_STRING: TypeChecker(str),
     }
 

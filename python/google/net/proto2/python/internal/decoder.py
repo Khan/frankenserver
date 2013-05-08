@@ -70,7 +70,6 @@ we repeatedly read a tag, look up the corresponding decoder, and invoke it.
 
 
 import struct
-from google.net.proto2.python.internal import api_implementation
 from google.net.proto2.python.internal import encoder
 from google.net.proto2.python.internal import wire_format
 from google.net.proto2.python.public import message
@@ -332,7 +331,7 @@ def _DoubleDecoder():
   return _SimpleDecoder(wire_format.WIRETYPE_FIXED64, InnerDecode)
 
 
-def _EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
+def EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
   enum_type = key.enum_type
   if is_packed:
     local_DecodeVarint = _DecodeVarint
@@ -413,11 +412,6 @@ def _EnumDecoder(field_number, is_repeated, is_packed, key, new_default):
 
 Int32Decoder = _SimpleDecoder(
     wire_format.WIRETYPE_VARINT, _DecodeSignedVarint32)
-
-if api_implementation.EnumCheckEnabled():
-  EnumDecoder = _EnumDecoder
-else:
-  EnumDecoder = Int32Decoder
 
 Int64Decoder = _SimpleDecoder(
     wire_format.WIRETYPE_VARINT, _DecodeSignedVarint)

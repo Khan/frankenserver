@@ -97,6 +97,7 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
     self.runtime_config.application_root = self.tmpdir
     self.runtime_config.datacenter = 'us1'
     self.runtime_config.instance_id = 'abc3dzac4'
+    self.runtime_config.auth_domain = 'gmail.com'
     self.runtime_config_getter = lambda: self.runtime_config
     self.proxy = http_runtime.HttpRuntimeProxy(
         ['/runtime'], self.runtime_config_getter, server_configuration,

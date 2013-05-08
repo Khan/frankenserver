@@ -137,6 +137,7 @@ try:
 except ImportError:
   datastore_sqlite_stub = None
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
 
 
 DEFAULT_ENVIRONMENT = {
@@ -600,7 +601,11 @@ class Testbed(object):
     if not enable:
       self._disable_stub(URLFETCH_SERVICE_NAME)
       return
-    stub = urlfetch_stub.URLFetchServiceStub()
+    urlmatchers_to_fetch_functions = []
+    urlmatchers_to_fetch_functions.extend(
+        gcs_dispatcher.URLMATCHERS_TO_FETCH_FUNCTIONS)
+    stub = urlfetch_stub.URLFetchServiceStub(
+        urlmatchers_to_fetch_functions=urlmatchers_to_fetch_functions)
     self._register_stub(URLFETCH_SERVICE_NAME, stub)
 
   def init_user_stub(self, enable=True, **stub_kw_args):

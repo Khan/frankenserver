@@ -26,6 +26,7 @@ http://www.python.org/dev/peps/pep-0249/
 
 import collections
 import datetime
+import decimal
 import exceptions
 import sys
 import time
@@ -149,6 +150,7 @@ _PYTHON_TYPE_TO_JDBC_TYPE = {
     datetime.datetime: jdbc_type.TIMESTAMP,
     datetime.time: jdbc_type.TIME,
     converters.Blob: jdbc_type.BLOB,
+    decimal.Decimal: jdbc_type.DECIMAL,
     }
 
 
@@ -1045,7 +1047,7 @@ class Connection(object):
       raise _ToDbApiException(response.sql_exception)
     return response
 
-  def MakeRequestImpl(self, stub_method, request):
+  def MakeRequestImpl(self, unused_stub_method, unused_request):
     raise InternalError('No transport defined. Try using rdbms_[transport]')
 
   def get_server_info(self):

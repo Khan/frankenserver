@@ -16,6 +16,7 @@
 #
 """A thread-safe wrapper for the subprocess module."""
 
+import logging
 import subprocess
 import sys
 import threading
@@ -54,6 +55,8 @@ def start_process(args, input_string='', env=None, cwd=None, stdout=None,
     A subprocess.Popen instance for the created subprocess.
   """
   with _popen_lock:
+    logging.debug('Starting process %r with input=%r, env=%r, cwd=%r',
+                  args, input_string, env, cwd)
     p = subprocess.Popen(args, env=env, cwd=cwd, stdout=stdout, stderr=stderr,
                          stdin=subprocess.PIPE)
     if _SUBPROCESS_STDIN_IS_THREAD_HOSTILE:

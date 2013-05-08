@@ -67,6 +67,7 @@ from google.appengine.ext import webapp
 from google.appengine.ext.datastore_admin import backup_pb2
 from google.appengine.ext.datastore_admin import utils
 from google.appengine.ext.mapreduce import context
+from google.appengine.ext.mapreduce import datastore_range_iterators as db_iters
 from google.appengine.ext.mapreduce import input_readers
 from google.appengine.ext.mapreduce import model
 from google.appengine.ext.mapreduce import operation as op
@@ -544,20 +545,10 @@ class BackupLinkHandler(webapp.RequestHandler):
     self.response.set_status(400, message)
 
 
-class DatastoreEntityProtoInputReader(input_readers.DatastoreEntityInputReader):
+class DatastoreEntityProtoInputReader(input_readers.RawDatastoreInputReader):
   """An input reader which yields datastore entity proto for a kind."""
 
-  def _iter_key_range(self, k_range):
-    raw_entity_kind = self._get_raw_entity_kind(self._entity_kind)
-    query = k_range.make_ascending_datastore_query(raw_entity_kind,
-                                                   self._filters)
-    connection = datastore_rpc.Connection()
-    query_options = datastore_query.QueryOptions(batch_size=self._batch_size)
-    for batch in query.GetQuery().run(connection, query_options):
-      for entity_proto in batch.results:
-
-        key = datastore_types.Key._FromPb(entity_proto.key())
-        yield key, entity_proto
+  _KEY_RANGE_ITER_CLS = db_iters.KeyRangeEntityProtoIterator
 
 
 class DoBackupHandler(BaseDoHandler):

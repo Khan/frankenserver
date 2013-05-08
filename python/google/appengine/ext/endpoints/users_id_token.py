@@ -187,12 +187,8 @@ def _maybe_set_current_user_vars(method, api_info=None, request=None):
 
 
 
-
-
-
-
   if ((scopes == [_EMAIL_SCOPE] or scopes == (_EMAIL_SCOPE,)) and
-      audiences and allowed_client_ids):
+      allowed_client_ids):
     logging.info('Checking for id_token.')
     time_now = long(time.time())
     user = _get_id_token_user(token, audiences, allowed_client_ids, time_now,
@@ -372,10 +368,6 @@ def _is_local_dev():
 
 
 def _verify_parsed_token(parsed_token, audiences, allowed_client_ids):
-  if not audiences:
-    logging.warning('The set of acceptable audiences has not been specified.')
-    return False
-
 
   if parsed_token.get('iss') != 'accounts.google.com':
     logging.warning('Issuer was not valid: %s', parsed_token.get('iss'))

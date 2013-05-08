@@ -17,6 +17,7 @@
 """A WSGI server implementation using a shared thread pool."""
 
 
+import errno
 import httplib
 import logging
 import select
@@ -34,6 +35,8 @@ from google.appengine.tools.devappserver2 import thread_executor
 
 
 _HAS_POLL = hasattr(select, 'poll')
+
+_PORT_0_RETRIES = 5
 
 
 class BindError(errors.Error):
@@ -200,14 +203,14 @@ class _SingleAddressWsgiServer(wsgiserver.CherryPyWSGIServer):
       af, socktype, proto, _, _ = res
       try:
         self.bind(af, socktype, proto)
-      except socket.error:
+      except socket.error as socket_error:
         if self.socket:
           self.socket.close()
         self.socket = None
         continue
       break
     if not self.socket:
-      raise BindError('Unable to bind %s:%s' % self.bind_addr)
+      raise BindError('Unable to bind %s:%s' % self.bind_addr, socket_error)
 
     # Timeout so KeyboardInterrupt can be caught on Win32
     self.socket.settimeout(1)
@@ -281,19 +284,89 @@ class WsgiServer(object):
       else:
         info = [(socket.AF_INET, socket.SOCK_STREAM, 0, '', self.bind_addr)]
 
-    self.socket = None
+    if port != 0:
+      self._start_all_fixed_port(info)
+    else:
+      for _ in range(_PORT_0_RETRIES):
+        if self._start_all_dynamic_port(info):
+          break
+      else:
+        raise BindError('Unable to find a consistent port %s' % host)
+
+  def _start_all_fixed_port(self, info):
+    """Starts a server for each specified address with a fixed port.
+
+    Does the work of actually trying to create a _SingleAddressWsgiServer for
+    each specified address.
+
+    Args:
+      info: An iterable with the same structure as returned by
+          socket.getaddrinfo().
+
+    Raises:
+      BindError: The address could not be bound.
+    """
     for res in info:
       _, _, _, _, bind_addr = res
-      server = _SingleAddressWsgiServer(bind_addr[:2], self._app)
+      host, port = bind_addr[:2]
+      assert port != 0
+      server = _SingleAddressWsgiServer((host, port), self._app)
       try:
         server.start()
-      except BindError:
-        logging.debug('Failed to bind "%s:%s"', bind_addr[0], bind_addr[1])
+      except BindError as bind_error:
+        # TODO: I'm not sure about the behavior of quietly ignoring an
+        # EADDRINUSE as long as the bind succeeds on at least one interface. I
+        # think we should either:
+        # - Fail (just like we do now when bind fails on every interface).
+        # - Retry on next highest port.
+        logging.debug('Failed to bind "%s:%s": %s',
+                      bind_addr[0], bind_addr[1], bind_error)
         continue
       else:
         self._servers.append(server)
+
     if not self._servers:
       raise BindError('Unable to bind %s:%s' % self.bind_addr)
+
+  def _start_all_dynamic_port(self, info):
+    """Starts a server for each specified address with a dynamic port.
+
+    Does the work of actually trying to create a _SingleAddressWsgiServer for
+    each specified address.
+
+    Args:
+      info: An iterable with the same structure as returned by
+          socket.getaddrinfo().
+
+    Returns:
+      The list of all servers (also saved as self._servers). A non empty list
+      indicates success while an empty list indicates failure.
+    """
+    port = 0
+    for res in info:
+      _, _, _, _, bind_addr = res
+      host, _ = bind_addr[:2]
+      server = _SingleAddressWsgiServer((host, port), self._app)
+      try:
+        server.start()
+        if port == 0:
+          port = server.port
+      except BindError as bind_error:
+        if bind_error[1][0] == errno.EADDRINUSE:
+          # The port picked at random for first interface was not available
+          # on one of the other interfaces. Forget them and try again.
+          for server in self._servers:
+            server.quit()
+          self._servers = []
+          break
+        else:
+          # Ignore the interface if we get an error other than EADDRINUSE.
+          logging.debug('Failed to bind "%s:%s": %s',
+                        bind_addr[0], bind_addr[1], bind_error)
+          continue
+      else:
+        self._servers.append(server)
+    return self._servers
 
   def quit(self):
     """Quits the WsgiServer."""

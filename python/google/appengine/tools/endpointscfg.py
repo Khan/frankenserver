@@ -46,6 +46,11 @@ from __future__ import with_statement
 
 
 import contextlib
+
+try:
+  import json
+except ImportError:
+  import simplejson as json
 import os
 import re
 import sys
@@ -64,6 +69,31 @@ CLIENT_LIBRARY_BASE = 'https://google-api-client-libraries.appspot.com/generate'
 
 class ServerRequestException(Exception):
   """Exception for problems with the request to a server."""
+
+  def __init__(self, http_error):
+    """Create a ServerRequestException from a given urllib2.HTTPError.
+
+    Args:
+      http_error: The HTTPError that the ServerRequestException will be
+        based on.
+    """
+    error_details = None
+    if http_error.fp:
+      try:
+        error_body = json.load(http_error.fp)
+        error_details = ['%s: %s' % (detail['message'], detail['debug_info'])
+                         for detail in error_body['error']['errors']]
+      except (ValueError, TypeError, KeyError):
+        pass
+    if error_details:
+      error_message = ('HTTP %s (%s) error when communicating with URL: %s.  '
+                       'Details: %s' % (http_error.code, http_error.reason,
+                                        http_error.filename, error_details))
+    else:
+      error_message = ('HTTP %s (%s) error when communicating with URL: %s.' %
+                       (http_error.code, http_error.reason,
+                        http_error.filename))
+    super(ServerRequestException, self).__init__(error_message)
 
 
 def _WriteFile(output_path, name, content):
@@ -137,13 +167,10 @@ def GenDiscoveryDoc(service_class_names, doc_format,
   Returns:
     A mapping from service names to discovery docs.
   """
-
-
-  import simplejson
   output_files = []
   service_configs = GenApiConfig(service_class_names, hostname=hostname)
   for service_class_name, config in service_configs.iteritems():
-    body = simplejson.dumps({'config': config}, indent=2, sort_keys=True)
+    body = json.dumps({'config': config}, indent=2, sort_keys=True)
     request = urllib2.Request(DISCOVERY_DOC_BASE + doc_format, body)
     request.add_header('content-type', 'application/json')
 
@@ -154,9 +181,7 @@ def GenDiscoveryDoc(service_class_names, doc_format,
         discovery_name = base_service_class_name + '.discovery'
         output_files.append(_WriteFile(output_path, discovery_name, content))
     except urllib2.HTTPError, error:
-      raise ServerRequestException(
-          'HTTP %s (%s) error when communicating with URL: %s' % (
-              error.code, error.reason, error.filename))
+      raise ServerRequestException(error)
 
   return output_files
 
@@ -212,9 +237,7 @@ def _GenClientLibFromContents(discovery_doc, language, output_path,
       content = response.read()
       return _WriteFile(output_path, client_name, content)
   except urllib2.HTTPError, error:
-    raise ServerRequestException(
-        'HTTP %s (%s) error when communicating with URL: %s' % (
-            error.code, error.reason, error.filename))
+    raise ServerRequestException(error)
 
 
 def GetClientLib(service_class_names, doc_format, language,

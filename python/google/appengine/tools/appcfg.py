@@ -136,6 +136,7 @@ APPCFG_SCOPES = ['https://www.googleapis.com/auth/appengine.admin']
 
 STATIC_FILE_PREFIX = '__static__'
 
+
 class Error(Exception):
   pass
 
@@ -275,7 +276,7 @@ class FileClassification(object):
     for error_handler in config.error_handlers:
       if error_handler.file == filename:
         error_code = error_handler.error_code
-        error_code = error_code or  'default'
+        error_code = error_code or 'default'
         if error_handler.mime_type:
           return (error_handler.mime_type, error_code)
         else:
@@ -377,7 +378,7 @@ def GetResourceLimits(rpcserver, config):
   """
   resource_limits = DEFAULT_RESOURCE_LIMITS.copy()
   resource_limits.update(GetRemoteResourceLimits(rpcserver, config))
-  logging.debug('Using resource limits: %s' % resource_limits)
+  logging.debug('Using resource limits: %s', resource_limits)
   return resource_limits
 
 
@@ -597,6 +598,7 @@ class DefaultVersionSet(object):
       rpcserver: The RPC server to use. Should be an instance of a subclass of
         AbstractRpcServer.
       app_id: The application to make the change to.
+      server: The server to set the default version of (if any).
       version: The version to set as the default.
     """
     self.rpcserver = rpcserver
@@ -1560,6 +1562,8 @@ class AppVersionUpload(object):
   def Describe(self):
     """Returns a string describing the object being updated."""
     result = 'app: %s' % self.app_id
+    if self.server is not None and self.server != appinfo.DEFAULT_SERVER:
+      result += ', server: %s' % self.server
     if self.backend:
       result += ', backend: %s' % self.backend
     elif self.version:
@@ -1999,9 +2003,9 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
   Args:
     base: The base path to search for files under.
     skip_files: A regular expression object for files/directories to skip.
-    separator: Path separator used by the running system's platform.
     runtime: The name of the runtime e.g. "python". If "python27" then .pyc
       files with matching .py files will be skipped.
+    separator: Path separator used by the running system's platform.
 
   Yields:
     Paths of files found, relative to base.
@@ -2072,6 +2076,7 @@ def GetUserAgent(get_version=sdk_update_checker.GetVersionObject,
   Args:
     get_version: Used for testing.
     get_platform: Used for testing.
+    sdk_product: Used as part of sdk/version product token.
 
   Returns:
     String containing the 'user-agent' header value, which includes the SDK
@@ -2585,7 +2590,7 @@ class AppCfgApp(object):
 
 
 
-    alt_basepath = os.path.join(basepath, "WEB-INF", "appengine-generated")
+    alt_basepath = os.path.join(basepath, 'WEB-INF', 'appengine-generated')
 
     for yaml_basepath in (basepath, alt_basepath):
       for yaml_file in (file_name + '.yaml', file_name + '.yml'):
@@ -2611,6 +2616,7 @@ class AppCfgApp(object):
                         'configuration file.' % basename)
 
     orig_application = appyaml.application
+    orig_server = appyaml.server
     orig_version = appyaml.version
     if self.options.app_id:
       appyaml.application = self.options.app_id
@@ -2625,6 +2631,13 @@ class AppCfgApp(object):
     if appyaml.application != orig_application:
       msg += ' (was: %s)' % orig_application
     if self.action.function is 'Update':
+
+      if (appyaml.server is not None and
+          appyaml.server != appinfo.DEFAULT_SERVER):
+        msg += '; server: %s' % appyaml.server
+        if appyaml.server != orig_server:
+          msg += ' (was: %s)' % orig_server
+
       msg += '; version: %s' % appyaml.version
       if appyaml.version != orig_version:
         msg += ' (was: %s)' % orig_version
@@ -3282,9 +3295,9 @@ class AppCfgApp(object):
               self.options.server_id and
               self.options.version):
         _PrintErrorAndExit(self.error_fh,
-                          'Expected at least one <file> argument or the '
-                          '--application, --server_id and --version flags to be'
-                          ' set.')
+                           'Expected at least one <file> argument or the '
+                           '--application, --server_id and --version flags to'
+                           ' be set.')
       else:
         servers_to_process.append((self.options.app_id,
                                    self.options.server_id,
@@ -3295,17 +3308,17 @@ class AppCfgApp(object):
       if self.options.server_id:
 
         _PrintErrorAndExit(self.error_fh,
-                          'You may not specify a <file> argument with the '
-                          '--server_id flag.')
+                           'You may not specify a <file> argument with the '
+                           '--server_id flag.')
 
       server_yamls = self._ParseAndValidateServerYamls(self.args)
-      for yaml in server_yamls:
+      for serv_yaml in server_yamls:
 
 
-        app_id = yaml.application
-        servers_to_process.append((self.options.app_id or yaml.application,
-                                   yaml.server or appinfo.DEFAULT_SERVER,
-                                   self.options.version or yaml.version))
+        app_id = serv_yaml.application
+        servers_to_process.append((self.options.app_id or serv_yaml.application,
+                                   serv_yaml.server or appinfo.DEFAULT_SERVER,
+                                   self.options.version or serv_yaml.version))
 
     rpcserver = self._GetRpcServer()
 

@@ -209,6 +209,7 @@ SERVER = 'server'
 AUTOMATIC_SCALING = 'automatic_scaling'
 MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
+VM = 'vm'
 VM_SETTINGS = 'vm_settings'
 VERSION = 'version'
 MAJOR_VERSION = 'major_version'
@@ -313,7 +314,8 @@ _SUPPORTED_LIBRARIES = [
         'django',
         'http://www.djangoproject.com/',
         'A full-featured web application framework for Python.',
-        ['1.2', '1.3', '1.4'],
+        ['1.2', '1.3', '1.4', '1.5'],
+        experimental_versions=['1.5'],
         ),
     _VersionedLibrary(
         'jinja2',
@@ -334,9 +336,8 @@ _SUPPORTED_LIBRARIES = [
         'matplotlib',
         'http://matplotlib.org/',
         'A 2D plotting library which produces publication-quality figures.',
-        ['1.1.1', '1.2.0'],
-        experimental_versions=['1.1.1', '1.2.0'],
-        deprecated_versions=['1.1.1'],
+        ['1.2.0'],
+        experimental_versions=['1.2.0'],
         ),
     _VersionedLibrary(
         'MySQLdb',
@@ -1453,6 +1454,7 @@ class AppInfoExternal(validation.Validated):
       AUTOMATIC_SCALING: validation.Optional(AutomaticScaling),
       MANUAL_SCALING: validation.Optional(ManualScaling),
       BASIC_SCALING: validation.Optional(BasicScaling),
+      VM: validation.Optional(bool),
       VM_SETTINGS: validation.Optional(VmSettings),
       BUILTINS: validation.Optional(validation.Repeated(BuiltinHandler)),
       INCLUDES: validation.Optional(validation.Type(list)),
@@ -1699,6 +1701,21 @@ def LoadSingleAppInfo(app_info):
   ValidateHandlers(appyaml.handlers)
   if appyaml.builtins:
     BuiltinHandler.Validate(appyaml.builtins, appyaml.runtime)
+
+
+
+
+
+
+
+  if appyaml.vm:
+    if not appyaml.vm_settings:
+      appyaml.vm_settings = VmSettings()
+    if not 'vm_runtime' in appyaml.vm_settings:
+
+
+      appyaml.vm_settings['vm_runtime'] = appyaml.runtime
+      appyaml.runtime = 'vm'
 
   return appyaml
 

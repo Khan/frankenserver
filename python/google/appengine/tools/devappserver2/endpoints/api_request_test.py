@@ -51,6 +51,29 @@ class RequestTest(unittest.TestCase):
                      request.headers.items())
     self.assertEqual(None, request.request_id)
 
+  def test_parse_empty_values(self):
+    request = test_utils.build_request('/_ah/api/foo?bar')
+    self.assertEqual('foo', request.path)
+    self.assertEqual('bar', request.query)
+    self.assertEqual({'bar': ['']}, request.parameters)
+    self.assertEqual('', request.body)
+    self.assertEqual({}, request.body_json)
+    self.assertEqual([('CONTENT-TYPE', 'application/json')],
+                     request.headers.items())
+    self.assertEqual(None, request.request_id)
+
+  def test_parse_multiple_values(self):
+    request = test_utils.build_request('/_ah/api/foo?bar=baz&foo=bar&bar=foo')
+    self.assertEqual('foo', request.path)
+    self.assertEqual('bar=baz&foo=bar&bar=foo', request.query)
+    self.assertEqual({'bar': ['baz', 'foo'], 'foo': ['bar']},
+                     request.parameters)
+    self.assertEqual('', request.body)
+    self.assertEqual({}, request.body_json)
+    self.assertEqual([('CONTENT-TYPE', 'application/json')],
+                     request.headers.items())
+    self.assertEqual(None, request.request_id)
+
   def test_is_rpc(self):
     request = test_utils.build_request('/_ah/api/rpc')
     self.assertEqual('rpc', request.path)

@@ -347,16 +347,8 @@ class MapreduceDoneHandler(webapp.RequestHandler):
       mapreduce_state = model.MapreduceState.get_by_job_id(mapreduce_id)
       mapreduce_params = mapreduce_state.mapreduce_spec.params
 
-      keys = []
-      job_success = True
-      shard_states = model.ShardState.find_by_mapreduce_state(mapreduce_state)
-      for shard_state in shard_states:
-        keys.append(shard_state.key())
-        if not shard_state.result_status == 'success':
-          job_success = False
-
       db_config = _CreateDatastoreConfig()
-      if job_success:
+      if mapreduce_state.result_status == model.MapreduceState.RESULT_SUCCESS:
         operation_key = mapreduce_params.get(
             DatastoreAdminOperation.PARAM_DATASTORE_ADMIN_OPERATION)
         if operation_key is None:
@@ -386,6 +378,12 @@ class MapreduceDoneHandler(webapp.RequestHandler):
                               mapreduce_params['done_callback_handler'])
           db.run_in_transaction(tx)
         if config.CLEANUP_MAPREDUCE_STATE:
+          keys = []
+          shard_states = model.ShardState.find_by_mapreduce_state(
+              mapreduce_state)
+          for shard_state in shard_states:
+            keys.append(shard_state.key())
+
 
           keys.append(mapreduce_state.key())
           keys.append(model.MapreduceControl.get_key_by_job_id(mapreduce_id))

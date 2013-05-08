@@ -2873,6 +2873,7 @@ class Model(_NotEqualMixin):
   def _has_complete_key(self):
     """Return whether this entity has a complete key."""
     return self._key is not None and self._key.id() is not None
+  has_complete_key = _has_complete_key
 
   def __hash__(self):
     """Dummy hash function.

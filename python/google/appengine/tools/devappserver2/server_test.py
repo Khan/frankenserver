@@ -81,14 +81,17 @@ class ServerFacade(server.Server):
   def __init__(self,
                server_configuration=ServerConfigurationStub(),
                instance_factory=None,
-               ready=True):
+               ready=True,
+               allow_skipped_files=False):
     super(ServerFacade, self).__init__(
         server_configuration,
         host='fakehost',
         balanced_port=0,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -97,7 +100,8 @@ class ServerFacade(server.Server):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=allow_skipped_files)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -123,8 +127,10 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         host='fakehost',
         balanced_port=balanced_port,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -133,7 +139,8 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         dispatcher=None,
         max_instances=max_instances,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=False)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -158,8 +165,10 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         host='fakehost',
         balanced_port=balanced_port,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -168,7 +177,8 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=False)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -194,8 +204,10 @@ class BasicScalingServerFacade(server.BasicScalingServer):
         host,
         balanced_port=balanced_port,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -204,7 +216,8 @@ class BasicScalingServerFacade(server.BasicScalingServer):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=False)
     if instance_factory is not None:
       self._instance_factory = instance_factory
     self._ready = ready
@@ -383,12 +396,7 @@ class TestServerGetRuntimeConfig(unittest.TestCase):
   """Tests for server.Server._get_runtime_config."""
 
   def setUp(self):
-    self.server_configuration = ServerConfigurationStub()
-    self.instance_factory = instance.InstanceFactory(None, 1)
-    self.servr = ServerFacade(instance_factory=self.instance_factory,
-                              server_configuration=self.server_configuration)
-
-  def test_static_files_regex(self):
+    self.server_configuration = ServerConfigurationStub(skip_files='foo')
     self.server_configuration.handlers = [
         appinfo.URLMap(url=r'/static', static_dir='static'),
         appinfo.URLMap(url=r'/app_read_static', static_dir='app_read_static',
@@ -401,10 +409,23 @@ class TestServerGetRuntimeConfig(unittest.TestCase):
                        upload=r'app_readable_static_images/*.png',
                        application_readable=True),
         ]
-    config = self.servr._get_runtime_config()
+    self.instance_factory = instance.InstanceFactory(None, 1)
+
+  def test_static_files_regex(self):
+    servr = ServerFacade(instance_factory=self.instance_factory,
+                         server_configuration=self.server_configuration)
+    config = servr._get_runtime_config()
     self.assertEqual(r'^(static%s.*)|(static_images/*.png)$' %
                      re.escape(os.path.sep),
                      config.static_files)
+
+  def test_allow_skipped_files(self):
+    servr = ServerFacade(instance_factory=self.instance_factory,
+                         server_configuration=self.server_configuration,
+                         allow_skipped_files=True)
+    config = servr._get_runtime_config()
+    self.assertFalse(config.HasField('skip_files'))
+    self.assertFalse(config.HasField('static_files'))
 
 
 class TestServerShutdownInstance(unittest.TestCase):
@@ -2206,15 +2227,18 @@ class TestInteractiveCommandServer(unittest.TestCase):
         'fakehost',
         balanced_port=8000,
         api_port=9000,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
         port_registry=dispatcher.PortRegistry(),
         request_data=None,
         dispatcher=None,
-        use_mtime_file_watcher=False)
+        use_mtime_file_watcher=False,
+        allow_skipped_files=False)
     self.mox.StubOutWithMock(self.servr._instance_factory, 'new_instance')
     self.mox.StubOutWithMock(self.servr, '_handle_request')
     self.mox.StubOutWithMock(self.servr, 'build_request_environ')

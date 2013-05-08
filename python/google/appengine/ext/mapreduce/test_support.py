@@ -35,6 +35,7 @@
 
 import base64
 import cgi
+import collections
 import logging
 import os
 import re
@@ -81,6 +82,9 @@ def execute_task(task, retries=0, handlers_map=None):
     task: a taskqueue task.
     retries: the current retry of this task.
     handlers_map: a dict from url regex to handler.
+
+  Returns:
+    the handler instance used for this task.
   """
   if not handlers_map:
     handlers_map = main.create_handlers_map()
@@ -134,6 +138,7 @@ def execute_task(task, retries=0, handlers_map=None):
                      handler.response.status_message,
                      task,
                      handler))
+  return handler
 
 
 def execute_all_tasks(taskqueue, queue="default", handlers_map=None):
@@ -142,14 +147,21 @@ def execute_all_tasks(taskqueue, queue="default", handlers_map=None):
   Args:
     taskqueue: An instance of taskqueue stub.
     queue: Queue name to run all tasks from.
+    hanlders_map: see main.create_handlers_map.
+
+  Returns:
+    task_run_counts: a dict from handler class to the number of tasks
+      it handled.
   """
   tasks = taskqueue.GetTasks(queue)
   taskqueue.FlushQueue(queue)
+  task_run_counts = collections.defaultdict(lambda: 0)
   for task in tasks:
     retries = 0
     while True:
       try:
-        execute_task(task, retries, handlers_map=handlers_map)
+        handler = execute_task(task, retries, handlers_map=handlers_map)
+        task_run_counts[handler.__class__] += 1
         break
 
       except:
@@ -163,6 +175,7 @@ def execute_all_tasks(taskqueue, queue="default", handlers_map=None):
             "Task %s is being retried for the %s time",
             task["name"],
             retries)
+  return task_run_counts
 
 
 def execute_until_empty(taskqueue, queue="default", handlers_map=None):
@@ -171,6 +184,15 @@ def execute_until_empty(taskqueue, queue="default", handlers_map=None):
   Args:
     taskqueue: An instance of taskqueue stub.
     queue: Queue name to run all tasks from.
+    hanlders_map: see main.create_handlers_map.
+
+  Returns:
+    task_run_counts: a dict from handler class to the number of tasks
+      it handled.
   """
+  task_run_counts = collections.defaultdict(lambda: 0)
   while taskqueue.GetTasks(queue):
-    execute_all_tasks(taskqueue, queue, handlers_map)
+    new_counts = execute_all_tasks(taskqueue, queue, handlers_map)
+    for handler_cls in new_counts:
+      task_run_counts[handler_cls] += new_counts[handler_cls]
+  return task_run_counts

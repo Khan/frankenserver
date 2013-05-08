@@ -16,6 +16,8 @@
 #
 """Test service for regression testing of Cloud Endpoints support."""
 
+import logging
+
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
@@ -34,6 +36,11 @@ class TestResponse(messages.Message):
   text = messages.StringField(1)
 
 
+class TestDateTime(messages.Message):
+  """Simple ProtoRPC request/response with a datetime."""
+  datetime_value = message_types.DateTimeField(1)
+
+
 @endpoints.api(name='test_service', version='v1')
 class TestService(remote.Service):
   """ProtoRPC test class for Cloud Endpoints."""
@@ -49,6 +56,24 @@ class TestService(remote.Service):
                     scopes=[])
   def getenviron(self, request):
     return TestResponse(text='%s %d' % (request.name, request.number))
+
+  @endpoints.method(message_types.DateTimeMessage,
+                    message_types.DateTimeMessage,
+                    http_method='POST', name='echodtmsg',
+                    path='echo_datetime_message',
+                    scopes=[])
+  def echo_datetime_message(self, request):
+    return request
+
+  @endpoints.method(TestDateTime, TestDateTime,
+                    http_method='POST', name='echodtfield',
+                    path='echo_datetime_field',
+                    scopes=[])
+  def echo_datetime_field(self, request):
+    # Make sure we can access the fields of the datetime object.
+    logging.info('Year %d, Month %d', request.datetime_value.year,
+                 request.datetime_value.month)
+    return request
 
 
 application = endpoints.api_server([TestService])

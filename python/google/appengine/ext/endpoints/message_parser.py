@@ -27,6 +27,7 @@ import re
 
 import google
 
+from protorpc import message_types
 from protorpc import messages
 
 __all__ = ['MessageTypeToJsonSchema']
@@ -59,6 +60,7 @@ class MessageTypeToJsonSchema(object):
                             None: ('number', 'float')},
       messages.BooleanField: ('boolean', None),
       messages.BytesField: ('string', None),
+      message_types.DateTimeField: ('string', 'date-time'),
       messages.StringField: ('string', None),
       messages.MessageField: ('object', None),
       messages.EnumField: ('string', None),

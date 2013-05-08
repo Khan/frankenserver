@@ -168,6 +168,52 @@ class ApiConfigManagerTest(unittest.TestCase):
         'guestbook_api.foo.bar', 'X')
     self.assertEqual(fake_method, actual_method)
 
+  def test_parse_api_config_convert_https(self):
+    """Test that the parsed API config has switched HTTPS to HTTP."""
+    config = json.dumps({'name': 'guestbook_api',
+                         'version': 'X',
+                         'adapter': {'bns': 'https://localhost/_ah/spi',
+                                     'type': 'lily'},
+                         'root': 'https://localhost/_ah/api',
+                         'methods': {}})
+    self.config_manager.parse_api_config_response(
+        json.dumps({'items': [config]}))
+
+    self.assertEqual(
+        'http://localhost/_ah/spi',
+        self.config_manager.configs[('guestbook_api', 'X')]['adapter']['bns'])
+    self.assertEqual(
+        'http://localhost/_ah/api',
+        self.config_manager.configs[('guestbook_api', 'X')]['root'])
+
+  def test_convert_https_to_http(self):
+    """Test that the _convert_https_to_http function works."""
+    config = {'name': 'guestbook_api',
+              'version': 'X',
+              'adapter': {'bns': 'https://tictactoe.appspot.com/_ah/spi',
+                          'type': 'lily'},
+              'root': 'https://tictactoe.appspot.com/_ah/api',
+              'methods': {}}
+    self.config_manager._convert_https_to_http(config)
+
+    self.assertEqual('http://tictactoe.appspot.com/_ah/spi',
+                     config['adapter']['bns'])
+    self.assertEqual('http://tictactoe.appspot.com/_ah/api', config['root'])
+
+  def test_dont_convert_non_https_to_http(self):
+    """Verify that we don't change non-HTTPS URLs."""
+    config = {'name': 'guestbook_api',
+              'version': 'X',
+              'adapter': {'bns': 'http://https.appspot.com/_ah/spi',
+                          'type': 'lily'},
+              'root': 'ios://https.appspot.com/_ah/api',
+              'methods': {}}
+    self.config_manager._convert_https_to_http(config)
+
+    self.assertEqual('http://https.appspot.com/_ah/spi',
+                     config['adapter']['bns'])
+    self.assertEqual('ios://https.appspot.com/_ah/api', config['root'])
+
   def test_save_lookup_rpc_method(self):
     # First attempt, guestbook.get does not exist
     actual_method = self.config_manager.lookup_rpc_method('guestbook_api.get',
@@ -281,7 +327,7 @@ class ParameterizedPathTest(unittest.TestCase):
     config_manager = api_config_manager.ApiConfigManager
     match = config_manager._compile_path_pattern(param_path).match(path)
     self.assertTrue(match is not None)   # Will be None if path was not matched
-    params = match.groupdict()
+    params = config_manager._get_path_params(match)
     self.assertEquals(param_count, len(params))
     return params
 
@@ -293,6 +339,15 @@ class ParameterizedPathTest(unittest.TestCase):
     params = self.assert_match('/abc/456/123/789', '/abc/{x}/123/{y}', 2)
     self.assertEquals('456', params.get('x'))
     self.assertEquals('789', params.get('y'))
+
+  def test_message_variable_match(self):
+    params = self.assert_match('/abc/123', '/abc/{x.y}', 1)
+    self.assertEquals('123', params.get('x.y'))
+
+  def test_message_and_simple_variable_match(self):
+    params = self.assert_match('/abc/123/456', '/abc/{x.y.z}/{t}', 2)
+    self.assertEquals('123', params.get('x.y.z'))
+    self.assertEquals('456', params.get('t'))
 
   def assert_invalid_value(self, value):
     """Assert that the path parameter value is not valid.

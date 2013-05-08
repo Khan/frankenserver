@@ -20,6 +20,7 @@
 
 import httplib
 import json
+import logging
 import unittest
 
 import google
@@ -31,6 +32,7 @@ from google.appengine.tools.devappserver2.endpoints import api_config_manager
 from google.appengine.tools.devappserver2.endpoints import api_request
 from google.appengine.tools.devappserver2.endpoints import discovery_api_proxy
 from google.appengine.tools.devappserver2.endpoints import endpoints_server
+from google.appengine.tools.devappserver2.endpoints import errors
 from google.appengine.tools.devappserver2.endpoints import test_utils
 
 
@@ -79,7 +81,7 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
     self.mox.UnsetStubs()
 
   def prepare_dispatch(self, config):
-    # The Dispatch call will make a call to GetApiConfigs, making a
+    # The dispatch call will make a call to get_api_configs, making a
     # dispatcher request.  Set up that request.
     request_method = 'POST'
     request_path = '/_ah/spi/BackendService.getApiConfigs'
@@ -154,6 +156,43 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
                            [('Content-Type', 'text/plain'),
                             ('Content-Length', '9')],
                            'Not Found')
+
+  def test_dispatch_invalid_enum(self):
+    config = json.dumps({
+        'name': 'guestbook_api',
+        'version': 'v1',
+        'methods': {
+            'guestbook.get': {
+                'httpMethod': 'GET',
+                'path': 'greetings/{gid}',
+                'rosyMethod': 'MyApi.greetings_get',
+                'request': {
+                    'body': 'empty',
+                    'parameters': {'gid': {'enum': {'X': {'backendValue': 'X'}},
+                                           'type': 'string'
+                                          }
+                                  }
+                    }
+                }
+            }
+        })
+
+    request = test_utils.build_request(
+        '/_ah/api/guestbook_api/v1/greetings/invalid_enum')
+    self.prepare_dispatch(config)
+    self.mox.ReplayAll()
+    response = self.server.dispatch(request, self.start_response)
+    self.mox.VerifyAll()
+
+    logging.warning('Config %s', self.server.config_manager.configs)
+
+    self.assertEqual(self.response_status, '400')
+    body = ''.join(response)
+    body_json = json.loads(body)
+    self.assertEqual(1, len(body_json['error']['errors']))
+    self.assertEqual('gid', body_json['error']['errors'][0]['location'])
+    self.assertEqual('invalidParameter',
+                     body_json['error']['errors'][0]['reason'])
 
   def test_dispatch_json_rpc(self):
     config = json.dumps({
@@ -448,44 +487,6 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
                             ('Content-Length', '%d' % len(body))],
                            body)
 
-  def test_transform_rest_request(self):
-    """Verify body is updated with path params."""
-    orig_request = test_utils.build_request('/_ah/api/test',
-                                            '{"sample": "body"}')
-    new_request = self.server.transform_rest_request(orig_request, {'gid': 'X'})
-    self.assertEqual({'sample': 'body', 'gid': 'X'},
-                     json.loads(new_request.body))
-
-  def test_transform_rest_request_with_query_params(self):
-    """Verify body is updated with query parameters."""
-    orig_request = test_utils.build_request('/_ah/api/test?foo=bar',
-                                            '{"sample": "body"}')
-    new_request = self.server.transform_rest_request(orig_request, {})
-    self.assertEqual({'sample': 'body', 'foo': ['bar']},
-                     json.loads(new_request.body))
-
-  def test_transform_request(self):
-    """Verify path is method name and Content length is updated."""
-    request = test_utils.build_request('/_ah/api/test/{gid}',
-                                       '{"sample": "body"}')
-    method_config = {'rosyMethod': 'GuestbookApi.greetings_get'}
-
-    new_request = self.server.transform_request(request, {'gid': 'X'},
-                                                method_config)
-    self.assertEqual({'sample': 'body', 'gid': 'X'},
-                     json.loads(new_request.body))
-    self.assertEqual('GuestbookApi.greetings_get', new_request.path)
-
-  def test_transform_json_rpc_request(self):
-    """Verify request_id is extracted and body is scoped to body.params."""
-    orig_request = test_utils.build_request(
-        '/_ah/api/rpc', '{"params": {"sample": "body"}, "id": "42"}')
-
-    new_request = self.server.transform_jsonrpc_request(orig_request)
-    self.assertEqual({'sample': 'body'},
-                     json.loads(new_request.body))
-    self.assertEqual('42', new_request.request_id)
-
   def test_transform_rest_response(self):
     """Verify the response is reformatted correctly."""
     orig_response = '{"sample": "test", "value1": {"value2": 2}}'
@@ -550,6 +551,390 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
     self.assertEqual(True, self.server.verify_response(response, 200, None))
     # Specified content type not matched
     self.assertEqual(False, self.server.verify_response(response, 200, 'a'))
+
+
+class TransformRequestTests(unittest.TestCase):
+  """Tests that only hit the request transformation functions."""
+
+  def setUp(self):
+    """Set up a dev Endpoints server."""
+    super(TransformRequestTests, self).setUp()
+    self.mox = mox.Mox()
+    self.config_manager = api_config_manager.ApiConfigManager()
+    self.mock_dispatcher = self.mox.CreateMock(dispatcher.Dispatcher)
+    self.server = endpoints_server.EndpointsDispatcher(self.mock_dispatcher,
+                                                       self.config_manager)
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  def test_transform_request(self):
+    """Verify path is method name after a request is transformed."""
+    request = test_utils.build_request('/_ah/api/test/{gid}',
+                                       '{"sample": "body"}')
+    method_config = {'rosyMethod': 'GuestbookApi.greetings_get'}
+
+    new_request = self.server.transform_request(request, {'gid': 'X'},
+                                                method_config)
+    self.assertEqual({'sample': 'body', 'gid': 'X'},
+                     json.loads(new_request.body))
+    self.assertEqual('GuestbookApi.greetings_get', new_request.path)
+
+  def test_transform_json_rpc_request(self):
+    """Verify request_id is extracted and body is scoped to body.params."""
+    orig_request = test_utils.build_request(
+        '/_ah/api/rpc', '{"params": {"sample": "body"}, "id": "42"}')
+
+    new_request = self.server.transform_jsonrpc_request(orig_request)
+    self.assertEqual({'sample': 'body'},
+                     json.loads(new_request.body))
+    self.assertEqual('42', new_request.request_id)
+
+  def _try_transform_rest_request(self, path_parameters, query_parameters,
+                                  body_json, expected, method_params=None):
+    """Takes body, query and path values from a rest request for testing.
+
+    Args:
+      path_parameters: A dict containing the parameters parsed from the path.
+        For example if the request came through /a/b for the template /a/{x}
+        then we'd have {'x': 'b'}.
+      query_parameters: A dict containing the parameters parsed from the query
+        string.
+      body_json: A dict with the JSON object from the request body.
+      expected: A dict with the expected JSON body after being transformed.
+      method_params: Optional dictionary specifying the parameter configuration
+        associated with the method.
+    """
+    method_params = method_params or {}
+
+    test_request = test_utils.build_request('/_ah/api/test')
+    test_request.body_json = body_json
+    test_request.body = json.dumps(body_json)
+    test_request.parameters = query_parameters
+
+    transformed_request = self.server.transform_rest_request(test_request,
+                                                             path_parameters,
+                                                             method_params)
+
+    self.assertEqual(expected, transformed_request.body_json)
+    self.assertEqual(transformed_request.body_json,
+                     json.loads(transformed_request.body))
+
+  # Path only
+
+  def test_transform_rest_request_path_only(self):
+    path_parameters = {'gid': 'X'}
+    query_parameters = {}
+    body_object = {}
+    expected = {'gid': 'X'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_only_message_field(self):
+    path_parameters = {'gid.val': 'X'}
+    query_parameters = {}
+    body_object = {}
+    expected = {'gid': {'val': 'X'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_only_enum(self):
+    query_parameters = {}
+    body_object = {}
+    enum_descriptor = {'X': {'backendValue': 'X'}}
+    method_params = {'gid': {'enum': enum_descriptor}}
+
+    # Good enum
+    path_parameters = {'gid': 'X'}
+    expected = {'gid': 'X'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+    # Bad enum
+    path_parameters = {'gid': 'Y'}
+    expected = {'gid': 'Y'}
+    try:
+      self._try_transform_rest_request(path_parameters, query_parameters,
+                                       body_object, expected,
+                                       method_params=method_params)
+      self.fail('Bad enum should have caused failure.')
+    except errors.EnumRejectionError as error:
+      self.assertEqual(error.parameter_name, 'gid')
+
+  # Query only
+
+  def test_transform_rest_request_query_only(self):
+    path_parameters = {}
+    query_parameters = {'foo': ['bar']}
+    body_object = {}
+    expected = {'foo': 'bar'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_only_message_field(self):
+    path_parameters = {}
+    query_parameters = {'gid.val': ['X']}
+    body_object = {}
+    expected = {'gid': {'val': 'X'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_only_multiple_values_not_repeated(self):
+    path_parameters = {}
+    query_parameters = {'foo': ['bar', 'baz']}
+    body_object = {}
+    expected = {'foo': 'bar'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_only_multiple_values_repeated(self):
+    path_parameters = {}
+    query_parameters = {'foo': ['bar', 'baz']}
+    body_object = {}
+    method_params = {'foo': {'repeated': True}}
+    expected = {'foo': ['bar', 'baz']}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+  def test_transform_rest_request_query_only_enum(self):
+    path_parameters = {}
+    body_object = {}
+    enum_descriptor = {'X': {'backendValue': 'X'}}
+    method_params = {'gid': {'enum': enum_descriptor}}
+
+    # Good enum
+    query_parameters = {'gid': ['X']}
+    expected = {'gid': 'X'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+    # Bad enum
+    query_parameters = {'gid': ['Y']}
+    expected = {'gid': 'Y'}
+    try:
+      self._try_transform_rest_request(path_parameters, query_parameters,
+                                       body_object, expected,
+                                       method_params=method_params)
+      self.fail('Bad enum should have caused failure.')
+    except errors.EnumRejectionError as error:
+      self.assertEqual(error.parameter_name, 'gid')
+
+  def test_transform_rest_request_query_only_repeated_enum(self):
+    path_parameters = {}
+    body_object = {}
+    enum_descriptor = {'X': {'backendValue': 'X'}, 'Y': {'backendValue': 'Y'}}
+    method_params = {'gid': {'enum': enum_descriptor, 'repeated': True}}
+
+    # Good enum
+    query_parameters = {'gid': ['X', 'Y']}
+    expected = {'gid': ['X', 'Y']}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+    # Bad enum
+    query_parameters = {'gid': ['X', 'Y', 'Z']}
+    expected = {'gid': ['X', 'Y', 'Z']}
+    try:
+      self._try_transform_rest_request(path_parameters, query_parameters,
+                                       body_object, expected,
+                                       method_params=method_params)
+      self.fail('Bad enum should have caused failure.')
+    except errors.EnumRejectionError as error:
+      self.assertEqual(error.parameter_name, 'gid[2]')
+
+  # Body only
+
+  def test_transform_rest_request_body_only(self):
+    path_parameters = {}
+    query_parameters = {}
+    body_object = {'sample': 'body'}
+    expected = {'sample': 'body'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_body_only_any_old_value(self):
+    path_parameters = {}
+    query_parameters = {}
+    body_object = {'sample': {'body': ['can', 'be', 'anything']}}
+    expected = {'sample': {'body': ['can', 'be', 'anything']}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_body_only_message_field(self):
+    path_parameters = {}
+    query_parameters = {}
+    body_object = {'gid': {'val': 'X'}}
+    expected = {'gid': {'val': 'X'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_body_only_enum(self):
+    path_parameters = {}
+    query_parameters = {}
+    enum_descriptor = {'X': {'backendValue': 'X'}}
+    method_params = {'gid': {'enum': enum_descriptor}}
+
+    # Good enum
+    body_object = {'gid': 'X'}
+    expected = {'gid': 'X'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+    # Bad enum
+    body_object = {'gid': 'Y'}
+    expected = {'gid': 'Y'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+  # Path and query only
+
+  def test_transform_rest_request_path_query_no_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'c': ['d']}
+    body_object = {}
+    expected = {'a': 'b', 'c': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_query_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'a': ['d']}
+    body_object = {}
+    expected = {'a': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_query_collision_in_repeated_param(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'a': ['d', 'c']}
+    body_object = {}
+    expected = {'a': ['d', 'c', 'b']}
+    method_params = {'a': {'repeated': True}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+  # Path and body only
+
+  def test_transform_rest_request_path_body_no_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {}
+    body_object = {'c': 'd'}
+    expected = {'a': 'b', 'c': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_body_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {}
+    body_object = {'a': 'd'}
+    expected = {'a': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_body_collision_in_repeated_param(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {}
+    body_object = {'a': ['d']}
+    expected = {'a': ['d']}
+    method_params = {'a': {'repeated': True}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+  def test_transform_rest_request_path_body_message_field_cooperative(self):
+    path_parameters = {'gid.val1': 'X'}
+    query_parameters = {}
+    body_object = {'gid': {'val2': 'Y'}}
+    expected = {'gid': {'val1': 'X', 'val2': 'Y'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_body_message_field_collision(self):
+    path_parameters = {'gid.val': 'X'}
+    query_parameters = {}
+    body_object = {'gid': {'val': 'Y'}}
+    expected = {'gid': {'val': 'Y'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  # Query and body only
+
+  def test_transform_rest_request_query_body_no_collision(self):
+    path_parameters = {}
+    query_parameters = {'a': ['b']}
+    body_object = {'c': 'd'}
+    expected = {'a': 'b', 'c': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_body_collision(self):
+    path_parameters = {}
+    query_parameters = {'a': ['b']}
+    body_object = {'a': 'd'}
+    expected = {'a': 'd'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_body_collision_in_repeated_param(self):
+    path_parameters = {}
+    query_parameters = {'a': ['b']}
+    body_object = {'a': ['d']}
+    expected = {'a': ['d']}
+    method_params = {'a': {'repeated': True}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
+
+  def test_transform_rest_request_query_body_message_field_cooperative(self):
+    path_parameters = {}
+    query_parameters = {'gid.val1': ['X']}
+    body_object = {'gid': {'val2': 'Y'}}
+    expected = {'gid': {'val1': 'X', 'val2': 'Y'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_query_body_message_field_collision(self):
+    path_parameters = {}
+    query_parameters = {'gid.val': ['X']}
+    body_object = {'gid': {'val': 'Y'}}
+    expected = {'gid': {'val': 'Y'}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  # Path, body and query
+
+  def test_transform_rest_request_path_query_body_no_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'c': ['d']}
+    body_object = {'e': 'f'}
+    expected = {'a': 'b', 'c': 'd', 'e': 'f'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_path_query_body_collision(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'a': ['d']}
+    body_object = {'a': 'f'}
+    expected = {'a': 'f'}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected)
+
+  def test_transform_rest_request_unknown_parameters(self):
+    path_parameters = {'a': 'b'}
+    query_parameters = {'c': ['d']}
+    body_object = {'e': 'f'}
+    expected = {'a': 'b', 'c': 'd', 'e': 'f'}
+    method_params = {'X': {}, 'Y': {}}
+    self._try_transform_rest_request(path_parameters, query_parameters,
+                                     body_object, expected,
+                                     method_params=method_params)
 
 if __name__ == '__main__':
   unittest.main()

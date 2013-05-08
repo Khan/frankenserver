@@ -47,6 +47,20 @@ class GenerateStoragePathsTest(unittest.TestCase):
   def tearDown(self):
     self.mox.UnsetStubs()
 
+  @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
+  def test_windows(self):
+    tempfile.gettempdir().AndReturn('/tmp')
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        [os.path.join('/tmp', 'appengine.myapp'),
+         os.path.join('/tmp', 'appengine.myapp.1'),
+         os.path.join('/tmp', 'appengine.myapp.2')],
+        list(itertools.islice(devappserver2._generate_storage_paths('myapp'),
+                              3)))
+    self.mox.VerifyAll()
+
+  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
   def test_working_getuser(self):
     getpass.getuser().AndReturn('johndoe')
     tempfile.gettempdir().AndReturn('/tmp')
@@ -60,6 +74,7 @@ class GenerateStoragePathsTest(unittest.TestCase):
                               3)))
     self.mox.VerifyAll()
 
+  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
   def test_broken_getuser(self):
     getpass.getuser().AndRaise(Exception())
     tempfile.gettempdir().AndReturn('/tmp')

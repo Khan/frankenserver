@@ -373,43 +373,36 @@ class RecordsPool(object):
 
   def flush(self):
     """Flush pool contents."""
-    try:
 
-      buf = _StringWriter()
-      with records.RecordsWriter(buf) as w:
-        for record in self._buffer:
-          w.write(record)
+    buf = _StringWriter()
+    with records.RecordsWriter(buf) as w:
+      for record in self._buffer:
+        w.write(record)
 
-      str_buf = buf.to_string()
-      if not self._exclusive and len(str_buf) > _FILES_API_MAX_SIZE:
+    str_buf = buf.to_string()
+    if not self._exclusive and len(str_buf) > _FILES_API_MAX_SIZE:
 
-        raise errors.Error(
-            "Buffer too big. Can't write more than %s bytes in one request: "
-            "risk of writes interleaving. Got: %s" %
-            (_FILES_API_MAX_SIZE, len(str_buf)))
+      raise errors.Error(
+          "Buffer too big. Can't write more than %s bytes in one request: "
+          "risk of writes interleaving. Got: %s" %
+          (_FILES_API_MAX_SIZE, len(str_buf)))
 
 
-      start_time = time.time()
-      with files.open(self._filename, "a", exclusive_lock=self._exclusive) as f:
-        f.write(str_buf)
-        if self._ctx:
-          operation.counters.Increment(
-              COUNTER_IO_WRITE_BYTES, len(str_buf))(self._ctx)
+    start_time = time.time()
+    with files.open(self._filename, "a", exclusive_lock=self._exclusive) as f:
+      f.write(str_buf)
       if self._ctx:
         operation.counters.Increment(
-            COUNTER_IO_WRITE_MSEC,
-            int((time.time() - start_time) * 1000))(self._ctx)
+            COUNTER_IO_WRITE_BYTES, len(str_buf))(self._ctx)
+    if self._ctx:
+      operation.counters.Increment(
+          COUNTER_IO_WRITE_MSEC,
+          int((time.time() - start_time) * 1000))(self._ctx)
 
 
-      self._buffer = []
-      self._size = 0
-      gc.collect()
-    except (files.UnknownError), e:
-      logging.warning("UnknownError: %s", e)
-      raise errors.RetrySliceError()
-    except (files.ExistenceError), e:
-      logging.warning("ExistenceError: %s", e)
-      raise errors.FailJobError("Existence error: %s" % (e))
+    self._buffer = []
+    self._size = 0
+    gc.collect()
 
   def __enter__(self):
     return self
@@ -526,12 +519,8 @@ class FileOutputWriterBase(OutputWriter):
     """
     output_sharding = cls._get_output_sharding(mapreduce_state=mapreduce_state)
     if output_sharding == cls.OUTPUT_SHARDING_INPUT_SHARDS:
-      shard_count = mapreduce_state.mapreduce_spec.mapper.shard_count
 
-
-      mapreduce_state.writer_state = cls._State(
-          [None] * shard_count,
-          [None] * shard_count).to_json()
+      mapreduce_state.writer_state = cls._State([], []).to_json()
       return
 
     mapper_spec = mapreduce_state.mapreduce_spec.mapper
@@ -690,12 +679,24 @@ class FileOutputWriterBase(OutputWriter):
     if output_sharding == self.OUTPUT_SHARDING_INPUT_SHARDS:
       filesystem = self._get_filesystem(mapreduce_spec.mapper)
       state = self._State.from_json(shard_state.writer_state)
-      files.finalize(state.filenames[0])
+      writable_filename = state.filenames[0]
+      files.finalize(writable_filename)
       finalized_filenames = [self._get_finalized_filename(
           filesystem, state.filenames[0], state.request_filenames[0])]
+
       state.filenames = finalized_filenames
       state.request_filenames = []
       shard_state.writer_state = state.to_json()
+
+
+
+      if filesystem == "blobstore":
+        logging.info(
+            "Shard %s-%s finalized blobstore file %s.",
+            mapreduce_spec.mapreduce_id,
+            shard_state.shard_number,
+            writable_filename)
+        logging.info("Finalized name is %s.", finalized_filenames[0])
 
   @classmethod
   def get_filenames(cls, mapreduce_state):

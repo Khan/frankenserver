@@ -69,12 +69,17 @@ _LOG_LEVEL_TO_PYTHON_CONSTANT = {
 
 def _generate_storage_paths(app_id):
   """Yield an infinite sequence of possible storage paths."""
-  try:
-    user_name = getpass.getuser()
-  except Exception:  # The possible set of exceptions is not documented.
+  if sys.platform == 'win32':
+    # The temp directory is per-user on Windows so there is no reason to add
+    # the username to the generated directory name.
     user_format = ''
   else:
-    user_format = '.%s' % user_name
+    try:
+      user_name = getpass.getuser()
+    except Exception:  # The possible set of exceptions is not documented.
+      user_format = ''
+    else:
+      user_format = '.%s' % user_name
 
   tempdir = tempfile.gettempdir()
   yield os.path.join(tempdir, 'appengine.%s%s' % (app_id, user_format))
@@ -187,10 +192,13 @@ def create_command_line_parser():
       help='lowest port to which application servers should bind')
   common_group.add_argument(
       '--admin_host', default='localhost',
-        help='host name to which the admin server should bind')
+      help='host name to which the admin server should bind')
   common_group.add_argument(
       '--admin_port', type=PortParser(), default=8000,
       help='port to which the admin server should bind')
+  common_group.add_argument(
+      '--auth_domain', default='gmail.com',
+      help='name of the authorization domain to use')
   common_group.add_argument(
       '--storage_path', metavar='PATH',
       type=os.path.expanduser,
@@ -216,7 +224,16 @@ def create_command_line_parser():
       help='use mtime polling for detecting source code changes - useful if '
       'modifying code from a remote machine using a distributed file system')
 
-
+  # PHP
+  php_group = parser.add_argument_group('PHP')
+  php_group.add_argument('--php_executable_path', metavar='PATH',
+                         help='path to the PHP executable',
+                         default='php-cgi')
+  php_group.add_argument('--php_remote_debugging',
+                         action=boolean_action.BooleanAction,
+                         const=True,
+                         default=False,
+                         help='enable XDebug remote debugging')
 
   # Python
   python_group = parser.add_argument_group('Python')
@@ -384,6 +401,13 @@ def create_command_line_parser():
   # Misc
   misc_group = parser.add_argument_group('Miscellaneous')
   misc_group.add_argument(
+      '--allow_skipped_files',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help='make files specified in the app.yaml "skip_files" or "static"'
+      'handles readable by the application.')
+  misc_group.add_argument(
       '--api_port', type=PortParser(), default=0,
       help='port to which the server for API calls should bind')
   misc_group.add_argument(
@@ -533,13 +557,16 @@ class DevelopmentServer(object):
         configuration,
         options.host,
         options.port,
+        options.auth_domain,
         _LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
-
+        options.php_executable_path,
+        options.php_remote_debugging,
         python_config,
         cloud_sql_config,
         server_to_max_instances,
         options.use_mtime_file_watcher,
-        options.automatic_restart)
+        options.automatic_restart,
+        options.allow_skipped_files)
 
     request_data = wsgi_request_info.WSGIRequestInfo(self._dispatcher)
 

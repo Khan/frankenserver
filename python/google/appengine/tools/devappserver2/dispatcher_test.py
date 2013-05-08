@@ -91,8 +91,10 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         host,
         balanced_port,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -101,7 +103,8 @@ class AutoScalingServerFacade(server.AutoScalingServer):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=False)
 
   def start(self):
     pass
@@ -128,8 +131,10 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         host,
         balanced_port,
         api_port=8080,
+        auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-
+        php_executable_path='/usr/bin/php-cgi',
+        enable_php_remote_debugging=False,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -138,7 +143,8 @@ class ManualScalingServerFacade(server.ManualScalingServer):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=False)
 
   def start(self):
     pass
@@ -167,16 +173,20 @@ class DispatcherTest(unittest.TestCase):
     api_server.test_setup_stubs()
     self.dispatch_config = DispatchConfigurationStub()
     app_config = ApplicationConfigurationStub(SERVER_CONFIGURATIONS)
-    self.dispatcher = dispatcher.Dispatcher(app_config,
-                                            'localhost',
-                                            1,
-                                            1,
-
-                                            python_config=None,
-                                            cloud_sql_config=None,
-                                            server_to_max_instances={},
-                                            use_mtime_file_watcher=False,
-                                            automatic_restart=True)
+    self.dispatcher = dispatcher.Dispatcher(
+        app_config,
+        'localhost',
+        1,
+        'gmail.com',
+        1,
+        'php_executable_path',
+        'enable_php_remote_debugging',
+        python_config=None,
+        cloud_sql_config=None,
+        server_to_max_instances={},
+        use_mtime_file_watcher=False,
+        automatic_restart=True,
+        allow_skipped_files=False)
     self.server1 = AutoScalingServerFacade(app_config.servers[0],
                                            balanced_port=1,
                                            host='localhost')

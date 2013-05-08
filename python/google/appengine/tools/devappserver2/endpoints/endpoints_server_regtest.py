@@ -93,5 +93,47 @@ class EndpointsServerRegtest(regtest_utils.BaseTestCase):
     self.assertEqual([{'result': {'text': 'MyName 23'},
                        'id': 'gapiRpc'}], response_json)
 
+  def test_echo_datetime_message(self):
+    """Test sending and receiving a datetime."""
+    body = json.dumps({'milliseconds': 5000, 'time_zone_offset': 60})
+    send_headers = {'content-type': 'application/json'}
+    status, content, headers = self.fetch_url(
+        'default', 'POST', '/_ah/api/test_service/v1/echo_datetime_message',
+        body, send_headers)
+    self.assertEqual(200, status)
+    self.assertEqual('application/json', headers['Content-Type'])
+
+    response_json = json.loads(content)
+    self.assertEqual({'milliseconds': 5000, 'time_zone_offset': 60},
+                     response_json)
+
+  def test_echo_datetime_field(self):
+    """Test sending and receiving a message that includes a datetime."""
+    body_json = {'datetime_value': '2013-03-13T15:29:37.883000+08:00'}
+    body = json.dumps(body_json)
+    send_headers = {'content-type': 'application/json'}
+    status, content, headers = self.fetch_url(
+        'default', 'POST', '/_ah/api/test_service/v1/echo_datetime_field',
+        body, send_headers)
+    self.assertEqual(200, status)
+    self.assertEqual('application/json', headers['Content-Type'])
+
+    response_json = json.loads(content)
+    self.assertEqual(body_json, response_json)
+
+  def test_discovery_config(self):
+    """Test that the discovery configuration looks right."""
+    status, content, headers = self.fetch_url(
+        'default', 'GET', '/_ah/api/discovery/v1/apis/test_service/v1/rest')
+    self.assertEqual(200, status)
+    self.assertEqual('application/json; charset=UTF-8', headers['Content-Type'])
+
+    response_json = json.loads(content)
+    self.assertRegexpMatches(
+        response_json['baseUrl'],
+        r'^http://localhost(:\d+)?/_ah/api/test_service/v1/$')
+    self.assertRegexpMatches(response_json['rootUrl'],
+                             r'^http://localhost(:\d+)?/_ah/api/$')
+
 if __name__ == '__main__':
   googletest.main()

@@ -54,6 +54,7 @@ from google.appengine.ext.endpoints import users_id_token
 
 __all__ = [
     'API_EXPLORER_CLIENT_ID',
+    'ApiAuth',
     'ApiConfigGenerator',
     'ApiConfigurationError',
     'CacheControl',
@@ -215,6 +216,16 @@ class _ApiInfo(object):
     return self.__common_info.allowed_client_ids
 
   @property
+  def canonical_name(self):
+    """Canonical name for the API."""
+    return self.__common_info.canonical_name
+
+  @property
+  def auth(self):
+    """Authentication configuration information for this API."""
+    return self.__common_info.auth
+
+  @property
   def resource_name(self):
     """Resource name for the class this decorates."""
     return self.__resource_name
@@ -235,7 +246,8 @@ class _ApiDecorator(object):
 
   @util.positional(3)
   def __init__(self, name, version, description=None, hostname=None,
-               audiences=None, scopes=None, allowed_client_ids=None):
+               audiences=None, scopes=None, allowed_client_ids=None,
+               canonical_name=None, auth=None):
     """Constructor for _ApiDecorator.
 
     Args:
@@ -246,11 +258,16 @@ class _ApiDecorator(object):
       audiences: list of strings, Acceptable audiences for authentication.
       scopes: list of strings, Acceptable scopes for authentication.
       allowed_client_ids: list of strings, Acceptable client IDs for auth.
+      canonical_name: string, the canonical name for the API, a more human
+        readable version of the name.
+      auth: ApiAuth instance, the authentication configuration information
+        for this API.
     """
     self.__common_info = self.__ApiCommonInfo(
         name, version, description=description, hostname=hostname,
         audiences=audiences, scopes=scopes,
-        allowed_client_ids=allowed_client_ids)
+        allowed_client_ids=allowed_client_ids,
+        canonical_name=canonical_name, auth=auth)
 
   class __ApiCommonInfo(object):
     """API information that's common among all classes that implement an API.
@@ -270,7 +287,8 @@ class _ApiDecorator(object):
 
     @util.positional(3)
     def __init__(self, name, version, description=None, hostname=None,
-                 audiences=None, scopes=None, allowed_client_ids=None):
+                 audiences=None, scopes=None, allowed_client_ids=None,
+                 canonical_name=None, auth=None):
       """Constructor for _ApiCommonInfo.
 
       Args:
@@ -281,6 +299,10 @@ class _ApiDecorator(object):
         audiences: list of strings, Acceptable audiences for authentication.
         scopes: list of strings, Acceptable scopes for authentication.
         allowed_client_ids: list of strings, Acceptable client IDs for auth.
+        canonical_name: string, the canonical name for the API, a more human
+          readable version of the name.
+        auth: ApiAuth instance, the authentication configuration information
+          for this API.
       """
       _CheckType(name, basestring, 'name', allow_none=False)
       _CheckType(version, basestring, 'version', allow_none=False)
@@ -289,11 +311,13 @@ class _ApiDecorator(object):
       _CheckListType(audiences, basestring, 'audiences')
       _CheckListType(scopes, basestring, 'scopes')
       _CheckListType(allowed_client_ids, basestring, 'allowed_client_ids')
+      _CheckType(canonical_name, basestring, 'canonical_name')
+      _CheckType(auth, ApiAuth, 'auth')
 
       if hostname is None:
         hostname = app_identity.get_default_version_hostname()
-      if audiences is None and hostname is not None:
-        audiences = [hostname]
+      if audiences is None:
+        audiences = []
       if scopes is None:
         scopes = [EMAIL_SCOPE]
       if allowed_client_ids is None:
@@ -306,6 +330,8 @@ class _ApiDecorator(object):
       self.__audiences = audiences
       self.__scopes = scopes
       self.__allowed_client_ids = allowed_client_ids
+      self.__canonical_name = canonical_name
+      self.__auth = auth
 
     @property
     def name(self):
@@ -341,6 +367,16 @@ class _ApiDecorator(object):
     def allowed_client_ids(self):
       """List of client IDs accepted by default for the API."""
       return self.__allowed_client_ids
+
+    @property
+    def canonical_name(self):
+      """Canonical name for the API."""
+      return self.__canonical_name
+
+    @property
+    def auth(self):
+      """Authentication configuration for this API."""
+      return self.__auth
 
   def __call__(self, api_class):
     """Decorator for ProtoRPC class that configures Google's API server.
@@ -394,9 +430,35 @@ class _ApiDecorator(object):
     return apiserving_api_decorator
 
 
+class ApiAuth(object):
+  """Optional authorization configuration information for an API."""
+
+  def __init__(self, allow_cookie_auth=None):
+    """Constructor for ApiAuth, authentication information for an API.
+
+    Args:
+      allow_cookie_auth: boolean, whether cooking auth is allowed. By
+        default, API methods do not allow cookie authentication, and
+        require the use of OAuth2 or ID tokens. Setting this field to
+        True will allow cookies to be used to access the API, with
+        potentially dangerous results. Please be very cautious in enabling
+        this setting, and make sure to require appropriate XSRF tokens to
+        protect your API.
+    """
+    _CheckType(allow_cookie_auth, bool, 'allow_cookie_auth')
+
+    self.__allow_cookie_auth = allow_cookie_auth
+
+  @property
+  def allow_cookie_auth(self):
+    """Whether cookie authentication is allowed for this API."""
+    return self.__allow_cookie_auth
+
+
 @util.positional(2)
 def api(name, version, description=None, hostname=None, audiences=None,
-        scopes=None, allowed_client_ids=None):
+        scopes=None, allowed_client_ids=None, canonical_name=None,
+        auth=None):
   """Decorate a ProtoRPC Service class for use by the framework above.
 
   This decorator can be used to specify an API name, version, description, and
@@ -433,6 +495,10 @@ def api(name, version, description=None, hostname=None, audiences=None,
     audiences: list of strings, Acceptable audiences for authentication.
     scopes: list of strings, Acceptable scopes for authentication.
     allowed_client_ids: list of strings, Acceptable client IDs for auth.
+    canonical_name: string, the canonical name for the API, a more human
+      readable version of the name.
+    auth: ApiAuth instance, the authentication configuration information
+      for this API.
 
   Returns:
     Class decorated with api_info attribute, an instance of ApiInfo.
@@ -440,7 +506,8 @@ def api(name, version, description=None, hostname=None, audiences=None,
 
   return _ApiDecorator(name, version, description=description,
                        hostname=hostname, audiences=audiences, scopes=scopes,
-                       allowed_client_ids=allowed_client_ids)
+                       allowed_client_ids=allowed_client_ids,
+                       canonical_name=canonical_name, auth=auth)
 
 
 class CacheControl(object):
@@ -828,13 +895,13 @@ class ApiConfigGenerator(object):
       return [[field]]
 
     result = []
-    for subfield in sorted(field.type.all_fields(), key=lambda f: f.number):
+    for subfield in sorted(field.message_type.all_fields(),
+                           key=lambda f: f.number):
       subfield_results = self.__field_to_subfields(subfield)
       for subfields_list in subfield_results:
         subfields_list.insert(0, field)
         result.append(subfields_list)
     return result
-
 
 
 
@@ -1300,6 +1367,16 @@ class ApiConfigGenerator(object):
 
     return merged_api_info
 
+  def __auth_descriptor(self, api_info):
+    if api_info.auth is None:
+      return None
+
+    auth_descriptor = {}
+    if api_info.auth.allow_cookie_auth is not None:
+      auth_descriptor['allowCookieAuth'] = api_info.auth.allow_cookie_auth
+
+    return auth_descriptor
+
   def __api_descriptor(self, services, hostname=None):
     """Builds a description of an API.
 
@@ -1328,6 +1405,10 @@ class ApiConfigGenerator(object):
     if description:
       descriptor['description'] = description
 
+    auth_descriptor = self.__auth_descriptor(merged_api_info)
+    if auth_descriptor:
+      descriptor['auth'] = auth_descriptor
+
     method_map = {}
     method_collision_tracker = {}
 
@@ -1345,14 +1426,13 @@ class ApiConfigGenerator(object):
             protorpc_meth_name, protorpc_meth_info)
 
 
-        method_signature = (method_map[method_id]['httpMethod'], method_id)
-        if method_signature in method_collision_tracker:
+        if method_id in method_collision_tracker:
           raise ApiConfigurationError(
               'Method %s used in multiple classes: %s and %s' %
-              (method_signature, method_collision_tracker[method_signature],
+              (method_id, method_collision_tracker[method_id],
                service.__name__))
         else:
-          method_collision_tracker[method_signature] = service.__name__
+          method_collision_tracker[method_id] = service.__name__
 
     if method_map:
       descriptor['methods'] = method_map
@@ -1372,7 +1452,7 @@ class ApiConfigGenerator(object):
       A dictionary with the default configuration.
     """
     hostname = hostname or api_info.hostname
-    return {
+    defaults = {
         'extends': 'thirdParty.api',
         'root': 'https://%s/_ah/api' % hostname,
         'name': api_info.name,
@@ -1384,6 +1464,9 @@ class ApiConfigGenerator(object):
             'type': 'lily'
         }
     }
+    if api_info.canonical_name:
+      defaults['canonicalName'] = api_info.canonical_name
+    return defaults
 
   def pretty_print_config_to_json(self, services, hostname=None):
     """Description of a protorpc.remote.Service in API format.

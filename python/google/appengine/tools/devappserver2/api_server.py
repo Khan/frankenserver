@@ -61,6 +61,7 @@ from google.appengine.datastore import datastore_stub_util
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
+from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.ext.remote_api import remote_api_services
 from google.appengine.runtime import apiproxy_errors
@@ -256,7 +257,7 @@ def setup_stubs(
     datastore_auto_id_policy: The type of sequence from which the datastore
         stub assigns auto IDs, either datastore_stub_util.SEQUENTIAL or
         datastore_stub_util.SCATTERED.
-    images_host_prefix: The URL prefix (protocol://host:port) to preprend to
+    images_host_prefix: The URL prefix (protocol://host:port) to prepend to
         image urls on calls to images.GetUrlBase.
     logs_path: Path to the file to store the logs data in.
     mail_smtp_host: The SMTP hostname that should be used when sending e-mails.
@@ -327,11 +328,12 @@ def setup_stubs(
 
     logging.warning('Could not initialize images API; you are likely missing '
                     'the Python "PIL" module.')
-    # We register a stub which throws a NotImplementedError in this case.
+    # We register a stub which throws a NotImplementedError for most RPCs.
     from google.appengine.api.images import images_not_implemented_stub
     apiproxy_stub_map.apiproxy.RegisterStub(
         'images',
-        images_not_implemented_stub.ImagesNotImplementedServiceStub())
+        images_not_implemented_stub.ImagesNotImplementedServiceStub(
+            host_prefix=images_host_prefix))
   else:
     apiproxy_stub_map.apiproxy.RegisterStub(
         'images',
@@ -375,9 +377,13 @@ def setup_stubs(
           request_data=request_data))
   apiproxy_stub_map.apiproxy.GetStub('taskqueue').StartBackgroundExecution()
 
+  urlmatchers_to_fetch_functions = []
+  urlmatchers_to_fetch_functions.extend(
+      gcs_dispatcher.URLMATCHERS_TO_FETCH_FUNCTIONS)
   apiproxy_stub_map.apiproxy.RegisterStub(
       'urlfetch',
-      urlfetch_stub.URLFetchServiceStub())
+      urlfetch_stub.URLFetchServiceStub(
+          urlmatchers_to_fetch_functions=urlmatchers_to_fetch_functions))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'user',

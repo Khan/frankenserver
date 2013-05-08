@@ -50,7 +50,7 @@ from google.appengine.tools.devappserver2 import go_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import login
-
+from google.appengine.tools.devappserver2 import php_runtime
 from google.appengine.tools.devappserver2 import python_runtime
 from google.appengine.tools.devappserver2 import request_rewriter
 from google.appengine.tools.devappserver2 import runtime_config_pb2
@@ -159,7 +159,11 @@ class Server(object):
           request_data=self._request_data,
           runtime_config_getter=self._get_runtime_config,
           server_configuration=server_configuration)
-
+    elif server_configuration.runtime == 'php':
+      return php_runtime.PHPRuntimeInstanceFactory(
+          request_data=self._request_data,
+          runtime_config_getter=self._get_runtime_config,
+          server_configuration=server_configuration)
     else:
       assert 0, 'unknown runtime %r' % server_configuration.runtime
 
@@ -242,12 +246,14 @@ class Server(object):
     runtime_config.threadsafe = self._server_configuration.threadsafe or False
     runtime_config.application_root = (
         self._server_configuration.application_root)
-    runtime_config.skip_files = str(self._server_configuration.skip_files)
-    runtime_config.static_files = _static_files_regex_from_handlers(
-        self._server_configuration.handlers)
+    if not self._allow_skipped_files:
+      runtime_config.skip_files = str(self._server_configuration.skip_files)
+      runtime_config.static_files = _static_files_regex_from_handlers(
+          self._server_configuration.handlers)
     runtime_config.api_port = self._api_port
     runtime_config.stderr_log_level = self._runtime_stderr_loglevel
     runtime_config.datacenter = 'us1'
+    runtime_config.auth_domain = self._auth_domain
 
     for library in self._server_configuration.normalized_libraries:
       runtime_config.libraries.add(name=library.name, version=library.version)
@@ -258,7 +264,10 @@ class Server(object):
     if self._cloud_sql_config:
       runtime_config.cloud_sql_config.CopyFrom(self._cloud_sql_config)
 
-
+    if self._server_configuration.runtime == 'php':
+      runtime_config.php_config.php_executable_path = self._php_executable_path
+      runtime_config.php_config.enable_debugger = (
+          self._enable_php_remote_debugging)
     if (self._python_config and
         self._server_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
@@ -319,8 +328,10 @@ class Server(object):
                host,
                balanced_port,
                api_port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -329,7 +340,8 @@ class Server(object):
                dispatcher,
                max_instances,
                use_mtime_file_watcher,
-               automatic_restarts):
+               automatic_restarts,
+               allow_skipped_files):
     """Initializer for Server.
 
     Args:
@@ -340,10 +352,15 @@ class Server(object):
       balanced_port: An int specifying the port where the balanced server for
           the pool should listen.
       api_port: The port that APIServer listens for RPC requests on.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -363,17 +380,25 @@ class Server(object):
           current platform.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     self._server_configuration = server_configuration
     self._name = server_configuration.server_name
     self._host = host
     self._api_port = api_port
+    self._auth_domain = auth_domain
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._balanced_port = balanced_port
-
+    self._php_executable_path = php_executable_path
+    self._enable_php_remote_debugging = enable_php_remote_debugging
     self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = request_data
+    # _create_instance_factory() transitively calls _get_runtime_config, which
+    # uses self._allow_skipped_files.
+    self._allow_skipped_files = allow_skipped_files
     self._instance_factory = self._create_instance_factory(
         self._server_configuration)
     self._dispatcher = dispatcher
@@ -387,7 +412,6 @@ class Server(object):
           self._use_mtime_file_watcher)
     else:
       self._watcher = None
-
     self._handler_lock = threading.Lock()
     self._handlers = self._create_url_handlers()
     self._default_version_port = default_version_port
@@ -703,15 +727,18 @@ class Server(object):
                                       self._host,
                                       self._balanced_port,
                                       self._api_port,
+                                      self._auth_domain,
                                       self._runtime_stderr_loglevel,
-
+                                      self._php_executable_path,
+                                      self._enable_php_remote_debugging,
                                       self._python_config,
                                       self._cloud_sql_config,
                                       self._default_version_port,
                                       self._port_registry,
                                       self._request_data,
                                       self._dispatcher,
-                                      self._use_mtime_file_watcher)
+                                      self._use_mtime_file_watcher,
+                                      self._allow_skipped_files)
     else:
       raise NotImplementedError('runtime does not support interactive commands')
 
@@ -802,8 +829,10 @@ class AutoScalingServer(Server):
                host,
                balanced_port,
                api_port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -812,7 +841,8 @@ class AutoScalingServer(Server):
                dispatcher,
                max_instances,
                use_mtime_file_watcher,
-               automatic_restarts):
+               automatic_restarts,
+               allow_skipped_files):
     """Initializer for AutoScalingServer.
 
     Args:
@@ -823,10 +853,15 @@ class AutoScalingServer(Server):
       balanced_port: An int specifying the port where the balanced server for
           the pool should listen.
       api_port: The port that APIServer listens for RPC requests on.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -846,13 +881,18 @@ class AutoScalingServer(Server):
           current platform.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     super(AutoScalingServer, self).__init__(server_configuration,
                                             host,
                                             balanced_port,
                                             api_port,
+                                            auth_domain,
                                             runtime_stderr_loglevel,
-
+                                            php_executable_path,
+                                            enable_php_remote_debugging,
                                             python_config,
                                             cloud_sql_config,
                                             default_version_port,
@@ -861,7 +901,8 @@ class AutoScalingServer(Server):
                                             dispatcher,
                                             max_instances,
                                             use_mtime_file_watcher,
-                                            automatic_restarts)
+                                            automatic_restarts,
+                                            allow_skipped_files)
 
     self._process_automatic_scaling(
         self._server_configuration.automatic_scaling)
@@ -1220,8 +1261,10 @@ class ManualScalingServer(Server):
                host,
                balanced_port,
                api_port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -1230,7 +1273,8 @@ class ManualScalingServer(Server):
                dispatcher,
                max_instances,
                use_mtime_file_watcher,
-               automatic_restarts):
+               automatic_restarts,
+               allow_skipped_files):
     """Initializer for ManualScalingServer.
 
     Args:
@@ -1241,10 +1285,15 @@ class ManualScalingServer(Server):
       balanced_port: An int specifying the port where the balanced server for
           the pool should listen.
       api_port: The port that APIServer listens for RPC requests on.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -1264,13 +1313,18 @@ class ManualScalingServer(Server):
           current platform.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     super(ManualScalingServer, self).__init__(server_configuration,
                                               host,
                                               balanced_port,
                                               api_port,
+                                              auth_domain,
                                               runtime_stderr_loglevel,
-
+                                              php_executable_path,
+                                              enable_php_remote_debugging,
                                               python_config,
                                               cloud_sql_config,
                                               default_version_port,
@@ -1279,7 +1333,8 @@ class ManualScalingServer(Server):
                                               dispatcher,
                                               max_instances,
                                               use_mtime_file_watcher,
-                                              automatic_restarts)
+                                              automatic_restarts,
+                                              allow_skipped_files)
 
     self._process_manual_scaling(server_configuration.manual_scaling)
 
@@ -1702,8 +1757,10 @@ class BasicScalingServer(Server):
                host,
                balanced_port,
                api_port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -1712,7 +1769,8 @@ class BasicScalingServer(Server):
                dispatcher,
                max_instances,
                use_mtime_file_watcher,
-               automatic_restarts):
+               automatic_restarts,
+               allow_skipped_files):
     """Initializer for BasicScalingServer.
 
     Args:
@@ -1723,10 +1781,15 @@ class BasicScalingServer(Server):
       balanced_port: An int specifying the port where the balanced server for
           the pool should listen.
       api_port: The port that APIServer listens for RPC requests on.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -1746,13 +1809,18 @@ class BasicScalingServer(Server):
           current platform.
       automatic_restarts: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     super(BasicScalingServer, self).__init__(server_configuration,
                                              host,
                                              balanced_port,
                                              api_port,
+                                             auth_domain,
                                              runtime_stderr_loglevel,
-
+                                             php_executable_path,
+                                             enable_php_remote_debugging,
                                              python_config,
                                              cloud_sql_config,
                                              default_version_port,
@@ -1761,7 +1829,8 @@ class BasicScalingServer(Server):
                                              dispatcher,
                                              max_instances,
                                              use_mtime_file_watcher,
-                                             automatic_restarts)
+                                             automatic_restarts,
+                                             allow_skipped_files)
     self._process_basic_scaling(server_configuration.basic_scaling)
 
     self._instances = []  # Protected by self._condition.
@@ -2110,15 +2179,18 @@ class InteractiveCommandServer(Server):
                host,
                balanced_port,
                api_port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                default_version_port,
                port_registry,
                request_data,
                dispatcher,
-               use_mtime_file_watcher):
+               use_mtime_file_watcher,
+               allow_skipped_files):
     """Initializer for InteractiveCommandServer.
 
     Args:
@@ -2131,10 +2203,15 @@ class InteractiveCommandServer(Server):
           constructing HTTP headers sent to the Instance executing the
           interactive command e.g. "localhost".
       api_port: The port that APIServer listens for RPC requests on.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -2150,14 +2227,19 @@ class InteractiveCommandServer(Server):
       use_mtime_file_watcher: A bool containing whether to use mtime polling to
           monitor file changes even if other options are available on the
           current platform.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     super(InteractiveCommandServer, self).__init__(
         server_configuration,
         host,
         balanced_port,
         api_port,
+        auth_domain,
         runtime_stderr_loglevel,
-
+        php_executable_path,
+        enable_php_remote_debugging,
         python_config,
         cloud_sql_config,
         default_version_port,
@@ -2166,7 +2248,8 @@ class InteractiveCommandServer(Server):
         dispatcher,
         max_instances=1,
         use_mtime_file_watcher=use_mtime_file_watcher,
-        automatic_restarts=True)
+        automatic_restarts=True,
+        allow_skipped_files=allow_skipped_files)
     # Use a single instance so that state is consistent across requests.
     self._inst_lock = threading.Lock()
     self._inst = None

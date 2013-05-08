@@ -62,13 +62,16 @@ class Dispatcher(request_info.Dispatcher):
                configuration,
                host,
                port,
+               auth_domain,
                runtime_stderr_loglevel,
-
+               php_executable_path,
+               enable_php_remote_debugging,
                python_config,
                cloud_sql_config,
                server_to_max_instances,
                use_mtime_file_watcher,
-               automatic_restart):
+               automatic_restart,
+               allow_skipped_files):
     """Initializer for Dispatcher.
 
     Args:
@@ -77,10 +80,15 @@ class Dispatcher(request_info.Dispatcher):
       host: A string containing the host that any HTTP servers should bind to
           e.g. "localhost".
       port: An int specifying the first port where servers should listen.
+      auth_domain: A string containing the auth domain to set in the environment
+          variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-
+      php_executable_path: A string containing the path to PHP execution e.g.
+          "/usr/bin/php-cgi".
+      enable_php_remote_debugging: A boolean indicating whether the PHP
+          interpreter should be started with XDebug remote debugging enabled.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -96,9 +104,13 @@ class Dispatcher(request_info.Dispatcher):
           current platform.
       automatic_restart: If True then instances will be restarted when a
           file or configuration change that effects them is detected.
+      allow_skipped_files: If True then all files in the application's directory
+          are readable, even if they appear in a static handler or "skip_files"
+          directive.
     """
     self._configuration = configuration
-
+    self._php_executable_path = php_executable_path
+    self._enable_php_remote_debugging = enable_php_remote_debugging
     self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = None
@@ -107,6 +119,7 @@ class Dispatcher(request_info.Dispatcher):
     self._server_configurations = {}
     self._host = host
     self._port = port
+    self._auth_domain = auth_domain
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._server_name_to_server = {}
     self._dispatch_server = None
@@ -116,6 +129,7 @@ class Dispatcher(request_info.Dispatcher):
     self._server_to_max_instances = server_to_max_instances or {}
     self._use_mtime_file_watcher = use_mtime_file_watcher
     self._automatic_restart = automatic_restart
+    self._allow_skipped_files = allow_skipped_files
     self._executor = scheduled_executor.ScheduledExecutor(_THREAD_POOL)
     self._port_registry = PortRegistry()
 
@@ -194,8 +208,10 @@ class Dispatcher(request_info.Dispatcher):
                    self._host,
                    port,
                    self._api_port,
+                   self._auth_domain,
                    self._runtime_stderr_loglevel,
-
+                   self._php_executable_path,
+                   self._enable_php_remote_debugging,
                    self._python_config,
                    self._cloud_sql_config,
                    self._port,
@@ -204,7 +220,8 @@ class Dispatcher(request_info.Dispatcher):
                    self,
                    max_instances,
                    self._use_mtime_file_watcher,
-                   self._automatic_restart)
+                   self._automatic_restart,
+                   self._allow_skipped_files)
     if server_configuration.manual_scaling:
       servr = server.ManualScalingServer(*server_args)
     elif server_configuration.basic_scaling:
@@ -265,7 +282,7 @@ class Dispatcher(request_info.Dispatcher):
     try:
       return self._server_name_to_server[servr]
     except KeyError:
-      raise request_info.ServerDoesNotExistError
+      raise request_info.ServerDoesNotExistError(servr)
 
   def get_versions(self, servr):
     """Returns a list of versions for a server.
@@ -282,7 +299,7 @@ class Dispatcher(request_info.Dispatcher):
     if servr in self._server_configurations:
       return [self._server_configurations[servr].major_version]
     else:
-      raise request_info.ServerDoesNotExistError
+      raise request_info.ServerDoesNotExistError(servr)
 
   def get_default_version(self, servr):
     """Returns the default version for a server.
@@ -299,7 +316,7 @@ class Dispatcher(request_info.Dispatcher):
     if servr in self._server_configurations:
       return self._server_configurations[servr].major_version
     else:
-      raise request_info.ServerDoesNotExistError
+      raise request_info.ServerDoesNotExistError(servr)
 
   def add_event(self, runnable, eta, service=None, event_id=None):
     """Add a callable to be run at the specified time.
@@ -334,7 +351,7 @@ class Dispatcher(request_info.Dispatcher):
     if not server_name:
       server_name = 'default'
     if server_name not in self._server_name_to_server:
-      raise request_info.ServerDoesNotExistError()
+      raise request_info.ServerDoesNotExistError(server_name)
     elif (version is not None and
           version != self._server_configurations[server_name].major_version):
       raise request_info.VersionDoesNotExistError()
@@ -560,8 +577,7 @@ class Dispatcher(request_info.Dispatcher):
     if default_address_offset > 0:
       prefix = hostname[:default_address_offset - 1]
       if '.' in prefix:
-        raise request_info.ServerDoesNotExistError(
-            'Server does not exist: %s' % prefix)
+        raise request_info.ServerDoesNotExistError(prefix)
       return self._get_server(prefix, None), None
 
     else:
@@ -572,8 +588,7 @@ class Dispatcher(request_info.Dispatcher):
       try:
         servr, inst = self._port_registry.get(port)
       except KeyError:
-        raise request_info.ServerDoesNotExistError(
-            'No server found at: %s' % hostname)
+        raise request_info.ServerDoesNotExistError(hostname)
     if not servr:
       servr = self._server_for_request(path)
     return servr, inst

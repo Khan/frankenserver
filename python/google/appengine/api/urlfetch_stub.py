@@ -142,14 +142,23 @@ def _IsAllowedPort(port):
 class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of the urlfetch API to be used with apiproxy_stub_map."""
 
-  def __init__(self, service_name='urlfetch'):
+  def __init__(self,
+               service_name='urlfetch',
+               urlmatchers_to_fetch_functions=None):
     """Initializer.
 
     Args:
       service_name: Service name expected for all calls.
+      urlmatchers_to_fetch_functions: A list of two-element tuples.
+        The first element is a urlmatcher predicate function that takes
+        a url and determines a match. The second is a function that
+        can retrieve result for that url. If no match is found, a url is
+        handled by the default _RetrieveURL function.
+        When more than one match is possible, the first match is used.
     """
     super(URLFetchServiceStub, self).__init__(service_name,
                                               max_request_size=MAX_REQUEST_SIZE)
+    self._urlmatchers_to_fetch_functions = urlmatchers_to_fetch_functions or []
 
   def _Dynamic_Fetch(self, request, response):
     """Trivial implementation of URLFetchService::Fetch().
@@ -207,16 +216,32 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
     if request.has_mustvalidateservercertificate():
       validate_certificate = request.mustvalidateservercertificate()
 
-    self._RetrieveURL(request.url(), payload, method,
-                      request.header_list(), request, response,
-                      follow_redirects=request.followredirects(),
-                      deadline=deadline,
-                      validate_certificate=validate_certificate)
+    fetch_function = self._GetFetchFunction(request.url())
+    fetch_function(request.url(), payload, method,
+                   request.header_list(), request, response,
+                   follow_redirects=request.followredirects(),
+                   deadline=deadline,
+                   validate_certificate=validate_certificate)
 
-  def _RetrieveURL(self, url, payload, method, headers, request, response,
+  def _GetFetchFunction(self, url):
+    """Get the fetch function for a url.
+
+    Args:
+      url: A url to fetch from. str.
+
+    Returns:
+      A fetch function for this url.
+    """
+    for urlmatcher, fetch_function in self._urlmatchers_to_fetch_functions:
+      if urlmatcher(url):
+        return fetch_function
+    return self._RetrieveURL
+
+  @staticmethod
+  def _RetrieveURL(url, payload, method, headers, request, response,
                    follow_redirects=True, deadline=_API_CALL_DEADLINE,
                    validate_certificate=_API_CALL_VALIDATE_CERTIFICATE_DEFAULT):
-    """Retrieves a URL.
+    """Retrieves a URL over network.
 
     Args:
       url: String containing the URL to access.
@@ -224,8 +249,10 @@ class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
         If the payload is unicode, we assume it is utf-8.
       method: HTTP method to use (e.g., 'GET')
       headers: List of additional header objects to use for the request.
-      request: Request object from original request.
-      response: Response object to populate with the response data.
+      request: A urlfetch_service_pb.URLFetchRequest proto object from
+          original request.
+      response: A urlfetch_service_pb.URLFetchResponse proto object to
+          populate with the response data.
       follow_redirects: optional setting (defaulting to True) for whether or not
         we should transparently follow redirects (up to MAX_REDIRECTS)
       deadline: Number of seconds to wait for the urlfetch to finish.

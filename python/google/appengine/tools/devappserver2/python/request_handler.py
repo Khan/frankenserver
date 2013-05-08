@@ -57,7 +57,7 @@ class RequestHandler(object):
         'DATACENTER': config.datacenter.encode('ascii'),
         'INSTANCE_ID': config.instance_id.encode('ascii'),
         'APPENGINE_RUNTIME': 'python27',
-        'AUTH_DOMAIN': 'gmail.com',
+        'AUTH_DOMAIN': config.auth_domain.encode('ascii'),
         'HTTPS': 'off',
         'SCRIPT_NAME': '',
         'SERVER_SOFTWARE': http_runtime_constants.SERVER_SOFTWARE,
@@ -147,6 +147,11 @@ class RequestHandler(object):
       environ.update(runtime.CgiDictFromParsedUrl(url))
       sys.stdout = results_io
       try:
+        try:
+          __import__('appengine_config', self._command_globals)
+        except ImportError as e:
+          if 'appengine_config' not in e.message:
+            raise
         compiled_code = compile(code, '<string>', 'exec')
         exec(compiled_code, self._command_globals)
       except:

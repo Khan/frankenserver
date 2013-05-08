@@ -36,6 +36,7 @@ from google.appengine.tools.devappserver2.endpoints import api_config_manager
 from google.appengine.tools.devappserver2.endpoints import api_request
 from google.appengine.tools.devappserver2.endpoints import discovery_api_proxy
 from google.appengine.tools.devappserver2.endpoints import discovery_service
+from google.appengine.tools.devappserver2.endpoints import errors
 from google.appengine.tools.devappserver2.endpoints import util
 
 
@@ -286,7 +287,12 @@ class EndpointsDispatcher(object):
                                                cors_handler=cors_handler)
 
     # Prepare the request for the back end.
-    spi_request = self.transform_request(orig_request, params, method_config)
+    try:
+      spi_request = self.transform_request(orig_request, params, method_config)
+    except errors.RequestRejectionError, rejection_error:
+      cors_handler = EndpointsDispatcher.__CheckCorsHeaders(orig_request)
+      return util.send_wsgi_rejected_response(rejection_error, start_response,
+                                              cors_handler=cors_handler)
 
     # Check if this SPI call is for the Discovery service.  If so, route
     # it to our Discovery handler.
@@ -451,20 +457,151 @@ class EndpointsDispatcher(object):
     if orig_request.is_rpc():
       request = self.transform_jsonrpc_request(orig_request)
     else:
-      request = self.transform_rest_request(orig_request, params)
+      method_params = method_config.get('request', {}).get('parameters', {})
+      request = self.transform_rest_request(orig_request, params, method_params)
     request.path = method_config.get('rosyMethod', '')
     return request
 
-  def transform_rest_request(self, orig_request, params):
+  def _check_enum(self, parameter_name, value, field_parameter):
+    """Checks if the parameter value is valid if an enum.
+
+    If the parameter is not an enum, does nothing. If it is, verifies that
+    its value is valid.
+
+    Args:
+      parameter_name: A string containing the name of the parameter, which is
+        either just a variable name or the name with the index appended. For
+        example 'var' or 'var[2]'.
+      value: A string or list of strings containing the value(s) to be used as
+        enum(s) for the parameter.
+      field_parameter: The dictionary containing information specific to the
+        field in question. This is retrieved from request.parameters in the
+        method config.
+
+    Raises:
+      EnumRejectionError: If the given value is not among the accepted
+        enum values in the field parameter.
+    """
+    if 'enum' not in field_parameter:
+      return
+
+    enum_values = [enum['backendValue']
+                   for enum in field_parameter['enum'].values()
+                   if 'backendValue' in enum]
+    if value not in enum_values:
+      raise errors.EnumRejectionError(parameter_name, value, enum_values)
+
+  def _check_parameter(self, parameter_name, value, field_parameter):
+    """Checks if the parameter value is valid against all parameter rules.
+
+    If the value is a list this will recursively call _check_parameter
+    on the values in the list. Otherwise, it checks all parameter rules for the
+    the current value.
+
+    In the list case, '[index-of-value]' is appended to the parameter name for
+    error reporting purposes.
+
+    Currently only checks if value adheres to enum rule, but more checks may be
+    added.
+
+    Args:
+      parameter_name: A string containing the name of the parameter, which is
+        either just a variable name or the name with the index appended, in the
+        recursive case. For example 'var' or 'var[2]'.
+      value: A string or list of strings containing the value(s) to be used for
+        the parameter.
+      field_parameter: The dictionary containing information specific to the
+        field in question. This is retrieved from request.parameters in the
+        method config.
+    """
+    if isinstance(value, list):
+      for index, element in enumerate(value):
+        parameter_name_index = '%s[%d]' % (parameter_name, index)
+        self._check_parameter(parameter_name_index, element, field_parameter)
+      return
+
+    self._check_enum(parameter_name, value, field_parameter)
+
+  def _add_message_field(self, field_name, value, params):
+    """Converts a . delimitied field name to a message field in parameters.
+
+    This adds the field to the params dict, broken out so that message
+    parameters appear as sub-dicts within the outer param.
+
+    For example:
+      {'a.b.c': ['foo']}
+    becomes:
+      {'a': {'b': {'c': ['foo']}}}
+
+    Args:
+      field_name: A string containing the '.' delimitied name to be converted
+        into a dictionary.
+      value: The value to be set.
+      params: The dictionary holding all the parameters, where the value is
+        eventually set.
+    """
+    if '.' not in field_name:
+      params[field_name] = value
+      return
+
+    root, remaining = field_name.split('.', 1)
+    sub_params = params.setdefault(root, {})
+    self._add_message_field(remaining, value, sub_params)
+
+  def _update_from_body(self, destination, source):
+    """Updates the dictionary for an API payload with the request body.
+
+    The values from the body should override those already in the payload, but
+    for nested fields (message objects) the values can be combined
+    recursively.
+
+    Args:
+      destination: A dictionary containing an API payload parsed from the
+        path and query parameters in a request.
+      source: A dictionary parsed from the body of the request.
+    """
+    for key, value in source.iteritems():
+      destination_value = destination.get(key)
+      if isinstance(value, dict) and isinstance(destination_value, dict):
+        self._update_from_body(destination_value, value)
+      else:
+        destination[key] = value
+
+  def transform_rest_request(self, orig_request, params, method_parameters):
     """Translates a Rest request into an apiserving request.
 
     This makes a copy of orig_request and transforms it to apiserving
     format (moving request parameters to the body).
 
+    The request can receive values from the path, query and body and combine
+    them before sending them along to the SPI server. In cases of collision,
+    objects from the body take precedence over those from the query, which in
+    turn take precedence over those from the path.
+
+    In the case that a repeated value occurs in both the query and the path,
+    those values can be combined, but if that value also occurred in the body,
+    it would override any other values.
+
+    In the case of nested values from message fields, non-colliding values
+    from subfields can be combined. For example, if '?a.c=10' occurs in the
+    query string and "{'a': {'b': 11}}" occurs in the body, then they will be
+    combined as
+
+    {
+      'a': {
+        'b': 11,
+        'c': 10,
+      }
+    }
+
+    before being sent to the SPI server.
+
     Args:
       orig_request: An ApiRequest, the original request from the user.
       params: A dict with URL path parameters extracted by the config_manager
         lookup.
+      method_parameters: A dictionary containing the API configuration for the
+        parameters for the request.
 
     Returns:
       A copy of the current request that's been modified so it can be sent
@@ -472,10 +609,49 @@ class EndpointsDispatcher(object):
       URL.
     """
     request = orig_request.copy()
-    if params:
-      request.body_json.update(params)
+    body_json = {}
+
+    # Handle parameters from the URL path.
+    for key, value in params.iteritems():
+      # Values need to be in a list to interact with query parameter values
+      # and to account for case of repeated parameters
+      body_json[key] = [value]
+
+    # Add in parameters from the query string.
     if request.parameters:
-      request.body_json.update(request.parameters)
+      # For repeated elements, query and path work together
+      for key, value in request.parameters.iteritems():
+        if key in body_json:
+          body_json[key] = value + body_json[key]
+        else:
+          body_json[key] = value
+
+    # Validate all parameters we've merged so far and convert any '.' delimited
+    # parameters to nested parameters.  We don't use iteritems since we may
+    # modify body_json within the loop.  For instance, 'a.b' is not a valid key
+    # and would be replaced with 'a'.
+    for key, value in body_json.items():
+      current_parameter = method_parameters.get(key, {})
+      repeated = current_parameter.get('repeated', False)
+
+      if not repeated:
+        body_json[key] = body_json[key][0]
+
+      # Order is important here.  Parameter names are dot-delimited in
+      # parameters instead of nested in dictionaries as a message field is, so
+      # we need to call _check_parameter on them before calling
+      # _add_message_field.
+
+      self._check_parameter(key, body_json[key], current_parameter)
+      # Remove the old key and try to convert to nested message value
+      message_value = body_json.pop(key)
+      self._add_message_field(key, message_value, body_json)
+
+    # Add in values from the body of the request.
+    if request.body_json:
+      self._update_from_body(body_json, request.body_json)
+
+    request.body_json = body_json
     request.body = json.dumps(request.body_json)
     return request
 

@@ -3,6 +3,24 @@ All rights reserved.
 
 App Engine Python SDK - Release Notes
 
+Version 1.8.0
+===============================
+- The Mail API now allows attachments with .zip and .gzip extensions as long as
+  the archives do not contain entries with blacklisted extensions.
+  http://code.google.com/p/googleappengine/issues/detail?id=5933
+- New Billing Enabled apps will no longer default to an email quota of 20,000
+  per day. Instead, apps will need to file a request through the admin console
+  to get email quotas increased.
+- Admin console dashboard charts and reports for all users have been fully
+  migrated to the new, more reliable backend announced in 1.7.6.
+- The maximum size of POST requests made through URLfetch has been increased
+  from 5MB to 10MB.
+- Fixed an issue with the Mail API to prevent sending mail from a Google Apps
+  mail account that has been suspended.
+    https://code.google.com/p/googleappengine/issues/detail?id=6181
+- Fixed an issue with the admin handler of the new dev_appserver failing to
+  import appengine_config automatically.
+
 Version 1.7.7
 ===============================
 - The Sockets API, which allows applications to make outgoing TCP connections

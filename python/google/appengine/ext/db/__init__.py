@@ -3010,8 +3010,8 @@ class DateTimeProperty(Property):
     """
     value = super(DateTimeProperty, self).validate(value)
     if value and not isinstance(value, self.data_type):
-      raise BadValueError('Property %s must be a %s' %
-                          (self.name, self.data_type.__name__))
+      raise BadValueError('Property %s must be a %s, but was %r' %
+                          (self.name, self.data_type.__name__, value))
     return value
 
   def default_value(self):
