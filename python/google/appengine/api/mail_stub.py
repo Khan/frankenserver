@@ -58,6 +58,8 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     password: Password for SMTP server user.
   """
 
+  THREADSAFE = True
+
   def __init__(self,
                host=None,
                port=25,

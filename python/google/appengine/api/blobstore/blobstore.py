@@ -50,6 +50,7 @@ __all__ = ['BLOB_INFO_KIND',
            'MAX_BLOB_FETCH_SIZE',
            'UPLOAD_INFO_CREATION_HEADER',
            'CLOUD_STORAGE_OBJECT_HEADER',
+           'GS_PREFIX',
            'BlobFetchSizeTooLargeError',
            'BlobKey',
            'BlobNotFoundError',
@@ -82,6 +83,8 @@ BLOB_MIGRATION_KIND = '__BlobMigration__'
 BLOB_RANGE_HEADER = 'X-AppEngine-BlobRange'
 
 MAX_BLOB_FETCH_SIZE = (1 << 20) - (1 << 15)
+
+GS_PREFIX = '/gs/'
 
 
 
@@ -500,7 +503,7 @@ def create_gs_key_async(filename, rpc=None):
 
   if not isinstance(filename, basestring):
     raise TypeError('filename must be str: %s' % filename)
-  if not filename.startswith('/gs/'):
+  if not filename.startswith(GS_PREFIX):
     raise ValueError('filename must start with "/gs/": %s' % filename)
   if not '/' in filename[4:]:
     raise ValueError('filename must have the format '

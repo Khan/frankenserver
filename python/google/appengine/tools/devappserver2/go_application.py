@@ -110,6 +110,7 @@ class GoApplication(object):
         '-arch', self._arch,
         '-binary_name', '_go_app',
         '-dynamic',
+        '-extra_imports', 'appengine_internal/init',
         '-goroot', _GOROOT,
         '-nobuild_files', nobuild_files,
         '-unsafe',

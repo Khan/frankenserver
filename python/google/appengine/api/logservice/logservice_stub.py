@@ -68,6 +68,8 @@ CREATE TABLE IF NOT EXISTS AppLogs (
 class LogServiceStub(apiproxy_stub.APIProxyStub):
   """Python stub for Log Service service."""
 
+  THREADSAFE = True
+
   _ACCEPTS_REQUEST_ID = True
 
 

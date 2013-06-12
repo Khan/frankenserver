@@ -31,7 +31,7 @@ from google.appengine.api import datastore_file_stub
 from google.appengine.api import namespace_manager
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
-from google.appengine.api.files import file_service_stub
+from google.appengine.ext.cloudstorage import cloudstorage_stub
 from google.appengine.tools.devappserver2 import blob_download
 from google.appengine.tools.devappserver2 import request_rewriter
 from google.appengine.tools.devappserver2 import wsgi_test_utils
@@ -480,19 +480,11 @@ class BlobDownloadTestGoogleStorage(BlobDownloadTest):
       The BlobKey of the new object."
     """
     data = 'a blob'
-    filename = '/gs/some_bucket/some_object'
-    blob_store_key = base64.urlsafe_b64encode(filename)
-    self.blob_storage.StoreBlob(blob_store_key, cStringIO.StringIO(data))
-
-    blob_key = blobstore.create_gs_key(filename)
-    entity = datastore.Entity(file_service_stub.GS_INFO_KIND,
-                              name=blob_key,
-                              namespace='')
-    entity['content_type'] = 'image/png'
-    entity['filename'] = 'largeblob.png'
-    entity['size'] = len(data)
-    entity['storage_key'] = blob_store_key
-    datastore.Put(entity)
+    filename = '/some_bucket/some_object'
+    stub = cloudstorage_stub.CloudStorageStub(self.blob_storage)
+    blob_key = stub.post_start_creation(filename, {'content-type': 'image/png'})
+    stub.put_continue_creation(blob_key, data, (0, len(data) - 1), True)
+    self.blob_storage.StoreBlob(blob_key, cStringIO.StringIO(data))
 
     return blob_key
 

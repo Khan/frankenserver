@@ -24,6 +24,7 @@
 
 
 
+import httplib
 import re
 import urllib
 import urlparse
@@ -100,19 +101,19 @@ def dispatch(method, headers, url, payload):
     ValueError: invalid request method.
   """
   method, headers, filename, param_dict = _preprocess(method, headers, url)
-  gs_stub = cloudstorage_stub.CloudStorageStub(
+  gcs_stub = cloudstorage_stub.CloudStorageStub(
       apiproxy_stub_map.apiproxy.GetStub('blobstore').storage)
 
   if method == 'POST':
-    return _handle_post(gs_stub, filename, headers)
+    return _handle_post(gcs_stub, filename, headers)
   elif method == 'PUT':
-    return _handle_put(gs_stub, filename, param_dict, headers, payload)
+    return _handle_put(gcs_stub, filename, param_dict, headers, payload)
   elif method == 'GET':
-    return _handle_get(gs_stub, filename, param_dict, headers)
+    return _handle_get(gcs_stub, filename, param_dict, headers)
   elif method == 'HEAD':
-    return _handle_head(gs_stub, filename)
+    return _handle_head(gcs_stub, filename)
   elif method == 'DELETE':
-    return _handle_delete(gs_stub, filename)
+    return _handle_delete(gcs_stub, filename)
   raise ValueError('Unrecognized request method %r.' % method)
 
 
@@ -120,7 +121,7 @@ def _preprocess(method, headers, url):
   """Unify input.
 
   Example:
-    _preprocess('POST', {'Content-Type': 'Foo'}, http://gs.com/b/f?foo=bar)
+    _preprocess('POST', {'Content-Type': 'Foo'}, http://gcs.com/b/f?foo=bar)
     -> 'POST', {'content-type': 'Foo'}, '/b/f', {'foo':'bar'}
 
   Args:
@@ -144,10 +145,10 @@ def _preprocess(method, headers, url):
   return method, headers, filename, param_dict
 
 
-def _handle_post(gs_stub, filename, headers):
+def _handle_post(gcs_stub, filename, headers):
   """Handle POST that starts object creation."""
   content_type = _ContentType(headers)
-  token = gs_stub.post_start_creation(filename, headers)
+  token = gcs_stub.post_start_creation(filename, headers)
   response_headers = {
       'location': 'https://storage.googleapis.com/%s?%s' % (
           filename,
@@ -158,48 +159,39 @@ def _handle_post(gs_stub, filename, headers):
   return _FakeUrlFetchResult(201, response_headers, '')
 
 
-def _handle_put(gs_stub, filename, param_dict, headers, payload):
+def _handle_put(gcs_stub, filename, param_dict, headers, payload):
   """Handle PUT that continues object creation."""
   token = _get_param('upload_id', param_dict)
   content_range = _ContentRange(headers)
 
-  if content_range.value and not content_range.finished:
-    gs_stub.put_continue_creation(token,
-                                  payload,
-                                  (content_range.start, content_range.end))
+  if not content_range.value:
+    raise ValueError('Missing header content-range.')
+
+  gcs_stub.put_continue_creation(token,
+                                payload,
+                                content_range.range,
+                                content_range.last)
+  if content_range.last:
+    filestat = gcs_stub.head_object(filename)
+    response_headers = {
+        'content-length': filestat.st_size,
+    }
+    response_status = httplib.OK
+  else:
     response_headers = {}
     response_status = 308
-  elif content_range.value and content_range.finished:
-    gs_stub.put_continue_creation(token,
-                                  payload,
-                                  (content_range.start, content_range.end),
-                                  last=True)
-    filestat = gs_stub.head_object(filename)
-    response_headers = {
-        'content-length': filestat.st_size,
-    }
-    response_status = 200
-  elif not payload:
 
-    gs_stub.put_continue_creation(token, '', None, True)
-    filestat = gs_stub.head_object(filename)
-    response_headers = {
-        'content-length': filestat.st_size,
-    }
-    response_status = 200
-  else:
-    raise ValueError('Missing header content-range but has payload')
   return _FakeUrlFetchResult(response_status, response_headers, '')
 
 
-def _handle_get(gs_stub, filename, param_dict, headers):
+def _handle_get(gcs_stub, filename, param_dict, headers):
   """Handle GET object and GET bucket."""
   if filename.rfind('/') == 0:
 
-    return _handle_get_bucket(gs_stub, filename, param_dict)
+    return _handle_get_bucket(gcs_stub, filename, param_dict)
   else:
 
-    result = _handle_head(gs_stub, filename)
+    result = _handle_head(gcs_stub, filename)
     if result.status_code == 404:
       return result
     start, end = _Range(headers).value
@@ -209,20 +201,20 @@ def _handle_get(gs_stub, filename, param_dict, headers):
     result.headers['content-range'] = 'bytes: %d-%d/%d' % (start,
                                                            end,
                                                            st_size)
-    result.content = gs_stub.get_object(filename, start, end)
+    result.content = gcs_stub.get_object(filename, start, end)
     return result
 
 
-def _handle_get_bucket(gs_stub, bucketpath, param_dict):
+def _handle_get_bucket(gcs_stub, bucketpath, param_dict):
   """Handle get bucket request."""
   prefix = _get_param('prefix', param_dict, '')
   max_keys = _get_param('max-keys', param_dict, _MAX_GET_BUCKET_RESULT)
   marker = _get_param('marker', param_dict, '')
 
-  stats = gs_stub.get_bucket(bucketpath,
-                             prefix,
-                             marker,
-                             max_keys)
+  stats = gcs_stub.get_bucket(bucketpath,
+                              prefix,
+                              marker,
+                              max_keys)
 
   builder = ET.TreeBuilder()
   builder.start('ListBucketResult', {'xmlns': common.CS_XML_NS})
@@ -269,9 +261,9 @@ def _handle_get_bucket(gs_stub, bucketpath, param_dict):
   return _FakeUrlFetchResult(200, response_headers, body)
 
 
-def _handle_head(gs_stub, filename):
+def _handle_head(gcs_stub, filename):
   """Handle HEAD request."""
-  filestat = gs_stub.head_object(filename)
+  filestat = gcs_stub.head_object(filename)
   if not filestat:
     return _FakeUrlFetchResult(404, {}, '')
 
@@ -290,9 +282,9 @@ def _handle_head(gs_stub, filename):
   return _FakeUrlFetchResult(200, response_headers, '')
 
 
-def _handle_delete(gs_stub, filename):
+def _handle_delete(gcs_stub, filename):
   """Handle DELETE object."""
-  if gs_stub.delete_object(filename):
+  if gcs_stub.delete_object(filename):
     return _FakeUrlFetchResult(204, {}, '')
   else:
     return _FakeUrlFetchResult(404, {}, '')
@@ -333,12 +325,13 @@ class _ContentType(_Header):
 class _ContentRange(_Header):
   """Content-Range header.
 
-  Used by resumable upload. Possible formats:
-    Content-Range: bytes 2-4/5 or Content-Range: bytes 1-3/*
+  Used by resumable upload of unknown size. Possible formats:
+    Content-Range: bytes 1-3/* (for uploading of unknown size)
+    Content-Range: bytes */5 (for finalizing with no data)
   """
 
   HEADER = 'Content-Range'
-  RE_PATTERN = re.compile(r'^bytes ([0-9]+)-([0-9]+)/([0-9]+|\*)$')
+  RE_PATTERN = re.compile(r'^bytes (([0-9]+)-([0-9]+)|\*)/([0-9]+|\*)$')
 
   def __init__(self, headers):
     super(_ContentRange, self).__init__(headers)
@@ -346,9 +339,15 @@ class _ContentRange(_Header):
       result = self.RE_PATTERN.match(self.value)
       if not result:
         raise ValueError('Invalid content-range header %s' % self.value)
-      self.start = long(result.group(1))
-      self.end = long(result.group(2))
-      self.finished = result.group(3) != '*'
+
+      self.no_data = result.group(1) == '*'
+      self.last = result.group(4) != '*'
+      if self.no_data and not self.last:
+        raise ValueError('Invalid content-range header %s' % self.value)
+
+      self.range = None
+      if not self.no_data:
+        self.range = (long(result.group(2)), long(result.group(3)))
 
 
 class _Range(_Header):

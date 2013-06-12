@@ -134,8 +134,9 @@ SERVER_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' %
                                (SERVER_VERSION_ID_MAX_LEN - 1))
 
 _IDLE_INSTANCES_REGEX = r'^([\d]+|automatic)$'
-_INSTANCES_REGEX = r'^[\d]+$'
-_INSTANCE_CLASS_REGEX = r'^([sS](1|2|4|8|4_1G))$'
+
+_INSTANCES_REGEX = r'^[1-9][\d]*$'
+_INSTANCE_CLASS_REGEX = r'^([fF](1|2|4|4_1G)|[bB](1|2|4|8|4_1G))$'
 
 
 
@@ -166,6 +167,9 @@ LOGIN_ADMIN = 'admin'
 
 AUTH_FAIL_ACTION_REDIRECT = 'redirect'
 AUTH_FAIL_ACTION_UNAUTHORIZED = 'unauthorized'
+
+DATASTORE_ID_POLICY_LEGACY = 'legacy'
+DATASTORE_ID_POLICY_DEFAULT = 'default'
 
 SECURE_HTTP = 'never'
 SECURE_HTTPS = 'always'
@@ -232,6 +236,7 @@ ADMIN_CONSOLE = 'admin_console'
 ERROR_HANDLERS = 'error_handlers'
 BACKENDS = 'backends'
 THREADSAFE = 'threadsafe'
+DATASTORE_AUTO_ID_POLICY = 'auto_id_policy'
 API_CONFIG = 'api_config'
 CODE_LOCK = 'code_lock'
 ENV_VARIABLES = 'env_variables'
@@ -1473,6 +1478,10 @@ class AppInfoExternal(validation.Validated):
       BACKENDS: validation.Optional(validation.Repeated(
           backendinfo.BackendEntry)),
       THREADSAFE: validation.Optional(bool),
+      DATASTORE_AUTO_ID_POLICY: validation.Optional(
+          validation.Options(DATASTORE_ID_POLICY_LEGACY,
+                             DATASTORE_ID_POLICY_DEFAULT),
+          default=DATASTORE_ID_POLICY_DEFAULT),
       API_CONFIG: validation.Optional(ApiConfigHandler),
       CODE_LOCK: validation.Optional(bool),
       ENV_VARIABLES: validation.Optional(EnvironmentVariables),
@@ -1522,6 +1531,21 @@ class AppInfoExternal(validation.Validated):
         not self._skip_runtime_checks):
       raise appinfo_errors.MissingThreadsafe(
           'threadsafe must be present and set to either "yes" or "no"')
+
+
+    if self.auto_id_policy == DATASTORE_ID_POLICY_LEGACY:
+      datastore_auto_ids_url = ('http://developers.google.com/'
+                                'appengine/docs/python/datastore/'
+                                'entities#Kinds_and_Identifiers')
+      appcfg_auto_ids_url = ('http://developers.google.com/appengine/docs/'
+                             'python/config/appconfig')
+      logging.warning(
+          "You have set the datastore auto_id_policy to 'legacy'. It is "
+          "recommended that you select 'default' instead.\n"
+          "Legacy auto ids are deprecated. You can continue to allocate\n"
+          "legacy ids manually using the allocate_ids() API functions.\n"
+          "For more information see:\n"
+          + datastore_auto_ids_url + '\n' + appcfg_auto_ids_url + '\n')
 
     if self.libraries:
       if self.runtime != 'python27' and not self._skip_runtime_checks:
@@ -1797,10 +1821,11 @@ def ParseExpiration(expiration):
 
 
 
-_file_path_positive_re = re.compile(r'^[ 0-9a-zA-Z\._\+/\$-]{1,256}$')
+
+_file_path_positive_re = re.compile(r'^[ 0-9a-zA-Z\._\+/@\$-]{1,256}$')
 
 
-_file_path_negative_1_re = re.compile(r'\.\.|^\./|\.$|/\./|^-|^_ah/')
+_file_path_negative_1_re = re.compile(r'\.\.|^\./|\.$|/\./|^-|^_ah/|^/')
 
 
 _file_path_negative_2_re = re.compile(r'//|/$')
@@ -1814,7 +1839,7 @@ def ValidFilename(filename):
   """Determines if filename is valid.
 
   filename must be a valid pathname.
-  - It must contain only letters, numbers, _, +, /, $, ., and -.
+  - It must contain only letters, numbers, @, _, +, /, $, ., and -.
   - It must be less than 256 chars.
   - It must not contain "/./", "/../", or "//".
   - It must not end in "/".

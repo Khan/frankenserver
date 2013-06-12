@@ -25,6 +25,7 @@ from google.appengine.runtime import apiproxy_errors
 class ServersServiceStub(apiproxy_stub.APIProxyStub):
 
   _ACCEPTS_REQUEST_ID = True
+  THREADSAFE = True
 
   def __init__(self, request_data):
     super(ServersServiceStub, self).__init__('servers',

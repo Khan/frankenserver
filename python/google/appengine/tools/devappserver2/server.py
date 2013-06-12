@@ -43,6 +43,7 @@ from google.appengine.tools.devappserver2 import blob_image
 from google.appengine.tools.devappserver2 import blob_upload
 from google.appengine.tools.devappserver2 import channel
 from google.appengine.tools.devappserver2 import constants
+
 from google.appengine.tools.devappserver2 import endpoints
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
@@ -137,6 +138,14 @@ class _ScriptHandler(url_handler.UserConfiguredURLHandler):
 class Server(object):
   """The abstract base for all instance pool implementations."""
 
+  _RUNTIME_INSTANCE_FACTORIES = {
+
+      'go': go_runtime.GoRuntimeInstanceFactory,
+      'php': php_runtime.PHPRuntimeInstanceFactory,
+      'python': python_runtime.PythonRuntimeInstanceFactory,
+      'python27': python_runtime.PythonRuntimeInstanceFactory,
+  }
+
   def _create_instance_factory(self,
                                server_configuration):
     """Create an instance.InstanceFactory.
@@ -148,24 +157,23 @@ class Server(object):
     Returns:
       A instance.InstanceFactory subclass that can be used to create instances
       with the provided configuration.
+
+    Raises:
+      RuntimeError: if the configuration specifies an unknown runtime.
     """
-    if server_configuration.runtime == 'go':
-      return go_runtime.GoRuntimeInstanceFactory(
-          request_data=self._request_data,
-          runtime_config_getter=self._get_runtime_config,
-          server_configuration=server_configuration)
-    elif server_configuration.runtime in ('python', 'python27'):
-      return python_runtime.PythonRuntimeInstanceFactory(
-          request_data=self._request_data,
-          runtime_config_getter=self._get_runtime_config,
-          server_configuration=server_configuration)
-    elif server_configuration.runtime == 'php':
-      return php_runtime.PHPRuntimeInstanceFactory(
-          request_data=self._request_data,
-          runtime_config_getter=self._get_runtime_config,
-          server_configuration=server_configuration)
-    else:
-      assert 0, 'unknown runtime %r' % server_configuration.runtime
+    # TODO: a bad runtime should be caught before we get here.
+    if server_configuration.runtime not in self._RUNTIME_INSTANCE_FACTORIES:
+      raise RuntimeError(
+          'Unknown runtime %r; supported runtimes are %s.' %
+          (server_configuration.runtime,
+           ', '.join(
+               sorted(repr(k) for k in self._RUNTIME_INSTANCE_FACTORIES))))
+    instance_factory = self._RUNTIME_INSTANCE_FACTORIES[
+        server_configuration.runtime]
+    return instance_factory(
+        request_data=self._request_data,
+        runtime_config_getter=self._get_runtime_config,
+        server_configuration=server_configuration)
 
   def _create_url_handlers(self):
     """Constructs URLHandlers based on the server configuration.

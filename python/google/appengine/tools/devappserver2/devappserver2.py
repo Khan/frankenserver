@@ -174,6 +174,11 @@ def parse_max_server_instances(value):
     return server_to_max_instances
 
 
+def parse_path(value):
+  """Returns the given path with ~ and environment variables expanded."""
+  return os.path.expanduser(os.path.expandvars(value))
+
+
 def create_command_line_parser():
   """Returns an argparse.ArgumentParser to parse command line arguments."""
   # TODO: Add more robust argument validation. Consider what flags
@@ -201,7 +206,7 @@ def create_command_line_parser():
       help='name of the authorization domain to use')
   common_group.add_argument(
       '--storage_path', metavar='PATH',
-      type=os.path.expanduser,
+      type=parse_path,
       help='path to the data (datastore, blobstore, etc.) associated with the '
       'application.')
   common_group.add_argument(
@@ -227,6 +232,7 @@ def create_command_line_parser():
   # PHP
   php_group = parser.add_argument_group('PHP')
   php_group.add_argument('--php_executable_path', metavar='PATH',
+                         type=parse_path,
                          help='path to the PHP executable',
                          default='php-cgi')
   php_group.add_argument('--php_remote_debugging',
@@ -250,7 +256,7 @@ def create_command_line_parser():
   blobstore_group = parser.add_argument_group('Blobstore API')
   blobstore_group.add_argument(
       '--blobstore_path',
-      type=os.path.expanduser,
+      type=parse_path,
       help='path to directory used to store blob contents '
       '(defaults to a subdirectory of --storage_path if not set)',
       default=None)
@@ -286,7 +292,7 @@ def create_command_line_parser():
   datastore_group = parser.add_argument_group('Datastore API')
   datastore_group.add_argument(
       '--datastore_path',
-      type=os.path.expanduser,
+      type=parse_path,
       default=None,
       help='path to a file used to store datastore contents '
       '(defaults to a file in --storage_path if not set)',)
@@ -364,7 +370,7 @@ def create_command_line_parser():
   prospective_search_group = parser.add_argument_group('Prospective Search API')
   prospective_search_group.add_argument(
       '--prospective_search_path', default=None,
-      type=os.path.expanduser,
+      type=parse_path,
       help='path to a file used to store the prospective '
       'search subscription index (defaults to a file in '
       '--storage_path if not set)')
@@ -379,7 +385,7 @@ def create_command_line_parser():
   search_group = parser.add_argument_group('Search API')
   search_group.add_argument(
       '--search_indexes_path', default=None,
-      type=os.path.expanduser,
+      type=parse_path,
       help='path to a file used to store search indexes '
       '(defaults to a file in --storage_path if not set)',)
   search_group.add_argument(

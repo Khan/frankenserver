@@ -142,6 +142,8 @@ def _IsAllowedPort(port):
 class URLFetchServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of the urlfetch API to be used with apiproxy_stub_map."""
 
+  THREADSAFE = True
+
   def __init__(self,
                service_name='urlfetch',
                urlmatchers_to_fetch_functions=None):

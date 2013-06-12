@@ -65,6 +65,7 @@ class ConfigurationError(Error):
 
 
 _UPLOAD_SESSION_KIND = '__BlobUploadSession__'
+
 _GS_INFO_KIND = '__GsFileInfo__'
 
 
@@ -194,6 +195,15 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     self.__next_session_id = 1
     self.__uploader_path = uploader_path
 
+  @classmethod
+  def ToDatastoreBlobKey(cls, blobkey):
+    """Given a string blobkey, return its db.Key."""
+    kind = blobstore.BLOB_INFO_KIND
+    if blobkey.startswith(cls.GS_BLOBKEY_PREFIX):
+      kind = _GS_INFO_KIND
+    return datastore_types.Key.from_path(kind,
+                                         blobkey,
+                                         namespace='')
   @property
   def storage(self):
     """Access BlobStorage used by service stub.
@@ -284,6 +294,22 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     response.set_url('%s://%s/%s%s' % (protocol, host, self.__uploader_path,
                                        session))
 
+  @classmethod
+  def DeleteBlob(cls, blobkey, storage):
+    """Delete a blob.
+
+    Args:
+      blobkey: blobkey in str.
+      storage: blobstore storage stub.
+    """
+    datastore.Delete(cls.ToDatastoreBlobKey(blobkey))
+
+    blobinfo = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
+                                             blobkey,
+                                             namespace='')
+    datastore.Delete(blobinfo)
+    storage.DeleteBlob(blobkey)
+
   def _Dynamic_DeleteBlob(self, request, response, unused_request_id):
     """Delete a blob by its blob-key.
 
@@ -294,18 +320,8 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
       request: A fully initialized DeleteBlobRequest instance.
       response: Not used but should be a VoidProto.
     """
-    for blob_key in request.blob_key_list():
-      if blob_key.startswith(self.GS_BLOBKEY_PREFIX):
-        key = datastore_types.Key.from_path(_GS_INFO_KIND,
-                                            str(blob_key),
-                                            namespace='')
-      else:
-        key = datastore_types.Key.from_path(blobstore.BLOB_INFO_KIND,
-                                            str(blob_key),
-                                            namespace='')
-
-      datastore.Delete(key)
-      self.__storage.DeleteBlob(blob_key)
+    for blobkey in request.blob_key_list():
+      self.DeleteBlob(blobkey, self.__storage)
 
   def _Dynamic_FetchData(self, request, response, unused_request_id):
     """Fetch a blob fragment from a blob by its blob-key.
@@ -345,18 +361,16 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
           blobstore_service_pb.BlobstoreServiceError.BLOB_FETCH_SIZE_TOO_LARGE)
 
 
-    blob_key = request.blob_key()
-    blob_info_key = datastore.Key.from_path(blobstore.BLOB_INFO_KIND,
-                                            blob_key,
-                                            namespace='')
+    blobkey = request.blob_key()
+    info_key = self.ToDatastoreBlobKey(blobkey)
     try:
-      datastore.Get(blob_info_key)
-    except datastore_errors.EntityNotFoundError, err:
+      datastore.Get(info_key)
+    except datastore_errors.EntityNotFoundError:
       raise apiproxy_errors.ApplicationError(
           blobstore_service_pb.BlobstoreServiceError.BLOB_NOT_FOUND)
 
 
-    blob_file = self.__storage.OpenBlob(blob_key)
+    blob_file = self.__storage.OpenBlob(blobkey)
     blob_file.seek(start_index)
     response.set_data(blob_file.read(fetch_size))
 
@@ -378,10 +392,16 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
     accept encoded blob keys will need to be able to support Google Storage
     files or blobstore files based on decoding this key.
 
+    Any stub that creates GS files should use this function to convert
+    a gs filename to a blobkey. The created blobkey should be used both
+    as its _GS_FILE_INFO entity's key name and as the storage key to
+    store its content in blobstore. This ensures the GS files created
+    can be operated by other APIs.
+
     Note this encoding is easily reversible and is not encryption.
 
     Args:
-      filename: gs filename of form '/gs/bucket/filename'
+      filename: gs filename of form 'bucket/filename'
 
     Returns:
       blobkey string of encoded filename.
@@ -401,8 +421,9 @@ class BlobstoreServiceStub(apiproxy_stub.APIProxyStub):
         instance.
       response: A CreateEncodedGoogleStorageKeyResponse instance.
     """
+    filename = request.filename()[len(blobstore.GS_PREFIX):]
     response.set_blob_key(
-        self.CreateEncodedGoogleStorageKey(request.filename()))
+        self.CreateEncodedGoogleStorageKey(filename))
 
   def CreateBlob(self, blob_key, content):
     """Create new blob and put in storage and Datastore.
