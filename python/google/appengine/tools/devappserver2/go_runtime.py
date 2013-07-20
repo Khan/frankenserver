@@ -35,7 +35,7 @@ _REBUILD_CONFIG_CHANGES = frozenset(
 
 
 class _GoBuildFailureRuntimeProxy(instance.RuntimeProxy):
-  """Servers an error page for a Go application build failure."""
+  """Serves an error page for a Go application build failure."""
 
   def __init__(self, failure_exception):
     self._failure_exception = failure_exception
@@ -83,7 +83,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
       login='admin')
   FILE_CHANGE_INSTANCE_RESTART_POLICY = instance.ALWAYS
 
-  def __init__(self, request_data, runtime_config_getter, server_configuration):
+  def __init__(self, request_data, runtime_config_getter, module_configuration):
     """Initializer for GoRuntimeInstanceFactory.
 
     Args:
@@ -92,16 +92,16 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
       runtime_config_getter: A function that can be called without arguments
           and returns the runtime_config_pb2.RuntimeConfig containing the
           configuration for the runtime.
-      server_configuration: An application_configuration.ServerConfiguration
-          instance respresenting the configuration of the server that owns the
+      module_configuration: An application_configuration.ModuleConfiguration
+          instance respresenting the configuration of the module that owns the
           runtime.
     """
     super(GoRuntimeInstanceFactory, self).__init__(request_data, 1)
     self._runtime_config_getter = runtime_config_getter
-    self._server_configuration = server_configuration
+    self._module_configuration = module_configuration
     self._application_lock = threading.Lock()
     self._go_application = go_application.GoApplication(
-        self._server_configuration)
+        self._module_configuration)
     self._modified_since_last_build = False
 
   def get_restart_directories(self):
@@ -129,7 +129,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
       self._modified_since_last_build = True
 
   def configuration_changed(self, config_changes):
-    """Called when the configuration of the server has changed.
+    """Called when the configuration of the module has changed.
 
     Args:
       config_changes: A set containing the changes that occured. See the
@@ -143,7 +143,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
     """Create and return a new Instance.
 
     Args:
-      instance_id: A string or integer representing the unique (per server) id
+      instance_id: A string or integer representing the unique (per module) id
           of the instance.
       expect_ready_request: If True then the instance will be sent a special
           request (i.e. /_ah/warmup or /_ah/start) before it can handle external
@@ -168,7 +168,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
         proxy = http_runtime.HttpRuntimeProxy(
             self._go_application.go_executable,
             instance_config_getter,
-            self._server_configuration,
+            self._module_configuration,
             self._go_application.get_environment())
       self._modified_since_last_build = False
 

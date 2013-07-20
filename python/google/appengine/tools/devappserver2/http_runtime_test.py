@@ -87,7 +87,7 @@ class FakeTee(object):
     return self.buf
 
 
-class ServerConfigurationStub(object):
+class ModuleConfigurationStub(object):
   def __init__(self, application_root='/tmp', error_handlers=None):
     self.application_root = application_root
     self.error_handlers = error_handlers
@@ -97,7 +97,7 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
   def setUp(self):
     self.mox = mox.Mox()
     self.tmpdir = tempfile.mkdtemp()
-    server_configuration = ServerConfigurationStub(
+    module_configuration = ModuleConfigurationStub(
         application_root=self.tmpdir,
         error_handlers=[
             appinfo.ErrorHandlers(error_code='over_quota', file='foo.html'),
@@ -113,7 +113,7 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
     self.runtime_config.auth_domain = 'gmail.com'
     self.runtime_config_getter = lambda: self.runtime_config
     self.proxy = http_runtime.HttpRuntimeProxy(
-        ['/runtime'], self.runtime_config_getter, server_configuration,
+        ['/runtime'], self.runtime_config_getter, module_configuration,
         env={'foo': 'bar'})
     self.proxy._port = 23456
     self.process = self.mox.CreateMock(subprocess.Popen)

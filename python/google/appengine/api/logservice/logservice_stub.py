@@ -204,13 +204,13 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
   @apiproxy_stub.Synchronized
   def _Dynamic_Read(self, request, response, request_id):
-    if (request.server_version_size() < 1 and
+    if (request.module_version_size() < 1 and
         request.version_id_size() < 1 and
         request.request_id_size() < 1):
       raise apiproxy_errors.ApplicationError(
           log_service_pb.LogServiceError.INVALID_REQUEST)
 
-    if request.server_version_size() > 0 and request.version_id_size() > 0:
+    if request.module_version_size() > 0 and request.version_id_size() > 0:
       raise apiproxy_errors.ApplicationError(
           log_service_pb.LogServiceError.INVALID_REQUEST)
 
@@ -294,12 +294,12 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
   def _extract_read_filters(request):
 
 
-    if request.server_version(0).has_server_id():
-      server_version = ':'.join([request.server_version(0).server_id(),
-                                 request.server_version(0).version_id()])
+    if request.module_version(0).has_module_id():
+      module_version = ':'.join([request.module_version(0).module_id(),
+                                 request.module_version(0).version_id()])
     else:
-      server_version = request.server_version(0).version_id()
-    filters = [('version_id = ?', server_version)]
+      module_version = request.module_version(0).version_id()
+    filters = [('version_id = ?', module_version)]
     if request.has_start_time():
       filters.append(('start_time >= ?', request.start_time()))
     if request.has_end_time():

@@ -54,14 +54,14 @@ class BuildError(errors.Error):
 class GoApplication(object):
   """An abstraction around the source and executable for a Go application."""
 
-  def __init__(self, server_configuration):
-    """Initializer for Server.
+  def __init__(self, module_configuration):
+    """Initializer for Module.
 
     Args:
-      server_configuration: An application_configuration.ServerConfiguration
-          instance storing the configuration data for a server.
+      module_configuration: An application_configuration.ModuleConfiguration
+          instance storing the configuration data for a module.
     """
-    self._server_configuration = server_configuration
+    self._module_configuration = module_configuration
     self._go_file_to_mtime = {}
     self._extras_hash = None
     self._go_executable = None
@@ -76,7 +76,7 @@ class GoApplication(object):
   def get_environment(self):
     """Return the environment that used be used to run the Go executable."""
     environ = {'GOROOT': _GOROOT,
-               'PWD': self._server_configuration.application_root,
+               'PWD': self._module_configuration.application_root,
                'TZ': 'UTC'}
     if 'SYSTEMROOT' in os.environ:
       environ['SYSTEMROOT'] = os.environ['SYSTEMROOT']
@@ -103,10 +103,10 @@ class GoApplication(object):
 
   def _get_gab_args(self):
     # Go's regexp package does not implicitly anchor to the start.
-    nobuild_files = '^' + str(self._server_configuration.nobuild_files)
+    nobuild_files = '^' + str(self._module_configuration.nobuild_files)
     gab_args = [
         _GAB_PATH,
-        '-app_base', self._server_configuration.application_root,
+        '-app_base', self._module_configuration.application_root,
         '-arch', self._arch,
         '-binary_name', '_go_app',
         '-dynamic',
@@ -129,16 +129,16 @@ class GoApplication(object):
     """
     go_file_to_mtime = {}
     for root, _, file_names in os.walk(
-        self._server_configuration.application_root):
+        self._module_configuration.application_root):
       for file_name in file_names:
         if not file_name.endswith('.go'):
           continue
         full_path = os.path.join(root, file_name)
         rel_path = os.path.relpath(
-            full_path, self._server_configuration.application_root)
-        if self._server_configuration.skip_files.match(rel_path):
+            full_path, self._module_configuration.application_root)
+        if self._module_configuration.skip_files.match(rel_path):
           continue
-        if self._server_configuration.nobuild_files.match(rel_path):
+        if self._module_configuration.nobuild_files.match(rel_path):
           continue
 
         try:
@@ -225,7 +225,7 @@ class GoApplication(object):
 
     if not self._go_file_to_mtime:
       raise BuildError('no .go files found in %s' %
-                       self._server_configuration.application_root)
+                       self._module_configuration.application_root)
 
     self._extras_hash, old_extras_hash = (self._get_extras_hash(),
                                           self._extras_hash)

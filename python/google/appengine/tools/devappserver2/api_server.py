@@ -52,8 +52,8 @@ from google.appengine.api.search import simple_search_stub
 from google.appengine.api.taskqueue import taskqueue_stub
 from google.appengine.api.prospective_search import prospective_search_stub
 from google.appengine.api.memcache import memcache_stub
+from google.appengine.api.modules import modules_stub
 from google.appengine.api.remote_socket import _remote_socket_stub
-from google.appengine.api.servers import servers_stub
 from google.appengine.api.system import system_stub
 from google.appengine.api.xmpp import xmpp_service_stub
 from google.appengine.datastore import datastore_sqlite_stub
@@ -346,8 +346,8 @@ def setup_stubs(
       simple_search_stub.SearchServiceStub(index_file=search_index_path))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
-      'servers',
-      servers_stub.ServersServiceStub(request_data))
+      'modules',
+      modules_stub.ModulesServiceStub(request_data))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'system',

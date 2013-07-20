@@ -89,11 +89,11 @@ _EXPIRATION_CONVERSIONS = {
 
 
 APP_ID_MAX_LEN = 100
-SERVER_ID_MAX_LEN = 63
+MODULE_ID_MAX_LEN = 63
 
 
 
-SERVER_VERSION_ID_MAX_LEN = 63
+MODULE_VERSION_ID_MAX_LEN = 63
 MAX_URL_MAPS = 100
 
 
@@ -106,10 +106,10 @@ DOMAIN_SEPARATOR = ':'
 VERSION_SEPARATOR = '.'
 
 
-SERVER_SEPARATOR = ':'
+MODULE_SEPARATOR = ':'
 
 
-DEFAULT_SERVER = 'default'
+DEFAULT_MODULE = 'default'
 
 
 
@@ -123,15 +123,15 @@ APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
                           DOMAIN_RE_STRING,
                           DISPLAY_APP_ID_RE_STRING))
 
-SERVER_ID_RE_STRING = r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' % (SERVER_ID_MAX_LEN - 1)
+MODULE_ID_RE_STRING = r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' % (MODULE_ID_MAX_LEN - 1)
 
 
 
 
 
 
-SERVER_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' %
-                               (SERVER_VERSION_ID_MAX_LEN - 1))
+MODULE_VERSION_ID_RE_STRING = (r'^(?!-)[a-z\d\-]{0,%d}[a-z\d]$' %
+                               (MODULE_VERSION_ID_MAX_LEN - 1))
 
 _IDLE_INSTANCES_REGEX = r'^([\d]+|automatic)$'
 
@@ -209,7 +209,7 @@ APPLICATION_READABLE = 'application_readable'
 
 
 APPLICATION = 'application'
-SERVER = 'server'
+MODULE = 'module'
 AUTOMATIC_SCALING = 'automatic_scaling'
 MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
@@ -331,7 +331,9 @@ _SUPPORTED_LIBRARIES = [
         'lxml',
         'http://lxml.de/',
         'A Pythonic binding for the C libraries libxml2 and libxslt.',
-        ['2.3']),
+        ['2.3', '2.3.5'],
+        experimental_versions=['2.3.5'],
+        ),
     _VersionedLibrary(
         'markupsafe',
         'http://pypi.python.org/pypi/MarkupSafe',
@@ -1447,8 +1449,8 @@ class AppInfoExternal(validation.Validated):
 
 
       APPLICATION: APPLICATION_RE_STRING,
-      SERVER: validation.Optional(SERVER_ID_RE_STRING),
-      VERSION: validation.Optional(SERVER_VERSION_ID_RE_STRING),
+      MODULE: validation.Optional(MODULE_ID_RE_STRING),
+      VERSION: validation.Optional(MODULE_VERSION_ID_RE_STRING),
       RUNTIME: RUNTIME_RE_STRING,
 
 
@@ -1480,8 +1482,7 @@ class AppInfoExternal(validation.Validated):
       THREADSAFE: validation.Optional(bool),
       DATASTORE_AUTO_ID_POLICY: validation.Optional(
           validation.Options(DATASTORE_ID_POLICY_LEGACY,
-                             DATASTORE_ID_POLICY_DEFAULT),
-          default=DATASTORE_ID_POLICY_DEFAULT),
+                             DATASTORE_ID_POLICY_DEFAULT)),
       API_CONFIG: validation.Optional(ApiConfigHandler),
       CODE_LOCK: validation.Optional(bool),
       ENV_VARIABLES: validation.Optional(EnvironmentVariables),
@@ -1532,13 +1533,12 @@ class AppInfoExternal(validation.Validated):
       raise appinfo_errors.MissingThreadsafe(
           'threadsafe must be present and set to either "yes" or "no"')
 
-
     if self.auto_id_policy == DATASTORE_ID_POLICY_LEGACY:
       datastore_auto_ids_url = ('http://developers.google.com/'
                                 'appengine/docs/python/datastore/'
                                 'entities#Kinds_and_Identifiers')
       appcfg_auto_ids_url = ('http://developers.google.com/appengine/docs/'
-                             'python/config/appconfig')
+                             'python/config/appconfig#auto_id_policy')
       logging.warning(
           "You have set the datastore auto_id_policy to 'legacy'. It is "
           "recommended that you select 'default' instead.\n"
@@ -1757,7 +1757,7 @@ class AppInfoSummary(validation.Validated):
 
   ATTRIBUTES = {
       APPLICATION: APPLICATION_RE_STRING,
-      MAJOR_VERSION: SERVER_VERSION_ID_RE_STRING,
+      MAJOR_VERSION: MODULE_VERSION_ID_RE_STRING,
       MINOR_VERSION: validation.TYPE_LONG
   }
 
