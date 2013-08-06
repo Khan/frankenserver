@@ -218,7 +218,8 @@ def setup_stubs(
     taskqueue_auto_run_tasks,
     taskqueue_default_http_server,
     user_login_url,
-    user_logout_url):
+    user_logout_url,
+    default_gcs_bucket_name):
   """Configures the APIs hosted by this server.
 
   Args:
@@ -270,11 +271,13 @@ def setup_stubs(
     user_login_url: A str containing the url that should be used for user login.
     user_logout_url: A str containing the url that should be used for user
         logout.
+    default_gcs_bucket_name: A str, overriding the default bucket behavior.
   """
 
-  apiproxy_stub_map.apiproxy.RegisterStub(
-      'app_identity_service',
-      app_identity_stub.AppIdentityServiceStub())
+  identity_stub = app_identity_stub.AppIdentityServiceStub()
+  if default_gcs_bucket_name is not None:
+    identity_stub.SetDefaultGcsBucketName(default_gcs_bucket_name)
+  apiproxy_stub_map.apiproxy.RegisterStub('app_identity_service', identity_stub)
 
   blob_storage = file_blob_storage.FileBlobStorage(blobstore_path, app_id)
   apiproxy_stub_map.apiproxy.RegisterStub(
@@ -467,7 +470,8 @@ def test_setup_stubs(
     taskqueue_auto_run_tasks=False,
     taskqueue_default_http_server='http://localhost:8080',
     user_login_url='/_ah/login?continue=%s',
-    user_logout_url='/_ah/login?continue=%s'):
+    user_logout_url='/_ah/login?continue=%s',
+    default_gcs_bucket_name=None):
   """Similar to setup_stubs with reasonable test defaults and recallable."""
 
   # Reset the stub map between requests because a stub map only allows a
@@ -500,7 +504,8 @@ def test_setup_stubs(
               taskqueue_auto_run_tasks,
               taskqueue_default_http_server,
               user_login_url,
-              user_logout_url)
+              user_logout_url,
+              default_gcs_bucket_name)
 
 
 def cleanup_stubs():

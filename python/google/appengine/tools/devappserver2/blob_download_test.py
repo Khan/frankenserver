@@ -471,7 +471,7 @@ class BlobDownloadTestNamespace(BlobDownloadTest):
 class BlobDownloadTestGoogleStorage(BlobDownloadTest):
   """Executes all of the superclass tests with a Google Storage object."""
 
-  def create_blob(self):
+  def create_blob(self, content_type='image/png'):
     """Create a GS object in the datastore and on disk.
 
     Overrides the superclass create_blob method.
@@ -482,11 +482,32 @@ class BlobDownloadTestGoogleStorage(BlobDownloadTest):
     data = 'a blob'
     filename = '/some_bucket/some_object'
     stub = cloudstorage_stub.CloudStorageStub(self.blob_storage)
-    blob_key = stub.post_start_creation(filename, {'content-type': 'image/png'})
+    options = {}
+    if content_type:
+      options['content-type'] = content_type
+    blob_key = stub.post_start_creation(filename, options)
     stub.put_continue_creation(blob_key, data, (0, len(data) - 1), True)
     self.blob_storage.StoreBlob(blob_key, cStringIO.StringIO(data))
 
     return blob_key
+
+  def test_default_content_type(self):
+    """Tests downloads when upload does not specify content-type."""
+    blob_key = self.create_blob(content_type=None)
+
+    headers = [(blobstore.BLOB_KEY_HEADER, str(blob_key))]
+    state = request_rewriter.RewriterState({}, '200 original message', headers,
+                                           'original body')
+
+    blob_download.blobstore_download_rewriter(state)
+
+    self.assertEqual('200 original message', state.status)
+    expected_headers = {
+        'Content-Length': '6',
+        'Content-Type': cloudstorage_stub._GCS_DEFAULT_CONTENT_TYPE,
+    }
+    self.assertHeadersEqual(expected_headers, state.headers)
+    self.assertEqual('a blob', ''.join(state.body))
 
 
 class BlobDownloadIntegrationTest(DownloadTestBase,

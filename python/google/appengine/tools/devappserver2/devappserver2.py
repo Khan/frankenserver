@@ -156,7 +156,16 @@ def parse_max_module_instances(value):
           1. "5" - All modules are limited to 5 instances.
           2. "default:3,backend:20" - The default module can have 3 instances,
              "backend" can have 20 instances and all other modules are
-              unaffected.
+              unaffected. An empty name (i.e. ":3") is shorthand for default
+              to match how not specifying a module name in the yaml is the
+              same as specifying "module: default".
+  Returns:
+    The parsed value of the max_module_instances flag. May either be an int
+    (for values of the form "5") or a dict of str->int (for values of the
+    form "default:3,backend:20").
+
+  Raises:
+    argparse.ArgumentTypeError: the value is invalid.
   """
   if ':' not in value:
     try:
@@ -179,9 +188,14 @@ def parse_max_module_instances(value):
             'Expected "module:max_instances": %r' % module_instance_max)
       else:
         module_name = module_name.strip()
+        if not module_name:
+          module_name = 'default'
         if module_name in module_to_max_instances:
           raise argparse.ArgumentTypeError(
               'Duplicate max instance value: %r' % module_name)
+        if not max_instances:
+          raise argparse.ArgumentTypeError(
+              'Cannot specify zero instances for module %s' % module_name)
         module_to_max_instances[module_name] = max_instances
     return module_to_max_instances
 
@@ -423,7 +437,7 @@ def create_command_line_parser():
       action=boolean_action.BooleanAction,
       const=True,
       default=False,
-      help='make files specified in the app.yaml "skip_files" or "static"'
+      help='make files specified in the app.yaml "skip_files" or "static" '
       'handles readable by the application.')
   misc_group.add_argument(
       '--api_port', type=PortParser(), default=0,
@@ -449,6 +463,9 @@ def create_command_line_parser():
       default=False,
       help='skip checking for SDK updates (if false, use .appcfg_nag to '
       'decide)')
+  misc_group.add_argument(
+      '--default_gcs_bucket_name', default=None,
+      help='default Google Cloud Storgage bucket name')
 
 
   return parser
@@ -554,6 +571,8 @@ class DevelopmentServer(object):
       if options.python_startup_args:
         python_config.startup_args = options.python_startup_args
 
+    php_executable_path = (options.php_executable_path and
+                           os.path.abspath(options.php_executable_path))
     cloud_sql_config = runtime_config_pb2.CloudSQL()
     cloud_sql_config.mysql_host = options.mysql_host
     cloud_sql_config.mysql_port = options.mysql_port
@@ -577,7 +596,7 @@ class DevelopmentServer(object):
         options.port,
         options.auth_domain,
         _LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
-        options.php_executable_path,
+        php_executable_path,
         options.php_remote_debugging,
         python_config,
         cloud_sql_config,
@@ -662,7 +681,8 @@ class DevelopmentServer(object):
         taskqueue_auto_run_tasks=options.enable_task_running,
         taskqueue_default_http_server=application_address,
         user_login_url=user_login_url,
-        user_logout_url=user_logout_url)
+        user_logout_url=user_logout_url,
+        default_gcs_bucket_name=options.default_gcs_bucket_name)
 
     # The APIServer must bind to localhost because that is what the runtime
     # instances talk to.
