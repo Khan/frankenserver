@@ -1374,17 +1374,41 @@ class RequestManager(object):
     ReserveKeys(keys)
 
   def GetSchemaKinds(self):
-    """Returns the list of kinds for this app."""
-    global_stat = stats.GlobalStat.all().get()
+    """Returns the list of kinds for this app.
+
+    There can be 3 possible cases using namespaces:
+      a.) No namespace specified and Datastore has only default namespace ->
+          Query GlobalStat and KindStat.
+      b.) No namespace specified but Datastore has multiple namespace ->
+          Query NamespaceGlobalStat and NamespaceKindStat.
+      c.) Namespace specified and Datastore has multiple namespaces ->
+          Query NamespaceGlobalStat and NamespaceKindStat.
+
+    Returns:
+      A list of kinds.
+    """
+    namespaces = False
+
+    if (namespace_manager.get_namespace() or
+        stats.NamespaceStat.all().count() > 1):
+      namespaces = True
+
+    if namespaces:
+      global_kind = stats.NamespaceGlobalStat
+    else:
+      global_kind = stats.GlobalStat
+
+    kinds_kind = stats.NamespaceKindStat if namespaces else stats.KindStat
+
+    global_stat = global_kind.all().get()
     if not global_stat:
       raise KindStatError()
     timestamp = global_stat.timestamp
-    kind_stat = stats.KindStat.all().filter(
+    kind_stat = kinds_kind.all().filter(
         "timestamp =", timestamp).fetch(1000)
     kind_list = [stat.kind_name for stat in kind_stat
                  if stat.kind_name and not stat.kind_name.startswith('__')]
-    kind_set = set(kind_list)
-    return list(kind_set)
+    return list(set(kind_list))
 
   def EncodeContent(self, rows, loader=None):
     """Encodes row data to the wire format.
@@ -3779,7 +3803,7 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
       continue
     option = option[2:]
     if option in DEPRECATED_OPTIONS:
-      print >>sys.stderr, ('--%s is deprecated, please use --%s.' %
+      print >> sys.stderr, ('--%s is deprecated, please use --%s.' %
                            (option, DEPRECATED_OPTIONS[option]))
       option = DEPRECATED_OPTIONS[option]
 
@@ -3885,7 +3909,7 @@ def LoadConfig(config_file_name, exit_fn=sys.exit):
 
       m = re.search(r"[^']*'([^']*)'.*", str(e))
       if m.groups() and m.group(1) == 'Loader':
-        print >>sys.stderr, """
+        print >> sys.stderr, """
 The config file format has changed and you appear to be using an old-style
 config file.  Please make the following changes:
 
@@ -3916,7 +3940,7 @@ to have access to.
           hasattr(bulkloader_config, 'bulkloader') and
           isinstance(e, bulkloader_config.bulkloader.NameClashError)):
         print >> sys.stderr, (
-            'Found both %s and %s while aliasing old names on %s.'%
+            'Found both %s and %s while aliasing old names on %s.' %
             (e.old_name, e.new_name, e.klass))
         exit_fn(1)
       else:
@@ -3936,7 +3960,7 @@ def GetArgument(kwargs, name, die_fn):
   if name in kwargs:
     return kwargs[name]
   else:
-    print >>sys.stderr, '%s argument required' % name
+    print >> sys.stderr, '%s argument required' % name
     die_fn()
 
 
@@ -4061,7 +4085,7 @@ def ProcessArguments(arg_dict,
 
 
   if errors:
-    print >>sys.stderr, '\n'.join(errors)
+    print >> sys.stderr, '\n'.join(errors)
     die_fn()
 
   return arg_dict
@@ -4406,7 +4430,7 @@ def main(argv):
             for (key, value) in arg_dict.iteritems()
             if value is REQUIRED_OPTION]
   if errors:
-    print >>sys.stderr, '\n'.join(errors)
+    print >> sys.stderr, '\n'.join(errors)
     PrintUsageExit(1)
 
   SetupLogging(arg_dict)

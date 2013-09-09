@@ -67,7 +67,7 @@ from google.appengine.api import datastore_types
 
 from google.appengine.api.app_identity import app_identity
 from google.appengine.datastore import datastore_pb
-from google.appengine.datastore import datastore_v4a_pb
+from google.appengine.datastore import datastore_v4_pb
 from google.appengine.datastore import entity_v4_pb
 from google.appengine.runtime import apiproxy_errors
 
@@ -1908,9 +1908,9 @@ class Connection(BaseConnection):
     rpcs = []
     pbsgen = self._generate_pb_lists(keys_by_idkey, 0, max_count, None, config)
     for pbs, _ in pbsgen:
-      req = datastore_v4a_pb.AllocateIdsRequest()
+      req = datastore_v4_pb.AllocateIdsRequest()
       req.reserve_list().extend([self.__to_v4_key(key) for key in pbs])
-      resp = datastore_v4a_pb.AllocateIdsResponse()
+      resp = datastore_v4_pb.AllocateIdsResponse()
       rpcs.append(self.make_rpc_call(config, 'AllocateIds', req, resp,
                                      self.__reserve_keys_hook, extra_hook,
                                      'datastore_v4'))

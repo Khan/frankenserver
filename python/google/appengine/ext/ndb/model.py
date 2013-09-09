@@ -304,8 +304,9 @@ __all__ = ['Key', 'BlobKey', 'GeoPt', 'Rollback',
            'Index', 'IndexState', 'IndexProperty',
            'ModelAdapter', 'ModelAttribute',
            'ModelKey', 'MetaModel', 'Model', 'Expando',
-           'transaction', 'transaction_async',
-           'in_transaction', 'transactional', 'non_transactional',
+           'transaction', 'transaction_async', 'in_transaction',
+           'transactional', 'transactional_async', 'transactional_tasklet',
+           'non_transactional',
            'get_multi', 'get_multi_async',
            'put_multi', 'put_multi_async',
            'delete_multi', 'delete_multi_async',
@@ -3586,12 +3587,11 @@ def in_transaction():
   return tasklets.get_context().in_transaction()
 
 
-@utils.positional(1)
-def transactional(_func=None, **ctx_options):
+@utils.decorator
+def transactional(func, args, kwds, **options):
   """Decorator to make a function automatically run in a transaction.
 
   Args:
-    _func: Do not use.
     **ctx_options: Transaction options (see transaction(), but propagation
       default to TransactionOptions.ALLOWED).
 
@@ -3607,37 +3607,38 @@ def transactional(_func=None, **ctx_options):
       def callback(arg):
         ...
   """
-  if _func is not None:
-    # Form (1), vanilla.
-    if ctx_options:
-      raise TypeError('@transactional() does not take positional arguments')
-    # TODO: Avoid recursion, call outer_transactional_wrapper() directly?
-    return transactional()(_func)
-
-  ctx_options.setdefault('propagation',
-                         datastore_rpc.TransactionOptions.ALLOWED)
-
-  # Form (2), with options.
-  def outer_transactional_wrapper(func):
-    @utils.wrapping(func)
-    def inner_transactional_wrapper(*args, **kwds):
-      f = func
-      if args or kwds:
-        f = lambda: func(*args, **kwds)
-      return transaction(f, **ctx_options)
-    return inner_transactional_wrapper
-  return outer_transactional_wrapper
+  return transactional_async.wrapped_decorator(
+      func, args, kwds, **options).get_result()
 
 
-@utils.positional(1)
-def non_transactional(_func=None, allow_existing=True):
+@utils.decorator
+def transactional_async(func, args, kwds, **options):
+  """The async version of @ndb.transaction."""
+  options.setdefault('propagation', datastore_rpc.TransactionOptions.ALLOWED)
+  if args or kwds:
+    return transaction_async(lambda: func(*args, **kwds), **options)
+  return transaction_async(func, **options)
+
+
+@utils.decorator
+def transactional_tasklet(func, args, kwds, **options):
+  """The async version of @ndb.transaction.
+
+  Will return the result of the wrapped function as a Future.
+  """
+  from . import tasklets
+  func = tasklets.tasklet(func)
+  return transactional_async.wrapped_decorator(func, args, kwds, **options)
+
+
+@utils.decorator
+def non_transactional(func, args, kwds, allow_existing=True):
   """A decorator that ensures a function is run outside a transaction.
 
   If there is an existing transaction (and allow_existing=True), the
   existing transaction is paused while the function is executed.
 
   Args:
-    _func: Do not use.
     allow_existing: If false, throw an exception if called from within
       a transaction.  If true, temporarily re-establish the
       previous non-transactional context.  Defaults to True.
@@ -3648,36 +3649,28 @@ def non_transactional(_func=None, allow_existing=True):
     A wrapper for the decorated function that ensures it runs outside a
     transaction.
   """
-  if _func is not None:
-    # TODO: Avoid recursion, call outer_non_transactional_wrapper() directly?
-    return non_transactional()(_func)
-
-  def outer_non_transactional_wrapper(func):
-    from . import tasklets
-    @utils.wrapping(func)
-    def inner_non_transactional_wrapper(*args, **kwds):
-      ctx = tasklets.get_context()
-      if not ctx.in_transaction():
-        return func(*args, **kwds)
-      if not allow_existing:
-        raise datastore_errors.BadRequestError(
-          '%s cannot be called within a transaction.' % func.__name__)
-      save_ctx = ctx
-      while ctx.in_transaction():
-        ctx = ctx._parent_context
-        if ctx is None:
-          raise datastore_errors.BadRequestError(
-            'Context without non-transactional ancestor')
-      save_ds_conn = datastore._GetConnection()
-      try:
-        datastore._SetConnection(save_ctx._old_ds_conn)
-        tasklets.set_context(ctx)
-        return func(*args, **kwds)
-      finally:
-        tasklets.set_context(save_ctx)
-        datastore._SetConnection(save_ds_conn)
-    return inner_non_transactional_wrapper
-  return outer_non_transactional_wrapper
+  from . import tasklets
+  ctx = tasklets.get_context()
+  if not ctx.in_transaction():
+    return func(*args, **kwds)
+  if not allow_existing:
+    raise datastore_errors.BadRequestError(
+      '%s cannot be called within a transaction.' % func.__name__)
+  save_ctx = ctx
+  while ctx.in_transaction():
+    ctx = ctx._parent_context
+    if ctx is None:
+      raise datastore_errors.BadRequestError(
+        'Context without non-transactional ancestor')
+  save_ds_conn = datastore._GetConnection()
+  try:
+    if hasattr(save_ctx, '_old_ds_conn'):
+      datastore._SetConnection(save_ctx._old_ds_conn)
+    tasklets.set_context(ctx)
+    return func(*args, **kwds)
+  finally:
+    tasklets.set_context(save_ctx)
+    datastore._SetConnection(save_ds_conn)
 
 
 def get_multi_async(keys, **ctx_options):
