@@ -114,6 +114,7 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
       url='/_ah/warmup',
       script='$PHP_LIB/default_warmup_handler',
       login='admin')
+  SUPPORTS_INTERACTIVE_REQUESTS = True
   FILE_CHANGE_INSTANCE_RESTART_POLICY = instance.NEVER
 
   def __init__(self, request_data, runtime_config_getter, module_configuration):
@@ -155,10 +156,6 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
     # must include a valid SystemRoot.
     if 'SYSTEMROOT' in os.environ:
       env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
-
-    if not os.access(php_executable_path, os.X_OK):
-      raise _PHPBinaryError('The path specified with the --php_executable_path '
-                            'flag (%s) is not executable' % php_executable_path)
 
     version_process = safe_subprocess.start_process([php_executable_path, '-v'],
                                                     stdout=subprocess.PIPE,

@@ -647,7 +647,7 @@ goog.string.countOf = function(s, ss) {
 };
 goog.string.removeAt = function(s, index, stringLength) {
   var resultStr = s;
-  0 <= index && (index < s.length && 0 < stringLength) && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
+  0 <= index && index < s.length && 0 < stringLength && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
   return resultStr
 };
 goog.string.remove = function(s, ss) {
@@ -1222,6 +1222,11 @@ goog.functions.lock = function(f, opt_numArgs) {
   opt_numArgs = opt_numArgs || 0;
   return function() {
     return f.apply(this, Array.prototype.slice.call(arguments, 0, opt_numArgs))
+  }
+};
+goog.functions.nth = function(n) {
+  return function() {
+    return arguments[n]
   }
 };
 goog.functions.withReturnValue = function(f, retValue) {
@@ -2370,15 +2375,29 @@ goog.dom.findNodes_ = function(root, p, rv, findOne) {
 goog.dom.TAGS_TO_IGNORE_ = {SCRIPT:1, STYLE:1, HEAD:1, IFRAME:1, OBJECT:1};
 goog.dom.PREDEFINED_TAG_VALUES_ = {IMG:" ", BR:"\n"};
 goog.dom.isFocusableTabIndex = function(element) {
-  var attrNode = element.getAttributeNode("tabindex");
-  if(attrNode && attrNode.specified) {
-    var index = element.tabIndex;
-    return goog.isNumber(index) && 0 <= index && 32768 > index
-  }
-  return!1
+  return goog.dom.hasSpecifiedTabIndex_(element) && goog.dom.isTabIndexFocusable_(element)
 };
 goog.dom.setFocusableTabIndex = function(element, enable) {
   enable ? element.tabIndex = 0 : (element.tabIndex = -1, element.removeAttribute("tabIndex"))
+};
+goog.dom.isFocusable = function(element) {
+  var focusable;
+  return(focusable = goog.dom.isFormElement_(element) ? !element.disabled && (!goog.dom.hasSpecifiedTabIndex_(element) || goog.dom.isTabIndexFocusable_(element)) : goog.dom.isFocusableTabIndex(element)) && goog.userAgent.IE ? goog.dom.hasNonZeroBoundingRect_(element) : focusable
+};
+goog.dom.hasSpecifiedTabIndex_ = function(element) {
+  var attrNode = element.getAttributeNode("tabindex");
+  return goog.isDefAndNotNull(attrNode) && attrNode.specified
+};
+goog.dom.isTabIndexFocusable_ = function(element) {
+  var index = element.tabIndex;
+  return goog.isNumber(index) && 0 <= index && 32768 > index
+};
+goog.dom.isFormElement_ = function(element) {
+  return element.tagName == goog.dom.TagName.INPUT || element.tagName == goog.dom.TagName.TEXTAREA || element.tagName == goog.dom.TagName.SELECT || element.tagName == goog.dom.TagName.BUTTON
+};
+goog.dom.hasNonZeroBoundingRect_ = function(element) {
+  var rect = goog.isFunction(element.getBoundingClientRect) ? element.getBoundingClientRect() : {height:element.offsetHeight, width:element.offsetWidth};
+  return goog.isDefAndNotNull(rect) && 0 < rect.height && 0 < rect.width
 };
 goog.dom.getTextContent = function(node) {
   var textContent;
@@ -2595,6 +2614,7 @@ goog.dom.DomHelper.prototype.findNode = goog.dom.findNode;
 goog.dom.DomHelper.prototype.findNodes = goog.dom.findNodes;
 goog.dom.DomHelper.prototype.isFocusableTabIndex = goog.dom.isFocusableTabIndex;
 goog.dom.DomHelper.prototype.setFocusableTabIndex = goog.dom.setFocusableTabIndex;
+goog.dom.DomHelper.prototype.isFocusable = goog.dom.isFocusable;
 goog.dom.DomHelper.prototype.getTextContent = goog.dom.getTextContent;
 goog.dom.DomHelper.prototype.getNodeTextLength = goog.dom.getNodeTextLength;
 goog.dom.DomHelper.prototype.getNodeTextOffset = goog.dom.getNodeTextOffset;
@@ -2735,7 +2755,7 @@ goog.events.EventType = {CLICK:"click", DBLCLICK:"dblclick", MOUSEDOWN:"mousedow
 DRAGSTART:"dragstart", DRAG:"drag", DRAGENTER:"dragenter", DRAGOVER:"dragover", DRAGLEAVE:"dragleave", DROP:"drop", DRAGEND:"dragend", TOUCHSTART:"touchstart", TOUCHMOVE:"touchmove", TOUCHEND:"touchend", TOUCHCANCEL:"touchcancel", BEFOREUNLOAD:"beforeunload", CONSOLEMESSAGE:"consolemessage", CONTEXTMENU:"contextmenu", DOMCONTENTLOADED:"DOMContentLoaded", ERROR:"error", HELP:"help", LOAD:"load", LOSECAPTURE:"losecapture", ORIENTATIONCHANGE:"orientationchange", READYSTATECHANGE:"readystatechange", 
 RESIZE:"resize", SCROLL:"scroll", UNLOAD:"unload", HASHCHANGE:"hashchange", PAGEHIDE:"pagehide", PAGESHOW:"pageshow", POPSTATE:"popstate", COPY:"copy", PASTE:"paste", CUT:"cut", BEFORECOPY:"beforecopy", BEFORECUT:"beforecut", BEFOREPASTE:"beforepaste", ONLINE:"online", OFFLINE:"offline", MESSAGE:"message", CONNECT:"connect", ANIMATIONSTART:goog.events.getVendorPrefixedName_("AnimationStart"), ANIMATIONEND:goog.events.getVendorPrefixedName_("AnimationEnd"), ANIMATIONITERATION:goog.events.getVendorPrefixedName_("AnimationIteration"), 
 TRANSITIONEND:goog.events.getVendorPrefixedName_("TransitionEnd"), MSGESTURECHANGE:"MSGestureChange", MSGESTUREEND:"MSGestureEnd", MSGESTUREHOLD:"MSGestureHold", MSGESTURESTART:"MSGestureStart", MSGESTURETAP:"MSGestureTap", MSGOTPOINTERCAPTURE:"MSGotPointerCapture", MSINERTIASTART:"MSInertiaStart", MSLOSTPOINTERCAPTURE:"MSLostPointerCapture", MSPOINTERCANCEL:"MSPointerCancel", MSPOINTERDOWN:"MSPointerDown", MSPOINTERMOVE:"MSPointerMove", MSPOINTEROVER:"MSPointerOver", MSPOINTEROUT:"MSPointerOut", 
-MSPOINTERUP:"MSPointerUp", TEXTINPUT:"textinput", COMPOSITIONSTART:"compositionstart", COMPOSITIONUPDATE:"compositionupdate", COMPOSITIONEND:"compositionend", EXIT:"exit", LOADABORT:"loadabort", LOADCOMMIT:"loadcommit", LOADREDIRECT:"loadredirect", LOADSTART:"loadstart", LOADSTOP:"loadstop", RESPONSIVE:"responsive", SIZECHANGED:"sizechanged", UNRESPONSIVE:"unresponsive"};
+MSPOINTERUP:"MSPointerUp", TEXTINPUT:"textinput", COMPOSITIONSTART:"compositionstart", COMPOSITIONUPDATE:"compositionupdate", COMPOSITIONEND:"compositionend", EXIT:"exit", LOADABORT:"loadabort", LOADCOMMIT:"loadcommit", LOADREDIRECT:"loadredirect", LOADSTART:"loadstart", LOADSTOP:"loadstop", RESPONSIVE:"responsive", SIZECHANGED:"sizechanged", UNRESPONSIVE:"unresponsive", VISIBILITYCHANGE:"visibilitychange"};
 goog.events.BrowserEvent = function(opt_e, opt_currentTarget) {
   opt_e && this.init(opt_e, opt_currentTarget)
 };
@@ -2757,7 +2777,6 @@ goog.events.BrowserEvent.prototype.ctrlKey = !1;
 goog.events.BrowserEvent.prototype.altKey = !1;
 goog.events.BrowserEvent.prototype.shiftKey = !1;
 goog.events.BrowserEvent.prototype.metaKey = !1;
-goog.events.BrowserEvent.prototype.platformModifierKey = !1;
 goog.events.BrowserEvent.prototype.event_ = null;
 goog.events.BrowserEvent.prototype.init = function(e, opt_currentTarget) {
   var type = this.type = e.type;
@@ -2780,7 +2799,6 @@ goog.events.BrowserEvent.prototype.init = function(e, opt_currentTarget) {
   this.altKey = e.altKey;
   this.shiftKey = e.shiftKey;
   this.metaKey = e.metaKey;
-  this.platformModifierKey = goog.userAgent.MAC ? e.metaKey : e.ctrlKey;
   this.state = e.state;
   this.event_ = e;
   e.defaultPrevented && this.preventDefault();
@@ -2815,7 +2833,11 @@ goog.events.Listenable.addImplementation = function(cls) {
   cls.prototype[goog.events.Listenable.IMPLEMENTED_BY_PROP] = !0
 };
 goog.events.Listenable.isImplementedBy = function(obj) {
-  return!(!obj || !obj[goog.events.Listenable.IMPLEMENTED_BY_PROP])
+  try {
+    return!(!obj || !obj[goog.events.Listenable.IMPLEMENTED_BY_PROP])
+  }catch(e) {
+    return!1
+  }
 };
 goog.events.ListenableKey = function() {
 };
@@ -2845,13 +2867,6 @@ goog.events.ListenerMap = function(src) {
 };
 goog.events.ListenerMap.prototype.getTypeCount = function() {
   return this.typeCount_
-};
-goog.events.ListenerMap.prototype.getListenerCount = function() {
-  var count = 0, type;
-  for(type in this.listeners) {
-    count += this.listeners[type].length
-  }
-  return count
 };
 goog.events.ListenerMap.prototype.add = function(type, listener, callOnce, opt_useCapture, opt_listenerScope) {
   var listenerArray = this.listeners[type];
@@ -2932,11 +2947,12 @@ goog.events.ListenerMap.findListenerIndex_ = function(listenerArray, listener, o
   return-1
 };
 goog.events.listeners_ = {};
-goog.events.listenerTree_ = {};
+goog.events.LISTENER_MAP_PROP_ = "closure_lm_" + (1E6 * Math.random() | 0);
 goog.events.onString_ = "on";
 goog.events.onStringMap_ = {};
 goog.events.CaptureSimulationMode = {OFF_AND_FAIL:0, OFF_AND_SILENT:1, ON:2};
 goog.events.CAPTURE_SIMULATION_MODE = 2;
+goog.events.listenerCountEstimate_ = 0;
 goog.events.listen = function(src, type, listener, opt_capt, opt_handler) {
   if(goog.isArray(type)) {
     for(var i = 0;i < type.length;i++) {
@@ -2960,8 +2976,8 @@ goog.events.listen_ = function(src, type, listener, callOnce, opt_capt, opt_hand
       return null
     }
   }
-  var srcUid = goog.getUid(src), listenerMap = goog.events.listenerTree_[srcUid];
-  listenerMap || (goog.events.listenerTree_[srcUid] = listenerMap = new goog.events.ListenerMap(src));
+  var listenerMap = goog.events.getListenerMap_(src);
+  listenerMap || (src[goog.events.LISTENER_MAP_PROP_] = listenerMap = new goog.events.ListenerMap(src));
   var listenerObj = listenerMap.add(type, listener, callOnce, opt_capt, opt_handler);
   if(listenerObj.proxy) {
     return listenerObj
@@ -2971,7 +2987,8 @@ goog.events.listen_ = function(src, type, listener, callOnce, opt_capt, opt_hand
   proxy.src = src;
   proxy.listener = listenerObj;
   src.addEventListener ? src.addEventListener(type, proxy, capture) : src.attachEvent(goog.events.getOnString_(type), proxy);
-  return goog.events.listeners_[listenerObj.key] = listenerObj
+  goog.events.listenerCountEstimate_++;
+  return listenerObj
 };
 goog.events.getProxy = function() {
   var proxyCallbackFunction = goog.events.handleBrowserEvent_, f = goog.events.BrowserFeature.HAS_W3C_EVENT_SUPPORT ? function(eventObject) {
@@ -3034,19 +3051,22 @@ goog.events.unlistenByKey = function(key) {
   }
   var type = listener.type, proxy = listener.proxy;
   src.removeEventListener ? src.removeEventListener(type, proxy, listener.capture) : src.detachEvent && src.detachEvent(goog.events.getOnString_(type), proxy);
+  goog.events.listenerCountEstimate_--;
   var listenerMap = goog.events.getListenerMap_(src);
-  listenerMap ? (listenerMap.removeByKey(listener), 0 == listenerMap.getTypeCount() && (listenerMap.src = null, delete goog.events.listenerTree_[goog.getUid(src)])) : listener.markAsRemoved();
-  delete goog.events.listeners_[listener.key];
+  listenerMap ? (listenerMap.removeByKey(listener), 0 == listenerMap.getTypeCount() && (listenerMap.src = null, src[goog.events.LISTENER_MAP_PROP_] = null)) : listener.markAsRemoved();
   return!0
 };
 goog.events.unlistenWithWrapper = function(src, wrapper, listener, opt_capt, opt_handler) {
   wrapper.unlisten(src, listener, opt_capt, opt_handler)
 };
 goog.events.removeAll = function(opt_obj, opt_type) {
-  return opt_obj ? goog.events.Listenable.isImplementedBy(opt_obj) ? opt_obj.removeAllListeners(opt_type) : goog.events.removeAll_(goog.getUid(opt_obj), opt_type) : goog.events.removeAllNativeListeners()
-};
-goog.events.removeAll_ = function(srcUid, opt_type) {
-  var listenerMap = goog.events.listenerTree_[srcUid];
+  if(!opt_obj) {
+    return 0
+  }
+  if(goog.events.Listenable.isImplementedBy(opt_obj)) {
+    return opt_obj.removeAllListeners(opt_type)
+  }
+  var listenerMap = goog.events.getListenerMap_(opt_obj);
   if(!listenerMap) {
     return 0
   }
@@ -3061,11 +3081,7 @@ goog.events.removeAll_ = function(srcUid, opt_type) {
   return count
 };
 goog.events.removeAllNativeListeners = function() {
-  var count = 0, srcUid;
-  for(srcUid in goog.events.listenerTree_) {
-    count += goog.events.removeAll_(srcUid)
-  }
-  return count
+  return goog.events.listenerCountEstimate_ = 0
 };
 goog.events.getListeners = function(obj, type, capture) {
   if(goog.events.Listenable.isImplementedBy(obj)) {
@@ -3116,7 +3132,7 @@ goog.events.fireListeners_ = function(obj, type, capture, eventObject) {
     if(listenerArray) {
       for(var listenerArray = goog.array.clone(listenerArray), i = 0;i < listenerArray.length;i++) {
         var listener = listenerArray[i];
-        listener && (listener.capture == capture && !listener.removed) && (retval &= !1 !== goog.events.fireListener(listener, eventObject))
+        listener && listener.capture == capture && !listener.removed && (retval &= !1 !== goog.events.fireListener(listener, eventObject))
       }
     }
   }
@@ -3128,11 +3144,7 @@ goog.events.fireListener = function(listener, eventObject) {
   return listenerFn.call(listenerHandler, eventObject)
 };
 goog.events.getTotalListenerCount = function() {
-  var count = 0, srcUid;
-  for(srcUid in goog.events.listenerTree_) {
-    var listenerMap = goog.events.listenerTree_[srcUid], count = count + listenerMap.getListenerCount()
-  }
-  return count
+  return goog.events.listenerCountEstimate_
 };
 goog.events.dispatchEvent = function(src, e) {
   goog.asserts.assert(goog.events.Listenable.isImplementedBy(src), "Can not use goog.events.dispatchEvent with non-goog.events.Listenable instance.");
@@ -3189,7 +3201,8 @@ goog.events.getUniqueId = function(identifier) {
   return identifier + "_" + goog.events.uniqueIdCounter_++
 };
 goog.events.getListenerMap_ = function(src) {
-  return goog.hasUid(src) ? goog.events.listenerTree_[goog.getUid(src)] || null : null
+  var listenerMap = src[goog.events.LISTENER_MAP_PROP_];
+  return listenerMap instanceof goog.events.ListenerMap ? listenerMap : null
 };
 goog.events.LISTENER_WRAPPER_PROP_ = "__closure_events_fn_" + (1E9 * Math.random() >>> 0);
 goog.events.wrapListener_ = function(listener) {
@@ -3704,6 +3717,7 @@ goog.iter.cycle = function(iterable) {
 goog.structs.Map = function(opt_map, var_args) {
   this.map_ = {};
   this.keys_ = [];
+  this.version_ = this.count_ = 0;
   var argLength = arguments.length;
   if(1 < argLength) {
     if(argLength % 2) {
@@ -3716,8 +3730,6 @@ goog.structs.Map = function(opt_map, var_args) {
     opt_map && this.addAll(opt_map)
   }
 };
-goog.structs.Map.prototype.count_ = 0;
-goog.structs.Map.prototype.version_ = 0;
 goog.structs.Map.prototype.getCount = function() {
   return this.count_
 };
@@ -4244,13 +4256,12 @@ goog.debug.fnNameCache_ = {};
 goog.debug.LogRecord = function(level, msg, loggerName, opt_time, opt_sequenceNumber) {
   this.reset(level, msg, loggerName, opt_time, opt_sequenceNumber)
 };
-goog.debug.LogRecord.prototype.sequenceNumber_ = 0;
 goog.debug.LogRecord.prototype.exception_ = null;
 goog.debug.LogRecord.prototype.exceptionText_ = null;
 goog.debug.LogRecord.ENABLE_SEQUENCE_NUMBERS = !0;
 goog.debug.LogRecord.nextSequenceNumber_ = 0;
 goog.debug.LogRecord.prototype.reset = function(level, msg, loggerName, opt_time, opt_sequenceNumber) {
-  goog.debug.LogRecord.ENABLE_SEQUENCE_NUMBERS && (this.sequenceNumber_ = "number" == typeof opt_sequenceNumber ? opt_sequenceNumber : goog.debug.LogRecord.nextSequenceNumber_++);
+  goog.debug.LogRecord.ENABLE_SEQUENCE_NUMBERS && ("number" == typeof opt_sequenceNumber || goog.debug.LogRecord.nextSequenceNumber_++);
   opt_time || goog.now();
   this.level_ = level;
   this.msg_ = msg;
@@ -4970,7 +4981,7 @@ goog.net.XhrIo.prototype.send = function(url, opt_method, opt_content, opt_heade
     headers.set(key, value)
   });
   var contentTypeKey = goog.array.find(headers.getKeys(), goog.net.XhrIo.isContentTypeHeader_), contentIsFormData = goog.global.FormData && content instanceof goog.global.FormData;
-  !goog.array.contains(goog.net.XhrIo.METHODS_WITH_FORM_DATA, method) || (contentTypeKey || contentIsFormData) || headers.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
+  !goog.array.contains(goog.net.XhrIo.METHODS_WITH_FORM_DATA, method) || contentTypeKey || contentIsFormData || headers.set(goog.net.XhrIo.CONTENT_TYPE_HEADER, goog.net.XhrIo.FORM_CONTENT_TYPE);
   goog.structs.forEach(headers, function(value, key) {
     this.xhr_.setRequestHeader(key, value)
   }, this);

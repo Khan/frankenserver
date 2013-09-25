@@ -37,7 +37,13 @@ from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import wsgi_server
 
 SDK_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(sys.argv[0]), 'php/sdk'))
+    os.path.join(os.path.dirname(os.path.realpath(sys.argv[0])), 'php/sdk'))
+
+
+if not os.path.exists(SDK_PATH):
+  SDK_PATH = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]),
+                                          'php/sdk'))
+
 SETUP_PHP_PATH = os.path.join(os.path.dirname(php.__file__), 'setup.php')
 
 
@@ -65,6 +71,7 @@ class PHPRuntime(object):
         # REDIRECT_STATUS must be set. See:
         # http://php.net/manual/en/security.cgi-bin.force-redirect.php
         'REDIRECT_STATUS': '1',
+        'REMOTE_API_HOST': str(config.api_host),
         'REMOTE_API_PORT': str(config.api_port),
         'SERVER_SOFTWARE': http_runtime_constants.SERVER_SOFTWARE,
         'TZ': 'UTC',
@@ -138,6 +145,11 @@ class PHPRuntime(object):
       args.extend(['-d', 'xdebug.remote_enable="1"'])
       user_environ['XDEBUG_CONFIG'] = os.environ.get('XDEBUG_CONFIG', '')
 
+    request_type = environ.pop(http_runtime_constants.REQUEST_TYPE_HEADER, None)
+    if request_type == 'interactive':
+      args.extend(['-d', 'html_errors="0"'])
+      user_environ[http_runtime_constants.REQUEST_TYPE_HEADER] = request_type
+
     try:
       p = subprocess.Popen(args,
                            stdin=subprocess.PIPE,
@@ -153,12 +165,17 @@ class PHPRuntime(object):
       return ['Failure to start the PHP subprocess with %r:\n%s' % (args, e)]
 
     if p.returncode:
-      logging.error('php failure (%r) with:\nstdout:\n%sstderr:\n%s',
-                    p.returncode, stdout, stderr)
-      start_response('500 Internal Server Error',
-                     [(http_runtime_constants.ERROR_CODE_HEADER, '1')])
-      return ['php failure (%r) with:\nstdout:%s\nstderr:\n%s' %
-              (p.returncode, stdout, stderr)]
+      if request_type == 'interactive':
+        start_response('200 OK', [('Content-Type', 'text/plain')])
+        message = httplib.HTTPMessage(cStringIO.StringIO(stdout))
+        return [message.fp.read()]
+      else:
+        logging.error('php failure (%r) with:\nstdout:\n%sstderr:\n%s',
+                      p.returncode, stdout, stderr)
+        start_response('500 Internal Server Error',
+                       [(http_runtime_constants.ERROR_CODE_HEADER, '1')])
+        return ['php failure (%r) with:\nstdout:%s\nstderr:\n%s' %
+                (p.returncode, stdout, stderr)]
 
     message = httplib.HTTPMessage(cStringIO.StringIO(stdout))
     assert 'Content-Type' in message, 'invalid CGI response: %r' % stdout

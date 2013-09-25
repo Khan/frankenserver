@@ -64,14 +64,14 @@ class Dispatcher(request_info.Dispatcher):
                port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                module_to_max_instances,
                use_mtime_file_watcher,
                automatic_restart,
-               allow_skipped_files):
+               allow_skipped_files,
+               module_to_threadsafe_override):
     """Initializer for Dispatcher.
 
     Args:
@@ -85,10 +85,8 @@ class Dispatcher(request_info.Dispatcher):
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -107,13 +105,16 @@ class Dispatcher(request_info.Dispatcher):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      module_to_threadsafe_override: A mapping between the module name and what
+        to override the module's YAML threadsafe configuration (so modules
+        not named continue to use their YAML configuration).
     """
     self._configuration = configuration
-    self._php_executable_path = php_executable_path
-    self._enable_php_remote_debugging = enable_php_remote_debugging
+    self._php_config = php_config
     self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = None
+    self._api_host = None
     self._api_port = None
     self._running_modules = []
     self._module_configurations = {}
@@ -130,17 +131,20 @@ class Dispatcher(request_info.Dispatcher):
     self._use_mtime_file_watcher = use_mtime_file_watcher
     self._automatic_restart = automatic_restart
     self._allow_skipped_files = allow_skipped_files
+    self._module_to_threadsafe_override = module_to_threadsafe_override
     self._executor = scheduled_executor.ScheduledExecutor(_THREAD_POOL)
     self._port_registry = PortRegistry()
 
-  def start(self, api_port, request_data):
+  def start(self, api_host, api_port, request_data):
     """Starts the configured modules.
 
     Args:
+      api_host: The hostname that APIServer listens for RPC requests on.
       api_port: The port that APIServer listens for RPC requests on.
       request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
           with request information for use by API stubs.
     """
+    self._api_host = api_host
     self._api_port = api_port
     self._request_data = request_data
     port = self._port
@@ -204,14 +208,16 @@ class Dispatcher(request_info.Dispatcher):
   def _create_module(self, module_configuration, port):
     max_instances = self._module_to_max_instances.get(
         module_configuration.module_name)
+    threadsafe_override = self._module_to_threadsafe_override.get(
+        module_configuration.module_name)
     module_args = (module_configuration,
                    self._host,
                    port,
+                   self._api_host,
                    self._api_port,
                    self._auth_domain,
                    self._runtime_stderr_loglevel,
-                   self._php_executable_path,
-                   self._enable_php_remote_debugging,
+                   self._php_config,
                    self._python_config,
                    self._cloud_sql_config,
                    self._port,
@@ -221,7 +227,8 @@ class Dispatcher(request_info.Dispatcher):
                    max_instances,
                    self._use_mtime_file_watcher,
                    self._automatic_restart,
-                   self._allow_skipped_files)
+                   self._allow_skipped_files,
+                   threadsafe_override)
     if module_configuration.manual_scaling:
       _module = module.ManualScalingModule(*module_args)
     elif module_configuration.basic_scaling:

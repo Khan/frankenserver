@@ -3523,6 +3523,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   entity_write_bytes_ = 0
   has_commitcost_ = 0
   commitcost_ = None
+  has_approximate_storage_delta_ = 0
+  approximate_storage_delta_ = 0
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -3599,6 +3601,19 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 
   def has_commitcost(self): return self.has_commitcost_
 
+  def approximate_storage_delta(self): return self.approximate_storage_delta_
+
+  def set_approximate_storage_delta(self, x):
+    self.has_approximate_storage_delta_ = 1
+    self.approximate_storage_delta_ = x
+
+  def clear_approximate_storage_delta(self):
+    if self.has_approximate_storage_delta_:
+      self.has_approximate_storage_delta_ = 0
+      self.approximate_storage_delta_ = 0
+
+  def has_approximate_storage_delta(self): return self.has_approximate_storage_delta_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3607,6 +3622,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (x.has_entity_writes()): self.set_entity_writes(x.entity_writes())
     if (x.has_entity_write_bytes()): self.set_entity_write_bytes(x.entity_write_bytes())
     if (x.has_commitcost()): self.mutable_commitcost().MergeFrom(x.commitcost())
+    if (x.has_approximate_storage_delta()): self.set_approximate_storage_delta(x.approximate_storage_delta())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3620,6 +3636,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if self.has_entity_write_bytes_ and self.entity_write_bytes_ != x.entity_write_bytes_: return 0
     if self.has_commitcost_ != x.has_commitcost_: return 0
     if self.has_commitcost_ and self.commitcost_ != x.commitcost_: return 0
+    if self.has_approximate_storage_delta_ != x.has_approximate_storage_delta_: return 0
+    if self.has_approximate_storage_delta_ and self.approximate_storage_delta_ != x.approximate_storage_delta_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3634,6 +3652,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_writes_): n += 1 + self.lengthVarInt64(self.entity_writes_)
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
     if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSize()
+    if (self.has_approximate_storage_delta_): n += 1 + self.lengthVarInt64(self.approximate_storage_delta_)
     return n
 
   def ByteSizePartial(self):
@@ -3643,6 +3662,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_writes_): n += 1 + self.lengthVarInt64(self.entity_writes_)
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
     if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSizePartial()
+    if (self.has_approximate_storage_delta_): n += 1 + self.lengthVarInt64(self.approximate_storage_delta_)
     return n
 
   def Clear(self):
@@ -3651,6 +3671,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     self.clear_entity_writes()
     self.clear_entity_write_bytes()
     self.clear_commitcost()
+    self.clear_approximate_storage_delta()
 
   def OutputUnchecked(self, out):
     if (self.has_index_writes_):
@@ -3669,6 +3690,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(43)
       self.commitcost_.OutputUnchecked(out)
       out.putVarInt32(44)
+    if (self.has_approximate_storage_delta_):
+      out.putVarInt32(64)
+      out.putVarInt32(self.approximate_storage_delta_)
 
   def OutputPartial(self, out):
     if (self.has_index_writes_):
@@ -3687,6 +3711,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(43)
       self.commitcost_.OutputPartial(out)
       out.putVarInt32(44)
+    if (self.has_approximate_storage_delta_):
+      out.putVarInt32(64)
+      out.putVarInt32(self.approximate_storage_delta_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3706,6 +3733,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       if tt == 43:
         self.mutable_commitcost().TryMerge(d)
         continue
+      if tt == 64:
+        self.set_approximate_storage_delta(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3722,6 +3752,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"CommitCost {\n"
       res+=self.commitcost_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
+    if self.has_approximate_storage_delta_: res+=prefix+("approximate_storage_delta: %s\n" % self.DebugFormatInt32(self.approximate_storage_delta_))
     return res
 
 
@@ -3735,6 +3766,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   kCommitCostGroup = 5
   kCommitCostrequested_entity_puts = 6
   kCommitCostrequested_entity_deletes = 7
+  kapproximate_storage_delta = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3745,7 +3777,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     5: "CommitCost",
     6: "requested_entity_puts",
     7: "requested_entity_deletes",
-  }, 7)
+    8: "approximate_storage_delta",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3756,7 +3789,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.STARTGROUP,
     6: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.NUMERIC,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

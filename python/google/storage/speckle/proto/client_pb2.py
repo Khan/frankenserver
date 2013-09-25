@@ -2494,6 +2494,13 @@ DESCRIPTOR.message_types_by_name['BatchBindVariableProto'] = _BATCHBINDVARIABLEP
 DESCRIPTOR.message_types_by_name['BatchProto'] = _BATCHPROTO
 DESCRIPTOR.message_types_by_name['ParameterMetadata'] = _PARAMETERMETADATA
 DESCRIPTOR.message_types_by_name['RpcErrorProto'] = _RPCERRORPROTO
+DESCRIPTOR.enum_types_by_name['TransactionIsolationLevel'] = _TRANSACTIONISOLATIONLEVEL
+DESCRIPTOR.enum_types_by_name['ResultSetType'] = _RESULTSETTYPE
+DESCRIPTOR.enum_types_by_name['ResultSetConcurrency'] = _RESULTSETCONCURRENCY
+DESCRIPTOR.enum_types_by_name['ResultSetHoldability'] = _RESULTSETHOLDABILITY
+DESCRIPTOR.enum_types_by_name['FetchDirection'] = _FETCHDIRECTION
+DESCRIPTOR.enum_types_by_name['MetadataType'] = _METADATATYPE
+DESCRIPTOR.enum_types_by_name['ClientType'] = _CLIENTTYPE
 
 class BindVariableProto(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType

@@ -21,7 +21,7 @@ namespace google\appengine\api\users;
 
 require_once 'google/appengine/util/string_util.php';
 
-use \google\appengine\util as util;
+use google\appengine\util as util;
 
 /**
  * A user.
@@ -61,7 +61,7 @@ final class User {
       $user_id = null) {
 
     $auth_domain = getenv('AUTH_DOMAIN');
-    assert($auth_domain !== FALSE);
+    assert($auth_domain !== false);
 
     if ($email === null and $federated_identity === null) {
       throw new \InvalidArgumentException(
@@ -90,7 +90,7 @@ final class User {
         util\endsWith($this->email, $this->auth_domain)) {
       $suffixLen = strlen($this->auth_domain) + 1;
       return substr($this->email, 0, -$suffixLen);
-    } elseif ($this->federated_identity) {
+    } else if ($this->federated_identity) {
       return $this->federated_identity;
     } else {
       return $this->email;

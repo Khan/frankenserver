@@ -52,11 +52,15 @@ $setup = function() {
     require_once 'google/appengine/runtime/RemoteApiProxy.php';
     \google\appengine\runtime\ApiProxy::setApiProxy(
       new \google\appengine\runtime\RemoteApiProxy(
-        getenv('REMOTE_API_PORT'), getenv('REMOTE_REQUEST_ID')));
+        getenv('REMOTE_API_HOST'), getenv('REMOTE_API_PORT'),
+        getenv('REMOTE_REQUEST_ID')));
+    putenv('REMOTE_API_HOST');
     putenv('REMOTE_API_PORT');
     putenv('REMOTE_REQUEST_ID');
+    unset($_SERVER['REMOTE_API_HOST']);
     unset($_SERVER['REMOTE_API_PORT']);
     unset($_SERVER['REMOTE_REQUEST_ID']);
+    unset($_ENV['REMOTE_API_HOST']);
     unset($_ENV['REMOTE_API_PORT']);
     unset($_ENV['REMOTE_REQUEST_ID']);
   };
@@ -72,6 +76,28 @@ $setup = function() {
 };
 $setup();
 unset($setup);
-// Use require rather than include so a missing script produces a fatal error
-// instead of a warning.
-require($_ENV['SCRIPT_FILENAME']);
+
+$checkInteractive = function() {
+  if (isset($_ENV['HTTP_X_APPENGINE_INTERNAL_REQUEST_TYPE'])) {
+    $request_type = $_ENV['HTTP_X_APPENGINE_INTERNAL_REQUEST_TYPE'];
+    putenv('HTTP_X_APPENGINE_INTERNAL_REQUEST_TYPE');
+    unset($_SERVER['HTTP_X_APPENGINE_INTERNAL_REQUEST_TYPE']);
+    unset($_ENV['HTTP_X_APPENGINE_INTERNAL_REQUEST_TYPE']);
+    if ($request_type == 'interactive') {
+      return true;
+    }
+  }
+  return false;
+};
+
+if ($checkInteractive()) {
+  unset($checkInteractive);
+  eval(file_get_contents("php://input"));
+} else {
+  unset($checkInteractive);
+  // Use require rather than include so a missing script produces a fatal error
+  // instead of a warning.
+  require($_ENV['SCRIPT_FILENAME']);
+}
+
+

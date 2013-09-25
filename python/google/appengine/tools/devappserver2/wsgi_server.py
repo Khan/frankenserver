@@ -376,6 +376,11 @@ class WsgiServer(object):
       server.quit()
 
   @property
+  def host(self):
+    """Returns the host that the server is bound to."""
+    return self._servers[0].socket.getsockname()[0]
+
+  @property
   def port(self):
     """Returns the port that the server is bound to."""
     return self._servers[0].socket.getsockname()[1]

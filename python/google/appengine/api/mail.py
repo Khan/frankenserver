@@ -476,6 +476,19 @@ def _GuessCharset(text):
     return 'utf-8'
 
 
+def _I18nHeader(text):
+  """Creates a header properly encoded even with unicode content.
+
+  Args:
+    text: a string (str) that is either a us-ascii string or a unicode that was
+        encoded in utf-8.
+  Returns:
+    email.header.Header
+  """
+  charset = _GuessCharset(text)
+  return email.header.Header(text, charset, maxlinelen=float('inf'))
+
+
 def mail_message_to_mime_message(protocol_message):
   """Generate a MIMEMultitype message from protocol buffer.
 
@@ -527,18 +540,18 @@ def mail_message_to_mime_message(protocol_message):
 
 
   if protocol_message.to_size():
-    result['To'] = ', '.join(protocol_message.to_list())
+    result['To'] = _I18nHeader(', '.join(protocol_message.to_list()))
   if protocol_message.cc_size():
-    result['Cc'] = ', '.join(protocol_message.cc_list())
+    result['Cc'] = _I18nHeader(', '.join(protocol_message.cc_list()))
   if protocol_message.bcc_size():
-    result['Bcc'] = ', '.join(protocol_message.bcc_list())
+    result['Bcc'] = _I18nHeader(', '.join(protocol_message.bcc_list()))
 
-  result['From'] = protocol_message.sender()
-  result['Reply-To'] = protocol_message.replyto()
-  result['Subject'] = protocol_message.subject()
+  result['From'] = _I18nHeader(protocol_message.sender())
+  result['Reply-To'] = _I18nHeader(protocol_message.replyto())
+  result['Subject'] = _I18nHeader(protocol_message.subject())
 
   for header in protocol_message.header_list():
-    result[header.name()] = header.value()
+    result[header.name()] = _I18nHeader(header.value())
 
   return result
 

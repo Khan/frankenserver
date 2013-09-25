@@ -29,12 +29,12 @@ require_once 'google/appengine/runtime/ApiProxy.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
 require_once 'google/appengine/util/array_util.php';
 
-use \google\appengine\api\app_identity\AppIdentityService;
-use \google\appengine\api\app_identity\AppIdentityException;
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\URLFetchRequest\RequestMethod;
-use \google\appengine\util as util;
+use google\appengine\api\app_identity\AppIdentityService;
+use google\appengine\api\app_identity\AppIdentityException;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\URLFetchRequest\RequestMethod;
+use google\appengine\util as util;
 
 /**
  * CloudStorageClient provides default fail implementations for all of the
@@ -200,7 +200,7 @@ abstract class CloudStorageClient {
     } else {
       $this->context_options = self::$default_gs_context_options;
     }
-    $this->anonymous = util\FindByKeyOrNull($this->context_options,
+    $this->anonymous = util\findByKeyOrNull($this->context_options,
                                             "anonymous");
 
     $this->url = $this->createObjectUrl($bucket, $object);

@@ -17,13 +17,17 @@
 """Modify pdb to work with the devappserver2 sandbox."""
 
 import sys
+import threading
 
-def install():
+def install(config):
   """Install the necessary changes to pdb.
 
   Monkeypatch pdb so that it can be used in the devappserver sandbox. Must
   be called after the sandbox has been installed but before stdin/stdout
   objects have been reassigned.
+
+  Args:
+    config: The runtime_config_pb2.Config to use to configure the sandbox.
   """
   # Import here (i.e. after sandbox installed) to get the post sandbox pdb.
   # Extremely important so that we monkeypatch the same pdb the apps can
@@ -40,7 +44,21 @@ def install():
   # recursion).
   pdb_premonkeypatch = pdb_postsandbox.Pdb
 
+  if config.threadsafe or config.max_instances != 1:
+    warning = """
+********************************************************************************
+* WARNING: please read before using PDB:
+* https://developers.google.com/appengine/docs/python/tools/devserver#Python_Debugging_with_PDB
+********************************************************************************
+
+"""
+    lock = threading.Lock()
+  else:
+    warning = ''
+
   class _Pdb(pdb_postsandbox.Pdb):
+    _warning_written = False
+
     # TODO: improve argument handling so if new arguments are added
     # in the future or the defaults change, this does not need to be updated.
     def __init__(self, completekey='tab', stdin=None, stdout=None, skip=None):
@@ -50,5 +68,13 @@ def install():
         stdout = real_stdout
       # Pdb is old style class so no super().
       pdb_premonkeypatch.__init__(self, completekey, stdin, stdout, skip)
+
+      if warning:
+        with lock:
+          # Note: while the goal is to write the warning only one time, it
+          # may be written multiple times (once each per instance).
+          if not _Pdb._warning_written:
+            stdout.write(warning)
+            _Pdb._warning_written = True
 
   pdb_postsandbox.Pdb = _Pdb

@@ -40,8 +40,11 @@ try:
   import json
 except ImportError:
   import simplejson as json
+import logging
 import re
 
+from endpoints import message_parser
+from endpoints import users_id_token
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
@@ -54,9 +57,6 @@ except ImportError:
 
   from google.appengine.api import app_identity
 
-from google.appengine.ext.endpoints import message_parser
-from google.appengine.ext.endpoints import users_id_token
-
 
 __all__ = [
     'API_EXPLORER_CLIENT_ID',
@@ -66,9 +66,11 @@ __all__ = [
     'ApiFrontEndLimitRule',
     'ApiFrontEndLimits',
     'CacheControl',
+    'ResourceContainer',
     'EMAIL_SCOPE',
     'api',
     'method',
+    'AUTH_LEVEL'
 ]
 
 
@@ -82,8 +84,253 @@ _MULTICLASS_MISMATCH_ERROR_TEMPLATE = (
     'examples how to implement a multi-class API.')
 
 
+def _Enum(docstring, *names):
+  """Utility to generate enum classes used by annotations.
+
+  Args:
+    docstring: Docstring for the generated enum class.
+    *names: Enum names.
+
+  Returns:
+    A class that contains enum names as attributes.
+  """
+  enums = dict(zip(names, range(len(names))))
+  reverse = dict((value, key) for key, value in enums.iteritems())
+  enums['reverse_mapping'] = reverse
+  enums['__doc__'] = docstring
+  return type('Enum', (object,), enums)
+
+_AUTH_LEVEL_DOCSTRING = """
+  Define the enums used by the auth_level annotation to specify frontend
+  authentication requirement.
+
+  Frontend authentication is handled by a Google API server prior to the
+  request reaching backends. An early return before hitting the backend can
+  happen if the request does not fulfil the requirement specified by the
+  auth_level.
+
+  Valid values of auth_level and their meanings are:
+
+  AUTH_LEVEL.REQUIRED: Valid authentication credentials are required. Backend
+    will be called only if authentication credentials are present and valid.
+
+  AUTH_LEVEL.OPTIONAL: Authentication is optional. If authentication credentials
+    are supplied they must be valid. Backend will be called if the request
+    contains valid authentication credentials or no authentication credentials.
+
+  AUTH_LEVEL.OPTIONAL_CONTINUE: Authentication is optional and will be attempted
+    if authentication credentials are supplied. Invalid authentication
+    credentials will be removed but the request can always reach backend.
+
+  AUTH_LEVEL.NONE: Frontend authentication will be skipped. If authentication is
+   desired, it will need to be performed by the backend.
+  """
+
+AUTH_LEVEL = _Enum(_AUTH_LEVEL_DOCSTRING, 'REQUIRED', 'OPTIONAL',
+                   'OPTIONAL_CONTINUE', 'NONE')
+
+
 class ApiConfigurationError(Exception):
   """Exception thrown if there's an error in the configuration/annotations."""
+
+
+def _GetFieldAttributes(field):
+  """Decomposes field into the needed arguments to pass to the constructor.
+
+  This can be used to create copies of the field or to compare if two fields
+  are "equal" (since __eq__ is not implemented on messages.Field).
+
+  Args:
+    field: A ProtoRPC message field (potentially to be copied).
+
+  Raises:
+    TypeError: If the field is not an instance of messages.Field.
+
+  Returns:
+    A pair of relevant arguments to be passed to the constructor for the field
+      type. The first element is a list of positional arguments for the
+      constructor and the second is a dictionary of keyword arguments.
+  """
+  if not isinstance(field, messages.Field):
+    raise TypeError('Field %r to be copied not a ProtoRPC field.' % (field,))
+
+  positional_args = []
+  kwargs = {
+      'required': field.required,
+      'repeated': field.repeated,
+      'variant': field.variant,
+      'default': field._Field__default,
+  }
+
+  if isinstance(field, messages.MessageField):
+
+    kwargs.pop('default')
+    if not isinstance(field, message_types.DateTimeField):
+      positional_args.insert(0, field.message_type)
+  elif isinstance(field, messages.EnumField):
+    positional_args.insert(0, field.type)
+
+  return positional_args, kwargs
+
+
+def _CopyField(field, number=None):
+  """Copies a (potentially) owned ProtoRPC field instance into a new copy.
+
+  Args:
+    field: A ProtoRPC message field to be copied.
+    number: An integer for the field to override the number of the field.
+        Defaults to None.
+
+  Raises:
+    TypeError: If the field is not an instance of messages.Field.
+
+  Returns:
+    A copy of the ProtoRPC message field.
+  """
+  positional_args, kwargs = _GetFieldAttributes(field)
+  number = number or field.number
+  positional_args.append(number)
+  return field.__class__(*positional_args, **kwargs)
+
+
+def _CompareFields(field, other_field):
+  """Checks if two ProtoRPC fields are "equal".
+
+  Compares the arguments, rather than the id of the elements (which is
+  the default __eq__ behavior) as well as the class of the fields.
+
+  Args:
+    field: A ProtoRPC message field to be compared.
+    other_field: A ProtoRPC message field to be compared.
+
+  Returns:
+    Boolean indicating whether the fields are equal.
+  """
+  field_attrs = _GetFieldAttributes(field)
+  other_field_attrs = _GetFieldAttributes(other_field)
+  if field_attrs != other_field_attrs:
+    return False
+  return field.__class__ == other_field.__class__
+
+
+class ResourceContainer(object):
+  """Container for a request body resource combined with parameters.
+
+  Used for API methods which may also have path or query parameters in addition
+  to a request body.
+
+  Attributes:
+    body_message_class: A message class to represent a request body.
+    parameters_message_class: A placeholder message class for request
+        parameters.
+  """
+
+  __remote_info_cache = {}
+
+  __combined_message_class = None
+
+  def __init__(self, _body_message_class=message_types.VoidMessage, **kwargs):
+    """Constructor for ResourceContainer.
+
+    Stores a request body message class and attempts to create one from the
+    keyword arguments passed in.
+
+    Args:
+      _body_message_class: A keyword argument to be treated like a positional
+          argument. This will not conflict with the potential names of fields
+          since they can't begin with underscore. We make this a keyword
+          argument since the default VoidMessage is a very common choice given
+          the prevalence of GET methods.
+      **kwargs: Keyword arguments specifying field names (the named arguments)
+          and instances of ProtoRPC fields as the values.
+    """
+    self.body_message_class = _body_message_class
+    self.parameters_message_class = type('ParameterContainer',
+                                         (messages.Message,), kwargs)
+
+  @property
+  def combined_message_class(self):
+    """A ProtoRPC message class with both request and parameters fields.
+
+    Caches the result in a local private variable. Uses _CopyField to create
+    copies of the fields from the existing request and parameters classes since
+    those fields are "owned" by the message classes.
+
+    Raises:
+      TypeError: If a field name is used in both the request message and the
+        parameters but the two fields do not represent the same type.
+
+    Returns:
+      Value of combined message class for this property.
+    """
+    if self.__combined_message_class is not None:
+      return self.__combined_message_class
+
+    fields = {}
+
+
+
+
+
+
+
+    field_number = 1
+    for field in self.body_message_class.all_fields():
+      fields[field.name] = _CopyField(field, number=field_number)
+      field_number += 1
+    for field in self.parameters_message_class.all_fields():
+      if field.name in fields:
+        if not _CompareFields(field, fields[field.name]):
+          raise TypeError('Field %r contained in both parameters and request '
+                          'body, but the fields differ.' % (field.name,))
+        else:
+
+          continue
+      fields[field.name] = _CopyField(field, number=field_number)
+      field_number += 1
+
+    self.__combined_message_class = type('CombinedContainer',
+                                         (messages.Message,), fields)
+    return self.__combined_message_class
+
+  @classmethod
+  def add_to_cache(cls, remote_info, container):
+    """Adds a ResourceContainer to a cache tying it to a protorpc method.
+
+    Args:
+      remote_info: Instance of protorpc.remote._RemoteMethodInfo corresponding
+          to a method.
+      container: An instance of ResourceContainer.
+
+    Raises:
+      TypeError: if the container is not an instance of cls.
+      KeyError: if the remote method has been reference by a container before.
+          This created remote method should never occur because a remote method
+          is created once.
+    """
+    if not isinstance(container, cls):
+      raise TypeError('%r not an instance of %r, could not be added to cache.' %
+                      (container, cls))
+    if remote_info in cls.__remote_info_cache:
+      raise KeyError('Cache has collision but should not.')
+    cls.__remote_info_cache[remote_info] = container
+
+  @classmethod
+  def get_request_message(cls, remote_info):
+    """Gets request message or container from remote info.
+
+    Args:
+      remote_info: Instance of protorpc.remote._RemoteMethodInfo corresponding
+          to a method.
+
+    Returns:
+      Either an instance of the request type from the remote or the
+          ResourceContainer that was cached with the remote method.
+    """
+    if remote_info in cls.__remote_info_cache:
+      return cls.__remote_info_cache[remote_info]
+    else:
+      return remote_info.request_type()
 
 
 def _CheckListType(settings, allowed_type, name, allow_none=True):
@@ -132,6 +379,13 @@ def _CheckType(value, check_type, name, allow_none=True):
     raise TypeError('%s type doesn\'t match %s.' % (name, check_type))
 
 
+def _CheckEnum(value, check_type, name):
+  if value is None:
+    return
+  if value not in check_type.reverse_mapping:
+    raise TypeError('%s is not a valid value for %s' % (value, name))
+
+
 
 class _ApiInfo(object):
   """Configurable attributes of an API.
@@ -145,7 +399,7 @@ class _ApiInfo(object):
 
   @util.positional(2)
   def __init__(self, common_info, resource_name=None, path=None, audiences=None,
-               scopes=None, allowed_client_ids=None):
+               scopes=None, allowed_client_ids=None, auth_level=None):
     """Constructor for _ApiInfo.
 
     Args:
@@ -161,12 +415,15 @@ class _ApiInfo(object):
         (Default: None)
       allowed_client_ids: list of strings, Acceptable client IDs for auth.
         (Default: None)
+      auth_level: enum from AUTH_LEVEL, Frontend authentication level.
+        (Default: None)
     """
     _CheckType(resource_name, basestring, 'resource_name')
     _CheckType(path, basestring, 'path')
     _CheckListType(audiences, basestring, 'audiences')
     _CheckListType(scopes, basestring, 'scopes')
     _CheckListType(allowed_client_ids, basestring, 'allowed_client_ids')
+    _CheckEnum(auth_level, AUTH_LEVEL, 'auth_level')
 
     self.__common_info = common_info
     self.__resource_name = resource_name
@@ -174,6 +431,7 @@ class _ApiInfo(object):
     self.__audiences = audiences
     self.__scopes = scopes
     self.__allowed_client_ids = allowed_client_ids
+    self.__auth_level = auth_level
 
   def is_same_api(self, other):
     """Check if this implements the same API as another _ApiInfo instance."""
@@ -222,6 +480,13 @@ class _ApiInfo(object):
     if self.__allowed_client_ids is not None:
       return self.__allowed_client_ids
     return self.__common_info.allowed_client_ids
+
+  @property
+  def auth_level(self):
+    """Enum from AUTH_LEVEL specifying the frontend authentication level."""
+    if self.__auth_level is not None:
+      return self.__auth_level
+    return self.__common_info.auth_level
 
   @property
   def canonical_name(self):
@@ -287,7 +552,7 @@ class _ApiDecorator(object):
                audiences=None, scopes=None, allowed_client_ids=None,
                canonical_name=None, auth=None, owner_domain=None,
                owner_name=None, package_path=None, frontend_limits=None,
-               title=None, documentation=None):
+               title=None, documentation=None, auth_level=None):
     """Constructor for _ApiDecorator.
 
     Args:
@@ -318,6 +583,7 @@ class _ApiDecorator(object):
       documentation: string, a URL where users can find documentation about this
         version of the API. This will be surfaced in the API Explorer and GPE
         plugin to allow users to learn about your service.
+      auth_level: enum from AUTH_LEVEL, Frontend authentication level.
     """
     self.__common_info = self.__ApiCommonInfo(
         name, version, description=description, hostname=hostname,
@@ -326,7 +592,7 @@ class _ApiDecorator(object):
         canonical_name=canonical_name, auth=auth, owner_domain=owner_domain,
         owner_name=owner_name, package_path=package_path,
         frontend_limits=frontend_limits, title=title,
-        documentation=documentation)
+        documentation=documentation, auth_level=auth_level)
     self.__classes = []
 
   class __ApiCommonInfo(object):
@@ -350,7 +616,7 @@ class _ApiDecorator(object):
                  audiences=None, scopes=None, allowed_client_ids=None,
                  canonical_name=None, auth=None, owner_domain=None,
                  owner_name=None, package_path=None, frontend_limits=None,
-                 title=None, documentation=None):
+                 title=None, documentation=None, auth_level=None):
       """Constructor for _ApiCommonInfo.
 
       Args:
@@ -381,6 +647,7 @@ class _ApiDecorator(object):
         documentation: string, a URL where users can find documentation about
           this version of the API. This will be surfaced in the API Explorer and
           GPE plugin to allow users to learn about your service.
+        auth_level: enum from AUTH_LEVEL, Frontend authentication level.
       """
       _CheckType(name, basestring, 'name', allow_none=False)
       _CheckType(version, basestring, 'version', allow_none=False)
@@ -397,6 +664,7 @@ class _ApiDecorator(object):
       _CheckType(frontend_limits, ApiFrontEndLimits, 'frontend_limits')
       _CheckType(title, basestring, 'title')
       _CheckType(documentation, basestring, 'documentation')
+      _CheckEnum(auth_level, AUTH_LEVEL, 'auth_level')
 
       if hostname is None:
         hostname = app_identity.get_default_version_hostname()
@@ -406,6 +674,8 @@ class _ApiDecorator(object):
         scopes = [EMAIL_SCOPE]
       if allowed_client_ids is None:
         allowed_client_ids = [API_EXPLORER_CLIENT_ID]
+      if auth_level is None:
+        auth_level = AUTH_LEVEL.NONE
 
       self.__name = name
       self.__version = version
@@ -422,6 +692,7 @@ class _ApiDecorator(object):
       self.__frontend_limits = frontend_limits
       self.__title = title
       self.__documentation = documentation
+      self.__auth_level = auth_level
 
     @property
     def name(self):
@@ -457,6 +728,11 @@ class _ApiDecorator(object):
     def allowed_client_ids(self):
       """List of client IDs accepted by default for the API."""
       return self.__allowed_client_ids
+
+    @property
+    def auth_level(self):
+      """Enum from AUTH_LEVEL specifying default frontend auth level."""
+      return self.__auth_level
 
     @property
     def canonical_name(self):
@@ -510,7 +786,7 @@ class _ApiDecorator(object):
     return self.api_class()(service_class)
 
   def api_class(self, resource_name=None, path=None, audiences=None,
-                scopes=None, allowed_client_ids=None):
+                scopes=None, allowed_client_ids=None, auth_level=None):
     """Get a decorator for a class that implements an API.
 
     This can be used for single-class or multi-class implementations.  It's
@@ -526,6 +802,8 @@ class _ApiDecorator(object):
       scopes: list of strings, Acceptable scopes for authentication.
         (Default: None)
       allowed_client_ids: list of strings, Acceptable client IDs for auth.
+        (Default: None)
+      auth_level: enum from AUTH_LEVEL, Frontend authentication level.
         (Default: None)
 
     Returns:
@@ -545,7 +823,7 @@ class _ApiDecorator(object):
       api_class.api_info = _ApiInfo(
           self.__common_info, resource_name=resource_name,
           path=path, audiences=audiences, scopes=scopes,
-          allowed_client_ids=allowed_client_ids)
+          allowed_client_ids=allowed_client_ids, auth_level=auth_level)
       return api_class
 
     return apiserving_api_decorator
@@ -696,7 +974,7 @@ class ApiFrontEndLimits(object):
 def api(name, version, description=None, hostname=None, audiences=None,
         scopes=None, allowed_client_ids=None, canonical_name=None,
         auth=None, owner_domain=None, owner_name=None, package_path=None,
-        frontend_limits=None, title=None, documentation=None):
+        frontend_limits=None, title=None, documentation=None, auth_level=None):
   """Decorate a ProtoRPC Service class for use by the framework above.
 
   This decorator can be used to specify an API name, version, description, and
@@ -753,6 +1031,7 @@ def api(name, version, description=None, hostname=None, audiences=None,
     documentation: string, a URL where users can find documentation about this
       version of the API. This will be surfaced in the API Explorer and GPE
       plugin to allow users to learn about your service.
+    auth_level: enum from AUTH_LEVEL, frontend authentication level.
 
   Returns:
     Class decorated with api_info attribute, an instance of ApiInfo.
@@ -765,7 +1044,7 @@ def api(name, version, description=None, hostname=None, audiences=None,
                        owner_domain=owner_domain, owner_name=owner_name,
                        package_path=package_path,
                        frontend_limits=frontend_limits, title=title,
-                       documentation=documentation)
+                       documentation=documentation, auth_level=auth_level)
 
 
 class CacheControl(object):
@@ -816,7 +1095,7 @@ class _MethodInfo(object):
   @util.positional(1)
   def __init__(self, name=None, path=None, http_method=None,
                cache_control=None, scopes=None, audiences=None,
-               allowed_client_ids=None):
+               allowed_client_ids=None, auth_level=None):
     """Constructor.
 
     Args:
@@ -828,6 +1107,7 @@ class _MethodInfo(object):
       scopes: list of string, OAuth2 token must contain one of these scopes.
       audiences: list of string, IdToken must contain one of these audiences.
       allowed_client_ids: list of string, Client IDs allowed to call the method.
+      auth_level: enum from AUTH_LEVEL, Frontend auth level for the method.
     """
     self.__name = name
     self.__path = path
@@ -836,6 +1116,7 @@ class _MethodInfo(object):
     self.__scopes = scopes
     self.__audiences = audiences
     self.__allowed_client_ids = allowed_client_ids
+    self.__auth_level = auth_level
 
   def __safe_name(self, method_name):
     """Restrict method name to a-zA-Z0-9, first char lowercase."""
@@ -909,6 +1190,11 @@ class _MethodInfo(object):
     """List of allowed client IDs for the API method."""
     return self.__allowed_client_ids
 
+  @property
+  def auth_level(self):
+    """Enum from AUTH_LEVEL specifying default frontend auth level."""
+    return self.__auth_level
+
   def method_id(self, api_info):
     """Computed method name."""
 
@@ -931,11 +1217,12 @@ def method(request_message=message_types.VoidMessage,
            cache_control=None,
            scopes=None,
            audiences=None,
-           allowed_client_ids=None):
+           allowed_client_ids=None,
+           auth_level=None):
   """Decorate a ProtoRPC Method for use by the framework above.
 
   This decorator can be used to specify a method name, path, http method,
-  cache control, scopes, audiences, and client ids
+  cache control, scopes, audiences, client ids and auth_level.
 
   Sample usage:
     @api_config.method(RequestMessage, ResponseMessage,
@@ -956,6 +1243,7 @@ def method(request_message=message_types.VoidMessage,
     audiences: list of string, IdToken must contain one of these audiences.
     allowed_client_ids: list of string, Client IDs allowed to call the method.
       Currently limited to 5.  If None, no calls will be allowed.
+    auth_level: enum from AUTH_LEVEL, Frontend auth level for the method.
 
   Returns:
     'apiserving_method_wrapper' function.
@@ -1007,8 +1295,15 @@ def method(request_message=message_types.VoidMessage,
     Raises:
       TypeError: if the request_type or response_type parameters are not
         proper subclasses of messages.Message.
+      KeyError: if the request_message is a ResourceContainer and the newly
+          created remote method has been reference by the container before. This
+          should never occur because a remote method is created once.
     """
-    remote_decorator = remote.method(request_message, response_message)
+    if isinstance(request_message, ResourceContainer):
+      remote_decorator = remote.method(request_message.combined_message_class,
+                                       response_message)
+    else:
+      remote_decorator = remote.method(request_message, response_message)
     remote_method = remote_decorator(api_method)
 
     def invoke_remote(service_instance, request):
@@ -1021,11 +1316,14 @@ def method(request_message=message_types.VoidMessage,
       return remote_method(service_instance, request)
 
     invoke_remote.remote = remote_method.remote
+    if isinstance(request_message, ResourceContainer):
+      ResourceContainer.add_to_cache(invoke_remote.remote, request_message)
+
     invoke_remote.method_info = _MethodInfo(
         name=name or api_method.__name__, path=path or '',
         http_method=http_method or DEFAULT_HTTP_METHOD,
         cache_control=cache_control, scopes=scopes, audiences=audiences,
-        allowed_client_ids=allowed_client_ids)
+        allowed_client_ids=allowed_client_ids, auth_level=auth_level)
     invoke_remote.__name__ = invoke_remote.method_info.name
     return invoke_remote
 
@@ -1033,6 +1331,7 @@ def method(request_message=message_types.VoidMessage,
   _CheckListType(scopes, basestring, 'scopes')
   _CheckListType(audiences, basestring, 'audiences')
   _CheckListType(allowed_client_ids, basestring, 'allowed_client_ids')
+  _CheckEnum(auth_level, AUTH_LEVEL, 'auth_level')
   if allowed_client_ids is not None and len(allowed_client_ids) > 5:
     raise ValueError('allowed_client_ids must have 5 or fewer entries.')
   return apiserving_method_decorator
@@ -1407,8 +1706,15 @@ class ApiConfigGenerator(object):
 
       params[qualified_name] = descriptor
 
-  def __params_descriptor(self, message_type, request_kind, path):
-    """Describe the parameters of a method.
+  def __params_descriptor_without_container(self, message_type,
+                                            request_kind, path):
+    """Describe parameters of a method which does not use a ResourceContainer.
+
+    Makes sure that the path parameters are included in the message definition
+    and adds any required fields and URL query parameters.
+
+    This method is to preserve backwards compatibility and will be removed in
+    a future release.
 
     Args:
       message_type: messages.Message class, Message with parameters to describe.
@@ -1432,13 +1738,67 @@ class ApiConfigGenerator(object):
 
     return params, param_order
 
+
+
+
+  def __params_descriptor(self, message_type, request_kind, path):
+    """Describe the parameters of a method.
+
+    If the message_type is not a ResourceContainer, will fall back to
+    __params_descriptor_without_container (which will eventually be deprecated).
+
+    If the message type is a ResourceContainer, then all path/query parameters
+    will come from the ResourceContainer. This method will also make sure all
+    path parameters are covered by the message fields.
+
+    Args:
+      message_type: messages.Message or ResourceContainer class, Message with
+        parameters to describe.
+      request_kind: The type of request being made.
+      path: string, HTTP path to method.
+
+    Returns:
+      A tuple (dict, list of string): Descriptor of the parameters, Order of the
+        parameters.
+    """
+    path_parameter_dict = self.__get_path_parameters(path)
+
+    if not isinstance(message_type, ResourceContainer):
+      if path_parameter_dict:
+        logging.warning('Method specifies path parameters but you are not '
+                        'using a ResourceContainer. This will fail in future '
+                        'releases; please switch to using ResourceContainer as '
+                        'soon as possible.')
+      return self.__params_descriptor_without_container(
+          message_type, request_kind, path)
+
+
+    message_type = message_type.parameters_message_class()
+
+    params = {}
+    param_order = []
+
+
+    for field_name, matched_path_parameters in path_parameter_dict.iteritems():
+      field = message_type.field_by_name(field_name)
+      self.__validate_path_parameters(field, matched_path_parameters)
+
+
+    for field in sorted(message_type.all_fields(), key=lambda f: f.number):
+      matched_path_parameters = path_parameter_dict.get(field.name, [])
+      self.__add_parameters_from_field(field, matched_path_parameters,
+                                       params, param_order)
+
+    return params, param_order
+
   def __request_message_descriptor(self, request_kind, message_type, method_id,
                                    path):
     """Describes the parameters and body of the request.
 
     Args:
       request_kind: The type of request being made.
-      message_type: messages.Message class, The message to describe.
+      message_type: messages.Message or ResourceContainer class. The message to
+          describe.
       method_id: string, Unique method identifier (e.g. 'myapi.items.method')
       path: string, HTTP path to method.
 
@@ -1450,8 +1810,11 @@ class ApiConfigGenerator(object):
     """
     descriptor = {}
 
-    params, param_order = self.__params_descriptor(message_type, request_kind,
-                                                   path)
+    params, param_order = self.__params_descriptor(message_type,
+                                                   request_kind, path)
+
+    if isinstance(message_type, ResourceContainer):
+      message_type = message_type.body_message_class()
 
     if (request_kind == self.__NO_BODY or
         message_type == message_types.VoidMessage()):
@@ -1519,7 +1882,8 @@ class ApiConfigGenerator(object):
     """
     descriptor = {}
 
-    request_message_type = protorpc_method_info.remote.request_type()
+    request_message_type = ResourceContainer.get_request_message(
+        protorpc_method_info.remote)
     request_kind = self.__get_request_kind(method_info)
     remote_method = protorpc_method_info.remote
 
@@ -1555,6 +1919,12 @@ class ApiConfigGenerator(object):
 
     if remote_method.method.__doc__:
       descriptor['description'] = remote_method.method.__doc__
+
+    auth_level = (method_info.auth_level
+                  if method_info.auth_level is not None
+                  else service.api_info.auth_level)
+    if auth_level:
+      descriptor['authLevel'] = AUTH_LEVEL.reverse_mapping[auth_level]
 
     return descriptor
 

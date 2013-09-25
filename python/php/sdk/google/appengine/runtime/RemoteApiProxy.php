@@ -31,21 +31,24 @@ require_once 'google/appengine/runtime/CapabilityDisabledError.php';
 require_once 'google/appengine/runtime/FeatureNotEnabledError.php';
 require_once 'google/appengine/runtime/RPCFailedError.php';
 
-use \google\appengine\ext\remote_api\Request;
-use \google\appengine\ext\remote_api\Response;
-use \google\appengine\runtime\RPCFailedError;
+use google\appengine\ext\remote_api\Request;
+use google\appengine\ext\remote_api\Response;
+use google\appengine\runtime\RPCFailedError;
 
 class RemoteApiProxy extends ApiProxyBase{
 
+  private $apiHost = null;
   private $apiPort = null;
   private $requestId = null;
 
   /**
    * Constructs an instance of RemoteApiProxy.
+   * @param string $apiHost Host to use
    * @param int $apiPort Port to use
    * @param string $requestId ID of the request
    */
-  function __construct($apiPort, $requestId) {
+  function __construct($apiHost, $apiPort, $requestId) {
+    $this->apiHost = $apiHost;
     $this->apiPort = $apiPort;
     $this->requestId = $requestId;
   }
@@ -89,7 +92,7 @@ class RemoteApiProxy extends ApiProxyBase{
 
     $context = stream_context_create($opts);
     $serialized_remote_respone = file_get_contents(
-        'http://localhost:' . $this->apiPort, false, $context);
+        'http://' . $this->apiHost . ':' . $this->apiPort, false, $context);
     $remote_response = new Response();
     $remote_response->parseFromString($serialized_remote_respone);
 

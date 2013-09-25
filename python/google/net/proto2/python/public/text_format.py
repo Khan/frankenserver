@@ -708,7 +708,13 @@ def ParseInteger(text, is_signed=False, is_long=False):
   """
 
   try:
-    result = int(text, 0)
+
+
+
+    if is_long:
+      result = long(text, 0)
+    else:
+      result = int(text, 0)
   except ValueError:
     raise ValueError('Couldn\'t parse integer: %s' % text)
 

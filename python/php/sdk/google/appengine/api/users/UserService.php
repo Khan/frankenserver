@@ -19,13 +19,13 @@
 
 namespace google\appengine\api\users;
 
-use \google\appengine\CreateLoginURLRequest;
-use \google\appengine\CreateLoginURLResponse;
-use \google\appengine\CreateLogoutURLRequest;
-use \google\appengine\CreateLogoutURLResponse;
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\UserServiceError\ErrorCode;
+use google\appengine\CreateLoginURLRequest;
+use google\appengine\CreateLoginURLResponse;
+use google\appengine\CreateLogoutURLRequest;
+use google\appengine\CreateLogoutURLResponse;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\UserServiceError\ErrorCode;
 
 require_once 'google/appengine/api/user_service_pb.php';
 require_once 'google/appengine/api/users/User.php';
@@ -125,7 +125,7 @@ final class UserService {
     // datastore_types.FromPropertyPb creation of a User object, which will set
     // an empty string for the email (since it is a required field of the
     // underlying data representation of this class in the datastore.
-    if ($email === FALSE) {
+    if ($email === false) {
       $email = '';
     }
 

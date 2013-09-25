@@ -30,6 +30,7 @@ The bulk of this work is handled by the AppVersionUpload class, which exposes
 methods to add to the list of files, fetch a list of modified files, upload
 files, and commit or rollback the transaction.
 """
+from __future__ import with_statement
 
 
 import calendar
@@ -44,6 +45,7 @@ import optparse
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -67,7 +69,11 @@ from google.appengine.api import queueinfo
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
+from google.appengine.tools import app_engine_web_xml_parser
 from google.appengine.tools import appengine_rpc
+from google.appengine.tools import backends_xml_parser
+from google.appengine.tools import web_xml_parser
+from google.appengine.tools import yaml_translator
 try:
 
 
@@ -82,10 +88,10 @@ LIST_DELIMITER = '\n'
 TUPLE_DELIMITER = '|'
 BACKENDS_ACTION = 'backends'
 BACKENDS_MESSAGE = ('Looks like you\'re using Backends. We suggest that you '
-                    'make the switch to App Engine Modules. See the Modules '
-                    'documentation to learn more about converting: '
-                    'https://developers.google.com/appengine/docs/python/'
-                    'modules/converting')
+                    'start looking at App Engine Modules. See the Modules '
+                    'documentation to learn more about converting: ')
+_CONVERTING_URL = (
+    'https://developers.google.com/appengine/docs/%s/modules/converting')
 
 
 MAX_LOG_LEVEL = 4
@@ -113,7 +119,7 @@ SDK_PRODUCT = 'appcfg_py'
 DAY = 24*3600
 SUNDAY = 6
 
-SUPPORTED_RUNTIMES = ('go', 'php', 'python', 'python27')
+SUPPORTED_RUNTIMES = ('go', 'php', 'python', 'python27', 'java', 'java7')
 
 
 
@@ -173,6 +179,21 @@ def PrintUpdate(msg):
 def StatusUpdate(msg):
   """Print a status message to stderr."""
   PrintUpdate(msg)
+
+
+def BackendsStatusUpdate(runtime):
+  """Print the Backends status message based on current runtime.
+
+  Args:
+    runtime: String name of current runtime.
+  """
+  language = runtime
+  if language == 'python27':
+    language = 'python'
+  elif language == 'java7':
+    language = 'java'
+  if language == 'python' or language == 'java':
+    StatusUpdate(BACKENDS_MESSAGE + (_CONVERTING_URL % language))
 
 
 def ErrorUpdate(msg):
@@ -485,75 +506,79 @@ class IndexDefinitionUpload(object):
 class CronEntryUpload(object):
   """Provides facilities to upload cron entries to the hosting service."""
 
-  def __init__(self, rpcserver, config, cron):
+  def __init__(self, rpcserver, cron):
     """Creates a new CronEntryUpload.
 
     Args:
       rpcserver: The RPC server to use.  Should be an instance of a subclass of
       AbstractRpcServer
-      config: The AppInfoExternal object derived from the app.yaml file.
       cron: The CronInfoExternal object loaded from the cron.yaml file.
     """
     self.rpcserver = rpcserver
-    self.config = config
     self.cron = cron
 
   def DoUpload(self):
     """Uploads the cron entries."""
+
+
+    app_id = self.cron.application
+    self.cron.application = None
+
     StatusUpdate('Uploading cron entries.')
     self.rpcserver.Send('/api/cron/update',
-                        app_id=self.config.application,
-                        version=self.config.version,
+                        app_id=app_id,
                         payload=self.cron.ToYAML())
 
 
 class QueueEntryUpload(object):
   """Provides facilities to upload task queue entries to the hosting service."""
 
-  def __init__(self, rpcserver, config, queue):
+  def __init__(self, rpcserver, queue):
     """Creates a new QueueEntryUpload.
 
     Args:
       rpcserver: The RPC server to use.  Should be an instance of a subclass of
       AbstractRpcServer
-      config: The AppInfoExternal object derived from the app.yaml file.
       queue: The QueueInfoExternal object loaded from the queue.yaml file.
     """
     self.rpcserver = rpcserver
-    self.config = config
     self.queue = queue
 
   def DoUpload(self):
     """Uploads the task queue entries."""
+
+
+    app_id = self.queue.application
+    self.queue.application = None
     StatusUpdate('Uploading task queue entries.')
     self.rpcserver.Send('/api/queue/update',
-                        app_id=self.config.application,
-                        version=self.config.version,
+                        app_id=app_id,
                         payload=self.queue.ToYAML())
 
 
 class DosEntryUpload(object):
   """Provides facilities to upload dos entries to the hosting service."""
 
-  def __init__(self, rpcserver, config, dos):
+  def __init__(self, rpcserver, dos):
     """Creates a new DosEntryUpload.
 
     Args:
       rpcserver: The RPC server to use. Should be an instance of a subclass of
         AbstractRpcServer.
-      config: The AppInfoExternal object derived from the app.yaml file.
       dos: The DosInfoExternal object loaded from the dos.yaml file.
     """
     self.rpcserver = rpcserver
-    self.config = config
     self.dos = dos
 
   def DoUpload(self):
     """Uploads the dos entries."""
+
+
+    app_id = self.dos.application
+    self.dos.application = None
     StatusUpdate('Uploading DOS entries.')
     self.rpcserver.Send('/api/dos/update',
-                        app_id=self.config.application,
-                        version=self.config.version,
+                        app_id=app_id,
                         payload=self.dos.ToYAML())
 
 
@@ -620,8 +645,26 @@ class DefaultVersionSet(object):
   def SetVersion(self):
     """Sets the default version."""
     if self.module:
-      StatusUpdate('Setting default version of module %s of application %s '
-                   'to %s.' % (self.app_id, self.module, self.version))
+
+      modules = self.module.split(',')
+      if len(modules) > 1:
+        StatusUpdate('Setting the default version of modules %s of application '
+                     '%s to %s.' % (', '.join(modules),
+                                    self.app_id,
+                                    self.version))
+
+
+
+
+        params = [('app_id', self.app_id), ('version', self.version)]
+        params.extend(('module', module) for module in modules)
+        url = '/api/appversion/setdefault?' + urllib.urlencode(sorted(params))
+        self.rpcserver.Send(url)
+        return
+
+      else:
+        StatusUpdate('Setting default version of module %s of application %s '
+                     'to %s.' % (self.module, self.app_id, self.version))
     else:
       StatusUpdate('Setting default version of application %s to %s.'
                    % (self.app_id, self.version))
@@ -1491,7 +1534,8 @@ class AppVersionUpload(object):
 
   def __init__(self, rpcserver, config, module_yaml_path='app.yaml',
                backend=None,
-               error_fh=None):
+               error_fh=None,
+               get_version=sdk_update_checker.GetVersionObject):
     """Creates a new AppVersionUpload.
 
     Args:
@@ -1504,6 +1548,8 @@ class AppVersionUpload(object):
       backend: If specified, indicates the update applies to the given backend.
         The backend name must match an entry in the backends: stanza.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
+      get_version: Method for determining the current SDK version. The override
+        is used for testing.
     """
     self.rpcserver = rpcserver
     self.config = config
@@ -1545,6 +1591,10 @@ class AppVersionUpload(object):
       self.config.vm_settings = appinfo.VmSettings()
     self.config.vm_settings['module_yaml_path'] = module_yaml_path
 
+    if not self.config.vm_settings.get('image'):
+      sdk_version = get_version()
+      if sdk_version and sdk_version.get('release'):
+        self.config.vm_settings['image'] = sdk_version['release']
 
     if not self.config.auto_id_policy:
       self.config.auto_id_policy = appinfo.DATASTORE_ID_POLICY_DEFAULT
@@ -1741,7 +1791,7 @@ class AppVersionUpload(object):
       self.file_batcher.AddToBatch(path, payload, None)
 
   def Precompile(self):
-    """Handle bytecode precompilation."""
+    """Handle precompilation."""
 
     StatusUpdate('Compilation starting.')
 
@@ -1791,11 +1841,11 @@ class AppVersionUpload(object):
       otherwise.
 
     Raises:
-      Exception: Some required files were not uploaded.
+      RuntimeError: Some required files were not uploaded.
     """
     assert self.in_transaction, 'Begin() must be called before Commit().'
     if self.files:
-      raise Exception('Not all required files have been uploaded.')
+      raise RuntimeError('Not all required files have been uploaded.')
 
     def PrintRetryMessage(_, delay):
       StatusUpdate('Will check again in %s seconds.' % delay)
@@ -1810,7 +1860,7 @@ class AppVersionUpload(object):
     if not success:
 
       logging.warning('Version still not ready to serve, aborting.')
-      raise Exception('Version not ready.')
+      raise RuntimeError('Version not ready.')
 
     result = self.StartServing()
     if not result:
@@ -1826,7 +1876,7 @@ class AppVersionUpload(object):
       if not success:
 
         logging.warning('Version still not serving, aborting.')
-        raise Exception('Version not ready.')
+        raise RuntimeError('Version not ready.')
 
 
 
@@ -1838,7 +1888,7 @@ class AppVersionUpload(object):
         if not success:
           logging.warning('Failed to update Endpoints configuration.  Try '
                           'updating again.')
-          raise Exception('Endpoints config update failed.')
+          raise RuntimeError('Endpoints config update failed.')
       self.in_transaction = False
 
     return app_summary
@@ -1854,11 +1904,11 @@ class AppVersionUpload(object):
       otherwise.
 
     Raises:
-      Exception: Some required files were not uploaded.
+      RuntimeError: Some required files were not uploaded.
     """
     assert self.in_transaction, 'Begin() must be called before Deploy().'
     if self.files:
-      raise Exception('Not all required files have been uploaded.')
+      raise RuntimeError('Not all required files have been uploaded.')
 
     StatusUpdate('Starting deployment.')
     result = self.Send('/api/appversion/deploy')
@@ -1873,7 +1923,7 @@ class AppVersionUpload(object):
     """Check if the new app version is ready to serve traffic.
 
     Raises:
-      Exception: Deploy has not yet been called.
+      RuntimeError: Deploy has not yet been called.
 
     Returns:
       True if the server returned the app is ready to serve.
@@ -1888,7 +1938,7 @@ class AppVersionUpload(object):
     """Start serving with the newly created version.
 
     Raises:
-      Exception: Deploy has not yet been called.
+      RuntimeError: Deploy has not yet been called.
 
     Returns:
       The response body, as a string.
@@ -1917,7 +1967,7 @@ class AppVersionUpload(object):
     """Check if the new app version is serving.
 
     Raises:
-      Exception: Deploy has not yet been called.
+      RuntimeError: Deploy has not yet been called.
 
     Returns:
       (serving, response) Where serving is True if the deployed app version is
@@ -2382,8 +2432,6 @@ class AppCfgApp(object):
 
 
     if action == BACKENDS_ACTION:
-
-      StatusUpdate(BACKENDS_MESSAGE)
       if len(self.args) < 1:
         RaiseParseError(action, self.actions[BACKENDS_ACTION])
 
@@ -2827,27 +2875,71 @@ class AppCfgApp(object):
     return self._ParseYamlFile(basepath, 'index',
                                datastore_index.ParseIndexDefinitions)
 
-  def _ParseCronYaml(self, basepath):
+  def _SetApplication(self, dest_yaml, basename, appyaml=None):
+    """Parses and sets the application property onto the dest_yaml parameter.
+
+    The order of precendence is:
+    1. Command line (-A application)
+    2. Specified dest_yaml file
+    3. App.yaml file
+
+    This exits with a parse error if application is not present in any of these
+    locations.
+
+    Args:
+      dest_yaml: The yaml object to set 'application' on.
+      basename: The name of the dest_yaml file for use in errors.
+      appyaml: The already parsed appyaml, if present. If none, this method will
+          attempt to parse app.yaml.
+    """
+    if self.options.app_id:
+      dest_yaml.application = self.options.app_id
+    if not dest_yaml.application:
+      if not appyaml:
+        appyaml = self._ParseYamlFile(self.basepath,
+                                      'app',
+                                      appinfo_includes.Parse)
+      if appyaml:
+        dest_yaml.application = appyaml.application
+      else:
+        self.parser.error('Expected -A app_id when %s.yaml.application is not '
+                          'set and app.yaml is not present.' % basename)
+
+  def _ParseCronYaml(self, basepath, appyaml=None):
     """Parses the cron.yaml file.
 
     Args:
       basepath: the directory of the application.
+      appyaml: The app.yaml, if present.
 
     Returns:
       A CronInfoExternal object or None if the file does not exist.
     """
-    return self._ParseYamlFile(basepath, 'cron', croninfo.LoadSingleCron)
+    cron_yaml = self._ParseYamlFile(basepath, 'cron', croninfo.LoadSingleCron)
+    if not cron_yaml:
+      return None
+    self._SetApplication(cron_yaml, 'cron', appyaml)
 
-  def _ParseQueueYaml(self, basepath):
+    return cron_yaml
+
+  def _ParseQueueYaml(self, basepath, appyaml=None):
     """Parses the queue.yaml file.
 
     Args:
       basepath: the directory of the application.
+      appyaml: The app.yaml, if present.
 
     Returns:
       A QueueInfoExternal object or None if the file does not exist.
     """
-    return self._ParseYamlFile(basepath, 'queue', queueinfo.LoadSingleQueue)
+    queue_yaml = self._ParseYamlFile(basepath,
+                                     'queue',
+                                     queueinfo.LoadSingleQueue)
+    if not queue_yaml:
+      return None
+
+    self._SetApplication(queue_yaml, 'queue', appyaml)
+    return queue_yaml
 
   def _ParseDispatchYaml(self, basepath):
     """Parses the dispatch.yaml file.
@@ -2861,16 +2953,22 @@ class AppCfgApp(object):
     return self._ParseYamlFile(basepath, 'dispatch',
                                dispatchinfo.LoadSingleDispatch)
 
-  def _ParseDosYaml(self, basepath):
+  def _ParseDosYaml(self, basepath, appyaml=None):
     """Parses the dos.yaml file.
 
     Args:
       basepath: the directory of the application.
+      appyaml: The app.yaml, if present.
 
     Returns:
       A DosInfoExternal object or None if the file does not exist.
     """
-    return self._ParseYamlFile(basepath, 'dos', dosinfo.LoadSingleDos)
+    dos_yaml = self._ParseYamlFile(basepath, 'dos', dosinfo.LoadSingleDos)
+    if not dos_yaml:
+      return None
+
+    self._SetApplication(dos_yaml, 'dos', appyaml)
+    return dos_yaml
 
   def Help(self, action=None):
     """Prints help for a specific action.
@@ -2940,6 +3038,11 @@ class AppCfgApp(object):
       otherwise.
     """
 
+    if not self.options.precompilation and appyaml.runtime == 'go':
+      logging.warning('Precompilation is required for Go apps; '
+                      'ignoring --no_precompilation')
+      self.options.precompilation = True
+
     if self.options.precompilation:
       if not appyaml.derived_file_type:
         appyaml.derived_file_type = []
@@ -2960,8 +3063,8 @@ class AppCfgApp(object):
         go_files = [f for f in app_paths
                     if f.endswith('.go') and not appyaml.nobuild_files.match(f)]
         if not go_files:
-          raise Exception('no Go source files to upload '
-                          '(-nobuild_files applied)')
+          raise RuntimeError('no Go source files to upload '
+                             '(-nobuild_files applied)')
         gab_argv = [
             os.path.join(goroot, 'bin', 'go-app-builder'),
             '-app_base', self.basepath,
@@ -2975,9 +3078,9 @@ class AppCfgApp(object):
                                stderr=subprocess.PIPE, env={})
           rc = p.wait()
         except Exception, e:
-          raise Exception('failed running go-app-builder', e)
+          raise RuntimeError('failed running go-app-builder', e)
         if rc != 0:
-          raise Exception(p.stderr.read())
+          raise RuntimeError(p.stderr.read())
 
 
 
@@ -3048,6 +3151,24 @@ class AppCfgApp(object):
     else:
       updatecheck = self.update_check_class(rpcserver, appyaml)
       updatecheck.CheckForUpdates()
+
+    def _AbortAppMismatch(yaml_name):
+      StatusUpdate('Error: Aborting upload because application in %s does not '
+                   'match application in app.yaml' % yaml_name)
+
+
+    dos_yaml = self._ParseDosYaml(self.basepath, appyaml)
+    if dos_yaml and dos_yaml.application != appyaml.application:
+      return _AbortAppMismatch('dos.yaml')
+
+    queue_yaml = self._ParseQueueYaml(self.basepath, appyaml)
+    if queue_yaml and queue_yaml.application != appyaml.application:
+      return _AbortAppMismatch('queue.yaml')
+
+    cron_yaml = self._ParseCronYaml(self.basepath, appyaml)
+    if cron_yaml and cron_yaml.application != appyaml.application:
+      return _AbortAppMismatch('cron.yaml')
+
     self.UpdateVersion(rpcserver, self.basepath, appyaml, yaml_file_basename)
 
     if appyaml.runtime == 'python':
@@ -3076,21 +3197,18 @@ class AppCfgApp(object):
             'indexes. Please retry later with appcfg.py update_indexes.')
 
 
-    cron_yaml = self._ParseCronYaml(self.basepath)
     if cron_yaml:
-      cron_upload = CronEntryUpload(rpcserver, appyaml, cron_yaml)
+      cron_upload = CronEntryUpload(rpcserver, cron_yaml)
       cron_upload.DoUpload()
 
 
-    queue_yaml = self._ParseQueueYaml(self.basepath)
     if queue_yaml:
-      queue_upload = QueueEntryUpload(rpcserver, appyaml, queue_yaml)
+      queue_upload = QueueEntryUpload(rpcserver, queue_yaml)
       queue_upload.DoUpload()
 
 
-    dos_yaml = self._ParseDosYaml(self.basepath)
     if dos_yaml:
-      dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
+      dos_upload = DosEntryUpload(rpcserver, dos_yaml)
       dos_upload.DoUpload()
 
 
@@ -3115,7 +3233,8 @@ class AppCfgApp(object):
     """
     parser.add_option('--no_precompilation', action='store_false',
                       dest='precompilation', default=True,
-                      help='Disable automatic Python precompilation.')
+                      help='Disable automatic precompilation '
+                      '(ignored for Go apps).')
     parser.add_option('--backends', action='store_true',
                       dest='backends', default=False,
                       help='Update backends when performing appcfg update.')
@@ -3153,13 +3272,12 @@ class AppCfgApp(object):
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
 
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
     rpcserver = self._GetRpcServer()
 
 
     cron_yaml = self._ParseCronYaml(self.basepath)
     if cron_yaml:
-      cron_upload = CronEntryUpload(rpcserver, appyaml, cron_yaml)
+      cron_upload = CronEntryUpload(rpcserver, cron_yaml)
       cron_upload.DoUpload()
     else:
       print >>sys.stderr, 'Could not find cron configuration. No action taken.'
@@ -3185,14 +3303,12 @@ class AppCfgApp(object):
     """Updates any new or changed task queue definitions."""
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
-
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
     rpcserver = self._GetRpcServer()
 
 
     queue_yaml = self._ParseQueueYaml(self.basepath)
     if queue_yaml:
-      queue_upload = QueueEntryUpload(rpcserver, appyaml, queue_yaml)
+      queue_upload = QueueEntryUpload(rpcserver, queue_yaml)
       queue_upload.DoUpload()
     else:
       print >>sys.stderr, 'Could not find queue configuration. No action taken.'
@@ -3224,14 +3340,12 @@ class AppCfgApp(object):
     """Updates any new or changed dos definitions."""
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
-
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
     rpcserver = self._GetRpcServer()
 
 
     dos_yaml = self._ParseDosYaml(self.basepath)
     if dos_yaml:
-      dos_upload = DosEntryUpload(rpcserver, appyaml, dos_yaml)
+      dos_upload = DosEntryUpload(rpcserver, dos_yaml)
       dos_upload.DoUpload()
     else:
       print >>sys.stderr, 'Could not find dos configuration. No action taken.'
@@ -3303,6 +3417,7 @@ class AppCfgApp(object):
     yaml_file_basename = 'app'
     appyaml = self._ParseAppInfoFromYaml(self.basepath,
                                          basename=yaml_file_basename)
+    BackendsStatusUpdate(appyaml.runtime)
     self.BackendsPhpCheck(appyaml)
     rpcserver = self._GetRpcServer()
 
@@ -3320,6 +3435,7 @@ class AppCfgApp(object):
 
 
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    BackendsStatusUpdate(appyaml.runtime)
     rpcserver = self._GetRpcServer()
     response = rpcserver.Send('/api/backends/list', app_id=appyaml.application)
     print >> self.out_fh, response
@@ -3338,6 +3454,7 @@ class AppCfgApp(object):
 
     backend = self.args[0]
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    BackendsStatusUpdate(appyaml.runtime)
     self.BackendsPhpCheck(appyaml)
     rpcserver = self._GetRpcServer()
     response = rpcserver.Send('/api/backends/start',
@@ -3352,6 +3469,7 @@ class AppCfgApp(object):
 
     backend = self.args[0]
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    BackendsStatusUpdate(appyaml.runtime)
     rpcserver = self._GetRpcServer()
     response = rpcserver.Send('/api/backends/stop',
                               app_id=appyaml.application,
@@ -3365,6 +3483,7 @@ class AppCfgApp(object):
 
     backend = self.args[0]
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    BackendsStatusUpdate(appyaml.runtime)
     rpcserver = self._GetRpcServer()
     response = rpcserver.Send('/api/backends/delete',
                               app_id=appyaml.application,
@@ -3378,6 +3497,7 @@ class AppCfgApp(object):
 
     backend = self.args[0]
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
+    BackendsStatusUpdate(appyaml.runtime)
     self.BackendsPhpCheck(appyaml)
     backends_yaml = self._ParseBackendsYaml(self.basepath)
     rpcserver = self._GetRpcServer()
@@ -3565,7 +3685,16 @@ class AppCfgApp(object):
     """Sets the default version."""
     module = ''
     if len(self.args) == 1:
-      appyaml = self._ParseAppInfoFromYaml(self.args[0])
+
+
+
+      stored_modules = self.options.module
+      self.options.module = None
+      try:
+        appyaml = self._ParseAppInfoFromYaml(self.args[0])
+      finally:
+        self.options.module = stored_modules
+
       app_id = appyaml.application
       module = appyaml.module or ''
       version = appyaml.version
@@ -4344,8 +4473,11 @@ template for use with upload_data or download_data.""",
           short_desc='Set the default (serving) version.',
           long_desc="""
 The 'set_default_version' command sets the default (serving) version of the app.
- Defaults to using the application and version specified in app.yaml; use the
- --application and --version flags to override these values.""",
+Defaults to using the application, version and module specified in app.yaml;
+use the --application, --version and --module flags to override these values.
+The --module flag can also be a comma-delimited string of several modules. (ex.
+module1,module2,module2) In this case, the default version of each module will
+be changed to the version specified.""",
           uses_basepath=False),
 
       'resource_limits_info': Action(
@@ -4385,6 +4517,248 @@ def IsWarFileWithoutYaml(dir_path):
   if not set(['appengine-web.xml', 'web.xml']).issubset(os.listdir(web_inf)):
     return False
   return True
+
+
+class JavaAppUpdate(object):
+  """Performs Java-specific update configurations."""
+  _JSP_REGEX = re.compile('.*\\.jspx?')
+
+
+
+
+  def __init__(self, basepath, options):
+    self.basepath = basepath
+    self.options = options
+
+    self.app_engine_web_xml = self._ReadAppEngineWebXml()
+    self.app_engine_web_xml.app_root = self.basepath
+    self.web_xml = self._ReadWebXml()
+
+  def _ReadAppEngineWebXml(self, basepath=None):
+    if not basepath:
+      basepath = self.basepath
+    return self._ReadAndParseXml(
+        basepath=basepath,
+        file_name='appengine-web.xml',
+        parser=app_engine_web_xml_parser.AppEngineWebXmlParser)
+
+  def _ReadWebXml(self, basepath=None):
+    if not basepath:
+      basepath = self.basepath
+    return self._ReadAndParseXml(
+        basepath=basepath,
+        file_name='web.xml',
+        parser=web_xml_parser.WebXmlParser)
+
+  def _ReadBackendsXml(self, basepath=None):
+    if not basepath:
+      basepath = self.basepath
+    return self._ReadAndParseXml(
+        basepath=basepath,
+        file_name='backends.xml',
+        parser=backends_xml_parser.BackendsXmlParser)
+
+  def _ReadAndParseXml(self, basepath, file_name, parser):
+    with open(os.path.join(basepath, 'WEB-INF', file_name)) as file_handle:
+      return parser().ProcessXml(file_handle.read())
+
+  def CreateStagingDirectory(self, sdk_root):
+    """Creates a staging directory for uploading.
+
+    This is where we perform the necessary actions to create an application
+    directory  for the update command to work properly - files are organized
+    into the static folder, and yaml files are generated where they can be
+    found later.
+
+    Args:
+      sdk_root: Path of the GAE SDK.
+
+    Returns:
+      The path to a new temporary directory which contains generated yaml files
+      and a static file directory. For the most part, the rest of the update and
+      upload flow can resume identically to Python/PHP/Go applications.
+    """
+    full_basepath = os.path.abspath(self.basepath)
+    stage_dir = tempfile.mkdtemp(prefix='appcfgpy')
+    static_dir = os.path.join(stage_dir, '__static__')
+    os.mkdir(static_dir)
+    self._CopyOrLink(full_basepath, stage_dir, static_dir, False)
+    self.app_engine_web_xml.app_root = stage_dir
+
+    if self.options.compile_jsps:
+      self._PrepareForJspCompilation(sdk_root, stage_dir)
+
+    self._GenerateAppYaml(stage_dir)
+
+    return stage_dir
+
+  def _GenerateAppYaml(self, stage_dir):
+    """Creates the app.yaml file in WEB-INF/appengine-generated/."""
+    backends = []
+    if os.path.isfile(os.path.join(self.basepath, 'WEB-INF', 'backends.xml')):
+      backends = self._ReadBackendsXml(stage_dir)
+    yaml_str = yaml_translator.AppYamlTranslator(
+        self.app_engine_web_xml,
+        backends,
+        self.web_xml,
+        self._GetStaticFileList(stage_dir),
+        None).GetYaml()
+    appengine_generated = os.path.join(
+        stage_dir, 'WEB-INF', 'appengine-generated')
+    if not os.path.isdir(appengine_generated):
+      os.mkdir(appengine_generated)
+    with open(os.path.join(appengine_generated, 'app.yaml'), 'w') as handle:
+      handle.write(yaml_str)
+
+  def _CopyOrLink(self, source_dir, stage_dir, static_dir, inside_web_inf):
+    for file_name in os.listdir(source_dir):
+      file_path = os.path.join(source_dir, file_name)
+
+      if file_name.startswith('.') or file_name == 'appengine-generated':
+        continue
+
+      if os.path.isdir(file_path):
+        self._CopyOrLink(
+            file_path,
+            os.path.join(stage_dir, file_name),
+            os.path.join(static_dir, file_name),
+            inside_web_inf or file_name == 'WEB-INF')
+      else:
+        if (inside_web_inf
+            or self.app_engine_web_xml.IncludesResource(file_path)
+            or (self.options.compile_jsps
+                and file_path.lower().endswith('.jsp'))):
+          self._CopyOrLinkFile(file_path, os.path.join(stage_dir, file_name))
+        if (not inside_web_inf
+            and self.app_engine_web_xml.IncludesStatic(file_path)):
+          self._CopyOrLinkFile(file_path, os.path.join(static_dir, file_name))
+
+  def _CopyOrLinkFile(self, source, dest):
+
+    if not os.path.exists(os.path.dirname(dest)):
+      os.makedirs(os.path.dirname(dest))
+    if not source.endswith('web.xml'):
+      os.symlink(source, dest)
+      return
+    shutil.copy(source, dest)
+
+  @staticmethod
+  def _GetStaticFileList(staging_dir):
+    static_files = []
+    for path, _, files in os.walk(os.path.join(staging_dir, '__static__')):
+      static_files += [os.path.join(path, f) for f in files]
+    return static_files
+
+  def _PrepareForJspCompilation(self, sdk_root, staging_dir):
+    """Performs necessary preparations for JSP Compilation."""
+    if self._MatchingFileExists(self._JSP_REGEX, staging_dir):
+      lib_dir = os.path.join(staging_dir, 'WEB-INF', 'lib')
+
+      for jar_file in GetUserJspLibFiles(sdk_root):
+        self._CopyOrLinkFile(
+            jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
+      for jar_file in GetSharedJspLibFiles(sdk_root):
+        self._CopyOrLinkFile(
+            jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
+
+      classes_dir = os.path.join(staging_dir, 'WEB-INF', 'classes')
+      gen_dir = tempfile.mkdtemp()
+
+      classpath = self._GetJspClasspath(sdk_root, classes_dir, gen_dir)
+
+      return classpath
+
+
+
+  @staticmethod
+  def _GetJspClasspath(sdk_root, classes_dir, gen_dir):
+    """Builds the classpath for the JSP Compilation system call."""
+    elements = GetImplLibs(sdk_root) + GetSharedLibFiles(sdk_root)
+    elements.append(classes_dir)
+    elements.append(gen_dir)
+
+    for path, _, files in os.walk(
+        os.path.join(os.path.dirname(classes_dir), 'lib')):
+      elements += [os.path.join(path, f) for f in files if
+                   f.endswith('.jar') or f.endswith('.zip')]
+
+    return (os.pathsep).join(elements)
+
+  @staticmethod
+  def _MatchingFileExists(regex, dir_path):
+    for _, _, files in os.walk(dir_path):
+      for f in files:
+        if re.search(regex, f):
+          return True
+    return False
+
+
+def GetImplLibs(sdk_root):
+  return _GetLibsShallow(os.path.join(sdk_root, 'java', 'lib', 'impl'))
+
+
+def GetSharedLibFiles(sdk_root):
+  return _GetLibsRecursive(os.path.join(sdk_root, 'java', 'lib', 'shared'))
+
+
+def GetUserJspLibFiles(sdk_root):
+  return _GetLibsRecursive(
+      os.path.join(sdk_root, 'java', 'lib', 'tools', 'jsp'))
+
+
+def GetSharedJspLibFiles(sdk_root):
+  return _GetLibsRecursive(
+      os.path.join(sdk_root, 'java', 'lib', 'shared', 'jsp'))
+
+
+def _GetLibsRecursive(dir_path):
+  libs = []
+  for path, _, files in os.walk(dir_path):
+    libs += [os.path.join(path, f) for f in files if f.endswith('.jar')]
+  return libs
+
+
+def _GetLibsShallow(dir_path):
+  libs = []
+  for f in os.listdir(dir_path):
+    if os.path.isfile(os.path.join(dir_path, f)) and f.endswith('.jar'):
+      libs.append(os.path.join(dir_path, f))
+  return libs
+
+
+def _JavaHome():
+  """Return the directory that the JDK is installed in.
+
+  The JDK install directory is expected to have a bin directory that contains
+  at a minimum the java and javac executables. If the environment variable
+  JAVA_HOME is set then it must point to such a directory. Otherwise, we look
+  for javac on the PATH and check that it is inside a JDK install directory.
+
+  Returns:
+    The JDK install directory.
+
+  Raises:
+    RuntimeError: If JAVA_HOME is set but is not a JDK install directory, or
+    otherwise if a JDK install directory cannot be found based on the PATH.
+  """
+  def IsValidJdk(path):
+    for binary in ['java', 'javac']:
+      binary_path = os.path.join(path, 'bin', binary)
+      if not os.path.isfile(binary_path) or not os.access(binary_path, os.X_OK):
+        return False
+    return True
+
+  java_home = os.getenv('JAVA_HOME')
+  if java_home:
+    if not IsValidJdk(java_home):
+      raise RuntimeError(
+          'JAVA_HOME is set but does not reference a valid JDK: %s' % java_home)
+    return java_home
+  for path_dir in os.environ['PATH'].split(os.pathsep):
+    maybe_root, last = os.path.split(path_dir)
+    if last == 'bin' and IsValidJdk(maybe_root):
+      return maybe_root
+  raise RuntimeError('Did not find JDK in PATH and JAVA_HOME is not set')
 
 
 def main(argv):

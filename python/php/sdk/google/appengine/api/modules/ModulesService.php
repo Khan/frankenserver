@@ -28,25 +28,25 @@ require_once "google/appengine/api/modules/TransientModulesException.php";
 require_once 'google/appengine/runtime/ApiProxy.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
 
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\GetDefaultVersionRequest;
-use \google\appengine\GetDefaultVersionResponse;
-use \google\appengine\GetHostnameRequest;
-use \google\appengine\GetHostnameResponse;
-use \google\appengine\GetModulesRequest;
-use \google\appengine\GetModulesResponse;
-use \google\appengine\GetNumInstancesRequest;
-use \google\appengine\GetNumInstancesResponse;
-use \google\appengine\GetVersionsRequest;
-use \google\appengine\GetVersionsResponse;
-use \google\appengine\ModulesServiceError\ErrorCode;
-use \google\appengine\SetNumInstancesRequest;
-use \google\appengine\SetNumInstancesResponse;
-use \google\appengine\StartModuleRequest;
-use \google\appengine\StartModuleResponse;
-use \google\appengine\StopModuleRequest;
-use \google\appengine\StopModuleResponse;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\GetDefaultVersionRequest;
+use google\appengine\GetDefaultVersionResponse;
+use google\appengine\GetHostnameRequest;
+use google\appengine\GetHostnameResponse;
+use google\appengine\GetModulesRequest;
+use google\appengine\GetModulesResponse;
+use google\appengine\GetNumInstancesRequest;
+use google\appengine\GetNumInstancesResponse;
+use google\appengine\GetVersionsRequest;
+use google\appengine\GetVersionsResponse;
+use google\appengine\ModulesServiceError\ErrorCode;
+use google\appengine\SetNumInstancesRequest;
+use google\appengine\SetNumInstancesResponse;
+use google\appengine\StartModuleRequest;
+use google\appengine\StartModuleResponse;
+use google\appengine\StopModuleRequest;
+use google\appengine\StopModuleResponse;
 
 final class ModulesService {
   private static function errorCodeToException($error) {
@@ -93,14 +93,12 @@ final class ModulesService {
    *
    * @return string The name of the current module. For example, if this is
    * instance 2 of version "v1" of module "module5" for app "my-app", this
-   * function will return "2". Will return null for automatically-scaled
-   * modules.
+   * function will return "2". For automatically-scaled modules, this function
+   * will return a unique hex string for the instance (e.g.
+   * "00c61b117c7f7fd0ce9e1325a04b8f0df30deaaf").
    */
   public static function getCurrentInstanceId() {
-    if (array_key_exists('INSTANCE_ID', $_SERVER)) {
-      return $_SERVER['INSTANCE_ID'];
-    }
-    return null;
+    return $_SERVER['INSTANCE_ID'];
   }
 
   /**

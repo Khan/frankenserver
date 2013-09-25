@@ -90,11 +90,11 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         module_configuration,
         host,
         balanced_port,
+        api_host='localhost',
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        php_executable_path='/usr/bin/php-cgi',
-        enable_php_remote_debugging=False,
+        php_config=None,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -104,7 +104,8 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         max_instances=None,
         use_mtime_file_watcher=False,
         automatic_restarts=True,
-        allow_skipped_files=False)
+        allow_skipped_files=False,
+        threadsafe_override=None)
 
   def start(self):
     pass
@@ -130,11 +131,11 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         module_configuration,
         host,
         balanced_port,
+        api_host='localhost',
         api_port=8080,
         auth_domain='gmail.com',
         runtime_stderr_loglevel=1,
-        php_executable_path='/usr/bin/php-cgi',
-        enable_php_remote_debugging=False,
+        php_config=None,
         python_config=None,
         cloud_sql_config=None,
         default_version_port=8080,
@@ -144,7 +145,8 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         max_instances=None,
         use_mtime_file_watcher=False,
         automatic_restarts=True,
-        allow_skipped_files=False)
+        allow_skipped_files=False,
+        threadsafe_override=None)
 
   def start(self):
     pass
@@ -179,14 +181,14 @@ class DispatcherTest(unittest.TestCase):
         1,
         'gmail.com',
         1,
-        'php_executable_path',
-        'enable_php_remote_debugging',
+        php_config=None,
         python_config=None,
         cloud_sql_config=None,
         module_to_max_instances={},
         use_mtime_file_watcher=False,
         automatic_restart=True,
-        allow_skipped_files=False)
+        allow_skipped_files=False,
+        module_to_threadsafe_override={})
     self.module1 = AutoScalingModuleFacade(app_config.modules[0],
                                            balanced_port=1,
                                            host='localhost')
@@ -200,7 +202,7 @@ class DispatcherTest(unittest.TestCase):
     self.dispatcher._create_module(app_config.modules[1], 2).AndReturn(
         (self.module2, 3))
     self.mox.ReplayAll()
-    self.dispatcher.start(12345, object())
+    self.dispatcher.start('localhost', 12345, object())
     app_config.dispatch = self.dispatch_config
     self.mox.VerifyAll()
     self.mox.StubOutWithMock(module.Module, 'build_request_environ')

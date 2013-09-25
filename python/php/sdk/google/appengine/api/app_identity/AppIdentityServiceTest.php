@@ -24,9 +24,9 @@ require_once 'google/appengine/api/app_identity/AppIdentityService.php';
 require_once 'google/appengine/runtime/Memcache.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
-use \google\appengine\AppIdentityServiceError\ErrorCode;
-use \google\appengine\api\app_identity\AppIdentityService;
-use \google\appengine\testing\ApiProxyTestBase;
+use google\appengine\AppIdentityServiceError\ErrorCode;
+use google\appengine\api\app_identity\AppIdentityService;
+use google\appengine\testing\ApiProxyTestBase;
 
 /**
  * Unittest for AppIdentityService class.
@@ -135,7 +135,9 @@ class AppIdentityServiceTest extends ApiProxyTestBase {
                                     'Get',
                                     $req,
                                     $resp);
-    if ($cached) return;
+    if ($cached) {
+      return;
+    }
     $req = new \google\appengine\GetAccessTokenRequest();
     foreach ($scopes as $scope) {
       $req->addScope($scope);
@@ -154,7 +156,9 @@ class AppIdentityServiceTest extends ApiProxyTestBase {
                                     $req,
                                     $resp);
 
-    if (!is_null($exception)) return;
+    if (!is_null($exception)) {
+      return;
+    }
 
     $req = new \google\appengine\MemcacheSetRequest();
     $item = $req->addItem();

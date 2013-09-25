@@ -26,10 +26,10 @@ require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
 use google\appengine\api\taskqueue\PushTask;
 use google\appengine\testing\ApiProxyTestBase;
-use \google\appengine\TaskQueueAddRequest\RequestMethod;
-use \google\appengine\TaskQueueBulkAddRequest;
-use \google\appengine\TaskQueueBulkAddResponse;
-use \google\appengine\TaskQueueServiceError\ErrorCode;
+use google\appengine\TaskQueueAddRequest\RequestMethod;
+use google\appengine\TaskQueueBulkAddRequest;
+use google\appengine\TaskQueueBulkAddResponse;
+use google\appengine\TaskQueueServiceError\ErrorCode;
 
 $mockTime = 12345.6;
 

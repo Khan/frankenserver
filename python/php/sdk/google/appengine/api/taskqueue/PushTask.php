@@ -35,7 +35,7 @@ namespace google\appengine\api\taskqueue;
 require_once 'google/appengine/api/taskqueue/PushQueue.php';
 require_once 'google/appengine/api/taskqueue/taskqueue_service_pb.php';
 
-use \google\appengine\TaskQueueAddRequest\RequestMethod;
+use google\appengine\TaskQueueAddRequest\RequestMethod;
 
 
 /**

@@ -23,20 +23,20 @@ require_once 'google/appengine/api/memcache/memcache_service_pb.php';
 require_once 'google/appengine/runtime/Memcached.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
-use \google\appengine\MemcacheDeleteRequest;
-use \google\appengine\MemcacheDeleteResponse;
-use \google\appengine\MemcacheDeleteResponse\DeleteStatusCode;
-use \google\appengine\MemcacheFlushRequest;
-use \google\appengine\MemcacheFlushResponse;
-use \google\appengine\MemcacheGetRequest;
-use \google\appengine\MemcacheGetResponse;
-use \google\appengine\MemcacheIncrementRequest;
-use \google\appengine\MemcacheIncrementResponse;
-use \google\appengine\MemcacheSetRequest;
-use \google\appengine\MemcacheSetRequest\SetPolicy;
-use \google\appengine\MemcacheSetResponse;
-use \google\appengine\MemcacheSetResponse\SetStatusCode;
-use \google\appengine\testing\ApiProxyTestBase;
+use google\appengine\MemcacheDeleteRequest;
+use google\appengine\MemcacheDeleteResponse;
+use google\appengine\MemcacheDeleteResponse\DeleteStatusCode;
+use google\appengine\MemcacheFlushRequest;
+use google\appengine\MemcacheFlushResponse;
+use google\appengine\MemcacheGetRequest;
+use google\appengine\MemcacheGetResponse;
+use google\appengine\MemcacheIncrementRequest;
+use google\appengine\MemcacheIncrementResponse;
+use google\appengine\MemcacheSetRequest;
+use google\appengine\MemcacheSetRequest\SetPolicy;
+use google\appengine\MemcacheSetResponse;
+use google\appengine\MemcacheSetResponse\SetStatusCode;
+use google\appengine\testing\ApiProxyTestBase;
 
 class MemcachedTest extends ApiProxyTestBase {
 

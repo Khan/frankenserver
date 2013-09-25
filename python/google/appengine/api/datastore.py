@@ -348,11 +348,11 @@ class DatastoreAdapter(datastore_rpc.AbstractAdapter):
 
   def pb_to_index(self, pb):
     index_def = pb.definition()
-    properties = [(property.name(),
+    properties = [(property.name().decode('utf-8'),
           DatastoreAdapter.index_direction_mappings.get(property.direction()))
           for property in index_def.property_list()]
-    index = Index(pb.id(), index_def.entity_type(), index_def.ancestor(),
-                  properties)
+    index = Index(pb.id(), index_def.entity_type().decode('utf-8'),
+                  index_def.ancestor(), properties)
     state = DatastoreAdapter.index_state_mappings.get(pb.state())
     return index, state
 

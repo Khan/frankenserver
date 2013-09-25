@@ -1101,7 +1101,8 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
         prefix,
         self._CreateFilterString(filters, params),
         self.__CreateOrderString(orders))
-    query = ('SELECT Entities.__path__, Entities.entity '
+    query = ('SELECT Entities.__path__, Entities.entity, '
+             'EntitiesByProperty.name, EntitiesByProperty.value '
              'FROM "%s!EntitiesByProperty" AS EntitiesByProperty INNER JOIN '
              '"%s!Entities" AS Entities USING (__path__) %s %s' % format_args)
     return query, params

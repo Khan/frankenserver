@@ -41,7 +41,7 @@ class RealApiProxy extends ApiProxyBase {
       $response,
       $deadline = null) {
 
-   if ($deadline === null) {
+    if ($deadline === null) {
       $deadline = self::DEFAULT_DEADLINE_VALUE;
     }
 

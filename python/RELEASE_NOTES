@@ -1,7 +1,43 @@
-Copyright 2008 Google Inc.
+Copyright 2013 Google Inc.
 All rights reserved.
 
 App Engine SDK - Release Notes
+
+Version 1.8.5
+
+All
+==============================
+- The Search API is now a GA feature.
+- Fixed an issue with the dev_appserver Datastore where UTF-8 validation did
+  not occur on string values.
+- Fixed an issue with the Admin Console Datastore Viewer throwing errors when
+  fetching UTF-8 kinds.
+    https://code.google.com/p/googleappengine/issues/detail?id=7570
+- Fixed an issue with the Datastore Admin not being able to backup to another
+  app.
+    https://code.google.com/p/googleappengine/issues/detail?id=9808
+- Fixed an issue where files that contain an '@' could not be deployed.
+    https://code.google.com/a/google.com/p/google-appengine-php-trusted-tester
+    /issues/detail?id=6
+
+Python
+==============================
+- Developers can now use pdb when debugging python applications in the
+  dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=9012
+    https://code.google.com/p/googleappengine/issues/detail?id=9027
+
+PHP
+==============================
+- Modules are now supported for the PHP Runtime.
+- The Log Service API is now available.
+- The PHP interpreter has been upgraded from PHP 5.4.17 to PHP 5.4.19.
+- The /e modifier for mb_ereg_replace has been disabled.
+- The PHP interpreter has been switched to the JSON-C library.
+- The Mac OSX SDK now includes a PHP interpreter, installing PHP separately is
+  no longer required.
+- The Windows SDK now includes a PHP interpreter, installing PHP separately is
+  no longer required.
 
 Version 1.8.4
 

@@ -167,9 +167,6 @@ class APIServer(wsgi_server.WsgiServer):
         application_error = response.mutable_application_error()
         application_error.set_code(e.application_error)
         application_error.set_detail(e.error_detail)
-        # TODO: is this necessary? Python remote stub ignores exception
-        # when application error is specified; do other runtimes use it?
-        response.set_exception(pickle.dumps(e))
       else:
         # If the runtime instance is not Python, it won't be able to unpickle
         # the exception so use level that won't be ignored by default.
@@ -177,7 +174,10 @@ class APIServer(wsgi_server.WsgiServer):
         # Even if the runtime is Python, the exception may be unpicklable if
         # it requires importing a class blocked by the sandbox so just send
         # back the exception representation.
-        response.set_exception(pickle.dumps(RuntimeError(repr(e))))
+        e = RuntimeError(repr(e))
+      # While not strictly necessary for ApplicationError, do this to limit
+      # differences with remote_api:handler.py.
+      response.set_exception(pickle.dumps(e))
       logging.log(level, 'Exception while handling %s\n%s', request,
                   traceback.format_exc())
     encoded_response = response.Encode()
@@ -201,7 +201,7 @@ class APIServer(wsgi_server.WsgiServer):
     elif environ['REQUEST_METHOD'] == 'POST':
       return self._handle_POST(environ, start_response)
     else:
-      start_response('405 Method Not Allowed')
+      start_response('405 Method Not Allowed', [])
       return []
 
 

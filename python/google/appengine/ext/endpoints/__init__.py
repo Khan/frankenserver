@@ -18,20 +18,55 @@
 
 
 
-"""Apiserving Module."""
+"""Deprecated endpoints module from google.appengine.ext."""
 
 
 
 
 
 
-from api_config import api
-from api_config import API_EXPLORER_CLIENT_ID
-from api_config import EMAIL_SCOPE
-from api_config import method
-from api_exceptions import *
-from apiserving import *
-import message_parser
-from users_id_token import get_current_user
-from users_id_token import InvalidGetUserCall
-from users_id_token import SKIP_CLIENT_ID_CHECK
+import itertools
+import logging
+import os
+import re
+import sys
+
+logging.warning('Importing endpoints from google.appengine.ext is deprecated '
+                'and will be removed.  Add the endpoints library to '
+                'app.yaml, then endpoints can be imported simply with '
+                '"import endpoints".')
+
+
+if 'APPENGINE_RUNTIME' not in os.environ:
+
+
+  if not hasattr(sys, 'version_info'):
+    raise RuntimeError('Endpoints library isn\'t available in older Python '
+                       'runtime environments. Use the python27 runtime.')
+  version_tuple = tuple(sys.version_info[:2])
+  if version_tuple < (2, 7):
+    raise RuntimeError('Endpoints library isn\'t available in python %d.%d. '
+                       'Use version 2.7 or greater.' % version_tuple)
+elif os.environ['APPENGINE_RUNTIME'] == 'python':
+  raise RuntimeError('Endpoints library isn\'t available in python 2.5 '
+                     'runtime. Use the python27 runtime instead.')
+
+
+
+
+
+for path in sys.path:
+  lib_path, final_dir = os.path.split(path)
+  if re.match('webapp2-.+', final_dir):
+    endpoints_path = os.path.join(lib_path, 'endpoints-1.0')
+    if endpoints_path not in sys.path:
+      sys.path.append(endpoints_path)
+    break
+
+
+
+from endpoints import *
+
+
+
+__version__ = '1.0'

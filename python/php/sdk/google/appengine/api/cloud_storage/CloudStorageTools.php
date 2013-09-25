@@ -18,21 +18,21 @@
  */
 namespace google\appengine\api\cloud_storage;
 
-use \google\appengine\BlobstoreServiceError\ErrorCode;
-use \google\appengine\CreateEncodedGoogleStorageKeyRequest;
-use \google\appengine\CreateEncodedGoogleStorageKeyResponse;
-use \google\appengine\CreateUploadURLRequest;
-use \google\appengine\CreateUploadURLResponse;
-use \google\appengine\ImagesDeleteUrlBaseRequest;
-use \google\appengine\ImagesDeleteUrlBaseResponse;
-use \google\appengine\ImagesGetUrlBaseRequest;
-use \google\appengine\ImagesGetUrlBaseResponse;
-use \google\appengine\ImagesServiceError;
-use \google\appengine\files\GetDefaultGsBucketNameRequest;
-use \google\appengine\files\GetDefaultGsBucketNameResponse;
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\util as util;
+use google\appengine\BlobstoreServiceError\ErrorCode;
+use google\appengine\CreateEncodedGoogleStorageKeyRequest;
+use google\appengine\CreateEncodedGoogleStorageKeyResponse;
+use google\appengine\CreateUploadURLRequest;
+use google\appengine\CreateUploadURLResponse;
+use google\appengine\ImagesDeleteUrlBaseRequest;
+use google\appengine\ImagesDeleteUrlBaseResponse;
+use google\appengine\ImagesGetUrlBaseRequest;
+use google\appengine\ImagesGetUrlBaseResponse;
+use google\appengine\ImagesServiceError;
+use google\appengine\files\GetDefaultGsBucketNameRequest;
+use google\appengine\files\GetDefaultGsBucketNameResponse;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\util as util;
 
 require_once 'google/appengine/api/blobstore/blobstore_service_pb.php';
 require_once 'google/appengine/api/cloud_storage/CloudStorageException.php';
@@ -71,7 +71,7 @@ final class CloudStorageTools {
   private static $get_image_serving_url_default_options = [
     'crop'       => false,
     'secure_url' => false,
-    'size'       => NULL
+    'size'       => null,
   ];
 
   /**
@@ -376,17 +376,17 @@ final class CloudStorageTools {
     }
 
     // Determine the range to send
-    $start = util\FindByKeyOrNull($options, "start");
-    $end = util\FindByKeyOrNull($options, "end");
-    $use_range = util\FindByKeyOrNull($options, "use_range");
-    $request_range_header = util\FindByKeyOrNull($_SERVER, "HTTP_RANGE");
+    $start = util\findByKeyOrNull($options, "start");
+    $end = util\findByKeyOrNull($options, "end");
+    $use_range = util\findByKeyOrNull($options, "use_range");
+    $request_range_header = util\findByKeyOrNull($_SERVER, "HTTP_RANGE");
 
     $range_header = self::checkRanges($start,
                                       $end,
                                       $use_range,
                                       $request_range_header);
 
-    $save_as = util\FindByKeyOrNull($options, "save_as");
+    $save_as = util\findByKeyOrNull($options, "save_as");
     if (isset($save_as) && !is_string($save_as)) {
       throw new \InvalidArgumentException("Unexpected value for save_as.");
     }
@@ -398,7 +398,7 @@ final class CloudStorageTools {
       self::sendHeader(self::BLOB_RANGE_HEADER, $range_header);
     }
 
-    $content_type = util\FindByKeyOrNull($options, "content_type");
+    $content_type = util\findByKeyOrNull($options, "content_type");
     if (isset($content_type)) {
       self::sendHeader("Content-Type", $content_type);
     }

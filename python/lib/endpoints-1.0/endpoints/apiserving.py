@@ -64,17 +64,15 @@ compatible errors, it exposes a helper service that describes your services.
 import cgi
 import cStringIO
 import httplib
-import logging
 import os
 
+from endpoints import api_backend_service
+from endpoints import api_config
+from endpoints import api_exceptions
+from endpoints import protojson
 from protorpc import messages
 from protorpc import remote
 from protorpc.wsgi import service as wsgi_service
-
-from google.appengine.ext.endpoints import api_backend_service
-from google.appengine.ext.endpoints import api_config
-from google.appengine.ext.endpoints import api_exceptions
-from google.appengine.ext.endpoints import protojson
 
 package = 'google.appengine.endpoints'
 
@@ -180,8 +178,11 @@ class _ApiServer(object):
   __SPI_PREFIX = '/_ah/spi/'
   __BACKEND_SERVICE_ROOT = '%sBackendService' % __SPI_PREFIX
   __SERVER_SOFTWARE = 'SERVER_SOFTWARE'
-  __DEV_APPSERVER_PREFIX = 'Development/'
-  __TEST_APPSERVER_PREFIX = 'WSGIServer/'
+
+
+
+
+  __IGNORE_RESTRICTION_PREFIXES = ('Development/', 'WSGIServer/', 'testutil/')
   __HEADER_NAME_PEER = 'HTTP_X_APPENGINE_PEER'
   __GOOGLE_PEER = 'apiserving'
 
@@ -339,9 +340,9 @@ class _ApiServer(object):
     if not self.restricted:
       return False
     server = environ.get(self.__SERVER_SOFTWARE, '')
-    if (server.startswith(self.__DEV_APPSERVER_PREFIX) or
-        server.startswith(self.__TEST_APPSERVER_PREFIX)):
-      return False
+    for prefix in self.__IGNORE_RESTRICTION_PREFIXES:
+      if server.startswith(prefix):
+        return False
     peer_name = environ.get(self.__HEADER_NAME_PEER, '')
     return peer_name.lower() != self.__GOOGLE_PEER
 

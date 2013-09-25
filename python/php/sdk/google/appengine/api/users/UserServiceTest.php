@@ -24,16 +24,12 @@ require_once 'google/appengine/testing/ApiProxyTestBase.php';
 use google\appengine\api\users\User;
 use google\appengine\api\users\UserService;
 use google\appengine\testing\ApiProxyTestBase;
-use \google\appengine\UserServiceError;
+use google\appengine\UserServiceError;
 
 /**
  * Unittest for UserService class.
  */
 class UserServiceTest extends ApiProxyTestBase {
-  public function setUp() {
-    parent::setUp();
-  }
-
   public function tearDown() {
     putenv("AUTH_DOMAIN");
     parent::tearDown();

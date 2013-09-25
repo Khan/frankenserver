@@ -29,14 +29,14 @@ require_once 'google/appengine/api/taskqueue/TransientTaskQueueException.php';
 require_once 'google/appengine/runtime/ApiProxy.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
 
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\TaskQueueAddRequest;
-use \google\appengine\TaskQueueAddRequest\RequestMethod;
-use \google\appengine\TaskQueueAddResponse;
-use \google\appengine\TaskQueueBulkAddRequest;
-use \google\appengine\TaskQueueBulkAddResponse;
-use \google\appengine\TaskQueueServiceError\ErrorCode;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\TaskQueueAddRequest;
+use google\appengine\TaskQueueAddRequest\RequestMethod;
+use google\appengine\TaskQueueAddResponse;
+use google\appengine\TaskQueueBulkAddRequest;
+use google\appengine\TaskQueueBulkAddResponse;
+use google\appengine\TaskQueueServiceError\ErrorCode;
 
 
 /**
@@ -52,10 +52,10 @@ final class PushQueue {
   private $name;
 
   private static $methods = [
-    'POST'   => RequestMethod::POST,
-    'GET'    => RequestMethod::GET,
-    'HEAD'   => RequestMethod::HEAD,
-    'PUT'    => RequestMethod::PUT,
+    'POST' => RequestMethod::POST,
+    'GET' => RequestMethod::GET,
+    'HEAD' => RequestMethod::HEAD,
+    'PUT' => RequestMethod::PUT,
     'DELETE' => RequestMethod::DELETE
   ];
 

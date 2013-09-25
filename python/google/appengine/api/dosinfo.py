@@ -33,6 +33,7 @@ import re
 import google
 import ipaddr
 
+from google.appengine.api import appinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
@@ -86,6 +87,7 @@ class BlacklistEntry(validation.Validated):
 class DosInfoExternal(validation.Validated):
   """Describes the format of a dos.yaml file."""
   ATTRIBUTES = {
+      appinfo.APPLICATION: validation.Optional(appinfo.APPLICATION_RE_STRING),
       BLACKLIST: validation.Optional(validation.Repeated(BlacklistEntry)),
   }
 

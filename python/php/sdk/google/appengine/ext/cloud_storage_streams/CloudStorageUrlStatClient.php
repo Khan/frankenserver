@@ -24,7 +24,7 @@ namespace google\appengine\ext\cloud_storage_streams;
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
 require_once 'google/appengine/util/string_util.php';
 
-use \google\appengine\util as util;
+use google\appengine\util as util;
 
 /**
  * Client for stating objects in Google Cloud Storage.

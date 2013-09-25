@@ -21,8 +21,8 @@
 
 namespace google\appengine\runtime;
 
-use \google\appengine\MemcacheSetRequest;
-use \google\appengine\MemcacheSetResponse;
+use google\appengine\MemcacheSetRequest;
+use google\appengine\MemcacheSetResponse;
 
 require_once 'google/appengine/api/memcache/memcache_service_pb.php';
 require_once 'google/appengine/runtime/ApiProxy.php';

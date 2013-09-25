@@ -18,11 +18,10 @@
 
 import logging
 
+import endpoints
 from protorpc import message_types
 from protorpc import messages
 from protorpc import remote
-
-from google.appengine.ext import endpoints
 
 
 class TestRequest(messages.Message):

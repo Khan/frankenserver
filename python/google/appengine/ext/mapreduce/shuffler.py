@@ -50,7 +50,6 @@ from appengine_pipeline.src import pipeline
 from appengine_pipeline.src.pipeline import common as pipeline_common
 from google.appengine.api import files
 from google.appengine.api.files import file_service_pb
-from google.appengine.api.files import records
 from google.appengine.ext import db
 from google.appengine.ext.mapreduce import context
 from google.appengine.ext.mapreduce import errors
@@ -59,6 +58,7 @@ from google.appengine.ext.mapreduce import mapper_pipeline
 from google.appengine.ext.mapreduce import operation
 from google.appengine.ext.mapreduce import output_writers
 from google.appengine.ext.mapreduce import pipeline_base
+from google.appengine.ext.mapreduce import records
 
 
 

@@ -134,6 +134,7 @@ available to an app, it is clamped.
 
 
 
+from google.appengine.api import appinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
 from google.appengine.api import yaml_listener
@@ -223,6 +224,7 @@ class QueueEntry(validation.Validated):
 class QueueInfoExternal(validation.Validated):
   """QueueInfoExternal describes all queue entries for an application."""
   ATTRIBUTES = {
+      appinfo.APPLICATION: validation.Optional(appinfo.APPLICATION_RE_STRING),
       TOTAL_STORAGE_LIMIT: validation.Optional(_TOTAL_STORAGE_LIMIT_REGEX),
       QUEUE: validation.Optional(validation.Repeated(QueueEntry)),
   }

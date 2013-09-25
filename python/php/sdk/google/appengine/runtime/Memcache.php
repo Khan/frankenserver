@@ -24,23 +24,23 @@
  * User provided "flags" arguments are currently ignored and many methods are
  * no-ops.
  */
-use \google\appengine\MemcacheDeleteRequest;
-use \google\appengine\MemcacheDeleteResponse;
-use \google\appengine\MemcacheDeleteResponse\DeleteStatusCode;
-use \google\appengine\MemcacheFlushRequest;
-use \google\appengine\MemcacheFlushResponse;
-use \google\appengine\MemcacheGetRequest;
-use \google\appengine\MemcacheGetResponse;
-use \google\appengine\MemcacheIncrementRequest;
-use \google\appengine\MemcacheIncrementResponse;
-use \google\appengine\MemcacheIncrementResponse\IncrementStatusCode;
-use \google\appengine\MemcacheSetRequest;
-use \google\appengine\MemcacheSetRequest\SetPolicy;
-use \google\appengine\MemcacheSetResponse;
-use \google\appengine\MemcacheSetResponse\SetStatusCode;
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\Error;
-use \google\appengine\runtime\MemcacheUtils;
+use google\appengine\MemcacheDeleteRequest;
+use google\appengine\MemcacheDeleteResponse;
+use google\appengine\MemcacheDeleteResponse\DeleteStatusCode;
+use google\appengine\MemcacheFlushRequest;
+use google\appengine\MemcacheFlushResponse;
+use google\appengine\MemcacheGetRequest;
+use google\appengine\MemcacheGetResponse;
+use google\appengine\MemcacheIncrementRequest;
+use google\appengine\MemcacheIncrementResponse;
+use google\appengine\MemcacheIncrementResponse\IncrementStatusCode;
+use google\appengine\MemcacheSetRequest;
+use google\appengine\MemcacheSetRequest\SetPolicy;
+use google\appengine\MemcacheSetResponse;
+use google\appengine\MemcacheSetResponse\SetStatusCode;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\Error;
+use google\appengine\runtime\MemcacheUtils;
 
 require_once 'google/appengine/api/memcache/memcache_service_pb.php';
 require_once 'google/appengine/runtime/MemcacheUtils.php';

@@ -36,8 +36,6 @@ import re
 import time
 import urllib
 
-import google
-
 try:
 
   from google.appengine.api import memcache

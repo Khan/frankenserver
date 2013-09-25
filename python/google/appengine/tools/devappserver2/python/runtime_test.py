@@ -38,10 +38,11 @@ class SetupStubsTest(unittest.TestCase):
   def test_setup_stubs(self):
     self.mox.StubOutWithMock(remote_api_stub, 'ConfigureRemoteApi')
     remote_api_stub.ConfigureRemoteApi('app', '/', mox.IgnoreArg(),
-                                       'localhost:12345',
+                                       'somehost:12345',
                                        use_remote_datastore=False)
     config = runtime_config_pb2.Config()
     config.app_id = 'app'
+    config.api_host = 'somehost'
     config.api_port = 12345
     self.mox.ReplayAll()
     runtime.setup_stubs(config)

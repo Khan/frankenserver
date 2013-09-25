@@ -43,3 +43,21 @@ function endsWith($input, $suffix) {
 function startsWith($input, $prefix) {
   return substr($input, 0, strlen($prefix)) === $prefix;
 }
+
+/**
+ * @param string $input The string which may not be url safe.
+ *
+ * @return string A Base64 encoded url safe string.
+ */
+function base64UrlEncode($input) {
+  return strtr(base64_encode($input), '+/=', '-_,');
+}
+
+/**
+ * @param string $input The url safe Base64 encoded string.
+ *
+ * @return string The original string which may not be url safe.
+ */
+function base64UrlDecode($input) {
+  return base64_decode(strtr($input, '-_,', '+/='));
+}

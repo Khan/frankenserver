@@ -19,17 +19,17 @@
 
 namespace google\appengine\api\app_identity;
 
-use \google\appengine\AppIdentityServiceError\ErrorCode;
-use \google\appengine\GetAccessTokenRequest;
-use \google\appengine\GetAccessTokenResponse;
-use \google\appengine\GetPublicCertificateForAppRequest;
-use \google\appengine\GetPublicCertificateForAppResponse;
-use \google\appengine\GetServiceAccountNameRequest;
-use \google\appengine\GetServiceAccountNameResponse;
-use \google\appengine\SignForAppRequest;
-use \google\appengine\SignForAppResponse;
-use \google\appengine\runtime\ApiProxy;
-use \google\appengine\runtime\ApplicationError;
+use google\appengine\AppIdentityServiceError\ErrorCode;
+use google\appengine\GetAccessTokenRequest;
+use google\appengine\GetAccessTokenResponse;
+use google\appengine\GetPublicCertificateForAppRequest;
+use google\appengine\GetPublicCertificateForAppResponse;
+use google\appengine\GetServiceAccountNameRequest;
+use google\appengine\GetServiceAccountNameResponse;
+use google\appengine\SignForAppRequest;
+use google\appengine\SignForAppResponse;
+use google\appengine\runtime\ApiProxy;
+use google\appengine\runtime\ApplicationError;
 
 require_once 'google/appengine/api/app_identity/app_identity_service_pb.php';
 require_once 'google/appengine/api/app_identity/AppIdentityException.php';
@@ -181,7 +181,7 @@ final class AppIdentityService {
     $memcache = new \Memcache();
     $result = $memcache->get($memcache_key);
 
-    if ($result === False) {
+    if ($result === false) {
       $result = self::getAccessTokenUncached($scopes);
 
       // Cache in memcache allowing for 5 minute clock skew.

@@ -3583,12 +3583,30 @@ namespace google\appengine_datastore_v3 {
     public function hasCommitCost() {
       return isset($this->commitcost);
     }
+    public function getApproximateStorageDelta() {
+      if (!isset($this->approximate_storage_delta)) {
+        return 0;
+      }
+      return $this->approximate_storage_delta;
+    }
+    public function setApproximateStorageDelta($val) {
+      $this->approximate_storage_delta = $val;
+      return $this;
+    }
+    public function clearApproximateStorageDelta() {
+      unset($this->approximate_storage_delta);
+      return $this;
+    }
+    public function hasApproximateStorageDelta() {
+      return isset($this->approximate_storage_delta);
+    }
     public function clear() {
       $this->clearIndexWrites();
       $this->clearIndexWriteBytes();
       $this->clearEntityWrites();
       $this->clearEntityWriteBytes();
       $this->clearCommitCost();
+      $this->clearApproximateStorageDelta();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3611,6 +3629,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->commitcost)) {
         $res += 2;
         $res += $this->commitcost->byteSizePartial();
+      }
+      if (isset($this->approximate_storage_delta)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->approximate_storage_delta);
       }
       return $res;
     }
@@ -3636,6 +3658,10 @@ namespace google\appengine_datastore_v3 {
         $this->commitcost->outputPartial($out);
         $out->putVarInt32(44);
       }
+      if (isset($this->approximate_storage_delta)) {
+        $out->putVarInt32(64);
+        $out->putVarInt32($this->approximate_storage_delta);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3655,6 +3681,9 @@ namespace google\appengine_datastore_v3 {
             break;
           case 43:
             $this->mutableCommitCost()->tryMerge($d);
+            break;
+          case 64:
+            $this->setApproximateStorageDelta($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3685,6 +3714,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasCommitCost()) {
         $this->mutableCommitCost()->mergeFrom($x->getCommitCost());
       }
+      if ($x->hasApproximateStorageDelta()) {
+        $this->setApproximateStorageDelta($x->getApproximateStorageDelta());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3698,6 +3730,8 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->entity_write_bytes) && !$this->integerEquals($this->entity_write_bytes, $x->entity_write_bytes)) return false;
       if (isset($this->commitcost) !== isset($x->commitcost)) return false;
       if (isset($this->commitcost) && !$this->commitcost->equals($x->commitcost)) return false;
+      if (isset($this->approximate_storage_delta) !== isset($x->approximate_storage_delta)) return false;
+      if (isset($this->approximate_storage_delta) && !$this->integerEquals($this->approximate_storage_delta, $x->approximate_storage_delta)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3716,6 +3750,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->commitcost)) {
         $res .= $prefix . "CommitCost {\n" . $this->commitcost->shortDebugString($prefix . "  ") . $prefix . "}\n";
+      }
+      if (isset($this->approximate_storage_delta)) {
+        $res .= $prefix . "approximate_storage_delta: " . $this->debugFormatInt32($this->approximate_storage_delta) . "\n";
       }
       return $res;
     }

@@ -100,6 +100,10 @@ class IntValueChecker(object):
       raise TypeError(message)
     if not self._MIN <= proposed_value <= self._MAX:
       raise ValueError('Value out of range: %d' % proposed_value)
+
+
+
+    proposed_value = self._TYPE(proposed_value)
     return proposed_value
 
 
@@ -151,21 +155,25 @@ class Int32ValueChecker(IntValueChecker):
 
   _MIN = -2147483648
   _MAX = 2147483647
+  _TYPE = int
 
 
 class Uint32ValueChecker(IntValueChecker):
   _MIN = 0
   _MAX = (1 << 32) - 1
+  _TYPE = int
 
 
 class Int64ValueChecker(IntValueChecker):
   _MIN = -(1 << 63)
   _MAX = (1 << 63) - 1
+  _TYPE = long
 
 
 class Uint64ValueChecker(IntValueChecker):
   _MIN = 0
   _MAX = (1 << 64) - 1
+  _TYPE = long
 
 
 

@@ -29,11 +29,10 @@ except ImportError:
   import simplejson as json
 import logging
 
+from endpoints import api_backend
+from endpoints import api_config
+from endpoints import api_exceptions
 from protorpc import message_types
-
-from google.appengine.ext.endpoints import api_backend
-from google.appengine.ext.endpoints import api_config
-from google.appengine.ext.endpoints import api_exceptions
 
 
 __all__ = [

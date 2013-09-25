@@ -325,6 +325,22 @@ def Check(test, msg='', error_code=datastore_pb.Error.BAD_REQUEST):
     raise apiproxy_errors.ApplicationError(error_code, msg)
 
 
+def CheckValidUTF8(string, desc):
+  """Check that the given string is valid UTF-8.
+
+  Args:
+    string: the string to validate.
+    desc: a description of the string being validated.
+
+  Raises:
+    apiproxy_errors.ApplicationError: if the string is not valid UTF-8.
+  """
+  try:
+    string.decode('utf-8')
+  except UnicodeDecodeError:
+    Check(False, '%s is not valid UTF-8.' % desc)
+
+
 def CheckAppId(request_trusted, request_app_id, app_id):
   """Check that this is the stub for app_id.
 
@@ -376,6 +392,9 @@ def CheckReference(request_trusted,
   for elem in key.path().element_list():
     Check(not elem.has_id() or not elem.has_name(),
           'each key path element should have id or name but not both: %r' % key)
+    CheckValidUTF8(elem.type(), 'key path element type')
+    if elem.has_name():
+      CheckValidUTF8(elem.name(), 'key path element name')
 
 
 def CheckEntity(request_trusted, request_app_id, entity):
@@ -413,6 +432,7 @@ def CheckProperty(request_trusted, request_app_id, prop, indexed=True):
   name = prop.name()
   value = prop.value()
   meaning = prop.meaning()
+  CheckValidUTF8(name, 'property name')
   Check(request_trusted or
         not datastore_types.RESERVED_PROPERTY_NAME.match(name),
         'cannot store entity with reserved property name \'%s\'' % name)
@@ -433,16 +453,17 @@ def CheckProperty(request_trusted, request_app_id, prop, indexed=True):
   if meaning == entity_pb.Property.ATOM_LINK:
     max_length = datastore_types._MAX_LINK_PROPERTY_LENGTH
 
-  CheckPropertyValue(name, value, max_length)
+  CheckPropertyValue(name, value, max_length, meaning)
 
 
-def CheckPropertyValue(name, value, max_length):
+def CheckPropertyValue(name, value, max_length, meaning):
   """Check if this property value can be stored.
 
   Args:
     name: name of the property
     value: entity_pb.PropertyValue
     max_length: maximum length for string values
+    meaning: meaning of the property
 
   Raises:
     apiproxy_errors.ApplicationError: if the property is invalid
@@ -469,6 +490,9 @@ def CheckPropertyValue(name, value, max_length):
 
     Check((len(s16) - 2) / 2 <= max_length,
           'Property %s is too long. Maximum length is %d.' % (name, max_length))
+    if (meaning not in _BLOB_MEANINGS and
+        meaning != entity_pb.Property.BYTESTRING):
+      CheckValidUTF8(value.stringvalue(), 'String property value')
 
 
 def CheckTransaction(request_trusted, request_app_id, transaction):
@@ -1032,13 +1056,19 @@ class BaseCursor(object):
     cursor_entity = entity_pb.EntityProto()
     if position.has_key():
       cursor_entity.mutable_key().CopyFrom(position.key())
-      remaining_properties.remove('__key__')
+      try:
+        remaining_properties.remove('__key__')
+      except KeyError:
+        Check(False, 'Cursor does not match query: extra value __key__')
     for indexvalue in position.indexvalue_list():
       property = cursor_entity.add_property()
       property.set_name(indexvalue.property())
       property.mutable_value().CopyFrom(indexvalue.value())
-      remaining_properties.remove(indexvalue.property())
-
+      try:
+        remaining_properties.remove(indexvalue.property())
+      except KeyError:
+        Check(False, 'Cursor does not match query: extra value %s' %
+              indexvalue.property())
     Check(not remaining_properties,
           'Cursor does not match query: missing values for %r' %
           remaining_properties)
@@ -3267,7 +3297,7 @@ def _GuessOrders(filters, orders):
 
   if not orders:
     for filter_pb in filters:
-      if filter_pb.op() != datastore_pb.Query_Filter.EQUAL:
+      if filter_pb.op() in datastore_index.INEQUALITY_OPERATORS:
 
         order = datastore_pb.Query_Order()
         order.set_property(filter_pb.property(0).name())

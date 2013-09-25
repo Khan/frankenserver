@@ -32,7 +32,7 @@ require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageUrlStatClie
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageWriteClient.php';
 require_once 'google/appengine/util/array_util.php';
 
-use \google\appengine\util as util;
+use google\appengine\util as util;
 /**
  * Allowed stream_context options.
  * "anonymous": Boolean, if set then OAuth tokens will not be generated.
@@ -338,7 +338,7 @@ final class CloudStorageStreamWrapper {
     }
     $bucket = $url_parts['host'];
     $object = null;
-    $path = util\FindByKeyOrNull($url_parts, 'path');
+    $path = util\findByKeyOrNull($url_parts, 'path');
     if (isset($path) && $path !== "/") {
       $object = $path;
     }

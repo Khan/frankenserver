@@ -251,17 +251,23 @@ class Module(object):
     runtime_config = runtime_config_pb2.Config()
     runtime_config.app_id = self._module_configuration.application
     runtime_config.version_id = self._module_configuration.version_id
-    runtime_config.threadsafe = self._module_configuration.threadsafe or False
+    if self._threadsafe_override is None:
+      runtime_config.threadsafe = self._module_configuration.threadsafe or False
+    else:
+      runtime_config.threadsafe = self._threadsafe_override
     runtime_config.application_root = (
         self._module_configuration.application_root)
     if not self._allow_skipped_files:
       runtime_config.skip_files = str(self._module_configuration.skip_files)
       runtime_config.static_files = _static_files_regex_from_handlers(
           self._module_configuration.handlers)
+    runtime_config.api_host = self._api_host
     runtime_config.api_port = self._api_port
     runtime_config.stderr_log_level = self._runtime_stderr_loglevel
     runtime_config.datacenter = 'us1'
     runtime_config.auth_domain = self._auth_domain
+    if self._max_instances is not None:
+      runtime_config.max_instances = self._max_instances
 
     for library in self._module_configuration.normalized_libraries:
       runtime_config.libraries.add(name=library.name, version=library.version)
@@ -272,15 +278,12 @@ class Module(object):
     if self._cloud_sql_config:
       runtime_config.cloud_sql_config.CopyFrom(self._cloud_sql_config)
 
-    if self._module_configuration.runtime == 'php':
-      if self._php_executable_path:
-        runtime_config.php_config.php_executable_path = (
-            self._php_executable_path)
-      runtime_config.php_config.enable_debugger = (
-          self._enable_php_remote_debugging)
+    if self._php_config and self._module_configuration.runtime == 'php':
+      runtime_config.php_config.CopyFrom(self._php_config)
     if (self._python_config and
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
+
     return runtime_config
 
   def _maybe_restart_instances(self, config_changed, file_changed):
@@ -337,11 +340,11 @@ class Module(object):
                module_configuration,
                host,
                balanced_port,
+               api_host,
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -351,7 +354,8 @@ class Module(object):
                max_instances,
                use_mtime_file_watcher,
                automatic_restarts,
-               allow_skipped_files):
+               allow_skipped_files,
+               threadsafe_override):
     """Initializer for Module.
 
     Args:
@@ -361,16 +365,15 @@ class Module(object):
           e.g. "localhost".
       balanced_port: An int specifying the port where the balanced module for
           the pool should listen.
+      api_host: The host that APIModule listens for RPC requests on.
       api_port: The port that APIModule listens for RPC requests on.
       auth_domain: A string containing the auth domain to set in the environment
           variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -393,20 +396,23 @@ class Module(object):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      threadsafe_override: If not None, ignore the YAML file value of threadsafe
+          and use this value instead.
     """
     self._module_configuration = module_configuration
     self._name = module_configuration.module_name
     self._host = host
+    self._api_host = api_host
     self._api_port = api_port
     self._auth_domain = auth_domain
     self._runtime_stderr_loglevel = runtime_stderr_loglevel
     self._balanced_port = balanced_port
-    self._php_executable_path = php_executable_path
-    self._enable_php_remote_debugging = enable_php_remote_debugging
+    self._php_config = php_config
     self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
     self._request_data = request_data
     self._allow_skipped_files = allow_skipped_files
+    self._threadsafe_override = threadsafe_override
     self._dispatcher = dispatcher
     self._max_instances = max_instances
     self._automatic_restarts = automatic_restarts
@@ -734,11 +740,11 @@ class Module(object):
       return InteractiveCommandModule(self._module_configuration,
                                       self._host,
                                       self._balanced_port,
+                                      self._api_host,
                                       self._api_port,
                                       self._auth_domain,
                                       self._runtime_stderr_loglevel,
-                                      self._php_executable_path,
-                                      self._enable_php_remote_debugging,
+                                      self._php_config,
                                       self._python_config,
                                       self._cloud_sql_config,
                                       self._default_version_port,
@@ -746,7 +752,8 @@ class Module(object):
                                       self._request_data,
                                       self._dispatcher,
                                       self._use_mtime_file_watcher,
-                                      self._allow_skipped_files)
+                                      self._allow_skipped_files,
+                                      self._threadsafe_override)
     else:
       raise NotImplementedError('runtime does not support interactive commands')
 
@@ -836,11 +843,11 @@ class AutoScalingModule(Module):
                module_configuration,
                host,
                balanced_port,
+               api_host,
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -850,7 +857,8 @@ class AutoScalingModule(Module):
                max_instances,
                use_mtime_file_watcher,
                automatic_restarts,
-               allow_skipped_files):
+               allow_skipped_files,
+               threadsafe_override):
     """Initializer for AutoScalingModule.
 
     Args:
@@ -860,16 +868,15 @@ class AutoScalingModule(Module):
           e.g. "localhost".
       balanced_port: An int specifying the port where the balanced module for
           the pool should listen.
+      api_host: The host that APIServer listens for RPC requests on.
       api_port: The port that APIServer listens for RPC requests on.
       auth_domain: A string containing the auth domain to set in the environment
           variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -892,15 +899,17 @@ class AutoScalingModule(Module):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      threadsafe_override: If not None, ignore the YAML file value of threadsafe
+          and use this value instead.
     """
     super(AutoScalingModule, self).__init__(module_configuration,
                                             host,
                                             balanced_port,
+                                            api_host,
                                             api_port,
                                             auth_domain,
                                             runtime_stderr_loglevel,
-                                            php_executable_path,
-                                            enable_php_remote_debugging,
+                                            php_config,
                                             python_config,
                                             cloud_sql_config,
                                             default_version_port,
@@ -910,7 +919,8 @@ class AutoScalingModule(Module):
                                             max_instances,
                                             use_mtime_file_watcher,
                                             automatic_restarts,
-                                            allow_skipped_files)
+                                            allow_skipped_files,
+                                            threadsafe_override)
 
     self._process_automatic_scaling(
         self._module_configuration.automatic_scaling)
@@ -1268,11 +1278,11 @@ class ManualScalingModule(Module):
                module_configuration,
                host,
                balanced_port,
+               api_host,
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -1282,7 +1292,8 @@ class ManualScalingModule(Module):
                max_instances,
                use_mtime_file_watcher,
                automatic_restarts,
-               allow_skipped_files):
+               allow_skipped_files,
+               threadsafe_override):
     """Initializer for ManualScalingModule.
 
     Args:
@@ -1292,16 +1303,15 @@ class ManualScalingModule(Module):
           e.g. "localhost".
       balanced_port: An int specifying the port where the balanced module for
           the pool should listen.
+      api_host: The host that APIServer listens for RPC requests on.
       api_port: The port that APIServer listens for RPC requests on.
       auth_domain: A string containing the auth domain to set in the environment
           variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -1324,15 +1334,17 @@ class ManualScalingModule(Module):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      threadsafe_override: If not None, ignore the YAML file value of threadsafe
+          and use this value instead.
     """
     super(ManualScalingModule, self).__init__(module_configuration,
                                               host,
                                               balanced_port,
+                                              api_host,
                                               api_port,
                                               auth_domain,
                                               runtime_stderr_loglevel,
-                                              php_executable_path,
-                                              enable_php_remote_debugging,
+                                              php_config,
                                               python_config,
                                               cloud_sql_config,
                                               default_version_port,
@@ -1342,7 +1354,8 @@ class ManualScalingModule(Module):
                                               max_instances,
                                               use_mtime_file_watcher,
                                               automatic_restarts,
-                                              allow_skipped_files)
+                                              allow_skipped_files,
+                                              threadsafe_override)
 
     self._process_manual_scaling(module_configuration.manual_scaling)
 
@@ -1764,11 +1777,11 @@ class BasicScalingModule(Module):
                module_configuration,
                host,
                balanced_port,
+               api_host,
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -1778,7 +1791,8 @@ class BasicScalingModule(Module):
                max_instances,
                use_mtime_file_watcher,
                automatic_restarts,
-               allow_skipped_files):
+               allow_skipped_files,
+               threadsafe_override):
     """Initializer for BasicScalingModule.
 
     Args:
@@ -1788,16 +1802,15 @@ class BasicScalingModule(Module):
           e.g. "localhost".
       balanced_port: An int specifying the port where the balanced module for
           the pool should listen.
+      api_host: The host that APIServer listens for RPC requests on.
       api_port: The port that APIServer listens for RPC requests on.
       auth_domain: A string containing the auth domain to set in the environment
           variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -1820,15 +1833,17 @@ class BasicScalingModule(Module):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      threadsafe_override: If not None, ignore the YAML file value of threadsafe
+          and use this value instead.
     """
     super(BasicScalingModule, self).__init__(module_configuration,
                                              host,
                                              balanced_port,
+                                             api_host,
                                              api_port,
                                              auth_domain,
                                              runtime_stderr_loglevel,
-                                             php_executable_path,
-                                             enable_php_remote_debugging,
+                                             php_config,
                                              python_config,
                                              cloud_sql_config,
                                              default_version_port,
@@ -1838,7 +1853,8 @@ class BasicScalingModule(Module):
                                              max_instances,
                                              use_mtime_file_watcher,
                                              automatic_restarts,
-                                             allow_skipped_files)
+                                             allow_skipped_files,
+                                             threadsafe_override)
     self._process_basic_scaling(module_configuration.basic_scaling)
 
     self._instances = []  # Protected by self._condition.
@@ -2186,11 +2202,11 @@ class InteractiveCommandModule(Module):
                module_configuration,
                host,
                balanced_port,
+               api_host,
                api_port,
                auth_domain,
                runtime_stderr_loglevel,
-               php_executable_path,
-               enable_php_remote_debugging,
+               php_config,
                python_config,
                cloud_sql_config,
                default_version_port,
@@ -2198,7 +2214,8 @@ class InteractiveCommandModule(Module):
                request_data,
                dispatcher,
                use_mtime_file_watcher,
-               allow_skipped_files):
+               allow_skipped_files,
+               threadsafe_override):
     """Initializer for InteractiveCommandModule.
 
     Args:
@@ -2210,16 +2227,15 @@ class InteractiveCommandModule(Module):
       balanced_port: An int specifying the port that will be used when
           constructing HTTP headers sent to the Instance executing the
           interactive command e.g. "localhost".
+      api_host: The host that APIServer listens for RPC requests on.
       api_port: The port that APIServer listens for RPC requests on.
       auth_domain: A string containing the auth domain to set in the environment
           variables.
       runtime_stderr_loglevel: An int reprenting the minimum logging level at
           which runtime log messages should be written to stderr. See
           devappserver2.py for possible values.
-      php_executable_path: A string containing the path to PHP execution e.g.
-          "/usr/bin/php-cgi".
-      enable_php_remote_debugging: A boolean indicating whether the PHP
-          interpreter should be started with XDebug remote debugging enabled.
+      php_config: A runtime_config_pb2.PhpConfig instances containing PHP
+          runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
           Python runtime-specific configuration. If None then defaults are
           used.
@@ -2238,16 +2254,18 @@ class InteractiveCommandModule(Module):
       allow_skipped_files: If True then all files in the application's directory
           are readable, even if they appear in a static handler or "skip_files"
           directive.
+      threadsafe_override: If not None, ignore the YAML file value of threadsafe
+          and use this value instead.
     """
     super(InteractiveCommandModule, self).__init__(
         module_configuration,
         host,
         balanced_port,
+        api_host,
         api_port,
         auth_domain,
         runtime_stderr_loglevel,
-        php_executable_path,
-        enable_php_remote_debugging,
+        php_config,
         python_config,
         cloud_sql_config,
         default_version_port,
@@ -2257,7 +2275,8 @@ class InteractiveCommandModule(Module):
         max_instances=1,
         use_mtime_file_watcher=use_mtime_file_watcher,
         automatic_restarts=True,
-        allow_skipped_files=allow_skipped_files)
+        allow_skipped_files=allow_skipped_files,
+        threadsafe_override=threadsafe_override)
     # Use a single instance so that state is consistent across requests.
     self._inst_lock = threading.Lock()
     self._inst = None

@@ -114,7 +114,6 @@ from google.appengine.api import yaml_errors
 from google.appengine.api.app_identity import app_identity_stub
 from google.appengine.api.blobstore import blobstore_stub
 from google.appengine.api.blobstore import file_blob_storage
-
 from google.appengine.api.capabilities import capability_stub
 from google.appengine.api.channel import channel_service_stub
 from google.appengine.api.files import file_service_stub
@@ -3653,10 +3652,6 @@ def SetupStubs(app_id, **config):
   apiproxy_stub_map.apiproxy.RegisterStub(
       'search',
       simple_search_stub.SearchServiceStub(index_file=search_index_path))
-
-
-
-
 
 
 

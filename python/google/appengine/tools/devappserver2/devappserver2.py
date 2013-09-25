@@ -121,13 +121,20 @@ def _get_storage_path(path, app_id):
 
 def _get_default_php_path():
   """Returns the path to the siloed php-cgi binary or None if not present."""
+  default_php_executable_path = None
   if sys.platform == 'win32':
     default_php_executable_path = os.path.abspath(
         os.path.join(os.path.dirname(sys.argv[0]),
-                     'php/php-5.4.15-Win32-VC9-x86/php-cgi.exe'))
-    if os.path.exists(default_php_executable_path):
-      return default_php_executable_path
+                     'php/php-5.4-Win32-VC9-x86/php-cgi.exe'))
+  elif sys.platform == 'darwin':
+    default_php_executable_path = os.path.abspath(
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.realpath(sys.argv[0]))),
+            'php-cgi'))
 
+  if (default_php_executable_path and
+      os.path.exists(default_php_executable_path)):
+    return default_php_executable_path
   return None
 
 
@@ -145,6 +152,81 @@ class PortParser(object):
     if port < self._min_port or port >= (1 << 16):
       raise argparse.ArgumentTypeError('Invalid port: %d' % port)
     return port
+
+
+def parse_per_module_option(
+    value, value_type, value_predicate,
+    single_bad_type_error, single_bad_predicate_error,
+    multiple_bad_type_error, multiple_bad_predicate_error,
+    multiple_duplicate_module_error):
+  """Parses command line options that may be specified per-module.
+
+  Args:
+    value: A str containing the flag value to parse. Two formats are supported:
+        1. A universal value (may not contain a colon as that is use to
+           indicate a per-module value).
+        2. Per-module values. One or more comma separated module-value pairs.
+           Each pair is a module_name:value. An empty module-name is shorthand
+           for "default" to match how not specifying a module name in the yaml
+           is the same as specifying "module: default".
+    value_type: a callable that converts the string representation of the value
+        to the actual value. Should raise ValueError if the string can not
+        be converted.
+    value_predicate: a predicate to call on the converted value to validate
+        the converted value. Use "lambda _: True" if all values are valid.
+    single_bad_type_error: the message to use if a universal value is provided
+        and value_type throws a ValueError. The message must consume a single
+        format parameter (the provided value).
+    single_bad_predicate_error: the message to use if a universal value is
+        provided and value_predicate returns False. The message does not
+        get any format parameters.
+    multiple_bad_type_error: the message to use if a per-module value
+        either does not have two values separated by a single colon or if
+        value_types throws a ValueError on the second string. The message must
+        consume a single format parameter (the module_name:value pair).
+    multiple_bad_predicate_error: the message to use if a per-module value if
+        value_predicate returns False. The message must consume a single format
+        parameter (the module name).
+    multiple_duplicate_module_error: the message to use if the same module is
+        repeated. The message must consume a single formater parameter (the
+        module name).
+
+  Returns:
+    Either a single value of value_type for universal values or a dict of
+    str->value_type for per-module values.
+
+  Raises:
+    argparse.ArgumentTypeError: the value is invalid.
+  """
+  if ':' not in value:
+    try:
+      single_value = value_type(value)
+    except ValueError:
+      raise argparse.ArgumentTypeError(single_bad_type_error % value)
+    else:
+      if not value_predicate(single_value):
+        raise argparse.ArgumentTypeError(single_bad_predicate_error)
+      return single_value
+  else:
+    module_to_value = {}
+    for module_value in value.split(','):
+      try:
+        module_name, single_value = module_value.split(':')
+        single_value = value_type(single_value)
+      except ValueError:
+        raise argparse.ArgumentTypeError(multiple_bad_type_error % module_value)
+      else:
+        module_name = module_name.strip()
+        if not module_name:
+          module_name = 'default'
+        if module_name in module_to_value:
+          raise argparse.ArgumentTypeError(
+              multiple_duplicate_module_error % module_name)
+        if not value_predicate(single_value):
+          raise argparse.ArgumentTypeError(
+              multiple_bad_predicate_error % module_name)
+        module_to_value[module_name] = single_value
+    return module_to_value
 
 
 def parse_max_module_instances(value):
@@ -167,37 +249,46 @@ def parse_max_module_instances(value):
   Raises:
     argparse.ArgumentTypeError: the value is invalid.
   """
-  if ':' not in value:
-    try:
-      max_module_instances = int(value)
-    except ValueError:
-      raise argparse.ArgumentTypeError('Invalid instance count: %r' % value)
-    else:
-      if not max_module_instances:
-        raise argparse.ArgumentTypeError(
-            'Cannot specify zero instances for all modules')
-      return max_module_instances
-  else:
-    module_to_max_instances = {}
-    for module_instance_max in value.split(','):
-      try:
-        module_name, max_instances = module_instance_max.split(':')
-        max_instances = int(max_instances)
-      except ValueError:
-        raise argparse.ArgumentTypeError(
-            'Expected "module:max_instances": %r' % module_instance_max)
-      else:
-        module_name = module_name.strip()
-        if not module_name:
-          module_name = 'default'
-        if module_name in module_to_max_instances:
-          raise argparse.ArgumentTypeError(
-              'Duplicate max instance value: %r' % module_name)
-        if not max_instances:
-          raise argparse.ArgumentTypeError(
-              'Cannot specify zero instances for module %s' % module_name)
-        module_to_max_instances[module_name] = max_instances
-    return module_to_max_instances
+  # TODO: disallow negative values.
+  return parse_per_module_option(
+      value, int, lambda x: x,
+      'Invalid instance count: %r',
+      'Cannot specify zero instances for all modules',
+      'Expected "module:max_instances": %r',
+      'Cannot specify zero instances for module %s',
+      'Duplicate max instance value for module %s')
+
+
+def parse_threadsafe_override(value):
+  """Returns the parsed value for the --threadsafe_override flag.
+
+  Args:
+    value: A str containing the flag value for parse. The format should follow
+        one of the following examples:
+          1. "False" - All modules override the YAML threadsafe configuration
+             as if the YAML contained False.
+          2. "default:False,backend:True" - The default module overrides the
+             YAML threadsafe configuration as if the YAML contained False, the
+             "backend" module overrides with a value of True and all other
+             modules use the value in the YAML file. An empty name (i.e.
+             ":True") is shorthand for default to match how not specifying a
+             module name in the yaml is the same as specifying
+             "module: default".
+  Returns:
+    The parsed value of the threadsafe_override flag. May either be a bool
+    (for values of the form "False") or a dict of str->bool (for values of the
+    form "default:False,backend:True").
+
+  Raises:
+    argparse.ArgumentTypeError: the value is invalid.
+  """
+  return parse_per_module_option(
+      value, boolean_action.BooleanParse, lambda _: True,
+      'Invalid threadsafe override: %r',
+      None,
+      'Expected "module:threadsafe_override": %r',
+      None,
+      'Duplicate threadsafe override value for module %s')
 
 
 def parse_path(value):
@@ -254,6 +345,13 @@ def create_command_line_parser():
       default=False,
       help='use mtime polling for detecting source code changes - useful if '
       'modifying code from a remote machine using a distributed file system')
+  common_group.add_argument(
+      '--threadsafe_override',
+      type=parse_threadsafe_override,
+      help='override the application\'s threadsafe configuration - the value '
+      'can be a boolean, in which case all modules threadsafe setting will '
+      'be overridden or a comma-separated list of module:threadsafe_override '
+      'e.g. "default:False,backend:True"')
 
   # PHP
   php_group = parser.add_argument_group('PHP')
@@ -439,6 +537,11 @@ def create_command_line_parser():
       default=False,
       help='make files specified in the app.yaml "skip_files" or "static" '
       'handles readable by the application.')
+  # No help to avoid lengthening help message for rarely used feature:
+  # host name to which the server for API calls should bind.
+  misc_group.add_argument(
+      '--api_host', default='localhost',
+      help=argparse.SUPPRESS)
   misc_group.add_argument(
       '--api_port', type=PortParser(), default=0,
       help='port to which the server for API calls should bind')
@@ -564,23 +667,6 @@ class DevelopmentServer(object):
 
     _setup_environ(configuration.app_id)
 
-    python_config = runtime_config_pb2.PythonConfig()
-    if options.python_startup_script:
-      python_config.startup_script = os.path.abspath(
-          options.python_startup_script)
-      if options.python_startup_args:
-        python_config.startup_args = options.python_startup_args
-
-    php_executable_path = (options.php_executable_path and
-                           os.path.abspath(options.php_executable_path))
-    cloud_sql_config = runtime_config_pb2.CloudSQL()
-    cloud_sql_config.mysql_host = options.mysql_host
-    cloud_sql_config.mysql_port = options.mysql_port
-    cloud_sql_config.mysql_user = options.mysql_user
-    cloud_sql_config.mysql_password = options.mysql_password
-    if options.mysql_socket:
-      cloud_sql_config.mysql_socket = options.mysql_socket
-
     if options.max_module_instances is None:
       module_to_max_instances = {}
     elif isinstance(options.max_module_instances, int):
@@ -590,28 +676,57 @@ class DevelopmentServer(object):
     else:
       module_to_max_instances = options.max_module_instances
 
+    if options.threadsafe_override is None:
+      module_to_threadsafe_override = {}
+    elif isinstance(options.threadsafe_override, bool):
+      module_to_threadsafe_override = {
+          module_configuration.module_name: options.threadsafe_override
+          for module_configuration in configuration.modules}
+    else:
+      module_to_threadsafe_override = options.threadsafe_override
+
     self._dispatcher = dispatcher.Dispatcher(
         configuration,
         options.host,
         options.port,
         options.auth_domain,
         _LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
-        php_executable_path,
-        options.php_remote_debugging,
-        python_config,
-        cloud_sql_config,
+        self._create_php_config(options),
+        self._create_python_config(options),
+        self._create_cloud_sql_config(options),
         module_to_max_instances,
         options.use_mtime_file_watcher,
         options.automatic_restart,
-        options.allow_skipped_files)
+        options.allow_skipped_files,
+        module_to_threadsafe_override)
 
     request_data = wsgi_request_info.WSGIRequestInfo(self._dispatcher)
-
     storage_path = _get_storage_path(options.storage_path, configuration.app_id)
+
+    apis = self._create_api_server(
+        request_data, storage_path, options, configuration)
+    apis.start()
+    self._running_modules.append(apis)
+
+    self._dispatcher.start(options.api_host, apis.port, request_data)
+    self._running_modules.append(self._dispatcher)
+
+    xsrf_path = os.path.join(storage_path, 'xsrf')
+    admin = admin_server.AdminServer(options.admin_host, options.admin_port,
+                                     self._dispatcher, configuration, xsrf_path)
+    admin.start()
+    self._running_modules.append(admin)
+
+  def stop(self):
+    """Stops all running devappserver2 modules."""
+    while self._running_modules:
+      self._running_modules.pop().quit()
+
+  @staticmethod
+  def _create_api_server(request_data, storage_path, options, configuration):
     datastore_path = options.datastore_path or os.path.join(storage_path,
                                                             'datastore.db')
     logs_path = options.logs_path or os.path.join(storage_path, 'logs.db')
-    xsrf_path = os.path.join(storage_path, 'xsrf')
 
     search_index_path = options.search_indexes_path or os.path.join(
         storage_path, 'search_indexes')
@@ -684,25 +799,38 @@ class DevelopmentServer(object):
         user_logout_url=user_logout_url,
         default_gcs_bucket_name=options.default_gcs_bucket_name)
 
-    # The APIServer must bind to localhost because that is what the runtime
-    # instances talk to.
-    apis = api_server.APIServer('localhost', options.api_port,
+    return api_server.APIServer(options.api_host, options.api_port,
                                 configuration.app_id)
-    apis.start()
-    self._running_modules.append(apis)
 
-    self._running_modules.append(self._dispatcher)
-    self._dispatcher.start(apis.port, request_data)
+  @staticmethod
+  def _create_php_config(options):
+    php_config = runtime_config_pb2.PhpConfig()
+    if options.php_executable_path:
+      php_config.php_executable_path = os.path.abspath(
+          options.php_executable_path)
+    php_config.enable_debugger = options.php_remote_debugging
+    return php_config
 
-    admin = admin_server.AdminServer(options.admin_host, options.admin_port,
-                                     self._dispatcher, configuration, xsrf_path)
-    admin.start()
-    self._running_modules.append(admin)
+  @staticmethod
+  def _create_python_config(options):
+    python_config = runtime_config_pb2.PythonConfig()
+    if options.python_startup_script:
+      python_config.startup_script = os.path.abspath(
+          options.python_startup_script)
+      if options.python_startup_args:
+        python_config.startup_args = options.python_startup_args
+    return python_config
 
-  def stop(self):
-    """Stops all running devappserver2 modules."""
-    while self._running_modules:
-      self._running_modules.pop().quit()
+  @staticmethod
+  def _create_cloud_sql_config(options):
+    cloud_sql_config = runtime_config_pb2.CloudSQL()
+    cloud_sql_config.mysql_host = options.mysql_host
+    cloud_sql_config.mysql_port = options.mysql_port
+    cloud_sql_config.mysql_user = options.mysql_user
+    cloud_sql_config.mysql_password = options.mysql_password
+    if options.mysql_socket:
+      cloud_sql_config.mysql_socket = options.mysql_socket
+    return cloud_sql_config
 
 
 def main():

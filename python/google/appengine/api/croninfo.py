@@ -138,6 +138,7 @@ class CronEntry(validation.Validated):
 class CronInfoExternal(validation.Validated):
   """CronInfoExternal describes all cron entries for an application."""
   ATTRIBUTES = {
+      appinfo.APPLICATION: validation.Optional(appinfo.APPLICATION_RE_STRING),
       CRON: validation.Optional(validation.Repeated(CronEntry))
   }
 

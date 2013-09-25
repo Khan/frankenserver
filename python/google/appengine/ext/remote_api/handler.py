@@ -383,6 +383,9 @@ class ApiCallHandler(webapp.RequestHandler):
     except Exception, e:
       logging.exception('Exception while handling %s', request)
       self.response.set_status(200)
+
+
+
       response.set_exception(pickle.dumps(e))
       if isinstance(e, apiproxy_errors.ApplicationError):
         application_error = response.mutable_application_error()

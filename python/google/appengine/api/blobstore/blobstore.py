@@ -461,19 +461,14 @@ def fetch_data_async(blob_key, start_index, end_index, rpc=None):
 def create_gs_key(filename, rpc=None):
   """Create an encoded key for a Google Storage file.
 
-  The created blob key will include short lived access token using the
-  application's service account for authorization.
-
-  This blob key should not be stored permanently as the access token will
-  expire.
+  It is safe to persist this key for future use.
 
   Args:
     filename: The filename of the google storage object to create the key for.
     rpc: Optional UserRPC object.
 
   Returns:
-    An encrypted blob key object that also contains a short term access token
-      that represents the application's service account.
+    An encrypted blob key string.
   """
   rpc = create_gs_key_async(filename, rpc)
   return rpc.get_result()
@@ -482,11 +477,7 @@ def create_gs_key(filename, rpc=None):
 def create_gs_key_async(filename, rpc=None):
   """Create an encoded key for a google storage file - async version.
 
-  The created blob key will include short lived access token using the
-  application's service account for authorization.
-
-  This blob key should not be stored permanently as the access token will
-  expire.
+  It is safe to persist this key for future use.
 
   Args:
     filename: The filename of the google storage object to create the
@@ -494,7 +485,7 @@ def create_gs_key_async(filename, rpc=None):
     rpc: Optional UserRPC object.
 
   Returns:
-    A UserRPC whose result will be a str as returned by create_gs_key.
+    A UserRPC whose result will be a string as returned by create_gs_key.
 
   Raises:
     TypeError: If filename is not a string.

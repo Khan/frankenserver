@@ -87,7 +87,7 @@ _NAN = _POS_INF * 0
 _DecodeError = message.DecodeError
 
 
-def _VarintDecoder(mask):
+def _VarintDecoder(mask, result_type):
   """Return an encoder for a basic varint value (does not include tag).
 
   Decoded values will be bitwise-anded with the given mask before being
@@ -107,6 +107,7 @@ def _VarintDecoder(mask):
       pos += 1
       if not (b & 0x80):
         result &= mask
+        result = result_type(result)
         return (result, pos)
       shift += 7
       if shift >= 64:
@@ -114,7 +115,7 @@ def _VarintDecoder(mask):
   return DecodeVarint
 
 
-def _SignedVarintDecoder(mask):
+def _SignedVarintDecoder(mask, result_type):
   """Like _VarintDecoder() but decodes signed values."""
 
   local_ord = ord
@@ -131,6 +132,7 @@ def _SignedVarintDecoder(mask):
           result |= ~mask
         else:
           result &= mask
+        result = result_type(result)
         return (result, pos)
       shift += 7
       if shift >= 64:
@@ -138,12 +140,15 @@ def _SignedVarintDecoder(mask):
   return DecodeVarint
 
 
-_DecodeVarint = _VarintDecoder((1 << 64) - 1)
-_DecodeSignedVarint = _SignedVarintDecoder((1 << 64) - 1)
 
 
-_DecodeVarint32 = _VarintDecoder((1 << 32) - 1)
-_DecodeSignedVarint32 = _SignedVarintDecoder((1 << 32) - 1)
+
+_DecodeVarint = _VarintDecoder((1 << 64) - 1, long)
+_DecodeSignedVarint = _SignedVarintDecoder((1 << 64) - 1, long)
+
+
+_DecodeVarint32 = _VarintDecoder((1 << 32) - 1, int)
+_DecodeSignedVarint32 = _SignedVarintDecoder((1 << 32) - 1, int)
 
 
 def ReadTag(buffer, pos):

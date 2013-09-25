@@ -26,25 +26,25 @@ require_once 'google/appengine/api/modules/ModulesService.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
-use \google\appengine\runtime\ApplicationError;
-use \google\appengine\testing\ApiProxyTestBase;
-use \google\appengine\GetDefaultVersionRequest;
-use \google\appengine\GetDefaultVersionResponse;
-use \google\appengine\GetHostnameRequest;
-use \google\appengine\GetHostnameResponse;
-use \google\appengine\GetModulesRequest;
-use \google\appengine\GetModulesResponse;
-use \google\appengine\GetNumInstancesRequest;
-use \google\appengine\GetNumInstancesResponse;
-use \google\appengine\GetVersionsRequest;
-use \google\appengine\GetVersionsResponse;
-use \google\appengine\ModulesServiceError\ErrorCode;
-use \google\appengine\SetNumInstancesRequest;
-use \google\appengine\SetNumInstancesResponse;
-use \google\appengine\StartModuleRequest;
-use \google\appengine\StartModuleResponse;
-use \google\appengine\StopModuleRequest;
-use \google\appengine\StopModuleResponse;
+use google\appengine\runtime\ApplicationError;
+use google\appengine\testing\ApiProxyTestBase;
+use google\appengine\GetDefaultVersionRequest;
+use google\appengine\GetDefaultVersionResponse;
+use google\appengine\GetHostnameRequest;
+use google\appengine\GetHostnameResponse;
+use google\appengine\GetModulesRequest;
+use google\appengine\GetModulesResponse;
+use google\appengine\GetNumInstancesRequest;
+use google\appengine\GetNumInstancesResponse;
+use google\appengine\GetVersionsRequest;
+use google\appengine\GetVersionsResponse;
+use google\appengine\ModulesServiceError\ErrorCode;
+use google\appengine\SetNumInstancesRequest;
+use google\appengine\SetNumInstancesResponse;
+use google\appengine\StartModuleRequest;
+use google\appengine\StartModuleResponse;
+use google\appengine\StopModuleRequest;
+use google\appengine\StopModuleResponse;
 
 
 class ModulesTest extends ApiProxyTestBase {
@@ -74,10 +74,6 @@ class ModulesTest extends ApiProxyTestBase {
   public function testGetCurrentVersionName() {
     $_SERVER['CURRENT_VERSION_ID'] = 'v1.123';
     $this->assertEquals('v1', ModulesService::getCurrentVersionName());
-  }
-
-  public function testGetCurrentInstanceIdNoneSet() {
-    $this->assertEquals(null, ModulesService::getCurrentInstanceId());
   }
 
   public function testGetCurrentInstanceId() {

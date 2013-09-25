@@ -41,13 +41,10 @@ class _MultipleFileWatcher(object):
       watcher.quit()
 
   def has_changes(self):
-    has_changes = False
-    for watcher in self._file_watchers:
-      # .has_changes() returns True if there has been any changes since the
-      # last call to .has_changes() so it must be called for every FileWatcher
-      # to prevent spurious change notifications on subsequent calls.
-      has_changes = watcher.has_changes() or has_changes
-    return has_changes
+    # .has_changes() returns True if there has been any changes since the
+    # last call to .has_changes() so it must be called for every FileWatcher
+    # to prevent spurious change notifications on subsequent calls.
+    return any([watcher.has_changes() for watcher in self._file_watchers])
 
 
 def get_file_watcher(directories, use_mtime_file_watcher):

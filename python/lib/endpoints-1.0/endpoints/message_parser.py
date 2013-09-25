@@ -25,8 +25,6 @@ Schema description of all the messages.
 
 import re
 
-import google
-
 from protorpc import message_types
 from protorpc import messages
 

@@ -163,6 +163,15 @@ class TestAPIServer(wsgi_test_utils.WSGITestCase):
                         self.server,
                         environ)
 
+  def test_unsupported_method(self):
+    environ = {'REQUEST_METHOD': 'HEAD',
+               'QUERY_STRING': 'rtok=23'}
+    self.assertResponse('405 Method Not Allowed',
+                        {},
+                        '',
+                        self.server,
+                        environ)
+
   def test_exception(self):
     urlfetch_request = urlfetch_service_pb.URLFetchRequest()
     urlfetch_request.set_url('exception')
@@ -192,4 +201,3 @@ class TestAPIServer(wsgi_test_utils.WSGITestCase):
 
 if __name__ == '__main__':
   unittest.main()
-

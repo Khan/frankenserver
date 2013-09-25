@@ -19,6 +19,17 @@ var DEFAULT_PYTHON_SOURCE_ = 'import os\n' +
 /**
  * @private
  */
+var DEFAULT_PHP_SOURCE_ =
+    'require_once \'google/appengine/api/mail/Message.php\';\n' +
+    'use \\google\\appengine\\api\\mail\\Message;\n' +
+    'require_once \'google/appengine/api/users/UserService.php\';\n' +
+    'use google\\appengine\\api\\users\\UserService;\n' +
+    '\n' +
+    'var_dump($_SERVER);\n';
+
+/**
+ * @private
+ */
 var SERVER_NAME_TO_RUNTIME_NAME_ = {
 {% for module in modules %}
   '{{ module.name }}': '{{ module.module_configuration.runtime }}',
@@ -36,9 +47,11 @@ var SERVER_NAME_TO_RUNTIME_NAME_ = {
 function getCode(moduleName) {
   var text = localStorage.getItem('{{ app_id }}:' + moduleName);
   if (text == null) {
-    if (SERVER_NAME_TO_RUNTIME_NAME_[moduleName] == 'python' ||
-        SERVER_NAME_TO_RUNTIME_NAME_[moduleName] == 'python27') {
+    var runtime = SERVER_NAME_TO_RUNTIME_NAME_[moduleName];
+    if (runtime == 'python' || runtime  == 'python27') {
       return DEFAULT_PYTHON_SOURCE_;
+    } else if (runtime == 'php') {
+      return DEFAULT_PHP_SOURCE_;
     } else {
       return '';
     }

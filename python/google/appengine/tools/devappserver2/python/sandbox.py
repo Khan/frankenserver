@@ -173,7 +173,7 @@ def enable_sandbox(config):
   request_environment.PatchOsEnviron(sandboxed_os)
   os.__dict__.update(sandboxed_os.__dict__)
   _init_logging(config.stderr_log_level)
-  pdb_sandbox.install()
+  pdb_sandbox.install(config)
   sys.stdin = devnull
   sys.stdout = sys.stderr
 

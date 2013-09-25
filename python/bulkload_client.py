@@ -114,6 +114,16 @@ API_SERVER_EXTRA_PATHS = [
 API_SERVER_EXTRA_PATH_SCRIPTS = 'api_server'
 
 
+
+
+ENDPOINTSCFG_EXTRA_PATHS = [
+  os.path.join(DIR_PATH, 'lib', 'cherrypy'),
+  os.path.join(DIR_PATH, 'lib', 'concurrent'),
+  os.path.join(DIR_PATH, 'lib', 'endpoints-1.0'),
+]
+ENDPOINTSCFG_EXTRA_PATH_SCRIPTS = 'endpointscfg'
+
+
 OAUTH_CLIENT_EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'google-api-python-client'),
   os.path.join(DIR_PATH, 'lib', 'httplib2'),
@@ -161,6 +171,8 @@ def run_file(file_path, globals_, script_dir=SCRIPT_DIR):
     extra_extra_paths = GOOGLE_SQL_EXTRA_PATHS
   elif re.match(API_SERVER_EXTRA_PATH_SCRIPTS, script_name):
     extra_extra_paths = API_SERVER_EXTRA_PATHS
+  elif re.match(ENDPOINTSCFG_EXTRA_PATH_SCRIPTS, script_name):
+    extra_extra_paths = ENDPOINTSCFG_EXTRA_PATHS
   else:
     extra_extra_paths = []
   fix_sys_path(extra_extra_paths)

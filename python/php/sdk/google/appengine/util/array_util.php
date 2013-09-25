@@ -29,7 +29,7 @@ namespace google\appengine\util;
  * @return mixed The value of the item in the array with the given key, or null
  * if not found.
  */
-function FindByKeyOrNull($array, $key) {
+function findByKeyOrNull($array, $key) {
   if (array_key_exists($key, $array)) {
     return $array[$key];
   }

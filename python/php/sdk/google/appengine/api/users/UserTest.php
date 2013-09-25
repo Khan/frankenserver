@@ -24,7 +24,7 @@ require_once 'google/appengine/testing/ApiProxyTestBase.php';
 use google\appengine\api\users\User;
 use google\appengine\api\users\UserService;
 use google\appengine\testing\ApiProxyTestBase;
-use \google\appengine\UserServiceError;
+use google\appengine\UserServiceError;
 
 /**
  * Unittest for User class.

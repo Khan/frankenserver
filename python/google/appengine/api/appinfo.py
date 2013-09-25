@@ -323,6 +323,11 @@ _SUPPORTED_LIBRARIES = [
         experimental_versions=['1.5'],
         ),
     _VersionedLibrary(
+        'endpoints',
+        'https://developers.google.com/appengine/docs/python/endpoints/',
+        'Libraries for building APIs in an App Engine application.',
+        ['1.0']),
+    _VersionedLibrary(
         'jinja2',
         'http://jinja.pocoo.org/docs/',
         'A modern and designer friendly templating language for Python.',

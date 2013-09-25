@@ -62,6 +62,7 @@ class MockRequest(object):
     self.query_string = ''
     self.update_properties()
     self.environ = {}
+    self.remote_addr = '10.0.0.1'
 
   def get_path(self):
     return self._path

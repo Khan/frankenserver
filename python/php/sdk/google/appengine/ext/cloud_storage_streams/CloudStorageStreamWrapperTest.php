@@ -63,12 +63,12 @@ require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageStreamWrapp
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageWriteClient.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
-use \google\appengine\testing\ApiProxyTestBase;
-use \google\appengine\ext\cloud_storage_streams\CloudStorageClient;
-use \google\appengine\ext\cloud_storage_streams\CloudStorageReadClient;
-use \google\appengine\ext\cloud_storage_streams\CloudStorageWriteClient;
-use \google\appengine\ext\cloud_storage_streams\HttpResponse;
-use \google\appengine\URLFetchRequest\RequestMethod;
+use google\appengine\testing\ApiProxyTestBase;
+use google\appengine\ext\cloud_storage_streams\CloudStorageClient;
+use google\appengine\ext\cloud_storage_streams\CloudStorageReadClient;
+use google\appengine\ext\cloud_storage_streams\CloudStorageWriteClient;
+use google\appengine\ext\cloud_storage_streams\HttpResponse;
+use google\appengine\URLFetchRequest\RequestMethod;
 
 class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
 
