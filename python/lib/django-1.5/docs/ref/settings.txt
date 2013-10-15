@@ -823,6 +823,10 @@ It is also important to remember that when running with :setting:`DEBUG`
 turned on, Django will remember every SQL query it executes. This is useful
 when you're debugging, but it'll rapidly consume memory on a production server.
 
+Finally, if :setting:`DEBUG` is ``False``, you also need to properly set
+the :setting:`ALLOWED_HOSTS` setting. Failing to do so will result in all
+requests being returned as "Bad Request (400)".
+
 .. _django/views/debug.py: https://github.com/django/django/blob/master/django/views/debug.py
 
 DEBUG_PROPAGATE_EXCEPTIONS
@@ -1224,8 +1228,22 @@ LANGUAGE_CODE
 Default: ``'en-us'``
 
 A string representing the language code for this installation. This should be in
-standard :term:`language format<language code>`. For example, U.S. English is
-``"en-us"``. See :doc:`/topics/i18n/index`.
+standard :term:`language ID format <language code>`. For example, U.S. English
+is ``"en-us"``. See also the `list of language identifiers`_ and
+:doc:`/topics/i18n/index`.
+
+:setting:`USE_I18N` must be active for this setting to have any effect.
+
+It serves two purposes:
+
+* If the locale middleware isn't in use, it decides which translation is served
+  to all users.
+* If the locale middleware is active, it provides the fallback translation when
+  no translation exist for a given literal to the user's preferred language.
+
+See :ref:`how-django-discovers-language-preference` for more details.
+
+.. _list of language identifiers: http://www.i18nguy.com/unicode/language-identifiers.html
 
 .. setting:: LANGUAGE_COOKIE_NAME
 
@@ -1250,9 +1268,9 @@ see the current list of translated languages by looking in
 
 .. _online source: https://github.com/django/django/blob/master/django/conf/global_settings.py
 
-The list is a tuple of two-tuples in the format ``(language code, language
-name)``, the ``language code`` part should be a
-:term:`language name<language code>` -- for example, ``('ja', 'Japanese')``.
+The list is a tuple of two-tuples in the format
+(:term:`language code<language code>`, ``language name``) -- for example,
+``('ja', 'Japanese')``.
 This specifies which languages are available for language selection. See
 :doc:`/topics/i18n/index`.
 
@@ -1420,11 +1438,13 @@ Example: ``"http://media.example.com/"``
 MESSAGE_LEVEL
 -------------
 
-Default: `messages.INFO`
+Default: ``messages.INFO``
 
 Sets the minimum message level that will be recorded by the messages
 framework. See the :doc:`messages documentation </ref/contrib/messages>` for
 more details.
+
+.. setting:: MESSAGE_STORAGE
 
 MESSAGE_STORAGE
 ---------------
@@ -1799,7 +1819,7 @@ SESSION_ENGINE
 
 Default: ``django.contrib.sessions.backends.db``
 
-Controls where Django stores session data. Valid values are:
+Controls where Django stores session data. Included engines are:
 
 * ``'django.contrib.sessions.backends.db'``
 * ``'django.contrib.sessions.backends.file'``
@@ -1840,6 +1860,30 @@ Default: ``False``
 
 Whether to save the session data on every request. See
 :doc:`/topics/http/sessions`.
+
+.. setting:: SESSION_SERIALIZER
+
+SESSION_SERIALIZER
+------------------
+
+.. versionadded:: 1.5.3
+
+Default: ``'django.contrib.sessions.serializers.PickleSerializer'``
+
+Full import path of a serializer class to use for serializing session data.
+Included serializers are:
+
+* ``'django.contrib.sessions.serializers.PickleSerializer'``
+* ``'django.contrib.sessions.serializers.JSONSerializer'``
+
+See :ref:`session_serialization` for details, including a warning regarding
+possible remote code execution when using
+:class:`~django.contrib.sessions.serializers.PickleSerializer`.
+
+In Django 1.5.3, the default in newly created projects using
+:djadmin:`django-admin.py startproject <startproject>` is
+:class:`django.contrib.sessions.serializers.JSONSerializer`, and the global
+default will switch to this class in Django 1.6.
 
 .. setting:: SHORT_DATE_FORMAT
 
@@ -1912,7 +1956,7 @@ Example: ``"/var/www/example.com/static/"``
 If the :doc:`staticfiles</ref/contrib/staticfiles>` contrib app is enabled
 (default) the :djadmin:`collectstatic` management command will collect static
 files into this directory. See the howto on :doc:`managing static
-files</howto/static-files>` for more details about usage.
+files</howto/static-files/index>` for more details about usage.
 
 .. warning::
 

@@ -612,7 +612,7 @@ def _decode_address_list_field(address_list):
 class EncodedPayload(object):
   """Wrapper for a payload that contains encoding information.
 
-  When an email is recieved, it is usually encoded using a certain
+  When an email is received, it is usually encoded using a certain
   character set, and then possibly further encoded using a transfer
   encoding in that character set.  Most of the times, it is possible
   to decode the encoded payload as is, however, in the case where it

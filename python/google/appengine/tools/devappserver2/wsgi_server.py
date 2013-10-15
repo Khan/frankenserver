@@ -37,6 +37,17 @@ from google.appengine.tools.devappserver2 import thread_executor
 
 _HAS_POLL = hasattr(select, 'poll')
 
+# TODO: the only reason we need to timeout is to pick up added or remove
+# descriptors. But AFAICT, we only add descriptors at startup and remove them at
+# shutdown so for the bulk of the run, the timeout is useless and just simply
+# wastes CPU. For startup, if we wait to start the thread until after all
+# WSGI servers are created, we are good (although may need to be careful in the
+# runtime instances depending on when servers are created relative to the
+# sandbox being enabled). For shutdown, more research is needed (one idea is
+# simply not remove descriptors as the process is about to exit).
+_READINESS_TIMEOUT_SECONDS = 1
+_SECONDS_TO_MILLISECONDS = 1000
+
 # Due to reports of failure to find a consistent port, trying a higher value
 # to see if that reduces the problem sufficiently.  If it doesn't we can try
 # increasing it (on my circa 2010 desktop, it takes about 1/2 second per 1024
@@ -145,14 +156,16 @@ class SelectThread(object):
         poll = select.poll()
         for fd in fds:
           poll.register(fd, select.POLLIN)
-        ready_file_descriptors = [fd for fd, _ in poll.poll(1)]
+        ready_file_descriptors = [fd for fd, _ in poll.poll(
+            _READINESS_TIMEOUT_SECONDS * _SECONDS_TO_MILLISECONDS)]
       else:
-        ready_file_descriptors, _, _ = select.select(fds, [], [], 1)
+        ready_file_descriptors, _, _ = select.select(fds, [], [],
+                                                     _READINESS_TIMEOUT_SECONDS)
       for fd in ready_file_descriptors:
         fd_to_callback[fd]()
     else:
       # select([], [], [], 1) is not supported on Windows.
-      time.sleep(1)
+      time.sleep(_READINESS_TIMEOUT_SECONDS)
 
 _SELECT_THREAD = SelectThread()
 _SELECT_THREAD.start()

@@ -125,7 +125,7 @@ class GoogleStorage(object):
         {'content-type': upload.content_type})
     assert blobkey == self.get_blobkey(upload.gs_filename)
     self.gs_stub.put_continue_creation(
-        blobkey, content, (0, len(content) - 1), True)
+        blobkey, content, (0, len(content) - 1), len(content))
 
     del self.sequence_keys[filename]
 

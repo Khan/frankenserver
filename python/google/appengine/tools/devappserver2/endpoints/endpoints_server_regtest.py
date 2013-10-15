@@ -80,7 +80,7 @@ class EndpointsServerRegtest(regtest_utils.BaseTestCase):
     """Test that an RPC request works."""
     body = json.dumps([{'jsonrpc': '2.0',
                         'id': 'gapiRpc',
-                        'method': 'testservice.t2name',
+                        'method': 'test_service.t2name',
                         'params': {'name': 'MyName', 'number': 23},
                         'apiVersion': 'v1'}])
     send_headers = {'content-type': 'application-rpc'}
@@ -114,7 +114,7 @@ class EndpointsServerRegtest(regtest_utils.BaseTestCase):
     body = json.dumps(body_json)
     send_headers = {'content-type': 'application/json'}
     status, content, headers = self.fetch_url(
-        'default', 'POST', '/_ah/api/test_service/v1/echo_datetime_field',
+        'default', 'POST', '/_ah/api/test_service/v1/echo_dt_field',
         body, send_headers)
     self.assertEqual(200, status)
     self.assertEqual('application/json', headers['Content-Type'])
@@ -202,7 +202,7 @@ class EndpointsServerRegtest(regtest_utils.BaseTestCase):
     """Test that an RPC request to a second class in the API works."""
     body = json.dumps([{'jsonrpc': '2.0',
                         'id': 'gapiRpc',
-                        'method': 'testservice.extraname.test',
+                        'method': 'test_service.extraname.test',
                         'params': {},
                         'apiVersion': 'v1'}])
     send_headers = {'content-type': 'application-rpc'}

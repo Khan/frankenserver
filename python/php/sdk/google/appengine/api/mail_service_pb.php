@@ -29,6 +29,7 @@ namespace google\appengine\MailServiceError {
     const UNAUTHORIZED_SENDER = 3;
     const INVALID_ATTACHMENT_TYPE = 4;
     const INVALID_HEADER_NAME = 5;
+    const EMPTY_CONTENT_ID = 6;
   }
 }
 namespace google\appengine {
@@ -105,9 +106,27 @@ namespace google\appengine {
     public function hasData() {
       return isset($this->Data);
     }
+    public function getContentid() {
+      if (!isset($this->ContentID)) {
+        return '';
+      }
+      return $this->ContentID;
+    }
+    public function setContentid($val) {
+      $this->ContentID = $val;
+      return $this;
+    }
+    public function clearContentid() {
+      unset($this->ContentID);
+      return $this;
+    }
+    public function hasContentid() {
+      return isset($this->ContentID);
+    }
     public function clear() {
       $this->clearFilename();
       $this->clearData();
+      $this->clearContentid();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -119,6 +138,10 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->Data));
       }
+      if (isset($this->ContentID)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->ContentID));
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -129,6 +152,10 @@ namespace google\appengine {
       if (isset($this->Data)) {
         $out->putVarInt32(18);
         $out->putPrefixedString($this->Data);
+      }
+      if (isset($this->ContentID)) {
+        $out->putVarInt32(26);
+        $out->putPrefixedString($this->ContentID);
       }
     }
     public function tryMerge($d) {
@@ -143,6 +170,11 @@ namespace google\appengine {
           case 18:
             $length = $d->getVarInt32();
             $this->setData(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $this->setContentid(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -166,6 +198,9 @@ namespace google\appengine {
       if ($x->hasData()) {
         $this->setData($x->getData());
       }
+      if ($x->hasContentid()) {
+        $this->setContentid($x->getContentid());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -173,6 +208,8 @@ namespace google\appengine {
       if (isset($this->FileName) && $this->FileName !== $x->FileName) return false;
       if (isset($this->Data) !== isset($x->Data)) return false;
       if (isset($this->Data) && $this->Data !== $x->Data) return false;
+      if (isset($this->ContentID) !== isset($x->ContentID)) return false;
+      if (isset($this->ContentID) && $this->ContentID !== $x->ContentID) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -182,6 +219,9 @@ namespace google\appengine {
       }
       if (isset($this->Data)) {
         $res .= $prefix . "Data: " . $this->debugFormatString($this->Data) . "\n";
+      }
+      if (isset($this->ContentID)) {
+        $res .= $prefix . "ContentID: " . $this->debugFormatString($this->ContentID) . "\n";
       }
       return $res;
     }

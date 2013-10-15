@@ -34,6 +34,7 @@ from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import php
 from google.appengine.tools.devappserver2 import request_rewriter
 from google.appengine.tools.devappserver2 import runtime_config_pb2
+from google.appengine.tools.devappserver2 import safe_subprocess
 from google.appengine.tools.devappserver2 import wsgi_server
 
 SDK_PATH = os.path.abspath(
@@ -124,7 +125,7 @@ class PHPRuntime(object):
       user_environ['HTTP_CONTENT_LENGTH'] = environ['CONTENT_LENGTH']
       content = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
     else:
-      content = None
+      content = ''
 
     # On Windows, in order to run a side-by-side assembly the specified env
     # must include a valid SystemRoot.
@@ -151,13 +152,13 @@ class PHPRuntime(object):
       user_environ[http_runtime_constants.REQUEST_TYPE_HEADER] = request_type
 
     try:
-      p = subprocess.Popen(args,
-                           stdin=subprocess.PIPE,
-                           stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE,
-                           env=user_environ,
-                           cwd=self.config.application_root)
-      stdout, stderr = p.communicate(content)
+      p = safe_subprocess.start_process(args,
+                                        input_string=content,
+                                        env=user_environ,
+                                        cwd=self.config.application_root,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE)
+      stdout, stderr = p.communicate()
     except Exception as e:
       logging.exception('Failure to start PHP with: %s', args)
       start_response('500 Internal Server Error',
@@ -174,11 +175,10 @@ class PHPRuntime(object):
                       p.returncode, stdout, stderr)
         start_response('500 Internal Server Error',
                        [(http_runtime_constants.ERROR_CODE_HEADER, '1')])
-        return ['php failure (%r) with:\nstdout:%s\nstderr:\n%s' %
-                (p.returncode, stdout, stderr)]
+        message = httplib.HTTPMessage(cStringIO.StringIO(stdout))
+        return [message.fp.read()]
 
     message = httplib.HTTPMessage(cStringIO.StringIO(stdout))
-    assert 'Content-Type' in message, 'invalid CGI response: %r' % stdout
 
     if 'Status' in message:
       status = message['Status']

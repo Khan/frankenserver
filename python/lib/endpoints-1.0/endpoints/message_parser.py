@@ -52,7 +52,7 @@ class MessageTypeToJsonSchema(object):
                               messages.Variant.UINT64: ('string', 'uint64'),
                               messages.Variant.SINT32: ('integer', 'int32'),
                               messages.Variant.SINT64: ('string', 'int64'),
-                              None: ('integer', 'int32')},
+                              None: ('integer', 'int64')},
       messages.FloatField: {messages.Variant.FLOAT: ('number', 'float'),
                             messages.Variant.DOUBLE: ('number', 'double'),
                             None: ('number', 'float')},

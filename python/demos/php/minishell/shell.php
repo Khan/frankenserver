@@ -89,7 +89,8 @@ class Session {
   /** Replace the constants with the serialized stored ones. */
   function loadConstants() {
     $constants = unserialize($this->constants);
-    foreach(array_diff($constants, get_defined_constants()) as $constant=>$value) {
+    foreach(array_diff_key($constants, get_defined_constants()) as
+            $constant=>$value) {
       define($constant, $value);
     }
   }

@@ -39,7 +39,7 @@ TEST_LIBRARY_PATHS = [
     os.path.join(DIR_PATH, 'lib', 'webob-1.2.3'),
     os.path.join(DIR_PATH, 'lib', 'webapp2-2.5.1'),
     os.path.join(DIR_PATH, 'lib', 'mox'),
-    os.path.join(DIR_PATH, 'lib', 'protorpc'),
+    os.path.join(DIR_PATH, 'lib', 'protorpc-1.0'),
 ]
 
 

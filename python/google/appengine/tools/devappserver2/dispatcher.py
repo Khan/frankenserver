@@ -31,6 +31,9 @@ from google.appengine.tools.devappserver2 import start_response_utils
 from google.appengine.tools.devappserver2 import thread_executor
 from google.appengine.tools.devappserver2 import wsgi_server
 
+# This file uses pep8 naming.
+# pylint: disable=invalid-name
+
 _THREAD_POOL = thread_executor.ThreadExecutor()
 
 ResponseTuple = collections.namedtuple('ResponseTuple',
@@ -355,6 +358,45 @@ class Dispatcher(request_info.Dispatcher):
     self._executor.update_event(eta, (service, event_id))
 
   def _get_module(self, module_name, version):
+    """Attempts to find the specified module.
+
+    Args:
+      module_name: The name of the module.
+      version: The version id.
+    Returns:
+      Module object.
+    Raises:
+      request_info.ModuleDoesNotExistError: The module doesn't exist.
+      request_info.VersionDoesNotExistError: The version doesn't exist.
+    """
+    if not module_name:
+      module_name = 'default'
+    if module_name not in self._module_name_to_module:
+      raise request_info.ModuleDoesNotExistError()
+    if (version is not None and
+        version != self._module_configurations[module_name].major_version):
+      raise request_info.VersionDoesNotExistError()
+    return self._module_name_to_module[module_name]
+
+  def _get_module_with_soft_routing(self, module_name, version):
+    """Uses soft-routing to find the specified module.
+
+    Soft-routing is an attempt to match the production resolution order, which
+    is slightly more permissive than the Modules API behavior. Here are the
+    rules allowed:
+    1. If a module is requested that doesn't exist, use the default module.
+    2. If a module is requested that doesn't exist, and there is no default
+    module, use any module.
+
+    Args:
+      module_name: The name of the module.
+      version: The version id.
+    Returns:
+      Module object.
+    Raises:
+      request_info.ModuleDoesNotExistError: The module doesn't exist.
+      request_info.VersionDoesNotExistError: The version doesn't exist.
+    """
     if not module_name or module_name not in self._module_name_to_module:
       if 'default' in self._module_name_to_module:
         module_name = 'default'
@@ -365,7 +407,7 @@ class Dispatcher(request_info.Dispatcher):
         module_name = self._module_name_to_module.keys()[0]
       else:
         raise request_info.ModuleDoesNotExistError(module_name)
-    elif (version is not None and
+    if (version is not None and
           version != self._module_configurations[module_name].major_version):
       raise request_info.VersionDoesNotExistError()
     return self._module_name_to_module[module_name]
@@ -452,7 +494,7 @@ class Dispatcher(request_info.Dispatcher):
       BackgroundThreadLimitReachedError: The instance is at its background
           thread capacity.
     """
-    _module = self._get_module(module_name, version)
+    _module = self._get_module_with_soft_routing(module_name, version)
     try:
       inst.reserve_background_thread()
     except instance.CannotAcceptRequests:
@@ -492,7 +534,7 @@ class Dispatcher(request_info.Dispatcher):
           according to the load-balancing for the module and version.
     """
     if module_name:
-      _module = self._get_module(module_name, version)
+      _module = self._get_module_with_soft_routing(module_name, version)
     else:
       _module = self._module_for_request(urlparse.urlsplit(relative_url).path)
     inst = _module.get_instance(instance_id) if instance_id else None
@@ -537,7 +579,7 @@ class Dispatcher(request_info.Dispatcher):
       HTTP request.
     """
     if module_name:
-      _module = self._get_module(module_name, version)
+      _module = self._get_module_with_soft_routing(module_name, version)
       inst = _module.get_instance(instance_id) if instance_id else None
     else:
       headers_dict = wsgiref.headers.Headers(headers)
@@ -551,8 +593,8 @@ class Dispatcher(request_info.Dispatcher):
     else:
       port = _module.balanced_port
     environ = _module.build_request_environ(method, relative_url, headers, body,
-                                          source_ip, port,
-                                          fake_login=fake_login)
+                                            source_ip, port,
+                                            fake_login=fake_login)
     start_response = start_response_utils.CapturingStartResponse()
     response = self._handle_request(environ,
                                     start_response,
@@ -591,7 +633,7 @@ class Dispatcher(request_info.Dispatcher):
       prefix = hostname[:default_address_offset - 1]
       if '.' in prefix:
         raise request_info.ModuleDoesNotExistError(prefix)
-      return self._get_module(prefix, None), None
+      return self._get_module_with_soft_routing(prefix, None), None
 
     else:
       if ':' in hostname:
@@ -645,5 +687,5 @@ class Dispatcher(request_info.Dispatcher):
       for url, module_name in dispatch.dispatch:
         if (url.path_exact and path == url.path or
             not url.path_exact and path.startswith(url.path)):
-          return self._get_module(module_name, None)
-    return self._get_module(None, None)
+          return self._get_module_with_soft_routing(module_name, None)
+    return self._get_module_with_soft_routing(None, None)

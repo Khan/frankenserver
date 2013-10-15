@@ -208,12 +208,17 @@ class Query(object):
         Unpickling support.
         """
         # Rebuild list of field instances
-        opts = obj_dict['model']._meta
-        obj_dict['select_fields'] = [
-            name is not None and opts.get_field(name) or None
-            for name in obj_dict['select_fields']
-        ]
-
+        model = obj_dict['model']
+        if model is None:
+            # if model is None the queryset should be emptyqs. So the
+            # select_fields do not matter.
+            obj_dict['select_fields'] = []
+        else:
+            opts = model._meta
+            obj_dict['select_fields'] = [
+                name is not None and opts.get_field(name) or None
+                for name in obj_dict['select_fields']
+            ]
         self.__dict__.update(obj_dict)
 
     def prepare(self):
@@ -1106,7 +1111,14 @@ class Query(object):
             # If value is a query expression, evaluate it
             value = SQLEvaluator(value, self, reuse=can_reuse)
             having_clause = value.contains_aggregate
-
+        # For Oracle '' is equivalent to null. The check needs to be done
+        # at this stage because join promotion can't be done at compiler
+        # stage. Using DEFAULT_DB_ALIAS isn't nice, but it is the best we
+        # can do here. Similar thing is done in is_nullable(), too.
+        if (connections[DEFAULT_DB_ALIAS].features.interprets_empty_strings_as_nulls and
+                lookup_type == 'exact' and value == ''):
+            value = True
+            lookup_type = 'isnull'
         for alias, aggregate in self.aggregates.items():
             if alias in (parts[0], LOOKUP_SEP.join(parts)):
                 entry = self.where_class()

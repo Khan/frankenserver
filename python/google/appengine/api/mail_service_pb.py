@@ -42,6 +42,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
   UNAUTHORIZED_SENDER =    3
   INVALID_ATTACHMENT_TYPE =    4
   INVALID_HEADER_NAME =    5
+  EMPTY_CONTENT_ID =    6
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -50,6 +51,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
     3: "UNAUTHORIZED_SENDER",
     4: "INVALID_ATTACHMENT_TYPE",
     5: "INVALID_HEADER_NAME",
+    6: "EMPTY_CONTENT_ID",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -124,6 +126,8 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
   filename_ = ""
   has_data_ = 0
   data_ = ""
+  has_contentid_ = 0
+  contentid_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -154,11 +158,25 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
 
   def has_data(self): return self.has_data_
 
+  def contentid(self): return self.contentid_
+
+  def set_contentid(self, x):
+    self.has_contentid_ = 1
+    self.contentid_ = x
+
+  def clear_contentid(self):
+    if self.has_contentid_:
+      self.has_contentid_ = 0
+      self.contentid_ = ""
+
+  def has_contentid(self): return self.has_contentid_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_filename()): self.set_filename(x.filename())
     if (x.has_data()): self.set_data(x.data())
+    if (x.has_contentid()): self.set_contentid(x.contentid())
 
   def Equals(self, x):
     if x is self: return 1
@@ -166,6 +184,8 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if self.has_filename_ and self.filename_ != x.filename_: return 0
     if self.has_data_ != x.has_data_: return 0
     if self.has_data_ and self.data_ != x.data_: return 0
+    if self.has_contentid_ != x.has_contentid_: return 0
+    if self.has_contentid_ and self.contentid_ != x.contentid_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -184,6 +204,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(len(self.filename_))
     n += self.lengthString(len(self.data_))
+    if (self.has_contentid_): n += 1 + self.lengthString(len(self.contentid_))
     return n + 2
 
   def ByteSizePartial(self):
@@ -194,17 +215,22 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if (self.has_data_):
       n += 1
       n += self.lengthString(len(self.data_))
+    if (self.has_contentid_): n += 1 + self.lengthString(len(self.contentid_))
     return n
 
   def Clear(self):
     self.clear_filename()
     self.clear_data()
+    self.clear_contentid()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.filename_)
     out.putVarInt32(18)
     out.putPrefixedString(self.data_)
+    if (self.has_contentid_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.contentid_)
 
   def OutputPartial(self, out):
     if (self.has_filename_):
@@ -213,6 +239,9 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     if (self.has_data_):
       out.putVarInt32(18)
       out.putPrefixedString(self.data_)
+    if (self.has_contentid_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.contentid_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -222,6 +251,9 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.set_data(d.getPrefixedString())
+        continue
+      if tt == 26:
+        self.set_contentid(d.getPrefixedString())
         continue
 
 
@@ -233,6 +265,7 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_filename_: res+=prefix+("FileName: %s\n" % self.DebugFormatString(self.filename_))
     if self.has_data_: res+=prefix+("Data: %s\n" % self.DebugFormatString(self.data_))
+    if self.has_contentid_: res+=prefix+("ContentID: %s\n" % self.DebugFormatString(self.contentid_))
     return res
 
 
@@ -241,18 +274,21 @@ class MailAttachment(ProtocolBuffer.ProtocolMessage):
 
   kFileName = 1
   kData = 2
+  kContentID = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "FileName",
     2: "Data",
-  }, 2)
+    3: "ContentID",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

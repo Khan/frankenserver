@@ -637,6 +637,7 @@ class DevelopmentServer(object):
 
   def module_to_address(self, module_name, instance=None):
     """Returns the address of a module."""
+
     if module_name is None:
       return self._dispatcher.dispatch_address
     return self._dispatcher.get_hostname(
@@ -667,24 +668,6 @@ class DevelopmentServer(object):
 
     _setup_environ(configuration.app_id)
 
-    if options.max_module_instances is None:
-      module_to_max_instances = {}
-    elif isinstance(options.max_module_instances, int):
-      module_to_max_instances = {
-          module_configuration.module_name: options.max_module_instances
-          for module_configuration in configuration.modules}
-    else:
-      module_to_max_instances = options.max_module_instances
-
-    if options.threadsafe_override is None:
-      module_to_threadsafe_override = {}
-    elif isinstance(options.threadsafe_override, bool):
-      module_to_threadsafe_override = {
-          module_configuration.module_name: options.threadsafe_override
-          for module_configuration in configuration.modules}
-    else:
-      module_to_threadsafe_override = options.threadsafe_override
-
     self._dispatcher = dispatcher.Dispatcher(
         configuration,
         options.host,
@@ -694,11 +677,13 @@ class DevelopmentServer(object):
         self._create_php_config(options),
         self._create_python_config(options),
         self._create_cloud_sql_config(options),
-        module_to_max_instances,
+        self._create_module_to_setting(options.max_module_instances,
+                                       configuration, '--max_module_instances'),
         options.use_mtime_file_watcher,
         options.automatic_restart,
         options.allow_skipped_files,
-        module_to_threadsafe_override)
+        self._create_module_to_setting(options.threadsafe_override,
+                                       configuration, '--threadsafe_override'))
 
     request_data = wsgi_request_info.WSGIRequestInfo(self._dispatcher)
     storage_path = _get_storage_path(options.storage_path, configuration.app_id)
@@ -831,6 +816,39 @@ class DevelopmentServer(object):
     if options.mysql_socket:
       cloud_sql_config.mysql_socket = options.mysql_socket
     return cloud_sql_config
+
+  @staticmethod
+  def _create_module_to_setting(setting, configuration, option):
+    """Create a per-module dictionary configuration.
+
+    Creates a dictionary that maps a module name to a configuration
+    setting. Used in conjunction with parse_per_module_option.
+
+    Args:
+      setting: a value that can be None, a dict of str->type or a single value.
+      configuration: an ApplicationConfiguration object.
+      option: the option name the setting came from.
+
+    Returns:
+      A dict of str->type.
+    """
+    if setting is None:
+      return {}
+
+    module_names = [module_configuration.module_name
+                    for module_configuration in configuration.modules]
+    if isinstance(setting, dict):
+      # Warn and remove a setting if the module name is unknown.
+      module_to_setting = {}
+      for module_name, value in setting.items():
+        if module_name in module_names:
+          module_to_setting[module_name] = value
+        else:
+          logging.warning('Unknown module %r for %r', module_name, option)
+      return module_to_setting
+
+    # Create a dict with an entry for every module.
+    return {module_name: setting for module_name in module_names}
 
 
 def main():

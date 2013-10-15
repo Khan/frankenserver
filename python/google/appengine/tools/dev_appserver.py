@@ -130,6 +130,7 @@ from google.appengine.api.system import system_stub
 from google.appengine.api.xmpp import xmpp_service_stub
 from google.appengine.datastore import datastore_sqlite_stub
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.datastore import datastore_v4_stub
 from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
 from google.appengine import dist
 
@@ -3573,6 +3574,10 @@ def SetupStubs(app_id, **config):
           datastore_stub_util.TimeBasedHRConsistencyPolicy())
     apiproxy_stub_map.apiproxy.ReplaceStub(
         'datastore_v3', datastore)
+
+    apiproxy_stub_map.apiproxy.RegisterStub(
+        'datastore_v4',
+        datastore_v4_stub.DatastoreV4Stub(app_id))
 
     apiproxy_stub_map.apiproxy.RegisterStub(
         'mail',

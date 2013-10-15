@@ -33,7 +33,7 @@ Example:
 The get_client_lib subcommand does both of the above commands at once.
 
 Example:
-  endpointscfg.py get_client_lib java -o . -f rest postservice.GreetingsV1
+  endpointscfg.py get_client_lib java -o . postservice.GreetingsV1
 
 The gen_api_config command outputs an .api configuration file for a service.
 
@@ -60,6 +60,7 @@ import urllib2
 
 from endpoints import api_config
 from protorpc import remote
+import yaml
 
 from google.appengine.tools.devappserver2 import api_server
 
@@ -116,7 +117,8 @@ def _WriteFile(output_path, name, content):
   return path
 
 
-def GenApiConfig(service_class_names, generator=None, hostname=None):
+def GenApiConfig(service_class_names, generator=None, hostname=None,
+                 application_path=None):
   """Write an API configuration for endpoints annotated ProtoRPC services.
 
   Args:
@@ -126,6 +128,7 @@ def GenApiConfig(service_class_names, generator=None, hostname=None):
     hostname: A string hostname which will be used as the default version
       hostname. If no hostname is specificied in the @endpoints.api decorator,
       this value is the fallback. Defaults to None.
+    application_path: A string with the path to the AppEngine application.
 
   Raises:
     TypeError: If any service classes don't inherit from remote.Service.
@@ -152,12 +155,16 @@ def GenApiConfig(service_class_names, generator=None, hostname=None):
                                           [])
     services.append(service)
 
+
+
+  app_yaml_hostname = _GetAppYamlHostname(application_path)
+
   service_map = collections.OrderedDict()
   generator = generator or api_config.ApiConfigGenerator()
   for api_info, services in api_service_map.iteritems():
 
 
-    hostname = services[0].api_info.hostname or hostname
+    hostname = services[0].api_info.hostname or hostname or app_yaml_hostname
 
 
     service_map['%s-%s' % api_info] = generator.pretty_print_config_to_json(
@@ -166,8 +173,72 @@ def GenApiConfig(service_class_names, generator=None, hostname=None):
   return service_map
 
 
-def GenDiscoveryDoc(service_class_names, doc_format,
-                    output_path, hostname=None):
+def _GetAppYamlHostname(application_path, open_func=open):
+  """Build the hostname for this app based on the name in app.yaml.
+
+  Args:
+    application_path: A string with the path to the AppEngine application.  This
+      should be the directory containing the app.yaml file.
+    open_func: Function to call to open a file.  Used to override the default
+      open function in unit tests.
+
+  Returns:
+    A hostname, usually in the form of "myapp.appspot.com", based on the
+    application name in the app.yaml file.  If the file can't be found or
+    there's a problem building the name, this will return None.
+  """
+  try:
+    app_yaml_file = open_func(os.path.join(application_path or '.', 'app.yaml'))
+    config = yaml.safe_load(app_yaml_file.read())
+  except IOError:
+
+    return None
+
+  application = config.get('application')
+  if not application:
+    return None
+
+  if ':' in application:
+
+    return None
+
+
+  tilde_index = application.rfind('~')
+  if tilde_index >= 0:
+    application = application[tilde_index + 1:]
+    if not application:
+      return None
+
+  return '%s.appspot.com' % application
+
+
+def _FetchDiscoveryDoc(config, doc_format):
+  """Fetch discovery documents generated from a cloud service.
+
+  Args:
+    config: An API config.
+    doc_format: The requested format for the discovery doc. (rest|rpc)
+
+  Raises:
+    ServerRequestException: If fetching the generated discovery doc fails.
+
+  Returns:
+    A list of discovery doc strings.
+  """
+  body = json.dumps({'config': config}, indent=2, sort_keys=True)
+  request = urllib2.Request(DISCOVERY_DOC_BASE + doc_format, body)
+  request.add_header('content-type', 'application/json')
+
+  try:
+    with contextlib.closing(urllib2.urlopen(request)) as response:
+      return response.read()
+  except urllib2.HTTPError, error:
+    raise ServerRequestException(error)
+
+
+def _GenDiscoveryDoc(service_class_names, doc_format,
+                     output_path, hostname=None,
+                     application_path=None):
   """Write discovery documents generated from a cloud service to file.
 
   Args:
@@ -177,6 +248,7 @@ def GenDiscoveryDoc(service_class_names, doc_format,
     hostname: A string hostname which will be used as the default version
       hostname. If no hostname is specificied in the @endpoints.api decorator,
       this value is the fallback. Defaults to None.
+    application_path: A string containing the path to the AppEngine app.
 
   Raises:
     ServerRequestException: If fetching the generated discovery doc fails.
@@ -185,24 +257,17 @@ def GenDiscoveryDoc(service_class_names, doc_format,
     A list of discovery doc filenames.
   """
   output_files = []
-  service_configs = GenApiConfig(service_class_names, hostname=hostname)
+  service_configs = GenApiConfig(service_class_names, hostname=hostname,
+                                 application_path=application_path)
   for api_name_version, config in service_configs.iteritems():
-    body = json.dumps({'config': config}, indent=2, sort_keys=True)
-    request = urllib2.Request(DISCOVERY_DOC_BASE + doc_format, body)
-    request.add_header('content-type', 'application/json')
-
-    try:
-      with contextlib.closing(urllib2.urlopen(request)) as response:
-        content = response.read()
-        discovery_name = api_name_version + '.discovery'
-        output_files.append(_WriteFile(output_path, discovery_name, content))
-    except urllib2.HTTPError, error:
-      raise ServerRequestException(error)
+    discovery_doc = _FetchDiscoveryDoc(config, doc_format)
+    discovery_name = api_name_version + '.discovery'
+    output_files.append(_WriteFile(output_path, discovery_name, discovery_doc))
 
   return output_files
 
 
-def GenClientLib(discovery_path, language, output_path, build_system):
+def _GenClientLib(discovery_path, language, output_path, build_system):
   """Write a client library from a discovery doc, using a cloud service to file.
 
   Args:
@@ -225,8 +290,8 @@ def GenClientLib(discovery_path, language, output_path, build_system):
   client_name = re.sub(r'\.discovery$', '.zip',
                        os.path.basename(discovery_path))
 
-  _GenClientLibFromContents(discovery_doc, language, output_path, build_system,
-                            client_name)
+  return _GenClientLibFromContents(discovery_doc, language, output_path,
+                                   build_system, client_name)
 
 
 def _GenClientLibFromContents(discovery_doc, language, output_path,
@@ -260,32 +325,33 @@ def _GenClientLibFromContents(discovery_doc, language, output_path,
     raise ServerRequestException(error)
 
 
-def GetClientLib(service_class_names, doc_format, language,
-                 output_path, build_system, hostname=None):
-  """Fetch discovery documents and client libraries from a cloud service.
+def _GetClientLib(service_class_names, language, output_path, build_system,
+                  hostname=None, application_path=None):
+  """Fetch client libraries from a cloud service.
 
   Args:
     service_class_names: A list of fully qualified ProtoRPC service names.
-    doc_format: The requested format for the discovery doc. (rest|rpc)
     language: The client library language to generate. (java)
     output_path: The directory to output the discovery docs to.
     build_system: The target build system for the client library language.
     hostname: A string hostname which will be used as the default version
       hostname. If no hostname is specificied in the @endpoints.api decorator,
       this value is the fallback. Defaults to None.
+    application_path: A string containing the path to the AppEngine app.
 
   Returns:
-    A tuple (discovery_files, client_libs):
-      discovery_files: A list of paths to discovery documents.
-      client_libs: A list of paths to client libraries.
+    A list of paths to client libraries.
   """
-  discovery_files = GenDiscoveryDoc(service_class_names, doc_format,
-                                    output_path, hostname=hostname)
   client_libs = []
-  for discovery_path in discovery_files:
+  service_configs = GenApiConfig(service_class_names, hostname=hostname,
+                                 application_path=application_path)
+  for api_name_version, config in service_configs.iteritems():
+    discovery_doc = _FetchDiscoveryDoc(config, 'rest')
+    client_name = api_name_version + '.zip'
     client_libs.append(
-        GenClientLib(discovery_path, language, output_path, build_system))
-  return discovery_files, client_libs
+        _GenClientLibFromContents(discovery_doc, language, output_path,
+                                  build_system, client_name))
+  return client_libs
 
 
 def _GenApiConfigCallback(args, api_func=GenApiConfig):
@@ -296,44 +362,34 @@ def _GenApiConfigCallback(args, api_func=GenApiConfig):
     api_func: A function that generates and returns an API configuration
       for a list of services.
   """
-  service_class_names, output_path, hostname = (
-      args.service, args.output, args.hostname)
-  service_configs = api_func(service_class_names, hostname=hostname)
+  service_configs = api_func(args.service,
+                             hostname=args.hostname,
+                             application_path=args.application)
 
   for api_name_version, config in service_configs.iteritems():
     api_name = api_name_version + '.api'
-    _WriteFile(output_path, api_name, config)
+    _WriteFile(args.output, api_name, config)
 
 
-def _GetClientLibCallback(args,
-                          client_func=GetClientLib):
+def _GetClientLibCallback(args, client_func=_GetClientLib):
   """Generate discovery docs and client libraries to files.
 
   Args:
     args: An argparse.Namespace object to extract parameters from.
     client_func: A function that generates client libraries and stores them to
-      files, accepting a list of service names, a discovery doc format, a client
-      library language, an output directory, a build system for the client
-      library language, and a hostname.
+      files, accepting a list of service names, a client library language,
+      an output directory, a build system for the client library language, and
+      a hostname.
   """
-  service_class_names = args.service
-  doc_format = args.format
-  language = args.language
-  output_path = args.output
-  hostname = args.hostname
-  build_system = args.build_system
-  discovery_paths, client_paths = client_func(
-      service_class_names, doc_format, language, output_path, build_system,
-      hostname=hostname)
-
-  for discovery_path in discovery_paths:
-    print 'API discovery document written to %s' % discovery_path
+  client_paths = client_func(
+      args.service, args.language, args.output, args.build_system,
+      hostname=args.hostname, application_path=args.application)
 
   for client_path in client_paths:
     print 'API client library written to %s' % client_path
 
 
-def _GenDiscoveryDocCallback(args, discovery_func=GenDiscoveryDoc):
+def _GenDiscoveryDocCallback(args, discovery_func=_GenDiscoveryDoc):
   """Generate discovery docs to files.
 
   Args:
@@ -342,15 +398,14 @@ def _GenDiscoveryDocCallback(args, discovery_func=GenDiscoveryDoc):
       files, accepting a list of service names, a discovery doc format, and an
       output directory.
   """
-  services, doc_format, output_path, hostname = (
-      args.service, args.format, args.output, args.hostname)
-  discovery_paths = discovery_func(services, doc_format,
-                                   output_path, hostname=hostname)
+  discovery_paths = discovery_func(args.service, args.format,
+                                   args.output, hostname=args.hostname,
+                                   application_path=args.application)
   for discovery_path in discovery_paths:
     print 'API discovery document written to %s' % discovery_path
 
 
-def _GenClientLibCallback(args, client_func=GenClientLib):
+def _GenClientLibCallback(args, client_func=_GenClientLib):
   """Generate a client library to file.
 
   Args:
@@ -359,9 +414,8 @@ def _GenClientLibCallback(args, client_func=GenClientLib):
       files, accepting a path to a discovery doc, a client library language, an
       output directory, and a build system for the client library language.
   """
-  discovery_path, language, output_path, build_system = (
-      args.discovery_doc[0], args.language, args.output, args.build_system)
-  client_path = client_func(discovery_path, language, output_path, build_system)
+  client_path = client_func(args.discovery_doc[0], args.language, args.output,
+                            args.build_system)
   print 'API client library written to %s' % client_path
 
 
@@ -422,8 +476,8 @@ def MakeParser(prog):
       'get_client_lib', help=('Generates discovery documents and client '
                               'libraries from service classes'))
   get_client_lib.set_defaults(callback=_GetClientLibCallback)
-  AddStandardOptions(get_client_lib, 'application', 'format', 'hostname',
-                     'output', 'language', 'service', 'build_system')
+  AddStandardOptions(get_client_lib, 'application', 'hostname', 'output',
+                     'language', 'service', 'build_system')
 
   get_discovery_doc = subparsers.add_parser(
       'get_discovery_doc',

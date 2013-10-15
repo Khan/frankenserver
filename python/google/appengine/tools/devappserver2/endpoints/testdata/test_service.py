@@ -63,14 +63,12 @@ class TestService(remote.Service):
   """ProtoRPC test class for Cloud Endpoints."""
 
   @endpoints.method(message_types.VoidMessage, TestResponse,
-                    http_method='GET', name='test', path='test',
-                    scopes=[])
+                    http_method='GET', scopes=[])
   def test(self, unused_request):
     return TestResponse(text='Test response')
 
   @endpoints.method(message_types.VoidMessage, TestResponse,
-                    http_method='GET', name='empty_test', path='empty_test',
-                    scopes=[])
+                    http_method='GET', scopes=[])
   def empty_test(self, unused_request):
     return TestResponse()
 
@@ -82,24 +80,20 @@ class TestService(remote.Service):
 
   @endpoints.method(message_types.DateTimeMessage,
                     message_types.DateTimeMessage,
-                    http_method='POST', name='echodtmsg',
-                    path='echo_datetime_message',
-                    scopes=[])
+                    http_method='POST', name='echodtmsg', scopes=[])
   def echo_datetime_message(self, request):
     return request
 
   @endpoints.method(TestDateTime, TestDateTime,
                     http_method='POST', name='echodtfield',
-                    path='echo_datetime_field',
-                    scopes=[])
+                    path='echo_dt_field', scopes=[])
   def echo_datetime_field(self, request):
     # Make sure we can access the fields of the datetime object.
     logging.info('Year %d, Month %d', request.datetime_value.year,
                  request.datetime_value.month)
     return request
 
-  @endpoints.method(TestIntegers, TestIntegers, http_method='POST',
-                    path='increment_integers', scopes=[])
+  @endpoints.method(TestIntegers, TestIntegers, http_method='POST', scopes=[])
   def increment_integers(self, request):
     response = TestIntegers(
         var_int32=request.var_int32 + 1,
@@ -109,8 +103,7 @@ class TestService(remote.Service):
         var_uint64=request.var_uint64 + 1)
     return response
 
-  @endpoints.method(TestBytes, TestBytes,
-                    path='echo_bytes', scopes=[])
+  @endpoints.method(TestBytes, TestBytes, scopes=[])
   def echo_bytes(self, request):
     logging.info('Found bytes: %s', request.bytes_value)
     return request

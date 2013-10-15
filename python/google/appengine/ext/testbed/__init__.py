@@ -113,6 +113,7 @@ except AttributeError:
 
 
   mail_stub = None
+from google.appengine.api import request_info
 from google.appengine.api import urlfetch_stub
 from google.appengine.api import user_service_stub
 from google.appengine.api.app_identity import app_identity_stub
@@ -130,6 +131,7 @@ try:
 except ImportError:
   logservice_stub = None
 from google.appengine.api.memcache import memcache_stub
+from google.appengine.api.modules import modules_stub
 try:
   from google.appengine.api.search import simple_search_stub
 except ImportError:
@@ -183,6 +185,7 @@ URLFETCH_SERVICE_NAME = 'urlfetch'
 USER_SERVICE_NAME = 'user'
 XMPP_SERVICE_NAME = 'xmpp'
 SEARCH_SERVICE_NAME = 'search'
+MODULES_SERVICE_NAME = 'modules'
 
 
 INIT_STUB_METHOD_NAMES = {
@@ -201,6 +204,7 @@ INIT_STUB_METHOD_NAMES = {
     USER_SERVICE_NAME: 'init_user_stub',
     XMPP_SERVICE_NAME: 'init_xmpp_stub',
     SEARCH_SERVICE_NAME: 'init_search_stub',
+    MODULES_SERVICE_NAME: 'init_modules_stub'
 }
 
 
@@ -656,6 +660,20 @@ class Testbed(object):
       raise StubNotSupportedError('Could not initialize search API')
     stub = simple_search_stub.SearchServiceStub()
     self._register_stub(SEARCH_SERVICE_NAME, stub)
+
+  def init_modules_stub(self, enable=True):
+    """Enable the modules stub.
+
+    Args:
+      enable: True, if the fake service should be enabled, False if real
+              service should be disabled.
+    """
+    if not enable:
+      self._disable_stub(MODULES_SERVICE_NAME)
+      return
+
+    stub = modules_stub.ModulesServiceStub(request_info._LocalRequestInfo())
+    self._register_stub(MODULES_SERVICE_NAME, stub)
 
   def _init_stub(self, service_name, *args, **kwargs):
     """Enable a stub by service name.

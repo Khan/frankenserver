@@ -163,7 +163,7 @@ def _SplitMIMEType(mime_type):
 class UploadCGIHandler(object):
   """Class used for handling an upload post.
 
-  The main interface to this class is the UploadCGI method.  This will recieve
+  The main interface to this class is the UploadCGI method.  This will receive
   the upload form, store the blobs contained in the post and rewrite the blobs
   to contain BlobKeys instead of blobs.
   """

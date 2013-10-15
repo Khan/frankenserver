@@ -38,7 +38,6 @@ use google\appengine\TaskQueueBulkAddRequest;
 use google\appengine\TaskQueueBulkAddResponse;
 use google\appengine\TaskQueueServiceError\ErrorCode;
 
-
 /**
  * A PushQueue executes PushTasks by sending the task back to the application
  * in the form of an HTTP request to one of the application's handlers.
@@ -59,11 +58,11 @@ final class PushQueue {
     'DELETE' => RequestMethod::DELETE
   ];
 
-/**
- * Construct a PushQueue
- *
- * @param string $name The name of the queue.
- */
+  /**
+   * Construct a PushQueue
+   *
+   * @param string $name The name of the queue.
+   */
   public function __construct($name = 'default') {
     if (!is_string($name)) {
       throw new \InvalidArgumentException(

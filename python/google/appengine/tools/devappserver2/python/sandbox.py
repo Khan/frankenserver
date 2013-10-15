@@ -27,8 +27,6 @@ import types
 
 import google
 
-import protorpc
-
 from google.appengine import dist
 from google.appengine.api import app_logging
 from google.appengine.api.logservice import logservice
@@ -114,7 +112,7 @@ def enable_sandbox(config):
   """
 
   devnull = open(os.path.devnull)
-  modules = [os, traceback, google, protorpc]
+  modules = [os, traceback, google]
   c_module = _find_shared_object_c_module()
   if c_module:
     modules.append(c_module)

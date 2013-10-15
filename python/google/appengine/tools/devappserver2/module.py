@@ -50,6 +50,10 @@ from google.appengine.tools.devappserver2 import file_watcher
 from google.appengine.tools.devappserver2 import go_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
+try:
+  from google.appengine.tools.devappserver2 import java_runtime
+except ImportError:
+  java_runtime = None
 from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import php_runtime
 from google.appengine.tools.devappserver2 import python_runtime
@@ -145,6 +149,11 @@ class Module(object):
       'python': python_runtime.PythonRuntimeInstanceFactory,
       'python27': python_runtime.PythonRuntimeInstanceFactory,
   }
+  if java_runtime:
+    _RUNTIME_INSTANCE_FACTORIES.update({
+        'java': java_runtime.JavaRuntimeInstanceFactory,
+        'java7': java_runtime.JavaRuntimeInstanceFactory,
+    })
 
   def _create_instance_factory(self,
                                module_configuration):

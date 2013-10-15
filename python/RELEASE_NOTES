@@ -3,6 +3,34 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.8.6
+
+All
+==============================
+- A memcache size chart has been added to admin console's dashboard.  Access it
+  via the drop-down above the graph.  The chart graphs memcache size over time
+  enabling customers to determine when cache flush events occurred. This is a
+  preview feature.
+- Fixed an issue with the dev_appserver that allows an invalid Datastore query
+  combination of group by and filter properties.
+- Fixed an issue with the bulkloader that causes uploads to the dev_appserver
+  to fail.
+- Fixed an issue affecting validation of the size of Datastore property names.
+- Fixed an issue with Datastore query validation for strings with exactly 500
+  characters.
+    https://code.google.com/p/googleappengine/issues/detail?id=10019
+
+Python
+==============================
+- Django 1.5.4 is now available in the Runtime. This is a Preview feature.
+- app_identity.get_access_token in the App Identity API is now a GA feature.
+- Geo is now a supported field type in the Search API for the dev_appserver.
+    http://code.google.com/p/googleappengine/issues/detail?id=7486
+
+PHP
+==============================
+- php://memory and php://temp I/O streams are now supported.
+
 Version 1.8.5
 
 All

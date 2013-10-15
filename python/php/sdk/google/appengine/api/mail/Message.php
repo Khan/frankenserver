@@ -106,10 +106,9 @@ final class Message extends BaseMessage {
    * Returns the class variable $set_functions array, or the corresponding
    * value in that array if a key is provided.
    *
-   * @param string $key Key to get corresponding value for.
    * @return mixed $set_functions array, or a string value from that array.
    */
-  protected function getFunctionArray($key = null) {
+  protected function getFunctionArray() {
     return self::$set_functions;
   }
 

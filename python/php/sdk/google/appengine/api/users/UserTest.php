@@ -95,6 +95,6 @@ class UserTest extends ApiProxyTestBase {
         'bill@example.com', 'http://google.com/bill', null, '22772');
     $this->assertEquals(
         "User(email='bill@example.com',federated_identity=" .
-        "'http://google.com/bill',user_id='22772')", (string)$bill);
+        "'http://google.com/bill',user_id='22772')", (string) $bill);
   }
 }

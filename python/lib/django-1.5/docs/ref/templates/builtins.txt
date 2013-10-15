@@ -835,6 +835,8 @@ above would result in the following output:
     * New York: 20,000,000
 * India
     * Calcutta: 15,000,000
+* USA
+    * Chicago: 7,000,000
 * Japan
     * Tokyo: 33,000,000
 
@@ -2162,7 +2164,7 @@ If ``value`` is ``"http://www.example.org/"``, the output will be
 urlize
 ^^^^^^
 
-Converts URLs in text into clickable links.
+Converts URLs and email addresses in text into clickable links.
 
 This template tag works on links prefixed with ``http://``, ``https://``, or
 ``www.``. For example, ``http://goo.gl/aia1t`` will get converted but
@@ -2191,6 +2193,11 @@ If ``value`` is ``"Check out www.djangoproject.com"``, the output will be
 ``"Check out <a href="http://www.djangoproject.com"
 rel="nofollow">www.djangoproject.com</a>"``.
 
+In addition to web links, ``urlize`` also converts email addresses into
+``mailto:`` links. If ``value`` is
+``"Send questions to foo@example.com"``, the output will be
+``"Send questions to <a href="mailto:foo@example.com">foo@example</a>"``.
+
 The ``urlize`` filter also takes an optional parameter ``autoescape``. If
 ``autoescape`` is ``True``, the link text and URLs will be escaped using
 Django's built-in :tfilter:`escape` filter. The default value for
@@ -2206,7 +2213,7 @@ Django's built-in :tfilter:`escape` filter. The default value for
 urlizetrunc
 ^^^^^^^^^^^
 
-Converts URLs into clickable links just like urlize_, but truncates URLs
+Converts URLs and email addresses into clickable links just like urlize_, but truncates URLs
 longer than the given character limit.
 
 **Argument:** Number of characters that link text should be truncated to,
@@ -2373,7 +2380,7 @@ It is also able to consume standard context variables, e.g. assuming a
     <link rel="stylesheet" href="{% static user_stylesheet %}" type="text/css" media="screen" />
 
 If you'd like to retrieve a static URL without displaying it, you can use a
-slightly different call::
+slightly different call:
 
 .. versionadded:: 1.5
 
@@ -2388,8 +2395,10 @@ slightly different call::
     The :mod:`staticfiles<django.contrib.staticfiles>` contrib app also ships
     with a :ttag:`static template tag<staticfiles-static>` which uses
     ``staticfiles'`` :setting:`STATICFILES_STORAGE` to build the URL of the
-    given path. Use that instead if you have an advanced use case such as
-    :ref:`using a cloud service to serve static files<staticfiles-from-cdn>`::
+    given path (rather than simply using :func:`urlparse.urljoin` with the
+    :setting:`STATIC_URL` setting and the given path). Use that instead if you
+    have an advanced use case such as :ref:`using a cloud service to serve
+    static files<staticfiles-from-cdn>`::
 
         {% load static from staticfiles %}
         <img src="{% static "images/hi.jpg" %}" alt="Hi!" />

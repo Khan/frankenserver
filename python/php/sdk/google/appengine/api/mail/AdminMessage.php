@@ -37,10 +37,9 @@ final class AdminMessage extends BaseMessage {
    * Returns the class variable $set_functions array, or the corresponding
    * value in that array if a key is provided.
    *
-   * @param string $key Key to get corresponding value for.
    * @return mixed $set_functions array, or a string value from that array.
    */
-  protected function getFunctionArray($key = null) {
+  protected function getFunctionArray() {
     $allowed_functions = array_diff(self::$set_functions,
                                     self::$disallowed_functions);
     return $allowed_functions;

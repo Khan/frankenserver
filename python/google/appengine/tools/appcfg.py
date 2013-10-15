@@ -34,6 +34,7 @@ from __future__ import with_statement
 
 
 import calendar
+import contextlib
 import copy
 import datetime
 import errno
@@ -211,6 +212,24 @@ def _PrintErrorAndExit(stream, msg, exit_code=2):
   """
   stream.write(msg)
   sys.exit(exit_code)
+
+
+@contextlib.contextmanager
+def TempChangeField(obj, field_name, new_value):
+  """Context manager to change a field value on an object temporarily.
+
+  Args:
+    obj: The object to change the field on.
+    field_name: The field name to change.
+    new_value: The new value.
+
+  Yields:
+    The old value.
+  """
+  old_value = getattr(obj, field_name)
+  setattr(obj, field_name, new_value)
+  yield old_value
+  setattr(obj, field_name, old_value)
 
 
 class FileClassification(object):
@@ -481,26 +500,25 @@ def MigratePython27Notice():
 class IndexDefinitionUpload(object):
   """Provides facilities to upload index definitions to the hosting service."""
 
-  def __init__(self, rpcserver, config, definitions):
+  def __init__(self, rpcserver, definitions):
     """Creates a new DatastoreIndexUpload.
 
     Args:
       rpcserver: The RPC server to use.  Should be an instance of HttpRpcServer
         or TestRpcServer.
-      config: The AppInfoExternal object derived from the app.yaml file.
       definitions: An IndexDefinitions object.
     """
     self.rpcserver = rpcserver
-    self.config = config
     self.definitions = definitions
 
   def DoUpload(self):
     """Uploads the index definitions."""
     StatusUpdate('Uploading index definitions.')
-    self.rpcserver.Send('/api/datastore/index/add',
-                        app_id=self.config.application,
-                        version=self.config.version,
-                        payload=self.definitions.ToYAML())
+
+    with TempChangeField(self.definitions, 'application', None) as app_id:
+      self.rpcserver.Send('/api/datastore/index/add',
+                          app_id=app_id,
+                          payload=self.definitions.ToYAML())
 
 
 class CronEntryUpload(object):
@@ -519,15 +537,12 @@ class CronEntryUpload(object):
 
   def DoUpload(self):
     """Uploads the cron entries."""
-
-
-    app_id = self.cron.application
-    self.cron.application = None
-
     StatusUpdate('Uploading cron entries.')
-    self.rpcserver.Send('/api/cron/update',
-                        app_id=app_id,
-                        payload=self.cron.ToYAML())
+
+    with TempChangeField(self.cron, 'application', None) as app_id:
+      self.rpcserver.Send('/api/cron/update',
+                          app_id=app_id,
+                          payload=self.cron.ToYAML())
 
 
 class QueueEntryUpload(object):
@@ -546,14 +561,12 @@ class QueueEntryUpload(object):
 
   def DoUpload(self):
     """Uploads the task queue entries."""
-
-
-    app_id = self.queue.application
-    self.queue.application = None
     StatusUpdate('Uploading task queue entries.')
-    self.rpcserver.Send('/api/queue/update',
-                        app_id=app_id,
-                        payload=self.queue.ToYAML())
+
+    with TempChangeField(self.queue, 'application', None) as app_id:
+      self.rpcserver.Send('/api/queue/update',
+                          app_id=app_id,
+                          payload=self.queue.ToYAML())
 
 
 class DosEntryUpload(object):
@@ -572,14 +585,12 @@ class DosEntryUpload(object):
 
   def DoUpload(self):
     """Uploads the dos entries."""
-
-
-    app_id = self.dos.application
-    self.dos.application = None
     StatusUpdate('Uploading DOS entries.')
-    self.rpcserver.Send('/api/dos/update',
-                        app_id=app_id,
-                        payload=self.dos.ToYAML())
+
+    with TempChangeField(self.dos, 'application', None) as app_id:
+      self.rpcserver.Send('/api/dos/update',
+                          app_id=app_id,
+                          payload=self.dos.ToYAML())
 
 
 class PagespeedEntryUpload(object):
@@ -674,19 +685,43 @@ class DefaultVersionSet(object):
                         version=self.version)
 
 
+class TrafficMigrator(object):
+  """Provides facilities to migrate traffic."""
+
+  def __init__(self, rpcserver, app_id, version):
+    """Creates a new TrafficMigrator.
+
+    Args:
+      rpcserver: The RPC server to use. Should be an instance of a subclass of
+        AbstractRpcServer.
+      app_id: The application to make the change to.
+
+      version: The version to set as the default.
+    """
+    self.rpcserver = rpcserver
+    self.app_id = app_id
+    self.version = version
+
+  def MigrateTraffic(self):
+    """Migrates traffic."""
+    StatusUpdate('Migrating traffic of application %s to %s.'
+                 % (self.app_id, self.version))
+    self.rpcserver.Send('/api/appversion/migratetraffic',
+                        app_id=self.app_id,
+                        version=self.version)
+
+
 class IndexOperation(object):
   """Provide facilities for writing Index operation commands."""
 
-  def __init__(self, rpcserver, config):
+  def __init__(self, rpcserver):
     """Creates a new IndexOperation.
 
     Args:
       rpcserver: The RPC server to use.  Should be an instance of HttpRpcServer
         or TestRpcServer.
-      config: appinfo.AppInfoExternal configuration object.
     """
     self.rpcserver = rpcserver
-    self.config = config
 
   def DoDiff(self, definitions):
     """Retrieve diff file from the server.
@@ -703,16 +738,19 @@ class IndexOperation(object):
       that these indexes should probably be vacuumed).
     """
     StatusUpdate('Fetching index definitions diff.')
-    response = self.rpcserver.Send('/api/datastore/index/diff',
-                                   app_id=self.config.application,
-                                   payload=definitions.ToYAML())
+    with TempChangeField(definitions, 'application', None) as app_id:
+      response = self.rpcserver.Send('/api/datastore/index/diff',
+                                     app_id=app_id,
+                                     payload=definitions.ToYAML())
+
     return datastore_index.ParseMultipleIndexDefinitions(response)
 
-  def DoDelete(self, definitions):
+  def DoDelete(self, definitions, app_id):
     """Delete indexes from the server.
 
     Args:
       definitions: Index definitions to delete from datastore.
+      app_id: The application id.
 
     Returns:
       A single datstore_index.IndexDefinitions containing indexes that were
@@ -721,8 +759,9 @@ class IndexOperation(object):
       the index-diff and sending deletion confirmation through.
     """
     StatusUpdate('Deleting selected index definitions.')
+
     response = self.rpcserver.Send('/api/datastore/index/delete',
-                                   app_id=self.config.application,
+                                   app_id=app_id,
                                    payload=definitions.ToYAML())
     return datastore_index.ParseIndexDefinitions(response)
 
@@ -730,18 +769,16 @@ class IndexOperation(object):
 class VacuumIndexesOperation(IndexOperation):
   """Provide facilities to request the deletion of datastore indexes."""
 
-  def __init__(self, rpcserver, config, force,
-               confirmation_fn=raw_input):
+  def __init__(self, rpcserver, force, confirmation_fn=raw_input):
     """Creates a new VacuumIndexesOperation.
 
     Args:
       rpcserver: The RPC server to use.  Should be an instance of HttpRpcServer
         or TestRpcServer.
-      config: appinfo.AppInfoExternal configuration object.
       force: True to force deletion of indexes, else False.
       confirmation_fn: Function used for getting input form user.
     """
-    super(VacuumIndexesOperation, self).__init__(rpcserver, config)
+    super(VacuumIndexesOperation, self).__init__(rpcserver)
     self.force = force
     self.confirmation_fn = confirmation_fn
 
@@ -819,7 +856,7 @@ class VacuumIndexesOperation(IndexOperation):
 
 
     if deletions.indexes:
-      not_deleted = self.DoDelete(deletions)
+      not_deleted = self.DoDelete(deletions, definitions.application)
 
 
       if not_deleted.indexes:
@@ -2719,6 +2756,8 @@ class AppCfgApp(object):
     else:
       if not self.rpc_server_class:
         self.rpc_server_class = appengine_rpc.HttpRpcServerWithOAuth2Suggestion
+        if hasattr(self, 'runtime'):
+          self.rpc_server_class.RUNTIME = self.runtime
       get_user_credentials = GetUserCredentials
       source = GetSourceName()
 
@@ -2863,17 +2902,23 @@ class AppCfgApp(object):
     return self._ParseYamlFile(basepath, 'backends',
                                backendinfo.LoadBackendInfo)
 
-  def _ParseIndexYaml(self, basepath):
+  def _ParseIndexYaml(self, basepath, appyaml=None):
     """Parses the index.yaml file.
 
     Args:
       basepath: the directory of the application.
-
+      appyaml: The app.yaml, if present.
     Returns:
       A single parsed yaml file or None if the file does not exist.
     """
-    return self._ParseYamlFile(basepath, 'index',
-                               datastore_index.ParseIndexDefinitions)
+    index_yaml = self._ParseYamlFile(basepath,
+                                     'index',
+                                     datastore_index.ParseIndexDefinitions)
+    if not index_yaml:
+      return None
+    self._SetApplication(index_yaml, 'index', appyaml)
+
+    return index_yaml
 
   def _SetApplication(self, dest_yaml, basename, appyaml=None):
     """Parses and sets the application property onto the dest_yaml parameter.
@@ -3036,6 +3081,10 @@ class AppCfgApp(object):
     Returns:
       An appinfo.AppInfoSummary if one was returned from the Deploy, None
       otherwise.
+
+    Raises:
+      RuntimeError: If go-app-builder fails to generate a mapping from relative
+      paths to absolute paths, its stderr is raised.
     """
 
     if not self.options.precompilation and appyaml.runtime == 'go':
@@ -3076,16 +3125,16 @@ class AppCfgApp(object):
         try:
           p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, env={})
-          rc = p.wait()
+          (stdout, stderr) = p.communicate()
         except Exception, e:
           raise RuntimeError('failed running go-app-builder', e)
-        if rc != 0:
-          raise RuntimeError(p.stderr.read())
+        if p.returncode != 0:
+          raise RuntimeError(stderr)
 
 
 
 
-        overlay = dict([l.split('|') for l in p.stdout.read().split('\n') if l])
+        overlay = dict([l.split('|') for l in stdout.split('\n') if l])
         logging.info('GOPATH overlay: %s', overlay)
 
         def ofunc(path):
@@ -3130,8 +3179,6 @@ class AppCfgApp(object):
 
   def Update(self):
     """Updates and deploys a new appversion and global app configs."""
-    appyaml = None
-    rpcserver = self._GetRpcServer()
     if not os.path.isdir(self.basepath):
 
       self.UpdateUsingSpecificFiles()
@@ -3142,6 +3189,8 @@ class AppCfgApp(object):
     appyaml = self._ParseAppInfoFromYaml(
         self.basepath,
         basename=os.path.splitext(yaml_file_basename)[0])
+    self.runtime = appyaml.runtime
+    rpcserver = self._GetRpcServer()
 
 
 
@@ -3169,6 +3218,10 @@ class AppCfgApp(object):
     if cron_yaml and cron_yaml.application != appyaml.application:
       return _AbortAppMismatch('cron.yaml')
 
+    index_defs = self._ParseIndexYaml(self.basepath, appyaml)
+    if index_defs and index_defs.application != appyaml.application:
+      return _AbortAppMismatch('index.yaml')
+
     self.UpdateVersion(rpcserver, self.basepath, appyaml, yaml_file_basename)
 
     if appyaml.runtime == 'python':
@@ -3183,9 +3236,8 @@ class AppCfgApp(object):
 
 
 
-    index_defs = self._ParseIndexYaml(self.basepath)
     if index_defs:
-      index_upload = IndexDefinitionUpload(rpcserver, appyaml, index_defs)
+      index_upload = IndexDefinitionUpload(rpcserver, index_defs)
       try:
         index_upload.DoUpload()
       except urllib2.HTTPError, e:
@@ -3244,8 +3296,6 @@ class AppCfgApp(object):
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
 
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
-
 
     index_defs = self._ParseIndexYaml(self.basepath)
     if index_defs is None:
@@ -3253,7 +3303,6 @@ class AppCfgApp(object):
 
     rpcserver = self._GetRpcServer()
     vacuum = VacuumIndexesOperation(rpcserver,
-                                    appyaml,
                                     self.options.force_delete)
     vacuum.DoVacuum(index_defs)
 
@@ -3287,14 +3336,12 @@ class AppCfgApp(object):
     if self.args:
       self.parser.error('Expected a single <directory> argument.')
 
-
-    appyaml = self._ParseAppInfoFromYaml(self.basepath)
     rpcserver = self._GetRpcServer()
 
 
     index_defs = self._ParseIndexYaml(self.basepath)
     if index_defs:
-      index_upload = IndexDefinitionUpload(rpcserver, appyaml, index_defs)
+      index_upload = IndexDefinitionUpload(rpcserver, index_defs)
       index_upload.DoUpload()
     else:
       print >>sys.stderr, 'Could not find index configuration. No action taken.'
@@ -3719,6 +3766,31 @@ class AppCfgApp(object):
                                        module,
                                        version)
     version_setter.SetVersion()
+
+
+  def MigrateTraffic(self):
+    """Migrates traffic."""
+    if len(self.args) == 1:
+      appyaml = self._ParseAppInfoFromYaml(self.args[0])
+      app_id = appyaml.application
+      version = appyaml.version
+    elif not self.args:
+      if not (self.options.app_id and self.options.version):
+        self.parser.error(
+            ('Expected a <directory> argument or both --application and '
+             '--version flags.'))
+    else:
+      self._PrintHelpAndExit()
+
+
+    if self.options.app_id:
+      app_id = self.options.app_id
+    if self.options.version:
+      version = self.options.version
+
+    traffic_migrator = TrafficMigrator(
+        self._GetRpcServer(), app_id, version)
+    traffic_migrator.MigrateTraffic()
 
   def RequestLogs(self):
     """Write request logs to a file."""
@@ -4477,8 +4549,31 @@ Defaults to using the application, version and module specified in app.yaml;
 use the --application, --version and --module flags to override these values.
 The --module flag can also be a comma-delimited string of several modules. (ex.
 module1,module2,module2) In this case, the default version of each module will
-be changed to the version specified.""",
+be changed to the version specified.
+
+The 'migrate_traffic' command can be thought of as a safer version of this
+command.""",
           uses_basepath=False),
+
+      'migrate_traffic': Action(
+          function='MigrateTraffic',
+          usage='%prog [options] migrate_traffic [directory]',
+          short_desc='Migrates traffic to another version.',
+          long_desc="""
+The 'migrate_traffic' command gradually gradually sends an increasing fraction
+of traffic your app's traffic from the current default version to another
+version. Once all traffic has been migrated, the new version is set as the
+default version.
+
+app.yaml specifies the target application, version, and (optionally) module; use
+the --application, --version and --module flags to override these values.
+
+Can be thought of as an enhanced version of the 'set_default_version'
+command.""",
+
+          uses_basepath=False,
+
+          hidden=True),
 
       'resource_limits_info': Action(
           function='ResourceLimitsInfo',

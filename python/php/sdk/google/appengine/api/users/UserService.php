@@ -105,9 +105,9 @@ final class UserService {
    */
   public static function getCurrentUser() {
     $email = getenv('USER_EMAIL');
-    $userId =  getenv('USER_ID');
-    $federatedIdentity =  getenv('FEDERATED_IDENTITY');
-    $federatedProvider =  getenv('FEDERATED_PROVIDER');
+    $userId = getenv('USER_ID');
+    $federatedIdentity = getenv('FEDERATED_IDENTITY');
+    $federatedProvider = getenv('FEDERATED_PROVIDER');
 
     if (!$email && !$federatedIdentity) {
       return null;

@@ -486,7 +486,7 @@ class BlobDownloadTestGoogleStorage(BlobDownloadTest):
     if content_type:
       options['content-type'] = content_type
     blob_key = stub.post_start_creation(filename, options)
-    stub.put_continue_creation(blob_key, data, (0, len(data) - 1), True)
+    stub.put_continue_creation(blob_key, data, (0, len(data) - 1), len(data))
     self.blob_storage.StoreBlob(blob_key, cStringIO.StringIO(data))
 
     return blob_key

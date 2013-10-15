@@ -58,8 +58,17 @@ def start_process(args, input_string='', env=None, cwd=None, stdout=None,
   with _popen_lock:
     logging.debug('Starting process %r with input=%r, env=%r, cwd=%r',
                   args, input_string, env, cwd)
+
+    if sys.platform == 'win32':
+      # Suppress the display of the console window on Windows.
+      startupinfo = subprocess.STARTUPINFO()
+      startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+      startupinfo.wShowWindow = subprocess.SW_HIDE
+    else:
+      startupinfo = None
+
     p = subprocess.Popen(args, env=env, cwd=cwd, stdout=stdout, stderr=stderr,
-                         stdin=subprocess.PIPE)
+                         stdin=subprocess.PIPE, startupinfo=startupinfo)
     if _SUBPROCESS_STDIN_IS_THREAD_HOSTILE:
       p.stdin.write(input_string)
       p.stdin.close()

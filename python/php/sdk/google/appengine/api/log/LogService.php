@@ -280,14 +280,14 @@ final class LogService {
   }
 
   private static function setDefaultModuleVersion($request) {
-      $mv = $request->addModuleVersion();
-      $current_module = getenv('CURRENT_MODULE_ID');
-      if ($current_module !== 'default') {
-        $mv->setModuleId($current_module);
-      }
-      $current_version = getenv('CURRENT_VERSION_ID');
-      $whole_version = explode('.', $current_version)[0];
-      $mv->setVersionId($whole_version);
+    $mv = $request->addModuleVersion();
+    $current_module = getenv('CURRENT_MODULE_ID');
+    if ($current_module !== 'default') {
+      $mv->setModuleId($current_module);
+    }
+    $current_version = getenv('CURRENT_VERSION_ID');
+    $whole_version = explode('.', $current_version)[0];
+    $mv->setVersionId($whole_version);
   }
 
   /**
@@ -317,11 +317,10 @@ final class LogService {
     self::setDefaultModuleVersion($request);
 
     if (is_string($request_ids)) {
-        if (!preg_match(self::$REQUEST_ID_REGEX, $request_ids)) {
-          throw new \InvalidArgumentException(
-              "Invalid request id $request_ids");
-        }
-        $request->addRequestId($request_ids);
+      if (!preg_match(self::$REQUEST_ID_REGEX, $request_ids)) {
+        throw new \InvalidArgumentException("Invalid request id $request_ids");
+      }
+      $request->addRequestId($request_ids);
     } else if (is_array($request_ids)) {
       foreach ($request_ids as $id) {
         if (!is_string($id)) {

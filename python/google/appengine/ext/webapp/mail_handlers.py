@@ -23,7 +23,7 @@
 Contains handlers to help with receiving mail and mail bounces.
 
   InboundMailHandler: Has helper method for easily setting up
-    email recievers.
+    email receivers.
   BounceNotificationHandler: Has helper method for easily setting
     up bounce notification receiver. Will parse HTTP request to
     extract bounce notification.

@@ -19,6 +19,28 @@
 import re
 
 
+_cescape_utf8_to_str = [chr(i) for i in xrange(0, 256)]
+_cescape_utf8_to_str[9] = r'\t'
+_cescape_utf8_to_str[10] = r'\n'
+_cescape_utf8_to_str[13] = r'\r'
+_cescape_utf8_to_str[39] = r"\'"
+
+_cescape_utf8_to_str[34] = r'\"'
+_cescape_utf8_to_str[92] = r'\\'
+
+
+_cescape_byte_to_str = ([r'\%03o' % i for i in xrange(0, 32)] +
+                        [chr(i) for i in xrange(32, 127)] +
+                        [r'\%03o' % i for i in xrange(127, 256)])
+_cescape_byte_to_str[9] = r'\t'
+_cescape_byte_to_str[10] = r'\n'
+_cescape_byte_to_str[13] = r'\r'
+_cescape_byte_to_str[39] = r"\'"
+
+_cescape_byte_to_str[34] = r'\"'
+_cescape_byte_to_str[92] = r'\\'
+
+
 def CEscape(text, as_utf8):
   """Escape a string for use in an ascii protocol buffer.
 
@@ -35,22 +57,9 @@ def CEscape(text, as_utf8):
     Escaped string
   """
 
-  def EscapeChar(c):
-    """Escape one character."""
-    o = ord(c)
-    if o == 10: return r'\n'
-    if o == 13: return r'\r'
-    if o == 9: return r'\t'
-    if o == 39: return r"\'"
-
-    if o == 34: return r'\"'
-    if o == 92: return r'\\'
-
-
-    if not as_utf8 and (o >= 127 or o < 32):
-      return r'\%03o' % o
-    return c
-  return ''.join([EscapeChar(c) for c in text])
+  if as_utf8:
+    return ''.join(_cescape_utf8_to_str[ord(c)] for c in text)
+  return ''.join(_cescape_byte_to_str[ord(c)] for c in text)
 
 
 _CUNESCAPE_HEX = re.compile(r'(\\+)x([0-9a-fA-F])(?![0-9a-fA-F])')

@@ -263,8 +263,8 @@ class Application(object):
     blobkey = gs_stub.post_start_creation('/' + gs_filename,
                                           {'content-type': content_type})
     content = blob_file.read()
-    return gs_stub.put_continue_creation(blobkey, content,
-                                         (0, len(content) - 1), True, filename)
+    return gs_stub.put_continue_creation(
+        blobkey, content, (0, len(content) - 1), len(content), filename)
 
   def _preprocess_data(self, content_type, blob_file,
                        filename, base64_encoding):

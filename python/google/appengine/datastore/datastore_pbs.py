@@ -40,56 +40,80 @@ This module is internal and should not be used by client applications.
 
 from google.appengine.datastore import entity_pb
 
-from google.appengine.datastore import datastore_pb
-from google.appengine.datastore import datastore_v4_pb
 from google.appengine.datastore import entity_v4_pb
 
 
 
-_MEANING_ATOM_CATEGORY = 1
-_MEANING_URL = 2
-_MEANING_ATOM_TITLE = 3
-_MEANING_ATOM_CONTENT = 4
-_MEANING_ATOM_SUMMARY = 5
-_MEANING_ATOM_AUTHOR = 6
-_MEANING_GD_EMAIL = 8
-_MEANING_GEORSS_POINT = 9
-_MEANING_GD_IM = 10
-_MEANING_GD_PHONENUMBER = 11
-_MEANING_GD_POSTALADDRESS = 12
-_MEANING_PERCENT = 13
-_MEANING_TEXT = 15
-_MEANING_BYTESTRING = 16
-_MEANING_INDEX_ONLY = 18
-_MEANING_PREDEFINED_ENTITY_USER = 20
-_MEANING_PREDEFINED_ENTITY_POINT = 21
-_MEANING_ZLIB = 22
+MEANING_ATOM_CATEGORY = 1
+MEANING_URL = 2
+MEANING_ATOM_TITLE = 3
+MEANING_ATOM_CONTENT = 4
+MEANING_ATOM_SUMMARY = 5
+MEANING_ATOM_AUTHOR = 6
+MEANING_GD_EMAIL = 8
+MEANING_GEORSS_POINT = 9
+MEANING_GD_IM = 10
+MEANING_GD_PHONENUMBER = 11
+MEANING_GD_POSTALADDRESS = 12
+MEANING_PERCENT = 13
+MEANING_TEXT = 15
+MEANING_BYTESTRING = 16
+MEANING_INDEX_ONLY = 18
+MEANING_PREDEFINED_ENTITY_USER = 20
+MEANING_PREDEFINED_ENTITY_POINT = 21
+MEANING_ZLIB = 22
 
 
-_URI_MEANING_ZLIB = 'ZLIB'
+URI_MEANING_ZLIB = 'ZLIB'
 
 
-_MAX_INDEXED_BLOB_BYTES = 500
+MAX_INDEXED_BLOB_BYTES = 500
 
 
-_PROPERTY_NAME_X = 'x'
-_PROPERTY_NAME_Y = 'y'
+PROPERTY_NAME_X = 'x'
+PROPERTY_NAME_Y = 'y'
 
 
-_PROPERTY_NAME_EMAIL = 'email'
-_PROPERTY_NAME_AUTH_DOMAIN = 'auth_domain'
-_PROPERTY_NAME_USER_ID = 'user_id'
-_PROPERTY_NAME_INTERNAL_ID = 'internal_id'
-_PROPERTY_NAME_FEDERATED_IDENTITY = 'federated_identity'
-_PROPERTY_NAME_FEDERATED_PROVIDER = 'federated_provider'
+PROPERTY_NAME_EMAIL = 'email'
+PROPERTY_NAME_AUTH_DOMAIN = 'auth_domain'
+PROPERTY_NAME_USER_ID = 'user_id'
+PROPERTY_NAME_INTERNAL_ID = 'internal_id'
+PROPERTY_NAME_FEDERATED_IDENTITY = 'federated_identity'
+PROPERTY_NAME_FEDERATED_PROVIDER = 'federated_provider'
 
 
-_PROPERTY_NAME_KEY = '__key__'
+PROPERTY_NAME_KEY = '__key__'
 
-_DEFAULT_GAIA_ID = 0
+DEFAULT_GAIA_ID = 0
 
 
-def _is_valid_utf8(s):
+def v4_key_to_string(v4_key):
+  """Generates a string representing a key's path.
+
+  The output makes no effort to qualify special characters in strings.
+
+  The key need not be valid, but if any of the key path elements have
+  both a name and an ID the name is ignored.
+
+  Args:
+    v4_key: a datastore_v4_pb.Key
+
+  Returns:
+    a string representing the key's path
+  """
+  path_element_strings = []
+  for path_element in v4_key.path_element_list():
+    if path_element.has_id():
+      id_or_name = str(path_element.id())
+    elif path_element.has_name():
+      id_or_name = path_element.name()
+    else:
+      id_or_name = ''
+    path_element_strings.append('%s: %s' % (path_element.kind(), id_or_name))
+  return '[%s]' % ', '.join(path_element_strings)
+
+
+def is_valid_utf8(s):
   try:
     s.decode('utf-8')
     return True
@@ -97,7 +121,7 @@ def _is_valid_utf8(s):
     return False
 
 
-def _check_conversion(condition, message):
+def check_conversion(condition, message):
   """Asserts a conversion condition and raises an error if it's not met.
 
   Args:
@@ -141,6 +165,22 @@ class _EntityConverter(object):
       if v4_element.has_name():
         v3_element.set_name(v4_element.name())
 
+  def v4_to_v3_references(self, v4_keys):
+    """Converts a list of v4 Keys to a list of v3 References.
+
+    Args:
+      v4_keys: a list of entity_v4_pb.Key objects
+
+    Returns:
+      a list of entity_pb.Reference objects
+    """
+    v3_refs = []
+    for v4_key in v4_keys:
+      v3_ref = entity_pb.Reference()
+      self.v4_to_v3_reference(v4_key, v3_ref)
+      v3_refs.append(v3_ref)
+    return v3_refs
+
   def v3_to_v4_key(self, v3_ref, v4_key):
     """Converts a v3 Reference to a v4 Key.
 
@@ -161,6 +201,22 @@ class _EntityConverter(object):
         v4_element.set_id(v3_element.id())
       if v3_element.has_name():
         v4_element.set_name(v3_element.name())
+
+  def v3_to_v4_keys(self, v3_refs):
+    """Converts a list of v3 References to a list of v4 Keys.
+
+    Args:
+      v3_refs: a list of entity_pb.Reference objects
+
+    Returns:
+      a list of entity_v4_pb.Key objects
+    """
+    v4_keys = []
+    for v3_ref in v3_refs:
+      v4_key = entity_v4_pb.Key()
+      self.v3_to_v4_key(v3_ref, v4_key)
+      v4_keys.append(v4_key)
+    return v4_keys
 
   def v4_to_v3_entity(self, v4_entity, v3_entity):
     """Converts a v4 Entity to a v3 EntityProto.
@@ -189,7 +245,7 @@ class _EntityConverter(object):
       v3_ref = v3_entity.key()
       if (self.__v3_reference_has_id_or_name(v3_ref)
           or v3_ref.path().element_size() > 1):
-        self._v3_reference_to_group(v3_ref, v3_entity.mutable_entity_group())
+        self.v3_reference_to_group(v3_ref, v3_entity.mutable_entity_group())
     else:
 
 
@@ -238,7 +294,7 @@ class _EntityConverter(object):
     elif v4_value.has_key_value():
       v3_ref = entity_pb.Reference()
       self.v4_to_v3_reference(v4_value.key_value(), v3_ref)
-      self._v3_reference_to_v3_property_value(v3_ref, v3_value)
+      self.v3_reference_to_v3_property_value(v3_ref, v3_value)
     elif v4_value.has_blob_key_value():
       v3_value.set_stringvalue(v4_value.blob_key_value())
     elif v4_value.has_string_value():
@@ -248,11 +304,11 @@ class _EntityConverter(object):
     elif v4_value.has_entity_value():
       v4_entity_value = v4_value.entity_value()
       v4_meaning = v4_value.meaning()
-      if (v4_meaning == _MEANING_GEORSS_POINT
-          or v4_meaning == _MEANING_PREDEFINED_ENTITY_POINT):
+      if (v4_meaning == MEANING_GEORSS_POINT
+          or v4_meaning == MEANING_PREDEFINED_ENTITY_POINT):
         self.__v4_to_v3_point_value(v4_entity_value,
                                     v3_value.mutable_pointvalue())
-      elif v4_meaning == _MEANING_PREDEFINED_ENTITY_USER:
+      elif v4_meaning == MEANING_PREDEFINED_ENTITY_USER:
         self.__v4_to_v3_user_value(v4_entity_value,
                                    v3_value.mutable_uservalue())
       else:
@@ -292,7 +348,7 @@ class _EntityConverter(object):
 
     is_zlib_value = False
     if v3_uri_meaning:
-      if v3_uri_meaning == _URI_MEANING_ZLIB:
+      if v3_uri_meaning == URI_MEANING_ZLIB:
         if v3_property_value.has_stringvalue():
           is_zlib_value = True
           if v3_meaning != entity_pb.Property.BLOB:
@@ -337,7 +393,7 @@ class _EntityConverter(object):
           v3_meaning = None
       else:
         string_value = v3_property_value.stringvalue()
-        if _is_valid_utf8(string_value):
+        if is_valid_utf8(string_value):
           if v3_meaning == entity_pb.Property.BLOBKEY:
             v4_value.set_blob_key_value(string_value)
             v3_meaning = None
@@ -355,17 +411,17 @@ class _EntityConverter(object):
       self.__v3_to_v4_point_entity(v3_property_value.pointvalue(),
                                    v4_value.mutable_entity_value())
       if v3_meaning != entity_pb.Property.GEORSS_POINT:
-        v4_value.set_meaning(_MEANING_PREDEFINED_ENTITY_POINT)
+        v4_value.set_meaning(MEANING_PREDEFINED_ENTITY_POINT)
         v3_meaning = None
     elif v3_property_value.has_uservalue():
       self.__v3_to_v4_user_entity(v3_property_value.uservalue(),
                                   v4_value.mutable_entity_value())
-      v4_value.set_meaning(_MEANING_PREDEFINED_ENTITY_USER)
+      v4_value.set_meaning(MEANING_PREDEFINED_ENTITY_USER)
     else:
       pass
 
     if is_zlib_value:
-      v4_value.set_meaning(_MEANING_ZLIB)
+      v4_value.set_meaning(MEANING_ZLIB)
     elif v3_meaning:
       v4_value.set_meaning(v3_meaning)
 
@@ -399,8 +455,8 @@ class _EntityConverter(object):
     elif v4_value.has_blob_key_value():
       v3_property.set_meaning(entity_pb.Property.BLOBKEY)
     elif v4_value.has_blob_value():
-      if v4_meaning == _MEANING_ZLIB:
-        v3_property.set_meaning_uri(_URI_MEANING_ZLIB)
+      if v4_meaning == MEANING_ZLIB:
+        v3_property.set_meaning_uri(URI_MEANING_ZLIB)
       if v4_meaning == entity_pb.Property.BYTESTRING:
         if v4_value.indexed():
           pass
@@ -413,9 +469,9 @@ class _EntityConverter(object):
           v3_property.set_meaning(entity_pb.Property.BLOB)
         v4_meaning = None
     elif v4_value.has_entity_value():
-      if v4_meaning != _MEANING_GEORSS_POINT:
-        if (v4_meaning != _MEANING_PREDEFINED_ENTITY_POINT
-            and v4_meaning != _MEANING_PREDEFINED_ENTITY_USER):
+      if v4_meaning != MEANING_GEORSS_POINT:
+        if (v4_meaning != MEANING_PREDEFINED_ENTITY_POINT
+            and v4_meaning != MEANING_PREDEFINED_ENTITY_USER):
           v3_property.set_meaning(entity_pb.Property.ENTITY_PROTO)
         v4_meaning = None
     else:
@@ -607,9 +663,9 @@ class _EntityConverter(object):
     """
     v4_entity.Clear()
     v4_entity.property_list().append(
-        self.__v4_double_property(_PROPERTY_NAME_X, v3_point_value.x(), False))
+        self.__v4_double_property(PROPERTY_NAME_X, v3_point_value.x(), False))
     v4_entity.property_list().append(
-        self.__v4_double_property(_PROPERTY_NAME_Y, v3_point_value.y(), False))
+        self.__v4_double_property(PROPERTY_NAME_Y, v3_point_value.y(), False))
 
   def __v4_to_v3_user_value(self, v4_user_entity, v3_user_value):
     """Converts a v4 user Entity to a v3 UserValue.
@@ -622,27 +678,27 @@ class _EntityConverter(object):
     name_to_v4_property = self.__build_name_to_v4_property_map(v4_user_entity)
 
     v3_user_value.set_email(self.__get_single_v4_string_value(
-        name_to_v4_property[_PROPERTY_NAME_EMAIL]))
+        name_to_v4_property[PROPERTY_NAME_EMAIL]))
     v3_user_value.set_auth_domain(self.__get_single_v4_string_value(
-        name_to_v4_property[_PROPERTY_NAME_AUTH_DOMAIN]))
-    if _PROPERTY_NAME_USER_ID in name_to_v4_property:
+        name_to_v4_property[PROPERTY_NAME_AUTH_DOMAIN]))
+    if PROPERTY_NAME_USER_ID in name_to_v4_property:
       v3_user_value.set_obfuscated_gaiaid(
           self.__get_single_v4_string_value(
-              name_to_v4_property[_PROPERTY_NAME_USER_ID]))
-    if _PROPERTY_NAME_INTERNAL_ID in name_to_v4_property:
+              name_to_v4_property[PROPERTY_NAME_USER_ID]))
+    if PROPERTY_NAME_INTERNAL_ID in name_to_v4_property:
       v3_user_value.set_gaiaid(self.__get_single_v4_integer_value(
-          name_to_v4_property[_PROPERTY_NAME_INTERNAL_ID]))
+          name_to_v4_property[PROPERTY_NAME_INTERNAL_ID]))
     else:
 
       v3_user_value.set_gaiaid(0)
-    if _PROPERTY_NAME_FEDERATED_IDENTITY in name_to_v4_property:
+    if PROPERTY_NAME_FEDERATED_IDENTITY in name_to_v4_property:
       v3_user_value.set_federated_identity(
           self.__get_single_v4_string_value(name_to_v4_property[
-              _PROPERTY_NAME_FEDERATED_IDENTITY]))
-    if _PROPERTY_NAME_FEDERATED_PROVIDER in name_to_v4_property:
+              PROPERTY_NAME_FEDERATED_IDENTITY]))
+    if PROPERTY_NAME_FEDERATED_PROVIDER in name_to_v4_property:
       v3_user_value.set_federated_provider(
           self.__get_single_v4_string_value(name_to_v4_property[
-              _PROPERTY_NAME_FEDERATED_PROVIDER]))
+              PROPERTY_NAME_FEDERATED_PROVIDER]))
 
   def __v3_to_v4_user_entity(self, v3_user_value, v4_entity):
     """Converts a v3 UserValue to a v4 user Entity.
@@ -653,30 +709,30 @@ class _EntityConverter(object):
     """
     v4_entity.Clear()
     v4_entity.property_list().append(
-        self.__v4_string_property(_PROPERTY_NAME_EMAIL, v3_user_value.email(),
+        self.__v4_string_property(PROPERTY_NAME_EMAIL, v3_user_value.email(),
                                   False))
     v4_entity.property_list().append(self.__v4_string_property(
-        _PROPERTY_NAME_AUTH_DOMAIN,
+        PROPERTY_NAME_AUTH_DOMAIN,
         v3_user_value.auth_domain(), False))
 
     if v3_user_value.gaiaid() != 0:
       v4_entity.property_list().append(self.__v4_integer_property(
-          _PROPERTY_NAME_INTERNAL_ID,
+          PROPERTY_NAME_INTERNAL_ID,
           v3_user_value.gaiaid(),
           False))
     if v3_user_value.has_obfuscated_gaiaid():
       v4_entity.property_list().append(self.__v4_string_property(
-          _PROPERTY_NAME_USER_ID,
+          PROPERTY_NAME_USER_ID,
           v3_user_value.obfuscated_gaiaid(),
           False))
     if v3_user_value.has_federated_identity():
       v4_entity.property_list().append(self.__v4_string_property(
-          _PROPERTY_NAME_FEDERATED_IDENTITY,
+          PROPERTY_NAME_FEDERATED_IDENTITY,
           v3_user_value.federated_identity(),
           False))
     if v3_user_value.has_federated_provider():
       v4_entity.property_list().append(self.__v4_string_property(
-          _PROPERTY_NAME_FEDERATED_PROVIDER,
+          PROPERTY_NAME_FEDERATED_PROVIDER,
           v3_user_value.federated_provider(),
           False))
 
@@ -750,7 +806,7 @@ class _EntityConverter(object):
     last_element = path.element(path.element_size() - 1)
     return last_element.has_id() or last_element.has_name()
 
-  def _v3_reference_to_group(self, v3_ref, group):
+  def v3_reference_to_group(self, v3_ref, group):
     """Converts a v3 Reference to a v3 Path representing the entity group.
 
     The entity group is represented as an entity_pb.Path containing only the
@@ -765,7 +821,7 @@ class _EntityConverter(object):
     assert path.element_size() >= 1
     group.add_element().CopyFrom(path.element(0))
 
-  def _v3_reference_to_v3_property_value(self, v3_ref, v3_property_value):
+  def v3_reference_to_v3_property_value(self, v3_ref, v3_property_value):
     """Converts a v3 Reference to a v3 PropertyValue.
 
     Args:
@@ -816,788 +872,3 @@ __entity_converter = _EntityConverter()
 def get_entity_converter():
   """Returns a converter for v3 and v4 entities and keys."""
   return __entity_converter
-
-
-class _BaseQueryConverter(object):
-  """Base converter for queries."""
-
-  def __init__(self, entity_converter):
-    self._entity_converter = entity_converter
-
-  def v4_to_v3_compiled_cursor(self, v4_cursor, v3_compiled_cursor):
-    """Converts a v4 cursor string to a v3 CompiledCursor.
-
-    Args:
-      v4_cursor: a string representing a v4 query cursor
-      v3_compiled_cursor: a datastore_pb.CompiledCursor to populate
-    """
-    raise NotImplementedError
-
-  def v3_to_v4_compiled_cursor(self, v3_compiled_cursor):
-    """Converts a v3 CompiledCursor to a v4 cursor string.
-
-    Args:
-      v3_compiled_cursor: a datastore_pb.CompiledCursor
-
-    Returns:
-      a string representing a v4 query cursor
-    """
-    raise NotImplementedError
-
-  def v4_to_v3_query(self, v4_partition_id, v4_query, v3_query):
-    """Converts a v4 Query to a v3 Query.
-
-    Args:
-      v4_partition_id: a datastore_v4_pb.PartitionId
-      v4_query: a datastore_v4_pb.Query
-      v3_query: a datastore_pb.Query to populate
-
-    Raises:
-      InvalidConversionError if the query cannot be converted
-    """
-    v3_query.Clear()
-
-    if v4_partition_id.dataset_id():
-      v3_query.set_app(v4_partition_id.dataset_id())
-    if v4_partition_id.has_namespace():
-      v3_query.set_name_space(v4_partition_id.namespace())
-
-    v3_query.set_persist_offset(True)
-    v3_query.set_require_perfect_plan(True)
-    v3_query.set_compile(True)
-
-
-    if v4_query.has_limit():
-      v3_query.set_limit(v4_query.limit())
-    if v4_query.offset():
-      v3_query.set_offset(v4_query.offset())
-    if v4_query.has_start_cursor():
-      self.v4_to_v3_compiled_cursor(v4_query.start_cursor(),
-                                    v3_query.mutable_compiled_cursor())
-    if v4_query.has_end_cursor():
-      self.v4_to_v3_compiled_cursor(v4_query.end_cursor(),
-                                    v3_query.mutable_end_compiled_cursor())
-
-
-    if v4_query.kind_list():
-      _check_conversion(len(v4_query.kind_list()) == 1,
-                        'multiple kinds not supported')
-      v3_query.set_kind(v4_query.kind(0).name())
-
-
-    has_key_projection = False
-    for prop in v4_query.projection_list():
-      if prop.property().name() == _PROPERTY_NAME_KEY:
-        has_key_projection = True
-      else:
-        v3_query.add_property_name(prop.property().name())
-    if has_key_projection and not v3_query.property_name_list():
-      v3_query.set_keys_only(True)
-
-
-    for prop in v4_query.group_by_list():
-      v3_query.add_group_by_property_name(prop.name())
-
-
-    self.__populate_v3_filters(v4_query.filter(), v3_query)
-
-
-    for v4_order in v4_query.order_list():
-      v3_order = v3_query.add_order()
-      v3_order.set_property(v4_order.property().name())
-      if v4_order.has_direction():
-        v3_order.set_direction(v4_order.direction())
-
-  def v3_to_v4_query(self, v3_query, v4_query):
-    """Converts a v3 Query to a v4 Query.
-
-    Args:
-      v3_query: a datastore_pb.Query
-      v4_query: a datastore_v4_pb.Query to populate
-
-    Raises:
-      InvalidConversionError if the query cannot be converted
-    """
-    v4_query.Clear()
-
-    _check_conversion(not v3_query.has_distinct(),
-                      'distinct option not supported')
-    _check_conversion(v3_query.require_perfect_plan(),
-                      'non-perfect plans not supported')
-
-
-
-    if v3_query.has_limit():
-      v4_query.set_limit(v3_query.limit())
-    if v3_query.offset():
-      v4_query.set_offset(v3_query.offset())
-    if v3_query.has_compiled_cursor():
-      v4_query.set_start_cursor(
-          self.v3_to_v4_compiled_cursor(v3_query.compiled_cursor()))
-    if v3_query.has_end_compiled_cursor():
-      v4_query.set_end_cursor(
-          self.v3_to_v4_compiled_cursor(v3_query.end_compiled_cursor()))
-
-
-    if v3_query.has_kind():
-      v4_query.add_kind().set_name(v3_query.kind())
-
-
-    for name in v3_query.property_name_list():
-      v4_query.add_projection().mutable_property().set_name(name)
-    if v3_query.keys_only():
-      v4_query.add_projection().mutable_property().set_name(_PROPERTY_NAME_KEY)
-
-
-    for name in v3_query.group_by_property_name_list():
-      v4_query.add_group_by().set_name(name)
-
-
-    num_v4_filters = len(v3_query.filter_list())
-    if v3_query.has_ancestor():
-      num_v4_filters += 1
-
-    if num_v4_filters == 1:
-      get_property_filter = self.__get_property_filter
-    elif num_v4_filters >= 1:
-      v4_query.mutable_filter().mutable_composite_filter().set_operator(
-          datastore_v4_pb.CompositeFilter.AND)
-      get_property_filter = self.__add_property_filter
-
-    if v3_query.has_ancestor():
-      self.__v3_query_to_v4_ancestor_filter(v3_query,
-                                            get_property_filter(v4_query))
-    for v3_filter in v3_query.filter_list():
-      self.__v3_filter_to_v4_property_filter(v3_filter,
-                                             get_property_filter(v4_query))
-
-
-    for v3_order in v3_query.order_list():
-      v4_order = v4_query.add_order()
-      v4_order.mutable_property().set_name(v3_order.property())
-      if v3_order.has_direction():
-        v4_order.set_direction(v3_order.direction())
-
-  def __get_property_filter(self, v4_query):
-    """Returns the PropertyFilter from the query's top-level filter."""
-    return v4_query.mutable_filter().mutable_property_filter()
-
-  def __add_property_filter(self, v4_query):
-    """Adds and returns a PropertyFilter from the query's composite filter."""
-    v4_comp_filter = v4_query.mutable_filter().mutable_composite_filter()
-    return v4_comp_filter.add_filter().mutable_property_filter()
-
-  def __populate_v3_filters(self, v4_filter, v3_query):
-    """Populates a filters for a v3 Query.
-
-    Args:
-      v4_filter: a datastore_v4_pb.Filter
-      v3_query: a datastore_pb.Query to populate with filters
-    """
-    if v4_filter.has_property_filter():
-      v4_property_filter = v4_filter.property_filter()
-      if (v4_property_filter.operator()
-          == datastore_v4_pb.PropertyFilter.HAS_ANCESTOR):
-        _check_conversion(v4_property_filter.value().has_key_value(),
-                          'HAS_ANCESTOR requires a reference value')
-        _check_conversion((v4_property_filter.property().name()
-                           == _PROPERTY_NAME_KEY),
-                          'unsupported property')
-        _check_conversion(not v3_query.has_ancestor(),
-                          'duplicate ancestor constraint')
-        self._entity_converter.v4_to_v3_reference(
-            v4_property_filter.value().key_value(),
-            v3_query.mutable_ancestor())
-      else:
-        v3_filter = v3_query.add_filter()
-        property_name = v4_property_filter.property().name()
-        v3_filter.set_op(v4_property_filter.operator())
-        _check_conversion(not v4_property_filter.value().list_value_list(),
-                          ('unsupported value type, %s, in property filter'
-                           ' on "%s"' % ('list_value', property_name)))
-        prop = v3_filter.add_property()
-        prop.set_multiple(False)
-        prop.set_name(property_name)
-        self._entity_converter.v4_value_to_v3_property_value(
-            v4_property_filter.value(), prop.mutable_value())
-    elif v4_filter.has_composite_filter():
-      _check_conversion((v4_filter.composite_filter().operator()
-                         == datastore_v4_pb.CompositeFilter.AND),
-                        'unsupported composite property operator')
-      for v4_sub_filter in v4_filter.composite_filter().filter_list():
-        self.__populate_v3_filters(v4_sub_filter, v3_query)
-
-  def __v3_filter_to_v4_property_filter(self, v3_filter, v4_property_filter):
-    """Converts a v3 Filter to a v4 PropertyFilter.
-
-    Args:
-      v3_filter: a datastore_pb.Filter
-      v4_property_filter: a datastore_v4_pb.PropertyFilter to populate
-
-    Raises:
-      InvalidConversionError if the filter cannot be converted
-    """
-    _check_conversion(v3_filter.property_size() == 1, 'invalid filter')
-    _check_conversion(v3_filter.op() <= 5,
-                      'unsupported filter op: %d' % v3_filter.op())
-    v4_property_filter.Clear()
-    v4_property_filter.set_operator(v3_filter.op())
-    v4_property_filter.mutable_property().set_name(v3_filter.property(0).name())
-    self._entity_converter.v3_property_to_v4_value(
-        v3_filter.property(0), True, v4_property_filter.mutable_value())
-
-  def __v3_query_to_v4_ancestor_filter(self, v3_query, v4_property_filter):
-    """Converts a v3 Query to a v4 ancestor PropertyFilter.
-
-    Args:
-      v3_query: a datastore_pb.Query
-      v4_property_filter: a datastore_v4_pb.PropertyFilter to populate
-    """
-    v4_property_filter.Clear()
-    v4_property_filter.set_operator(
-        datastore_v4_pb.PropertyFilter.HAS_ANCESTOR)
-    prop = v4_property_filter.mutable_property()
-    prop.set_name(_PROPERTY_NAME_KEY)
-    self._entity_converter.v3_to_v4_key(
-        v3_query.ancestor(),
-        v4_property_filter.mutable_value().mutable_key_value())
-
-
-class _StubQueryConverter(_BaseQueryConverter):
-  """A query converter suitable for use in stubs."""
-
-  def v4_to_v3_compiled_cursor(self, v4_cursor, v3_compiled_cursor):
-    v3_compiled_cursor.Clear()
-    v3_compiled_cursor.ParseFromString(v4_cursor)
-
-  def v3_to_v4_compiled_cursor(self, v3_compiled_cursor):
-    return v3_compiled_cursor.SerializeToString()
-
-
-
-__stub_query_converter = _StubQueryConverter(__entity_converter)
-
-
-def get_stub_query_converter():
-  """Returns a converter for v3 and v4 queries (not suitable for production).
-
-  This converter is suitable for use in stubs but not for production.
-
-  Returns:
-    a _StubQueryConverter
-  """
-  return __stub_query_converter
-
-
-class _BaseServiceConverter(object):
-  """Base converter for v3 and v4 request/response protos."""
-
-  def __init__(self, entity_converter, query_converter):
-    self._entity_converter = entity_converter
-    self._query_converter = query_converter
-
-  def v4_to_v3_cursor(self, v4_query_handle, v3_cursor):
-    """Converts a v4 cursor string to a v3 Cursor.
-
-    Args:
-      v4_query_handle: a string representing a v4 query handle
-      v3_cursor: a datastore_pb.Cursor to populate
-    """
-    raise NotImplementedError
-
-  def _v3_to_v4_query_handle(self, v3_cursor):
-    """Converts a v3 Cursor to a v4 query handle string.
-
-    Args:
-      v3_cursor: a datastore_pb.Cursor
-
-    Returns:
-      a string representing a v4 cursor
-    """
-    raise NotImplementedError
-
-  def v4_to_v3_txn(self, v4_txn, v3_txn):
-    """Converts a v4 transaction string to a v3 Transaction.
-
-    Args:
-      v4_txn: a string representing a v4 transaction
-      v3_txn: a datastore_pb.Transaction to populate
-    """
-    raise NotImplementedError
-
-  def _v3_to_v4_txn(self, v3_txn):
-    """Converts a v3 Transaction to a v4 transaction string.
-
-    Args:
-      v3_txn: a datastore_pb.Transaction
-
-    Returns:
-      a string representing a v4 transaction
-    """
-    raise NotImplementedError
-
-
-
-
-  def v4_to_v3_begin_transaction_req(self, app_id, v4_req):
-    """Converts a v4 BeginTransactionRequest to a v3 BeginTransactionRequest.
-
-    Args:
-      app_id: app id
-      v4_req: a datastore_v4_pb.BeginTransactionRequest
-
-    Returns:
-      a datastore_pb.BeginTransactionRequest
-    """
-    v3_req = datastore_pb.BeginTransactionRequest()
-    v3_req.set_app(app_id)
-    v3_req.set_allow_multiple_eg(v4_req.cross_group())
-    return v3_req
-
-  def v3_to_v4_begin_transaction_req(self, v3_req):
-    """Converts a v3 BeginTransactionRequest to a v4 BeginTransactionRequest.
-
-    Args:
-      v3_req: a datastore_pb.BeginTransactionRequest
-
-    Returns:
-      a datastore_v4_pb.BeginTransactionRequest
-    """
-    v4_req = datastore_v4_pb.BeginTransactionRequest()
-
-    if v3_req.has_allow_multiple_eg():
-      v4_req.set_cross_group(v3_req.allow_multiple_eg())
-
-    return v4_req
-
-  def v4_begin_transaction_resp_to_v3_txn(self, v4_resp):
-    """Converts a v4 BeginTransactionResponse to a v3 Transaction.
-
-    Args:
-      v4_resp: datastore_v4_pb.BeginTransactionResponse
-
-    Returns:
-      a a datastore_pb.Transaction
-    """
-    v3_txn = datastore_pb.Transaction()
-    self.v4_to_v3_txn(v4_resp.transaction(), v3_txn)
-    return v3_txn
-
-  def v3_to_v4_begin_transaction_resp(self, v3_resp):
-    """Converts a v3 Transaction to a v4 BeginTransactionResponse.
-
-    Args:
-      v3_resp: a datastore_pb.Transaction
-
-    Returns:
-      a datastore_v4_pb.BeginTransactionResponse
-    """
-    v4_resp = datastore_v4_pb.BeginTransactionResponse()
-    v4_resp.set_transaction(self._v3_to_v4_txn(v3_resp))
-    return v4_resp
-
-
-
-
-  def v4_rollback_req_to_v3_txn(self, v4_req):
-    """Converts a v4 RollbackRequest to a v3 Transaction.
-
-    Args:
-      v4_req: a datastore_v4_pb.RollbackRequest
-
-    Returns:
-      a datastore_pb.Transaction
-    """
-    v3_txn = datastore_pb.Transaction()
-    self.v4_to_v3_txn(v4_req.transaction(), v3_txn)
-    return v3_txn
-
-  def v3_to_v4_rollback_req(self, v3_req):
-    """Converts a v3 Transaction to a v4 RollbackRequest.
-
-    Args:
-      v3_req: datastore_pb.Transaction
-
-    Returns:
-      a a datastore_v4_pb.RollbackRequest
-    """
-    v4_req = datastore_v4_pb.RollbackRequest()
-    v4_req.set_transaction(self._v3_to_v4_txn(v3_req))
-    return v4_req
-
-
-
-
-  def v4_commit_req_to_v3_txn(self, v4_req):
-    """Converts a v4 CommitRequest to a v3 Transaction.
-
-    Args:
-      v4_req: a datastore_v4_pb.CommitRequest
-
-    Returns:
-      a datastore_pb.Transaction
-    """
-    v3_txn = datastore_pb.Transaction()
-    self.v4_to_v3_txn(v4_req.transaction(), v3_txn)
-    return v3_txn
-
-
-
-
-  def v4_run_query_req_to_v3_query(self, v4_req):
-    """Converts a v4 RunQueryRequest to a v3 Query.
-
-    GQL is not supported.
-
-    Args:
-      v4_req: a datastore_v4_pb.RunQueryRequest
-
-    Returns:
-      a datastore_pb.Query
-    """
-
-    _check_conversion(not v4_req.has_gql_query(), 'GQL not supported')
-    v3_query = datastore_pb.Query()
-    self._query_converter.v4_to_v3_query(v4_req.partition_id(), v4_req.query(),
-                                         v3_query)
-
-
-    if v4_req.has_suggested_batch_size():
-      v3_query.set_count(v4_req.suggested_batch_size())
-
-
-    read_options = v4_req.read_options()
-    if read_options.has_transaction():
-      self.v4_to_v3_txn(read_options.transaction(),
-                        v3_query.mutable_transaction())
-    elif (read_options.read_consistency()
-          == datastore_v4_pb.ReadOptions.EVENTUAL):
-      v3_query.set_strong(False)
-      v3_query.set_failover_ms(-1)
-    elif read_options.read_consistency() == datastore_v4_pb.ReadOptions.STRONG:
-      v3_query.set_strong(True)
-
-    if v4_req.has_min_safe_time_seconds():
-      v3_query.set_min_safe_time_seconds(v4_req.min_safe_time_seconds())
-
-    return v3_query
-
-  def v3_to_v4_run_query_req(self, v3_req):
-    """Converts a v3 Query to a v4 RunQueryRequest.
-
-    Args:
-      v3_req: a datastore_pb.Query
-
-    Returns:
-      a datastore_v4_pb.RunQueryRequest
-    """
-    v4_req = datastore_v4_pb.RunQueryRequest()
-
-
-    v4_partition_id = v4_req.mutable_partition_id()
-    v4_partition_id.set_dataset_id(v3_req.app())
-    if v3_req.name_space():
-      v4_partition_id.set_namespace(v3_req.name_space())
-
-
-    if v3_req.has_count():
-      v4_req.set_suggested_batch_size(v3_req.count())
-
-
-    if v3_req.has_transaction():
-      v4_req.mutable_read_options().set_transaction(
-          self._v3_to_v4_txn(v3_req.transaction()))
-    elif v3_req.strong():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.STRONG)
-    elif v3_req.has_failover_ms():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.EVENTUAL)
-    if v3_req.has_min_safe_time_seconds():
-      v4_req.set_min_safe_time_seconds(v3_req.min_safe_time_seconds())
-
-    self._query_converter.v3_to_v4_query(v3_req, v4_req.mutable_query())
-
-    return v4_req
-
-  def v4_run_query_resp_to_v3_query_result(self, v4_resp):
-    """Converts a V4 RunQueryResponse to a v3 QueryResult.
-
-    Args:
-      v4_resp: a datastore_v4_pb.QueryResult
-
-    Returns:
-      a datastore_pb.QueryResult
-    """
-    v3_resp = self.v4_to_v3_query_result(v4_resp.batch())
-
-
-    if v4_resp.has_query_handle():
-      self.v4_to_v3_cursor(v4_resp.query_handle(), v3_resp.mutable_cursor())
-
-    return v3_resp
-
-  def v3_to_v4_run_query_resp(self, v3_resp):
-    """Converts a v3 QueryResult to a V4 RunQueryResponse.
-
-    Args:
-      v3_resp: a datastore_pb.QueryResult
-
-    Returns:
-      a datastore_v4_pb.RunQueryResponse
-    """
-    v4_resp = datastore_v4_pb.RunQueryResponse()
-    self.v3_to_v4_query_result_batch(v3_resp, v4_resp.mutable_batch())
-
-    if v3_resp.has_cursor():
-      v4_resp.set_query_handle(
-          self._query_converter.v3_to_v4_compiled_cursor(v3_resp.cursor()))
-
-    return v4_resp
-
-
-
-
-  def v4_to_v3_next_req(self, v4_req):
-    """Converts a v4 ContinueQueryRequest to a v3 NextRequest.
-
-    Args:
-      v4_req: a datastore_v4_pb.ContinueQueryRequest
-
-    Returns:
-      a datastore_pb.NextRequest
-    """
-    v3_req = datastore_pb.NextRequest()
-    v3_req.set_compile(True)
-    self.v4_to_v3_cursor(v4_req.query_handle(), v3_req.mutable_cursor())
-    return v3_req
-
-  def v3_to_v4_continue_query_resp(self, v3_resp):
-    """Converts a v3 QueryResult to a v4 ContinueQueryResponse.
-
-    Args:
-      v3_resp: a datstore_pb.QueryResult
-
-    Returns:
-      a datastore_v4_pb.ContinueQueryResponse
-    """
-    v4_resp = datastore_v4_pb.ContinueQueryResponse()
-    self.v3_to_v4_query_result_batch(v3_resp, v4_resp.mutable_batch())
-    return v4_resp
-
-
-
-
-  def v4_to_v3_get_req(self, v4_req):
-    """Converts a v4 LookupRequest to a v3 GetRequest.
-
-    Args:
-      v4_req: a datastore_v4_pb.LookupRequest
-
-    Returns:
-      a datastore_pb.GetRequest
-    """
-    v3_req = datastore_pb.GetRequest()
-    v3_req.set_allow_deferred(True)
-
-
-    if v4_req.read_options().has_transaction():
-      self.v4_to_v3_txn(v4_req.read_options().transaction(),
-                        v3_req.mutable_transaction())
-    elif (v4_req.read_options().read_consistency()
-          == datastore_v4_pb.ReadOptions.EVENTUAL):
-      v3_req.set_strong(False)
-      v3_req.set_failover_ms(-1)
-    elif (v4_req.read_options().read_consistency()
-          == datastore_v4_pb.ReadOptions.STRONG):
-      v3_req.set_strong(True)
-
-    for v4_key in v4_req.key_list():
-      self._entity_converter.v4_to_v3_reference(v4_key, v3_req.add_key())
-
-    return v3_req
-
-  def v3_to_v4_lookup_req(self, v3_req):
-    """Converts a v3 GetRequest to a v4 LookupRequest.
-
-    Args:
-      v3_req: a datastore_pb.GetRequest
-
-    Returns:
-      a datastore_v4_pb.LookupRequest
-    """
-    v4_req = datastore_v4_pb.LookupRequest()
-    _check_conversion(v3_req.allow_deferred(), 'allow_deferred must be true')
-
-
-    if v3_req.has_transaction():
-      v4_req.mutable_read_options().set_transaction(
-          self._v3_to_v4_txn(v3_req.transaction()))
-    elif v3_req.strong():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.STRONG)
-    elif v3_req.has_failover_ms():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.EVENTUAL)
-
-    for v3_ref in v3_req.key_list():
-      self._entity_converter.v3_to_v4_key(v3_ref, v4_req.add_key())
-
-    return v4_req
-
-  def v4_to_v3_get_resp(self, v4_resp):
-    """Converts a v4 LookupResponse to a v3 GetResponse.
-
-    Args:
-      v4_resp: a datastore_v4_pb.LookupResponse
-
-    Returns:
-      a datastore_pb.GetResponse
-    """
-    v3_resp = datastore_pb.GetResponse()
-
-    for v4_key in v4_resp.deferred_list():
-      self._entity_converter.v4_to_v3_reference(v4_key, v3_resp.add_deferred())
-    for v4_found in v4_resp.found_list():
-      self._entity_converter.v4_to_v3_entity(
-          v4_found.entity(), v3_resp.add_entity().mutable_entity())
-    for v4_missing in v4_resp.missing_list():
-      self._entity_converter.v4_to_v3_reference(
-          v4_missing.entity().key(),
-          v3_resp.add_entity().mutable_key())
-
-    return v3_resp
-
-  def v3_to_v4_lookup_resp(self, v3_resp):
-    """Converts a v3 GetResponse to a v4 LookupResponse.
-
-    Args:
-      v3_resp: a datastore_pb.GetResponse
-
-    Returns:
-      a datastore_v4_pb.LookupResponse
-    """
-    v4_resp = datastore_v4_pb.LookupResponse()
-
-    for v3_ref in v3_resp.deferred_list():
-      self._entity_converter.v3_to_v4_key(v3_ref, v4_resp.add_deferred())
-    for v3_entity in v3_resp.entity_list():
-      if v3_entity.has_entity():
-        self._entity_converter.v3_to_v4_entity(
-            v3_entity.entity(),
-            v4_resp.add_found().mutable_entity())
-      if v3_entity.has_key():
-        self._entity_converter.v3_to_v4_key(
-            v3_entity.key(),
-            v4_resp.add_missing().mutable_entity().mutable_key())
-
-    return v4_resp
-
-  def v4_to_v3_query_result(self, v4_batch):
-    """Converts a v4 QueryResultBatch to a v3 QueryResult.
-
-    Args:
-      v4_batch: a datastore_v4_pb.QueryResultBatch
-
-    Returns:
-      a datastore_pb.QueryResult
-    """
-    v3_result = datastore_pb.QueryResult()
-
-
-    v3_result.set_more_results(
-        (v4_batch.more_results()
-         == datastore_v4_pb.QueryResultBatch.NOT_FINISHED))
-    if v4_batch.has_end_cursor():
-      self._query_converter.v4_to_v3_compiled_cursor(
-          v4_batch.end_cursor(), v3_result.mutable_compiled_cursor())
-
-
-    if v4_batch.entity_result_type() == datastore_v4_pb.EntityResult.PROJECTION:
-      v3_result.set_index_only(True)
-    elif v4_batch.entity_result_type() == datastore_v4_pb.EntityResult.KEY_ONLY:
-      v3_result.set_keys_only(True)
-
-
-    if v4_batch.has_skipped_results():
-      v3_result.set_skipped_results(v4_batch.skipped_results())
-    for v4_entity in v4_batch.entity_result_list():
-      v3_entity = v3_result.add_result()
-      self._entity_converter.v4_to_v3_entity(v4_entity.entity(), v3_entity)
-      if v4_batch.entity_result_type() != datastore_v4_pb.EntityResult.FULL:
-
-
-        v3_entity.clear_entity_group()
-
-    return v3_result
-
-  def v3_to_v4_query_result_batch(self, v3_result, v4_batch):
-    """Converts a v3 QueryResult to a v4 QueryResultBatch.
-
-    Args:
-      v3_result: a datastore_pb.QueryResult
-      v4_batch: a datastore_v4_pb.QueryResultBatch to populate
-    """
-    v4_batch.Clear()
-
-
-    if v3_result.more_results():
-      v4_batch.set_more_results(datastore_v4_pb.QueryResultBatch.NOT_FINISHED)
-    else:
-      v4_batch.set_more_results(
-          datastore_v4_pb.QueryResultBatch.MORE_RESULTS_AFTER_LIMIT)
-    if v3_result.has_compiled_cursor():
-      v4_batch.set_end_cursor(
-          self._query_converter.v3_to_v4_compiled_cursor(
-              v3_result.compiled_cursor()))
-
-
-    if v3_result.keys_only():
-      v4_batch.set_entity_result_type(datastore_v4_pb.EntityResult.KEY_ONLY)
-    elif v3_result.index_only():
-      v4_batch.set_entity_result_type(datastore_v4_pb.EntityResult.PROJECTION)
-    else:
-      v4_batch.set_entity_result_type(datastore_v4_pb.EntityResult.FULL)
-
-
-    if v3_result.has_skipped_results():
-      v4_batch.set_skipped_results(v3_result.skipped_results())
-    for v3_entity in v3_result.result_list():
-      v4_entity_result = datastore_v4_pb.EntityResult()
-      self._entity_converter.v3_to_v4_entity(v3_entity,
-                                             v4_entity_result.mutable_entity())
-      v4_batch.entity_result_list().append(v4_entity_result)
-
-
-class _StubServiceConverter(_BaseServiceConverter):
-  """Converter for request/response protos suitable for use in stubs."""
-
-  def v4_to_v3_cursor(self, v4_query_handle, v3_cursor):
-    v3_cursor.ParseFromString(v4_query_handle)
-    return v3_cursor
-
-  def _v3_to_v4_query_handle(self, v3_cursor):
-    return v3_cursor.SerializeToString()
-
-  def v4_to_v3_txn(self, v4_txn, v3_txn):
-    v3_txn.ParseFromString(v4_txn)
-    return v3_txn
-
-  def _v3_to_v4_txn(self, v3_txn):
-    return v3_txn.SerializeToString()
-
-
-
-__stub_service_converter = _StubServiceConverter(__entity_converter,
-                                                 __stub_query_converter)
-
-
-def get_stub_service_converter():
-  """Returns a converter for v3 and v4 service request/response protos.
-
-  This converter is suitable for use in stubs but not for production.
-
-  Returns:
-    a _StubServiceConverter
-  """
-  return __stub_service_converter

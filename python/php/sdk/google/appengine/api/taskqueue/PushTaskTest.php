@@ -34,7 +34,7 @@ use google\appengine\TaskQueueServiceError\ErrorCode;
 $mockTime = 12345.6;
 
 // This mocks out PHP's microtime() function.
-function microtime($get_as_float=false) {
+function microtime($get_as_float = false) {
   if (!$get_as_float) {
     die('microtime called with get_as_float=false');
   }
@@ -370,7 +370,7 @@ class PushTaskTest extends ApiProxyTestBase {
 
     $task_name = (new PushTask('/someUrl', [],
         ['header' => "custom-header: 54321\r\n" .
-                     "another-custom-header: abc"]))->add();
+                     'another-custom-header: abc']))->add();
     $this->assertEquals('fred', $task_name);
     $this->apiProxyMock->verify();
   }

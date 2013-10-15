@@ -109,7 +109,7 @@ EXTRA_PATHS = _STUB_DEPENDENCIES + [
 
     os.path.join(_DIR_PATH, 'lib', 'django-1.4'),
     os.path.join(_DIR_PATH, 'lib', 'jinja2-2.6'),
-    os.path.join(_DIR_PATH, 'lib', 'protorpc'),
+    os.path.join(_DIR_PATH, 'lib', 'protorpc-1.0'),
     os.path.join(_DIR_PATH, 'lib', 'PyAMF-0.6.1'),
     os.path.join(_DIR_PATH, 'lib', 'markupsafe-0.15'),
     os.path.join(_DIR_PATH, 'lib', 'webob-1.2.3'),
@@ -140,7 +140,7 @@ _PYTHON_RUNTIME_PATHS = [
     os.path.join(_DIR_PATH, 'lib', 'concurrent'),
     os.path.join(_DIR_PATH, 'lib', 'cherrypy'),
     os.path.join(_DIR_PATH, 'lib', 'fancy_urllib'),
-    os.path.join(_DIR_PATH, 'lib', 'protorpc'),
+    os.path.join(_DIR_PATH, 'lib', 'protorpc-1.0'),
     os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
     ]
 

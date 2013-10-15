@@ -359,6 +359,9 @@ normal field object, these examples will *not* work::
     # This will also fail
     >>> TaggedItem.objects.get(content_object=guido)
 
+Likewise, :class:`~django.contrib.contenttypes.generic.GenericForeignKey`\s
+does not appear in :class:`~django.forms.ModelForm`\s.
+
 Reverse generic relations
 -------------------------
 
@@ -497,8 +500,8 @@ information.
     Returns a ``GenericInlineFormSet`` using
     :func:`~django.forms.models.modelformset_factory`.
 
-    You must provide ``ct_field`` and ``object_id`` if they different from the
-    defaults, ``content_type`` and ``object_id`` respectively. Other parameters
-    are similar to those documented in
+    You must provide ``ct_field`` and ``fk_field`` if they are different from
+    the defaults, ``content_type`` and ``object_id`` respectively. Other
+    parameters are similar to those documented in
     :func:`~django.forms.models.modelformset_factory` and
     :func:`~django.forms.models.inlineformset_factory`.

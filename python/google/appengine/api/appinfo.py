@@ -369,6 +369,14 @@ _SUPPORTED_LIBRARIES = [
         'A library for creating and transforming images.',
         ['1.1.7']),
     _VersionedLibrary(
+        'protorpc',
+        'https://code.google.com/p/google-protorpc/',
+        'A framework for implementing HTTP-based remote procedure call (RPC) '
+        'services.',
+        ['1.0'],
+        default_version='1.0',
+        ),
+    _VersionedLibrary(
         'PyAMF',
         'http://www.pyamf.org/',
         'A library that provides (AMF) Action Message Format functionality.',

@@ -38,6 +38,20 @@ import urllib2
 
 from google.appengine.tools import dev_appserver_login
 
+_UPLOADING_APP_DOC_URLS = {
+    "go": "https://developers.google.com/appengine/docs/go/tools/"
+        "uploadinganapp#Go_Password-less_login_with_OAuth2",
+    "php": "https://developers.google.com/appengine/docs/php/tools/"
+        "uploadinganapp#PHP_Password-less_login_with_OAuth2",
+    "python": "https://developers.google.com/appengine/docs/python/tools/"
+        "uploadinganapp#Python_Password-less_login_with_OAuth2",
+    "python27": "https://developers.google.com/appengine/docs/python/tools/"
+        "uploadinganapp#Python_Password-less_login_with_OAuth2",
+    "java": "https://developers.google.com/appengine/docs/java/tools/"
+        "uploadinganapp#Passwordless_Login_with_OAuth2",
+    "java7": "https://developers.google.com/appengine/docs/java/tools/"
+        "uploadinganapp#Passwordless_Login_with_OAuth2",
+    }
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
@@ -80,10 +94,10 @@ def HttpRequestToString(req, include_data=True):
     template = template + "\n%(data)s"
 
   return template % {
-      'method' : req.get_method(),
-      'selector' : req.get_selector(),
-      'type' : req.get_type().upper(),
-      'host' : req.get_host(),
+      'method': req.get_method(),
+      'selector': req.get_selector(),
+      'type': req.get_type().upper(),
+      'host': req.get_host(),
       'headers': headers,
       'data': req.get_data(),
       }
@@ -112,6 +126,9 @@ class AbstractRpcServer(object):
 
 
   SUGGEST_OAUTH2 = False
+
+
+  RUNTIME = "python"
 
   def __init__(self, host, auth_function, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
@@ -310,8 +327,7 @@ class AbstractRpcServer(object):
             if self.SUGGEST_OAUTH2:
               print >>sys.stderr, ("However, now the recommended way to log in "
                                    "is using OAuth2. See")
-              print >>sys.stderr, ("https://developers.google.com/appengine/"
-                                   "docs/python/tools/uploadinganapp#oauth")
+              print >>sys.stderr, _UPLOADING_APP_DOC_URLS[self.RUNTIME]
           else:
             print >>sys.stderr, "Invalid username or password."
           continue

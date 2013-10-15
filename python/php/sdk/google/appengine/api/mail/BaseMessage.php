@@ -292,7 +292,7 @@ abstract class BaseMessage {
             "Mail Service Error: Invalid header name.");
       default:
         throw $e;
-     }
+    }
   }
 
   /**

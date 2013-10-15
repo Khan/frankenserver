@@ -277,5 +277,49 @@ class ParseThreadsafeOverrideTest(unittest.TestCase):
         devappserver2.parse_threadsafe_override(':No'))
 
 
+class FakeApplicationConfiguration(object):
+
+  def __init__(self, modules):
+    self.modules = modules
+
+
+class FakeModuleConfiguration(object):
+
+  def __init__(self, module_name):
+    self.module_name = module_name
+
+
+class CreateModuleToSettingTest(unittest.TestCase):
+
+  def setUp(self):
+    self.application_configuration = FakeApplicationConfiguration([
+        FakeModuleConfiguration('m1'), FakeModuleConfiguration('m2'),
+        FakeModuleConfiguration('m3')])
+
+  def testNone(self):
+    self.assertEquals(
+        {},
+        devappserver2.DevelopmentServer._create_module_to_setting(
+            None, self.application_configuration, '--option'))
+
+  def testDict(self):
+    self.assertEquals(
+        {'m1': 3, 'm3': 1},
+        devappserver2.DevelopmentServer._create_module_to_setting(
+            {'m1': 3, 'm3': 1}, self.application_configuration, '--option'))
+
+  def testSingleValue(self):
+    self.assertEquals(
+        {'m1': True, 'm2': True, 'm3': True},
+        devappserver2.DevelopmentServer._create_module_to_setting(
+            True, self.application_configuration, '--option'))
+
+  def testDictWithUnknownModules(self):
+    self.assertEquals(
+        {'m1': 3.5},
+        devappserver2.DevelopmentServer._create_module_to_setting(
+            {'m1': 3.5, 'm4': 2.7}, self.application_configuration, '--option'))
+
+
 if __name__ == '__main__':
   unittest.main()

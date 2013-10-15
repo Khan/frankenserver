@@ -37,7 +37,6 @@ require_once 'google/appengine/api/taskqueue/taskqueue_service_pb.php';
 
 use google\appengine\TaskQueueAddRequest\RequestMethod;
 
-
 /**
  * A PushTask encapsulates a unit of work that an application places onto a
  * Push Queue for asnychronous execution. The queue executes that work by
@@ -103,7 +102,7 @@ final class PushTask {
    *   executes.</li>
    * </ul>
    */
-  public function __construct($url_path, $query_data=[], $options=[]) {
+  public function __construct($url_path, $query_data = [], $options = []) {
     if (!is_string($url_path)) {
       throw new \InvalidArgumentException('url_path must be a string. ' .
           'Actual type: ' . gettype($url_path));
@@ -112,7 +111,7 @@ final class PushTask {
       throw new \InvalidArgumentException(
           'url_path must begin with \'/\'.');
     }
-    if (strpos($url_path, "?") !== false) {
+    if (strpos($url_path, '?') !== false) {
       throw new \InvalidArgumentException(
           'query strings not allowed in url_path.');
     }
@@ -178,7 +177,7 @@ final class PushTask {
     if (strlen($this->url) > self::MAX_URL_LENGTH) {
       throw new \InvalidArgumentException(
           'URL length greater than maximum of ' .
-          PushTask::MAX_URL_LENGTH . '. URL: ' . $this->url);
+          self::MAX_URL_LENGTH . '. URL: ' . $this->url);
     }
 
     // Handle user specified headers.
@@ -195,7 +194,7 @@ final class PushTask {
       if (empty($h)) {
         continue;
       }
-      if (strpos($h, ':') == false) {
+      if (strpos($h, ':') === false) {
         throw new \InvalidArgumentException(
             'Each header must contain a colon. Header: ' . $h);
       }
@@ -203,7 +202,6 @@ final class PushTask {
           strncasecmp('content-type', $h, strlen('content-type')) == 0) {
         throw new \InvalidArgumentException('Content-type header may not ' .
             'be specified as it is set by the task.');
-        continue;
       }
       $this->headers[] = $h;
     }

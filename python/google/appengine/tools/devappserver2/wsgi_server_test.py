@@ -262,7 +262,7 @@ class SelectThreadTest(unittest.TestCase):
 
     select.poll().AndReturn(poll)
     poll.register(s.fileno(), select.POLLIN)
-    poll.poll(1).AndReturn([(s.fileno(), select.POLLIN)])
+    poll.poll(1000).AndReturn([(s.fileno(), select.POLLIN)])
 
     callback()
     self.mox.ReplayAll()
@@ -288,7 +288,7 @@ class SelectThreadTest(unittest.TestCase):
 
     select.poll().AndReturn(poll)
     poll.register(s.fileno(), select.POLLIN)
-    poll.poll(1).AndReturn([])
+    poll.poll(1000).AndReturn([])
 
     self.mox.ReplayAll()
     self.select_thread.add_socket(s, callback)

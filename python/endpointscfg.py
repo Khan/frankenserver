@@ -99,7 +99,7 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'fancy_urllib'),
   os.path.join(DIR_PATH, 'lib', 'ipaddr'),
   os.path.join(DIR_PATH, 'lib', 'jinja2-2.6'),
-  os.path.join(DIR_PATH, 'lib', 'protorpc'),
+  os.path.join(DIR_PATH, 'lib', 'protorpc-1.0'),
   os.path.join(DIR_PATH, 'lib', 'PyAMF'),
   os.path.join(DIR_PATH, 'lib', 'markupsafe'),
   os.path.join(DIR_PATH, 'lib', 'webob_0_9'),

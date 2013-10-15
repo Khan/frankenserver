@@ -142,6 +142,14 @@ class WarningLoggerTests(TestCase):
     and captured to the logging system
     """
     def setUp(self):
+        # If tests are invoke with "-Wall" (or any -W flag actually) then
+        # warning logging gets disabled (see django/conf/__init__.py). However,
+        # these tests expect warnings to be logged, so manually force warnings
+        # to the logs. Use getattr() here because the logging capture state is
+        # undocumented and (I assume) brittle.
+        self._old_capture_state = bool(getattr(logging, '_warnings_showwarning', False))
+        logging.captureWarnings(True)
+
         # this convoluted setup is to avoid printing this deprecation to
         # stderr during test running - as the test runner forces deprecations
         # to be displayed at the global py.warnings level
@@ -156,6 +164,9 @@ class WarningLoggerTests(TestCase):
     def tearDown(self):
         for i, handler in enumerate(self.logger.handlers):
             self.logger.handlers[i].stream = self.old_streams[i]
+
+        # Reset warnings state.
+        logging.captureWarnings(self._old_capture_state)
 
     @override_settings(DEBUG=True)
     def test_warnings_capture(self):

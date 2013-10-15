@@ -58,6 +58,7 @@ indexes:
 
 import itertools
 
+from google.appengine.api import appinfo
 from google.appengine.api import datastore_types
 from google.appengine.api import validation
 from google.appengine.api import yaml_errors
@@ -108,6 +109,7 @@ class IndexDefinitions(validation.Validated):
   """
 
   ATTRIBUTES = {
+      appinfo.APPLICATION: validation.Optional(appinfo.APPLICATION_RE_STRING),
       'indexes': validation.Optional(validation.Repeated(Index)),
       }
 

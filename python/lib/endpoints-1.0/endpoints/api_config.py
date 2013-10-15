@@ -1119,10 +1119,15 @@ class _MethodInfo(object):
     self.__auth_level = auth_level
 
   def __safe_name(self, method_name):
-    """Restrict method name to a-zA-Z0-9, first char lowercase."""
+    """Restrict method name to a-zA-Z0-9_, first char lowercase."""
 
 
-    safe_name = re.sub('[^\.a-zA-Z0-9]', '', method_name)
+    safe_name = re.sub('[^\.a-zA-Z0-9_]', '', method_name)
+
+
+    safe_name = safe_name.lstrip('_')
+
+
 
     return safe_name[0:1].lower() + safe_name[1:]
 
@@ -1320,7 +1325,7 @@ def method(request_message=message_types.VoidMessage,
       ResourceContainer.add_to_cache(invoke_remote.remote, request_message)
 
     invoke_remote.method_info = _MethodInfo(
-        name=name or api_method.__name__, path=path or '',
+        name=name or api_method.__name__, path=path or api_method.__name__,
         http_method=http_method or DEFAULT_HTTP_METHOD,
         cache_control=cache_control, scopes=scopes, audiences=audiences,
         allowed_client_ids=allowed_client_ids, auth_level=auth_level)
@@ -1923,7 +1928,7 @@ class ApiConfigGenerator(object):
     auth_level = (method_info.auth_level
                   if method_info.auth_level is not None
                   else service.api_info.auth_level)
-    if auth_level:
+    if auth_level is not None:
       descriptor['authLevel'] = AUTH_LEVEL.reverse_mapping[auth_level]
 
     return descriptor

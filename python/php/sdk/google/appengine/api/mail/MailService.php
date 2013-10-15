@@ -17,6 +17,8 @@
 /**
  * Allow users to send mail using the App Engine mail APIs.
  *
+ *
+ * @codingStandardsIgnoreFile
  */
 
 // Until we have a C extension for the devappserver2 environment, the mail

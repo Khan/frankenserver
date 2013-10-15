@@ -2,13 +2,13 @@ from __future__ import absolute_import, unicode_literals
 
 from datetime import datetime
 
-from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned, FieldError
+from django.core.exceptions import ObjectDoesNotExist, MultipleObjectsReturned
 from django.db.models.fields import Field, FieldDoesNotExist
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 from django.utils import six
 from django.utils.translation import ugettext_lazy
 
-from .models import Article
+from .models import Article, SelfRef
 
 
 class ModelTest(TestCase):
@@ -84,23 +84,14 @@ class ModelTest(TestCase):
         # parameters don't match any object.
         six.assertRaisesRegex(self,
             ObjectDoesNotExist,
-            "Article matching query does not exist. Lookup parameters were "
-            "{'id__exact': 2000}",
+            "Article matching query does not exist.",
             Article.objects.get,
             id__exact=2000,
         )
         # To avoid dict-ordering related errors check only one lookup
         # in single assert.
-        six.assertRaisesRegex(self,
+        self.assertRaises(
             ObjectDoesNotExist,
-            ".*'pub_date__year': 2005.*",
-            Article.objects.get,
-            pub_date__year=2005,
-            pub_date__month=8,
-        )
-        six.assertRaisesRegex(self,
-            ObjectDoesNotExist,
-            ".*'pub_date__month': 8.*",
             Article.objects.get,
             pub_date__year=2005,
             pub_date__month=8,
@@ -108,8 +99,7 @@ class ModelTest(TestCase):
 
         six.assertRaisesRegex(self,
             ObjectDoesNotExist,
-            "Article matching query does not exist. Lookup parameters were "
-            "{'pub_date__week_day': 6}",
+            "Article matching query does not exist.",
             Article.objects.get,
             pub_date__week_day=6,
         )
@@ -640,7 +630,7 @@ class ModelTest(TestCase):
         article = Article.objects.get()
         self.assertEqual(article.headline, notlazy)
 
-    def test_invalid_qs_list(self):
-        qs = Article.objects.order_by('invalid_column')
-        self.assertRaises(FieldError, list, qs)
-        self.assertRaises(FieldError, list, qs)
+    def test_ticket_20278(self):
+        sr = SelfRef.objects.create()
+        with self.assertRaises(ObjectDoesNotExist):
+            SelfRef.objects.get(selfref=sr)

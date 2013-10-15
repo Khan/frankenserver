@@ -80,7 +80,7 @@ final class CloudStorageTools {
    * expected to be a closure that accepts a key, value pair where key is the
    * header name, and value is the header value.
    */
-  static $send_header = null;
+  static private $send_header = null;
 
   /**
    * Create an absolute URL that can be used by a user to asynchronously upload
@@ -107,7 +107,7 @@ final class CloudStorageTools {
    * @throws CloudStorageException Thrown when there is a failure using the
    * blobstore service.
    */
-  public static function createUploadUrl($success_path, $options=array()) {
+  public static function createUploadUrl($success_path, $options = array()) {
     $req = new CreateUploadURLRequest();
     $resp = new CreateUploadURLResponse();
 

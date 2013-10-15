@@ -32,6 +32,9 @@ from google.appengine.tools.devappserver2 import dispatcher
 from google.appengine.tools.devappserver2 import scheduled_executor
 from google.appengine.tools.devappserver2 import module
 
+# This file uses pep8 naming.
+# pylint: disable=invalid-name
+
 
 class ApplicationConfigurationStub(object):
   def __init__(self, modules):
@@ -229,6 +232,11 @@ class DispatcherTest(unittest.TestCase):
     self.assertRaises(request_info.InvalidInstanceIdError,
                       self.dispatcher.get_hostname, 'other', 'version2',
                       'invalid')
+    self.assertRaises(request_info.ModuleDoesNotExistError,
+                      self.dispatcher.get_hostname,
+                      'nomodule',
+                      'version2',
+                      None)
 
   def test_get_module_by_name(self):
     self.assertEqual(self.module1,
@@ -303,6 +311,24 @@ class DispatcherTest(unittest.TestCase):
         'body', '1.2.3.4', module_name='other')
     self.mox.VerifyAll()
 
+  def test_add_async_request_soft_routing(self):
+    """Tests add_async_request with soft routing."""
+    dummy_environ = object()
+    self.mox.StubOutWithMock(dispatcher._THREAD_POOL, 'submit')
+    self.dispatcher._module_name_to_module['default'].build_request_environ(
+        'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
+        'body', '1.2.3.4', 1).AndReturn(
+            dummy_environ)
+    dispatcher._THREAD_POOL.submit(
+        self.dispatcher._handle_request, dummy_environ, mox.IgnoreArg(),
+        self.dispatcher._module_name_to_module['default'],
+        None, catch_and_log_exceptions=True)
+    self.mox.ReplayAll()
+    self.dispatcher.add_async_request(
+        'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
+        'body', '1.2.3.4', module_name='nomodule')
+    self.mox.VerifyAll()
+
   def test_add_request(self):
     dummy_environ = object()
     self.mox.StubOutWithMock(self.dispatcher, '_resolve_target')
@@ -321,6 +347,25 @@ class DispatcherTest(unittest.TestCase):
     response = self.dispatcher.add_request(
         'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
         'body', '1.2.3.4', fake_login=True)
+    self.mox.VerifyAll()
+    self.assertEqual('Hello World', response.content)
+
+  def test_add_request_soft_routing(self):
+    """Tests soft routing to the default module."""
+    dummy_environ = object()
+    self.mox.StubOutWithMock(self.dispatcher, '_handle_request')
+    self.dispatcher._module_name_to_module['default'].build_request_environ(
+        'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
+        'body', '1.2.3.4', 1, fake_login=True).AndReturn(
+            dummy_environ)
+    self.dispatcher._handle_request(
+        dummy_environ, mox.IgnoreArg(),
+        self.dispatcher._module_name_to_module['default'],
+        None).AndReturn(['Hello World'])
+    self.mox.ReplayAll()
+    response = self.dispatcher.add_request(
+        'PUT', '/foo?bar=baz', [('Header', 'Value'), ('Other', 'Values')],
+        'body', '1.2.3.4', fake_login=True, module_name='nomodule')
     self.mox.VerifyAll()
     self.assertEqual('Hello World', response.content)
 
@@ -431,9 +476,10 @@ class DispatcherTest(unittest.TestCase):
 
   def test_resolve_target_module_prefix(self):
     self.mox.StubOutWithMock(self.dispatcher, '_module_for_request')
-    self.mox.StubOutWithMock(self.dispatcher, '_get_module')
+    self.mox.StubOutWithMock(self.dispatcher, '_get_module_with_soft_routing')
     servr = object()
-    self.dispatcher._get_module('backend', None).AndReturn(servr)
+    self.dispatcher._get_module_with_soft_routing('backend', None).AndReturn(
+        servr)
     self.mox.ReplayAll()
     self.assertEqual((servr, None),
                      self.dispatcher._resolve_target('backend.localhost:1',
@@ -465,26 +511,133 @@ class DispatcherTest(unittest.TestCase):
     self.dispatcher._module_name_to_module['nondefault'] = self.module2
     self.assertEqual(self.dispatcher._get_module(None, None), self.module1)
 
-    # Test soft-routing. Querying for a non-existing module should return
-    # default.
     self.dispatcher._module_name_to_module = {'default': self.module1}
-    self.assertEqual(self.dispatcher._get_module('nondefault', None),
+    self.assertRaises(request_info.ModuleDoesNotExistError,
+                      self.dispatcher._get_module,
+                      'nondefault',
+                      None)
+    # Test version handling.
+    self.dispatcher._module_configurations['default'] = MODULE_CONFIGURATIONS[0]
+    self.assertEqual(self.dispatcher._get_module('default', 'version'),
                      self.module1)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module,
+                      'default',
+                      'version2')
 
   def test_get_module_non_default(self):
     """Tests the _get_module method with a non-default module."""
     self.dispatcher._module_name_to_module = {'default': self.module1,
-                                              'nondefault': self.module2}
-    self.assertEqual(self.dispatcher._get_module('nondefault', None),
+                                              'other': self.module2}
+    self.assertEqual(self.dispatcher._get_module('other', None),
                      self.module2)
+    # Test version handling.
+    self.dispatcher._module_configurations['default'] = MODULE_CONFIGURATIONS[0]
+    self.dispatcher._module_configurations['other'] = MODULE_CONFIGURATIONS[1]
+    self.assertEqual(self.dispatcher._get_module('other', 'version2'),
+                     self.module2)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module,
+                      'other',
+                      'version3')
 
   def test_get_module_no_default(self):
     """Tests the _get_module method with no default module."""
-    self.dispatcher._module_name_to_module = {'nondefault': self.module1}
-    self.assertEqual(self.dispatcher._get_module('nondefault', None),
+    self.dispatcher._module_name_to_module = {'other': self.module1}
+    self.assertEqual(self.dispatcher._get_module('other', None),
                      self.module1)
-    self.assertEqual(self.dispatcher._get_module(None, None), self.module1)
+    self.assertRaises(request_info.ModuleDoesNotExistError,
+                      self.dispatcher._get_module,
+                      None,
+                      None)
+    # Test version handling.
+    self.dispatcher._module_configurations['other'] = MODULE_CONFIGURATIONS[0]
+    self.assertEqual(self.dispatcher._get_module('other', 'version'),
+                     self.module1)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module,
+                      'other',
+                      'version2')
 
+  def test_get_module_soft_routing_no_modules(self):
+    """Tests the _get_module_soft_routing method with no modules."""
+    self.dispatcher._module_name_to_module = {}
+    self.assertRaises(request_info.ModuleDoesNotExistError,
+                      self.dispatcher._get_module_with_soft_routing,
+                      None,
+                      None)
+
+  def test_get_module_soft_routing_default_module(self):
+    """Tests the _get_module_soft_routing method with a default module."""
+    # Test default mopdule is returned for an empty query.
+    self.dispatcher._module_name_to_module = {'default': self.module1}
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing(None, None),
+                     self.module1)
+
+    self.dispatcher._module_name_to_module['other'] = self.module2
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing(None, None),
+                     self.module1)
+
+    # Test soft-routing. Querying for a non-existing module should return
+    # default.
+    self.dispatcher._module_name_to_module = {'default': self.module1}
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   None),
+                     self.module1)
+
+    # Test version handling.
+    self.dispatcher._module_configurations['default'] = MODULE_CONFIGURATIONS[0]
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   'version'),
+                     self.module1)
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('default',
+                                                                   'version'),
+                     self.module1)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module_with_soft_routing,
+                      'default',
+                      'version2')
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module_with_soft_routing,
+                      'other',
+                      'version2')
+
+  def test_get_module_soft_routing_non_default(self):
+    """Tests the _get_module_soft_routing method with a non-default module."""
+    self.dispatcher._module_name_to_module = {'default': self.module1,
+                                              'other': self.module2}
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   None),
+                     self.module2)
+    # Test version handling.
+    self.dispatcher._module_configurations['default'] = MODULE_CONFIGURATIONS[0]
+    self.dispatcher._module_configurations['other'] = MODULE_CONFIGURATIONS[1]
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   'version2'),
+                     self.module2)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module_with_soft_routing,
+                      'other',
+                      'version3')
+
+  def test_get_module_soft_routing_no_default(self):
+    """Tests the _get_module_soft_routing method with no default module."""
+    self.dispatcher._module_name_to_module = {'other': self.module1}
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   None),
+                     self.module1)
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   None),
+                     self.module1)
+    # Test version handling.
+    self.dispatcher._module_configurations['other'] = MODULE_CONFIGURATIONS[0]
+    self.assertEqual(self.dispatcher._get_module_with_soft_routing('other',
+                                                                   'version'),
+                     self.module1)
+    self.assertRaises(request_info.VersionDoesNotExistError,
+                      self.dispatcher._get_module_with_soft_routing,
+                      'other',
+                      'version2')
 
 if __name__ == '__main__':
   unittest.main()

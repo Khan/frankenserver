@@ -19,7 +19,7 @@
 
 namespace google\appengine\api\taskqueue;
 
-require_once "google/appengine/api/taskqueue/TaskQueueException.php";
+require_once 'google/appengine/api/taskqueue/TaskQueueException.php';
 
 /**
  * Thrown when there is a transient failure using Task Queue service, i.e.

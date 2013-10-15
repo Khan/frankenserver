@@ -1,4 +1,3 @@
-import logging
 import unittest as real_unittest
 
 from django.conf import settings
@@ -274,6 +273,7 @@ class DjangoTestSuiteRunner(object):
         mirrored_aliases = {}
         test_databases = {}
         dependencies = {}
+        default_sig = connections[DEFAULT_DB_ALIAS].creation.test_db_signature()
         for alias in connections:
             connection = connections[alias]
             if connection.settings_dict['TEST_MIRROR']:
@@ -295,7 +295,7 @@ class DjangoTestSuiteRunner(object):
                     dependencies[alias] = (
                         connection.settings_dict['TEST_DEPENDENCIES'])
                 else:
-                    if alias != DEFAULT_DB_ALIAS:
+                    if alias != DEFAULT_DB_ALIAS and connection.creation.test_db_signature() != default_sig:
                         dependencies[alias] = connection.settings_dict.get(
                             'TEST_DEPENDENCIES', [DEFAULT_DB_ALIAS])
 
@@ -310,12 +310,14 @@ class DjangoTestSuiteRunner(object):
 
             for alias in aliases:
                 connection = connections[alias]
-                old_names.append((connection, db_name, True))
                 if test_db_name is None:
                     test_db_name = connection.creation.create_test_db(
                             self.verbosity, autoclobber=not self.interactive)
+                    destroy = True
                 else:
                     connection.settings_dict['NAME'] = test_db_name
+                    destroy = False
+                old_names.append((connection, db_name, destroy))
 
         for alias, mirror_alias in mirrored_aliases.items():
             mirrors.append((alias, connections[alias].settings_dict['NAME']))
@@ -366,19 +368,7 @@ class DjangoTestSuiteRunner(object):
         self.setup_test_environment()
         suite = self.build_suite(test_labels, extra_tests)
         old_config = self.setup_databases()
-        if self.verbosity > 0:
-            # ensure that deprecation warnings are displayed during testing
-            # the following state is assumed:
-            # logging.capturewarnings is true
-            # a "default" level warnings filter has been added for
-            # DeprecationWarning. See django.conf.LazySettings._configure_logging
-            logger = logging.getLogger('py.warnings')
-            handler = logging.StreamHandler()
-            logger.addHandler(handler)
         result = self.run_suite(suite)
-        if self.verbosity > 0:
-            # remove the testing-specific handler
-            logger.removeHandler(handler)
         self.teardown_databases(old_config)
         self.teardown_test_environment()
         return self.suite_result(suite, result)

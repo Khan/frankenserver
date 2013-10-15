@@ -409,7 +409,7 @@ class AppEngineWebXml(BasicEqualityMixin):
     self.url_stream_handler_type = None
     self.use_google_connector_j = None
     self.static_file_includes = []
-    self.static_file_excludes = []
+    self.static_file_excludes = ['WEB-INF/**', '**.jsp']
     self.resource_file_includes = []
     self.resource_file_excludes = []
     self.auto_id_policy = self.DEFAULT_POLICY
