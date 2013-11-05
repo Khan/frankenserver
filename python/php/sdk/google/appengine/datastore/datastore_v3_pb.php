@@ -4259,9 +4259,27 @@ namespace google\appengine_datastore_v3 {
     public function clearDeferred() {
       $this->deferred = array();
     }
+    public function getInOrder() {
+      if (!isset($this->in_order)) {
+        return true;
+      }
+      return $this->in_order;
+    }
+    public function setInOrder($val) {
+      $this->in_order = $val;
+      return $this;
+    }
+    public function clearInOrder() {
+      unset($this->in_order);
+      return $this;
+    }
+    public function hasInOrder() {
+      return isset($this->in_order);
+    }
     public function clear() {
       $this->clearEntity();
       $this->clearDeferred();
+      $this->clearInOrder();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -4274,6 +4292,9 @@ namespace google\appengine_datastore_v3 {
       $res += 1 * sizeof($this->deferred);
       foreach ($this->deferred as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->in_order)) {
+        $res += 2;
       }
       return $res;
     }
@@ -4290,6 +4311,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->in_order)) {
+        $out->putVarInt32(48);
+        $out->putBoolean($this->in_order);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -4303,6 +4328,9 @@ namespace google\appengine_datastore_v3 {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->addDeferred()->tryMerge($tmp);
+            break;
+          case 48:
+            $this->setInOrder($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -4329,6 +4357,9 @@ namespace google\appengine_datastore_v3 {
       foreach ($x->getDeferredList() as $v) {
         $this->addDeferred()->copyFrom($v);
       }
+      if ($x->hasInOrder()) {
+        $this->setInOrder($x->getInOrder());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -4340,6 +4371,8 @@ namespace google\appengine_datastore_v3 {
       foreach (array_map(null, $this->deferred, $x->deferred) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->in_order) !== isset($x->in_order)) return false;
+      if (isset($this->in_order) && $this->in_order !== $x->in_order) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -4349,6 +4382,9 @@ namespace google\appengine_datastore_v3 {
       }
       foreach ($this->deferred as $value) {
         $res .= $prefix . "deferred <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->in_order)) {
+        $res .= $prefix . "in_order: " . $this->debugFormatBool($this->in_order) . "\n";
       }
       return $res;
     }
@@ -5984,6 +6020,7 @@ namespace google\appengine_datastore_v3 {
   class QueryResult extends \google\net\ProtocolMessage {
     private $result = array();
     private $index = array();
+    private $version = array();
     public function getCursor() {
       if (!isset($this->cursor)) {
         return new \google\appengine_datastore_v3\Cursor();
@@ -6197,6 +6234,34 @@ namespace google\appengine_datastore_v3 {
     public function hasSmallOps() {
       return isset($this->small_ops);
     }
+    public function getVersionSize() {
+      return sizeof($this->version);
+    }
+    public function getVersionList() {
+      return $this->version;
+    }
+    public function getVersion($idx) {
+      return $this->version[$idx];
+    }
+    public function setVersion($idx, $val) {
+      if (is_double($val)) {
+        $this->version[$idx] = sprintf('%0.0F', $val);
+      } else {
+        $this->version[$idx] = $val;
+      }
+      return $this;
+    }
+    public function addVersion($val) {
+      if (is_double($val)) {
+        $this->version[] = sprintf('%0.0F', $val);
+      } else {
+        $this->version[] = $val;
+      }
+      return $this;
+    }
+    public function clearVersion() {
+      $this->version = array();
+    }
     public function clear() {
       $this->clearCursor();
       $this->clearResult();
@@ -6208,6 +6273,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearIndex();
       $this->clearIndexOnly();
       $this->clearSmallOps();
+      $this->clearVersion();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -6248,6 +6314,11 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->small_ops)) {
         $res += 2;
+      }
+      $this->checkProtoArray($this->version);
+      $res += 1 * sizeof($this->version);
+      foreach ($this->version as $value) {
+        $res += $this->lengthVarInt64($value);
       }
       return $res;
     }
@@ -6299,6 +6370,11 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(80);
         $out->putBoolean($this->small_ops);
       }
+      $this->checkProtoArray($this->version);
+      foreach ($this->version as $value) {
+        $out->putVarInt32(88);
+        $out->putVarInt64($value);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -6348,6 +6424,9 @@ namespace google\appengine_datastore_v3 {
             break;
           case 80:
             $this->setSmallOps($d->getBoolean());
+            break;
+          case 88:
+            $this->addVersion($d->getVarInt64());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -6402,6 +6481,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasSmallOps()) {
         $this->setSmallOps($x->getSmallOps());
       }
+      foreach ($x->getVersionList() as $v) {
+        $this->addVersion($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -6429,6 +6511,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->index_only) && $this->index_only !== $x->index_only) return false;
       if (isset($this->small_ops) !== isset($x->small_ops)) return false;
       if (isset($this->small_ops) && $this->small_ops !== $x->small_ops) return false;
+      if (sizeof($this->version) !== sizeof($x->version)) return false;
+      foreach (array_map(null, $this->version, $x->version) as $v) {
+        if (!$this->integerEquals($v[0], $v[1])) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6462,6 +6548,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->small_ops)) {
         $res .= $prefix . "small_ops: " . $this->debugFormatBool($this->small_ops) . "\n";
+      }
+      foreach ($this->version as $value) {
+        $res .= $prefix . "version: " . $this->debugFormatInt64($value) . "\n";
       }
       return $res;
     }

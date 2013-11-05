@@ -342,7 +342,7 @@ class BuilderHandler(yaml_listener.EventHandler):
     Args:
       event: Ignored.
     """
-    raise NotImplementedError('Anchors not supported in this handler')
+    raise NotImplementedError('References not supported in this handler')
 
   def Scalar(self, event, loader):
     """Handle scalar value

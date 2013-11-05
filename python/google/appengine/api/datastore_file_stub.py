@@ -721,18 +721,18 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     try:
       for key in keys:
         last_element = _FinalElement(key)
-        datastore_stub_util.Check(not last_element.has_name(),
-                                  'Cannot allocate named key.')
 
-        if last_element.id():
-          self._SetMaxId(last_element.id())
+        if last_element.id() or last_element.has_name():
+          for el in key.path().element_list():
+            if el.id():
+              self._SetMaxId(el.id())
 
         else:
           id_space = datastore_stub_util.SCATTERED
           count = self._IdCounter(id_space)
           last_element.set_id(datastore_stub_util.ToScatteredId(count))
           self._SetIdCounter(id_space, count + 1)
-        full_keys.append(key)
+          full_keys.append(key)
     finally:
       self.__id_lock.release()
 

@@ -2823,14 +2823,15 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
   def _AllocateIds(self, references):
     """Allocate or reserves IDs for the v4 datastore API.
 
-    Incomplete keys are allocated scattered IDs. Complete keys are reserved
-    in the appropriate ID space.
+    Incomplete keys are allocated scattered IDs. Complete keys have every id in
+    their paths reserved in the appropriate ID space.
 
     Args:
       references: a list of entity_pb.Reference objects to allocate or reserve
 
     Returns:
-      a list of (complete) allocated entity_pb.Reference objects
+      a list of complete entity_pb.Reference objects corresponding to the
+      incomplete keys in the input, with newly allocated ids.
     """
     raise NotImplementedError
 

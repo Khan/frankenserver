@@ -177,7 +177,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Error'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugHlLAonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIpMCCghNdXRhdGlvbhIvCgZ1cHNlcnQYASADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGdXBkYXRlGAIgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Ei8KBmluc2VydBgDIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRI3Cg5pbnNlcnRfYXV0b19pZBgEIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIsCgZkZWxldGUYBSADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSDQoFZm9yY2UYBiABKAgiYQoOTXV0YXRpb25SZXN1bHQSFQoNaW5kZXhfdXBkYXRlcxgBIAIoBRI4ChJpbnNlcnRfYXV0b19pZF9rZXkYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkidQoMRW50aXR5UmVzdWx0Ei8KBmVudGl0eRgBIAIoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eSI0CgpSZXN1bHRUeXBlEggKBEZVTEwQARIOCgpQUk9KRUNUSU9OEAISDAoIS0VZX09OTFkQAyLxAgoFUXVlcnkSPwoKcHJvamVjdGlvbhgCIAMoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbhI1CgRraW5kGAMgAygLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2luZEV4cHJlc3Npb24SLwoGZmlsdGVyGAQgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRmlsdGVyEjUKBW9yZGVyGAUgAygLMiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlchI8Cghncm91cF9ieRgGIAMoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEhQKDHN0YXJ0X2N1cnNvchgHIAEoDBISCgplbmRfY3Vyc29yGAggASgMEhEKBm9mZnNldBgKIAEoBToBMBINCgVsaW1pdBgLIAEoBSIeCg5LaW5kRXhwcmVzc2lvbhIMCgRuYW1lGAEgAigJIiEKEVByb3BlcnR5UmVmZXJlbmNlEgwKBG5hbWUYAiACKAki0wEKElByb3BlcnR5RXhwcmVzc2lvbhI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEl0KFGFnZ3JlZ2F0aW9uX2Z1bmN0aW9uGAIgASgOMj8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlFeHByZXNzaW9uLkFnZ3JlZ2F0aW9uRnVuY3Rpb24iIAoTQWdncmVnYXRpb25GdW5jdGlvbhIJCgVGSVJTVBABIskBCg1Qcm9wZXJ0eU9yZGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USTgoJZGlyZWN0aW9uGAIgASgOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlci5EaXJlY3Rpb246CUFTQ0VORElORyIqCglEaXJlY3Rpb24SDQoJQVNDRU5ESU5HEAESDgoKREVTQ0VORElORxACIo4BCgZGaWx0ZXISQgoQY29tcG9zaXRlX2ZpbHRlchgBIAEoCzIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlchJACg9wcm9wZXJ0eV9maWx0ZXIYAiABKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlciKcAQoPQ29tcG9zaXRlRmlsdGVyEkMKCG9wZXJhdG9yGAEgAigOMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyLk9wZXJhdG9yEi8KBmZpbHRlchgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlciITCghPcGVyYXRvchIHCgNBTkQQASK+AgoOUHJvcGVydHlGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJCCghvcGVyYXRvchgCIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyLk9wZXJhdG9yEi0KBXZhbHVlGAMgAigLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiewoIT3BlcmF0b3ISDQoJTEVTU19USEFOEAESFgoSTEVTU19USEFOX09SX0VRVUFMEAISEAoMR1JFQVRFUl9USEFOEAMSGQoVR1JFQVRFUl9USEFOX09SX0VRVUFMEAQSCQoFRVFVQUwQBRIQCgxIQVNfQU5DRVNUT1IQCyKwAQoIR3FsUXVlcnkSFAoMcXVlcnlfc3RyaW5nGAEgAigJEhwKDWFsbG93X2xpdGVyYWwYAiABKAg6BWZhbHNlEjYKCG5hbWVfYXJnGAMgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmcSOAoKbnVtYmVyX2FyZxgEIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnIloKC0dxbFF1ZXJ5QXJnEgwKBG5hbWUYASABKAkSLQoFdmFsdWUYAiABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIOCgZjdXJzb3IYAyABKAwi9wIKEFF1ZXJ5UmVzdWx0QmF0Y2gSTAoSZW50aXR5X3Jlc3VsdF90eXBlGAEgAigOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0LlJlc3VsdFR5cGUSPAoNZW50aXR5X3Jlc3VsdBgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBISCgplbmRfY3Vyc29yGAQgASgMEk8KDG1vcmVfcmVzdWx0cxgFIAIoDjI5LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2guTW9yZVJlc3VsdHNUeXBlEhoKD3NraXBwZWRfcmVzdWx0cxgGIAEoBToBMCJWCg9Nb3JlUmVzdWx0c1R5cGUSEAoMTk9UX0ZJTklTSEVEEAESHAoYTU9SRV9SRVNVTFRTX0FGVEVSX0xJTUlUEAISEwoPTk9fTU9SRV9SRVNVTFRTEAMitQEKC1JlYWRPcHRpb25zElcKEHJlYWRfY29uc2lzdGVuY3kYASABKA4yNC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucy5SZWFkQ29uc2lzdGVuY3k6B0RFRkFVTFQSEwoLdHJhbnNhY3Rpb24YAiABKAwiOAoPUmVhZENvbnNpc3RlbmN5EgsKB0RFRkFVTFQQABIKCgZTVFJPTkcQARIMCghFVkVOVFVBTBACInYKDUxvb2t1cFJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSKQoDa2V5GAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Iq4BCg5Mb29rdXBSZXNwb25zZRI0CgVmb3VuZBgBIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBI2CgdtaXNzaW5nGAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0Ei4KCGRlZmVycmVkGAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IqsCCg9SdW5RdWVyeVJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSOgoMcGFydGl0aW9uX2lkGAIgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSLQoFcXVlcnkYAyABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeRI0CglncWxfcXVlcnkYByABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeRIdChVtaW5fc2FmZV90aW1lX3NlY29uZHMYBCABKAMSHAoUc3VnZ2VzdGVkX2JhdGNoX3NpemUYBSABKAUiYgoQUnVuUXVlcnlSZXNwb25zZRI4CgViYXRjaBgBIAIoCzIpLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gSFAoMcXVlcnlfaGFuZGxlGAIgASgMIiwKFENvbnRpbnVlUXVlcnlSZXF1ZXN0EhQKDHF1ZXJ5X2hhbmRsZRgBIAIoDCJRChVDb250aW51ZVF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoIlMKF0JlZ2luVHJhbnNhY3Rpb25SZXF1ZXN0EhoKC2Nyb3NzX2dyb3VwGAEgASgIOgVmYWxzZRIcCg1jcm9zc19yZXF1ZXN0GAIgASgIOgVmYWxzZSIvChhCZWdpblRyYW5zYWN0aW9uUmVzcG9uc2USEwoLdHJhbnNhY3Rpb24YASACKAwiJgoPUm9sbGJhY2tSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgAigMIhIKEFJvbGxiYWNrUmVzcG9uc2Ui1QEKDUNvbW1pdFJlcXVlc3QSEwoLdHJhbnNhY3Rpb24YASABKAwSMwoIbXV0YXRpb24YAiABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbhJICgRtb2RlGAQgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdC5Nb2RlOg1UUkFOU0FDVElPTkFMIjAKBE1vZGUSEQoNVFJBTlNBQ1RJT05BTBABEhUKEU5PTl9UUkFOU0FDVElPTkFMEAIiUgoOQ29tbWl0UmVzcG9uc2USQAoPbXV0YXRpb25fcmVzdWx0GAEgASgLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb25SZXN1bHQicwoSQWxsb2NhdGVJZHNSZXF1ZXN0Ei4KCGFsbG9jYXRlGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei0KB3Jlc2VydmUYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiRgoTQWxsb2NhdGVJZHNSZXNwb25zZRIvCglhbGxvY2F0ZWQYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiQwoMV3JpdGVSZXF1ZXN0EjMKCG11dGF0aW9uGAEgAigLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24yogcKEkRhdGFzdG9yZVY0U2VydmljZRJ5ChBCZWdpblRyYW5zYWN0aW9uEjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QaMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVzcG9uc2UiABJhCghSb2xsYmFjaxIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVzcG9uc2UiABJbCgZDb21taXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiABJhCghSdW5RdWVyeRIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVzcG9uc2UiABJwCg1Db250aW51ZVF1ZXJ5Ei0uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlcXVlc3QaLi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVzcG9uc2UiABJbCgZMb29rdXASJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJqCgtBbGxvY2F0ZUlkcxIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVxdWVzdBosLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVzcG9uc2UiABJYCgNHZXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJZCgVXcml0ZRIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LldyaXRlUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlc3BvbnNlIgBCIQofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZQ=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugH4LQonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIpMCCghNdXRhdGlvbhIvCgZ1cHNlcnQYASADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGdXBkYXRlGAIgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Ei8KBmluc2VydBgDIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRI3Cg5pbnNlcnRfYXV0b19pZBgEIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIsCgZkZWxldGUYBSADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSDQoFZm9yY2UYBiABKAgi4QEKDk11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYASACKAUSOAoSaW5zZXJ0X2F1dG9faWRfa2V5GAIgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhYKDnVwc2VydF92ZXJzaW9uGAMgAygDEhYKDnVwZGF0ZV92ZXJzaW9uGAQgAygDEhYKDmluc2VydF92ZXJzaW9uGAUgAygDEh4KFmluc2VydF9hdXRvX2lkX3ZlcnNpb24YBiADKAMSFgoOZGVsZXRlX3ZlcnNpb24YByADKAMihgEKDEVudGl0eVJlc3VsdBIvCgZlbnRpdHkYASACKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSDwoHdmVyc2lvbhgCIAEoAyI0CgpSZXN1bHRUeXBlEggKBEZVTEwQARIOCgpQUk9KRUNUSU9OEAISDAoIS0VZX09OTFkQAyLxAgoFUXVlcnkSPwoKcHJvamVjdGlvbhgCIAMoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbhI1CgRraW5kGAMgAygLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2luZEV4cHJlc3Npb24SLwoGZmlsdGVyGAQgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRmlsdGVyEjUKBW9yZGVyGAUgAygLMiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlchI8Cghncm91cF9ieRgGIAMoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEhQKDHN0YXJ0X2N1cnNvchgHIAEoDBISCgplbmRfY3Vyc29yGAggASgMEhEKBm9mZnNldBgKIAEoBToBMBINCgVsaW1pdBgLIAEoBSIeCg5LaW5kRXhwcmVzc2lvbhIMCgRuYW1lGAEgAigJIiEKEVByb3BlcnR5UmVmZXJlbmNlEgwKBG5hbWUYAiACKAki0wEKElByb3BlcnR5RXhwcmVzc2lvbhI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEl0KFGFnZ3JlZ2F0aW9uX2Z1bmN0aW9uGAIgASgOMj8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlFeHByZXNzaW9uLkFnZ3JlZ2F0aW9uRnVuY3Rpb24iIAoTQWdncmVnYXRpb25GdW5jdGlvbhIJCgVGSVJTVBABIskBCg1Qcm9wZXJ0eU9yZGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USTgoJZGlyZWN0aW9uGAIgASgOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlci5EaXJlY3Rpb246CUFTQ0VORElORyIqCglEaXJlY3Rpb24SDQoJQVNDRU5ESU5HEAESDgoKREVTQ0VORElORxACIo4BCgZGaWx0ZXISQgoQY29tcG9zaXRlX2ZpbHRlchgBIAEoCzIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlchJACg9wcm9wZXJ0eV9maWx0ZXIYAiABKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlciKcAQoPQ29tcG9zaXRlRmlsdGVyEkMKCG9wZXJhdG9yGAEgAigOMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyLk9wZXJhdG9yEi8KBmZpbHRlchgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlciITCghPcGVyYXRvchIHCgNBTkQQASK+AgoOUHJvcGVydHlGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJCCghvcGVyYXRvchgCIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyLk9wZXJhdG9yEi0KBXZhbHVlGAMgAigLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiewoIT3BlcmF0b3ISDQoJTEVTU19USEFOEAESFgoSTEVTU19USEFOX09SX0VRVUFMEAISEAoMR1JFQVRFUl9USEFOEAMSGQoVR1JFQVRFUl9USEFOX09SX0VRVUFMEAQSCQoFRVFVQUwQBRIQCgxIQVNfQU5DRVNUT1IQCyKwAQoIR3FsUXVlcnkSFAoMcXVlcnlfc3RyaW5nGAEgAigJEhwKDWFsbG93X2xpdGVyYWwYAiABKAg6BWZhbHNlEjYKCG5hbWVfYXJnGAMgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmcSOAoKbnVtYmVyX2FyZxgEIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnIloKC0dxbFF1ZXJ5QXJnEgwKBG5hbWUYASABKAkSLQoFdmFsdWUYAiABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIOCgZjdXJzb3IYAyABKAwi9wIKEFF1ZXJ5UmVzdWx0QmF0Y2gSTAoSZW50aXR5X3Jlc3VsdF90eXBlGAEgAigOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0LlJlc3VsdFR5cGUSPAoNZW50aXR5X3Jlc3VsdBgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBISCgplbmRfY3Vyc29yGAQgASgMEk8KDG1vcmVfcmVzdWx0cxgFIAIoDjI5LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2guTW9yZVJlc3VsdHNUeXBlEhoKD3NraXBwZWRfcmVzdWx0cxgGIAEoBToBMCJWCg9Nb3JlUmVzdWx0c1R5cGUSEAoMTk9UX0ZJTklTSEVEEAESHAoYTU9SRV9SRVNVTFRTX0FGVEVSX0xJTUlUEAISEwoPTk9fTU9SRV9SRVNVTFRTEAMitQEKC1JlYWRPcHRpb25zElcKEHJlYWRfY29uc2lzdGVuY3kYASABKA4yNC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucy5SZWFkQ29uc2lzdGVuY3k6B0RFRkFVTFQSEwoLdHJhbnNhY3Rpb24YAiABKAwiOAoPUmVhZENvbnNpc3RlbmN5EgsKB0RFRkFVTFQQABIKCgZTVFJPTkcQARIMCghFVkVOVFVBTBACInYKDUxvb2t1cFJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSKQoDa2V5GAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Iq4BCg5Mb29rdXBSZXNwb25zZRI0CgVmb3VuZBgBIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBI2CgdtaXNzaW5nGAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0Ei4KCGRlZmVycmVkGAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IqsCCg9SdW5RdWVyeVJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSOgoMcGFydGl0aW9uX2lkGAIgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSLQoFcXVlcnkYAyABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeRI0CglncWxfcXVlcnkYByABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeRIdChVtaW5fc2FmZV90aW1lX3NlY29uZHMYBCABKAMSHAoUc3VnZ2VzdGVkX2JhdGNoX3NpemUYBSABKAUiYgoQUnVuUXVlcnlSZXNwb25zZRI4CgViYXRjaBgBIAIoCzIpLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gSFAoMcXVlcnlfaGFuZGxlGAIgASgMIiwKFENvbnRpbnVlUXVlcnlSZXF1ZXN0EhQKDHF1ZXJ5X2hhbmRsZRgBIAIoDCJRChVDb250aW51ZVF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoIlMKF0JlZ2luVHJhbnNhY3Rpb25SZXF1ZXN0EhoKC2Nyb3NzX2dyb3VwGAEgASgIOgVmYWxzZRIcCg1jcm9zc19yZXF1ZXN0GAIgASgIOgVmYWxzZSIvChhCZWdpblRyYW5zYWN0aW9uUmVzcG9uc2USEwoLdHJhbnNhY3Rpb24YASACKAwiJgoPUm9sbGJhY2tSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgAigMIhIKEFJvbGxiYWNrUmVzcG9uc2Ui1QEKDUNvbW1pdFJlcXVlc3QSEwoLdHJhbnNhY3Rpb24YASABKAwSMwoIbXV0YXRpb24YAiABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbhJICgRtb2RlGAQgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdC5Nb2RlOg1UUkFOU0FDVElPTkFMIjAKBE1vZGUSEQoNVFJBTlNBQ1RJT05BTBABEhUKEU5PTl9UUkFOU0FDVElPTkFMEAIiUgoOQ29tbWl0UmVzcG9uc2USQAoPbXV0YXRpb25fcmVzdWx0GAEgASgLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb25SZXN1bHQicwoSQWxsb2NhdGVJZHNSZXF1ZXN0Ei4KCGFsbG9jYXRlGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei0KB3Jlc2VydmUYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiRgoTQWxsb2NhdGVJZHNSZXNwb25zZRIvCglhbGxvY2F0ZWQYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiQwoMV3JpdGVSZXF1ZXN0EjMKCG11dGF0aW9uGAEgAigLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24yogcKEkRhdGFzdG9yZVY0U2VydmljZRJ5ChBCZWdpblRyYW5zYWN0aW9uEjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QaMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVzcG9uc2UiABJhCghSb2xsYmFjaxIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVzcG9uc2UiABJbCgZDb21taXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiABJhCghSdW5RdWVyeRIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVzcG9uc2UiABJwCg1Db250aW51ZVF1ZXJ5Ei0uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlcXVlc3QaLi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVzcG9uc2UiABJbCgZMb29rdXASJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJqCgtBbGxvY2F0ZUlkcxIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVxdWVzdBosLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVzcG9uc2UiABJYCgNHZXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJZCgVXcml0ZRIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LldyaXRlUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlc3BvbnNlIgBCIQofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZQ=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -581,6 +581,11 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.insert_auto_id_key_ = []
+    self.upsert_version_ = []
+    self.update_version_ = []
+    self.insert_version_ = []
+    self.insert_auto_id_version_ = []
+    self.delete_version_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def index_updates(self): return self.index_updates_
@@ -612,11 +617,91 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
 
   def clear_insert_auto_id_key(self):
     self.insert_auto_id_key_ = []
+  def upsert_version_size(self): return len(self.upsert_version_)
+  def upsert_version_list(self): return self.upsert_version_
+
+  def upsert_version(self, i):
+    return self.upsert_version_[i]
+
+  def set_upsert_version(self, i, x):
+    self.upsert_version_[i] = x
+
+  def add_upsert_version(self, x):
+    self.upsert_version_.append(x)
+
+  def clear_upsert_version(self):
+    self.upsert_version_ = []
+
+  def update_version_size(self): return len(self.update_version_)
+  def update_version_list(self): return self.update_version_
+
+  def update_version(self, i):
+    return self.update_version_[i]
+
+  def set_update_version(self, i, x):
+    self.update_version_[i] = x
+
+  def add_update_version(self, x):
+    self.update_version_.append(x)
+
+  def clear_update_version(self):
+    self.update_version_ = []
+
+  def insert_version_size(self): return len(self.insert_version_)
+  def insert_version_list(self): return self.insert_version_
+
+  def insert_version(self, i):
+    return self.insert_version_[i]
+
+  def set_insert_version(self, i, x):
+    self.insert_version_[i] = x
+
+  def add_insert_version(self, x):
+    self.insert_version_.append(x)
+
+  def clear_insert_version(self):
+    self.insert_version_ = []
+
+  def insert_auto_id_version_size(self): return len(self.insert_auto_id_version_)
+  def insert_auto_id_version_list(self): return self.insert_auto_id_version_
+
+  def insert_auto_id_version(self, i):
+    return self.insert_auto_id_version_[i]
+
+  def set_insert_auto_id_version(self, i, x):
+    self.insert_auto_id_version_[i] = x
+
+  def add_insert_auto_id_version(self, x):
+    self.insert_auto_id_version_.append(x)
+
+  def clear_insert_auto_id_version(self):
+    self.insert_auto_id_version_ = []
+
+  def delete_version_size(self): return len(self.delete_version_)
+  def delete_version_list(self): return self.delete_version_
+
+  def delete_version(self, i):
+    return self.delete_version_[i]
+
+  def set_delete_version(self, i, x):
+    self.delete_version_[i] = x
+
+  def add_delete_version(self, x):
+    self.delete_version_.append(x)
+
+  def clear_delete_version(self):
+    self.delete_version_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_index_updates()): self.set_index_updates(x.index_updates())
     for i in xrange(x.insert_auto_id_key_size()): self.add_insert_auto_id_key().CopyFrom(x.insert_auto_id_key(i))
+    for i in xrange(x.upsert_version_size()): self.add_upsert_version(x.upsert_version(i))
+    for i in xrange(x.update_version_size()): self.add_update_version(x.update_version(i))
+    for i in xrange(x.insert_version_size()): self.add_insert_version(x.insert_version(i))
+    for i in xrange(x.insert_auto_id_version_size()): self.add_insert_auto_id_version(x.insert_auto_id_version(i))
+    for i in xrange(x.delete_version_size()): self.add_delete_version(x.delete_version(i))
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -652,6 +737,21 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
     if len(self.insert_auto_id_key_) != len(x.insert_auto_id_key_): return 0
     for e1, e2 in zip(self.insert_auto_id_key_, x.insert_auto_id_key_):
       if e1 != e2: return 0
+    if len(self.upsert_version_) != len(x.upsert_version_): return 0
+    for e1, e2 in zip(self.upsert_version_, x.upsert_version_):
+      if e1 != e2: return 0
+    if len(self.update_version_) != len(x.update_version_): return 0
+    for e1, e2 in zip(self.update_version_, x.update_version_):
+      if e1 != e2: return 0
+    if len(self.insert_version_) != len(x.insert_version_): return 0
+    for e1, e2 in zip(self.insert_version_, x.insert_version_):
+      if e1 != e2: return 0
+    if len(self.insert_auto_id_version_) != len(x.insert_auto_id_version_): return 0
+    for e1, e2 in zip(self.insert_auto_id_version_, x.insert_auto_id_version_):
+      if e1 != e2: return 0
+    if len(self.delete_version_) != len(x.delete_version_): return 0
+    for e1, e2 in zip(self.delete_version_, x.delete_version_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -669,6 +769,16 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.index_updates_)
     n += 1 * len(self.insert_auto_id_key_)
     for i in xrange(len(self.insert_auto_id_key_)): n += self.lengthString(self.insert_auto_id_key_[i].ByteSize())
+    n += 1 * len(self.upsert_version_)
+    for i in xrange(len(self.upsert_version_)): n += self.lengthVarInt64(self.upsert_version_[i])
+    n += 1 * len(self.update_version_)
+    for i in xrange(len(self.update_version_)): n += self.lengthVarInt64(self.update_version_[i])
+    n += 1 * len(self.insert_version_)
+    for i in xrange(len(self.insert_version_)): n += self.lengthVarInt64(self.insert_version_[i])
+    n += 1 * len(self.insert_auto_id_version_)
+    for i in xrange(len(self.insert_auto_id_version_)): n += self.lengthVarInt64(self.insert_auto_id_version_[i])
+    n += 1 * len(self.delete_version_)
+    for i in xrange(len(self.delete_version_)): n += self.lengthVarInt64(self.delete_version_[i])
     return n + 1
 
   def ByteSizePartial(self):
@@ -678,11 +788,26 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
       n += self.lengthVarInt64(self.index_updates_)
     n += 1 * len(self.insert_auto_id_key_)
     for i in xrange(len(self.insert_auto_id_key_)): n += self.lengthString(self.insert_auto_id_key_[i].ByteSizePartial())
+    n += 1 * len(self.upsert_version_)
+    for i in xrange(len(self.upsert_version_)): n += self.lengthVarInt64(self.upsert_version_[i])
+    n += 1 * len(self.update_version_)
+    for i in xrange(len(self.update_version_)): n += self.lengthVarInt64(self.update_version_[i])
+    n += 1 * len(self.insert_version_)
+    for i in xrange(len(self.insert_version_)): n += self.lengthVarInt64(self.insert_version_[i])
+    n += 1 * len(self.insert_auto_id_version_)
+    for i in xrange(len(self.insert_auto_id_version_)): n += self.lengthVarInt64(self.insert_auto_id_version_[i])
+    n += 1 * len(self.delete_version_)
+    for i in xrange(len(self.delete_version_)): n += self.lengthVarInt64(self.delete_version_[i])
     return n
 
   def Clear(self):
     self.clear_index_updates()
     self.clear_insert_auto_id_key()
+    self.clear_upsert_version()
+    self.clear_update_version()
+    self.clear_insert_version()
+    self.clear_insert_auto_id_version()
+    self.clear_delete_version()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -691,6 +816,21 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.insert_auto_id_key_[i].ByteSize())
       self.insert_auto_id_key_[i].OutputUnchecked(out)
+    for i in xrange(len(self.upsert_version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.upsert_version_[i])
+    for i in xrange(len(self.update_version_)):
+      out.putVarInt32(32)
+      out.putVarInt64(self.update_version_[i])
+    for i in xrange(len(self.insert_version_)):
+      out.putVarInt32(40)
+      out.putVarInt64(self.insert_version_[i])
+    for i in xrange(len(self.insert_auto_id_version_)):
+      out.putVarInt32(48)
+      out.putVarInt64(self.insert_auto_id_version_[i])
+    for i in xrange(len(self.delete_version_)):
+      out.putVarInt32(56)
+      out.putVarInt64(self.delete_version_[i])
 
   def OutputPartial(self, out):
     if (self.has_index_updates_):
@@ -700,6 +840,21 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.insert_auto_id_key_[i].ByteSizePartial())
       self.insert_auto_id_key_[i].OutputPartial(out)
+    for i in xrange(len(self.upsert_version_)):
+      out.putVarInt32(24)
+      out.putVarInt64(self.upsert_version_[i])
+    for i in xrange(len(self.update_version_)):
+      out.putVarInt32(32)
+      out.putVarInt64(self.update_version_[i])
+    for i in xrange(len(self.insert_version_)):
+      out.putVarInt32(40)
+      out.putVarInt64(self.insert_version_[i])
+    for i in xrange(len(self.insert_auto_id_version_)):
+      out.putVarInt32(48)
+      out.putVarInt64(self.insert_auto_id_version_[i])
+    for i in xrange(len(self.delete_version_)):
+      out.putVarInt32(56)
+      out.putVarInt64(self.delete_version_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -712,6 +867,21 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_insert_auto_id_key().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.add_upsert_version(d.getVarInt64())
+        continue
+      if tt == 32:
+        self.add_update_version(d.getVarInt64())
+        continue
+      if tt == 40:
+        self.add_insert_version(d.getVarInt64())
+        continue
+      if tt == 48:
+        self.add_insert_auto_id_version(d.getVarInt64())
+        continue
+      if tt == 56:
+        self.add_delete_version(d.getVarInt64())
         continue
 
 
@@ -730,6 +900,36 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    cnt=0
+    for e in self.upsert_version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("upsert_version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
+    cnt=0
+    for e in self.update_version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("update_version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
+    cnt=0
+    for e in self.insert_version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("insert_version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
+    cnt=0
+    for e in self.insert_auto_id_version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("insert_auto_id_version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
+    cnt=0
+    for e in self.delete_version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("delete_version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
     return res
 
 
@@ -738,25 +938,40 @@ class MutationResult(ProtocolBuffer.ProtocolMessage):
 
   kindex_updates = 1
   kinsert_auto_id_key = 2
+  kupsert_version = 3
+  kupdate_version = 4
+  kinsert_version = 5
+  kinsert_auto_id_version = 6
+  kdelete_version = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "index_updates",
     2: "insert_auto_id_key",
-  }, 2)
+    3: "upsert_version",
+    4: "update_version",
+    5: "insert_version",
+    6: "insert_auto_id_version",
+    7: "delete_version",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+    6: ProtocolBuffer.Encoder.NUMERIC,
+    7: ProtocolBuffer.Encoder.NUMERIC,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.MutationResult'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uUmVzdWx0ExoNaW5kZXhfdXBkYXRlcyABKAAwBTgCFBMaEmluc2VydF9hdXRvX2lkX2tleSACKAIwCzgDShthcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUwgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uUmVzdWx0ExoNaW5kZXhfdXBkYXRlcyABKAAwBTgCFBMaEmluc2VydF9hdXRvX2lkX2tleSACKAIwCzgDShthcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoOdXBzZXJ0X3ZlcnNpb24gAygAMAM4AxQTGg51cGRhdGVfdmVyc2lvbiAEKAAwAzgDFBMaDmluc2VydF92ZXJzaW9uIAUoADADOAMUExoWaW5zZXJ0X2F1dG9faWRfdmVyc2lvbiAGKAAwAzgDFBMaDmRlbGV0ZV92ZXJzaW9uIAcoADADOAMUwgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -778,6 +993,8 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
   ResultType_Name = classmethod(ResultType_Name)
 
   has_entity_ = 0
+  has_version_ = 0
+  version_ = 0
 
   def __init__(self, contents=None):
     self.entity_ = google.appengine.datastore.entity_v4_pb.Entity()
@@ -791,10 +1008,24 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
 
   def has_entity(self): return self.has_entity_
 
+  def version(self): return self.version_
+
+  def set_version(self, x):
+    self.has_version_ = 1
+    self.version_ = x
+
+  def clear_version(self):
+    if self.has_version_:
+      self.has_version_ = 0
+      self.version_ = 0
+
+  def has_version(self): return self.has_version_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_entity()): self.mutable_entity().MergeFrom(x.entity())
+    if (x.has_version()): self.set_version(x.version())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -827,6 +1058,8 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_entity_ != x.has_entity_: return 0
     if self.has_entity_ and self.entity_ != x.entity_: return 0
+    if self.has_version_ != x.has_version_: return 0
+    if self.has_version_ and self.version_ != x.version_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -841,6 +1074,7 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(self.entity_.ByteSize())
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -848,21 +1082,29 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_):
       n += 1
       n += self.lengthString(self.entity_.ByteSizePartial())
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     return n
 
   def Clear(self):
     self.clear_entity()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putVarInt32(self.entity_.ByteSize())
     self.entity_.OutputUnchecked(out)
+    if (self.has_version_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.version_)
 
   def OutputPartial(self, out):
     if (self.has_entity_):
       out.putVarInt32(10)
       out.putVarInt32(self.entity_.ByteSizePartial())
       self.entity_.OutputPartial(out)
+    if (self.has_version_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.version_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -872,6 +1114,9 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_entity().TryMerge(tmp)
+        continue
+      if tt == 16:
+        self.set_version(d.getVarInt64())
         continue
 
 
@@ -885,6 +1130,7 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"entity <\n"
       res+=self.entity_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
     return res
 
 
@@ -892,23 +1138,26 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kentity = 1
+  kversion = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "entity",
-  }, 1)
+    2: "version",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.EntityResult'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBMaBmVudGl0eSABKAIwCzgCSh5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUc3oKUmVzdWx0VHlwZYsBkgEERlVMTJgBAYwBiwGSAQpQUk9KRUNUSU9OmAECjAGLAZIBCEtFWV9PTkxZmAEDjAF0wgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBMaBmVudGl0eSABKAIwCzgCSh5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoHdmVyc2lvbiACKAAwAzgBFHN6ClJlc3VsdFR5cGWLAZIBBEZVTEyYAQGMAYsBkgEKUFJPSkVDVElPTpgBAowBiwGSAQhLRVlfT05MWZgBA4wBdMIBHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9y"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())

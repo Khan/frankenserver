@@ -14,18 +14,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""provides BasicEqualityMixin.
+"""Provides ValueMixin.
 
-BasicEqualityMixin provides equality methods which test based on
-equality of fields. This facilitates testing of translation modules.
+ValueMixin provides comparison (including equality) methods and hashing
+based on the values of fields.
 """
 
 
-class BasicEqualityMixin(object):
+class ValueMixin(object):
+  def __cmp__(self, other):
 
-  def __eq__(self, other):
-    return (isinstance(other, self.__class__)
-            and self.__dict__ == other.__dict__)
 
-  def __ne__(self, other):
-    return not self.__eq__(other)
+
+
+
+
+    if hasattr(other, '__dict__'):
+      return self.__dict__.__cmp__(other.__dict__)
+    else:
+      return 1
+
+  def __hash__(self):
+    return hash(frozenset(self.__dict__.items()))
+
+  def __repr__(self):
+
+    d = self.__dict__
+    attrs = ['%s=%r' % (key, d[key]) for key in sorted(d)]
+    return '%s(%s)' % (self.__class__.__name__, ', '.join(attrs))

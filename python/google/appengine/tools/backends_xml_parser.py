@@ -28,7 +28,7 @@ from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
-from google.appengine.tools.basic_equality_mixin import BasicEqualityMixin
+from google.appengine.tools.value_mixin import ValueMixin
 
 
 class BackendsXmlParser(object):
@@ -113,7 +113,7 @@ class BackendsXmlParser(object):
     self.backends.append(backend)
 
 
-class Backend(BasicEqualityMixin):
+class Backend(ValueMixin):
   """Instances contain information about individual backend specifications."""
 
   def __init__(self):

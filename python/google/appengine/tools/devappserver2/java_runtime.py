@@ -20,6 +20,7 @@
 import google
 import os
 import os.path
+import sys
 import threading
 
 from google.appengine.api import appinfo
@@ -63,6 +64,27 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._application_lock = threading.Lock()
     self._java_application = java_application.JavaApplication(
         self._module_configuration)
+    self._java_command = self._make_java_command()
+
+  def _make_java_command(self):
+    java_dir = os.path.abspath(os.path.join(
+        os.path.dirname(java_application.__file__), 'java'))
+    java_lib_dir = os.path.join(java_dir, 'lib')
+    assert os.path.isdir(java_lib_dir), java_lib_dir
+    class_path = os.path.join(java_lib_dir, 'appengine-tools-api.jar')
+    assert os.path.isfile(class_path), class_path
+    jdk_overrides_jar = os.path.join(java_lib_dir, 'override',
+                                     'appengine-dev-jdk-overrides.jar')
+    assert os.path.isfile(jdk_overrides_jar), jdk_overrides_jar
+    return [
+        'java',
+        '-cp', class_path,
+        '-Dappengine.sdk.root=' + java_dir,
+        '-Xbootclasspath/p:' + jdk_overrides_jar,
+    ] + (['-XstartOnFirstThread'] if sys.platform == 'darwin' else []) + [
+        'com.google.appengine.tools.development.'
+            'devappserver2.StandaloneInstance'
+    ]
 
   def get_restart_directories(self):
     """Returns a list of directories where changes trigger a restart.
@@ -106,15 +128,10 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
       return runtime_config
 
     env = self._java_application.get_environment()
-    instance_jar = os.path.abspath(os.path.join(
-        os.path.dirname(google.__file__),
-        'appengine/tools/devappserver2/java/lib/StandaloneInstance_deploy.jar'))
-    assert os.path.exists(instance_jar), instance_jar
-    # TODO: replace this with something smaller and releasable
 
     with self._application_lock:
       proxy = http_runtime.HttpRuntimeProxy(
-          ['java', '-jar', instance_jar],
+          self._java_command,
           instance_config_getter,
           self._module_configuration,
           env=env,

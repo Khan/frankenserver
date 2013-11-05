@@ -624,6 +624,7 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   scope_ = ""
 
   def __init__(self, contents=None):
+    self.scopes_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def scope(self): return self.scope_
@@ -639,15 +640,34 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_scope(self): return self.has_scope_
 
+  def scopes_size(self): return len(self.scopes_)
+  def scopes_list(self): return self.scopes_
+
+  def scopes(self, i):
+    return self.scopes_[i]
+
+  def set_scopes(self, i, x):
+    self.scopes_[i] = x
+
+  def add_scopes(self, x):
+    self.scopes_.append(x)
+
+  def clear_scopes(self):
+    self.scopes_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_scope()): self.set_scope(x.scope())
+    for i in xrange(x.scopes_size()): self.add_scopes(x.scopes(i))
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_scope_ != x.has_scope_: return 0
     if self.has_scope_ and self.scope_ != x.scope_: return 0
+    if len(self.scopes_) != len(x.scopes_): return 0
+    for e1, e2 in zip(self.scopes_, x.scopes_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -657,31 +677,45 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_scope_): n += 1 + self.lengthString(len(self.scope_))
+    n += 1 * len(self.scopes_)
+    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_scope_): n += 1 + self.lengthString(len(self.scope_))
+    n += 1 * len(self.scopes_)
+    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     return n
 
   def Clear(self):
     self.clear_scope()
+    self.clear_scopes()
 
   def OutputUnchecked(self, out):
     if (self.has_scope_):
       out.putVarInt32(10)
       out.putPrefixedString(self.scope_)
+    for i in xrange(len(self.scopes_)):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.scopes_[i])
 
   def OutputPartial(self, out):
     if (self.has_scope_):
       out.putVarInt32(10)
       out.putPrefixedString(self.scope_)
+    for i in xrange(len(self.scopes_)):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.scopes_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_scope(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.add_scopes(d.getPrefixedString())
         continue
 
 
@@ -692,6 +726,12 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_scope_: res+=prefix+("scope: %s\n" % self.DebugFormatString(self.scope_))
+    cnt=0
+    for e in self.scopes_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("scopes%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
     return res
 
 
@@ -699,16 +739,19 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kscope = 1
+  kscopes = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "scope",
-  }, 1)
+    2: "scopes",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -729,6 +772,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   client_id_ = ""
 
   def __init__(self, contents=None):
+    self.scopes_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def email(self): return self.email_
@@ -809,6 +853,21 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_client_id(self): return self.has_client_id_
 
+  def scopes_size(self): return len(self.scopes_)
+  def scopes_list(self): return self.scopes_
+
+  def scopes(self, i):
+    return self.scopes_[i]
+
+  def set_scopes(self, i, x):
+    self.scopes_[i] = x
+
+  def add_scopes(self, x):
+    self.scopes_.append(x)
+
+  def clear_scopes(self):
+    self.scopes_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -818,6 +877,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_user_organization()): self.set_user_organization(x.user_organization())
     if (x.has_is_admin()): self.set_is_admin(x.is_admin())
     if (x.has_client_id()): self.set_client_id(x.client_id())
+    for i in xrange(x.scopes_size()): self.add_scopes(x.scopes(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -833,6 +893,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_is_admin_ and self.is_admin_ != x.is_admin_: return 0
     if self.has_client_id_ != x.has_client_id_: return 0
     if self.has_client_id_ and self.client_id_ != x.client_id_: return 0
+    if len(self.scopes_) != len(x.scopes_): return 0
+    for e1, e2 in zip(self.scopes_, x.scopes_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -859,6 +922,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
     if (self.has_is_admin_): n += 2
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
+    n += 1 * len(self.scopes_)
+    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     return n + 3
 
   def ByteSizePartial(self):
@@ -875,6 +940,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
     if (self.has_is_admin_): n += 2
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
+    n += 1 * len(self.scopes_)
+    for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     return n
 
   def Clear(self):
@@ -884,6 +951,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_user_organization()
     self.clear_is_admin()
     self.clear_client_id()
+    self.clear_scopes()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -901,6 +969,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_client_id_):
       out.putVarInt32(50)
       out.putPrefixedString(self.client_id_)
+    for i in xrange(len(self.scopes_)):
+      out.putVarInt32(58)
+      out.putPrefixedString(self.scopes_[i])
 
   def OutputPartial(self, out):
     if (self.has_email_):
@@ -921,6 +992,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_client_id_):
       out.putVarInt32(50)
       out.putPrefixedString(self.client_id_)
+    for i in xrange(len(self.scopes_)):
+      out.putVarInt32(58)
+      out.putPrefixedString(self.scopes_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -943,6 +1017,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 50:
         self.set_client_id(d.getPrefixedString())
         continue
+      if tt == 58:
+        self.add_scopes(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -957,6 +1034,12 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_user_organization_: res+=prefix+("user_organization: %s\n" % self.DebugFormatString(self.user_organization_))
     if self.has_is_admin_: res+=prefix+("is_admin: %s\n" % self.DebugFormatBool(self.is_admin_))
     if self.has_client_id_: res+=prefix+("client_id: %s\n" % self.DebugFormatString(self.client_id_))
+    cnt=0
+    for e in self.scopes_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("scopes%s: %s\n" % (elm, self.DebugFormatString(e)))
+      cnt+=1
     return res
 
 
@@ -969,6 +1052,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   kuser_organization = 4
   kis_admin = 5
   kclient_id = 6
+  kscopes = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -978,7 +1062,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     4: "user_organization",
     5: "is_admin",
     6: "client_id",
-  }, 6)
+    7: "scopes",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -988,7 +1073,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.NUMERIC,
     6: ProtocolBuffer.Encoder.STRING,
-  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
+    7: ProtocolBuffer.Encoder.STRING,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

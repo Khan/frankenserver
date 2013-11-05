@@ -486,7 +486,7 @@ def _I18nHeader(text):
     email.header.Header
   """
   charset = _GuessCharset(text)
-  return email.header.Header(text, charset, maxlinelen=float('inf'))
+  return email.header.Header(text, charset, maxlinelen=1e3000)
 
 
 def mail_message_to_mime_message(protocol_message):

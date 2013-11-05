@@ -809,7 +809,7 @@ def CreateApiserverDispatcher(config_manager=None):
   class ApiserverDispatcher(dev_appserver.URLDispatcher):
     """Dispatcher that handles requests to the built-in apiserver handlers."""
 
-    _API_EXPLORER_URL = 'https://apis-explorer.appspot.com/apis-explorer/?base='
+    _API_EXPLORER_URL = 'http://apis-explorer.appspot.com/apis-explorer/?base='
 
     class RequestState(object):
       """Enum tracking request state."""

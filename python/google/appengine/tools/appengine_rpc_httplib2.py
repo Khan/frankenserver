@@ -34,12 +34,12 @@ import re
 import urllib
 import urllib2
 
-
 import httplib2
 
 from oauth2client import client
 from oauth2client import file as oauth2client_file
 from oauth2client import tools
+from google.appengine.tools.value_mixin import ValueMixin
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
@@ -282,7 +282,7 @@ class NoStorage(client.Storage):
     pass
 
 
-class HttpRpcServerOauth2(HttpRpcServerHttpLib2):
+class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
   """A variant of HttpRpcServer which uses oauth2.
 
   This variant is specifically meant for interactive command line usage,
@@ -290,19 +290,33 @@ class HttpRpcServerOauth2(HttpRpcServerHttpLib2):
   information from the resulting web page.
   """
 
-  def __init__(self, host, refresh_token, user_agent, source,
+  class OAuth2Parameters(ValueMixin):
+    """Class encapsulating parameters related to OAuth2 authentication."""
+
+    def __init__(self, access_token, client_id, client_secret, scope,
+                 refresh_token, credential_file, token_uri=None):
+      self.access_token = access_token
+      self.client_id = client_id
+      self.client_secret = client_secret
+      self.scope = scope
+      self.refresh_token = refresh_token
+      self.credential_file = credential_file
+      self.token_uri = token_uri
+
+  def __init__(self, host, oauth2_parameters, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
                auth_tries=None, account_type=None, debug_data=True, secure=True,
                ignore_certs=False, rpc_tries=3):
-    """Creates a new HttpRpcServerOauth2.
+    """Creates a new HttpRpcServerOAuth2.
 
     Args:
       host: The host to send requests to.
-      refresh_token: A string refresh token to use, or None to guide the user
-        through the auth flow. (Replaces auth_function on parent class.)
+      oauth2_parameters: An object of type OAuth2Parameters (defined above)
+        that specifies all parameters related to OAuth2 authentication. (This
+        replaces the auth_function parameter in the parent class.)
       user_agent: The user-agent string to send to the server. Specify None to
         omit the user-agent header.
-      source: Tuple, (client_id, client_secret, scope), for oauth credentials.
+      source: Saved but ignored.
       host_override: The host header to send to the server (defaults to host).
       extra_headers: A dict of extra headers to append to every request. Values
         supplied here will override other default headers that are supplied.
@@ -315,37 +329,36 @@ class HttpRpcServerOauth2(HttpRpcServerHttpLib2):
       rpc_tries: The number of rpc retries upon http server error (i.e.
         Response code >= 500 and < 600) before failing.
     """
-    super(HttpRpcServerOauth2, self).__init__(
-        host, None, user_agent, None, host_override=host_override,
+    super(HttpRpcServerOAuth2, self).__init__(
+        host, None, user_agent, source, host_override=host_override,
         extra_headers=extra_headers, auth_tries=auth_tries,
         debug_data=debug_data, secure=secure, ignore_certs=ignore_certs,
         rpc_tries=rpc_tries)
 
-    if not isinstance(source, tuple) or len(source) not in (3, 4):
-      raise TypeError('Source must be tuple (client_id, client_secret, scope).')
-
-    self.client_id = source[0]
-    self.client_secret = source[1]
-    self.scope = source[2]
-    oauth2_credential_file = (len(source) > 3 and source[3]
-                              or '~/.appcfg_oauth2_tokens')
+    if not isinstance(oauth2_parameters, self.OAuth2Parameters):
+      raise TypeError('oauth2_parameters must be an OAuth2Parameters.')
+    self.oauth2_parameters = oauth2_parameters
 
     if save_cookies:
+      oauth2_credential_file = (oauth2_parameters.credential_file
+                                or '~/.appcfg_oauth2_tokens')
       self.storage = oauth2client_file.Storage(
           os.path.expanduser(oauth2_credential_file))
     else:
       self.storage = NoStorage()
 
-    self.refresh_token = refresh_token
-    if refresh_token:
+    if any((oauth2_parameters.access_token, oauth2_parameters.refresh_token,
+            oauth2_parameters.token_uri)):
+      token_uri = (oauth2_parameters.token_uri or
+                   ('https://%s/o/oauth2/token' %
+                    os.getenv('APPENGINE_AUTH_SERVER', 'accounts.google.com')))
       self.credentials = client.OAuth2Credentials(
+          oauth2_parameters.access_token,
+          oauth2_parameters.client_id,
+          oauth2_parameters.client_secret,
+          oauth2_parameters.refresh_token,
           None,
-          self.client_id,
-          self.client_secret,
-          refresh_token,
-          None,
-          ('https://%s/o/oauth2/token' %
-           os.getenv('APPENGINE_AUTH_SERVER', 'accounts.google.com')),
+          token_uri,
           self.user_agent)
     else:
       self.credentials = self.storage.get()
@@ -368,16 +381,29 @@ class HttpRpcServerOauth2(HttpRpcServerHttpLib2):
         the token is invalid.
     """
     if needs_auth and (not self.credentials or self.credentials.invalid):
-      if self.refresh_token:
 
-        logger.debug('_Authenticate and skipping auth because user explicitly '
+
+
+
+      if self.oauth2_parameters.access_token:
+        logger.debug('_Authenticate skipping auth because user explicitly '
+                     'supplied an access token.')
+        raise AuthPermanentFail('Access token is invalid.')
+      if self.oauth2_parameters.refresh_token:
+        logger.debug('_Authenticate skipping auth because user explicitly '
                      'supplied a refresh token.')
         raise AuthPermanentFail('Refresh token is invalid.')
-      logger.debug('_Authenticate and requesting auth')
+      if self.oauth2_parameters.token_uri:
+        logger.debug('_Authenticate skipping auth because user explicitly '
+                     'supplied a Token URI, for example for service account '
+                     'authentication with Compute Engine')
+        raise AuthPermanentFail('Token URI did not yield a valid token: ' +
+                                self.oauth_parameters.token_uri)
+      logger.debug('_Authenticate requesting auth')
       flow = client.OAuth2WebServerFlow(
-          client_id=self.client_id,
-          client_secret=self.client_secret,
-          scope=self.scope,
+          client_id=self.oauth2_parameters.client_id,
+          client_secret=self.oauth2_parameters.client_secret,
+          scope=self.oauth2_parameters.scope,
           user_agent=self.user_agent)
       self.credentials = tools.run(flow, self.storage)
     if self.credentials and not self.credentials.invalid:

@@ -29,6 +29,7 @@
 
 
 
+import base64
 import bisect
 import copy
 import cPickle as pickle
@@ -873,7 +874,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       self._CopyDocument(result.document, search_result.mutable_document(),
                          field_names, ids_only)
       if cursor_type == search_service_pb.SearchParams.PER_RESULT:
-        search_result.set_cursor(result.document.id())
+        search_result.set_cursor(self._EncodeCursor(result.document))
       if score:
         search_result.add_score(result.score)
       for field, expression in result.expressions.iteritems():
@@ -922,8 +923,9 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     offset = 0
     if params.has_cursor():
+      doc_id = self._DecodeCursor(params.cursor())
       for i, result in enumerate(results):
-        if result.document.id() == params.cursor():
+        if result.document.id() == doc_id:
           offset = i + 1
           break
     elif params.has_offset():
@@ -945,7 +947,8 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
         range_end = limit
         if params.cursor_type() == search_service_pb.SearchParams.SINGLE:
-          response.set_cursor(results[range_end - 1].document.id())
+          document = results[range_end - 1].document
+          response.set_cursor(self._EncodeCursor(document))
       result_range = range(offset, range_end)
     else:
       result_range = range(0)
@@ -955,6 +958,12 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
                              params.keys_only())
 
     response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
+
+  def _EncodeCursor(self, document):
+    return base64.urlsafe_b64encode(document.id())
+
+  def _DecodeCursor(self, cursor):
+    return base64.urlsafe_b64decode(cursor)
 
   def __repr__(self):
     return search_util.Repr(self, [('__indexes', self.__indexes)])

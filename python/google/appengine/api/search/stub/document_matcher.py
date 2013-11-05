@@ -14,16 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+"""Document matcher for Search API stub.
 
-
-"""Document matcher for Full Text Search API stub.
-
-DocumentMatcher provides an approximation of the Full Text Search API's query
-matching.
+DocumentMatcher provides an approximation of the Search API's query matching.
 """
 
-import logging
-import math
 
 from google.appengine.datastore import document_pb
 
@@ -31,6 +26,7 @@ from google.appengine._internal.antlr3 import tree
 from google.appengine.api.search import query_parser
 from google.appengine.api.search import QueryParser
 from google.appengine.api.search import search_util
+from google.appengine.api.search.stub import geo_util
 from google.appengine.api.search.stub import simple_tokenizer
 from google.appengine.api.search.stub import tokens
 
@@ -42,46 +38,6 @@ class ExpressionTreeException(Exception):
 
   def __init__(self, msg):
     Exception.__init__(self, msg)
-
-
-class LatLng(object):
-  """A class representing a Latitude/Longitude pair."""
-
-  _EARTH_RADIUS_METERS = 6371010
-
-  def __init__(self, latitude, longitude):
-    """Initializer.
-
-    Args:
-      latitude: The latitude in degrees.
-      longitude: The longitude in degrees.
-
-    Raises:
-      TypeError: If a non-numeric latitude or longitude is passed.
-    """
-    self._lat = math.radians(latitude)
-    self._lng = math.radians(longitude)
-
-  @property
-  def latitude(self):
-    """Returns the latitude in degrees."""
-    return math.degrees(self._lat)
-
-  @property
-  def longitude(self):
-    """Returns the longitude in degrees."""
-    return math.degrees(self._lng)
-
-  def __sub__(self, other):
-    """Returns the great circle distance between two LatLng objects as computed
-       by the Haversine formula."""
-
-    assert isinstance(other, LatLng)
-    dlat = self._lat - other._lat
-    dlng = self._lng - other._lng
-    a1 = math.sin(dlat / 2)**2
-    a2 = math.cos(self._lat) * math.cos(other._lat) * math.sin(dlng / 2)**2
-    return 2 * self._EARTH_RADIUS_METERS * math.asin(math.sqrt(a1 + a2))
 
 
 class DistanceMatcher(object):
@@ -116,7 +72,7 @@ class DistanceMatcher(object):
 
     for field_value in field_values:
       geo_pb = field_value.geo()
-      geopoint = LatLng(geo_pb.lat(), geo_pb.lng())
+      geopoint = geo_util.LatLng(geo_pb.lat(), geo_pb.lng())
       if self._IsDistanceMatch(geopoint, op):
         return True
 
@@ -394,7 +350,7 @@ class DocumentMatcher(object):
       name, args = node.children
       if name.getText() == 'geopoint':
         lat, lng = (float(query_parser.GetQueryNodeText(v)) for v in args.children)
-        return LatLng(lat, lng)
+        return geo_util.LatLng(lat, lng)
     return None
 
   def _MatchFunction(self, node, match, operator, document):
@@ -402,9 +358,9 @@ class DocumentMatcher(object):
     if name.getText() == 'distance':
       x, y = args.children
       x, y = self._ResolveDistanceArg(x), self._ResolveDistanceArg(y)
-      if isinstance(x, LatLng) and isinstance(y, basestring):
+      if isinstance(x, geo_util.LatLng) and isinstance(y, basestring):
         x, y = y, x
-      if isinstance(x, basestring) and isinstance(y, LatLng):
+      if isinstance(x, basestring) and isinstance(y, geo_util.LatLng):
         distance = float(query_parser.GetQueryNodeText(match))
         matcher = DistanceMatcher(y, distance)
         return self._MatchGeoField(x, matcher, operator, document)

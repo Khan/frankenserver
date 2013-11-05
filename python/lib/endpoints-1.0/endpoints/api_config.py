@@ -1746,7 +1746,7 @@ class ApiConfigGenerator(object):
 
 
 
-  def __params_descriptor(self, message_type, request_kind, path):
+  def __params_descriptor(self, message_type, request_kind, path, method_id):
     """Describe the parameters of a method.
 
     If the message_type is not a ResourceContainer, will fall back to
@@ -1761,6 +1761,7 @@ class ApiConfigGenerator(object):
         parameters to describe.
       request_kind: The type of request being made.
       path: string, HTTP path to method.
+      method_id: string, Unique method identifier (e.g. 'myapi.items.method')
 
     Returns:
       A tuple (dict, list of string): Descriptor of the parameters, Order of the
@@ -1770,10 +1771,10 @@ class ApiConfigGenerator(object):
 
     if not isinstance(message_type, ResourceContainer):
       if path_parameter_dict:
-        logging.warning('Method specifies path parameters but you are not '
+        logging.warning('Method %s specifies path parameters but you are not '
                         'using a ResourceContainer. This will fail in future '
                         'releases; please switch to using ResourceContainer as '
-                        'soon as possible.')
+                        'soon as possible.', method_id)
       return self.__params_descriptor_without_container(
           message_type, request_kind, path)
 
@@ -1815,8 +1816,8 @@ class ApiConfigGenerator(object):
     """
     descriptor = {}
 
-    params, param_order = self.__params_descriptor(message_type,
-                                                   request_kind, path)
+    params, param_order = self.__params_descriptor(message_type, request_kind,
+                                                   path, method_id)
 
     if isinstance(message_type, ResourceContainer):
       message_type = message_type.body_message_class()

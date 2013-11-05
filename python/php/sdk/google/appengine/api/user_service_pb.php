@@ -499,6 +499,7 @@ namespace google\appengine {
 }
 namespace google\appengine {
   class GetOAuthUserRequest extends \google\net\ProtocolMessage {
+    private $scopes = array();
     public function getScope() {
       if (!isset($this->scope)) {
         return '';
@@ -516,8 +517,29 @@ namespace google\appengine {
     public function hasScope() {
       return isset($this->scope);
     }
+    public function getScopesSize() {
+      return sizeof($this->scopes);
+    }
+    public function getScopesList() {
+      return $this->scopes;
+    }
+    public function getScopes($idx) {
+      return $this->scopes[$idx];
+    }
+    public function setScopes($idx, $val) {
+      $this->scopes[$idx] = $val;
+      return $this;
+    }
+    public function addScopes($val) {
+      $this->scopes[] = $val;
+      return $this;
+    }
+    public function clearScopes() {
+      $this->scopes = array();
+    }
     public function clear() {
       $this->clearScope();
+      $this->clearScopes();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -525,12 +547,22 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->scope));
       }
+      $this->checkProtoArray($this->scopes);
+      $res += 1 * sizeof($this->scopes);
+      foreach ($this->scopes as $value) {
+        $res += $this->lengthString(strlen($value));
+      }
       return $res;
     }
     public function outputPartial($out) {
       if (isset($this->scope)) {
         $out->putVarInt32(10);
         $out->putPrefixedString($this->scope);
+      }
+      $this->checkProtoArray($this->scopes);
+      foreach ($this->scopes as $value) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($value);
       }
     }
     public function tryMerge($d) {
@@ -540,6 +572,11 @@ namespace google\appengine {
           case 10:
             $length = $d->getVarInt32();
             $this->setScope(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->addScopes(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -558,11 +595,18 @@ namespace google\appengine {
       if ($x->hasScope()) {
         $this->setScope($x->getScope());
       }
+      foreach ($x->getScopesList() as $v) {
+        $this->addScopes($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
       if (isset($this->scope) !== isset($x->scope)) return false;
       if (isset($this->scope) && $this->scope !== $x->scope) return false;
+      if (sizeof($this->scopes) !== sizeof($x->scopes)) return false;
+      foreach (array_map(null, $this->scopes, $x->scopes) as $v) {
+        if ($v[0] !== $v[1]) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -570,12 +614,16 @@ namespace google\appengine {
       if (isset($this->scope)) {
         $res .= $prefix . "scope: " . $this->debugFormatString($this->scope) . "\n";
       }
+      foreach ($this->scopes as $value) {
+        $res .= $prefix . "scopes: " . $this->debugFormatString($value) . "\n";
+      }
       return $res;
     }
   }
 }
 namespace google\appengine {
   class GetOAuthUserResponse extends \google\net\ProtocolMessage {
+    private $scopes = array();
     public function getEmail() {
       if (!isset($this->email)) {
         return '';
@@ -678,6 +726,26 @@ namespace google\appengine {
     public function hasClientId() {
       return isset($this->client_id);
     }
+    public function getScopesSize() {
+      return sizeof($this->scopes);
+    }
+    public function getScopesList() {
+      return $this->scopes;
+    }
+    public function getScopes($idx) {
+      return $this->scopes[$idx];
+    }
+    public function setScopes($idx, $val) {
+      $this->scopes[$idx] = $val;
+      return $this;
+    }
+    public function addScopes($val) {
+      $this->scopes[] = $val;
+      return $this;
+    }
+    public function clearScopes() {
+      $this->scopes = array();
+    }
     public function clear() {
       $this->clearEmail();
       $this->clearUserId();
@@ -685,6 +753,7 @@ namespace google\appengine {
       $this->clearUserOrganization();
       $this->clearIsAdmin();
       $this->clearClientId();
+      $this->clearScopes();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -710,6 +779,11 @@ namespace google\appengine {
       if (isset($this->client_id)) {
         $res += 1;
         $res += $this->lengthString(strlen($this->client_id));
+      }
+      $this->checkProtoArray($this->scopes);
+      $res += 1 * sizeof($this->scopes);
+      foreach ($this->scopes as $value) {
+        $res += $this->lengthString(strlen($value));
       }
       return $res;
     }
@@ -737,6 +811,11 @@ namespace google\appengine {
       if (isset($this->client_id)) {
         $out->putVarInt32(50);
         $out->putPrefixedString($this->client_id);
+      }
+      $this->checkProtoArray($this->scopes);
+      foreach ($this->scopes as $value) {
+        $out->putVarInt32(58);
+        $out->putPrefixedString($value);
       }
     }
     public function tryMerge($d) {
@@ -769,6 +848,11 @@ namespace google\appengine {
           case 50:
             $length = $d->getVarInt32();
             $this->setClientId(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 58:
+            $length = $d->getVarInt32();
+            $this->addScopes(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -805,6 +889,9 @@ namespace google\appengine {
       if ($x->hasClientId()) {
         $this->setClientId($x->getClientId());
       }
+      foreach ($x->getScopesList() as $v) {
+        $this->addScopes($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -820,6 +907,10 @@ namespace google\appengine {
       if (isset($this->is_admin) && $this->is_admin !== $x->is_admin) return false;
       if (isset($this->client_id) !== isset($x->client_id)) return false;
       if (isset($this->client_id) && $this->client_id !== $x->client_id) return false;
+      if (sizeof($this->scopes) !== sizeof($x->scopes)) return false;
+      foreach (array_map(null, $this->scopes, $x->scopes) as $v) {
+        if ($v[0] !== $v[1]) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -841,6 +932,9 @@ namespace google\appengine {
       }
       if (isset($this->client_id)) {
         $res .= $prefix . "client_id: " . $this->debugFormatString($this->client_id) . "\n";
+      }
+      foreach ($this->scopes as $value) {
+        $res .= $prefix . "scopes: " . $this->debugFormatString($value) . "\n";
       }
       return $res;
     }

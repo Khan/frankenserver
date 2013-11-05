@@ -41,7 +41,7 @@ from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
-from google.appengine.tools.basic_equality_mixin import BasicEqualityMixin
+from google.appengine.tools.value_mixin import ValueMixin
 
 
 class AppEngineWebXmlParser(object):
@@ -366,7 +366,7 @@ class AppEngineWebXmlParser(object):
       self.errors.append('Cannot enable more than one type of scaling')
 
 
-class AppEngineWebXml(BasicEqualityMixin):
+class AppEngineWebXml(ValueMixin):
   """Organizes and stores data from appengine-web.xml."""
   URL_HANDLER_URLFETCH = 'urlfetch'
   URL_HANDLER_NATIVE = 'native'
@@ -509,50 +509,50 @@ class AppEngineWebXml(BasicEqualityMixin):
   app_root = property(_GetAppRoot, _SetAppRoot)
 
 
-class AutomaticScaling(BasicEqualityMixin):
+class AutomaticScaling(ValueMixin):
   """Instances contain information about automatic scaling settings."""
   pass
 
 
-class ManualScaling(BasicEqualityMixin):
+class ManualScaling(ValueMixin):
   """Instances contain information about manual scaling settings."""
   pass
 
 
-class BasicScaling(BasicEqualityMixin):
+class BasicScaling(ValueMixin):
   """Instances contain information about basic scaling settings."""
   pass
 
 
-class UserPermission(BasicEqualityMixin):
+class UserPermission(ValueMixin):
   """Instances contain information about user permissions."""
   pass
 
 
-class AdminConsolePage(BasicEqualityMixin):
+class AdminConsolePage(ValueMixin):
   """Instances contain information about the admin console page settings."""
   pass
 
 
-class ErrorHandler(BasicEqualityMixin):
+class ErrorHandler(ValueMixin):
   """Instances contain information about error handler settings."""
   pass
 
 
-class ApiConfig(BasicEqualityMixin):
+class ApiConfig(ValueMixin):
   """Instances contain information about the API config settings."""
   pass
 
 
-class Pagespeed(BasicEqualityMixin):
+class Pagespeed(ValueMixin):
   """Instances contain information about the pagespeed settings."""
 
 
-class PrioritySpecifierEntry(BasicEqualityMixin):
+class PrioritySpecifierEntry(ValueMixin):
   """Instances describe a priority specifier entry in appengine-web.xml."""
   pass
 
 
-class StaticFileInclude(BasicEqualityMixin):
+class StaticFileInclude(ValueMixin):
   """Instances describe static files to be included in app configuration."""
   pass

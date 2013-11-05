@@ -4232,6 +4232,8 @@ class GetResponse_Entity(ProtocolBuffer.ProtocolMessage):
     return res
 
 class GetResponse(ProtocolBuffer.ProtocolMessage):
+  has_in_order_ = 0
+  in_order_ = 1
 
   def __init__(self, contents=None):
     self.entity_ = []
@@ -4270,11 +4272,25 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
 
   def clear_deferred(self):
     self.deferred_ = []
+  def in_order(self): return self.in_order_
+
+  def set_in_order(self, x):
+    self.has_in_order_ = 1
+    self.in_order_ = x
+
+  def clear_in_order(self):
+    if self.has_in_order_:
+      self.has_in_order_ = 0
+      self.in_order_ = 1
+
+  def has_in_order(self): return self.has_in_order_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.entity_size()): self.add_entity().CopyFrom(x.entity(i))
     for i in xrange(x.deferred_size()): self.add_deferred().CopyFrom(x.deferred(i))
+    if (x.has_in_order()): self.set_in_order(x.in_order())
 
   def Equals(self, x):
     if x is self: return 1
@@ -4284,6 +4300,8 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     if len(self.deferred_) != len(x.deferred_): return 0
     for e1, e2 in zip(self.deferred_, x.deferred_):
       if e1 != e2: return 0
+    if self.has_in_order_ != x.has_in_order_: return 0
+    if self.has_in_order_ and self.in_order_ != x.in_order_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4300,6 +4318,7 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.entity_)): n += self.entity_[i].ByteSize()
     n += 1 * len(self.deferred_)
     for i in xrange(len(self.deferred_)): n += self.lengthString(self.deferred_[i].ByteSize())
+    if (self.has_in_order_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -4308,11 +4327,13 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.entity_)): n += self.entity_[i].ByteSizePartial()
     n += 1 * len(self.deferred_)
     for i in xrange(len(self.deferred_)): n += self.lengthString(self.deferred_[i].ByteSizePartial())
+    if (self.has_in_order_): n += 2
     return n
 
   def Clear(self):
     self.clear_entity()
     self.clear_deferred()
+    self.clear_in_order()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.entity_)):
@@ -4323,6 +4344,9 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.deferred_[i].ByteSize())
       self.deferred_[i].OutputUnchecked(out)
+    if (self.has_in_order_):
+      out.putVarInt32(48)
+      out.putBoolean(self.in_order_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.entity_)):
@@ -4333,6 +4357,9 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.deferred_[i].ByteSizePartial())
       self.deferred_[i].OutputPartial(out)
+    if (self.has_in_order_):
+      out.putVarInt32(48)
+      out.putBoolean(self.in_order_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4345,6 +4372,9 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_deferred().TryMerge(tmp)
+        continue
+      if tt == 48:
+        self.set_in_order(d.getBoolean())
         continue
 
 
@@ -4370,6 +4400,7 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_in_order_: res+=prefix+("in_order: %s\n" % self.DebugFormatBool(self.in_order_))
     return res
 
 
@@ -4381,6 +4412,7 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
   kEntitykey = 4
   kEntityversion = 3
   kdeferred = 5
+  kin_order = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -4389,7 +4421,8 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     3: "version",
     4: "key",
     5: "deferred",
-  }, 5)
+    6: "in_order",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4398,7 +4431,8 @@ class GetResponse(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6095,6 +6129,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   def __init__(self, contents=None):
     self.result_ = []
     self.index_ = []
+    self.version_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -6252,6 +6287,21 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
 
   def clear_index(self):
     self.index_ = []
+  def version_size(self): return len(self.version_)
+  def version_list(self): return self.version_
+
+  def version(self, i):
+    return self.version_[i]
+
+  def set_version(self, i, x):
+    self.version_[i] = x
+
+  def add_version(self, x):
+    self.version_.append(x)
+
+  def clear_version(self):
+    self.version_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6265,6 +6315,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (x.has_compiled_query()): self.mutable_compiled_query().MergeFrom(x.compiled_query())
     if (x.has_compiled_cursor()): self.mutable_compiled_cursor().MergeFrom(x.compiled_cursor())
     for i in xrange(x.index_size()): self.add_index().CopyFrom(x.index(i))
+    for i in xrange(x.version_size()): self.add_version(x.version(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -6289,6 +6340,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if self.has_compiled_cursor_ and self.compiled_cursor_ != x.compiled_cursor_: return 0
     if len(self.index_) != len(x.index_): return 0
     for e1, e2 in zip(self.index_, x.index_):
+      if e1 != e2: return 0
+    if len(self.version_) != len(x.version_): return 0
+    for e1, e2 in zip(self.version_, x.version_):
       if e1 != e2: return 0
     return 1
 
@@ -6320,6 +6374,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSize())
     n += 1 * len(self.index_)
     for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSize())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n + 2
 
   def ByteSizePartial(self):
@@ -6337,6 +6393,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_compiled_cursor_): n += 1 + self.lengthString(self.compiled_cursor_.ByteSizePartial())
     n += 1 * len(self.index_)
     for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSizePartial())
+    n += 1 * len(self.version_)
+    for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
     return n
 
   def Clear(self):
@@ -6350,6 +6408,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     self.clear_compiled_query()
     self.clear_compiled_cursor()
     self.clear_index()
+    self.clear_version()
 
   def OutputUnchecked(self, out):
     if (self.has_cursor_):
@@ -6386,6 +6445,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_small_ops_):
       out.putVarInt32(80)
       out.putBoolean(self.small_ops_)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(88)
+      out.putVarInt64(self.version_[i])
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -6423,6 +6485,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_small_ops_):
       out.putVarInt32(80)
       out.putBoolean(self.small_ops_)
+    for i in xrange(len(self.version_)):
+      out.putVarInt32(88)
+      out.putVarInt64(self.version_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6472,6 +6537,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       if tt == 80:
         self.set_small_ops(d.getBoolean())
         continue
+      if tt == 88:
+        self.add_version(d.getVarInt64())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6513,6 +6581,12 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    cnt=0
+    for e in self.version_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
+      cnt+=1
     return res
 
 
@@ -6529,6 +6603,7 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   kcompiled_query = 5
   kcompiled_cursor = 6
   kindex = 8
+  kversion = 11
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -6542,7 +6617,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     8: "index",
     9: "index_only",
     10: "small_ops",
-  }, 10)
+    11: "version",
+  }, 11)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6556,7 +6632,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     8: ProtocolBuffer.Encoder.STRING,
     9: ProtocolBuffer.Encoder.NUMERIC,
     10: ProtocolBuffer.Encoder.NUMERIC,
-  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
+    11: ProtocolBuffer.Encoder.NUMERIC,
+  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

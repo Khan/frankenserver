@@ -29,7 +29,7 @@ from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
-from google.appengine.tools.basic_equality_mixin import BasicEqualityMixin
+from google.appengine.tools.value_mixin import ValueMixin
 
 
 class WebXmlParser(object):
@@ -186,7 +186,7 @@ class WebXmlParser(object):
     self.web_xml.security_constraints.append(security_constraint)
 
 
-class WebXml(BasicEqualityMixin):
+class WebXml(ValueMixin):
   """Contains information about web.xml relevant for translation to app.yaml."""
 
   def __init__(self):
@@ -203,7 +203,7 @@ class WebXml(BasicEqualityMixin):
     return self.mime_mappings.get(path.split('.')[-1], None)
 
 
-class SecurityConstraint(BasicEqualityMixin):
+class SecurityConstraint(ValueMixin):
   """Contains information about security constraints in web.xml."""
 
   def __init__(self):

@@ -631,9 +631,16 @@ class Dispatcher(request_info.Dispatcher):
     default_address_offset = hostname.find(default_address)
     if default_address_offset > 0:
       prefix = hostname[:default_address_offset - 1]
+      # The prefix should be 'module', but might be 'instance.version.module',
+      # 'version.module', or 'instance.module'. These alternatives work in
+      # production, but devappserver2 doesn't support running multiple versions
+      # of the same module. All we can really do is route to the default
+      # version of the specified module.
       if '.' in prefix:
-        raise request_info.ModuleDoesNotExistError(prefix)
-      return self._get_module_with_soft_routing(prefix, None), None
+        logging.warning('Ignoring instance/version in %s; multiple versions '
+                        'are not supported in devappserver.', prefix)
+      module_name = prefix.split('.')[-1]
+      return self._get_module_with_soft_routing(module_name, None), None
 
     else:
       if ':' in hostname:

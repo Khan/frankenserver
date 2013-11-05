@@ -49,7 +49,7 @@ _ERROR_MAP = {
     406: _ErrorInfo(404, 404, 'unsupportedProtocol', 'global'),
     407: _ErrorInfo(404, 404, 'unsupportedProtocol', 'global'),
     408: _ErrorInfo(503, -32099, 'backendError', 'global'),
-    409: _ErrorInfo(409, 409, 'duplicate', 'global'),
+    409: _ErrorInfo(409, 409, 'conflict', 'global'),
     410: _ErrorInfo(410, 410, 'deleted', 'global'),
     411: _ErrorInfo(404, 404, 'unsupportedProtocol', 'global'),
     412: _ErrorInfo(412, 412, 'conditionNotMet', 'global'),
@@ -75,4 +75,3 @@ def get_error_info(lily_status):
     return _BACKEND_ERROR
 
   return _ERROR_MAP.get(lily_status, _UNSUPPORTED_ERROR)
-

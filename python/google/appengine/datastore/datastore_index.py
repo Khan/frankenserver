@@ -70,6 +70,9 @@ from google.appengine.datastore import entity_pb
 class Property(validation.Validated):
   """Representation for an individual property of an index.
 
+  This class must be kept in sync with
+  java/com/google/apphosting/utils/config/IndexYamlReader.java.
+
   Attributes:
     name: Name of attribute to sort by.
     direction: Direction of sort.

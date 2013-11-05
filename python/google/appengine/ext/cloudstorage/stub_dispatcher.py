@@ -176,7 +176,7 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
 
   if not token:
 
-    if not content_range.length:
+    if content_range.length is None:
       raise ValueError('Content-Range must have a final length.')
     elif not content_range.no_data and content_range.range[0] != 0:
       raise ValueError('Content-Range must specify complete object.')

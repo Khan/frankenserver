@@ -47,6 +47,18 @@ def _rmtree(directory):
     pass
 
 
+def _escape_tool_flags(*flags):
+  """Escapes a list of flags for consumption by gab.
+
+  This is reverse to the encoding in //apphosting/runtime/go/builder/flags.go.
+  Args:
+    *flags:  A list of flag arguments to be escaped.
+  Returns:
+    A single escaped string.
+  """
+  return ','.join([f.replace('\\', r'\\').replace(',', r'\,') for f in flags])
+
+
 class BuildError(errors.Error):
   """Building the GoApplication failed."""
 
@@ -67,6 +79,7 @@ class GoApplication(object):
     self._go_executable = None
     self._work_dir = None
     self._arch = self._get_architecture()
+    self._pkg_path = self._get_pkg_path()
 
   @property
   def go_executable(self):
@@ -98,8 +111,15 @@ class GoApplication(object):
       architecture = platform.split('_', 1)[1]
       if architecture in architecture_map:
         return architecture_map[architecture]
-    if not architecture:
-      raise BuildError('no compiler found found in goroot (%s)' % _GOROOT)
+    raise BuildError('No known compiler found in goroot (%s)' % _GOROOT)
+
+  @staticmethod
+  def _get_pkg_path():
+    for n in os.listdir(os.path.join(_GOROOT, 'pkg')):
+      # Look for 'linux_amd64_appengine', 'windows_386_appengine', etc.
+      if n.endswith('_appengine'):
+        return os.path.join(_GOROOT, 'pkg', n)
+    raise BuildError('No package path found in goroot (%s)' % _GOROOT)
 
   def _get_gab_args(self):
     # Go's regexp package does not implicitly anchor to the start.
@@ -114,7 +134,10 @@ class GoApplication(object):
         '-goroot', _GOROOT,
         '-nobuild_files', nobuild_files,
         '-unsafe',
-        '-work_dir', self._work_dir]
+        '-work_dir', self._work_dir,
+        '-gcflags', _escape_tool_flags('-I', self._pkg_path),
+        '-ldflags', _escape_tool_flags('-L', self._pkg_path),
+    ]
     if 'GOPATH' in os.environ:
       gab_args.extend(['-gopath', os.environ['GOPATH']])
     return gab_args

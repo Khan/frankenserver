@@ -51,8 +51,10 @@ from google.appengine.api.search import expression_parser
 from google.appengine.api.search import ExpressionParser
 from google.appengine.api.search import query_parser
 from google.appengine.api.search import search_util
+from google.appengine.api.search.stub import geo_util
 from google.appengine.api.search.stub import simple_tokenizer
 from google.appengine.api.search.stub import tokens
+from google.appengine.datastore import document_pb
 
 
 
@@ -84,8 +86,8 @@ class ExpressionEvaluator(object):
     self._function_table = {
         ExpressionParser.ABS: self._Unsupported('abs'),
         ExpressionParser.COUNT: self._Count,
-        ExpressionParser.DISTANCE: self._Unsupported('distance'),
-        ExpressionParser.GEOPOINT: self._Unsupported('geopoint'),
+        ExpressionParser.DISTANCE: self._Distance,
+        ExpressionParser.GEOPOINT: self._Geopoint,
         ExpressionParser.LOG: self._Unsupported('log'),
         ExpressionParser.MAX: self._Max,
         ExpressionParser.MIN: self._Min,
@@ -94,11 +96,51 @@ class ExpressionEvaluator(object):
         ExpressionParser.SWITCH: self._Unsupported('switch'),
         }
 
+  def _GetFieldValue(self, field):
+    """Returns the value of a field as the correct type.
+
+    Args:
+      field: The field whose value is extracted.  If the given field is None, this
+        function also returns None. This is to make it easier to chain with
+        GetFieldInDocument().
+
+    Returns:
+      The value of the field with the correct type (float for number fields,
+      datetime.datetime for date fields, etc).
+
+    Raises:
+      TypeError: if the type of the field isn't recognized.
+    """
+    if not field:
+      return None
+    value_type = field.value().type()
+
+    if value_type in search_util.TEXT_DOCUMENT_FIELD_TYPES:
+      return field.value().string_value()
+    if value_type == document_pb.FieldValue.DATE:
+      value = field.value().string_value()
+      return search_util.DeserializeDate(value)
+    if value_type == document_pb.FieldValue.NUMBER:
+      value = field.value().string_value()
+      return float(value)
+    if value_type == document_pb.FieldValue.GEO:
+      value = field.value().geo()
+      return geo_util.LatLng(value.lat(), value.lng())
+    raise TypeError('No conversion defined for type %s' % value_type)
+
   def _Min(self, *nodes):
     return min(self._Eval(node) for node in nodes)
 
   def _Max(self, *nodes):
     return max(self._Eval(node) for node in nodes)
+
+  def _Distance(self, *nodes):
+    lhs, rhs = nodes
+    return self._Eval(lhs) - self._Eval(rhs)
+
+  def _Geopoint(self, *nodes):
+    latitude, longitude = (self._Eval(node) for node in nodes)
+    return geo_util.LatLng(latitude, longitude)
 
   def _Count(self, node):
 
@@ -181,7 +223,7 @@ class ExpressionEvaluator(object):
         if posting.doc_id != self._doc_pb.id() or not posting.positions:
           continue
 
-        field_val = search_util.GetFieldValue(
+        field_val = self._GetFieldValue(
             search_util.GetFieldInDocument(self._doc_pb, field))
         if not field_val:
           continue
@@ -192,7 +234,7 @@ class ExpressionEvaluator(object):
         return self._GenerateSnippet(
             doc_words, position, search_util.DEFAULT_MAX_SNIPPET_LENGTH)
       else:
-        field_val = search_util.GetFieldValue(
+        field_val = self._GetFieldValue(
             search_util.GetFieldInDocument(self._doc_pb, field))
         if not field_val:
           return ''
@@ -305,7 +347,7 @@ class ExpressionEvaluator(object):
         return self._doc.score
       field = search_util.GetFieldInDocument(self._doc_pb, name)
       if field:
-        return search_util.GetFieldValue(field)
+        return self._GetFieldValue(field)
       raise _ExpressionError('No field %s in document' % name)
 
     raise _ExpressionError('Unable to handle node %s' % node)

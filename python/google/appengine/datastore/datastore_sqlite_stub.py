@@ -1416,20 +1416,20 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
         datastore_stub_util.CheckAppId(self._trusted, self._app_id, key.app())
         prefix = self._GetTablePrefix(key)
         last_element = key.path().element_list()[-1]
-        datastore_stub_util.Check(not last_element.has_name(),
-                                  'Cannot allocate named key.')
 
-        if last_element.id():
-          count, id_space = datastore_stub_util.IdToCounter(last_element.id())
-          table, _ = self.__id_counter_tables[id_space]
-          self.__AdvanceIdCounter(conn, prefix, count, table)
+        if last_element.id() or last_element.has_name():
+          for el in key.path().element_list():
+            if el.id():
+              count, id_space = datastore_stub_util.IdToCounter(el.id())
+              table, _ = self.__id_counter_tables[id_space]
+              self.__AdvanceIdCounter(conn, prefix, count, table)
 
         else:
           count, _ = self.__AllocateIdsFromBlock(conn, prefix, 1,
                                                  self.__id_map_scattered,
                                                  'ScatteredIdCounters')
           last_element.set_id(datastore_stub_util.ToScatteredId(count))
-        full_keys.append(key)
+          full_keys.append(key)
       return full_keys
     finally:
       self._ReleaseConnection(conn)

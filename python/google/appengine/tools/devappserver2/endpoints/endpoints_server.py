@@ -65,7 +65,7 @@ _CORS_ALLOWED_METHODS = frozenset(('DELETE', 'GET', 'PATCH', 'POST', 'PUT'))
 class EndpointsDispatcher(object):
   """Dispatcher that handles requests to the built-in apiserver handlers."""
 
-  _API_EXPLORER_URL = 'https://apis-explorer.appspot.com/apis-explorer/?base='
+  _API_EXPLORER_URL = 'http://apis-explorer.appspot.com/apis-explorer/?base='
 
   def __init__(self, dispatcher, config_manager=None):
     """Constructor for EndpointsDispatcher.

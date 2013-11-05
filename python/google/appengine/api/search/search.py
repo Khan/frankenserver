@@ -44,6 +44,7 @@ from google.appengine.api.search import expression_parser
 from google.appengine.api.search import query_parser
 from google.appengine.api.search import search_service_pb
 from google.appengine.api.search import search_util
+from google.appengine.datastore import datastore_rpc
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -668,10 +669,11 @@ def _ListIndexesResponsePbToGetResponse(response):
       results=[_NewIndexFromPb(index)
                for index in response.index_metadata_list()])
 
-
+@datastore_rpc._positional(7)
 def get_indexes(namespace='', offset=None, limit=20,
                 start_index_name=None, include_start_index=True,
-                index_name_prefix=None, fetch_schema=False, **kwargs):
+                index_name_prefix=None, fetch_schema=False, deadline=None,
+                **kwargs):
   """Returns a list of available indexes.
 
   Args:
@@ -684,30 +686,38 @@ def get_indexes(namespace='', offset=None, limit=20,
     index_name_prefix: The prefix used to select returned indexes.
     fetch_schema: Whether to retrieve Schema for each Index or not.
 
+  Kwargs:
+    deadline: Deadline for RPC call in seconds; if None use the default.
+
   Returns:
     The GetResponse containing a list of available indexes.
 
   Raises:
     InternalError: If the request fails on internal servers.
-    TypeError: If an invalid argument is passed.
+    TypeError: If any of the parameters have invalid types, or an unknown
+      attribute is passed.
+    ValueError: If any of the parameters have invalid values (e.g., a
+      negative deadline).
   """
+
+  app_id = kwargs.pop('app_id', None)
+  if kwargs:
+    raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
+
   response = _GetIndexes(
       namespace=namespace, offset=offset, limit=limit,
       start_index_name=start_index_name,
       include_start_index=include_start_index,
       index_name_prefix=index_name_prefix,
-      fetch_schema=fetch_schema, **kwargs)
+      fetch_schema=fetch_schema, deadline=deadline, app_id=app_id)
   return _ListIndexesResponsePbToGetResponse(response)
 
 
 def _GetIndexes(namespace='', offset=None, limit=20,
                 start_index_name=None, include_start_index=True,
-                index_name_prefix=None, fetch_schema=False, **kwargs):
+                index_name_prefix=None, fetch_schema=False, deadline=None,
+                app_id=None):
   """Returns a ListIndexesResponse."""
-  args_diff = set(kwargs.iterkeys()) - frozenset(['app_id'])
-  if args_diff:
-    raise TypeError('Invalid arguments: %s' % ', '.join(args_diff))
-
 
   request = search_service_pb.ListIndexesRequest()
   params = request.mutable_params()
@@ -739,13 +749,10 @@ def _GetIndexes(namespace='', offset=None, limit=20,
   params.set_fetch_schema(fetch_schema)
 
   response = search_service_pb.ListIndexesResponse()
-  if 'app_id' in kwargs:
-    request.set_app_id(kwargs.get('app_id'))
+  if app_id:
+    request.set_app_id(app_id)
 
-  try:
-    apiproxy_stub_map.MakeSyncCall('search', 'ListIndexes', request, response)
-  except apiproxy_errors.ApplicationError, e:
-    raise _ToSearchError(e)
+  _MakeSyncSearchServiceCall('ListIndexes', request, response, deadline)
 
   _CheckStatus(response.status())
   return response
@@ -2443,7 +2450,8 @@ class Index(object):
             for status, doc_id in zip(response.status_list(),
                                       response.doc_id_list())]
 
-  def put(self, documents):
+  @datastore_rpc._positional(2)
+  def put(self, documents, deadline=None):
     """Index the collection of documents.
 
     If any of the documents are already in the index, then reindex them with
@@ -2452,6 +2460,9 @@ class Index(object):
 
     Args:
       documents: A Document or iterable of Documents to index.
+
+    Kwargs:
+      deadline: Deadline for RPC call in seconds; if None use the default.
 
     Returns:
       A list of PutResult, one per Document requested to be indexed.
@@ -2462,7 +2473,7 @@ class Index(object):
       TypeError: If an unknown attribute is passed.
       ValueError: If documents is not a Document or iterable of Document
         or number of the documents is larger than
-        MAXIMUM_DOCUMENTS_PER_PUT_REQUEST.
+        MAXIMUM_DOCUMENTS_PER_PUT_REQUEST or deadline is a negative number.
     """
 
     if isinstance(documents, basestring):
@@ -2501,11 +2512,7 @@ class Index(object):
       doc_pb = params.add_document()
       _CopyDocumentToProtocolBuffer(document, doc_pb)
 
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'IndexDocument', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
+    _MakeSyncSearchServiceCall('IndexDocument', request, response, deadline)
 
     results = self._NewPutResultList(response)
 
@@ -2533,7 +2540,8 @@ class Index(object):
     return [self._NewDeleteResultFromPb(status, doc_id)
             for status, doc_id in zip(response.status_list(), document_ids)]
 
-  def delete(self, document_ids):
+  @datastore_rpc._positional(2)
+  def delete(self, document_ids, deadline=None):
     """Delete the documents with the corresponding document ids from the index.
 
     If no document exists for the identifier in the list, then that document
@@ -2544,15 +2552,17 @@ class Index(object):
       document_ids: A single identifier or list of identifiers of documents
         to delete.
 
+    Kwargs:
+      deadline: Deadline for RPC call in seconds; if None use the default.
+
     Raises:
       DeleteError: If one or more documents failed to remove or
         number removed did not match requested.
       ValueError: If document_ids is not a string or iterable of valid document
         identifiers or number of document ids is larger than
-        MAXIMUM_DOCUMENTS_PER_PUT_REQUEST.
+        MAXIMUM_DOCUMENTS_PER_PUT_REQUEST or deadline is a negative number.
     """
     doc_ids = _ConvertToList(document_ids)
-
     if not doc_ids:
       return
 
@@ -2567,11 +2577,8 @@ class Index(object):
       _CheckDocumentId(document_id)
       params.add_doc_id(document_id)
 
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'DeleteDocument', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
+    _MakeSyncSearchServiceCall('DeleteDocument', request, response,
+                               deadline)
 
     results = self._NewDeleteResultList(doc_ids, response)
 
@@ -2607,11 +2614,7 @@ class Index(object):
     params = request.mutable_params()
     _CopyMetadataToProtocolBuffer(self, params.add_index_spec())
 
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'DeleteSchema', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
+    _MakeSyncSearchServiceCall('DeleteSchema', request, response, None)
 
     results = self._NewDeleteResultList([self.name], response)
 
@@ -2659,22 +2662,33 @@ class Index(object):
         results=results, number_found=response.matched_count(),
         cursor=results_cursor)
 
-  def get(self, doc_id):
+  @datastore_rpc._positional(2)
+  def get(self, doc_id, deadline=None):
     """Retrieve a document by document ID.
 
     Args:
       doc_id: The ID of the document to retreive.
 
+    Kwargs:
+      deadline: Deadline for RPC call in seconds; if None use the default.
+
     Returns:
       If the document ID exists, returns the associated document. Otherwise,
       returns None.
+
+    Raises:
+      TypeError: If any of the parameters have invalid types, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have invalid values (e.g., a
+        negative deadline).
     """
-    response = self.get_range(start_id=doc_id, limit=1)
+    response = self.get_range(start_id=doc_id, limit=1, deadline=deadline)
     if response.results and response.results[0].doc_id == doc_id:
       return response.results[0]
     return None
 
-  def search(self, query, **kwargs):
+  @datastore_rpc._positional(2)
+  def search(self, query, deadline=None, **kwargs):
     """Search the index for documents matching the query.
 
     For example, the following code fragment requests a search for
@@ -2721,6 +2735,9 @@ class Index(object):
     Args:
       query: The Query to match against documents in the index.
 
+    Kwargs:
+      deadline: Deadline for RPC call in seconds; if None use the default.
+
     Returns:
       A SearchResults containing a list of documents matched, number returned
       and number matched by the query.
@@ -2728,22 +2745,21 @@ class Index(object):
     Raises:
       TypeError: If any of the parameters have invalid types, or an unknown
         attribute is passed.
-      ValueError: If any of the parameters have invalid values.
+      ValueError: If any of the parameters have invalid values (e.g., a
+        negative deadline).
     """
 
 
 
-    if 'app_id' in kwargs:
-      self._app_id = kwargs.pop('app_id')
-    else:
-      self._app_id = None
 
+
+    app_id = kwargs.pop('app_id', None)
     if kwargs:
       raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
 
     request = search_service_pb.SearchRequest()
-    if self._app_id:
-      request.set_app_id(self._app_id)
+    if app_id:
+      request.set_app_id(app_id)
 
     params = request.mutable_params()
     if isinstance(query, basestring):
@@ -2753,10 +2769,7 @@ class Index(object):
 
     response = search_service_pb.SearchResponse()
 
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'Search', request, response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
+    _MakeSyncSearchServiceCall('Search', request, response, deadline)
 
     _CheckStatus(response.status())
     cursor = None
@@ -2772,15 +2785,12 @@ class Index(object):
 
     return GetResponse(results=documents)
 
-  def _GetResponse(self, start_id=None, include_start_object=True,
-                   limit=100, ids_only=False, **kwargs):
+  def _GetRange(self, start_id=None, include_start_object=True,
+                limit=100, ids_only=False, deadline=None, app_id=None):
     """Get a range of objects in the index, in id order in a response."""
     request = search_service_pb.ListDocumentsRequest()
-    if 'app_id' in kwargs:
-      request.set_app_id(kwargs.pop('app_id'))
-
-    if kwargs:
-      raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
+    if app_id:
+      request.set_app_id(app_id)
 
     params = request.mutable_params()
     _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
@@ -2795,17 +2805,14 @@ class Index(object):
     params.set_keys_only(ids_only)
 
     response = search_service_pb.ListDocumentsResponse()
-    try:
-      apiproxy_stub_map.MakeSyncCall('search', 'ListDocuments', request,
-                                     response)
-    except apiproxy_errors.ApplicationError, e:
-      raise _ToSearchError(e)
+    _MakeSyncSearchServiceCall('ListDocuments', request, response, deadline)
 
     _CheckStatus(response.status())
     return response
 
+  @datastore_rpc._positional(5)
   def get_range(self, start_id=None, include_start_object=True,
-                limit=100, ids_only=False, **kwargs):
+                limit=100, ids_only=False, deadline=None, **kwargs):
     """Get a range of Documents in the index, in id order.
 
     Args:
@@ -2816,17 +2823,27 @@ class Index(object):
       limit: The maximum number of Documents to return.
       ids_only: If true, the Documents returned only contain their keys.
 
+    Kwargs:
+      deadline: Deadline for RPC call in seconds; if None use the default.
+
     Returns:
       A GetResponse containing a list of Documents, ordered by Id.
 
     Raises:
       Error: Some subclass of Error is raised if an error occurred processing
         the request.
-      TypeError: An unknown attribute is passed in.
+      TypeError: If any of the parameters have invalid types, or an unknown
+        attribute is passed.
+      ValueError: If any of the parameters have invalid values (e.g., a
+        negative deadline).
     """
-    response = self._GetResponse(
+
+    app_id = kwargs.pop('app_id', None)
+    if kwargs:
+      raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
+    response = self._GetRange(
         start_id=start_id, include_start_object=include_start_object,
-        limit=limit, ids_only=ids_only, **kwargs)
+        limit=limit, ids_only=ids_only, deadline=deadline, app_id=app_id)
     return self._NewGetResponse(response)
 
 
@@ -2904,3 +2921,40 @@ def _NewIndexFromPb(index_metadata_pb):
   if index_metadata_pb.field_list():
     index._schema = _NewSchemaFromPb(index_metadata_pb.field_list())
   return index
+
+
+def _MakeSyncSearchServiceCall(call, request, response, deadline):
+  """Make a synchronous call to search service.
+
+  If the deadline is not None, waits only until the deadline expires.
+
+  Args:
+    call: Method name to call, as a string
+    request: The request object
+    response: The response object
+
+  Kwargs:
+    deadline: Deadline for RPC call in seconds; if None use the default.
+
+  Raises:
+    TypeError: if the deadline is not a number and is not None.
+    ValueError: If the deadline is less than zero.
+  """
+  try:
+    if deadline is None:
+      apiproxy_stub_map.MakeSyncCall('search', call, request, response)
+    else:
+
+
+      if (not isinstance(deadline, (int, long, float))
+          or isinstance(deadline, (bool,))):
+        raise TypeError('deadline argument should be int/long/float (%r)'
+                        % (deadline,))
+      if deadline <= 0:
+        raise ValueError('deadline argument must be > 0 (%s)' % (deadline,))
+      rpc = apiproxy_stub_map.UserRPC('search', deadline=deadline)
+      rpc.make_call(call, request, response)
+      rpc.wait()
+      rpc.check_success()
+  except apiproxy_errors.ApplicationError, e:
+    raise _ToSearchError(e)

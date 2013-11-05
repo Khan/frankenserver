@@ -3,6 +3,39 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.8.7
+
+All
+==============================
+- Cloud Endpoints is now a GA feature.
+- Memcache configuration changes and mutations (flush, set, etc.) made from the
+  Admin Console are now recorded in the admin console logs.
+- The max_concurrent_requests setting is now configurable per version/module.
+    http://code.google.com/p/googleappengine/issues/detail?id=7927
+- Fixed an issue with Datastore not correctly validating namespaces with
+  greater than 500 characters.
+
+Python
+==============================
+- Fixed an issue with NDB not returning the same instance for async gets
+  when using memcache.
+    https://code.google.com/p/googleappengine/issues/detail?id=9976
+
+PHP
+==============================
+- Added support for the mcrypt PHP extension to the PHP interpreter included
+  with the Mac OSX SDK.
+- Added support for the zlib extension library to the PHP interpreter included
+  with the Mac OSX SDK.
+- Added support for the PHP gd extension to the PHP interpreter included with
+  the Mac OSX SDK.
+    https://code.google.com/p/googleappengine/issues/detail?id=10156
+- Fixed an issue where blank multipart form values are uploaded incorrectly
+  into Google Cloud Storage.
+- Fixed an issue where PHP applications could not be run locally using the
+  Mac OS X launcher on Mac OS X Lion and earlier.
+    https://code.google.com/p/googleappengine/issues/detail?id=10135
+
 Version 1.8.6
 
 All

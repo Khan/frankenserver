@@ -324,7 +324,7 @@ class DevAppserverEndpointsServerTest(test_utils.TestsWithStartResponse):
     response = self.server.dispatch(request, self.start_response)
     self.assert_http_match(response, 302,
                            [('Content-Length', '0'),
-                            ('Location', ('https://apis-explorer.appspot.com/'
+                            ('Location', ('http://apis-explorer.appspot.com/'
                                           'apis-explorer/?base='
                                           'http://localhost:42/_ah/api'))],
                            '')

@@ -149,6 +149,12 @@ APPCFG_SCOPES = ['https://www.googleapis.com/auth/appengine.admin']
 STATIC_FILE_PREFIX = '__static__'
 
 
+
+METADATA_BASE = 'http://metadata.google.internal'
+SERVICE_ACCOUNT_BASE = (
+    'computeMetadata/v1beta1/instance/service-accounts/default')
+
+
 class Error(Exception):
   pass
 
@@ -2333,6 +2339,22 @@ def GetSourceName(get_version=sdk_update_checker.GetVersionObject):
   return 'Google-appcfg-%s' % (release,)
 
 
+def _ReadUrlContents(url):
+  """Reads the contents of a URL into a string.
+
+  Args:
+    url: a string that is the URL to read.
+
+  Returns:
+    A string that is the contents read from the URL.
+
+  Raises:
+    urllib2.URLError: If the URL cannot be read.
+  """
+  req = urllib2.Request(url)
+  return urllib2.urlopen(req).read()
+
+
 class AppCfgApp(object):
   """Singleton class to wrap AppCfg tool functionality.
 
@@ -2355,6 +2377,7 @@ class AppCfgApp(object):
     parser_class: The class to use for parsing the command line.  Because
       OptionsParser will exit the program when there is a parse failure, it
       is nice to subclass OptionsParser and catch the error before exiting.
+    read_url_contents: A function to read the contents of a URL.
   """
 
   def __init__(self, argv, parser_class=optparse.OptionParser,
@@ -2423,6 +2446,8 @@ class AppCfgApp(object):
     self.oauth_client_id = oauth_client_id
     self.oauth_client_secret = oauth_client_secret
     self.oauth_scopes = oauth_scopes
+
+    self.read_url_contents = _ReadUrlContents
 
 
 
@@ -2527,7 +2552,9 @@ class AppCfgApp(object):
     verbosity = self.options.verbose
 
 
-    if self.options.oauth2_refresh_token:
+
+    if any((self.options.oauth2_refresh_token, self.options.oauth2_access_token,
+            self.options.authenticate_service_account)):
       self.options.oauth2 = True
 
 
@@ -2595,6 +2622,30 @@ class AppCfgApp(object):
         """Very simple formatter."""
         return description + '\n'
 
+    class AppCfgOption(optparse.Option):
+      """Custom Option for AppCfg.
+
+      Adds an 'update' action for storing key-value pairs as a dict.
+      """
+
+      _ACTION = 'update'
+      ACTIONS = optparse.Option.ACTIONS + (_ACTION,)
+      STORE_ACTIONS = optparse.Option.STORE_ACTIONS + (_ACTION,)
+      TYPED_ACTIONS = optparse.Option.TYPED_ACTIONS + (_ACTION,)
+      ALWAYS_TYPED_ACTIONS = optparse.Option.ALWAYS_TYPED_ACTIONS + (_ACTION,)
+
+      def take_action(self, action, dest, opt, value, values, parser):
+        if action != self._ACTION:
+          return optparse.Option.take_action(
+              self, action, dest, opt, value, values, parser)
+        try:
+          key, value = value.split(':', 1)
+        except ValueError:
+          raise optparse.OptionValueError(
+              'option %s: invalid value: %s (must match NAME:VALUE)' % (
+                  opt, value))
+        values.ensure_value(dest, {})[key] = value
+
     desc = self._GetActionDescriptions()
     desc = ('Action must be one of:\n%s'
             'Use \'help <action>\' for a detailed description.') % desc
@@ -2604,7 +2655,8 @@ class AppCfgApp(object):
     parser = self.parser_class(usage='%prog [options] <action>',
                                description=desc,
                                formatter=Formatter(),
-                               conflict_handler='resolve')
+                               conflict_handler='resolve',
+                               option_class=AppCfgOption)
 
 
 
@@ -2653,6 +2705,12 @@ class AppCfgApp(object):
                             'value from app.yaml file.'))
     parser.add_option('-r', '--runtime', action='store', dest='runtime',
                       help='Override runtime from app.yaml file.')
+    parser.add_option('-E', '--env_variable', action='update',
+                      dest='env_variables', metavar='NAME:VALUE',
+                      help=('Set an environment variable, potentially '
+                            'overriding an env_variable value from app.yaml '
+                            'file (flag may be repeated to set multiple '
+                            'variables).'))
     parser.add_option('-R', '--allow_any_runtime', action='store_true',
                       dest='allow_any_runtime', default=False,
                       help='Do not validate the runtime in app.yaml')
@@ -2663,6 +2721,10 @@ class AppCfgApp(object):
                       dest='oauth2_refresh_token', default=None,
                       help='An existing OAuth2 refresh token to use. Will '
                       'not attempt interactive OAuth approval.')
+    parser.add_option('--oauth2_access_token', action='store',
+                      dest='oauth2_access_token', default=None,
+                      help='An existing OAuth2 access token to use. Will '
+                      'not attempt interactive OAuth approval.')
     parser.add_option('--oauth2_client_id', action='store',
                       dest='oauth2_client_id', default=None,
                       help=optparse.SUPPRESS_HELP)
@@ -2672,6 +2734,11 @@ class AppCfgApp(object):
     parser.add_option('--oauth2_credential_file', action='store',
                       dest='oauth2_credential_file', default=None,
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option('--authenticate_service_account', action='store_true',
+                      dest='authenticate_service_account', default=False,
+                      help='Authenticate using the default service account '
+                      'for the Google Compute Engine VM in which appcfg is '
+                      'being called')
     parser.add_option('--noauth_local_webserver', action='store_false',
                       dest='auth_local_webserver', default=True,
                       help='Do not run a local web server to handle redirects '
@@ -2712,7 +2779,9 @@ class AppCfgApp(object):
       A new AbstractRpcServer, on which RPC calls can be made.
 
     Raises:
-      OAuthNotAvailable: Oauth is requested but the dependecies aren't imported.
+      OAuthNotAvailable: OAuth is requested but the dependecies aren't imported.
+      RuntimeError: The user has request non-interactive authentication but the
+        environment is not correct for that to work.
     """
 
     def GetUserCredentials():
@@ -2733,6 +2802,8 @@ class AppCfgApp(object):
 
     StatusUpdate('Host: %s' % self.options.server)
 
+    source = GetSourceName()
+
 
 
     dev_appserver = self.options.host == 'localhost'
@@ -2741,14 +2812,18 @@ class AppCfgApp(object):
 
         raise OAuthNotAvailable()
       if not self.rpc_server_class:
-        self.rpc_server_class = appengine_rpc_httplib2.HttpRpcServerOauth2
+        self.rpc_server_class = appengine_rpc_httplib2.HttpRpcServerOAuth2
 
-      get_user_credentials = self.options.oauth2_refresh_token
 
-      source = (self.oauth_client_id,
-                self.oauth_client_secret,
-                self.oauth_scopes,
-                self.options.oauth2_credential_file)
+      get_user_credentials = (
+          appengine_rpc_httplib2.HttpRpcServerOAuth2.OAuth2Parameters(
+              access_token=self.options.oauth2_access_token,
+              client_id=self.oauth_client_id,
+              client_secret=self.oauth_client_secret,
+              scope=self.oauth_scopes,
+              refresh_token=self.options.oauth2_refresh_token,
+              credential_file=self.options.oauth2_credential_file,
+              token_uri=self._GetTokenUri()))
 
       if hasattr(appengine_rpc_httplib2.tools, 'FLAGS'):
         appengine_rpc_httplib2.tools.FLAGS.auth_local_webserver = (
@@ -2759,7 +2834,6 @@ class AppCfgApp(object):
         if hasattr(self, 'runtime'):
           self.rpc_server_class.RUNTIME = self.runtime
       get_user_credentials = GetUserCredentials
-      source = GetSourceName()
 
 
     if dev_appserver:
@@ -2794,6 +2868,37 @@ class AppCfgApp(object):
                                  account_type='HOSTED_OR_GOOGLE',
                                  secure=self.options.secure,
                                  ignore_certs=self.options.ignore_certs)
+
+  def _GetTokenUri(self):
+    """Returns the OAuth2 token_uri, or None to use the default URI.
+
+    Returns:
+      A string that is the token_uri, or None.
+
+    Raises:
+      RuntimeError: The user has requested authentication for a service account
+        but the environment is not correct for that to work.
+    """
+    if self.options.authenticate_service_account:
+
+
+
+      url = '%s/%s/scopes' % (METADATA_BASE, SERVICE_ACCOUNT_BASE)
+      try:
+        vm_scopes_string = self.read_url_contents(url)
+      except urllib2.URLError, e:
+        raise RuntimeError('Could not obtain scope list from metadata service: '
+                           '%s: %s. This may be because we are not running in '
+                           'a Google Compute Engine VM.' % (url, e))
+      vm_scopes = vm_scopes_string.split()
+      missing = list(set(self.oauth_scopes).difference(vm_scopes))
+      if missing:
+        raise RuntimeError('Required scopes %s missing from %s. '
+                           'This VM instance probably needs to be recreated '
+                           'with the missing scopes.' % (missing, vm_scopes))
+      return '%s/%s/token' % (METADATA_BASE, SERVICE_ACCOUNT_BASE)
+    else:
+      return None
 
   def _FindYaml(self, basepath, file_name):
     """Find yaml files in application directory.
@@ -2831,7 +2936,11 @@ class AppCfgApp(object):
     Returns:
       An AppInfoExternal object.
     """
-    appyaml = self._ParseYamlFile(basepath, basename, appinfo_includes.Parse)
+    try:
+      appyaml = self._ParseYamlFile(basepath, basename, appinfo_includes.Parse)
+    except yaml_errors.EventListenerError, e:
+      self.parser.error('Error parsing %s.yaml: %s.' % (
+          os.path.join(basepath, basename), e))
     if appyaml is None:
       self.parser.error('Directory does not contain an %s.yaml '
                         'configuration file.' % basename)
@@ -2847,6 +2956,10 @@ class AppCfgApp(object):
       appyaml.version = self.options.version
     if self.options.runtime:
       appyaml.runtime = self.options.runtime
+    if self.options.env_variables:
+      if appyaml.env_variables is None:
+        appyaml.env_variables = appinfo.EnvironmentVariables()
+      appyaml.env_variables.update(self.options.env_variables)
 
     if not appyaml.application:
       self.parser.error('Expected -A app_id when application property in file '

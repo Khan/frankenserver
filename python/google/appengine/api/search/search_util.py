@@ -86,9 +86,13 @@ def AddFieldsToDocumentPb(doc_id, fields, document):
     field = document.add_field()
     field.set_name(name)
     field_value = field.mutable_value()
-    field_value.set_string_value(value.encode("utf-8"))
     if len(field_tuple) > 2:
       field_value.set_type(field_tuple[2])
+    if field_value.type() == document_pb.FieldValue.GEO:
+      field_value.mutable_geo().set_lat(value.latitude)
+      field_value.mutable_geo().set_lng(value.longitude)
+    else:
+      field_value.set_string_value(value.encode("utf-8"))
 
 
 def GetFieldCountInDocument(document, field_name):
@@ -97,35 +101,6 @@ def GetFieldCountInDocument(document, field_name):
     if field.name() == field_name:
       count += 1
   return count
-
-
-def GetFieldValue(field):
-  """Returns the value of a field as the correct type.
-
-  Args:
-    field: The field whose value is extracted.  If the given field is None, this
-      function also returns None. This is to make it easier to chain with
-      GetFieldInDocument().
-
-  Returns:
-    The value of the field with the correct type (float for number fields,
-    datetime.datetime for date fields, etc).
-
-  Raises:
-    TypeError: if the type of the field isn't recognized.
-  """
-  if not field:
-    return None
-  value = field.value().string_value()
-  value_type = field.value().type()
-
-  if value_type in TEXT_DOCUMENT_FIELD_TYPES:
-    return value
-  if value_type == document_pb.FieldValue.DATE:
-    return DeserializeDate(value)
-  if value_type == document_pb.FieldValue.NUMBER:
-    return float(value)
-  raise TypeError('No conversion defined for type %s' % value_type)
 
 
 def EpochTime(date):

@@ -1946,7 +1946,7 @@ class DateTimeProperty(Property):
                                            (value,))
 
   def _now(self):
-    return datetime.datetime.now()
+    return datetime.datetime.utcnow()
 
   def _prepare_for_put(self, entity):
     if (self._auto_now or
@@ -2023,7 +2023,7 @@ class DateProperty(DateTimeProperty):
     return value.date()
 
   def _now(self):
-    return datetime.date.today()
+    return datetime.datetime.utcnow().date()
 
 
 class TimeProperty(DateTimeProperty):
@@ -2043,7 +2043,7 @@ class TimeProperty(DateTimeProperty):
     return value.time()
 
   def _now(self):
-    return datetime.datetime.now().time()
+    return datetime.datetime.utcnow().time()
 
 
 class _StructuredGetForDictMixin(Property):

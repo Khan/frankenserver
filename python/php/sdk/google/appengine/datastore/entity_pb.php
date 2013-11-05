@@ -3633,3 +3633,116 @@ namespace storage_onestore_v3 {
     }
   }
 }
+namespace storage_onestore_v3 {
+  class IndexPosition extends \google\net\ProtocolMessage {
+    public function getKey() {
+      if (!isset($this->key)) {
+        return '';
+      }
+      return $this->key;
+    }
+    public function setKey($val) {
+      $this->key = $val;
+      return $this;
+    }
+    public function clearKey() {
+      unset($this->key);
+      return $this;
+    }
+    public function hasKey() {
+      return isset($this->key);
+    }
+    public function getBefore() {
+      if (!isset($this->before)) {
+        return true;
+      }
+      return $this->before;
+    }
+    public function setBefore($val) {
+      $this->before = $val;
+      return $this;
+    }
+    public function clearBefore() {
+      unset($this->before);
+      return $this;
+    }
+    public function hasBefore() {
+      return isset($this->before);
+    }
+    public function clear() {
+      $this->clearKey();
+      $this->clearBefore();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->key)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->key));
+      }
+      if (isset($this->before)) {
+        $res += 2;
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->key)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->key);
+      }
+      if (isset($this->before)) {
+        $out->putVarInt32(16);
+        $out->putBoolean($this->before);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setKey(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 16:
+            $this->setBefore($d->getBoolean());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasKey()) {
+        $this->setKey($x->getKey());
+      }
+      if ($x->hasBefore()) {
+        $this->setBefore($x->getBefore());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->key) !== isset($x->key)) return false;
+      if (isset($this->key) && $this->key !== $x->key) return false;
+      if (isset($this->before) !== isset($x->before)) return false;
+      if (isset($this->before) && $this->before !== $x->before) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->key)) {
+        $res .= $prefix . "key: " . $this->debugFormatString($this->key) . "\n";
+      }
+      if (isset($this->before)) {
+        $res .= $prefix . "before: " . $this->debugFormatBool($this->before) . "\n";
+      }
+      return $res;
+    }
+  }
+}
