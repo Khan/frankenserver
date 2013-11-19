@@ -45,6 +45,9 @@ $setup = function() {
     putenv('REAL_SCRIPT_FILENAME');
     unset($_ENV['REAL_SCRIPT_FILENAME']);
     unset($_SERVER['REAL_SCRIPT_FILENAME']);
+
+    // SCRIPT_NAME == PHP_SELF on app engine.
+    $_SERVER['SCRIPT_NAME'] = $_SERVER['PHP_SELF'];
   };
 
   $setupApiProxy = function() {

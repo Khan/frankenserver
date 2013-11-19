@@ -1910,6 +1910,10 @@ goog.dom.getElementByClass = function(className, opt_el) {
   var parent = opt_el || document, retVal = null;
   return(retVal = goog.dom.canUseQuerySelector_(parent) ? parent.querySelector("." + className) : goog.dom.getElementsByClass(className, opt_el)[0]) || null;
 };
+goog.dom.getRequiredElementByClass = function(className, opt_root) {
+  var retValue = goog.dom.getElementByClass(className, opt_root);
+  return goog.asserts.assert(retValue, "No element found with className: " + className);
+};
 goog.dom.canUseQuerySelector_ = function(parent) {
   return!(!parent.querySelectorAll || !parent.querySelector);
 };
@@ -2549,6 +2553,10 @@ goog.dom.DomHelper.prototype.getElementByClass = function(className, opt_el) {
   var doc = opt_el || this.document_;
   return goog.dom.getElementByClass(className, doc);
 };
+goog.dom.DomHelper.prototype.getRequiredElementByClass = function(className, opt_root) {
+  var root = opt_root || this.document_;
+  return goog.dom.getRequiredElementByClass(className, root);
+};
 goog.dom.DomHelper.prototype.$$ = goog.dom.DomHelper.prototype.getElementsByTagNameAndClass;
 goog.dom.DomHelper.prototype.setProperties = goog.dom.setProperties;
 goog.dom.DomHelper.prototype.getViewportSize = function(opt_window) {
@@ -2712,8 +2720,14 @@ goog.disposeAll = function(var_args) {
   }
 };
 goog.events = {};
+goog.events.EventId = function(eventId) {
+  this.id = eventId;
+};
+goog.events.EventId.prototype.toString = function() {
+  return this.id;
+};
 goog.events.Event = function(type, opt_target) {
-  this.type = type;
+  this.type = type instanceof goog.events.EventId ? String(type) : type;
   this.currentTarget = this.target = opt_target;
 };
 goog.events.Event.prototype.disposeInternal = function() {
@@ -2833,12 +2847,6 @@ goog.events.BrowserEvent.prototype.preventDefault = function() {
   }
 };
 goog.events.BrowserEvent.prototype.disposeInternal = function() {
-};
-goog.events.EventId = function(eventId) {
-  this.id = eventId;
-};
-goog.events.EventId.prototype.toString = function() {
-  return this.id;
 };
 goog.events.Listenable = function() {
 };
@@ -5011,6 +5019,20 @@ goog.net.HttpStatus.isSuccess = function(status) {
       return!1;
   }
 };
+goog.net.XhrLike = function() {
+};
+goog.net.XhrLike.prototype.open = function() {
+};
+goog.net.XhrLike.prototype.send = function() {
+};
+goog.net.XhrLike.prototype.abort = function() {
+};
+goog.net.XhrLike.prototype.setRequestHeader = function() {
+};
+goog.net.XhrLike.prototype.getResponseHeader = function() {
+};
+goog.net.XhrLike.prototype.getAllResponseHeaders = function() {
+};
 goog.net.XmlHttpFactory = function() {
 };
 goog.net.XmlHttpFactory.prototype.cachedOptions_ = null;
@@ -5038,7 +5060,7 @@ goog.net.XmlHttp.getOptions = function() {
 goog.net.XmlHttp.OptionType = {USE_NULL_FUNCTION:0, LOCAL_REQUEST_ERROR:1};
 goog.net.XmlHttp.ReadyState = {UNINITIALIZED:0, LOADING:1, LOADED:2, INTERACTIVE:3, COMPLETE:4};
 goog.net.XmlHttp.setFactory = function(factory, optionsFactory) {
-  goog.net.XmlHttp.setGlobalFactory(new goog.net.WrapperXmlHttpFactory(factory, optionsFactory));
+  goog.net.XmlHttp.setGlobalFactory(new goog.net.WrapperXmlHttpFactory(goog.asserts.assert(factory), goog.asserts.assert(optionsFactory)));
 };
 goog.net.XmlHttp.setGlobalFactory = function(factory) {
   goog.net.XmlHttp.factory_ = factory;

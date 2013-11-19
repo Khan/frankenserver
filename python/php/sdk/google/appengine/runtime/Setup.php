@@ -35,6 +35,6 @@ if (GAE_INCLUDE_REQUIRE_GS_STREAMS === 1) {
   $url_flags = 0;
 }
 
-stream_wrapper_register("gs",
-    "\\google\\appengine\\ext\\cloud_storage_streams\\CloudStorageStreamWrapper",
+stream_wrapper_register('gs',
+    '\google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper',
     $url_flags);

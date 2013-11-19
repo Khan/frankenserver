@@ -298,7 +298,7 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
       self.access_token = access_token
       self.client_id = client_id
       self.client_secret = client_secret
-      self.scope = scope
+      self.scope = scope if isinstance(scope, basestring) else ' '.join(scope)
       self.refresh_token = refresh_token
       self.credential_file = credential_file
       self.token_uri = token_uri

@@ -42,7 +42,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
   UNAUTHORIZED_SENDER =    3
   INVALID_ATTACHMENT_TYPE =    4
   INVALID_HEADER_NAME =    5
-  EMPTY_CONTENT_ID =    6
+  INVALID_CONTENT_ID =    6
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -51,7 +51,7 @@ class MailServiceError(ProtocolBuffer.ProtocolMessage):
     3: "UNAUTHORIZED_SENDER",
     4: "INVALID_ATTACHMENT_TYPE",
     5: "INVALID_HEADER_NAME",
-    6: "EMPTY_CONTENT_ID",
+    6: "INVALID_CONTENT_ID",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

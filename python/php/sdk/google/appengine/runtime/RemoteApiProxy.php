@@ -47,7 +47,7 @@ class RemoteApiProxy extends ApiProxyBase{
    * @param int $apiPort Port to use
    * @param string $requestId ID of the request
    */
-  function __construct($apiHost, $apiPort, $requestId) {
+  public function __construct($apiHost, $apiPort, $requestId) {
     $this->apiHost = $apiHost;
     $this->apiPort = $apiPort;
     $this->requestId = $requestId;
@@ -67,7 +67,6 @@ class RemoteApiProxy extends ApiProxyBase{
       $request,
       $response,
       $deadline = null) {
-
     if ($deadline === null) {
       $deadline = 5;
     }
@@ -81,9 +80,9 @@ class RemoteApiProxy extends ApiProxyBase{
     $serialized_remote_request = $remote_request->serializeToString();
 
     $opts = array(
-      'http'=>array(
-        'method'=>'POST',
-        'header'=>
+      'http' => array(
+        'method' => 'POST',
+        'header' =>
             "Content-type: application/octet-stream\r\n" .
             'Content-Length: ' . strlen($serialized_remote_request) . "\r\n",
         'content' => $serialized_remote_request

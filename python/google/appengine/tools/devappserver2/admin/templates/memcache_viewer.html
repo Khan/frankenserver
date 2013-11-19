@@ -87,7 +87,12 @@
       <tr>
         <th id="value_key"><div id="value_key_text">Value</div></th>
         <td>
-          <textarea id="value_input" name="value" cols="80" rows="10"{% if not writable %} readonly{% endif %}>{{ value|default(boolean=true) }}</textarea>
+          <textarea id="value_input" name="value" cols="80" rows="10"
+                    {% if not writable %}
+                      readonly
+                    {% elif value_placeholder %}
+                      placeholder="{{ value_placeholder }}"
+                    {% endif %}>{{ value }}</textarea>
         </td>
       </tr>
       <tr>

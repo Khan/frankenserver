@@ -29,7 +29,7 @@ namespace google\appengine\MailServiceError {
     const UNAUTHORIZED_SENDER = 3;
     const INVALID_ATTACHMENT_TYPE = 4;
     const INVALID_HEADER_NAME = 5;
-    const EMPTY_CONTENT_ID = 6;
+    const INVALID_CONTENT_ID = 6;
   }
 }
 namespace google\appengine {

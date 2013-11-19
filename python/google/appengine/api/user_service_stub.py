@@ -112,7 +112,7 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self.__user_id = user_id
     self.__is_admin = is_admin
     self.__scopes = scopes
-    self._client_id = client_id
+    self.__client_id = client_id
 
   def _Dynamic_CreateLoginURL(self, request, response, request_id):
     """Trivial implementation of UserService.CreateLoginURL().
@@ -155,16 +155,22 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
           user_service_pb.UserServiceError.OAUTH_INVALID_REQUEST)
     else:
-      if self.__scopes is not None:
+      if self.__scopes is None:
+        authorized_scopes = set()
+      else:
 
-        if request.scope() not in self.__scopes:
+        authorized_scopes = set(request.scopes_list()).intersection(
+            self.__scopes)
+        if not authorized_scopes:
           raise apiproxy_errors.ApplicationError(
               user_service_pb.UserServiceError.OAUTH_INVALID_TOKEN)
       response.set_email(self.__email)
       response.set_user_id(self.__user_id)
       response.set_auth_domain(self.__domain)
       response.set_is_admin(self.__is_admin)
-      response.set_client_id(self._client_id)
+      response.set_client_id(self.__client_id)
+      for scope in authorized_scopes:
+        response.add_scopes(scope)
 
   def _Dynamic_CheckOAuthSignature(self, unused_request, response, request_id):
     """Trivial implementation of UserService.CheckOAuthSignature().

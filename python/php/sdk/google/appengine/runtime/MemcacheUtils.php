@@ -32,19 +32,20 @@ class MemcacheUtils {
   const FLAG_TYPE_MASK = 7;
   // These constants are taken from google/appengine/api/memcache/__init__.py:
   const TYPE_STR = 0;
-  // UNICODE = 1
+  const TYPE_UNICODE = 1;  // Value can be read but is never written.
+  // TYPE_PICKLED = 2
   const TYPE_INT = 3;
-  // LONG = 4
+  // TYPE_LONG = 4
   const TYPE_BOOL = 5;
   // These flags are unique to PHP:
   const TYPE_FLOAT = 6;
   const TYPE_PHP_SERIALIZED = 7;
 
-  static public function serializeValue($value, &$flag) {
+  public static function serializeValue($value, &$flag) {
     switch (gettype($value)) {
       case "boolean":
         $flag |= self::TYPE_BOOL;
-        return (string) $value;
+        return ($value ? "1" : "0");
       case "double":
         // Floats must be serialized to strings for compatibility with the
         // memcache PHP extension. This sequence is possible:
@@ -65,7 +66,7 @@ class MemcacheUtils {
     }
   }
 
-  static public function deserializeValue($value, $flag) {
+  public static function deserializeValue($value, $flag) {
     $type_flag = $flag & self::FLAG_TYPE_MASK;
     switch ($type_flag) {
       case self::TYPE_BOOL:
@@ -81,6 +82,7 @@ class MemcacheUtils {
       case self::TYPE_INT:
         return (integer) $value;
       case self::TYPE_STR:
+      case self::TYPE_UNICODE:
         return $value;
       case self::TYPE_PHP_SERIALIZED:
         return unserialize($value);
@@ -90,7 +92,7 @@ class MemcacheUtils {
     }
   }
 
-  static public function setMultiWithPolicy($keyValues, $expire, $policy) {
+  public static function setMultiWithPolicy($keyValues, $expire, $policy) {
     $request = new MemcacheSetRequest();
     $response = new MemcacheSetResponse();
 

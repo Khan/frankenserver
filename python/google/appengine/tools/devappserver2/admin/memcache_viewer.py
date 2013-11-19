@@ -14,107 +14,151 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""A memcache viewer and editor UI."""
+"""A memcache viewer and editor UI.
+
+Memcache associates a key with a value and an integer flag. The Go API maps
+keys to strings and lets the user control the flag. Java, PHP and Python
+map keys to an arbitrary type and uses the flag to indicate the type
+information. Java, PHP and Python map types in inconsistent ways, see:
+- google/appengine/api/memcache/__init__.py
+- google/appengine/api/memcache/MemcacheSerialization.java
+- google/appengine/runtime/MemcacheUtils.php
+"""
 
 
 import datetime
-import pickle
-import pprint
-import types
+import logging
 import urllib
 
+from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import memcache
+from google.appengine.api.memcache import memcache_service_pb
 from google.appengine.tools.devappserver2.admin import admin_request_handler
 
-from google.appengine.api import memcache
+
+class StringValueConverter(object):
+  memcache_type = memcache.TYPE_STR
+  placeholder = 'hello world!'
+  can_edit = True
+  friendly_type_name = 'String'
+
+  @staticmethod
+  def to_display(cache_value):
+    return cache_value
+
+  @staticmethod
+  def to_cache(display_value):
+    return display_value
 
 
-def _to_bool(string_value):
-  """Convert string to boolean value.
+class UnicodeValueConverter(object):
+  memcache_type = memcache.TYPE_UNICODE
+  # Hello world in Japanese.
+  placeholder = u'\u3053\u3093\u306b\u3061\u306f\u4e16\u754c'
+  can_edit = True
+  friendly_type_name = 'Unicode String'
 
-  Args:
-    string_value: A string.
+  @staticmethod
+  def to_display(cache_value):
+    return cache_value.decode('utf-8')
 
-  Returns:
-    Boolean.  True if string_value is "true", False if string_value is
-    "false".  This is case-insensitive.
+  @staticmethod
+  def to_cache(display_value):
+    return display_value.encode('utf-8')
 
-  Raises:
-    ValueError: string_value not "true" or "false".
-  """
-  string_value_low = string_value.lower()
-  if string_value_low not in ('false', 'true'):
+
+class BooleanValueConverter(object):
+  memcache_type = memcache.TYPE_BOOL
+  placeholder = 'true'
+  can_edit = True
+  friendly_type_name = 'Boolean'
+
+  @staticmethod
+  def to_display(cache_value):
+    if cache_value == '0':
+      return 'false'
+    elif cache_value == '1':
+      return 'true'
+    else:
+      raise ValueError('unexpected boolean %r' % cache_value)
+
+  @staticmethod
+  def to_cache(display_value):
+    if display_value.lower() in ('false', 'no', 'off', '0'):
+      return '0'
+    elif display_value.lower() in ('true', 'yes', 'on', '1'):
+      return '1'
+
     raise ValueError(
         'invalid literal for boolean: %s (must be "true" or "false")' %
-        string_value)
-  return string_value_low == 'true'
+        display_value)
+
+
+class IntValueConverter(object):
+  memcache_type = memcache.TYPE_INT
+  placeholder = '42'
+  can_edit = True
+  friendly_type_name = 'Integer'
+
+  @staticmethod
+  def to_display(cache_value):
+    return str(cache_value)
+
+  @staticmethod
+  def to_cache(display_value):
+    return str(int(display_value))
+
+
+class OtherValueConverter(object):
+  memcache_type = None
+  placeholder = None
+  can_edit = False
+  friendly_type_name = 'Unknown Type'
+
+  @staticmethod
+  def to_display(cache_value):
+    return repr(cache_value)[1:-1]
+
+  @staticmethod
+  def to_cache(display_value):
+    raise NotImplementedError('cannot to a memcache value of unknown type')
 
 
 class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
-  # Supported types:  type + conversion function + string description
-  # Order is important, must check Boolean before Integer.
-  TYPES = ((str, str, 'String'),
-           (unicode, unicode, 'Unicode String'),
-           (bool, _to_bool, 'Boolean'),
-           (int, int, 'Integer'),
-           (long, long, 'Long Integer'),
-           (float, float, 'Float'))
-  DEFAULT_TYPESTR_FOR_NEW = 'String'
+  CONVERTERS = [StringValueConverter, UnicodeValueConverter,
+                BooleanValueConverter, IntValueConverter,
+                OtherValueConverter]
+  MEMCACHE_TYPE_TO_CONVERTER = {c.memcache_type: c for c in CONVERTERS
+                                if c.memcache_type is not None}
+  FRIENDLY_TYPE_NAME_TO_CONVERTER = {c.friendly_type_name: c
+                                     for c in CONVERTERS}
 
-  def _get_memcache_value_and_type(self, key):
-    """Fetch value from memcache and detect its type.
+  def _get_memcache_value_and_flags(self, key):
+    """Return a 2-tuple containing a memcache value and its flags."""
+    request = memcache_service_pb.MemcacheGetRequest()
+    response = memcache_service_pb.MemcacheGetResponse()
 
-    Args:
-      key: String
-
-    Returns:
-      (value, type), value is a Python object or None if the key was not set in
-      the cache, type is a string describing the type of the value.
-    """
-    try:
-      value = memcache.get(key)
-    except (pickle.UnpicklingError, AttributeError, EOFError, ImportError,
-            IndexError), e:
-      # Pickled data could be broken or the user might have stored custom class
-      # instances in the cache (which can't be unpickled from here).
-      msg = 'Failed to retrieve value from cache: %s' % e
-      return msg, 'error'
-
-    if value is None:
-      # No such value in the cache yet.
-      return None, self.DEFAULT_TYPESTR_FOR_NEW
-
-    # Check if one of the editable types.
-    for typeobj, _, typestr in self.TYPES:
-      if isinstance(value, typeobj):
-        break
+    request.add_key(key)
+    apiproxy_stub_map.MakeSyncCall('memcache', 'Get', request, response)
+    assert response.item_size() < 2
+    if response.item_size() == 0:
+      return None, None
     else:
-      # Unsupported type, just print nicely.
-      typestr = 'pickled'
-      value = pprint.pformat(value, indent=2)
+      return response.item(0).value(), response.item(0).flags()
 
-    return value, typestr
+  def _set_memcache_value(self, key, value, flags):
+    """Store a value in memcache."""
+    request = memcache_service_pb.MemcacheSetRequest()
+    response = memcache_service_pb.MemcacheSetResponse()
 
-  def _set_memcache_value(self, key, type_, value):
-    """Convert a string value and store the result in memcache.
+    item = request.add_item()
+    item.set_key(key)
+    item.set_value(value)
+    item.set_flags(flags)
 
-    Args:
-      key: String
-      type_: String, describing what type the value should have in the cache.
-      value: String, will be converted according to type_.
-
-    Returns:
-      Result of memcache.set(key, converted_value).  True if value was set.
-
-    Raises:
-      ValueError: Value can't be converted according to type_.
-    """
-    for _, converter, typestr in self.TYPES:
-      if typestr == type_:
-        value = converter(value)
-        break
-    else:
-      raise ValueError('Type %s not supported.' % type_)
-    return memcache.set(key, value)
+    apiproxy_stub_map.MakeSyncCall('memcache', 'Set', request, response)
+    return (response.set_status(0) ==
+            memcache_service_pb.MemcacheSetResponse.STORED)
 
   def get(self):
     """Show template and prepare stats and/or key+value to display/edit."""
@@ -129,7 +173,9 @@ class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
       values['show_stats'] = False
       values['show_value'] = False
       values['show_valueform'] = True
-      values['types'] = [typestr for _, _, typestr in self.TYPES]
+      values['types'] = [type_value.friendly_type_name
+                         for type_value in self.CONVERTERS
+                         if type_value.can_edit]
     elif key:
       # A key was given, show it's value on the stats page.
       values['show_stats'] = True
@@ -143,13 +189,27 @@ class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
 
     if key:
       values['key'] = key
-      values['value'], values['type'] = self._get_memcache_value_and_type(key)
-      values['key_exists'] = values['value'] is not None
+      memcache_value, memcache_flags = self._get_memcache_value_and_flags(key)
+      if memcache_value is not None:
+        converter = self.MEMCACHE_TYPE_TO_CONVERTER.get(memcache_flags,
+                                                        OtherValueConverter)
+        try:
+          values['value'] = converter.to_display(memcache_value)
+        except ValueError:
+          # This exception is possible in the case where the value was set by
+          # Go, which allows for arbitrary user-assigned flag values.
+          logging.exception('Could not convert %s value %s',
+                            converter.friendly_type_name, memcache_value)
+          converter = OtherValueConverter
+          values['value'] = converter.to_display(memcache_value)
 
-      if values['type'] in ('pickled', 'error'):
-        values['writable'] = False
+        values['type'] = converter.friendly_type_name
+        values['writable'] = converter.can_edit
+        values['key_exists'] = True
+        values['value_placeholder'] = converter.placeholder
       else:
         values['writable'] = True
+        values['key_exists'] = False
 
     if values['show_stats']:
       memcache_stats = memcache.get_stats()
@@ -221,17 +281,21 @@ class MemcacheViewerRequestHandler(admin_request_handler.AdminRequestHandler):
       value = self.request.get('value')
       type_ = self.request.get('type')
       next_param['key'] = key
+
+      converter = self.FRIENDLY_TYPE_NAME_TO_CONVERTER[type_]
       try:
-        if self._set_memcache_value(key, type_, value):
+        memcache_value = converter.to_cache(value)
+      except ValueError as e:
+        next_param['message'] = 'ERROR: Failed to save key "%s": %s.' % (key, e)
+      else:
+        if self._set_memcache_value(key,
+                                    memcache_value,
+                                    converter.memcache_type):
           next_param['message'] = 'Key "%s" saved.' % key
         else:
           next_param['message'] = 'ERROR: Failed to save key "%s".' % key
-      except ValueError, e:
-        next_param['message'] = 'ERROR: Unable to encode value: %s' % e
-
     elif self.request.get('action:cancel'):
       next_param['key'] = self.request.get('key')
-
     else:
       next_param['message'] = 'Unknown action.'
 

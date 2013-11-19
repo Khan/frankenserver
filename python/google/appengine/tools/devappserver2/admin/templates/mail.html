@@ -59,7 +59,7 @@ $('#mail-form').submit(function() {
   })
   .done(function() {
     $('#mail-feedback').removeClass().addClass('messagebox').text(
-        'Request suceeded!');
+        'Request succeeded!');
   })
   .fail(function(xhr, textStatus) {
     $('#mail-feedback').removeClass().addClass('errorbox').text(

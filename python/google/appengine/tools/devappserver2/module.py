@@ -47,6 +47,7 @@ from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import endpoints
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
+from google.appengine.tools.devappserver2 import gcs_application
 from google.appengine.tools.devappserver2 import go_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
@@ -209,6 +210,10 @@ class Module(object):
     handlers.append(
         wsgi_handler.WSGIHandler(channel.application, url_pattern))
 
+    url_pattern = '/%s' % gcs_application.GCS_URL_PATTERN
+    handlers.append(
+        wsgi_handler.WSGIHandler(gcs_application.Application(), url_pattern))
+
     url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
     handlers.append(
         wsgi_handler.WSGIHandler(
@@ -260,6 +265,9 @@ class Module(object):
     runtime_config = runtime_config_pb2.Config()
     runtime_config.app_id = self._module_configuration.application
     runtime_config.version_id = self._module_configuration.version_id
+    if self._module_configuration.module_name:
+      runtime_config.version_id = '%s:%s' % (
+          self._module_configuration.module_name, runtime_config.version_id)
     if self._threadsafe_override is None:
       runtime_config.threadsafe = self._module_configuration.threadsafe or False
     else:
@@ -587,7 +595,8 @@ class Module(object):
             host=hostname,
             method=method,
             resource=resource,
-            http_version=http_version)
+            http_version=http_version,
+            module=self._module_configuration.module_name)
 
       def wrapped_start_response(status, response_headers, exc_info=None):
         response_headers.append(('Server',
@@ -1510,8 +1519,9 @@ class ManualScalingModule(Module):
     if self._module_configuration.is_backend:
       environ['BACKEND_ID'] = self._module_configuration.module_name
     else:
-      environ['BACKEND_ID'] = (
-          self._module_configuration.version_id.split('.', 1)[0])
+      environ['BACKEND_ID'] = appinfo.MODULE_SEPARATOR.join([
+          self._module_configuration.module_name,
+          self._module_configuration.version_id.split('.', 1)[0]])
     if inst is not None:
       return self._handle_instance_request(
           environ, start_response, url_map, match, request_id, inst,
@@ -2017,8 +2027,9 @@ class BasicScalingModule(Module):
     if self._module_configuration.is_backend:
       environ['BACKEND_ID'] = self._module_configuration.module_name
     else:
-      environ['BACKEND_ID'] = (
-          self._module_configuration.version_id.split('.', 1)[0])
+      environ['BACKEND_ID'] = appinfo.MODULE_SEPARATOR.join([
+          self._module_configuration.module_name,
+          self._module_configuration.version_id.split('.', 1)[0]])
     if inst is not None:
       return self._handle_instance_request(
           environ, start_response, url_map, match, request_id, inst,

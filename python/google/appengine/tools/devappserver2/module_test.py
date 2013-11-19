@@ -70,7 +70,7 @@ class ModuleConfigurationStub(object):
     self.handlers = handlers
     self.normalized_libraries = normalized_libraries or []
     self.env_variables = env_variables or []
-    self.version_id = '%s:%s.%s' % (module_name, version, '12345')
+    self.version_id = '%s.%s' % (version, '12345')
     self.is_backend = False
 
   def check_for_updates(self):
@@ -335,32 +335,34 @@ class TestModuleCreateUrlHandlers(unittest.TestCase):
         url='/_ah/warmup',
         script='warmup_handler',
         login='admin')
+    # Built-in: login, blob_upload, blob_image, channel, gcs, endpoints
+    self.num_builtin_handlers = 6
 
   def test_match_all(self):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'.*',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(6, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 1, len(handlers))
 
   def test_match_start_only(self):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/_ah/start',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(7, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 2, len(handlers))
     self.assertEqual(self.instance_factory.WARMUP_URL_MAP, handlers[0].url_map)
 
   def test_match_warmup_only(self):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/_ah/warmup',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(7, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 2, len(handlers))
     self.assertEqual(self.instance_factory.START_URL_MAP, handlers[0].url_map)
 
   def test_match_neither_warmup_nor_start(self):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(8, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 3, len(handlers))
     self.assertEqual(self.instance_factory.WARMUP_URL_MAP, handlers[0].url_map)
     self.assertEqual(self.instance_factory.START_URL_MAP, handlers[1].url_map)
 
@@ -369,7 +371,7 @@ class TestModuleCreateUrlHandlers(unittest.TestCase):
         appinfo.URLMap(url=r'/_ah/start', static_dir='foo'),
         appinfo.URLMap(url=r'/_ah/warmup', static_files='foo', upload='foo')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(9, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 4, len(handlers))
     self.assertEqual(self.instance_factory.WARMUP_URL_MAP, handlers[0].url_map)
     self.assertEqual(self.instance_factory.START_URL_MAP, handlers[1].url_map)
 
@@ -378,14 +380,14 @@ class TestModuleCreateUrlHandlers(unittest.TestCase):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/_ah/start',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(6, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 1, len(handlers))
 
   def test_match_warmup_only_no_inbound_warmup(self):
     self.module_configuration.inbound_services = None
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/_ah/warmup',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(7, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 2, len(handlers))
     self.assertEqual(self.instance_factory.START_URL_MAP, handlers[0].url_map)
 
   def test_match_neither_warmup_nor_start_no_inbound_warmup(self):
@@ -393,7 +395,7 @@ class TestModuleCreateUrlHandlers(unittest.TestCase):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'/',
                                                          script=r'foo.py')]
     handlers = self.servr._create_url_handlers()
-    self.assertEqual(7, len(handlers))
+    self.assertEqual(self.num_builtin_handlers + 2, len(handlers))
     self.assertEqual(self.instance_factory.START_URL_MAP, handlers[0].url_map)
 
 

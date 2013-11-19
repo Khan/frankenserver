@@ -64,7 +64,7 @@ class _GoBuildFailureRuntimeProxy(instance.RuntimeProxy):
       A sequence of strings containing the body of the HTTP response.
     """
     start_response('500 Internal Server Error',
-                   [('Content-Type', 'text/plain')])
+                   [('Content-Type', 'text/plain; charset=utf-8')])
     yield 'The Go application could not be built.\n'
     yield '\n'
     yield str(self._failure_exception)
@@ -121,7 +121,8 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
         roots = go_path.split(';')
       else:
         roots = go_path.split(':')
-      return [os.path.join(r, 'src') for r in roots]
+      dirs = [os.path.join(r, 'src') for r in roots]
+      return [d for d in dirs if os.path.isdir(d)]
 
   def files_changed(self):
     """Called when a file relevant to the factory *might* have changed."""

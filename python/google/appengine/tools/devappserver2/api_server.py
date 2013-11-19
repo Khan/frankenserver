@@ -62,7 +62,6 @@ from google.appengine.datastore import datastore_v4_stub
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
-from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.ext.remote_api import remote_api_services
 from google.appengine.runtime import apiproxy_errors
@@ -380,13 +379,9 @@ def setup_stubs(
           request_data=request_data))
   apiproxy_stub_map.apiproxy.GetStub('taskqueue').StartBackgroundExecution()
 
-  urlmatchers_to_fetch_functions = []
-  urlmatchers_to_fetch_functions.extend(
-      gcs_dispatcher.URLMATCHERS_TO_FETCH_FUNCTIONS)
   apiproxy_stub_map.apiproxy.RegisterStub(
       'urlfetch',
-      urlfetch_stub.URLFetchServiceStub(
-          urlmatchers_to_fetch_functions=urlmatchers_to_fetch_functions))
+      urlfetch_stub.URLFetchServiceStub())
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'user',

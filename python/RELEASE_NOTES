@@ -3,6 +3,45 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.8.8
+
+All
+==============================
+- Dedicated Memcache is now a GA feature. Our deprecation policy applies and
+  customers are encouraged to use this feature in production.
+- Memcache API calls are tracked by a new metric that estimates resource usage,
+  Memcache Compute Units (MCU's).  There is a new quota bucket and
+  dashboard graph corresponding to the metric, as well as an option in the
+  memcache viewer to display top keys by MCU's.
+- The dev_appserver logs.db format is not backward compatible with 1.8.7.
+  Users that revert to the 1.8.7 dev_appserver after trying 1.8.8 must delete
+  this file. Unless specifically named by the user in the command line, the
+  file is found at /tmp/<app-id>/logs.db. The error seen if this file is not
+  removed is: 'IntegrityError: RequestLogs.module may not be NULL'
+- Added /_ah/gcs endpoint on the dev_appserver for local emulation of Google
+  Cloud Storage services.
+    https://code.google.com/p/googleappengine/issues/detail?id=10178
+- Fixed an issue with users receiving errors when uploading large files to GCS.
+    https://code.google.com/p/googleappengine/issues/detail?id=10101
+- Fixed an issue with cloning apps not creating proper service account names.
+    https://code.google.com/p/googleappengine/issues/detail?id=10235
+
+Python
+==============================
+- Fixed an issue with the dev_appserver app id validation for UTF-8
+    https://code.google.com/p/googleappengine/issues/detail?id=10116
+
+PHP
+==============================
+- The Sockets API is now available for Billing Enabled Applications.
+- PHP String has been added as a key type in the Admin Console Memcache viewer.
+- Added CloudStorageTools::getPublicUrl() method for constructing URLs for
+  Google Cloud Storage objects.
+- Opening GCS objects in text mode is now supported.
+    https://code.google.com/p/googleappengine/issues/detail?id=10177
+- A false error is now returned if stream_cast is called on a GCS stream.
+    https://code.google.com/p/googleappengine/issues/detail?id=10202
+
 Version 1.8.7
 
 All

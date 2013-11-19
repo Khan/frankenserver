@@ -23,6 +23,7 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
+require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageDeleteClient.php';
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageDirectoryClient.php';
@@ -32,7 +33,9 @@ require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageUrlStatClie
 require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageWriteClient.php';
 require_once 'google/appengine/util/array_util.php';
 
+use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\util as util;
+
 /**
  * Allowed stream_context options.
  * "anonymous": Boolean, if set then OAuth tokens will not be generated.
@@ -49,6 +52,10 @@ final class CloudStorageStreamWrapper {
   public $context;
 
   const STREAM_OPEN_FOR_INCLUDE = 0x80;
+
+  private static $valid_read_modes = ['r', 'rb', 'rt'];
+  private static $valid_write_modes = ['w', 'wb', 'wt'];
+
   /**
    * Constructs a new stream wrapper.
    */
@@ -164,6 +171,16 @@ final class CloudStorageStreamWrapper {
   }
 
   /**
+   * Retrieve the underlaying resource of the stream, called in response to
+   * stream_select().
+   *
+   * As GS streams have no underlying resource, we can only return false
+   */
+  public function stream_cast() {
+    return false;
+  }
+
+  /**
    * All resources that were locked, or allocated, by the wrapper should be
    * released.
    *
@@ -232,11 +249,11 @@ final class CloudStorageStreamWrapper {
       }
     }
 
-    if ($mode === "r" || $mode === "rb") {
+    if (in_array($mode, self::$valid_read_modes)) {
       $this->client = new CloudStorageReadClient($bucket,
                                                  $object,
                                                  $this->context);
-    } else if ($mode === "w" || $mode === "wb") {
+    } else if (in_array($mode, self::$valid_write_modes)) {
       $this->client = new CloudStorageWriteClient($bucket,
                                                   $object,
                                                   $this->context);
@@ -342,6 +359,14 @@ final class CloudStorageStreamWrapper {
     if (isset($path) && $path !== "/") {
       $object = $path;
     }
+
+    // Validate bucket & object names.
+    try {
+      CloudStorageTools::getFilename($bucket, $object);
+    } catch (\InvalidArgumentException $e) {
+      return false;
+    }
+
     return true;
   }
 }

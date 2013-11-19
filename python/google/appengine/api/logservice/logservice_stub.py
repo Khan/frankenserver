@@ -17,14 +17,15 @@
 """Stub implementation for Log Service that uses sqlite."""
 
 import atexit
+import logging
 import time
 
 import sqlite3
 
 from google.appengine.api import apiproxy_stub
+from google.appengine.api import appinfo
 from google.appengine.api.logservice import log_service_pb
 from google.appengine.runtime import apiproxy_errors
-
 
 
 _REQUEST_LOG_CREATE = """
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS RequestLogs (
   user_request_id TEXT NOT NULL,
   app_id TEXT NOT NULL,
   version_id TEXT NOT NULL,
+  module TEXT NOT NULL,
   ip TEXT NOT NULL,
   nickname TEXT NOT NULL,
   start_time INTEGER NOT NULL,
@@ -52,6 +54,11 @@ CREATE TABLE IF NOT EXISTS RequestLogs (
   finished INTEGER DEFAULT 0 NOT NULL
 );
 """
+
+_REQUEST_LOG_ADD_MODULE_COLUMN = """
+ALTER TABLE RequestLogs
+  ADD COLUMN module TEXT DEFAULT '%s' NOT NULL;
+""" % appinfo.DEFAULT_MODULE
 
 _APP_LOG_CREATE = """
 CREATE TABLE IF NOT EXISTS AppLogs (
@@ -98,6 +105,12 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
     self._conn.row_factory = sqlite3.Row
     self._conn.execute(_REQUEST_LOG_CREATE)
     self._conn.execute(_APP_LOG_CREATE)
+
+    column_names = set(c['name'] for c in
+                       self._conn.execute('PRAGMA table_info(RequestLogs)'))
+    if 'module' not in column_names:
+      self._conn.execute(_REQUEST_LOG_ADD_MODULE_COLUMN)
+
     self._last_commit = time.time()
     atexit.register(self._conn.commit)
 
@@ -114,7 +127,7 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
   @apiproxy_stub.Synchronized
   def start_request(self, request_id, user_request_id, ip, app_id, version_id,
                     nickname, user_agent, host, method, resource, http_version,
-                    start_time=None):
+                    start_time=None, module=None):
     """Starts logging for a request.
 
     Each start_request call must be followed by a corresponding end_request call
@@ -140,17 +153,20 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
       http_version: A string containing the HTTP version of this request.
       start_time: An int containing the start time in micro-seconds. If unset,
         the current time is used.
+      module: The string name of the module handling this request.
     """
+    if module is None:
+      module = appinfo.DEFAULT_MODULE
     major_version_id = version_id.split('.', 1)[0]
     if start_time is None:
       start_time = self._get_time_usec()
     cursor = self._conn.execute(
         'INSERT INTO RequestLogs (user_request_id, ip, app_id, version_id, '
         'nickname, user_agent, host, start_time, method, resource, '
-        'http_version)'
-        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (
+        'http_version, module)'
+        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', (
             user_request_id, ip, app_id, major_version_id, nickname, user_agent,
-            host, start_time, method, resource, http_version))
+            host, start_time, method, resource, http_version, module))
     self._request_id_to_request_row_id[request_id] = cursor.lastrowid
     self._maybe_commit()
 
@@ -234,8 +250,8 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
       count = request.count()
     else:
       count = self._DEFAULT_READ_COUNT
-    filters = self._extract_read_filters(request)
-    filter_string = ' WHERE %s' % ' and '.join(f[0] for f in filters)
+    filters, values = self._extract_read_filters(request)
+    filter_string = ' WHERE %s' % ' and '.join(filters)
 
     if request.has_minimum_log_level():
       query = ('SELECT * FROM RequestLogs INNER JOIN AppLogs ON '
@@ -244,17 +260,31 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
     else:
       query = 'SELECT * FROM RequestLogs%s ORDER BY id DESC'
     logs = self._conn.execute(query % filter_string,
-                              tuple(f[1] for f in filters)).fetchmany(count + 1)
+                              values).fetchmany(count + 1)
+    if logging.getLogger(__name__).isEnabledFor(logging.DEBUG):
+      self._debug_query(filter_string, values, len(logs))
     for log_row in logs[:count]:
       log = response.add_log()
       self._fill_request_log(log_row, log, request.include_app_logs())
     if len(logs) > count:
       response.mutable_offset().set_request_id(str(logs[-2]['id']))
 
+  def _debug_query(self, filter_string, values, result_count):
+    logging.debug('\n\n')
+    logging.debug(filter_string)
+    logging.debug(values)
+    logging.debug('%d results.', result_count)
+    logging.debug('DB dump:')
+    for l in self._conn.execute('SELECT * FROM RequestLogs'):
+      logging.debug('%r %r %d %d %s', l['module'], l['version_id'],
+                    l['start_time'], l['end_time'],
+                    l['finished'] and 'COMPLETE' or 'INCOMPLETE')
+
   def _fill_request_log(self, log_row, log, include_app_logs):
     log.set_request_id(str(log_row['user_request_id']))
     log.set_app_id(log_row['app_id'])
     log.set_version_id(log_row['version_id'])
+    log.set_module_id(log_row['module'])
     log.set_ip(log_row['ip'])
     log.set_nickname(log_row['nickname'])
     log.set_start_time(log_row['start_time'])
@@ -292,25 +322,67 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
 
   @staticmethod
   def _extract_read_filters(request):
+    """Extracts SQL filters from the LogReadRequest.
 
+    Args:
+      request: the incoming LogReadRequest.
+    Returns:
+      a pair of (filters, values); filters is a list of SQL filter expressions,
+      to be joined by AND operators; values is a list of values to be
+      interpolated into the filter expressions by the db library.
+    """
+    filters = []
+    values = []
 
-    if request.module_version(0).has_module_id():
-      module_version = ':'.join([request.module_version(0).module_id(),
-                                 request.module_version(0).version_id()])
-    else:
-      module_version = request.module_version(0).version_id()
-    filters = [('version_id = ?', module_version)]
-    if request.has_start_time():
-      filters.append(('start_time >= ?', request.start_time()))
-    if request.has_end_time():
-      filters.append(('end_time < ?', request.end_time()))
+    module_filters = []
+    module_values = []
+    for module_version in request.module_version_list():
+      module_filters.append('(version_id = ? AND module = ?)')
+      module_values.append(module_version.version_id())
+      module = appinfo.DEFAULT_MODULE
+      if module_version.has_module_id():
+        module = module_version.module_id()
+      module_values.append(module)
+    filters.append('(' + ' or '.join(module_filters) + ')')
+    values += module_values
+
     if request.has_offset():
-      filters.append(('RequestLogs.id < ?', int(request.offset().request_id())))
-    if not request.include_incomplete():
-      filters.append(('finished = ?', 1))
+      filters.append('RequestLogs.id < ?')
+      values.append(int(request.offset().request_id()))
     if request.has_minimum_log_level():
-      filters.append(('AppLogs.level >= ?', request.minimum_log_level()))
-    return filters
+      filters.append('AppLogs.level >= ?')
+      values.append(request.minimum_log_level())
+
+
+
+
+
+
+    finished_filter = 'finished = 1 '
+    finished_filter_values = []
+    unfinished_filter = 'finished = 0'
+    unfinished_filter_values = []
+
+    if request.has_start_time():
+      finished_filter += ' and end_time >= ? '
+      finished_filter_values.append(request.start_time())
+      unfinished_filter += ' and start_time >= ? '
+      unfinished_filter_values.append(request.start_time())
+    if request.has_end_time():
+      finished_filter += ' and end_time < ? '
+      finished_filter_values.append(request.end_time())
+      unfinished_filter += ' and start_time < ? '
+      unfinished_filter_values.append(request.end_time())
+
+    if request.include_incomplete():
+      filters.append(
+          '((' + finished_filter + ') or (' + unfinished_filter + '))')
+      values += finished_filter_values + unfinished_filter_values
+    else:
+      filters.append(finished_filter)
+      values += finished_filter_values
+
+    return filters, values
 
   def _Dynamic_SetStatus(self, unused_request, unused_response,
                          unused_request_id):

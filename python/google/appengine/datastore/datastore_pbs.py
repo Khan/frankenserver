@@ -67,7 +67,17 @@ MEANING_ZLIB = 22
 URI_MEANING_ZLIB = 'ZLIB'
 
 
+
+MAX_URL_CHARS = 2038
+MAX_INDEXED_STRING_CHARS = 500
 MAX_INDEXED_BLOB_BYTES = 500
+MAX_PARTITION_ID_LENGTH = 100
+MAX_DATASET_ID_SECTION_LENGTH = 100
+
+
+
+MAX_DATASET_ID_LENGTH = MAX_DATASET_ID_SECTION_LENGTH * 3 + 2
+MAX_KEY_PATH_LENGTH = 100
 
 
 PROPERTY_NAME_X = 'x'
@@ -96,7 +106,7 @@ def v4_key_to_string(v4_key):
   both a name and an ID the name is ignored.
 
   Args:
-    v4_key: a datastore_v4_pb.Key
+    v4_key: an entity_v4_pb.Key
 
   Returns:
     a string representing the key's path
@@ -228,17 +238,12 @@ class _EntityConverter(object):
     v3_entity.Clear()
     for v4_property in v4_entity.property_list():
       property_name = v4_property.name()
-      if v4_property.has_value():
-        v4_value = v4_property.value()
-        if v4_value.list_value_list():
-          for v4_sub_value in v4_value.list_value_list():
-            self.__add_v3_property(property_name, True, v4_sub_value, v3_entity)
-        else:
-          self.__add_v3_property(property_name, False, v4_value, v3_entity)
+      v4_value = v4_property.value()
+      if v4_value.list_value_list():
+        for v4_sub_value in v4_value.list_value_list():
+          self.__add_v3_property(property_name, True, v4_sub_value, v3_entity)
       else:
-        is_multi = v4_property.deprecated_multi()
-        for v4_value in v4_property.deprecated_value_list():
-          self.__add_v3_property(property_name, is_multi, v4_value, v3_entity)
+        self.__add_v3_property(property_name, False, v4_value, v3_entity)
     if v4_entity.has_key():
       v4_key = v4_entity.key()
       self.v4_to_v3_reference(v4_key, v3_entity.mutable_key())
@@ -529,7 +534,7 @@ class _EntityConverter(object):
       self.v3_property_to_v4_value(v3_property, indexed,
                                    v4_property.mutable_value())
 
-  def __get_single_v4_integer_value(self, v4_property):
+  def __get_v4_integer_value(self, v4_property):
     """Returns an integer value from a v4 Property.
 
     Args:
@@ -538,17 +543,14 @@ class _EntityConverter(object):
     Returns:
       an integer
 
-    Throws:
-      AssertionError if v4_property doesn't contain exactly one value
+    Raises:
+      InvalidConversionError: if the property doesn't contain an integer value
     """
-    if v4_property.has_value():
-      return v4_property.value().integer_value()
-    else:
-      v4_values = v4_property.deprecated_value_list()
-      assert len(v4_values) == 1, 'property had %d values' % len(v4_values)
-      return v4_values[0].integer_value()
+    check_conversion(v4_property.value().has_integer_value(),
+                     'Property does not contain an integer value.')
+    return v4_property.value().integer_value()
 
-  def __get_single_v4_double_value(self, v4_property):
+  def __get_v4_double_value(self, v4_property):
     """Returns a double value from a v4 Property.
 
     Args:
@@ -557,17 +559,14 @@ class _EntityConverter(object):
     Returns:
       a double
 
-    Throws:
-      AssertionError if v4_property doesn't contain exactly one value
+    Raises:
+      InvalidConversionError: if the property doesn't contain a double value
     """
-    if v4_property.has_value():
-      return v4_property.value().double_value()
-    else:
-      v4_values = v4_property.deprecated_value_list()
-      assert len(v4_values) == 1, 'property had %d values' % len(v4_values)
-      return v4_values[0].double_value()
+    check_conversion(v4_property.value().has_double_value(),
+                     'Property does not contain a double value.')
+    return v4_property.value().double_value()
 
-  def __get_single_v4_string_value(self, v4_property):
+  def __get_v4_string_value(self, v4_property):
     """Returns an string value from a v4 Property.
 
     Args:
@@ -577,14 +576,11 @@ class _EntityConverter(object):
       a string
 
     Throws:
-      AssertionError if v4_property doesn't contain exactly one value
+      InvalidConversionError: if the property doesn't contain a string value
     """
-    if v4_property.has_value():
-      return v4_property.value().string_value()
-    else:
-      v4_values = v4_property.deprecated_value_list()
-      assert len(v4_values) == 1, 'property had %d values' % len(v4_values)
-      return v4_values[0].string_value()
+    check_conversion(v4_property.value().has_string_value(),
+                     'Property does not contain a string value.')
+    return v4_property.value().string_value()
 
   def __v4_integer_property(self, name, value, indexed):
     """Creates a single-integer-valued v4 Property.
@@ -650,9 +646,9 @@ class _EntityConverter(object):
     v3_point_value.Clear()
     name_to_v4_property = self.__build_name_to_v4_property_map(v4_point_entity)
     v3_point_value.set_x(
-        self.__get_single_v4_double_value(name_to_v4_property['x']))
+        self.__get_v4_double_value(name_to_v4_property['x']))
     v3_point_value.set_y(
-        self.__get_single_v4_double_value(name_to_v4_property['y']))
+        self.__get_v4_double_value(name_to_v4_property['y']))
 
   def __v3_to_v4_point_entity(self, v3_point_value, v4_entity):
     """Converts a v3 UserValue to a v4 user Entity.
@@ -677,27 +673,27 @@ class _EntityConverter(object):
     v3_user_value.Clear()
     name_to_v4_property = self.__build_name_to_v4_property_map(v4_user_entity)
 
-    v3_user_value.set_email(self.__get_single_v4_string_value(
+    v3_user_value.set_email(self.__get_v4_string_value(
         name_to_v4_property[PROPERTY_NAME_EMAIL]))
-    v3_user_value.set_auth_domain(self.__get_single_v4_string_value(
+    v3_user_value.set_auth_domain(self.__get_v4_string_value(
         name_to_v4_property[PROPERTY_NAME_AUTH_DOMAIN]))
     if PROPERTY_NAME_USER_ID in name_to_v4_property:
       v3_user_value.set_obfuscated_gaiaid(
-          self.__get_single_v4_string_value(
+          self.__get_v4_string_value(
               name_to_v4_property[PROPERTY_NAME_USER_ID]))
     if PROPERTY_NAME_INTERNAL_ID in name_to_v4_property:
-      v3_user_value.set_gaiaid(self.__get_single_v4_integer_value(
+      v3_user_value.set_gaiaid(self.__get_v4_integer_value(
           name_to_v4_property[PROPERTY_NAME_INTERNAL_ID]))
     else:
 
       v3_user_value.set_gaiaid(0)
     if PROPERTY_NAME_FEDERATED_IDENTITY in name_to_v4_property:
       v3_user_value.set_federated_identity(
-          self.__get_single_v4_string_value(name_to_v4_property[
+          self.__get_v4_string_value(name_to_v4_property[
               PROPERTY_NAME_FEDERATED_IDENTITY]))
     if PROPERTY_NAME_FEDERATED_PROVIDER in name_to_v4_property:
       v3_user_value.set_federated_provider(
-          self.__get_single_v4_string_value(name_to_v4_property[
+          self.__get_v4_string_value(name_to_v4_property[
               PROPERTY_NAME_FEDERATED_PROVIDER]))
 
   def __v3_to_v4_user_entity(self, v3_user_value, v4_entity):
@@ -738,21 +734,13 @@ class _EntityConverter(object):
 
   def __is_v3_property_value_union_valid(self, v3_property_value):
     """Returns True if the v3 PropertyValue's union is valid."""
-    num_sub_values = 0
-    if v3_property_value.has_booleanvalue():
-      num_sub_values += 1
-    if v3_property_value.has_int64value():
-      num_sub_values += 1
-    if v3_property_value.has_doublevalue():
-      num_sub_values += 1
-    if v3_property_value.has_referencevalue():
-      num_sub_values += 1
-    if v3_property_value.has_stringvalue():
-      num_sub_values += 1
-    if v3_property_value.has_pointvalue():
-      num_sub_values += 1
-    if v3_property_value.has_uservalue():
-      num_sub_values += 1
+    num_sub_values = (v3_property_value.has_booleanvalue()
+                      + v3_property_value.has_int64value()
+                      + v3_property_value.has_doublevalue()
+                      + v3_property_value.has_referencevalue()
+                      + v3_property_value.has_stringvalue()
+                      + v3_property_value.has_pointvalue()
+                      + v3_property_value.has_uservalue())
     return num_sub_values <= 1
 
   def __is_v3_property_value_meaning_valid(self, v3_property_value, v3_meaning):

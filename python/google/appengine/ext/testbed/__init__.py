@@ -143,7 +143,9 @@ try:
 except ImportError:
   datastore_sqlite_stub = None
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.ext.cloudstorage import common as gcs_common
 from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
+
 
 
 DEFAULT_ENVIRONMENT = {
@@ -213,6 +215,37 @@ SUPPORTED_SERVICES = sorted(INIT_STUB_METHOD_NAMES)
 
 AUTO_ID_POLICY_SEQUENTIAL = datastore_stub_util.SEQUENTIAL
 AUTO_ID_POLICY_SCATTERED = datastore_stub_util.SCATTERED
+
+
+
+def urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
+                         follow_redirects=False, deadline=None,
+                         validate_certificate=None):
+
+  """Forwards gcs urlfetch requests to gcs_dispatcher."""
+  headers_map = dict(
+      (header.key().lower(), header.value()) for header in headers)
+  result = gcs_dispatcher.dispatch(method, headers_map, url, payload)
+  response.set_statuscode(result.status_code)
+  response.set_content(result.content[:urlfetch_stub.MAX_RESPONSE_SIZE])
+  for k, v in result.headers.iteritems():
+    if k.lower() == 'content-length' and method != 'HEAD':
+      v = len(response.content())
+    header_proto = response.add_header()
+    header_proto.set_key(k)
+    header_proto.set_value(str(v))
+  if len(result.content) > urlfetch_stub.MAX_RESPONSE_SIZE:
+    response.set_contentwastruncated(True)
+
+
+def urlmatcher_for_gcs_stub(url):
+  """Determines whether a url should be handled by gcs stub."""
+  return url.startswith(gcs_common.local_api_url())
+
+
+
+GCS_URLMATCHERS_TO_FETCH_FUNCTIONS = [
+    (urlmatcher_for_gcs_stub, urlfetch_to_gcs_stub)]
 
 
 class Error(Exception):
@@ -614,7 +647,7 @@ class Testbed(object):
       return
     urlmatchers_to_fetch_functions = []
     urlmatchers_to_fetch_functions.extend(
-        gcs_dispatcher.URLMATCHERS_TO_FETCH_FUNCTIONS)
+        GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     stub = urlfetch_stub.URLFetchServiceStub(
         urlmatchers_to_fetch_functions=urlmatchers_to_fetch_functions)
     self._register_stub(URLFETCH_SERVICE_NAME, stub)

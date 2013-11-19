@@ -72,6 +72,12 @@ _MAXIMUM_RESULTS = 300
 
 
 
+_MAXIMUM_QUERY_RESULT_BYTES = 2000000
+
+
+
+
+
 _MAX_QUERY_OFFSET = 1000
 
 
@@ -362,6 +368,7 @@ def CheckAppId(request_trusted, request_app_id, app_id):
   """
 
   assert app_id
+  CheckValidUTF8(app_id, "app id");
   Check(request_trusted or app_id == request_app_id,
         'app "%s" cannot access app "%s"\'s data' % (request_app_id, app_id))
 
@@ -3006,12 +3013,41 @@ class DatastoreStub(object):
 
 
     transaction = req.has_transaction() and req.transaction() or None
-    for entity in self._datastore.Get(req.key_list(), transaction,
-                                      req.has_failover_ms(),
-                                      self._trusted, self._app_id):
-      result = res.add_entity()
-      if entity:
-        result.mutable_entity().CopyFrom(entity)
+
+
+    if req.allow_deferred() and req.key_size() > _MAXIMUM_RESULTS:
+      keys_to_get = req.key_list()[:_MAXIMUM_RESULTS]
+      deferred_keys = req.key_list()[_MAXIMUM_RESULTS:]
+      res.deferred_list().extend(deferred_keys)
+    else:
+
+      keys_to_get = req.key_list()
+
+    res.set_in_order(not req.allow_deferred())
+
+    total_response_bytes = 0
+    for index, entity in enumerate(self._datastore.Get(keys_to_get,
+                                                       transaction,
+                                                       req.has_failover_ms(),
+                                                       self._trusted,
+                                                       self._app_id)):
+      entity_size = entity and entity.ByteSize() or 0
+
+
+      if (req.allow_deferred()
+          and index > 0
+          and total_response_bytes + entity_size > _MAXIMUM_QUERY_RESULT_BYTES):
+
+        res.deferred_list().extend(keys_to_get[index:])
+        break
+      elif entity:
+        entity_result = res.add_entity()
+        entity_result.mutable_entity().CopyFrom(entity)
+        total_response_bytes += entity_size
+      else:
+
+        entity_result = res.add_entity()
+        entity_result.mutable_key().CopyFrom(keys_to_get[index])
 
   def _Dynamic_Put(self, req, res):
     transaction = req.has_transaction() and req.transaction() or None

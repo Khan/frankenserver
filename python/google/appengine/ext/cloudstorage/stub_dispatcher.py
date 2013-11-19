@@ -24,7 +24,6 @@
 
 
 
-import cgi
 import httplib
 import re
 import urllib
@@ -32,46 +31,8 @@ import urlparse
 import xml.etree.ElementTree as ET
 
 from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import urlfetch_stub
 from google.appengine.ext.cloudstorage import cloudstorage_stub
 from google.appengine.ext.cloudstorage import common
-
-
-
-
-
-def _urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
-                          follow_redirects=False, deadline=None,
-                          validate_certificate=None):
-
-  """Forwards gcs urlfetch requests to gcs_dispatcher.
-
-  See apphosting.api.urlfetch_stub.URLFetchServiceStub._RetrieveURL.
-  """
-  headers_map = dict(
-      (header.key().lower(), header.value()) for header in headers)
-  result = dispatch(method, headers_map, url, payload)
-  response.set_statuscode(result.status_code)
-  response.set_content(result.content[:urlfetch_stub.MAX_RESPONSE_SIZE])
-  for k, v in result.headers.iteritems():
-    if k.lower() == 'content-length' and method != 'HEAD':
-      v = len(response.content())
-    header_proto = response.add_header()
-    header_proto.set_key(k)
-    header_proto.set_value(str(v))
-  if len(result.content) > urlfetch_stub.MAX_RESPONSE_SIZE:
-    response.set_contentwastruncated(True)
-
-
-def _urlmatcher_for_gcs_stub(url):
-  """Determines whether a url should be handled by gcs stub."""
-  _, host, _, _, _ = urlparse.urlsplit(url)
-  return host == common.LOCAL_API_HOST
-
-
-
-URLMATCHERS_TO_FETCH_FUNCTIONS = [
-    (_urlmatcher_for_gcs_stub, _urlfetch_to_gcs_stub)]
 
 
 class _FakeUrlFetchResult(object):
@@ -84,17 +45,21 @@ class _FakeUrlFetchResult(object):
 def dispatch(method, headers, url, payload):
   """Dispatches incoming request and returns response.
 
-  In dev appserver or unittest environment, this method is called instead of
-  urlfetch.
+  In dev appserver GCS requests are forwarded to this method via the /_ah/gcs
+  endpoint. In unittest environment, this method is called instead of urlfetch.
+  See https://developers.google.com/storage/docs/xml-api-overview for the
+  exepected format for the request.
 
   Args:
-    method: urlfetch method.
-    headers: urlfetch headers.
-    url: urlfetch url.
-    payload: urlfecth payload.
+    method: A string represneting the HTTP request method.
+    headers: A dict mapping HTTP header names to values.
+    url: A string representing the request URL in the form of
+        http://<host>/_ah/gcs/<bucket>/<object>.
+    payload: A string containing the payload for the request.
 
   Returns:
-    A _FakeUrlFetchResult.
+    A _FakeUrlFetchResult containing the HTTP status code, headers, and body of
+    the response.
 
   Raises:
     ValueError: invalid request method.
@@ -113,14 +78,16 @@ def dispatch(method, headers, url, payload):
     return _handle_head(gcs_stub, filename)
   elif method == 'DELETE':
     return _handle_delete(gcs_stub, filename)
-  raise ValueError('Unrecognized request method %r.' % method)
+  raise ValueError('Unrecognized request method %r.' % method,
+                   httplib.METHOD_NOT_ALLOWED)
 
 
 def _preprocess(method, headers, url):
   """Unify input.
 
   Example:
-    _preprocess('POST', {'Content-Type': 'Foo'}, http://gcs.com/b/f?foo=bar)
+    _preprocess('POST', {'Content-Type': 'Foo'},
+                'http://localhost:8080/_ah/gcs/b/f?foo=bar')
     -> 'POST', {'content-type': 'Foo'}, '/b/f', {'foo':'bar'}
 
   Args:
@@ -134,8 +101,17 @@ def _preprocess(method, headers, url):
     filename: a google storage filename of form /bucket/filename or
       a bucket path of form /bucket
     param_dict: a dict of query parameters.
+
+  Raises:
+    ValueError: invalid path.
   """
-  _, _, filename, query, _ = urlparse.urlsplit(url)
+  _, _, path, query, _ = urlparse.urlsplit(url)
+
+  if not path.startswith(common.LOCAL_GCS_ENDPOINT):
+    raise ValueError('Invalid GCS path: %s' % path, httplib.BAD_REQUEST)
+
+  filename = path[len(common.LOCAL_GCS_ENDPOINT):]
+
 
 
   param_dict = urlparse.parse_qs(query, True)
@@ -169,17 +145,22 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
   token = _get_param('upload_id', param_dict)
   content_range = _ContentRange(headers)
 
+  if _is_query_progress(content_range):
+    return _find_progress(gcs_stub, filename, token)
+
   if not content_range.value:
-    raise ValueError('Missing header content-range.')
+    raise ValueError('Missing header content-range.', httplib.BAD_REQUEST)
 
 
 
   if not token:
 
     if content_range.length is None:
-      raise ValueError('Content-Range must have a final length.')
+      raise ValueError('Content-Range must have a final length.',
+                       httplib.BAD_REQUEST)
     elif not content_range.no_data and content_range.range[0] != 0:
-      raise ValueError('Content-Range must specify complete object.')
+      raise ValueError('Content-Range must specify complete object.',
+                       httplib.BAD_REQUEST)
     else:
 
       token = gcs_stub.post_start_creation(filename, headers)
@@ -193,9 +174,10 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
     return _FakeUrlFetchResult(e.args[1], {}, e.args[0])
 
   if content_range.length is not None:
-    filestat = gcs_stub.head_object(filename)
+
+
     response_headers = {
-        'content-length': filestat.st_size,
+        'content-length': 0,
     }
     response_status = httplib.OK
   else:
@@ -203,6 +185,21 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
     response_status = 308
 
   return _FakeUrlFetchResult(response_status, response_headers, '')
+
+
+def _is_query_progress(content_range):
+  """Empty put to query upload status."""
+  return content_range.no_data and content_range.length is None
+
+
+def _find_progress(gcs_stub, filename, token):
+
+  if gcs_stub.head_object(filename) is not None:
+    return _FakeUrlFetchResult(httplib.OK, {}, '')
+  last_offset = gcs_stub.put_empty(token)
+  if last_offset == -1:
+    return _FakeUrlFetchResult(308, {}, '')
+  return _FakeUrlFetchResult(308, {'range': 'bytes=0-%s' % last_offset}, '')
 
 
 def _iscopy(headers):
@@ -247,12 +244,14 @@ def _handle_get(gcs_stub, filename, param_dict, headers):
                                                            end,
                                                            st_size)
     result.content = gcs_stub.get_object(filename, start, end)
+    result.headers['content-length'] = len(result.content)
     return result
 
 
 def _handle_get_bucket(gcs_stub, bucketpath, param_dict):
   """Handle get bucket request."""
   prefix = _get_param('prefix', param_dict, '')
+
   max_keys = _get_param('max-keys', param_dict, common._MAX_GET_BUCKET_RESULT)
   marker = _get_param('marker', param_dict, '')
   delimiter = _get_param('delimiter', param_dict, '')
@@ -398,15 +397,14 @@ class _ContentRange(_Header):
     if self.value:
       result = self.RE_PATTERN.match(self.value)
       if not result:
-        raise ValueError('Invalid content-range header %s' % self.value)
+        raise ValueError('Invalid content-range header %s' % self.value,
+                         httplib.BAD_REQUEST)
 
       self.no_data = result.group(1) == '*'
       last = result.group(4) != '*'
       self.length = None
       if last:
         self.length = long(result.group(4))
-      if self.no_data and not last:
-        raise ValueError('Invalid content-range header %s' % self.value)
 
       self.range = None
       if not self.no_data:

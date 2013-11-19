@@ -45,6 +45,7 @@ Example:
 from __future__ import with_statement
 
 
+import argparse
 import collections
 import contextlib
 
@@ -69,6 +70,7 @@ from google.appengine.tools.devappserver2 import api_server
 DISCOVERY_DOC_BASE = ('https://webapis-discovery.appspot.com/_ah/api/'
                       'discovery/v1/apis/generate/')
 CLIENT_LIBRARY_BASE = 'https://google-api-client-libraries.appspot.com/generate'
+_VISIBLE_COMMANDS = ('get_client_lib', 'get_discovery_doc')
 
 
 class ServerRequestException(Exception):
@@ -98,6 +100,31 @@ class ServerRequestException(Exception):
                        (http_error.code, http_error.reason,
                         http_error.filename))
     super(ServerRequestException, self).__init__(error_message)
+
+
+class _EndpointsParser(argparse.ArgumentParser):
+  """Create a subclass of argparse.ArgumentParser for Endpoints."""
+
+  def error(self, message):
+    """Override superclass to support customized error message.
+
+    Error message needs to be rewritten in order to display visible commands
+    only, when invalid command is called by user. Otherwise, hidden commands
+    will be displayed in stderr, which is not expected.
+
+    Refer the following argparse python documentation for detailed method
+    information:
+      http://docs.python.org/2/library/argparse.html#exiting-methods
+
+    Args:
+      message: original error message that will be printed to stderr
+    """
+    options = ', '.join([repr(command) for command in _VISIBLE_COMMANDS])
+    subcommands = ', '.join(_VISIBLE_COMMANDS)
+    message = re.sub(
+        r'(argument {%s}: invalid choice: .*) \(choose from (.*)\)$'
+        % subcommands, r'\1 (choose from %s)' % options, message)
+    super(_EndpointsParser, self).error(message)
 
 
 def _WriteFile(output_path, name, content):
@@ -429,10 +456,6 @@ def MakeParser(prog):
     An argparse.ArgumentParser built to specification.
   """
 
-
-
-  import argparse
-
   def AddStandardOptions(parser, *args):
     """Add common endpoints options to a parser.
 
@@ -468,9 +491,9 @@ def MakeParser(prog):
       parser.add_argument('-bs', '--build_system', default='default',
                           help='The target build system')
 
-  parser = argparse.ArgumentParser(prog=prog)
+  parser = _EndpointsParser(prog=prog)
   subparsers = parser.add_subparsers(
-      title='subcommands', metavar='{get_client_lib, get_discovery_doc}')
+      title='subcommands', metavar='{%s}' % ', '.join(_VISIBLE_COMMANDS))
 
   get_client_lib = subparsers.add_parser(
       'get_client_lib', help=('Generates discovery documents and client '

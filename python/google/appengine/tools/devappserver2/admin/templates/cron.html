@@ -81,7 +81,7 @@ $('.ae-cron-run').click(function() {
   })
   .done(function() {
     $('#cron-feedback').removeClass().addClass('messagebox').text(
-        'Request to ' + url + ' suceeded!');
+        'Request to ' + url + ' succeeded!');
   })
   .fail(function(xhr, textStatus) {
     $('#cron-feedback').removeClass().addClass('errorbox').text(

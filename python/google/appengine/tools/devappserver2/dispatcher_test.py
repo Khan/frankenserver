@@ -48,7 +48,7 @@ class ModuleConfigurationStub(object):
     self.application = application
     self.module_name = module_name
     self.major_version = version
-    self.version_id = '%s:%s.%s' % (module_name, version, '12345')
+    self.version_id = '%s.%s' % (version, '12345')
     self.runtime = 'python27'
     self.threadsafe = False
     self.handlers = []

@@ -67,8 +67,11 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._java_command = self._make_java_command()
 
   def _make_java_command(self):
-    java_dir = os.path.abspath(os.path.join(
-        os.path.dirname(java_application.__file__), 'java'))
+    # We should be in .../google/appengine/tools/devappserver2/java_runtime.py
+    # and we want to find .../google/appengine/tools and thence
+    # .../google/appengine/tools/java/lib
+    tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    java_dir = os.path.join(tools_dir, 'java')
     java_lib_dir = os.path.join(java_dir, 'lib')
     assert os.path.isdir(java_lib_dir), java_lib_dir
     class_path = os.path.join(java_lib_dir, 'appengine-tools-api.jar')

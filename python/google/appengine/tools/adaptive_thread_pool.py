@@ -350,11 +350,11 @@ class ThreadGate(object):
   thread_gate.StartWork()
   try:
     status = DoSomeWorkInvolvingLimitedSharedResources()
-    suceeded = IsStatusGood(status)
+    succeeded = IsStatusGood(status)
     badly_failed = IsStatusVeryBad(status)
   finally:
-    if suceeded:
-      # Suceeded, add more simultaneously enabled threads to the task.
+    if succeeded:
+      # Succeeded, add more simultaneously enabled threads to the task.
       thread_gate.FinishWork(instruction=ThreadGate.INCREASE)
     elif badly_failed:
       # Failed, or succeeded but with high resource load, reduce number of

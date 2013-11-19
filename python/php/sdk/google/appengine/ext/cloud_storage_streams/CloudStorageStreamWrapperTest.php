@@ -17,6 +17,9 @@
 /**
  * Google Cloud Storage Stream Wrapper Tests.
  *
+ * CodeSniffer does not handle files with multiple namespaces well.
+ * @codingStandardsIgnoreFile
+ *
  */
 
 namespace {
@@ -110,6 +113,22 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     $this->assertFalse(fopen("gs:///object.png", "r"));
     $this->setExpectedException("\PHPUnit_Framework_Error");
     $this->assertFalse(fopen("gs://", "r"));
+    $invalid_bucket_names = [
+        'BadBucketName',
+        '.another_bad_bucket',
+        'a',
+        'goog_bucket',
+        str_repeat('a', 224),
+        'a.bucket',
+        'foobar' . str_repeat('a', 64)
+    ];
+    foreach ($invalid_bucket_names as $invalid_name) {
+      $this->setExpectedException(
+          "\PHPUnit_Framework_Error",
+          sprintf("Invalid cloud storage bucket name '%s'", $invalid_name));
+      $this->assertFalse(fopen(sprintf('gs://%s/file.txt', $invalid_name),
+                                       'r'));
+    }
   }
 
   public function testInvalidMode() {
@@ -313,7 +332,7 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     }
 
     $valid_path = "gs://bucket/object_name.png";
-    $fp = fopen($valid_path, "r");
+    $fp = fopen($valid_path, "rt");
     $data = stream_get_contents($fp);
     fclose($fp);
 
@@ -376,14 +395,15 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
         'headers' => [
         ],
     ];
-    $expected_url = $this->makeCloudStorageObjectUrl();
+    $expected_url = $this->makeCloudStorageObjectUrl("my_bucket",
+                                                     "/some%file.txt");
     $this->expectHttpRequest($expected_url,
                              RequestMethod::DELETE,
                              $request_headers,
                              null,
                              $response);
 
-    $this->assertTrue(unlink("gs://bucket/object.png"));
+    $this->assertTrue(unlink("gs://my_bucket/some%file.txt"));
     $this->apiProxyMock->verify();
   }
 
@@ -961,11 +981,9 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
         ],
     ];
     $ctx = stream_context_create($file_context);
-    $this->assertEquals($data_len,
-                        file_put_contents("gs://bucket/empty_file.txt",
-                                          $data_to_write,
-                                          0,
-                                          $ctx));
+    $fp = fopen("gs://bucket/empty_file.txt", "wt", false, $ctx);
+    $this->assertEquals($data_len, fwrite($fp, $data_to_write));
+    fclose($fp);
     $this->apiProxyMock->verify();
   }
 
@@ -1284,6 +1302,23 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testStreamCast() {
+    $body = "Hello from PHP";
+
+    $this->expectFileReadRequest($body,
+                                 0,
+                                 CloudStorageReadClient::DEFAULT_READ_SIZE,
+                                 null);
+
+    $valid_path = "gs://bucket/object_name.png";
+    $this->setExpectedException(
+        '\PHPUnit_Framework_Error',
+        'gzopen(): cannot represent a stream of type user-space as a ' .
+        'File Descriptor');
+    $this->assertFalse(gzopen($valid_path, 'rb'));
+    $this->apiProxyMock->verify();
+  }
+
   private function expectFileReadRequest($body,
                                          $start_byte,
                                          $length,
@@ -1316,10 +1351,8 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
                                                        $length,
                                                        $paritial_content);
 
-    $exected_url = sprintf(CloudStorageClient::BUCKET_OBJECT_FORMAT,
-                           CloudStorageClient::PRODUCTION_HOST,
-                           "bucket",
-                           "/object_name.png");
+    $exected_url = self::makeCloudStorageObjectUrl("bucket",
+                                                   "/object_name.png");
 
     $this->expectHttpRequest($exected_url,
                              RequestMethod::GET,
@@ -1544,16 +1577,7 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
 
   private function makeCloudStorageObjectUrl($bucket = "bucket",
                                              $object = "/object.png") {
-    if (isset($object)){
-      return sprintf(CloudStorageClient::BUCKET_OBJECT_FORMAT,
-                     CloudStorageClient::PRODUCTION_HOST,
-                     $bucket,
-                     $object);
-    } else {
-      return sprintf(CloudStorageClient::BUCKET_FORMAT,
-                     CloudStorageClient::PRODUCTION_HOST,
-                     $bucket);
-    }
+    return CloudStorageClient::createObjectUrl($bucket, $object);
   }
 
   private function getStandardRequestHeaders() {

@@ -86,7 +86,7 @@ final class AppIdentityService {
     try {
       ApiProxy::makeSyncCall(self::PACKAGE_NAME, 'SignForApp', $req, $resp);
     } catch (ApplicationError $e) {
-      throw AppIdentityService::applicationErrorToException($e);
+      throw self::applicationErrorToException($e);
     }
 
     return [
@@ -111,7 +111,7 @@ final class AppIdentityService {
       ApiProxy::makeSyncCall(self::PACKAGE_NAME, 'GetServiceAccountName', $req,
           $resp);
     } catch (ApplicationError $e) {
-      throw AppIdentityService::applicationErrorToException($e);
+      throw self::applicationErrorToException($e);
     }
 
     return $resp->getServiceAccountName();
@@ -134,7 +134,7 @@ final class AppIdentityService {
       ApiProxy::makeSyncCall(self::PACKAGE_NAME, 'GetPublicCertificatesForApp',
           $req, $resp);
     } catch (ApplicationError $e) {
-      throw AppIdentityService::applicationErrorToException($e);
+      throw self::applicationErrorToException($e);
     }
 
     $result = [];
@@ -232,7 +232,7 @@ final class AppIdentityService {
     try {
       ApiProxy::makeSyncCall(self::PACKAGE_NAME, 'GetAccessToken', $req, $resp);
     } catch (ApplicationError $e) {
-      throw AppIdentityService::applicationErrorToException($e);
+      throw self::applicationErrorToException($e);
     }
 
     return [

@@ -687,6 +687,10 @@ class EncodedPayload(object):
     else:
       return NotImplemented
 
+  def __hash__(self):
+    """Hash an EncodedPayload."""
+    return hash((self.payload, self.charset, self.encoding))
+
   def copy_to(self, mime_message):
     """Copy contents to MIME message payload.
 

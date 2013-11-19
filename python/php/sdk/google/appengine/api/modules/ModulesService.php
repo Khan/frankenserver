@@ -132,7 +132,7 @@ final class ModulesService {
    * @throws TransientModulesException if there is an issue fetching the
    * information.
    */
-  public static function getVersions($module=null) {
+  public static function getVersions($module = null) {
     $req = new GetVersionsRequest();
     $resp = new GetVersionsResponse();
 
@@ -165,7 +165,7 @@ final class ModulesService {
    * @throws ModulesException If the given $module is invalid or if no default
    * version could be found.
    */
-  public static function getDefaultVersion($module=null) {
+  public static function getDefaultVersion($module = null) {
     $req = new GetDefaultVersionRequest();
     $resp = new GetDefaultVersionResponse();
 
@@ -204,7 +204,7 @@ final class ModulesService {
    * @throws ModulesException if the given combination of $module and $version
    * is invalid.
    */
-  public static function getNumInstances($module=null, $version=null) {
+  public static function getNumInstances($module = null, $version = null) {
     $req = new GetNumInstancesRequest();
     $resp = new GetNumInstancesResponse();
 
@@ -250,10 +250,10 @@ final class ModulesService {
    * is invalid.
    * @throws TransientModulesException if there is an issue setting the
    * instance count.
-  */
+   */
   public static function setNumInstances($instances,
-                                         $module=null,
-                                         $version=null) {
+                                         $module = null,
+                                         $version = null) {
     $req = new SetNumInstancesRequest();
     $resp = new SetNumInstancesResponse();
 
@@ -300,7 +300,7 @@ final class ModulesService {
    * started or cannot be started.
    * @throws TransientModulesException if there is an issue starting the module
    * version.
-  */
+   */
   public static function startModule($module, $version) {
     $req = new StartModuleRequest();
     $resp = new StartModuleResponse();
@@ -340,8 +340,8 @@ final class ModulesService {
    * stopped or cannot be stopped.
    * @throws TransientModulesException if there is an issue stopping the module
    * version.
-  */
-  public static function stopModule($module=null, $version=null) {
+   */
+  public static function stopModule($module = null, $version = null) {
     $req = new StopModuleRequest();
     $resp = new StopModuleResponse();
 
@@ -382,14 +382,18 @@ final class ModulesService {
    * null then the load balanced hostname for the module will be returned. If
    * the module is not a fixed module then the instance parameter is ignored.
    *
+   * @return string The valid canonical hostname that can be used to communicate
+   * with the given module/version/instance e.g.
+   * "0.version1.module5.myapp.appspot.com".
+
    * @throws \InvalidArgumentException If $module or $version is not a string
    * or if $instance is not a string or integer.
    * @throws ModulesException if the given combination of $module and $instance
    * is invalid.
-  */
-  public static function getHostname($module=null,
-                                     $version=null,
-                                     $instance=null) {
+   */
+  public static function getHostname($module = null,
+                                     $version = null,
+                                     $instance = null) {
     $req = new GetHostnameRequest();
     $resp = new GetHostnameResponse();
 

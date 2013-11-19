@@ -59,7 +59,6 @@ final class User {
       $federated_identity = null,
       $federated_provider = null,
       $user_id = null) {
-
     $auth_domain = getenv('AUTH_DOMAIN');
     assert($auth_domain !== false);
 

@@ -34,4 +34,5 @@ __all__ = ['Error',
            'is_current_user_admin',
            'get_oauth_consumer_key',
            'get_client_id',
+           'get_authorized_scopes',
           ]

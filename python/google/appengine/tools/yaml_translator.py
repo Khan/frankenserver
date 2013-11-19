@@ -285,8 +285,13 @@ class AppYamlTranslator(object):
         self.static_files)
 
   def VerifyRequiredEntriesPresent(self):
-    if not all([self.app_engine_web_xml.app_id,
-                self.app_engine_web_xml.version_id,
-                GetRuntime(),
-                self.app_engine_web_xml.threadsafe_value_provided]):
-      raise AppEngineConfigException('Missing required fields')
+    required = {
+        'app_id': self.app_engine_web_xml.app_id,
+        'version_id': self.app_engine_web_xml.version_id,
+        'runtime': GetRuntime(),
+        'threadsafe': self.app_engine_web_xml.threadsafe_value_provided,
+    }
+    missing = [field for (field, value) in required.items() if not value]
+    if missing:
+      raise AppEngineConfigException('Missing required fields: %s' %
+                                     ', '.join(missing))

@@ -46,7 +46,6 @@ use google\appengine\StartModuleResponse;
 use google\appengine\StopModuleRequest;
 use google\appengine\StopModuleResponse;
 
-
 class ModulesTest extends ApiProxyTestBase {
 
   public function setUp() {

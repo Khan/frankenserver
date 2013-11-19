@@ -23,6 +23,7 @@
 namespace google\appengine\ext\cloud_storage_streams;
 
 require_once 'google/appengine/api/app_identity/AppIdentityService.php';
+require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
 require_once 'google/appengine/api/urlfetch_service_pb.php';
 require_once 'google/appengine/ext/cloud_storage_streams/HttpResponse.php';
 require_once 'google/appengine/runtime/ApiProxy.php';
@@ -31,6 +32,7 @@ require_once 'google/appengine/util/array_util.php';
 
 use google\appengine\api\app_identity\AppIdentityService;
 use google\appengine\api\app_identity\AppIdentityException;
+use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\URLFetchRequest\RequestMethod;
@@ -58,18 +60,6 @@ abstract class CloudStorageClient {
   const READ_SCOPE = "https://www.googleapis.com/auth/devstorage.read_only";
   const WRITE_SCOPE = "https://www.googleapis.com/auth/devstorage.read_write";
   const FULL_SCOPE = "https://www.googleapis.com/auth/devstorage.full_control";
-
-  // The storage host when running in the dev appserver.
-  const LOCAL_HOST = "gcs-magicstring.appspot.com";
-
-  // The storage host when running in production.
-  const PRODUCTION_HOST = "storage.googleapis.com";
-
-  // URL format for making requests for objects inside a bucket.
-  const BUCKET_OBJECT_FORMAT = "https://%s/%s%s";
-
-  // URL format for making requests for buckets only.
-  const BUCKET_FORMAT = "https://%s/%s";
 
   // Format for the OAuth token header.
   const OAUTH_TOKEN_FORMAT = "OAuth %s";
@@ -285,12 +275,15 @@ abstract class CloudStorageClient {
    * @visibleForTesting
    */
   public static function createObjectUrl($bucket, $object = null) {
-    $host = self::isDevelServer() ? self::LOCAL_HOST : self::PRODUCTION_HOST;
-    if (isset($object)) {
-      return sprintf(self::BUCKET_OBJECT_FORMAT, $host, $bucket, $object);
+    // Strip leading "/" for $object
+    if (isset($object) && $object[0] == "/") {
+      $object_name = substr($object, 1);
     } else {
-      return sprintf(self::BUCKET_FORMAT, $host, $bucket);
+      $object_name = "";
     }
+
+    $gs_filename = CloudStorageTools::getFilename($bucket, $object_name);
+    return CloudStorageTools::getPublicUrl($gs_filename, true);
   }
 
   /**
@@ -475,14 +468,4 @@ abstract class CloudStorageClient {
     }
   }
 
-  /**
-   * Determine if the code is executing on the development server.
-   *
-   * @return bool True if running in the developement server, false otherwise.
-   */
-  private static function isDevelServer() {
-    $server_software = getenv("SERVER_SOFTWARE");
-    $key = "Development";
-    return strncmp($server_software, $key, strlen($key)) === 0;
-  }
 }

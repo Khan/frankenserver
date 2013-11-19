@@ -96,7 +96,8 @@ class ExpressionEvaluator(object):
         ExpressionParser.SWITCH: self._Unsupported('switch'),
         }
 
-  def _GetFieldValue(self, field):
+  @classmethod
+  def _GetFieldValue(cls, field):
     """Returns the value of a field as the correct type.
 
     Args:

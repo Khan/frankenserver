@@ -187,6 +187,31 @@ class CloudStorageStub(object):
       gcs_file.delete()
 
   @db.non_transactional
+  def put_empty(self, token):
+    """Empty put is used to query upload progress.
+
+    The file must has not finished upload.
+
+    Args:
+      token: upload token returned by post_start_creation.
+
+    Returns:
+      last offset uploaded. -1 if none has been uploaded.
+
+    Raises:
+      ValueError: if token matches no in progress uploads.
+    """
+    ns = namespace_manager.get_namespace()
+    try:
+      namespace_manager.set_namespace('')
+      gcs_file = _AE_GCSFileInfo_.get_by_key_name(token)
+      if not gcs_file:
+        raise ValueError('Invalid token', httplib.BAD_REQUEST)
+      return gcs_file.next_offset - 1
+    finally:
+      namespace_manager.set_namespace(ns)
+
+  @db.non_transactional
   def put_continue_creation(self, token, content, content_range,
                             length=None,
                             _upload_filename=None):

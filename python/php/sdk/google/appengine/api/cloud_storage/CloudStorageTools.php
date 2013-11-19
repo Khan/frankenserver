@@ -28,6 +28,7 @@ use google\appengine\ImagesDeleteUrlBaseResponse;
 use google\appengine\ImagesGetUrlBaseRequest;
 use google\appengine\ImagesGetUrlBaseResponse;
 use google\appengine\ImagesServiceError;
+use google\appengine\ext\cloud_storage_streams\CloudStorageClient;
 use google\appengine\files\GetDefaultGsBucketNameRequest;
 use google\appengine\files\GetDefaultGsBucketNameResponse;
 use google\appengine\runtime\ApiProxy;
@@ -38,6 +39,7 @@ require_once 'google/appengine/api/blobstore/blobstore_service_pb.php';
 require_once 'google/appengine/api/cloud_storage/CloudStorageException.php';
 require_once 'google/appengine/api/files/file_service_pb.php';
 require_once 'google/appengine/api/images/images_service_pb.php';
+require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
 require_once 'google/appengine/runtime/ApiProxy.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
 require_once 'google/appengine/util/array_util.php';
@@ -52,6 +54,15 @@ final class CloudStorageTools {
   const BLOB_KEY_HEADER = "X-AppEngine-BlobKey";
   const BLOB_RANGE_HEADER = "X-AppEngine-BlobRange";
   const MAX_IMAGE_SERVING_SIZE = 1600;
+
+  // The GCS endpoint path when running in the dev appserver.
+  const LOCAL_ENDPOINT = "/_ah/gcs";
+
+  // The storage host when running in production.
+  const PRODUCTION_HOST = "storage.googleapis.com";
+
+  // The GCS filename format (bucket, object).
+  const GS_FILENAME_FORMAT = "gs://%s/%s";
 
   /**
    * The list of options that can be supplied to createUploadUrl.
@@ -116,6 +127,7 @@ final class CloudStorageTools {
     }
 
     $req->setSuccessPath($success_path);
+    $max_upload_size_ini = self::getUploadMaxFileSizeInBytes();
 
     if (array_key_exists('max_bytes_per_blob', $options)) {
       $val = $options['max_bytes_per_blob'];
@@ -128,6 +140,8 @@ final class CloudStorageTools {
             'max_bytes_per_blob must be positive.');
       }
       $req->setMaxUploadSizePerBlobBytes($val);
+    } else if ($max_upload_size_ini > 0) {
+      $req->setMaxUploadSizePerBlobBytes($max_upload_size_ini);
     }
 
     if (array_key_exists('max_bytes_total', $options)) {
@@ -296,6 +310,107 @@ final class CloudStorageTools {
   }
 
   /**
+   * Get the public URL for a Google Cloud Storage filename.
+   *
+   * @param string $gs_filename The Google Cloud Storage filename, in the
+   * format gs://bucket_name/object_name.
+   * @param boolean $use_https If True then return a HTTPS URL. Note that the
+   * development server ignores this argument and returns only HTTP URLs.
+   *
+   * @return string The public URL.
+   *
+   * @throws \InvalidArgumentException if the filename is not in the correct
+   * format or $use_https is not a boolean.
+   */
+  public static function getPublicUrl($gs_filename, $use_https) {
+    $path = self::stripGsPrefix($gs_filename);
+
+    if (!is_bool($use_https)) {
+      throw new \InvalidArgumentException(
+          'Parameter $use_https must be boolean but was ' .
+          typeOrClass($use_https));
+    }
+
+    if (self::isDevelServer()) {
+      $scheme = "http";
+      $url_base = sprintf("%s%s", getenv('HTTP_HOST'), self::LOCAL_ENDPOINT);
+    } else {
+      $scheme = $use_https ? "https" : "http";
+      $url_base = self::PRODUCTION_HOST;
+    }
+
+    return sprintf("%s://%s/%s",
+                   $scheme,
+                   $url_base,
+                   str_replace('%', urlencode('%'), $path));
+  }
+
+  /**
+   * Get the filename of a Google Cloud Storage object.
+   *
+   * @param string $bucket The Google Cloud Storage bucket name.
+   * @param string $object The Google Cloud Stroage object name.
+   *
+   * @return string The filename in the format gs://bucket_name/object_name.
+   *
+   * @throws \InvalidArgumentException if bucket or object name is invalid.
+   */
+  public static function getFilename($bucket, $object) {
+    if (self::validateBucketName($bucket) === false) {
+      throw new \InvalidArgumentException(
+          sprintf('Invalid cloud storage bucket name \'%s\' ', $bucket));
+    }
+
+    if (self::validateObjectName($object) === false) {
+      throw new \InvalidArgumentException(
+          sprintf('Invalid cloud storage object name \'%s\' ', $object));
+    }
+
+    return sprintf(self::GS_FILENAME_FORMAT, $bucket, $object);
+  }
+
+  /**
+   * Validate the bucket name according to the rules stated at
+   * https://developers.google.com/storage/docs/bucketnaming.
+   */
+  private static function validateBucketName($bucket_name) {
+    $valid_bucket_regex = '/^[a-z0-9]+[a-z0-9\.\-_]+[a-z0-9]+$/';
+    if (preg_match($valid_bucket_regex, $bucket_name) === 0) {
+      return false;
+    }
+
+    if (strpos($bucket_name, 'goog') === 0) {
+      return false;
+    }
+
+    if (strlen($bucket_name) > 222) {
+      return false;
+    }
+
+    $parts = explode('.', $bucket_name);
+    foreach ($parts as $part) {
+      if (strlen($part) < 3 || strlen($part) > 63) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate the object name according to the rules stated at
+   * https://developers.google.com/storage/docs/bucketnaming.
+   */
+  private static function validateObjectName($object_name) {
+    $invalid_object_regex = "/[\n\r]/";
+    if (preg_match($invalid_object_regex, $object_name) === 1) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Create a blob key for a Google Cloud Storage file.
    *
    * @param string $filename The google cloud storage filename, in the format
@@ -311,26 +426,7 @@ final class CloudStorageTools {
    * @deprecated This method will be made private in the next version.
    */
   private static function createGsKey($filename) {
-    if (!is_string($filename)) {
-      throw new \InvalidArgumentException('filename must be a string. ' .
-          'Actual type: ' . gettype($filename));
-    }
-
-    $gs_prefix_len = strlen(self::GS_PREFIX);
-
-    if (strncmp($filename, self::GS_PREFIX, $gs_prefix_len) != 0) {
-      throw new \InvalidArgumentException(
-          sprintf('filename must start with the prefix %s.', self::GS_PREFIX));
-    }
-
-    $gs_filename = substr($filename, $gs_prefix_len);
-
-    if (!strpos($gs_filename, "/")) {
-      throw new \InvalidArgumentException(
-        'filename not in the format gs://bucket_name/object_name.');
-    }
-
-    $gs_filename = sprintf('/gs/%s', $gs_filename);
+    $gs_filename = sprintf('/gs/%s', self::stripGsPrefix($filename));
 
     $request = new CreateEncodedGoogleStorageKeyRequest();
     $response = new CreateEncodedGoogleStorageKeyResponse();
@@ -437,6 +533,40 @@ final class CloudStorageTools {
    */
   public static function setSendHeaderFunction($new_header_func) {
     self::$send_header = $new_header_func;
+  }
+
+  /**
+   * Validates the format of a GCS filename and strips the gs:// prefix.
+   *
+   * @param string $filename The google cloud storage filename, in the format
+   * gs://bucket_name/object_name
+   *
+   * @return string The string that follows gs://
+   *
+   * @throws \InvalidArgumentException if the filename is not in the correct
+   * format.
+   */
+  private static function stripGsPrefix($filename) {
+    if (!is_string($filename)) {
+      throw new \InvalidArgumentException('filename must be a string. ' .
+          'Actual type: ' . gettype($filename));
+    }
+
+    $gs_prefix_len = strlen(self::GS_PREFIX);
+
+    if (strncmp($filename, self::GS_PREFIX, $gs_prefix_len) != 0) {
+      throw new \InvalidArgumentException(
+          sprintf('filename must start with the prefix %s.', self::GS_PREFIX));
+    }
+
+    $stripped = substr($filename, $gs_prefix_len);
+
+    if (!strpos($stripped, "/")) {
+      throw new \InvalidArgumentException(
+        'filename not in the format gs://bucket_name/object_name.');
+    }
+
+    return $stripped;
   }
 
   /**
@@ -554,5 +684,36 @@ final class CloudStorageTools {
     } else {
       header(sprintf("%s: %s", $key, $value));
     }
+  }
+
+  /**
+   * @access private
+   */
+  private static function getUploadMaxFileSizeInBytes() {
+    $val = trim(ini_get('upload_max_filesize'));
+    $unit = strtolower(substr($val, -1));
+    switch ($unit) {
+      case 'g':
+        $val *= 1024;
+        // Fall through
+      case 'm':
+        $val *= 1024;
+        // Fall through
+      case 'k':
+        $val *= 1024;
+        break;
+    }
+    return intval($val);
+  }
+
+  /**
+   * Determine if the code is executing on the development server.
+   *
+   * @return bool True if running in the developement server, false otherwise.
+   */
+  private static function isDevelServer() {
+    $server_software = getenv("SERVER_SOFTWARE");
+    $key = "Development";
+    return strncmp($server_software, $key, strlen($key)) === 0;
   }
 }

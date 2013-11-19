@@ -1427,14 +1427,23 @@ class BaseConnection(object):
       A MultiRpc object.
     """
 
-    def make_get_call(req, pbs, user_data=None):
+    def make_get_call(req, pbs, extra_hook=None):
       req.key_list().extend(pbs)
       self._set_request_transaction(req)
       resp = datastore_pb.GetResponse()
+
+
+
+
+
+
+
       return self.make_rpc_call(config, 'Get', req, resp,
-                                self.__get_hook, user_data)
+                                get_result_hook=self.__get_hook,
+                                user_data=(config, pbs, extra_hook))
 
     base_req = datastore_pb.GetRequest()
+    base_req.set_allow_deferred(True)
     self._set_request_read_policy(base_req, config)
 
 
@@ -1480,16 +1489,81 @@ class BaseConnection(object):
   def __get_hook(self, rpc):
     """Internal method used as get_result_hook for Get operation."""
     self.check_rpc_success(rpc)
-    entities = []
-    for group in rpc.response.entity_list():
-      if group.has_entity():
-        entity = self.__adapter.pb_to_entity(group.entity())
-      else:
-        entity = None
-      entities.append(entity)
-    if rpc.user_data is not None:
-      entities = rpc.user_data(entities)
+
+
+
+    config, refs_from_request, extra_hook = rpc.user_data
+
+    if rpc.response.in_order():
+
+
+      entities = []
+      for entity_result in rpc.response.entity_list():
+        if entity_result.has_entity():
+          entity = self.__adapter.pb_to_entity(entity_result.entity())
+        else:
+          entity = None
+        entities.append(entity)
+    else:
+
+      current_get_response = rpc.response
+      result_dict = {}
+      self.__add_get_response_entities_to_dict(current_get_response,
+                                               result_dict)
+
+
+
+      deferred_req = datastore_pb.GetRequest()
+      deferred_req.CopyFrom(rpc.request)
+      while current_get_response.deferred_size() > 0:
+        deferred_req.clear_key()
+        deferred_req.key_list().extend(current_get_response.deferred_list())
+
+        deferred_rpc = self.make_rpc_call(config,
+                                          'Get',
+                                          deferred_req,
+                                          datastore_pb.GetResponse())
+        deferred_rpc.get_result()
+        current_get_response = deferred_rpc.response
+
+
+        self.__add_get_response_entities_to_dict(current_get_response,
+                                                 result_dict)
+
+
+
+      entities = [result_dict.get(datastore_types.ReferenceToKeyValue(ref_pb))
+                  for ref_pb in refs_from_request]
+
+
+
+    if extra_hook is not None:
+      entities = extra_hook(entities)
+
     return entities
+
+  def __add_get_response_entities_to_dict(self, get_response, result_dict):
+    """Converts entities from the GetResponse and adds them to the dict.
+
+    The Key for the dict will be calculated via
+    datastore_types.ReferenceToKeyValue.  There will be no entry for entities
+    that were not found.
+
+    Args:
+      get_response: A datastore_pb.GetResponse.
+      result_dict: The dict to add results to.
+    """
+    for entity_result in get_response.entity_list():
+
+      if entity_result.has_entity():
+
+
+
+
+        reference_pb = entity_result.entity().key()
+        hashable_key = datastore_types.ReferenceToKeyValue(reference_pb)
+        entity = self.__adapter.pb_to_entity(entity_result.entity())
+        result_dict[hashable_key] = entity
 
   def get_indexes(self):
     """Synchronous get indexes operation.

@@ -188,12 +188,17 @@ class ParseMaxServerInstancesTest(unittest.TestCase):
 
   def test_single_zero_arg(self):
     self.assertRaisesRegexp(argparse.ArgumentTypeError,
-                            'Cannot specify zero instances for all',
+                            'count must be greater than zero',
                             devappserver2.parse_max_module_instances, '0')
+
+  def test_single_negative_arg(self):
+    self.assertRaisesRegexp(argparse.ArgumentTypeError,
+                            'count must be greater than zero',
+                            devappserver2.parse_max_module_instances, '-1')
 
   def test_single_nonint_arg(self):
     self.assertRaisesRegexp(argparse.ArgumentTypeError,
-                            'Invalid instance count:',
+                            'Invalid max instance count:',
                             devappserver2.parse_max_module_instances, 'cat')
 
   def test_multiple_valid_args(self):
@@ -205,36 +210,42 @@ class ParseMaxServerInstancesTest(unittest.TestCase):
   def test_multiple_non_colon(self):
     self.assertRaisesRegexp(
         argparse.ArgumentTypeError,
-        'Expected "module:max_instances"',
+        'Expected "module:max_instance_count"',
         devappserver2.parse_max_module_instances, 'default:10,foo')
 
   def test_multiple_non_int(self):
     self.assertRaisesRegexp(
         argparse.ArgumentTypeError,
-        'Expected "module:max_instances"',
+        'Expected "module:max_instance_count"',
         devappserver2.parse_max_module_instances, 'default:cat')
 
   def test_duplicate_modules(self):
     self.assertRaisesRegexp(
         argparse.ArgumentTypeError,
-        'Duplicate max instance value',
+        'Duplicate max instance count',
         devappserver2.parse_max_module_instances, 'default:5,default:10')
 
   def test_multiple_with_zero(self):
     self.assertRaisesRegexp(
         argparse.ArgumentTypeError,
-        'Cannot specify zero instances for module',
-        devappserver2.parse_max_module_instances, 'default:5,foo:0')
+        'count for module zero must be greater than zero',
+        devappserver2.parse_max_module_instances, 'default:5,zero:0')
+
+  def test_multiple_with_negative(self):
+    self.assertRaisesRegexp(
+        argparse.ArgumentTypeError,
+        'count for module negative must be greater than zero',
+        devappserver2.parse_max_module_instances, 'default:5,negative:-1')
 
   def test_multiple_missing_name(self):
     self.assertEqual(
         {'default': 10},
         devappserver2.parse_max_module_instances(':10'))
 
-  def test_multiple_missing_value(self):
+  def test_multiple_missing_count(self):
     self.assertRaisesRegexp(
         argparse.ArgumentTypeError,
-        'Expected "module:max_instances"',
+        'Expected "module:max_instance_count"',
         devappserver2.parse_max_module_instances, 'default:')
 
 

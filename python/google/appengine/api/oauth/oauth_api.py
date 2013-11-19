@@ -42,6 +42,7 @@ Classes defined here:
 
 
 
+import cPickle
 import os
 
 from google.appengine.api import apiproxy_stub_map
@@ -84,6 +85,10 @@ class OAuthServiceFailureError(Error):
 def get_current_user(_scope=None):
   """Returns the User on whose behalf the request was made.
 
+  Args:
+    _scope: The custom OAuth scope or an iterable of scopes at least one of
+      which is accepted.
+
   Returns:
     User
 
@@ -98,6 +103,10 @@ def get_current_user(_scope=None):
 
 def is_current_user_admin(_scope=None):
   """Returns true if the User on whose behalf the request was made is an admin.
+
+  Args:
+    _scope: The custom OAuth scope or an iterable of scopes at least one of
+      which is accepted.
 
   Returns:
     boolean
@@ -142,29 +151,64 @@ def get_oauth_consumer_key():
 def get_client_id(_scope):
   """Returns the value of OAuth2 Client ID from an OAuth2 request.
 
+  Args:
+    _scope: The custom OAuth scope or an iterable of scopes at least one of
+      which is accepted.
+
   Returns:
-    string: The value of Client ID
+    string: The value of Client ID.
 
   Raises:
     OAuthRequestError: The request was not a valid OAuth2 request.
-    OAuthServiceFailureError: An unknow error occurred
+    OAuthServiceFailureError: An unknow error occurred.
   """
   _maybe_call_get_oauth_user(_scope)
   return _get_client_id_from_environ()
 
 
-def _maybe_call_get_oauth_user(_scope=None):
+def get_authorized_scopes(scope):
+  """Returns authorized scopes from input scopes.
+
+  Args:
+    scope: The custom OAuth scope or an iterable of scopes at least one of
+      which is accepted.
+
+  Returns:
+    list: A list of authorized OAuth2 scopes
+
+  Raises:
+    OAuthRequestError: The request was not a valid OAuth2 request.
+    OAuthServiceFailureError: An unknow error occurred
+  """
+  _maybe_call_get_oauth_user(scope)
+  return _get_authorized_scopes_from_environ()
+
+
+def _maybe_call_get_oauth_user(scope):
   """Makes an GetOAuthUser RPC and stores the results in os.environ.
 
   This method will only make the RPC if 'OAUTH_ERROR_CODE' has not already
-  been set or 'OAUTH_LAST_SCOPE' is different to _scope.
+  been set or 'OAUTH_LAST_SCOPE' is different to str(_scopes).
+
+  Args:
+    scope: The custom OAuth scope or an iterable of scopes at least one of
+      which is accepted.
   """
 
+  if not scope:
+    scope_str = ''
+  elif isinstance(scope, basestring):
+    scope_str = scope
+  else:
+    scope_str = str(sorted(scope))
   if ('OAUTH_ERROR_CODE' not in os.environ or
-      os.environ.get('OAUTH_LAST_SCOPE', None) != _scope):
+      os.environ.get('OAUTH_LAST_SCOPE', None) != scope_str):
     req = user_service_pb.GetOAuthUserRequest()
-    if _scope:
-      req.set_scope(_scope)
+    if scope:
+      if isinstance(scope, basestring):
+        req.add_scopes(scope)
+      else:
+        req.scopes_list().extend(scope)
 
     resp = user_service_pb.GetOAuthUserResponse()
     try:
@@ -173,6 +217,8 @@ def _maybe_call_get_oauth_user(_scope=None):
       os.environ['OAUTH_AUTH_DOMAIN'] = resp.auth_domain()
       os.environ['OAUTH_USER_ID'] = resp.user_id()
       os.environ['OAUTH_CLIENT_ID'] = resp.client_id()
+      os.environ['OAUTH_AUTHORIZED_SCOPES'] = cPickle.dumps(
+          list(resp.scopes_list()), cPickle.HIGHEST_PROTOCOL)
       if resp.is_admin():
         os.environ['OAUTH_IS_ADMIN'] = '1'
       else:
@@ -181,10 +227,7 @@ def _maybe_call_get_oauth_user(_scope=None):
     except apiproxy_errors.ApplicationError, e:
       os.environ['OAUTH_ERROR_CODE'] = str(e.application_error)
       os.environ['OAUTH_ERROR_DETAIL'] = e.error_detail
-    if _scope:
-      os.environ['OAUTH_LAST_SCOPE'] = _scope
-    else:
-      os.environ.pop('OAUTH_LAST_SCOPE', None)
+    os.environ['OAUTH_LAST_SCOPE'] = scope_str
   _maybe_raise_exception()
 
 
@@ -238,3 +281,15 @@ def _get_client_id_from_environ():
   """
   assert 'OAUTH_CLIENT_ID' in os.environ
   return os.environ['OAUTH_CLIENT_ID']
+
+
+def _get_authorized_scopes_from_environ():
+  """Returns authorized scopes based on values stored in os.environ.
+
+  This method requires that 'OAUTH_AUTHORIZED_SCOPES' has already been set.
+
+  Returns:
+    list: the list of OAuth scopes.
+  """
+  assert 'OAUTH_AUTHORIZED_SCOPES' in os.environ
+  return cPickle.loads(os.environ['OAUTH_AUTHORIZED_SCOPES'])

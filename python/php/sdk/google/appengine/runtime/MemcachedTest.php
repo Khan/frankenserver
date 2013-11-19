@@ -253,7 +253,9 @@ class MemcachedTest extends ApiProxyTestBase {
                                     $response);
     $memcached = new Memcached();
     $keys = ["key", "key1"];
-    $result = $memcached->getMulti($keys, $cas_tokens, Memcached::GET_PRESERVE_ORDER);
+    $result = $memcached->getMulti($keys,
+                                   $cas_tokens,
+                                   Memcached::GET_PRESERVE_ORDER);
     $this->assertEquals("value", $result["key"]);
     $this->assertEquals(123456, $cas_tokens["key"]);
     $this->assertTrue(array_key_exists("key1", $result));
@@ -330,7 +332,6 @@ class MemcachedTest extends ApiProxyTestBase {
   }
 
   public function testGetMissing() {
-
     $request = new MemcacheGetRequest();
     $request->addKey("key");
 

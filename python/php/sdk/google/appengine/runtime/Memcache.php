@@ -182,7 +182,7 @@ function memcache_increment($memcache_obj, $key, $value = 1) {
 /**
  * This function is present only for compatibility and does nothing.
  */
-function memcache_pconnect($memcache_obj, $host, $port = null, $timeout = 1) {
+function memcache_pconnect($host, $port = null, $timeout = 1) {
   $memcache_obj = new Memcache();
   if (!$memcache_obj->connect($host, $port, $timeout)) {
     return false;

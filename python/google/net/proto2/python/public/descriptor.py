@@ -242,6 +242,8 @@ class Descriptor(_NestedDescriptorBase):
     self.fields_by_name = dict((f.name, f) for f in fields)
 
     self.nested_types = nested_types
+    for nested_type in nested_types:
+      nested_type.containing_type = self
     self.nested_types_by_name = dict((t.name, t) for t in nested_types)
 
     self.enum_types = enum_types
@@ -697,17 +699,22 @@ def _ParseOptions(message, string):
   return message
 
 
-def MakeDescriptor(desc_proto, package=''):
+def MakeDescriptor(desc_proto, package='', build_file_if_cpp=True):
   """Make a protobuf Descriptor given a DescriptorProto protobuf.
+
+  Handles nested descriptors. Note that this is limited to the scope of defining
+  a message inside of another message. Composite fields can currently only be
+  resolved if the message is defined in the same scope as the field.
 
   Args:
     desc_proto: The descriptor_pb2.DescriptorProto protobuf message.
     package: Optional package name for the new message Descriptor (string).
-
+    build_file_if_cpp: Update the C++ descriptor pool if api matches.
+                       Set to False on recursion, so no duplicates are created.
   Returns:
     A Descriptor for protobuf messages.
   """
-  if api_implementation.Type() == 'cpp':
+  if api_implementation.Type() == 'cpp' and build_file_if_cpp:
 
 
 
@@ -737,29 +744,49 @@ def MakeDescriptor(desc_proto, package=''):
   full_message_name = [desc_proto.name]
   if package: full_message_name.insert(0, package)
 
+
   enum_types = {}
   for enum_proto in desc_proto.enum_type:
     full_name = '.'.join(full_message_name + [enum_proto.name])
     enum_desc = EnumDescriptor(
       enum_proto.name, full_name, None, [
-        EnumValueDescriptor(enum_val.name, ii, enum_val.number)
-        for ii, enum_val in enumerate(enum_proto.value)])
+          EnumValueDescriptor(enum_val.name, ii, enum_val.number)
+          for ii, enum_val in enumerate(enum_proto.value)])
     enum_types[full_name] = enum_desc
+
+
+  nested_types = {}
+  for nested_proto in desc_proto.nested_type:
+    full_name = '.'.join(full_message_name + [nested_proto.name])
+
+
+    nested_desc = MakeDescriptor(nested_proto,
+                                 package='.'.join(full_message_name),
+                                 build_file_if_cpp=False)
+    nested_types[full_name] = nested_desc
 
   fields = []
   for field_proto in desc_proto.field:
     full_name = '.'.join(full_message_name + [field_proto.name])
     enum_desc = None
+    nested_desc = None
     if field_proto.HasField('type_name'):
-      enum_desc = enum_types.get(field_proto.type_name)
+      type_name = field_proto.type_name
+      full_type_name = '.'.join(full_message_name +
+                                [type_name[type_name.rfind('.')+1:]])
+      if full_type_name in nested_types:
+        nested_desc = nested_types[full_type_name]
+      elif full_type_name in enum_types:
+        enum_desc = enum_types[full_type_name]
+
     field = FieldDescriptor(
         field_proto.name, full_name, field_proto.number - 1,
         field_proto.number, field_proto.type,
         FieldDescriptor.ProtoTypeToCppProtoType(field_proto.type),
-        field_proto.label, None, None, enum_desc, None, False, None,
+        field_proto.label, None, nested_desc, enum_desc, None, False, None,
         has_default_value=False)
     fields.append(field)
 
   desc_name = '.'.join(full_message_name)
   return Descriptor(desc_proto.name, desc_name, None, None, fields,
-                    [], enum_types.values(), [])
+                    nested_types.values(), enum_types.values(), [])

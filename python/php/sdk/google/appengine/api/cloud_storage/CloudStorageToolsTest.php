@@ -18,14 +18,23 @@
  * PHP Unit tests for the CloudStorageTools.
  *
  */
+namespace google\appengine\api\cloud_storage;
 
 require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
-use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\testing\ApiProxyTestBase;
 use google\appengine\BlobstoreServiceError;
 use google\appengine\ImagesServiceError;
+
+// Provide a mock ini_get as we cannot alter the value of upload_max_filesize
+// from a script.
+function ini_get($key) {
+  if ($key === 'upload_max_filesize') {
+    return CloudStorageToolsTest::$mock_upload_max_filesize;
+  }
+  return \ini_get($key);
+}
 
 /**
  * Unit test for CloudStorageTools class.
@@ -34,9 +43,12 @@ use google\appengine\ImagesServiceError;
  */
 class CloudStorageToolsTest extends ApiProxyTestBase {
 
+  public static $mock_upload_max_filesize = 0;
+
   public function setUp() {
     parent::setUp();
     $this->_SERVER = $_SERVER;
+    self::$mock_upload_max_filesize = '0';
 
     // This is a a hacky workaround to the fact that you cannot use the header()
     // call in PHPUnit because you hit "headers already sent" errors.
@@ -115,6 +127,25 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testSetMaxBytesPerBlobIni() {
+    $req = new \google\appengine\CreateUploadURLRequest();
+    $req->setSuccessPath('http://foo/bar');
+    $req->setMaxUploadSizePerBlobBytes(1 * 1024 * 1024);
+    $req->setGsBucketName("some_bucket");
+
+    $resp = new \google\appengine\CreateUploadURLResponse();
+    $resp->setUrl('http://upload/to/here');
+
+    $this->apiProxyMock->expectCall('blobstore', 'CreateUploadURL', $req,
+        $resp);
+
+    self::$mock_upload_max_filesize = '1M';
+    $upload_url = CloudStorageTools::createUploadUrl('http://foo/bar',
+        ['gs_bucket_name' => 'some_bucket',]);
+    $this->assertEquals($upload_url, 'http://upload/to/here');
+    $this->apiProxyMock->verify();
+  }
+
   public function testInvalidMaxBytesPerBlob() {
     $this->setExpectedException('\InvalidArgumentException');
     $upload_url = CloudStorageTools::createUploadUrl('http://foo/bar',
@@ -131,6 +162,7 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     $req = new \google\appengine\CreateUploadURLRequest();
     $req->setSuccessPath('http://foo/bar');
     $req->setMaxUploadSizeBytes(137337);
+    $req->setMaxUploadSizePerBlobBytes(1 * 1024 * 1024 * 1024);
     $req->setGsBucketName("some_bucket");
 
     $resp = new \google\appengine\CreateUploadURLResponse();
@@ -139,6 +171,7 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     $this->apiProxyMock->expectCall('blobstore', 'CreateUploadURL', $req,
         $resp);
 
+    self::$mock_upload_max_filesize = '1G';
     $upload_url = CloudStorageTools::createUploadUrl('http://foo/bar',
         ['max_bytes_total' => 137337,
          'gs_bucket_name' => 'some_bucket',]);
@@ -620,6 +653,82 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
                                     $exception);
     CloudStorageTools::deleteImageServingUrl('gs://mybucket/photo.jpg');
     $this->apiProxyMock->verify();
+  }
+
+  public function testGetPublicUrlInProduction() {
+    $bucket = "bucket";
+    $object = "object";
+    $gs_filename = sprintf("gs://%s/%s", $bucket, $object);
+    $host = "storage.googleapis.com";
+    putenv("SERVER_SOFTWARE=Google App Engine/1.8.6");
+
+    // Get HTTPS URL
+    $expected = "https://storage.googleapis.com/bucket/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
+    $this->assertEquals($expected, $actual);
+
+    // Get HTTP URL
+    $expected = "http://storage.googleapis.com/bucket/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $this->assertEquals($expected, $actual);
+  }
+
+  public function testGetPublicUrlInDevelopment() {
+    $bucket = "bucket";
+    $object = "object";
+    $gs_filename = sprintf("gs://%s/%s", $bucket, $object);
+    $host = "localhost:8080";
+    putenv("SERVER_SOFTWARE=Development/2.0");
+    putenv("HTTP_HOST=" . $host);
+
+    // Get HTTPS URL
+    $expected = "http://localhost:8080/_ah/gcs/bucket/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
+    $this->assertEquals($expected, $actual);
+
+    // Get HTTP URL
+    $expected = "http://localhost:8080/_ah/gcs/bucket/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $this->assertEquals($expected, $actual);
+  }
+
+  public function testGetFilenameFromValidBucketAndObject() {
+    $bucket = "bucket";
+    $object = "object";
+    $expected = "gs://bucket/object";
+    $actual = CloudStorageTools::getFilename($bucket, $object);
+    $this->assertEquals($expected, $actual);
+  }
+
+  public function testGetFilenameFromInvalidBucketNames() {
+    $invalid_bucket_names = [
+        'BadBucketName',
+        '.another_bad_bucket',
+        'a',
+        'goog_bucket',
+        str_repeat('a', 224),
+        'a.bucket',
+        'foobar' . str_repeat('a', 64)
+    ];
+    foreach ($invalid_bucket_names as $bucket) {
+      $this->setExpectedException(
+          "\InvalidArgumentException",
+          sprintf("Invalid cloud storage bucket name '%s'", $bucket));
+      CloudStorageTools::getFilename($bucket, 'foo.txt');
+    }
+  }
+
+  public function testGetFilenameFromInvalidObjecNames() {
+    $invalid_object_names = [
+        "WithCarriageReturn\r",
+        "WithLineFeed\n",
+    ];
+    foreach ($invalid_object_names as $object) {
+      $this->setExpectedException(
+          "\InvalidArgumentException",
+          sprintf("Invalid cloud storage object name '%s'", $object));
+      CloudStorageTools::getFilename('foo', $object);
+    }
   }
 }
 

@@ -144,7 +144,7 @@ class MemcacheTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
-  public function testGetSuccess() {
+  public function testGetStringSuccess() {
     $memcache = new Memcache();
 
     $request = new MemcacheGetRequest();
@@ -154,7 +154,27 @@ class MemcacheTest extends ApiProxyTestBase {
     $item = $response->addItem();
     $item->setKey("key");
     $item->setValue("value");
-    $item->setFlags(0);  // string.
+    $item->setFlags(0);  // String.
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Get',
+                                    $request,
+                                    $response);
+    $this->assertEquals("value", memcache_get($memcache, "key"));
+    $this->apiProxyMock->verify();
+  }
+
+  public function testGetUnicodeSuccess() {
+    $memcache = new Memcache();
+
+    $request = new MemcacheGetRequest();
+    $request->addKey("key");
+
+    $response = new MemcacheGetResponse();
+    $item = $response->addItem();
+    $item->setKey("key");
+    $item->setValue("value");
+    $item->setFlags(1);  // Unicode.
 
     $this->apiProxyMock->expectCall('memcache',
                                     'Get',
