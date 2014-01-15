@@ -43,7 +43,6 @@ from google.appengine.tools.devappserver2 import blob_image
 from google.appengine.tools.devappserver2 import blob_upload
 from google.appengine.tools.devappserver2 import channel
 from google.appengine.tools.devappserver2 import constants
-
 from google.appengine.tools.devappserver2 import endpoints
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
@@ -144,7 +143,6 @@ class Module(object):
   """The abstract base for all instance pool implementations."""
 
   _RUNTIME_INSTANCE_FACTORIES = {
-
       'go': go_runtime.GoRuntimeInstanceFactory,
       'php': php_runtime.PHPRuntimeInstanceFactory,
       'python': python_runtime.PythonRuntimeInstanceFactory,
@@ -265,9 +263,6 @@ class Module(object):
     runtime_config = runtime_config_pb2.Config()
     runtime_config.app_id = self._module_configuration.application
     runtime_config.version_id = self._module_configuration.version_id
-    if self._module_configuration.module_name:
-      runtime_config.version_id = '%s:%s' % (
-          self._module_configuration.module_name, runtime_config.version_id)
     if self._threadsafe_override is None:
       runtime_config.threadsafe = self._module_configuration.threadsafe or False
     else:
@@ -589,7 +584,7 @@ class Module(object):
             user_request_id=environ['REQUEST_LOG_ID'],
             ip=environ.get('REMOTE_ADDR', ''),
             app_id=self._module_configuration.application,
-            version_id=self._module_configuration.version_id,
+            version_id=self._module_configuration.major_version,
             nickname=email.split('@', 1)[0],
             user_agent=environ.get('HTTP_USER_AGENT', ''),
             host=hostname,
@@ -704,7 +699,7 @@ class Module(object):
 
     Returns:
       A string suitable for use as a REQUEST_LOG_ID. The returned string is
-      variable length to emulate the the production values, which encapsulate
+      variable length to emulate the production values, which encapsulate
       the application id, version and some log state.
     """
     return ''.join(random.choice(_LOWER_HEX_DIGITS)
@@ -721,6 +716,8 @@ class Module(object):
 
     Args:
       instances: An int containing the number of instances to run.
+    Raises:
+      request_info.NotSupportedWithAutoScalingError: Always.
     """
     raise request_info.NotSupportedWithAutoScalingError()
 
@@ -1519,9 +1516,8 @@ class ManualScalingModule(Module):
     if self._module_configuration.is_backend:
       environ['BACKEND_ID'] = self._module_configuration.module_name
     else:
-      environ['BACKEND_ID'] = appinfo.MODULE_SEPARATOR.join([
-          self._module_configuration.module_name,
-          self._module_configuration.version_id.split('.', 1)[0]])
+      environ['BACKEND_ID'] = (
+          self._module_configuration.version_id.split('.', 1)[0])
     if inst is not None:
       return self._handle_instance_request(
           environ, start_response, url_map, match, request_id, inst,
@@ -1669,7 +1665,7 @@ class ManualScalingModule(Module):
     """Suspends serving for this module, quitting all running instances."""
     with self._instances_change_lock:
       if self._suspended:
-        raise request_info.ModuleAlreadyStoppedError()
+        raise request_info.VersionAlreadyStoppedError()
       self._suspended = True
       with self._condition:
         instances_to_stop = zip(self._instances, self._wsgi_servers)
@@ -1689,7 +1685,7 @@ class ManualScalingModule(Module):
     """Resumes serving for this module."""
     with self._instances_change_lock:
       if not self._suspended:
-        raise request_info.ModuleAlreadyStartedError()
+        raise request_info.VersionAlreadyStartedError()
       self._suspended = False
       with self._condition:
         if self._quit_event.is_set():
@@ -1711,7 +1707,7 @@ class ManualScalingModule(Module):
       self._async_start_instance(wsgi_servr, inst)
 
   def restart(self):
-    """Restarts the the module, replacing all running instances."""
+    """Restarts the module, replacing all running instances."""
     with self._instances_change_lock:
       with self._condition:
         if self._quit_event.is_set():
@@ -2027,9 +2023,8 @@ class BasicScalingModule(Module):
     if self._module_configuration.is_backend:
       environ['BACKEND_ID'] = self._module_configuration.module_name
     else:
-      environ['BACKEND_ID'] = appinfo.MODULE_SEPARATOR.join([
-          self._module_configuration.module_name,
-          self._module_configuration.version_id.split('.', 1)[0]])
+      environ['BACKEND_ID'] = (
+          self._module_configuration.version_id.split('.', 1)[0])
     if inst is not None:
       return self._handle_instance_request(
           environ, start_response, url_map, match, request_id, inst,
@@ -2172,7 +2167,7 @@ class BasicScalingModule(Module):
     self._async_shutdown_instance(inst, wsgi_servr.port)
 
   def restart(self):
-    """Restarts the the module, replacing all running instances."""
+    """Restarts the module, replacing all running instances."""
     instances_to_stop = []
     instances_to_start = []
     with self._condition:
@@ -2377,7 +2372,7 @@ class InteractiveCommandModule(Module):
       return ['The command timed-out while waiting for another one to complete']
 
   def restart(self):
-    """Restarts the the module."""
+    """Restarts the module."""
     with self._inst_lock:
       if self._inst:
         self._inst.quit(force=True)

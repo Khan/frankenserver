@@ -103,6 +103,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
     self._go_application = go_application.GoApplication(
         self._module_configuration)
     self._modified_since_last_build = False
+    self._last_build_error = None
 
   def get_restart_directories(self):
     """Returns a list of directories changes in which should trigger a restart.
@@ -161,17 +162,26 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
 
     with self._application_lock:
       try:
-        self._go_application.maybe_build(self._modified_since_last_build)
+        if self._go_application.maybe_build(self._modified_since_last_build):
+          if self._last_build_error:
+            logging.info('Go application successfully built.')
+          self._last_build_error = None
       except go_application.BuildError as e:
         logging.error('Failed to build Go application: %s', e)
-        proxy = _GoBuildFailureRuntimeProxy(e)
+        # Deploy a failure proxy now and each time a new instance is requested.
+        self._last_build_error = e
+
+      self._modified_since_last_build = False
+
+      if self._last_build_error:
+        logging.debug('Deploying new instance of failure proxy.')
+        proxy = _GoBuildFailureRuntimeProxy(self._last_build_error)
       else:
         proxy = http_runtime.HttpRuntimeProxy(
             self._go_application.go_executable,
             instance_config_getter,
             self._module_configuration,
             self._go_application.get_environment())
-      self._modified_since_last_build = False
 
     return instance.Instance(self.request_data,
                              instance_id,

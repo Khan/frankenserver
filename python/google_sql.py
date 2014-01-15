@@ -106,6 +106,9 @@ EXTRA_PATHS = [
   os.path.join(DIR_PATH, 'lib', 'webapp2-2.5.2'),
   os.path.join(DIR_PATH, 'lib', 'yaml', 'lib'),
   os.path.join(DIR_PATH, 'lib', 'simplejson'),
+  os.path.join(DIR_PATH, 'lib', 'rsa'),
+  os.path.join(DIR_PATH, 'lib', 'pyasn1'),
+  os.path.join(DIR_PATH, 'lib', 'pyasn1_modules'),
 ]
 
 API_SERVER_EXTRA_PATHS = [

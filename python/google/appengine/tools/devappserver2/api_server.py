@@ -210,6 +210,8 @@ def setup_stubs(
     app_id,
     application_root,
     trusted,
+    appidentity_email_address,
+    appidentity_private_key_path,
     blobstore_path,
     datastore_consistency,
     datastore_path,
@@ -240,6 +242,12 @@ def setup_stubs(
     application_root: The path to the directory containing the user's
         application e.g. "/home/joe/myapp".
     trusted: A bool indicating if privileged APIs should be made available.
+    appidentity_email_address: Email address associated with a service account
+        that has a downloadable key. May be None for no local application
+        identity.
+    appidentity_private_key_path: Path to private key file associated with
+        service account (.pem format). Must be set if appidentity_email_address
+        is set.
     blobstore_path: The path to the file that should be used for blobstore
         storage.
     datastore_consistency: The datastore_stub_util.BaseConsistencyPolicy to
@@ -284,7 +292,9 @@ def setup_stubs(
     default_gcs_bucket_name: A str, overriding the default bucket behavior.
   """
 
-  identity_stub = app_identity_stub.AppIdentityServiceStub()
+  identity_stub = app_identity_stub.AppIdentityServiceStub.Create(
+      email_address=appidentity_email_address,
+      private_key_path=appidentity_private_key_path)
   if default_gcs_bucket_name is not None:
     identity_stub.SetDefaultGcsBucketName(default_gcs_bucket_name)
   apiproxy_stub_map.apiproxy.RegisterStub('app_identity_service', identity_stub)
@@ -462,6 +472,8 @@ def test_setup_stubs(
     app_id='myapp',
     application_root='/tmp/root',
     trusted=False,
+    appidentity_email_address=None,
+    appidentity_private_key_path=None,
     blobstore_path='/dev/null',
     datastore_consistency=None,
     datastore_path=':memory:',
@@ -496,6 +508,8 @@ def test_setup_stubs(
               app_id,
               application_root,
               trusted,
+              appidentity_email_address,
+              appidentity_private_key_path,
               blobstore_path,
               datastore_consistency,
               datastore_path,

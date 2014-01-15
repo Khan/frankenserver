@@ -38,12 +38,6 @@ use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\Error;
 use google\appengine\runtime\MemcacheUtils;
 
-require_once 'google/appengine/api/memcache/memcache_service_pb.php';
-require_once 'google/appengine/runtime/MemcacheUtils.php';
-require_once 'google/appengine/runtime/Memcache.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/Error.php';
-
 class Memcached {
 
   /**
@@ -876,7 +870,7 @@ class Memcached {
   /**
    * Replace is similar to Memcache::set(), but the operation will fail if the
    * key is not found on the server.
-   * 
+   *
    * @param string $key The key under which to store the value.
    * @param mixed $value The value to store.
    * @param int $expiration The expiration time, defaults to 0.
@@ -891,7 +885,7 @@ class Memcached {
   }
 
   /**
-   * @see Memecached::replace()
+   * @see Memcached::replace()
    *
    * @param string $server_key This parameter is ignored.
    * @param string $key The key under which to store the value.

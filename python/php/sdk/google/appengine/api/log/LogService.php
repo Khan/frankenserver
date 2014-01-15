@@ -19,18 +19,12 @@
 
 namespace google\appengine\api\log;
 
-require_once 'google/appengine/api/logservice/log_service_pb.php';
-require_once 'google/appengine/api/log/RequestLogIterator.php';
-require_once 'google/appengine/api/log/LogException.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/util/string_util.php';
-
 use google\appengine\LogReadRequest;
 use google\appengine\LogReadResponse;
 use google\appengine\LogServiceError\ErrorCode;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
-use google\appengine\util as util;
+use google\appengine\util\StringUtil;
 
 /**
  * The LogService allows an application to query for request and application
@@ -161,7 +155,7 @@ final class LogService {
           if (!is_string($value)) {
             self::optionTypeException($key, $value, 'string');
           }
-          $decoded = util\base64UrlDecode($value);
+          $decoded = StringUtil::base64UrlDecode($value);
           $request->mutableOffset()->parseFromString($decoded);
           break;
         case 'minimum_log_level':

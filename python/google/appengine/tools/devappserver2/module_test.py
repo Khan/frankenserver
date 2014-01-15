@@ -70,7 +70,7 @@ class ModuleConfigurationStub(object):
     self.handlers = handlers
     self.normalized_libraries = normalized_libraries or []
     self.env_variables = env_variables or []
-    self.version_id = '%s.%s' % (version, '12345')
+    self.version_id = '%s:%s.%s' % (module_name, version, '12345')
     self.is_backend = False
 
   def check_for_updates(self):
@@ -1602,11 +1602,11 @@ class TestManualScalingInstancePoolSuspendAndResume(unittest.TestCase):
 
   def test_already_suspended(self):
     self.module._suspended = True
-    self.assertRaises(request_info.ModuleAlreadyStoppedError,
+    self.assertRaises(request_info.VersionAlreadyStoppedError,
                       self.module.suspend)
 
   def test_already_resumed(self):
-    self.assertRaises(request_info.ModuleAlreadyStartedError,
+    self.assertRaises(request_info.VersionAlreadyStartedError,
                       self.module.resume)
 
   def test_suspend_instance(self):

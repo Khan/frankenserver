@@ -16,8 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/Error.php';
-
 /**
  * Thrown by APIProxy calls if there is an error parsing the arguments.
  */

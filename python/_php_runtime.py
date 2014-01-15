@@ -95,6 +95,9 @@ _STUB_DEPENDENCIES = [
     os.path.join(_DIR_PATH, 'lib', 'fancy_urllib'),
     os.path.join(_DIR_PATH, 'lib', 'ipaddr'),
     os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
+    os.path.join(_DIR_PATH, 'lib', 'rsa'),
+    os.path.join(_DIR_PATH, 'lib', 'pyasn1'),
+    os.path.join(_DIR_PATH, 'lib', 'pyasn1_modules'),
     ]
 
 
@@ -108,6 +111,7 @@ EXTRA_PATHS = _STUB_DEPENDENCIES + [
 
 
     os.path.join(_DIR_PATH, 'lib', 'django-1.4'),
+    os.path.join(_DIR_PATH, 'lib', 'endpoints-1.0'),
     os.path.join(_DIR_PATH, 'lib', 'jinja2-2.6'),
     os.path.join(_DIR_PATH, 'lib', 'protorpc-1.0'),
     os.path.join(_DIR_PATH, 'lib', 'PyAMF-0.6.1'),

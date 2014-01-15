@@ -46,6 +46,7 @@ class XmppServiceError(ProtocolBuffer.ProtocolMessage):
   INVALID_SHOW =    6
   EXCEEDED_MAX_SIZE =    7
   APPID_ALIAS_REQUIRED =    8
+  NONDEFAULT_MODULE =    9
 
   _ErrorCode_NAMES = {
     1: "UNSPECIFIED_ERROR",
@@ -56,6 +57,7 @@ class XmppServiceError(ProtocolBuffer.ProtocolMessage):
     6: "INVALID_SHOW",
     7: "EXCEEDED_MAX_SIZE",
     8: "APPID_ALIAS_REQUIRED",
+    9: "NONDEFAULT_MODULE",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

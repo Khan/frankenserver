@@ -428,6 +428,8 @@ class CreateUploadURLResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CreateUploadURLResponse'
 class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
+  has_token_ = 0
+  token_ = ""
 
   def __init__(self, contents=None):
     self.blob_key_ = []
@@ -448,16 +450,32 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
   def clear_blob_key(self):
     self.blob_key_ = []
 
+  def token(self): return self.token_
+
+  def set_token(self, x):
+    self.has_token_ = 1
+    self.token_ = x
+
+  def clear_token(self):
+    if self.has_token_:
+      self.has_token_ = 0
+      self.token_ = ""
+
+  def has_token(self): return self.has_token_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.blob_key_size()): self.add_blob_key(x.blob_key(i))
+    if (x.has_token()): self.set_token(x.token())
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.blob_key_) != len(x.blob_key_): return 0
     for e1, e2 in zip(self.blob_key_, x.blob_key_):
       if e1 != e2: return 0
+    if self.has_token_ != x.has_token_: return 0
+    if self.has_token_ and self.token_ != x.token_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -468,32 +486,44 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.blob_key_)
     for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.blob_key_)
     for i in xrange(len(self.blob_key_)): n += self.lengthString(len(self.blob_key_[i]))
+    if (self.has_token_): n += 1 + self.lengthString(len(self.token_))
     return n
 
   def Clear(self):
     self.clear_blob_key()
+    self.clear_token()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
+    if (self.has_token_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.token_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.blob_key_)):
       out.putVarInt32(10)
       out.putPrefixedString(self.blob_key_[i])
+    if (self.has_token_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.token_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.add_blob_key(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_token(d.getPrefixedString())
         continue
 
 
@@ -509,6 +539,7 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("blob_key%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if self.has_token_: res+=prefix+("token: %s\n" % self.DebugFormatString(self.token_))
     return res
 
 
@@ -516,16 +547,19 @@ class DeleteBlobRequest(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kblob_key = 1
+  ktoken = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "blob_key",
-  }, 1)
+    2: "token",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

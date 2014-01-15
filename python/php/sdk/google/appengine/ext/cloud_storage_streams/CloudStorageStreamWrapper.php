@@ -23,18 +23,8 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageDeleteClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageDirectoryClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageReadClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageRenameClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageUrlStatClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageWriteClient.php';
-require_once 'google/appengine/util/array_util.php';
-
 use google\appengine\api\cloud_storage\CloudStorageTools;
-use google\appengine\util as util;
+use google\appengine\util\ArrayUtil;
 
 /**
  * Allowed stream_context options.
@@ -81,14 +71,14 @@ final class CloudStorageStreamWrapper {
    * Open a directory handle.
    */
   public function dir_opendir($path, $options) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $path)) {
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object)) {
       trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
                     E_USER_ERROR);
       return false;
     }
 
     $this->client = new CloudStorageDirectoryClient($bucket,
-                                                    $path,
+                                                    $object,
                                                     $this->context);
     return $this->client->initialise();
   }
@@ -115,7 +105,7 @@ final class CloudStorageStreamWrapper {
   }
 
   public function mkdir($path, $mode, $options) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $object) ||
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object) ||
         !isset($object)) {
       if (($options | STREAM_REPORT_ERRORS) != 0) {
         trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
@@ -130,7 +120,7 @@ final class CloudStorageStreamWrapper {
   }
 
   public function rmdir($path, $options) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $object) ||
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object) ||
         !isset($object)) {
       if (($options | STREAM_REPORT_ERRORS) != 0) {
         trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
@@ -150,13 +140,13 @@ final class CloudStorageStreamWrapper {
    * @return TRUE if the object was renamed, FALSE otherwise
    */
   public function rename($from, $to) {
-    if (!$this->getBucketAndObjectFromPath($from, $from_bucket, $from_object) ||
+    if (!CloudStorageTools::parseFilename($from, $from_bucket, $from_object) ||
         !isset($from_object)) {
       trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $from),
                     E_USER_ERROR);
       return false;
     }
-    if (!$this->getBucketAndObjectFromPath($to, $to_bucket, $to_object) ||
+    if (!CloudStorageTools::parseFilename($to, $to_bucket, $to_object) ||
         !isset($to_object)) {
       trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $to),
                     E_USER_ERROR);
@@ -219,7 +209,7 @@ final class CloudStorageStreamWrapper {
   }
 
   public function stream_open($path, $mode, $options, &$opened_path) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $object) ||
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object) ||
         !isset($object)) {
       if (($options & STREAM_REPORT_ERRORS) != 0) {
         trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
@@ -307,7 +297,7 @@ final class CloudStorageStreamWrapper {
    * Deletes a file. Called in response to unlink($filename).
    */
   public function unlink($path) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $object) ||
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object) ||
         !isset($object)) {
       trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
               E_USER_ERROR);
@@ -321,7 +311,7 @@ final class CloudStorageStreamWrapper {
   }
 
   public function url_stat($path, $flags) {
-    if (!$this->getBucketAndObjectFromPath($path, $bucket, $object)) {
+    if (!CloudStorageTools::parseFilename($path, $bucket, $object)) {
       if (($flags & STREAM_URL_STAT_QUIET) != 0) {
         trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
                 E_USER_ERROR);
@@ -336,37 +326,4 @@ final class CloudStorageStreamWrapper {
     return $client->stat();
   }
 
-  /**
-   * Parse the supplied path and extract the bucket and object names from it.
-   * It is possible that there is no object name in the path and a null will be
-   * returned in the $object parameters if this is the case.
-   */
-  private function getBucketAndObjectFromPath($path, &$bucket, &$object) {
-    // Decompose the $path into the GCS url components and check
-    $url_parts = parse_url($path);
-
-    if ($url_parts === false) {
-      return false;
-    }
-    if ($url_parts['scheme'] !== 'gs' || empty($url_parts['host'])) {
-      trigger_error(sprintf("Invalid Google Cloud Storage path: %s", $path),
-                    E_USER_ERROR);
-      return false;
-    }
-    $bucket = $url_parts['host'];
-    $object = null;
-    $path = util\findByKeyOrNull($url_parts, 'path');
-    if (isset($path) && $path !== "/") {
-      $object = $path;
-    }
-
-    // Validate bucket & object names.
-    try {
-      CloudStorageTools::getFilename($bucket, $object);
-    } catch (\InvalidArgumentException $e) {
-      return false;
-    }
-
-    return true;
-  }
 }

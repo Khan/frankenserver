@@ -123,9 +123,15 @@ class ModuleConfiguration(object):
 
   @property
   def version_id(self):
-    return '%s.%s' % (
-        self.major_version,
-        self._minor_version_id)
+    if self.module_name == 'default':
+      return '%s.%s' % (
+          self.major_version,
+          self._minor_version_id)
+    else:
+      return '%s:%s.%s' % (
+          self.module_name,
+          self.major_version,
+          self._minor_version_id)
 
   @property
   def runtime(self):
@@ -377,7 +383,8 @@ class BackendConfiguration(object):
 
   @property
   def version_id(self):
-    return '%s.%s' % (
+    return '%s:%s.%s' % (
+        self.module_name,
         self.major_version,
         self._minor_version_id)
 

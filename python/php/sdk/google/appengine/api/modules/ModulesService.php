@@ -296,12 +296,12 @@ final class ModulesService {
    * @throws \InvalidArgumentException If $module or $version is not a string.
    * @throws ModulesException if the given combination of $module and $version
    * is invalid.
-   * @throws InvalidModuleStateException if the given $module is already
+   * @throws InvalidModuleStateException if the given $version is already
    * started or cannot be started.
    * @throws TransientModulesException if there is an issue starting the module
    * version.
    */
-  public static function startModule($module, $version) {
+  public static function startVersion($module, $version) {
     $req = new StartModuleRequest();
     $resp = new StartModuleResponse();
 
@@ -336,12 +336,12 @@ final class ModulesService {
    * @throws \InvalidArgumentException If $module or $version is not a string.
    * @throws ModulesException if the given combination of $module and $version
    * instance is invalid.
-   * @throws InvalidModuleStateException if the given $module is already
+   * @throws InvalidModuleStateException if the given $version is already
    * stopped or cannot be stopped.
    * @throws TransientModulesException if there is an issue stopping the module
    * version.
    */
-  public static function stopModule($module = null, $version = null) {
+  public static function stopVersion($module = null, $version = null) {
     $req = new StopModuleRequest();
     $resp = new StopModuleResponse();
 

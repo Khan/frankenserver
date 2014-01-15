@@ -33,16 +33,8 @@ use google\appengine\files\GetDefaultGsBucketNameRequest;
 use google\appengine\files\GetDefaultGsBucketNameResponse;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
-use google\appengine\util as util;
-
-require_once 'google/appengine/api/blobstore/blobstore_service_pb.php';
-require_once 'google/appengine/api/cloud_storage/CloudStorageException.php';
-require_once 'google/appengine/api/files/file_service_pb.php';
-require_once 'google/appengine/api/images/images_service_pb.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/util/array_util.php';
+use google\appengine\util\ArrayUtil;
+use google\appengine\util\StringUtil;
 
 /**
  * CloudStorageTools allows the user to create and serve data with
@@ -58,8 +50,14 @@ final class CloudStorageTools {
   // The GCS endpoint path when running in the dev appserver.
   const LOCAL_ENDPOINT = "/_ah/gcs";
 
-  // The storage host when running in production.
-  const PRODUCTION_HOST = "storage.googleapis.com";
+  // The storage host when running in production
+  // - The subdomain format is more secure but does not work for HTTPS if the
+  //   bucket name contains ".". This is becuase the wildcard SSL certificate
+  //   used by GCS can only validate one level of subdomain.
+  // - The path format is less secure and should only be used for the specific
+  //   case when the subdomain format fails.
+  const PRODUCTION_HOST_SUBDOMAIN_FORMAT = "%s.storage.googleapis.com";
+  const PRODUCTION_HOST_PATH_FORMAT = "storage.googleapis.com/%s";
 
   // The GCS filename format (bucket, object).
   const GS_FILENAME_FORMAT = "gs://%s/%s";
@@ -80,9 +78,9 @@ final class CloudStorageTools {
       'use_range'];
 
   private static $get_image_serving_url_default_options = [
-    'crop'       => false,
-    'secure_url' => false,
-    'size'       => null,
+      'crop'       => false,
+      'secure_url' => false,
+      'size'       => null,
   ];
 
   /**
@@ -91,7 +89,20 @@ final class CloudStorageTools {
    * expected to be a closure that accepts a key, value pair where key is the
    * header name, and value is the header value.
    */
-  static private $send_header = null;
+  private static $send_header = null;
+
+  /**
+   * Object names may contain characters that need to be percent-encoded when
+   * building the URL. All characters allowed for bucket name are URL-safe. See
+   * https://developers.google.com/storage/docs/bucketnaming#requirements for
+   * more details.
+   */
+  private static $url_path_translation_map = [
+      ' ' => '%20',
+      '#' => '%23',
+      '%' => '%25',
+      '?' => '%3F',
+  ];
 
   /**
    * Create an absolute URL that can be used by a user to asynchronously upload
@@ -323,26 +334,39 @@ final class CloudStorageTools {
    * format or $use_https is not a boolean.
    */
   public static function getPublicUrl($gs_filename, $use_https) {
-    $path = self::stripGsPrefix($gs_filename);
-
     if (!is_bool($use_https)) {
       throw new \InvalidArgumentException(
           'Parameter $use_https must be boolean but was ' .
           typeOrClass($use_https));
     }
 
-    if (self::isDevelServer()) {
-      $scheme = "http";
-      $url_base = sprintf("%s%s", getenv('HTTP_HOST'), self::LOCAL_ENDPOINT);
-    } else {
-      $scheme = $use_https ? "https" : "http";
-      $url_base = self::PRODUCTION_HOST;
+    if (!self::parseFilename($gs_filename, $bucket, $object)) {
+      throw new \InvalidArgumentException(
+          sprintf('Invalid Google Cloud Storage filename: %s', $gs_filename));
     }
 
-    return sprintf("%s://%s/%s",
+    if (self::isDevelServer()) {
+      $scheme = 'http';
+      $host = getenv('HTTP_HOST');
+      $path = sprintf('%s/%s%s', self::LOCAL_ENDPOINT, $bucket, $object);
+    } else {
+      // Use path format for HTTPS URL when the bucket name contains "." to
+      // avoid SSL certificate validation issue.
+      if ($use_https && strpos($bucket, '.') !== false) {
+        $format = self::PRODUCTION_HOST_PATH_FORMAT;
+      } else {
+        $format = self::PRODUCTION_HOST_SUBDOMAIN_FORMAT;
+      }
+
+      $scheme = $use_https ? 'https' : 'http';
+      $host = sprintf($format, $bucket);
+      $path = $object;
+    }
+
+    return sprintf('%s://%s%s',
                    $scheme,
-                   $url_base,
-                   str_replace('%', urlencode('%'), $path));
+                   $host,
+                   strtr($path, self::$url_path_translation_map));
   }
 
   /**
@@ -358,15 +382,70 @@ final class CloudStorageTools {
   public static function getFilename($bucket, $object) {
     if (self::validateBucketName($bucket) === false) {
       throw new \InvalidArgumentException(
-          sprintf('Invalid cloud storage bucket name \'%s\' ', $bucket));
+          sprintf('Invalid cloud storage bucket name \'%s\'', $bucket));
     }
 
     if (self::validateObjectName($object) === false) {
       throw new \InvalidArgumentException(
-          sprintf('Invalid cloud storage object name \'%s\' ', $object));
+          sprintf('Invalid cloud storage object name \'%s\'', $object));
     }
 
     return sprintf(self::GS_FILENAME_FORMAT, $bucket, $object);
+  }
+
+  /**
+   * Parse and extract the bucket and object names from the supplied filename.
+   *
+   * @param string $filename The filename in the format gs://bucket_name or
+   * gs://bucket_name/object_name.
+   * @param string &$bucket The extracted bucket.
+   * @param string &$object The extracted bucket. Can be null if the filename
+   * contains only bucket name.
+   *
+   * @return bool true if the filename is successfully parsed, false otherwise.
+   */
+  public static function parseFilename($filename, &$bucket, &$object) {
+    $bucket = null;
+    $object = null;
+
+    // $filename may contain nasty characters like # and ? that can throw off
+    // parse_url(). It is best to do a manual parse here.
+    $gs_prefix_len = strlen(self::GS_PREFIX);
+    if (!StringUtil::startsWith($filename, self::GS_PREFIX)) {
+      return false;
+    }
+
+    $first_slash_pos = strpos($filename, '/', $gs_prefix_len);
+    if ($first_slash_pos === false) {
+      $bucket = substr($filename, $gs_prefix_len);
+    } else {
+      $bucket = substr($filename, $gs_prefix_len,
+          $first_slash_pos - $gs_prefix_len);
+      // gs://bucket_name/ is treated the same as gs://bucket_name where
+      // $object should be set to null.
+      if ($first_slash_pos != strlen($filename) - 1) {
+        $object = substr($filename, $first_slash_pos);
+      }
+    }
+
+    if (strlen($bucket) == 0) {
+      return false;
+    }
+
+    // Validate bucket & object names.
+    if (self::validateBucketName($bucket) === false) {
+      trigger_error(sprintf('Invalid cloud storage bucket name \'%s\'',
+          $bucket), E_USER_ERROR);
+      return false;
+    }
+
+    if (isset($object) && self::validateObjectName($object) === false) {
+      trigger_error(sprintf('Invalid cloud storage object name \'%s\'',
+          $object), E_USER_ERROR);
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -472,17 +551,17 @@ final class CloudStorageTools {
     }
 
     // Determine the range to send
-    $start = util\findByKeyOrNull($options, "start");
-    $end = util\findByKeyOrNull($options, "end");
-    $use_range = util\findByKeyOrNull($options, "use_range");
-    $request_range_header = util\findByKeyOrNull($_SERVER, "HTTP_RANGE");
+    $start = ArrayUtil::findByKeyOrNull($options, "start");
+    $end = ArrayUtil::findByKeyOrNull($options, "end");
+    $use_range = ArrayUtil::findByKeyOrNull($options, "use_range");
+    $request_range_header = ArrayUtil::findByKeyOrNull($_SERVER, "HTTP_RANGE");
 
     $range_header = self::checkRanges($start,
                                       $end,
                                       $use_range,
                                       $request_range_header);
 
-    $save_as = util\findByKeyOrNull($options, "save_as");
+    $save_as = ArrayUtil::findByKeyOrNull($options, "save_as");
     if (isset($save_as) && !is_string($save_as)) {
       throw new \InvalidArgumentException("Unexpected value for save_as.");
     }
@@ -494,7 +573,7 @@ final class CloudStorageTools {
       self::sendHeader(self::BLOB_RANGE_HEADER, $range_header);
     }
 
-    $content_type = util\findByKeyOrNull($options, "content_type");
+    $content_type = ArrayUtil::findByKeyOrNull($options, "content_type");
     if (isset($content_type)) {
       self::sendHeader("Content-Type", $content_type);
     }

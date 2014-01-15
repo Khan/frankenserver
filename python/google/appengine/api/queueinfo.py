@@ -145,7 +145,6 @@ from google.appengine.api.taskqueue import taskqueue_service_pb
 _NAME_REGEX = r'^[A-Za-z0-9-]{0,499}$'
 _RATE_REGEX = r'^(0|[0-9]+(\.[0-9]*)?/[smhd])'
 _TOTAL_STORAGE_LIMIT_REGEX = r'^([0-9]+(\.[0-9]*)?[BKMGT]?)'
-_TASK_AGE_LIMIT_REGEX = r'^([0-9]+(\.[0-9]*(e-?[0-9]+))?[smhd])'
 _MODE_REGEX = r'(pull)|(push)'
 
 
@@ -190,7 +189,7 @@ class RetryParameters(validation.Validated):
   """Retry parameters for a single task queue."""
   ATTRIBUTES = {
       TASK_RETRY_LIMIT: validation.Optional(validation.TYPE_INT),
-      TASK_AGE_LIMIT: validation.Optional(_TASK_AGE_LIMIT_REGEX),
+      TASK_AGE_LIMIT: validation.Optional(validation.TimeValue()),
       MIN_BACKOFF_SECONDS: validation.Optional(validation.TYPE_FLOAT),
       MAX_BACKOFF_SECONDS: validation.Optional(validation.TYPE_FLOAT),
       MAX_DOUBLINGS: validation.Optional(validation.TYPE_INT),

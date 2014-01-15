@@ -17,6 +17,7 @@
 """Stub implementation for Log Service that uses sqlite."""
 
 import atexit
+import codecs
 import logging
 import time
 
@@ -215,7 +216,7 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
   def _tuple_from_log_line(row_id, log_line):
     message = log_line.message()
     if isinstance(message, str):
-      message = message.decode('utf-8')
+      message = codecs.decode(message, 'utf-8', 'replace')
     return (row_id, log_line.timestamp_usec(), log_line.level(), message)
 
   @apiproxy_stub.Synchronized

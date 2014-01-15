@@ -24,8 +24,6 @@
 
 namespace google\appengine\ext\session;
 
-require_once 'google/appengine/runtime/Memcache.php';
-
 /**
  * Remove direct interaction with Memcache object for ease of mocking in tests.
  */

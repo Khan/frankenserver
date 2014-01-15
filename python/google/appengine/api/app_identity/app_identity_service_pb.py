@@ -1917,12 +1917,19 @@ class SigningService(_server_stub_base_class):
 
   @classmethod
   def _MethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <response-type>)}."""
     return {
       'SignForApp': (SignForAppRequest, SignForAppResponse),
       'GetPublicCertificatesForApp': (GetPublicCertificateForAppRequest, GetPublicCertificateForAppResponse),
       'GetServiceAccountName': (GetServiceAccountNameRequest, GetServiceAccountNameResponse),
       'GetAccessToken': (GetAccessTokenRequest, GetAccessTokenResponse),
       'GetDefaultGcsBucketName': (GetDefaultGcsBucketNameRequest, GetDefaultGcsBucketNameResponse),
+      }
+
+  @classmethod
+  def _StreamMethodSignatures(cls):
+    """Returns a dict of {<method-name>: (<request-type>, <stream-type>, <response-type>)}."""
+    return {
       }
 
   def __init__(self, *args, **kwargs):

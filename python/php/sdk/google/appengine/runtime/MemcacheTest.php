@@ -345,4 +345,27 @@ class MemcacheTest extends ApiProxyTestBase {
     $this->assertTrue(memcache_set($memcache, "float", 2.0, null, 30));
     $this->apiProxyMock->verify();
   }
+
+  public function testSetSuccessCompressed() {
+    $memcache = new Memcache();
+
+    $request = new MemcacheSetRequest();
+    $item = $request->addItem();
+    $item->setKey("float");
+    $item->setValue("3");
+    $item->setFlags(6);  // float
+    $item->setSetPolicy(SetPolicy::SET);
+    $item->setExpirationTime(30);
+
+    $response = new MemcacheSetResponse();
+    $response->addSetStatus(SetStatusCode::STORED);
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Set',
+                                    $request,
+                                    $response);
+    $this->assertTrue(memcache_set($memcache, "float", 3.0, MEMCACHE_COMPRESSED,
+                                   30));
+    $this->apiProxyMock->verify();
+  }
 }

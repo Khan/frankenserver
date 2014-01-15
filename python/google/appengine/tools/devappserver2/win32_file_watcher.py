@@ -48,6 +48,9 @@ _INTERESTING_NOTIFICATIONS = (FILE_NOTIFY_CHANGE_FILE_NAME |
 class Win32FileWatcher(object):
   """Monitors a directory tree for changes using inotify."""
 
+  # TODO: evaluate whether we can directly support multiple directories.
+  SUPPORTS_MULTIPLE_DIRECTORIES = False
+
   def __init__(self, directory):
     """Initializer for InotifyFileWatcher.
 

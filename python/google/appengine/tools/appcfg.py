@@ -72,6 +72,7 @@ from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
 from google.appengine.tools import appcfg_java
 from google.appengine.tools import appengine_rpc
+
 try:
 
 
@@ -80,6 +81,7 @@ except ImportError:
   appengine_rpc_httplib2 = None
 from google.appengine.tools import bulkloader
 from google.appengine.tools import sdk_update_checker
+
 
 
 LIST_DELIMITER = '\n'
@@ -117,7 +119,7 @@ SDK_PRODUCT = 'appcfg_py'
 DAY = 24*3600
 SUNDAY = 6
 
-SUPPORTED_RUNTIMES = ('go', 'php', 'python', 'python27', 'java', 'java7')
+SUPPORTED_RUNTIMES = ('go', 'php', 'python', 'python27', 'java', 'java7', 'vm')
 
 
 
@@ -150,6 +152,9 @@ STATIC_FILE_PREFIX = '__static__'
 METADATA_BASE = 'http://metadata.google.internal'
 SERVICE_ACCOUNT_BASE = (
     'computeMetadata/v1beta1/instance/service-accounts/default')
+
+
+APP_YAML_FILENAME = 'app.yaml'
 
 
 class Error(Exception):
@@ -299,7 +304,8 @@ class FileClassification(object):
     Returns:
       True if the file should be considered a static resource based on its name.
     """
-    return ('__static__' + os.sep) in filename
+    static = '__static__' + os.sep
+    return static in filename
 
   @staticmethod
   def __GetAppReadableIfStaticFile(config, filename):
@@ -1911,8 +1917,6 @@ class AppVersionUpload(object):
     def PrintRetryMessage(_, delay):
       StatusUpdate('Will check again in %s seconds.' % delay)
 
-    app_summary = None
-
     app_summary = self.Deploy()
 
 
@@ -2060,7 +2064,7 @@ class AppVersionUpload(object):
     if message:
       StatusUpdate(message)
     if fatal:
-      raise CannotStartServingError(fatal)
+      raise CannotStartServingError(message or 'Unknown error.')
     return result['serving'], result
 
   @staticmethod
@@ -2136,30 +2140,7 @@ class AppVersionUpload(object):
     path = ''
     try:
       self.resource_limits = GetResourceLimits(self.rpcserver, self.config)
-
-      StatusUpdate('Scanning files on local disk.')
-      num_files = 0
-      for path in paths:
-        file_handle = openfunc(path)
-        file_classification = FileClassification(self.config, path)
-        try:
-          file_length = GetFileLength(file_handle)
-          if file_classification.IsApplicationFile():
-            max_size = self.resource_limits['max_file_size']
-          else:
-            max_size = self.resource_limits['max_blob_size']
-          if file_length > max_size:
-            logging.error('Ignoring file \'%s\': Too long '
-                          '(max %d bytes, file is %d bytes)',
-                          path, max_size, file_length)
-          else:
-            logging.info('Processing file \'%s\'', path)
-            self.AddFile(path, file_handle)
-        finally:
-          file_handle.close()
-        num_files += 1
-        if num_files % 500 == 0:
-          StatusUpdate('Scanned %d files.' % num_files)
+      self._AddFilesThatAreSmallEnough(paths, openfunc)
     except KeyboardInterrupt:
       logging.info('User interrupted. Aborting.')
       raise
@@ -2168,28 +2149,9 @@ class AppVersionUpload(object):
                     path, e)
       raise
 
-    app_summary = None
     try:
-
       missing_files = self.Begin()
-      if missing_files:
-        StatusUpdate('Uploading %d files and blobs.' % len(missing_files))
-        num_files = 0
-        for missing_file in missing_files:
-          file_handle = openfunc(missing_file)
-          try:
-            self.UploadFile(missing_file, file_handle)
-          finally:
-            file_handle.close()
-          num_files += 1
-          if num_files % 500 == 0:
-            StatusUpdate('Processed %d out of %s.' %
-                         (num_files, len(missing_files)))
-
-        self.file_batcher.Flush()
-        self.blob_batcher.Flush()
-        self.errorblob_batcher.Flush()
-        StatusUpdate('Uploaded %d files and blobs' % num_files)
+      self._UploadMissingFiles(missing_files, openfunc)
 
 
       if (self.config.derived_file_type and
@@ -2197,7 +2159,6 @@ class AppVersionUpload(object):
         try:
           self.Precompile()
         except urllib2.HTTPError, e:
-
           ErrorUpdate('Error %d: --- begin server output ---\n'
                       '%s\n--- end server output ---' %
                       (e.code, e.read().rstrip('\n')))
@@ -2218,28 +2179,109 @@ class AppVersionUpload(object):
       app_summary = self.Commit()
       StatusUpdate('Completed update of %s' % self.Describe())
 
-    except KeyboardInterrupt:
-
-      logging.info('User interrupted. Aborting.')
-      self.Rollback()
-      raise
-    except urllib2.HTTPError, err:
-
-      logging.info('HTTP Error (%s)', err)
-      self.Rollback()
-      raise
-    except CannotStartServingError, err:
-
-      logging.error(err.message)
-      self.Rollback()
-      raise
-    except:
-      logging.exception('An unexpected error occurred. Aborting.')
+    except BaseException, e:
+      self._LogDoUploadException(e)
       self.Rollback()
       raise
 
     logging.info('Done!')
     return app_summary
+
+  def _AddFilesThatAreSmallEnough(self, paths, openfunc):
+    """Calls self.AddFile on files that are small enough.
+
+    By small enough, we mean that their size is within
+    self.resource_limits['max_file_size'] for application files, and
+    'max_blob_size' otherwise. Files that are too large are logged as errors,
+    and dropped (not sure why this isn't handled by raising an exception...).
+
+    Args:
+      paths: List of paths, relative to the app's base path.
+      openfunc: A function that takes a paths element, and returns a file-like
+        object.
+    """
+    StatusUpdate('Scanning files on local disk.')
+    num_files = 0
+    for path in paths:
+      file_handle = openfunc(path)
+      try:
+        file_length = GetFileLength(file_handle)
+
+
+        file_classification = FileClassification(self.config, path)
+        if file_classification.IsApplicationFile():
+          max_size = self.resource_limits['max_file_size']
+        else:
+          max_size = self.resource_limits['max_blob_size']
+
+
+        if file_length > max_size:
+          logging.error('Ignoring file \'%s\': Too long '
+                        '(max %d bytes, file is %d bytes)',
+                        path, max_size, file_length)
+        else:
+          logging.info('Processing file \'%s\'', path)
+          self.AddFile(path, file_handle)
+      finally:
+        file_handle.close()
+
+
+      num_files += 1
+      if num_files % 500 == 0:
+        StatusUpdate('Scanned %d files.' % num_files)
+
+  def _UploadMissingFiles(self, missing_files, openfunc):
+    """DoUpload helper to upload files that need to be uploaded.
+
+    Args:
+      missing_files: List of files that need to be uploaded. Begin returns such
+        a list. Design note: we don't call Begin here, because we want DoUpload
+        to call it directly so that Begin/Commit are more clearly paired.
+      openfunc: Function that takes a path relative to the app's base path, and
+        returns a file-like object.
+    """
+    if not missing_files:
+      return
+
+    StatusUpdate('Uploading %d files and blobs.' % len(missing_files))
+    num_files = 0
+    for missing_file in missing_files:
+      file_handle = openfunc(missing_file)
+      try:
+        self.UploadFile(missing_file, file_handle)
+      finally:
+        file_handle.close()
+
+
+      num_files += 1
+      if num_files % 500 == 0:
+        StatusUpdate('Processed %d out of %s.' %
+                     (num_files, len(missing_files)))
+
+
+    self.file_batcher.Flush()
+    self.blob_batcher.Flush()
+    self.errorblob_batcher.Flush()
+    StatusUpdate('Uploaded %d files and blobs' % num_files)
+
+  @staticmethod
+  def _LogDoUploadException(exception):
+    """Helper that logs exceptions that occurred during DoUpload.
+
+    Args:
+      exception: An exception that was thrown during DoUpload.
+    """
+    def InstanceOf(tipe):
+      return isinstance(exception, tipe)
+
+    if InstanceOf(KeyboardInterrupt):
+      logging.info('User interrupted. Aborting.')
+    elif InstanceOf(urllib2.HTTPError):
+      logging.info('HTTP Error (%s)', exception)
+    elif InstanceOf(CannotStartServingError):
+      logging.error(exception.message)
+    else:
+      logging.exception('An unexpected error occurred. Aborting.')
 
 
 def FileIterator(base, skip_files, runtime, separator=os.path.sep):
@@ -2493,12 +2535,7 @@ class AppCfgApp(object):
     if len(self.args) < 1:
       self._PrintHelpAndExit()
 
-    if self.options.allow_any_runtime:
-
-
-
-      appinfo.AppInfoExternal._skip_runtime_checks = True
-    else:
+    if not self.options.allow_any_runtime:
       if self.options.runtime:
         if self.options.runtime not in SUPPORTED_RUNTIMES:
           _PrintErrorAndExit(self.error_fh,
@@ -3252,6 +3289,9 @@ class AppCfgApp(object):
                       'ignoring --no_precompilation')
       self.options.precompilation = True
 
+    if appyaml.runtime.startswith('java'):
+      self.options.precompilation = False
+
     if self.options.precompilation:
       if not appyaml.derived_file_type:
         appyaml.derived_file_type = []
@@ -3282,9 +3322,14 @@ class AppCfgApp(object):
             '-goroot', goroot,
             '-print_extras',
         ] + go_files
+
+        env = {
+            'GOOS': 'linux',
+            'GOARCH': 'amd64',
+        }
         try:
           p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, env={})
+                               stderr=subprocess.PIPE, env=env)
           (stdout, stderr) = p.communicate()
         except Exception, e:
           raise RuntimeError('failed running go-app-builder', e)
@@ -3297,12 +3342,12 @@ class AppCfgApp(object):
         overlay = dict([l.split('|') for l in stdout.split('\n') if l])
         logging.info('GOPATH overlay: %s', overlay)
 
-        def ofunc(path):
+        def Open(path):
           if path in overlay:
             return self.opener(overlay[path], 'rb')
           return self.opener(os.path.join(basepath, path), 'rb')
         paths = app_paths + overlay.keys()
-        openfunc = ofunc
+        openfunc = Open
 
     appversion = AppVersionUpload(rpcserver,
                                   appyaml,
@@ -3344,9 +3389,6 @@ class AppCfgApp(object):
       self.UpdateUsingSpecificFiles()
       return
 
-
-    yaml_file_basename = 'app.yaml'
-
     if appcfg_java.IsWarFileWithoutYaml(self.basepath):
       java_app_update = appcfg_java.JavaAppUpdate(self.basepath, self.options)
       sdk_root = os.path.dirname(appcfg_java.__file__)
@@ -3362,9 +3404,8 @@ class AppCfgApp(object):
       try:
         appyaml = self._ParseAppInfoFromYaml(
             self.stage_dir,
-            basename=os.path.splitext(yaml_file_basename)[0])
-        self._UpdateWithParsedAppYaml(
-            appyaml, self.stage_dir, yaml_file_basename)
+            basename=os.path.splitext(APP_YAML_FILENAME)[0])
+        self._UpdateWithParsedAppYaml(appyaml, self.stage_dir)
       finally:
         if self.options.retain_upload_dir:
           StatusUpdate(
@@ -3374,10 +3415,18 @@ class AppCfgApp(object):
     else:
       appyaml = self._ParseAppInfoFromYaml(
           self.basepath,
-          basename=os.path.splitext(yaml_file_basename)[0])
-      self._UpdateWithParsedAppYaml(appyaml, self.basepath, yaml_file_basename)
+          basename=os.path.splitext(APP_YAML_FILENAME)[0])
+      self._UpdateWithParsedAppYaml(appyaml, self.basepath)
 
-  def _UpdateWithParsedAppYaml(self, appyaml, basepath, yaml_file_basename):
+  def _UpdateWithParsedAppYaml(self, appyaml, basepath):
+    """Completes update command.
+
+    Helper to Update.
+
+    Args:
+      appyaml: AppInfoExternal for the app.
+      basepath: Path where application's files can be found.
+    """
     self.runtime = appyaml.runtime
     rpcserver = self._GetRpcServer()
 
@@ -3397,20 +3446,24 @@ class AppCfgApp(object):
 
     dos_yaml = self._ParseDosYaml(basepath, appyaml)
     if dos_yaml and dos_yaml.application != appyaml.application:
-      return _AbortAppMismatch('dos.yaml')
+      _AbortAppMismatch('dos.yaml')
+      return
 
     queue_yaml = self._ParseQueueYaml(basepath, appyaml)
     if queue_yaml and queue_yaml.application != appyaml.application:
-      return _AbortAppMismatch('queue.yaml')
+      _AbortAppMismatch('queue.yaml')
+      return
 
     cron_yaml = self._ParseCronYaml(basepath, appyaml)
     if cron_yaml and cron_yaml.application != appyaml.application:
-      return _AbortAppMismatch('cron.yaml')
+      _AbortAppMismatch('cron.yaml')
+      return
 
     index_defs = self._ParseIndexYaml(basepath, appyaml)
     if index_defs and index_defs.application != appyaml.application:
-      return _AbortAppMismatch('index.yaml')
-    self.UpdateVersion(rpcserver, basepath, appyaml, yaml_file_basename)
+      _AbortAppMismatch('index.yaml')
+      return
+    self.UpdateVersion(rpcserver, basepath, appyaml, APP_YAML_FILENAME)
 
     if appyaml.runtime == 'python':
       MigratePython27Notice()
@@ -3778,6 +3831,52 @@ class AppCfgApp(object):
 
     print >> self.out_fh, response
 
+  def DebugAction(self):
+    """Sets the specified version and instance for an app to be debuggable."""
+    if len(self.args) == 1:
+      appyaml = self._ParseAppInfoFromYaml(self.args[0])
+      app_id = appyaml.application
+      module = appyaml.module or ''
+      version = appyaml.version
+    elif not self.args:
+      if not (self.options.app_id and self.options.version):
+        self.parser.error(
+            ('Expected a <directory> argument or both --application and '
+             '--version flags.'))
+      module = ''
+    else:
+      self._PrintHelpAndExit()
+
+    if self.options.instance is None:
+      self.parser.error(
+          ('Expected an --instance flag.'))
+
+
+
+    if self.options.app_id:
+      app_id = self.options.app_id
+    if self.options.module:
+      module = self.options.module
+    if self.options.version:
+      version = self.options.version
+
+    rpcserver = self._GetRpcServer()
+    response = rpcserver.Send('/api/vms/debug',
+                              app_id=app_id,
+                              version_match=version,
+                              module=module,
+                              instance=self.options.instance)
+    print >> self.out_fh, response
+
+  def _DebugActionOptions(self, parser):
+    """Adds debug-specific options to 'parser'.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    parser.add_option('-I', '--instance', type='int', dest='instance',
+                      help='Instance to debug.')
+
   def _ParseAndValidateModuleYamls(self, yaml_paths):
     """Validates given yaml paths and returns the parsed yaml objects.
 
@@ -3827,9 +3926,9 @@ class AppCfgApp(object):
   def _ModuleAction(self, action_path):
     """Process flags and yaml files and make a call to the given path.
 
-    The 'start' and 'stop' actions are extremely similar in how they process
-    input to appcfg.py and only really differ in what path they hit on the
-    RPCServer.
+    The 'start_module_version' and 'stop_module_version' actions are extremely
+    similar in how they process input to appcfg.py and only really differ in
+    what path they hit on the RPCServer.
 
     Args:
       action_path: Path on the RPCServer to send the call to.
@@ -3877,12 +3976,12 @@ class AppCfgApp(object):
                                 version=version)
       print >> self.out_fh, response
 
-  def Start(self):
-    """Starts one or more modules."""
+  def StartModuleVersion(self):
+    """Starts one or more versions."""
     self._ModuleAction('/api/modules/start')
 
-  def Stop(self):
-    """Stops one or more modules."""
+  def StopModuleVersion(self):
+    """Stops one or more versions."""
     self._ModuleAction('/api/modules/stop')
 
   def Rollback(self):
@@ -4230,6 +4329,16 @@ class AppCfgApp(object):
       self.options.debug = True
 
   def _MakeLoaderArgs(self):
+    """Returns a dict made from many attributes of self.options, plus others.
+
+    See body for list of self.options attributes included. In addition, result
+    includes
+      'application' = self.options.app_id
+      'throttle_class' = self.throttle_class
+
+    Returns:
+      A dict.
+    """
     args = dict([(arg_name, getattr(self.options, arg_name, None)) for
                  arg_name in (
                      'url',
@@ -4679,21 +4788,23 @@ Expected an optional <directory> and mandatory <output_file> argument."""),
 The 'cron_info' command will display the next 'number' runs (default 5) for
 each cron job defined in the cron.yaml file."""),
 
-      'start': Action(
-          function='Start',
+      'start_module_version': Action(
+          function='StartModuleVersion',
           uses_basepath=False,
-          usage='%prog [options] start [file, ...]',
+          usage='%prog [options] start_module_version [file, ...]',
           short_desc='Start a module version.',
           long_desc="""
-The 'start' command will put a module version into the START state."""),
+The 'start_module_version' command will put a module version into the START
+state."""),
 
-      'stop': Action(
-          function='Stop',
+      'stop_module_version': Action(
+          function='StopModuleVersion',
           uses_basepath=False,
-          usage='%prog [options] stop [file, ...]',
+          usage='%prog [options] stop_module_version [file, ...]',
           short_desc='Stop a module version.',
           long_desc="""
-The 'stop' command will put a module version into the STOP state."""),
+The 'stop_module_version' command will put a module version into the STOP
+state."""),
 
 
 
@@ -4739,7 +4850,7 @@ The 'set_default_version' command sets the default (serving) version of the app.
 Defaults to using the application, version and module specified in app.yaml;
 use the --application, --version and --module flags to override these values.
 The --module flag can also be a comma-delimited string of several modules. (ex.
-module1,module2,module2) In this case, the default version of each module will
+module1,module2,module3) In this case, the default version of each module will
 be changed to the version specified.
 
 The 'migrate_traffic' command can be thought of as a safer version of this
@@ -4791,6 +4902,18 @@ an application in YAML."""),
           long_desc="""
 The 'delete_version' command deletes the specified version for the specified
 application."""),
+
+      'debug': Action(
+          function='DebugAction',
+          usage='%prog [options] debug -I instance [-A app_id] [-V version] '
+          ' [-M module] [directory]',
+          options=_DebugActionOptions,
+          short_desc='Debug a vm runtime application.',
+          hidden=True,
+          uses_basepath=False,
+          long_desc="""
+The 'debug' command configures a vm runtime instance to be accessable for
+debugging."""),
   }
 
 

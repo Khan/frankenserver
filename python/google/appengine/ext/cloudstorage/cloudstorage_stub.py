@@ -35,6 +35,11 @@ from google.appengine.ext.cloudstorage import common
 _GCS_DEFAULT_CONTENT_TYPE = 'binary/octet-stream'
 
 
+
+
+
+
+
 class _AE_GCSFileInfo_(db.Model):
   """Store GCS specific info.
 
@@ -288,14 +293,17 @@ class CloudStorageStub(object):
       namespace_manager.set_namespace(ns)
 
   @db.non_transactional
-  def put_copy(self, src, dst):
+  def put_copy(self, src, dst, options):
     """Copy file from src to dst.
 
     Metadata is copied.
 
     Args:
       src: /bucket/filename. This file must exist.
-      dst: /bucket/filename
+      dst: /bucket/filename.
+      options: a dict containing all user specified request headers.
+        e.g. {'content-type': 'foo', 'x-goog-meta-bar': 'bar'}. If None,
+        old metadata is copied.
     """
     common.validate_file_path(src)
     common.validate_file_path(dst)
@@ -310,17 +318,22 @@ class CloudStorageStub(object):
       new_file = _AE_GCSFileInfo_(key_name=token,
                                   filename=dst,
                                   finalized=True)
-      new_file.options = source.options
+      if options:
+        new_file.options = options
+      else:
+        new_file.options = source.options
       new_file.etag = source.etag
       new_file.size = source.size
-      new_file.creation = datetime.datetime.utcnow()
+      new_file.creation = source.creation
       new_file.put()
     finally:
       namespace_manager.set_namespace(ns)
 
 
-    local_file = self.blob_storage.OpenBlob(src_blobkey)
-    self.blob_storage.StoreBlob(token, local_file)
+    if src_blobkey != token:
+
+      local_file = self.blob_storage.OpenBlob(src_blobkey)
+      self.blob_storage.StoreBlob(token, local_file)
 
   @db.non_transactional
   def _end_creation(self, token, _upload_filename):
@@ -481,12 +494,14 @@ class CloudStorageStub(object):
                                           is_dir=True))
           continue
 
-      first = False
-      result.add(common.GCSFileStat(
-          filename=name,
-          st_size=info.size,
-          st_ctime=calendar.timegm(info.creation.utctimetuple()),
-          etag=info.etag))
+
+      if info.finalized:
+        first = False
+        result.add(common.GCSFileStat(
+            filename=name,
+            st_size=info.size,
+            st_ctime=calendar.timegm(info.creation.utctimetuple()),
+            etag=info.etag))
 
     def is_truncated():
       """Check if there are more results satisfying the query."""

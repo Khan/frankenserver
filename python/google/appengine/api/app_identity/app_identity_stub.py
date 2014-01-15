@@ -155,3 +155,14 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
     response.set_access_token('InvalidToken:%s:%s' % (token, time.time() % 100))
 
     response.set_expiration_time(int(time.time()) + 1800)
+
+  @staticmethod
+  def Create(email_address=None, private_key_path=None):
+    if email_address:
+      from google.appengine.api.app_identity import app_identity_keybased_stub
+
+      return app_identity_keybased_stub.KeyBasedAppIdentityServiceStub(
+          email_address=email_address,
+          private_key_path=private_key_path)
+    else:
+      return AppIdentityServiceStub()

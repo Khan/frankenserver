@@ -39,11 +39,16 @@ this file*.
 """
 
 
-try:
-  from cStringIO import StringIO
-except ImportError:
-  from StringIO import StringIO
-import copy_reg
+import sys
+if sys.version_info[0] < 3:
+  try:
+    from cStringIO import StringIO as BytesIO
+  except ImportError:
+    from StringIO import StringIO as BytesIO
+  import copy_reg as copyreg
+else:
+  from io import BytesIO
+  import copyreg
 import struct
 import weakref
 
@@ -88,7 +93,7 @@ def InitMessage(descriptor, cls):
   _AddStaticMethods(cls)
   _AddMessageMethods(descriptor, cls)
   _AddPrivateHelperMethods(cls)
-  copy_reg.pickle(cls, lambda obj: (cls, (), obj.__getstate__()))
+  copyreg.pickle(cls, lambda obj: (cls, (), obj.__getstate__()))
 
 
 
@@ -762,7 +767,7 @@ def _AddSerializePartialToStringMethod(message_descriptor, cls):
   """Helper for _AddMessageMethods()."""
 
   def SerializePartialToString(self):
-    out = StringIO()
+    out = BytesIO()
     self._InternalSerialize(out.write)
     return out.getvalue()
   cls.SerializePartialToString = SerializePartialToString
@@ -785,7 +790,8 @@ def _AddMergeFromStringMethod(message_descriptor, cls):
 
 
         raise message_mod.DecodeError('Unexpected end-group tag.')
-    except IndexError:
+    except (IndexError, TypeError):
+
       raise message_mod.DecodeError('Truncated message.')
     except struct.error, e:
       raise message_mod.DecodeError(e)

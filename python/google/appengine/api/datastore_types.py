@@ -52,13 +52,16 @@ import string
 import time
 import urlparse
 from xml.sax import saxutils
-from google.appengine.datastore import datastore_pb
-from google.appengine.datastore import sortable_pb_encoder
-from google.appengine.api import datastore_errors
-from google.appengine.api import users
-from google.appengine.api import namespace_manager
-from google.net.proto import ProtocolBuffer
+
 from google.appengine.datastore import entity_pb
+
+from google.appengine.api import datastore_errors
+from google.appengine.api import namespace_manager
+from google.appengine.api import users
+from google.appengine.datastore import datastore_pb
+from google.appengine.datastore import datastore_pbs
+from google.appengine.datastore import entity_v4_pb
+from google.appengine.datastore import sortable_pb_encoder
 
 
 
@@ -2067,26 +2070,33 @@ def PropertyValueFromString(type_,
   return type_(value_string)
 
 
-def ReferenceToKeyValue(reference):
-  """Converts a entity_pb.Reference into a comparable hashable "key" value.
+def ReferenceToKeyValue(key):
+  """Converts a key into a comparable hashable "key" value.
 
   Args:
-    reference: The entity_pb.Reference from which to construct the key value.
+    key: The entity_pb.Reference or entity_v4_pb.Key from which to construct
+        the key value.
 
   Returns:
-    A comparable and hashable representation of the given reference that is
-    compatible with one derived from a reference property value.
+    A comparable and hashable representation of the given key that is
+    compatible with one derived from a key property value.
   """
-  if isinstance(reference, entity_pb.Reference):
-    element_list = reference.path().element_list()
-  elif isinstance(reference, entity_pb.PropertyValue_ReferenceValue):
-    element_list = reference.pathelement_list()
+  if isinstance(key, entity_v4_pb.Key):
+    v4_key = key
+    key = entity_pb.Reference()
+    datastore_pbs.get_entity_converter().v4_to_v3_reference(v4_key, key)
+
+  if isinstance(key, entity_pb.Reference):
+    element_list = key.path().element_list()
+  elif isinstance(key, entity_pb.PropertyValue_ReferenceValue):
+    element_list = key.pathelement_list()
   else:
     raise datastore_errors.BadArgumentError(
-        "reference arg expected to be entity_pb.Reference (%r)" % (reference,))
+        "key arg expected to be entity_pb.Reference or entity_v4.Key (%r)"
+        % (key,))
 
   result = [entity_pb.PropertyValue.kReferenceValueGroup,
-            reference.app(), reference.name_space()]
+            key.app(), key.name_space()]
   for element in element_list:
     result.append(element.type())
     if element.has_name():

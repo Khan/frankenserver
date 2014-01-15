@@ -2515,9 +2515,9 @@ class Batch(object):
     Returns:
       A UserRPC object that can be used to fetch the result of the RPC.
     """
-    return self._batch_shared.conn.make_rpc_call(config, name, req,
-                                                 datastore_pb.QueryResult(),
-                                                 self.__query_result_hook)
+    return self._batch_shared.conn._make_rpc_call(config, name, req,
+                                                  datastore_pb.QueryResult(),
+                                                  self.__query_result_hook)
 
   _need_index_header = 'The suggested index for this query is:'
 

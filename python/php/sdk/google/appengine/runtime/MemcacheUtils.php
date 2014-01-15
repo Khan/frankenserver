@@ -24,9 +24,6 @@ namespace google\appengine\runtime;
 use google\appengine\MemcacheSetRequest;
 use google\appengine\MemcacheSetResponse;
 
-require_once 'google/appengine/api/memcache/memcache_service_pb.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-
 class MemcacheUtils {
 
   const FLAG_TYPE_MASK = 7;
@@ -35,7 +32,7 @@ class MemcacheUtils {
   const TYPE_UNICODE = 1;  // Value can be read but is never written.
   // TYPE_PICKLED = 2
   const TYPE_INT = 3;
-  // TYPE_LONG = 4
+  const TYPE_LONG = 4;
   const TYPE_BOOL = 5;
   // These flags are unique to PHP:
   const TYPE_FLOAT = 6;
@@ -80,6 +77,7 @@ class MemcacheUtils {
           return (double) $value;
         }
       case self::TYPE_INT:
+      case self::TYPE_LONG:
         return (integer) $value;
       case self::TYPE_STR:
       case self::TYPE_UNICODE:

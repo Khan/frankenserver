@@ -192,7 +192,7 @@ class DynamicHandlerGenerator(HandlerGenerator):
         handler_patterns.append(new_handler)
         handler_patterns += self.CreateHandlerWithoutTrailingStar(new_handler)
 
-    if has_jsps or self.app_engine_web_xml.use_vm:
+    if has_jsps or self.app_engine_web_xml.vm:
       handler_patterns.append(
           handler.SimpleHandler('*.jsp', {'type': 'dynamic'}))
 

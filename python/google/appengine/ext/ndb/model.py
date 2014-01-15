@@ -280,6 +280,7 @@ Property subclass is in the docstring for the Property class.
 
 __author__ = 'guido@google.com (Guido van Rossum)'
 
+import collections
 import copy
 import cPickle as pickle
 import datetime
@@ -379,6 +380,83 @@ class _NotEqualMixin(object):
     if eq is NotImplemented:
       return NotImplemented
     return not eq
+
+
+class _NestedCounter(object):
+  """ A recursive counter for StructuredProperty deserialization.
+
+  Deserialization has some complicated rules to handle StructuredPropertys
+  that may or may not be empty. The simplest case is a leaf counter, where
+  the counter will return the index of the repeated value that last had this
+  leaf property written. When a non-leaf counter requested, this will return
+  the max of all its leaf values. This is due to the fact that the next index
+  that a full non-leaf property may be written to comes after all indices that
+  have part of that property written (otherwise, a partial entity would be
+  overwritten.
+
+  Consider an evaluation of the following structure:
+  -A
+    -B
+      -D
+      -E
+    -C
+  With the properties being deserialized in the order:
+
+  1) a.b.d = z
+  2) a.c = y
+  3) a.b = None
+  4) a = None
+  5) a.b.e = x
+  6) a.b.d = w
+
+  The counter state should be the following:
+     a | a.b | a.b.d | a.b.e | a.c
+  0) 0    0      0       0      0
+  1) 1    1      1       0      0
+  2)@1   @1      1       0      1
+  3)@1*  @1*     1       0      1
+  4)@1*  @1*     1       0      1
+  5)@1*  @1*     1       1      1
+  6)@3   @3      3       1      1
+
+  Here, @ indicates that this counter value is actually a calculated value.
+  It is equal to the MAX of its sub-counters.
+
+  Note that in the * cases, our counters actually fall behind. We cannot
+  increase the counters when this happens because child properties have
+  not yet been fully populated. In theses cases, we'll have to do a series
+  of increments to catch up the counters following None deserializations.
+  """
+
+  def __init__(self):
+    self.__counter = 0
+    self.__sub_counters = collections.defaultdict(_NestedCounter)
+
+  def get(self, parts=None):
+    if parts:
+      return self.__sub_counters[parts[0]].get(parts[1:])
+    if self.__is_parent_node():
+      return max(v.get() for v in self.__sub_counters.itervalues())
+    return self.__counter
+
+  def increment(self, parts=None):
+    if parts:
+      self.__make_parent_node()
+      return self.__sub_counters[parts[0]].increment(parts[1:])
+    if self.__is_parent_node():
+      return -1
+    self.__counter += 1
+    return self.__counter
+
+  def _absolute_counter(self):
+    # Used only for testing.
+    return self.__counter
+
+  def __is_parent_node(self):
+    return self.__counter == -1
+
+  def __make_parent_node(self):
+    self.__counter = -1
 
 
 class IndexProperty(_NotEqualMixin):
@@ -2289,22 +2367,37 @@ class StructuredProperty(_StructuredGetForDictMixin):
       prop._code_name = next
       prop_is_fake = True
 
-    values = self._get_base_value_unwrapped_as_list(entity)
     # Find the first subentity that doesn't have a value for this
     # property yet.
-    for sub in values:
-      if not isinstance(sub, self._modelclass):
-        raise TypeError('sub-entities must be instances of their Model class.')
-      if not prop._has_value(sub, rest):
-        subentity = sub
-        break
-    else:
+    if not hasattr(entity, '_subentity_counter'):
+      entity._subentity_counter = _NestedCounter()
+    counter = entity._subentity_counter
+    counter_path = parts[depth - 1:]
+    next_index = counter.get(counter_path)
+    subentity = None
+    if self._has_value(entity):
+      # If an entire subentity has been set to None, we have to loop
+      # to advance until we find the next partial entity.
+      while next_index < self._get_value_size(entity):
+        subentity = self._get_base_value_at_index(entity, next_index)
+        if not isinstance(subentity, self._modelclass):
+          raise TypeError('sub-entities must be instances '
+                          'of their Model class.')
+        if not prop._has_value(subentity, rest):
+          break
+        next_index = counter.increment(counter_path)
+      else:
+        subentity = None
+    # The current property is going to be populated, so advance the counter.
+    counter.increment(counter_path)
+    if not subentity:
       # We didn't find one.  Add a new one to the underlying list of
-      # values (the list returned by
-      # _get_base_value_unwrapped_as_list() is a copy so we
-      # can't append to it).
+      # values.
       subentity = self._modelclass()
-      values = self._retrieve_value(entity)
+      values = self._retrieve_value(entity, self._default)
+      if values is None:
+        self._store_value(entity, [])
+        values = self._retrieve_value(entity, self._default)
       values.append(_BaseValue(subentity))
     if prop_is_fake:
       # Add the synthetic property to the subentity's _properties
@@ -2332,6 +2425,17 @@ class StructuredProperty(_StructuredGetForDictMixin):
         'Structured property %s requires a subproperty' % self._name)
     self._modelclass._check_properties([rest], require_indexed=require_indexed)
 
+  def _get_base_value_at_index(self, entity, index):
+    assert self._repeated
+    value = self._retrieve_value(entity, self._default)
+    value[index] = self._opt_call_to_base_type(value[index])
+    return value[index].b_val
+
+  def _get_value_size(self, entity):
+    values = self._retrieve_value(entity, self._default)
+    if values is None:
+      return 0
+    return len(values)
 
 class LocalStructuredProperty(_StructuredGetForDictMixin, BlobProperty):
   """Substructure that is serialized to an opaque blob.
@@ -2394,7 +2498,8 @@ class LocalStructuredProperty(_StructuredGetForDictMixin, BlobProperty):
     if value is not None:
       if self._repeated:
         for subent in value:
-          subent._prepare_for_put()
+          if subent is not None:
+            subent._prepare_for_put()
       else:
         value._prepare_for_put()
 
@@ -2597,7 +2702,8 @@ class ComputedProperty(GenericProperty):
   ...   hash = ComputedProperty(_compute_hash, name='sha1')
   """
 
-  def __init__(self, func, name=None, indexed=None, repeated=None):
+  def __init__(self, func, name=None, indexed=None,
+               repeated=None, verbose_name=None):
     """Constructor.
 
     Args:
@@ -2605,7 +2711,8 @@ class ComputedProperty(GenericProperty):
             a calculated value.
     """
     super(ComputedProperty, self).__init__(name=name, indexed=indexed,
-                                           repeated=repeated)
+                                           repeated=repeated,
+                                           verbose_name=verbose_name)
     self._func = func
 
   def _set_value(self, entity, value):

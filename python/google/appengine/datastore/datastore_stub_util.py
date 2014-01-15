@@ -37,16 +37,19 @@ except ImportError:
   import md5
   _MD5_FUNC = md5.new
 
+import atexit
 import collections
 import itertools
 import logging
 import os
 import random
 import struct
-import time
 import threading
+import time
 import weakref
-import atexit
+
+from google.net.proto import ProtocolBuffer
+from google.appengine.datastore import entity_pb
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
@@ -55,13 +58,12 @@ from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
 from google.appengine.api.taskqueue import taskqueue_service_pb
 from google.appengine.datastore import datastore_index
-from google.appengine.datastore import datastore_stub_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import datastore_query
+from google.appengine.datastore import datastore_stub_index
 from google.appengine.datastore import datastore_v4_pb
 from google.appengine.runtime import apiproxy_errors
-from google.appengine.datastore import entity_pb
 
 
 
@@ -1120,139 +1122,6 @@ class BaseCursor(object):
           indexvalue.set_property(prop.name())
           indexvalue.mutable_value().CopyFrom(prop.value())
       position.set_start_inclusive(False)
-
-
-class IteratorCursor(BaseCursor):
-  """A query cursor over an entity iterator."""
-
-  def __init__(self, query, dsquery, orders, index_list, results):
-    """Constructor.
-
-    Args:
-      query: the query request proto
-      dsquery: a datastore_query.Query over query.
-      orders: the orders of query as returned by _GuessOrders.
-      index_list: A list of indexes used by the query.
-      results: iterator over entity_pb.EntityProto
-    """
-    super(IteratorCursor, self).__init__(query, dsquery, orders, index_list)
-
-    self.__last_result = None
-    self.__next_result = None
-    self.__results = results
-    self.__distincts = set()
-    self.__done = False
-
-
-    if query.has_end_compiled_cursor():
-      if query.end_compiled_cursor().position_list():
-        self.__end_cursor = self._DecodeCompiledCursor(
-            query.end_compiled_cursor())
-      else:
-        self.__done = True
-    else:
-      self.__end_cursor = None
-
-    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
-      start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
-      self.__last_result = start_cursor[0]
-      try:
-        self._Advance()
-        while self._IsBeforeCursor(self.__next_result, start_cursor):
-          self._Advance()
-      except StopIteration:
-        pass
-
-
-    self.__offset = 0
-    self.__limit = None
-    if query.has_limit():
-      limit = query.limit()
-      if query.offset():
-        limit += query.offset()
-      if limit >= 0:
-        self.__limit = limit
-
-  def _Done(self):
-    self.__done = True
-    self.__next_result = None
-    raise StopIteration
-
-  def _Advance(self):
-    """Advance to next result (handles end cursor, ignores limit)."""
-    if self.__done:
-      raise StopIteration
-    try:
-      while True:
-        self.__next_result = self.__results.next()
-        if not self.group_by:
-          break
-        next_group = _GetGroupByKey(self.__next_result, self.group_by)
-        if next_group not in self.__distincts:
-          self.__distincts.add(next_group)
-          break
-    except StopIteration:
-      self._Done()
-    if (self.__end_cursor and
-        not self._IsBeforeCursor(self.__next_result, self.__end_cursor)):
-      self._Done()
-
-  def _GetNext(self):
-    """Ensures next result is fetched."""
-    if self.__limit is not None and self.__offset >= self.__limit:
-      self._Done()
-    if self.__next_result is None:
-      self._Advance()
-
-  def _Next(self):
-    """Returns and consumes next result."""
-    self._GetNext()
-    self.__last_result = self.__next_result
-    self.__next_result = None
-    self.__offset += 1
-    return self.__last_result
-
-  def PopulateQueryResult(self, result, count, offset,
-                          compile=False, first_result=False):
-    """Populates a QueryResult with this cursor and the given number of results.
-
-    Args:
-      result: datastore_pb.QueryResult
-      count: integer of how many results to return
-      offset: integer of how many results to skip
-      compile: boolean, whether we are compiling this query
-      first_result: whether the query result is the first for this query
-    """
-    Check(offset >= 0, 'Offset must be >= 0')
-    skipped = 0
-    try:
-      limited_offset = min(offset, _MAX_QUERY_OFFSET)
-      while skipped < limited_offset:
-        self._Next()
-        skipped += 1
-
-
-
-
-
-
-
-      if skipped == offset:
-        if count > _MAXIMUM_RESULTS:
-          count = _MAXIMUM_RESULTS
-        while count > 0:
-          result.result_list().append(LoadEntity(self._Next(), self.keys_only,
-                                                 self.property_names))
-          count -= 1
-
-      self._GetNext()
-    except StopIteration:
-      pass
-
-    result.set_more_results(not self.__done)
-    result.set_skipped_results(skipped)
-    self._PopulateResultMetadata(result, compile,
-                                 first_result, self.__last_result)
 
 
 class ListCursor(BaseCursor):
@@ -3287,7 +3156,10 @@ class StubQueryConverter(object):
       v3_compiled_cursor: a datastore_pb.CompiledCursor to populate
     """
     v3_compiled_cursor.Clear()
-    v3_compiled_cursor.ParseFromString(v4_cursor)
+    try:
+      v3_compiled_cursor.ParseFromString(v4_cursor)
+    except ProtocolBuffer.ProtocolBufferDecodeError:
+      raise datastore_pbs.InvalidConversionError('Invalid query cursor.')
 
   def v3_to_v4_compiled_cursor(self, v3_compiled_cursor):
     """Converts a v3 CompiledCursor to a v4 cursor string.
@@ -3552,7 +3424,10 @@ class StubServiceConverter(object):
       v4_query_handle: a string representing a v4 query handle
       v3_cursor: a datastore_pb.Cursor to populate
     """
-    v3_cursor.ParseFromString(v4_query_handle)
+    try:
+      v3_cursor.ParseFromString(v4_query_handle)
+    except ProtocolBuffer.ProtocolBufferDecodeError:
+      raise datastore_pbs.InvalidConversionError('Invalid query handle.')
     return v3_cursor
 
   def _v3_to_v4_query_handle(self, v3_cursor):
@@ -3573,7 +3448,10 @@ class StubServiceConverter(object):
       v4_txn: a string representing a v4 transaction
       v3_txn: a datastore_pb.Transaction to populate
     """
-    v3_txn.ParseFromString(v4_txn)
+    try:
+      v3_txn.ParseFromString(v4_txn)
+    except ProtocolBuffer.ProtocolBufferDecodeError:
+      raise datastore_pbs.InvalidConversionError('Invalid transaction.')
     return v3_txn
 
   def _v3_to_v4_txn(self, v3_txn):
@@ -3605,35 +3483,6 @@ class StubServiceConverter(object):
     v3_req.set_allow_multiple_eg(v4_req.cross_group())
     return v3_req
 
-  def v3_to_v4_begin_transaction_req(self, v3_req):
-    """Converts a v3 BeginTransactionRequest to a v4 BeginTransactionRequest.
-
-    Args:
-      v3_req: a datastore_pb.BeginTransactionRequest
-
-    Returns:
-      a datastore_v4_pb.BeginTransactionRequest
-    """
-    v4_req = datastore_v4_pb.BeginTransactionRequest()
-
-    if v3_req.has_allow_multiple_eg():
-      v4_req.set_cross_group(v3_req.allow_multiple_eg())
-
-    return v4_req
-
-  def v4_begin_transaction_resp_to_v3_txn(self, v4_resp):
-    """Converts a v4 BeginTransactionResponse to a v3 Transaction.
-
-    Args:
-      v4_resp: datastore_v4_pb.BeginTransactionResponse
-
-    Returns:
-      a a datastore_pb.Transaction
-    """
-    v3_txn = datastore_pb.Transaction()
-    self.v4_to_v3_txn(v4_resp.transaction(), v3_txn)
-    return v3_txn
-
   def v3_to_v4_begin_transaction_resp(self, v3_resp):
     """Converts a v3 Transaction to a v4 BeginTransactionResponse.
 
@@ -3662,19 +3511,6 @@ class StubServiceConverter(object):
     v3_txn = datastore_pb.Transaction()
     self.v4_to_v3_txn(v4_req.transaction(), v3_txn)
     return v3_txn
-
-  def v3_to_v4_rollback_req(self, v3_req):
-    """Converts a v3 Transaction to a v4 RollbackRequest.
-
-    Args:
-      v3_req: datastore_pb.Transaction
-
-    Returns:
-      a a datastore_v4_pb.RollbackRequest
-    """
-    v4_req = datastore_v4_pb.RollbackRequest()
-    v4_req.set_transaction(self._v3_to_v4_txn(v3_req))
-    return v4_req
 
 
 
@@ -3754,6 +3590,10 @@ class StubServiceConverter(object):
 
     if v3_req.has_count():
       v4_req.set_suggested_batch_size(v3_req.count())
+
+    datastore_pbs.check_conversion(
+        not (v3_req.has_transaction() and v3_req.has_failover_ms()),
+        'Cannot set failover and transaction handle.')
 
 
     if v3_req.has_transaction():
@@ -3868,58 +3708,6 @@ class StubServiceConverter(object):
       self._entity_converter.v4_to_v3_reference(v4_key, v3_req.add_key())
 
     return v3_req
-
-  def v3_to_v4_lookup_req(self, v3_req):
-    """Converts a v3 GetRequest to a v4 LookupRequest.
-
-    Args:
-      v3_req: a datastore_pb.GetRequest
-
-    Returns:
-      a datastore_v4_pb.LookupRequest
-    """
-    v4_req = datastore_v4_pb.LookupRequest()
-    datastore_pbs.check_conversion(v3_req.allow_deferred(),
-                                   'allow_deferred must be true')
-
-
-    if v3_req.has_transaction():
-      v4_req.mutable_read_options().set_transaction(
-          self._v3_to_v4_txn(v3_req.transaction()))
-    elif v3_req.strong():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.STRONG)
-    elif v3_req.has_failover_ms():
-      v4_req.mutable_read_options().set_read_consistency(
-          datastore_v4_pb.ReadOptions.EVENTUAL)
-
-    for v3_ref in v3_req.key_list():
-      self._entity_converter.v3_to_v4_key(v3_ref, v4_req.add_key())
-
-    return v4_req
-
-  def v4_to_v3_get_resp(self, v4_resp):
-    """Converts a v4 LookupResponse to a v3 GetResponse.
-
-    Args:
-      v4_resp: a datastore_v4_pb.LookupResponse
-
-    Returns:
-      a datastore_pb.GetResponse
-    """
-    v3_resp = datastore_pb.GetResponse()
-
-    for v4_key in v4_resp.deferred_list():
-      self._entity_converter.v4_to_v3_reference(v4_key, v3_resp.add_deferred())
-    for v4_found in v4_resp.found_list():
-      self._entity_converter.v4_to_v3_entity(
-          v4_found.entity(), v3_resp.add_entity().mutable_entity())
-    for v4_missing in v4_resp.missing_list():
-      self._entity_converter.v4_to_v3_reference(
-          v4_missing.entity().key(),
-          v3_resp.add_entity().mutable_key())
-
-    return v3_resp
 
   def v3_to_v4_lookup_resp(self, v3_resp):
     """Converts a v3 GetResponse to a v4 LookupResponse.
@@ -4465,3 +4253,4 @@ def _CopyAndSetMultipleToFalse(prop):
   prop_copy.MergeFrom(prop)
   prop_copy.set_multiple(False)
   return prop_copy
+

@@ -36,6 +36,15 @@ class Application(object):
   """A WSGI application that forwards GCS requests to stub."""
 
   def __call__(self, environ, start_response):
+    """Handles WSGI requests.
+
+    Args:
+      environ: An environ dict for the current request as defined in PEP-333.
+      start_response: A function with semantics defined in PEP-333.
+
+    Returns:
+      An iterable over strings containing the body of the HTTP response.
+    """
     request = webob.Request(environ)
 
     try:

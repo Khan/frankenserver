@@ -81,7 +81,7 @@ def set_namespace(namespace):
 
 
 def get_namespace():
-  """Get the the current default namespace or ('') namespace if unset."""
+  """Get the current default namespace or ('') namespace if unset."""
   name = os.environ.get(_ENV_CURRENT_NAMESPACE, None)
   if name is None:
     name = _config.default_namespace_for_request()

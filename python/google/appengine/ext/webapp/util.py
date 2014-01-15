@@ -114,9 +114,13 @@ def run_bare_wsgi_app(application):
   env["wsgi.multithread"] = False
   env["wsgi.multiprocess"] = False
   result = application(env, _start_response)
-  if result is not None:
-    for data in result:
-      sys.stdout.write(data)
+  try:
+    if result is not None:
+      for data in result:
+        sys.stdout.write(data)
+  finally:
+    if hasattr(result, 'close'):
+      result.close()
 
 
 def _start_response(status, headers, exc_info=None):

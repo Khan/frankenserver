@@ -16,8 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/Error.php';
-
 /**
  * Thrown by APIProxy calls when they have been blocked due to a lack of
  * available quota.

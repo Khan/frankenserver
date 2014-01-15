@@ -3447,6 +3447,8 @@ def SetupStubs(app_id, **config):
     mysql_user: MySQL user.
     mysql_password: MySQL password.
     mysql_socket: MySQL socket.
+    appidentity_email_address: Email address for service account substitute.
+    appidentity_private_key_path: Path to private key for service account sub.
     enable_sendmail: Whether to use sendmail as an alternative to SMTP.
     show_mail_body: Whether to log the body of emails.
     remove: Used for dependency injection.
@@ -3490,6 +3492,8 @@ def SetupStubs(app_id, **config):
   smtp_password = config.get('smtp_password', '')
   enable_sendmail = config.get('enable_sendmail', False)
   show_mail_body = config.get('show_mail_body', False)
+  appidentity_email_address = config.get('appidentity_email_address', None)
+  appidentity_private_key_path = config.get('appidentity_private_key_path', None)
   remove = config.get('remove', os.remove)
   disable_task_running = config.get('disable_task_running', False)
   task_retry_seconds = config.get('task_retry_seconds', 30)
@@ -3541,7 +3545,9 @@ def SetupStubs(app_id, **config):
 
     apiproxy_stub_map.apiproxy.RegisterStub(
         'app_identity_service',
-        app_identity_stub.AppIdentityServiceStub())
+        app_identity_stub.AppIdentityServiceStub.Create(
+            email_address=appidentity_email_address,
+            private_key_path=appidentity_private_key_path))
 
     apiproxy_stub_map.apiproxy.RegisterStub(
         'capability_service',

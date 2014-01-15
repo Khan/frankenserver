@@ -70,12 +70,14 @@ class _ExpressionError(Exception):
 class ExpressionEvaluator(object):
   """Evaluates an expression on scored documents."""
 
-  def __init__(self, document, inverted_index):
+  def __init__(self, document, inverted_index, is_sort_expression=False):
     """Constructor.
 
     Args:
       document: The ScoredDocument to evaluate the expression for.
       inverted_index: The search index (used for snippeting).
+      is_sort_expression: The flag indicates if this is a sort expression. Some
+        operations (such as COUNT) are not supported in sort expressions.
     """
     self._doc = document
     self._doc_pb = document.document
@@ -95,6 +97,7 @@ class ExpressionEvaluator(object):
         ExpressionParser.SNIPPET: self._Snippet,
         ExpressionParser.SWITCH: self._Unsupported('switch'),
         }
+    self._is_sort_expression = is_sort_expression
 
   @classmethod
   def _GetFieldValue(cls, field):
@@ -153,6 +156,10 @@ class ExpressionEvaluator(object):
     if node.getType() != ExpressionParser.NAME:
       raise _ExpressionError(
           'The argument to count() must be a simple field name')
+    if self._is_sort_expression:
+      raise query_parser.QueryException(
+          'Failed to parse sort expression \'count(' + node.getText() +
+          ')\': count() is not supported in sort expressions')
     return search_util.GetFieldCountInDocument(
         self._doc_pb, query_parser.GetQueryNodeText(node))
 

@@ -198,11 +198,7 @@ class SDKUpdateChecker(object):
       return
     unsupported_api_versions_found = False
     for runtime, api_versions in self.runtime_to_api_version.items():
-      if 'supported_api_versions' in version:
-        supported_api_versions = version['supported_api_versions'].get(
-            runtime, version)['api_versions']
-      else:
-        supported_api_versions = version['api_versions']
+      supported_api_versions = _GetSupportedApiVersions(version, runtime)
       unsupported_api_versions = sorted(api_versions -
                                         set(supported_api_versions))
       if unsupported_api_versions:
@@ -290,7 +286,7 @@ class SDKUpdateChecker(object):
           return
 
     for runtime, response in responses.items():
-      api_versions = response['api_versions']
+      api_versions = _GetSupportedApiVersions(response, runtime)
       obsolete_versions = sorted(
           self.runtime_to_api_version[runtime] - set(api_versions))
       if len(obsolete_versions) == 1:
@@ -435,3 +431,25 @@ class SDKUpdateChecker(object):
         nag.opt_in = True
       self._WriteNagFile(nag)
     return nag.opt_in
+
+
+def _GetSupportedApiVersions(versions, runtime):
+  """Returns the runtime-specific or general list of supported runtimes.
+
+  The provided 'versions' dict contains a field called 'api_versions'
+  which is the list of default versions supported.  This dict may also
+  contain a 'supported_api_versions' dict which lists api_versions by
+  runtime.  This function will prefer to return the runtime-specific
+  api_versions list, but will default to the general list.
+
+  Args:
+    versions: dict of versions from app.yaml or /api/updatecheck server.
+    runtime: string of current runtime (e.g. 'go').
+
+  Returns:
+    List of supported api_versions (e.g. ['go1']).
+  """
+  if 'supported_api_versions' in versions:
+    return versions['supported_api_versions'].get(
+        runtime, versions)['api_versions']
+  return versions['api_versions']

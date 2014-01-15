@@ -17,27 +17,39 @@
 """Exposes methods to control modules and versions of an app."""
 
 __all__ = [
-            'Error',
-            'InvalidModuleError',
-            'InvalidVersionError',
-            'InvalidInstancesError',
-            'UnexpectedStateError',
-            'TransientError',
+    'Error',
+    'InvalidModuleError',
+    'InvalidVersionError',
+    'InvalidInstancesError',
+    'UnexpectedStateError',
+    'TransientError',
 
-            'get_current_module_name',
-            'get_current_version_name',
-            'get_current_instance_id',
-            'get_modules',
-            'get_versions',
-            'get_default_version',
-            'get_num_instances',
-            'set_num_instances',
-            'start_module',
-            'stop_module',
-            'get_hostname',
-           ]
+    'get_current_module_name',
+    'get_current_version_name',
+    'get_current_instance_id',
+    'get_modules',
+    'get_modules_async',
+    'get_versions',
+    'get_versions_async',
+    'get_default_version',
+    'get_default_version_async',
+    'get_num_instances',
+    'get_num_instances_async',
+    'set_num_instances',
+    'set_num_instances_async',
+    'start_module',
+    'start_module_async',
+    'start_version',
+    'start_version_async',
+    'stop_module',
+    'stop_module_async',
+    'stop_version',
+    'stop_version_async',
+    'get_hostname',
+    'get_hostname_async']
 
 
+import logging
 import os
 
 from google.appengine.api import apiproxy_stub_map
@@ -128,10 +140,15 @@ _MODULE_SERVICE_ERROR_MAP = {
 }
 
 
-def _CheckAsyncResult(rpc, expected_application_errors):
+def _CheckAsyncResult(rpc,
+                      expected_application_errors,
+                      ignored_application_errors):
   try:
     rpc.check_success()
   except apiproxy_errors.ApplicationError, e:
+    if e.application_error in ignored_application_errors:
+      logging.info(ignored_application_errors.get(e.application_error))
+      return
     if e.application_error in expected_application_errors:
       mapped_error = _MODULE_SERVICE_ERROR_MAP.get(e.application_error)
       if mapped_error:
@@ -148,21 +165,35 @@ def get_modules():
       the name of the module that is associated with the instance that calls
       this function.
   """
-  rpc = get_modules_async()
-  return rpc.get_result()
+  def _ResultHook(rpc):
+    _CheckAsyncResult(rpc, [], {})
+
+
+    return list(rpc.response.module_list())
+
+  request = modules_service_pb.GetModulesRequest()
+  response = modules_service_pb.GetModulesResponse()
+  return _MakeAsyncCall('GetModules',
+                        request,
+                        response,
+                        _ResultHook).get_result()
 
 
 def get_modules_async():
   """Returns a UserRPC whose result contains this application's module names.
 
-     Returns:
-       A UserRPC whose result contains a list of strings containing the names
-       of modules associated with this application. The 'default' module will be
-       included if it exists, as will the name of the module that is associated
-       with the instance that calls this function.
+  DEPRECATED. Please use get_modules instead.
+
+  Returns:
+    A UserRPC whose result contains a list of strings containing the names
+    of modules associated with this application. The 'default' module will be
+    included if it exists, as will the name of the module that is associated
+    with the instance that calls this function.
   """
+  logging.warning('The get_modules_async function is deprecated. Please '
+                  'use get_modules instead.')
   def _ResultHook(rpc):
-    _CheckAsyncResult(rpc, [])
+    _CheckAsyncResult(rpc, [], {})
 
 
     return list(rpc.response.module_list())
@@ -187,12 +218,28 @@ def get_versions(module=None):
     InvalidModuleError if the given module isn't valid, TransientError if there
     is an issue fetching the information.
   """
-  rpc = get_versions_async(module)
-  return rpc.get_result()
+  def _ResultHook(rpc):
+    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
+                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
+    _CheckAsyncResult(rpc, mapped_errors, {})
+
+
+    return list(rpc.response.version_list())
+
+  request = modules_service_pb.GetVersionsRequest()
+  if module:
+    request.set_module(module)
+  response = modules_service_pb.GetVersionsResponse()
+  return _MakeAsyncCall('GetVersions',
+                        request,
+                        response,
+                        _ResultHook).get_result()
 
 
 def get_versions_async(module=None):
   """Returns a UserRPC whose result contains list of versions for a module.
+
+  DEPRECATED. Please use get_versions instead.
 
   Args:
     module: Module to retrieve version for, if None then the current module will
@@ -202,10 +249,12 @@ def get_versions_async(module=None):
     Returns a UserRPC whose result contains the list of strings containing
     the names of versions associated with the specified module.
   """
+  logging.warning('The get_versions_async function is deprecated. Please '
+                  'use get_versions instead.')
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
                      modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
-    _CheckAsyncResult(rpc, mapped_errors)
+    _CheckAsyncResult(rpc, mapped_errors, {})
 
 
     return list(rpc.response.version_list())
@@ -231,13 +280,27 @@ def get_default_version(module=None):
     InvalidModuleError if the given module is not valid, InvalidVersionError if
     no default version could be found.
   """
-  rpc = get_default_version_async(module)
-  return rpc.get_result()
+  def _ResultHook(rpc):
+    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
+                     modules_service_pb.ModulesServiceError.INVALID_VERSION]
+    _CheckAsyncResult(rpc, mapped_errors, {})
+    return rpc.response.version()
+
+  request = modules_service_pb.GetDefaultVersionRequest()
+  if module:
+    request.set_module(module)
+  response = modules_service_pb.GetDefaultVersionResponse()
+  return _MakeAsyncCall('GetDefaultVersion',
+                        request,
+                        response,
+                        _ResultHook).get_result()
 
 
 def get_default_version_async(
     module=None):
   """Returns a UserRPC whose result contains a module's default version.
+
+  DEPRECATED. Please use get_default_version instead.
 
   Args:
     module: Module to retrieve the default version for, if None then the current
@@ -247,10 +310,12 @@ def get_default_version_async(
     Returns a UserRPC whose result contains a string holding the name of the
     default version of the specified module.
   """
+  logging.warning('The get_default_version_async function is deprecated. '
+                  'Please use get_default_version instead.')
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
                      modules_service_pb.ModulesServiceError.INVALID_VERSION]
-    _CheckAsyncResult(rpc, mapped_errors)
+    _CheckAsyncResult(rpc, mapped_errors, {})
     return rpc.response.version()
 
   request = modules_service_pb.GetDefaultVersionRequest()
@@ -281,13 +346,28 @@ def get_num_instances(module=None,
   Raises:
     InvalidVersionError on invalid input.
   """
-  rpc = get_num_instances_async(module, version)
-  return rpc.get_result()
+  def _ResultHook(rpc):
+    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION]
+    _CheckAsyncResult(rpc, mapped_errors, {})
+    return rpc.response.instances()
+
+  request = modules_service_pb.GetNumInstancesRequest()
+  if module:
+    request.set_module(module)
+  if version:
+    request.set_version(version)
+  response = modules_service_pb.GetNumInstancesResponse()
+  return _MakeAsyncCall('GetNumInstances',
+                        request,
+                        response,
+                        _ResultHook).get_result()
 
 
 def get_num_instances_async(
     module=None, version=None):
   """Returns a UserRPC whose result holds the number of instances for a version.
+
+  DEPRECATED. Please use get_num_instances instead.
 
   This is only valid for fixed modules, an error will be raised for
   automatically-scaled modules.  Support for automatically-scaled modules may be
@@ -303,9 +383,11 @@ def get_num_instances_async(
   Returns:
     A UserRPC whose result holds the number of instances for a version.
   """
+  logging.warning('The get_num_instances_async function is deprecated. '
+                  'Please use get_num_instances instead.')
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION]
-    _CheckAsyncResult(rpc, mapped_errors)
+    _CheckAsyncResult(rpc, mapped_errors, {})
     return rpc.response.instances()
 
   request = modules_service_pb.GetNumInstancesRequest()
@@ -354,7 +436,7 @@ def set_num_instances_async(
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION,
                      modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
-    _CheckAsyncResult(rpc, mapped_errors)
+    _CheckAsyncResult(rpc, mapped_errors, {})
 
   if not isinstance(instances, (long, int)):
     raise TypeError("'instances' arg must be of type long or int.")
@@ -368,8 +450,7 @@ def set_num_instances_async(
   return _MakeAsyncCall('SetNumInstances', request, response, _ResultHook)
 
 
-def start_module(module,
-                 version):
+def start_version(module, version):
   """Start all instances for the given version of the module.
 
   Args:
@@ -378,15 +459,33 @@ def start_module(module,
 
   Raises:
     InvalidVersionError if the given module version is invalid.
-    UnexpectedStateError if the module is already started, or cannot be started.
     TransientError if there is a problem persisting the change.
   """
-  rpc = start_module_async(module, version)
+  rpc = start_version_async(module, version)
   rpc.get_result()
 
 
-def start_module_async(module,
-                       version):
+def start_module(module,
+                 version):
+  """Start all instances for the given version of the module.
+
+  DEPRECATED. Please use start_version instead.
+
+  Args:
+    module: String containing the name of the module to affect.
+    version: String containing the name of the version of the module to start.
+
+  Raises:
+    InvalidVersionError if the given module version is invalid.
+    TransientError if there is a problem persisting the change.
+  """
+  logging.warning('The start_module function is deprecated, please use the '
+                  'start_version function instead.')
+  start_version(module, version)
+
+
+def start_version_async(module,
+                        version):
   """Returns a UserRPC  to start all instances for the given module version.
 
   Args:
@@ -398,9 +497,13 @@ def start_module_async(module,
   """
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION,
-                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR,
-                     modules_service_pb.ModulesServiceError.UNEXPECTED_STATE]
-    _CheckAsyncResult(rpc, mapped_errors)
+                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
+    expected_errors = {
+        modules_service_pb.ModulesServiceError.UNEXPECTED_STATE:
+        'The specified module: %s, version: %s is already started.' % (module,
+                                                                       version)
+    }
+    _CheckAsyncResult(rpc, mapped_errors, expected_errors)
 
   request = modules_service_pb.StartModuleRequest()
   request.set_module(module)
@@ -409,9 +512,46 @@ def start_module_async(module,
   return _MakeAsyncCall('StartModule', request, response, _ResultHook)
 
 
+def start_module_async(module,
+                       version):
+  """Returns a UserRPC  to start all instances for the given module version.
+
+  DEPRECATED. Please use start_version_async instead.
+
+  Args:
+    module: String containing the name of the module to affect.
+    version: String containing the name of the version of the module to start.
+
+  Returns:
+    A UserRPC  to start all instances for the given module version.
+  """
+  logging.warning('The start_module_async function is deprecated, please use '
+                  'the start_version_async function isntead.')
+  return start_version_async(module, version)
+
+
+def stop_version(module=None,
+                 version=None):
+  """Stops all instances for the given version of the module.
+
+  Args:
+    module: The module to affect, if None the current module is used.
+    version: The version of the given module to affect, if None the current
+      version is used.
+
+  Raises:
+    InvalidVersionError if the given module version is invalid.
+    TransientError if there is a problem persisting the change.
+  """
+  rpc = stop_version_async(module, version)
+  rpc.get_result()
+
+
 def stop_module(module=None,
                 version=None):
   """Stops all instances for the given version of the module.
+
+  DEPRECATED. Please use stop_version instead.
 
   Args:
     module: The module to affect, if None the current module is used.
@@ -423,12 +563,13 @@ def stop_module(module=None,
     UnexpectedStateError if the module is already stopped, or cannot be stopped.
     TransientError if there is a problem persisting the change.
   """
-  rpc = stop_module_async(module, version)
-  rpc.get_result()
+  logging.warning('The stop_module function is deprecated, please use '
+                  'the stop_version function isntead.')
+  stop_version(module, version)
 
 
-def stop_module_async(module=None,
-                      version=None):
+def stop_version_async(module=None,
+                       version=None):
   """Returns a UserRPC  to stop all instances for the given module version.
 
   Args:
@@ -441,9 +582,13 @@ def stop_module_async(module=None,
   """
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION,
-                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR,
-                     modules_service_pb.ModulesServiceError.UNEXPECTED_STATE]
-    _CheckAsyncResult(rpc, mapped_errors)
+                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
+    expected_errors = {
+        modules_service_pb.ModulesServiceError.UNEXPECTED_STATE:
+        'The specified module: %s, version: %s is already stopped.' % (module,
+                                                                       version)
+    }
+    _CheckAsyncResult(rpc, mapped_errors, expected_errors)
 
   request = modules_service_pb.StopModuleRequest()
   if module:
@@ -452,6 +597,25 @@ def stop_module_async(module=None,
     request.set_version(version)
   response = modules_service_pb.StopModuleResponse()
   return _MakeAsyncCall('StopModule', request, response, _ResultHook)
+
+
+def stop_module_async(module=None,
+                      version=None):
+  """Returns a UserRPC  to stop all instances for the given module version.
+
+  DEPRECATED. Please use stop_version_async instead.
+
+  Args:
+    module: The module to affect, if None the current module is used.
+    version: The version of the given module to affect, if None the current
+      version is used.
+
+  Returns:
+    A UserRPC  to stop all instances for the given module version.
+  """
+  logging.warning('The stop_module_async function is deprecated. Please use '
+                  'the stop_version_async function instead.')
+  return stop_version_async(module, version)
 
 
 def get_hostname(module=None,
@@ -476,13 +640,34 @@ def get_hostname(module=None,
     InvalidInstancesError if the given instance value is invalid.
     TypeError if the given instance type is invalid.
   """
-  rpc = get_hostname_async(module, version, instance)
-  return rpc.get_result()
+  def _ResultHook(rpc):
+    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
+                     modules_service_pb.ModulesServiceError.INVALID_INSTANCES]
+    _CheckAsyncResult(rpc, mapped_errors, [])
+    return rpc.response.hostname()
+
+  request = modules_service_pb.GetHostnameRequest()
+  if module:
+    request.set_module(module)
+  if version:
+    request.set_version(version)
+  if instance:
+    if not isinstance(instance, (basestring, long, int)):
+      raise TypeError(
+          "'instance' arg must be of type basestring, long or int.")
+    request.set_instance(str(instance))
+  response = modules_service_pb.GetHostnameResponse()
+  return _MakeAsyncCall('GetHostname',
+                        request,
+                        response,
+                        _ResultHook).get_result()
 
 
 def get_hostname_async(module=None,
                        version=None, instance=None):
   """Returns a UserRPC whose result contains the hostname to contact a module.
+
+  DEPRECATED. Please use get_hostname instead.
 
   Args:
     module: Name of module, if None, take module of the current instance.
@@ -499,12 +684,14 @@ def get_hostname_async(module=None,
     E.g. 0.v1.module5.myapp.appspot.com
 
   Raises:
-    TypeError if the given instance type is invalid.
+    TypeError: If the given instance type is invalid.
   """
+  logging.warning('The get_hostname_async function is deprecated. Please '
+                  'use get_hostname instead.')
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
                      modules_service_pb.ModulesServiceError.INVALID_INSTANCES]
-    _CheckAsyncResult(rpc, mapped_errors)
+    _CheckAsyncResult(rpc, mapped_errors, [])
     return rpc.response.hostname()
 
   request = modules_service_pb.GetHostnameRequest()
@@ -519,3 +706,4 @@ def get_hostname_async(module=None,
     request.set_instance(str(instance))
   response = modules_service_pb.GetHostnameResponse()
   return _MakeAsyncCall('GetHostname', request, response, _ResultHook)
+

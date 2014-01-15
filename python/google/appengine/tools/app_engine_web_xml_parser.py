@@ -278,8 +278,8 @@ class AppEngineWebXmlParser(object):
   def ProcessCodeLockNode(self, node):
     self.app_engine_web_xml.codelock = xml_parser_utils.BooleanValue(node.text)
 
-  def ProcessUseVmNode(self, node):
-    self.app_engine_web_xml.use_vm = xml_parser_utils.BooleanValue(node.text)
+  def ProcessVmNode(self, node):
+    self.app_engine_web_xml.vm = xml_parser_utils.BooleanValue(node.text)
 
   def ProcessApiConfigNode(self, node):
     servlet = xml_parser_utils.GetAttribute(node, 'servlet-class').strip()
@@ -401,7 +401,7 @@ class AppEngineWebXml(ValueMixin):
     self.threadsafe = False
     self.threadsafe_value_provided = False
     self.codelock = None
-    self.use_vm = False
+    self.vm = False
     self.api_config = None
     self.api_endpoint_ids = []
     self.pagespeed = None

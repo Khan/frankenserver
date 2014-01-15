@@ -19,9 +19,7 @@
 
 namespace google\appengine\api\users;
 
-require_once 'google/appengine/util/string_util.php';
-
-use google\appengine\util as util;
+use google\appengine\util\StringUtil;
 
 /**
  * A user.
@@ -86,7 +84,7 @@ final class User {
    */
   public function getNickname() {
     if ($this->email != null && $this->auth_domain != null &&
-        util\endsWith($this->email, '@' . $this->auth_domain)) {
+        StringUtil::endsWith($this->email, '@' . $this->auth_domain)) {
       $suffixLen = strlen($this->auth_domain) + 1;
       return substr($this->email, 0, -$suffixLen);
     } else if ($this->federated_identity) {

@@ -26,6 +26,9 @@ from google.appengine.tools.devappserver2 import watcher_common
 class MtimeFileWatcher(object):
   """Monitors a directory tree for changes using mtime polling."""
 
+  # TODO: evaluate whether we can directly support multiple directories.
+  SUPPORTS_MULTIPLE_DIRECTORIES = False
+
   def __init__(self, directory):
     self._directory = directory
     self._quit_event = threading.Event()

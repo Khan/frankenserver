@@ -16,11 +16,9 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/Error.php';
-
 /**
  * Thrown by APIProxy calls if the call was cancelled, such as when
-  the user's request is exiting.
+ * the user's request is exiting.
  */
 class CancelledError extends Error {
 }

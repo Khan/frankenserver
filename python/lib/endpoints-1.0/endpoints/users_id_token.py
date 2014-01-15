@@ -543,7 +543,11 @@ def _verify_signed_jwt_with_certs(
   segments = jwt.split('.')
 
   if len(segments) != 3:
-    raise _AppIdentityError('Wrong number of segments in token: %s' % jwt)
+
+
+
+
+    raise _AppIdentityError('Wrong number of segments in token: %r' % jwt)
   signed = '%s.%s' % (segments[0], segments[1])
 
   signature = _urlsafe_b64decode(segments[2])
@@ -557,9 +561,9 @@ def _verify_signed_jwt_with_certs(
   try:
     header = json.loads(header_body)
   except:
-    raise _AppIdentityError('Can\'t parse header: %s' % header_body)
+    raise _AppIdentityError("Can't parse header: %r" % header_body)
   if header.get('alg') != 'RS256':
-    raise _AppIdentityError('Unexpected encryption algorithm: %s' %
+    raise _AppIdentityError('Unexpected encryption algorithm: %r' %
                             header.get('alg'))
 
 
@@ -567,12 +571,12 @@ def _verify_signed_jwt_with_certs(
   try:
     parsed = json.loads(json_body)
   except:
-    raise _AppIdentityError('Can\'t parse token: %s' % json_body)
+    raise _AppIdentityError("Can't parse token body: %r" % json_body)
 
   certs = _get_cached_certs(cert_uri, cache)
   if certs is None:
     raise _AppIdentityError(
-        'Unable to retrieve certs needed to verify the signed JWT: %s' % jwt)
+        'Unable to retrieve certs needed to verify the signed JWT: %r' % jwt)
 
 
 
@@ -603,27 +607,27 @@ def _verify_signed_jwt_with_certs(
     if verified:
       break
   if not verified:
-    raise _AppIdentityError('Invalid token signature: %s' % jwt)
+    raise _AppIdentityError('Invalid token signature: %r' % jwt)
 
 
   iat = parsed.get('iat')
   if iat is None:
-    raise _AppIdentityError('No iat field in token: %s' % json_body)
+    raise _AppIdentityError('No iat field in token: %r' % json_body)
   earliest = iat - _CLOCK_SKEW_SECS
 
 
   exp = parsed.get('exp')
   if exp is None:
-    raise _AppIdentityError('No exp field in token: %s' % json_body)
+    raise _AppIdentityError('No exp field in token: %r' % json_body)
   if exp >= time_now + _MAX_TOKEN_LIFETIME_SECS:
-    raise _AppIdentityError('exp field too far in future: %s' % json_body)
+    raise _AppIdentityError('exp field too far in future: %r' % json_body)
   latest = exp + _CLOCK_SKEW_SECS
 
   if time_now < earliest:
-    raise _AppIdentityError('Token used too early, %d < %d: %s' %
+    raise _AppIdentityError('Token used too early, %d < %d: %r' %
                             (time_now, earliest, json_body))
   if time_now > latest:
-    raise _AppIdentityError('Token used too late, %d > %d: %s' %
+    raise _AppIdentityError('Token used too late, %d > %d: %r' %
                             (time_now, latest, json_body))
 
   return parsed

@@ -53,12 +53,12 @@ class NotSupportedWithAutoScalingError(Error):
   """The requested operation is not supported for auto-scaling modules."""
 
 
-class ModuleAlreadyStartedError(Error):
-  """The module is already started."""
+class VersionAlreadyStartedError(Error):
+  """The version is already started."""
 
 
-class ModuleAlreadyStoppedError(Error):
-  """The module is already stopped."""
+class VersionAlreadyStoppedError(Error):
+  """The version is already stopped."""
 
 
 class BackgroundThreadLimitReachedError(Error):
@@ -197,8 +197,8 @@ class Dispatcher(object):
     """
     raise NotImplementedError()
 
-  def start_module(self, module, version):
-    """Starts a module.
+  def start_version(self, module, version):
+    """Starts a version.
 
     Args:
       module: A str containing the name of the module.
@@ -212,8 +212,8 @@ class Dispatcher(object):
     """
     raise NotImplementedError()
 
-  def stop_module(self, module, version):
-    """Stops a module.
+  def stop_version(self, module, version):
+    """Stops a version.
 
     Args:
       module: A str containing the name of the module.
@@ -449,8 +449,8 @@ class _LocalFakeDispatcher(Dispatcher):
 
     raise NotSupportedWithAutoScalingError()
 
-  def start_module(self, module, version):
-    """Starts a module.
+  def start_version(self, module, version):
+    """Starts a version.
 
     Args:
       module: A str containing the name of the module.
@@ -469,8 +469,8 @@ class _LocalFakeDispatcher(Dispatcher):
 
     raise NotSupportedWithAutoScalingError()
 
-  def stop_module(self, module, version):
-    """Stops a module.
+  def stop_version(self, module, version):
+    """Stops a version.
 
     Args:
       module: A str containing the name of the module.

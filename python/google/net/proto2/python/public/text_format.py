@@ -16,6 +16,8 @@
 #
 
 
+
+
 """Contains routines for printing protocol messages in text format."""
 
 
@@ -183,6 +185,7 @@ def Parse(text, message):
   Raises:
     ParseError: On ASCII parsing problems.
   """
+  if not isinstance(text, str): text = text.decode('utf-8')
   return ParseLines(text.split('\n'), message)
 
 
@@ -621,7 +624,8 @@ class _Tokenizer(object):
     the_list = [self._ConsumeSingleByteString()]
     while self.token and self.token[0] in ('\'', '"'):
       the_list.append(self._ConsumeSingleByteString())
-    return ''.join(the_list)
+    return ''.encode('latin1').join(the_list)
+
 
   def _ConsumeSingleByteString(self):
     """Consume one token of a string literal.

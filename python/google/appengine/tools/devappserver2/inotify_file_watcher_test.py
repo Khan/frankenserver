@@ -35,7 +35,7 @@ class TestInotifyFileWatcher(unittest.TestCase):
   def setUp(self):
     self._directory = tempfile.mkdtemp()  # The watched directory
     self._junk_directory = tempfile.mkdtemp()  # A scrap directory.
-    self._watcher = inotify_file_watcher.InotifyFileWatcher(self._directory)
+    self._watcher = inotify_file_watcher.InotifyFileWatcher([self._directory])
     logging.debug('watched directory=%r, junk directory=%r',
                   self._directory, self._junk_directory)
 
@@ -200,7 +200,7 @@ class TestInotifyFileWatcher(unittest.TestCase):
         set([path]),
         self._watcher._get_changed_paths())
 
-  def test_symlink(self):
+  def test_symlink_directory(self):
     sym_target = os.path.join(self._directory, 'test')
     os.mkdir(os.path.join(self._junk_directory, 'subdir'))
     self._watcher.start()
@@ -214,6 +214,13 @@ class TestInotifyFileWatcher(unittest.TestCase):
     # Check that a file added to the symlinked directory is reported.
     with open(os.path.join(self._junk_directory, 'file1'), 'w'):
       pass
+    self.assertEqual(
+        set([os.path.join(self._directory, 'test', 'file1')]),
+        self._watcher._get_changed_paths())
+
+    # Check that modifying the file in the symlinked directory is reported.
+    with open(os.path.join(self._junk_directory, 'file1'), 'w') as fp:
+      fp.write('some data')
     self.assertEqual(
         set([os.path.join(self._directory, 'test', 'file1')]),
         self._watcher._get_changed_paths())
@@ -232,6 +239,33 @@ class TestInotifyFileWatcher(unittest.TestCase):
         set(),
         self._watcher._get_changed_paths())
 
+  @unittest.skip('b/11896748')
+  def test_symlink_file(self):
+    actual_file = os.path.join(self._junk_directory, 'moo')
+    with open(actual_file, 'w'):
+      pass
+    symbolic_link = os.path.join(self._directory, 'moo')
+    self._watcher.start()
+
+    # Check that symlinking a file into watched directory is reported.
+    os.symlink(actual_file, symbolic_link)
+    self.assertEqual(
+        set([symbolic_link]),
+        self._watcher._get_changed_paths())
+
+    # Check that modifying the source file is reported.
+    with open(actual_file, 'w') as fp:
+      fp.write('some data')
+    self.assertEqual(
+        set([symbolic_link]),
+        self._watcher._get_changed_paths())
+
+    # Check that deleting the source file is reported.
+    os.unlink(actual_file)
+    self.assertEqual(
+        set([symbolic_link]),
+        self._watcher._get_changed_paths())
+
   def test_many_directories(self):
     # Linux supports a limited number of watches per file descriptor. The
     # default is 8192 (i.e. 2^13).
@@ -240,6 +274,47 @@ class TestInotifyFileWatcher(unittest.TestCase):
     path = self._create_file('bigdir/dir4/dir4/file')
     self.assertEqual(
         set([path]),
+        self._watcher._get_changed_paths())
+
+
+@unittest.skipUnless(sys.platform.startswith('linux'), 'requires linux')
+class TestInotifyFileWatcherMultipleDirectories(unittest.TestCase):
+  """Tests for inotify_file_watcher.InotifyFileWatcher."""
+
+  def setUp(self):
+    self._directories = [tempfile.mkdtemp() for _ in range(4)]
+    self._watcher = inotify_file_watcher.InotifyFileWatcher(self._directories)
+    self._watcher.start()
+
+  def tearDown(self):
+    self._watcher.quit()
+    for directory in self._directories:
+      shutil.rmtree(directory)
+
+  @staticmethod
+  def _create_file(*paths):
+    realpath = os.path.realpath(os.path.join(*paths))
+    with open(realpath, 'w'):
+      pass
+    return realpath
+
+  def testInDir0(self):
+    path = self._create_file(self._directories[0], 'moo')
+    self.assertEqual(
+        set([path]),
+        self._watcher._get_changed_paths())
+
+  def testInDir2(self):
+    path = self._create_file(self._directories[2], 'moo')
+    self.assertEqual(
+        set([path]),
+        self._watcher._get_changed_paths())
+
+  def testInDir1And3(self):
+    path1 = self._create_file(self._directories[1], 'moo')
+    path3 = self._create_file(self._directories[3], 'moo')
+    self.assertEqual(
+        set([path1, path3]),
         self._watcher._get_changed_paths())
 
 if __name__ == '__main__':

@@ -1336,8 +1336,9 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
         else:
           db_cursor = _DedupingEntityGenerator(conn.execute(sql_stmt, params))
         dsquery = datastore_stub_util._MakeQuery(query, filters, orders)
-        cursor = datastore_stub_util.IteratorCursor(
-            query, dsquery, orders, index_list, db_cursor)
+        cursor = datastore_stub_util.ListCursor(
+            query, dsquery, orders, index_list,
+            [r for r in db_cursor])
       finally:
         self._ReleaseConnection(conn)
     return cursor

@@ -16,12 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/ApiProxyBase.php';
-
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/runtime/CapabilityDisabledError.php';
-require_once 'google/appengine/runtime/FeatureNotEnabledError.php';
-
 class RealApiProxy extends ApiProxyBase {
   // Specifying a value of -1.0 for the default deadline ensures that the
   // default for each package is used when making the call in the App Server.

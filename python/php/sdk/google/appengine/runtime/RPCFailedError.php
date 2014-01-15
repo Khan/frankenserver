@@ -19,10 +19,8 @@
 
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/Error.php';
-
 /**
- * Thrown by APIProxy calls when the RPC to the application server 
+ * Thrown by APIProxy calls when the RPC to the application server
  * fails.
  */
 class RPCFailedError extends Error {

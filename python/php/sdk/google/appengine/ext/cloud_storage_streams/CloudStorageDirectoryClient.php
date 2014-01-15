@@ -22,10 +22,7 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-require_once 'google/appengine/util/string_util.php';
-
-use google\appengine\util as util;
+use google\appengine\util\StringUtil;
 
 /**
  * Client for deleting objects from Google Cloud Storage.
@@ -50,7 +47,7 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
     parent::__construct($bucket_name, $object_prefix, $context);
     // Ignore the leading slash
     if (isset($object_prefix)) {
-      if (!util\endsWith($object_prefix, '/')) {
+      if (!StringUtil::endsWith($object_prefix, '/')) {
         $object_prefix .= '/';
       }
       $this->prefix = substr($object_prefix, 1);
@@ -272,7 +269,7 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
       // to be consistent with the folder behaviour of Google Cloud Storage
       // Manager, which supports the creating of 'folders' in the UI. See
       // https://developers.google.com/storage/docs/gsmanager
-      if (util\endsWith($key, self::FOLDER_SUFFIX)) {
+      if (StringUtil::endsWith($key, self::FOLDER_SUFFIX)) {
         $key = substr_replace($key,
                               parent::DELIMITER,
                               -strlen(parent::FOLDER_SUFFIX));
@@ -285,7 +282,7 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
   private function getCorrectPathForDirectoryName() {
     // Replace the trailing MARKER from the prefix and replace it with the
     // FOLDER_SUFFIX.
-    if (util\endsWith($this->object_name, parent::DELIMITER)) {
+    if (StringUtil::endsWith($this->object_name, parent::DELIMITER)) {
       return substr_replace($this->object_name,
                             parent::FOLDER_SUFFIX,
                             -strlen(parent::DELIMITER));

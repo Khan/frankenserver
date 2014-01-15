@@ -337,7 +337,9 @@ def create_upload_url_async(success_path,
                           _get_result_hook, lambda rpc: rpc.response.url())
 
 
-def delete(blob_keys, rpc=None):
+
+
+def delete(blob_keys, rpc=None, _token=None):
   """Delete a blob from Blobstore.
 
   Args:
@@ -348,11 +350,16 @@ def delete(blob_keys, rpc=None):
   Returns:
     None.
   """
-  rpc = delete_async(blob_keys, rpc)
+
+
+
+  rpc = delete_async(blob_keys, rpc, _token)
   return rpc.get_result()
 
 
-def delete_async(blob_keys, rpc=None):
+
+
+def delete_async(blob_keys, rpc=None, _token=None):
   """Delete a blob from Blobstore -- async version.
 
   Args:
@@ -363,11 +370,16 @@ def delete_async(blob_keys, rpc=None):
   Returns:
     A UserRPC whose result will be None.
   """
+
+
+
   if isinstance(blob_keys, (basestring, BlobKey)):
     blob_keys = [blob_keys]
   request = blobstore_service_pb.DeleteBlobRequest()
   for blob_key in blob_keys:
     request.add_blob_key(str(blob_key))
+  if _token:
+    request.set_token(_token)
   response = api_base_pb.VoidProto()
 
   return _make_async_call(rpc, 'DeleteBlob', request, response,

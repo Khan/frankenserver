@@ -51,6 +51,7 @@ __all__ = ['AbstractAdapter',
 
 
 import collections
+import copy
 import functools
 import logging
 
@@ -69,6 +70,7 @@ from google.appengine.api.app_identity import app_identity
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import datastore_v4_pb
+from google.appengine.datastore import entity_v4_pb
 from google.appengine.runtime import apiproxy_errors
 
 
@@ -76,6 +78,10 @@ from google.appengine.runtime import apiproxy_errors
 
 
 _MAX_ID_BATCH_SIZE = 1000 * 1000 * 1000
+
+
+_DATASTORE_V3 = 'datastore_v3'
+_DATASTORE_V4 = 'datastore_v4'
 
 
 
@@ -141,9 +147,21 @@ class AbstractAdapter(object):
     """Turn an entity_pb.Reference into a user-level key."""
     raise NotImplementedError
 
+  def pb_v4_to_key(self, pb):
+    """Turn an entity_v4_pb.Key into a user-level key."""
+    v3_ref = entity_pb.Reference()
+    datastore_pbs.get_entity_converter().v4_to_v3_reference(pb, v3_ref)
+    return self.pb_to_key(v3_ref)
+
   def pb_to_entity(self, pb):
     """Turn an entity_pb.EntityProto into a user-level entity."""
     raise NotImplementedError
+
+  def pb_v4_to_entity(self, pb):
+    """Turn an entity_v4_pb.Entity into a user-level entity."""
+    v3_entity = entity_pb.EntityProto()
+    datastore_pbs.get_entity_converter().v4_to_v3_entity(pb, v3_entity)
+    return self.pb_to_entity(v3_entity)
 
   def pb_to_index(self, pb):
     """Turn an entity_pb.CompositeIndex into a user-level Index
@@ -161,9 +179,23 @@ class AbstractAdapter(object):
     """Turn a user-level key into an entity_pb.Reference."""
     raise NotImplementedError
 
+  def key_to_pb_v4(self, key):
+    """Turn a user-level key into an entity_v4_pb.Key."""
+    v3_ref = self.key_to_pb(key)
+    v4_key = entity_v4_pb.Key()
+    datastore_pbs.get_entity_converter().v3_to_v4_key(v3_ref, v4_key)
+    return v4_key
+
   def entity_to_pb(self, entity):
     """Turn a user-level entity into an entity_pb.EntityProto."""
     raise NotImplementedError
+
+  def entity_to_pb_v4(self, entity):
+    """Turn a user-level entity into an entity_v4_pb.Key."""
+    v3_entity = self.entity_to_pb(entity)
+    v4_entity = entity_v4_pb.Entity()
+    datastore_pbs.get_entity_converter().v3_to_v4_entity(v3_entity, v4_entity)
+    return v4_entity
 
   def new_key_pb(self):
     """Create a new, empty entity_pb.Reference."""
@@ -716,6 +748,26 @@ class Configuration(BaseConfiguration):
         'max_delete_keys should be a positive integer')
     return value
 
+
+class _StubRpc(object):
+  """A stub RPC implementation.
+
+  Returns a hard-coded result provided at construction time.
+  """
+
+  def __init__(self, result):
+    self.__result = result
+
+  def wait(self):
+    pass
+
+  def check_success(self):
+    pass
+
+  def get_result(self):
+    return self.__result
+
+
 class MultiRpc(object):
   """A wrapper around multiple UserRPC objects.
 
@@ -961,8 +1013,10 @@ class BaseConnection(object):
   MASTER_SLAVE_DATASTORE = 1
   HIGH_REPLICATION_DATASTORE = 2
 
+  __SUPPORTED_VERSIONS = frozenset((_DATASTORE_V3, _DATASTORE_V4))
+
   @_positional(1)
-  def __init__(self, adapter=None, config=None):
+  def __init__(self, adapter=None, config=None, _api_version=_DATASTORE_V3):
     """Constructor.
 
     All arguments should be specified as keyword arguments.
@@ -976,15 +1030,20 @@ class BaseConnection(object):
       adapter = IdentityAdapter()
     if not isinstance(adapter, AbstractAdapter):
       raise datastore_errors.BadArgumentError(
-        'invalid adapter argument (%r)' % (adapter,))
+          'invalid adapter argument (%r)' % (adapter,))
     self.__adapter = adapter
 
     if config is None:
       config = Configuration()
     elif not Configuration.is_configuration(config):
       raise datastore_errors.BadArgumentError(
-        'invalid config argument (%r)' % (config,))
+          'invalid config argument (%r)' % (config,))
     self.__config = config
+
+    if _api_version not in self.__SUPPORTED_VERSIONS:
+      raise datastore_errors.BadArgumentError(
+          'unsupported API version (%s)' % (_api_version,))
+    self._api_version = _api_version
 
     self.__pending_rpcs = set()
 
@@ -1097,8 +1156,10 @@ class BaseConnection(object):
 
 
 
-  def create_rpc(self, config=None, service_name='datastore_v3'):
+  def _create_rpc(self, config=None, service_name=None):
     """Create an RPC object using the configuration parameters.
+
+    Internal only.
 
     Args:
       config: Optional Configuration object.
@@ -1120,6 +1181,13 @@ class BaseConnection(object):
     deadline = Configuration.deadline(config, self.__config)
     on_completion = Configuration.on_completion(config, self.__config)
     callback = None
+    if service_name is None:
+
+
+
+
+
+      service_name = self._api_version
     if on_completion is not None:
 
 
@@ -1128,20 +1196,25 @@ class BaseConnection(object):
     rpc = apiproxy_stub_map.UserRPC(service_name, deadline, callback)
     return rpc
 
+
+  create_rpc = _create_rpc
+
   def _set_request_read_policy(self, request, config=None):
     """Set the read policy on a request.
 
     This takes the read policy from the config argument or the
-    configuration's default configuration, and if it is
-    EVENTUAL_CONSISTENCY, sets the failover_ms field in the protobuf.
+    configuration's default configuration, and sets the request's read
+    options.
 
     Args:
-      request: A protobuf with a failover_ms field.
+      request: A read request protobuf.
       config: Optional Configuration object.
+
+    Returns:
+      True if the read policy specifies a read current request, False if it
+        specifies an eventually consistent request, None if it does
+        not specify a read consistency.
     """
-    if not (hasattr(request, 'set_failover_ms') and hasattr(request, 'strong')):
-      raise datastore_errors.BadRequestError(
-          'read_policy is only supported on read operations.')
 
     if isinstance(config, apiproxy_stub_map.UserRPC):
       read_policy = getattr(config, 'read_policy', None)
@@ -1152,14 +1225,33 @@ class BaseConnection(object):
     if read_policy is None:
       read_policy = self.__config.read_policy
 
-    if read_policy == Configuration.APPLY_ALL_JOBS_CONSISTENCY:
-      request.set_strong(True)
-    elif read_policy == Configuration.EVENTUAL_CONSISTENCY:
-      request.set_strong(False)
+    if hasattr(request, 'set_failover_ms') and hasattr(request, 'strong'):
+
+      if read_policy == Configuration.APPLY_ALL_JOBS_CONSISTENCY:
+        request.set_strong(True)
+        return True
+      elif read_policy == Configuration.EVENTUAL_CONSISTENCY:
+        request.set_strong(False)
 
 
 
-      request.set_failover_ms(-1)
+        request.set_failover_ms(-1)
+        return False
+      else:
+        return None
+    elif hasattr(request, 'read_options'):
+
+
+
+      if read_policy == Configuration.EVENTUAL_CONSISTENCY:
+        request.mutable_read_options().set_read_consistency(
+            datastore_v4_pb.ReadOptions.EVENTUAL)
+        return False
+      else:
+        return None
+    else:
+      raise datastore_errors.BadRequestError(
+          'read_policy is only supported on read operations.')
 
   def _set_request_transaction(self, request):
     """Set the current transaction on a request.
@@ -1171,14 +1263,16 @@ class BaseConnection(object):
       request: A protobuf with a transaction field.
 
     Returns:
-      A datastore_pb.Transaction object or None.
+      An object representing a transaction or None.
     """
     return None
 
-  def make_rpc_call(self, config, method, request, response,
-                    get_result_hook=None, user_data=None,
-                    service_name='datastore_v3'):
+  def _make_rpc_call(self, config, method, request, response,
+                     get_result_hook=None, user_data=None,
+                     service_name=None):
     """Make an RPC call.
+
+    Internal only.
 
     Except for the added config argument, this is a thin wrapper
     around UserRPC.make_call().
@@ -1204,10 +1298,13 @@ class BaseConnection(object):
     if isinstance(config, apiproxy_stub_map.UserRPC):
       rpc = config
     else:
-      rpc = self.create_rpc(config, service_name)
+      rpc = self._create_rpc(config, service_name)
     rpc.make_call(method, request, response, get_result_hook, user_data)
     self._add_pending(rpc)
     return rpc
+
+
+  make_rpc_call = _make_rpc_call
 
   def check_rpc_success(self, rpc):
     """Check for RPC success and translate exceptions.
@@ -1257,10 +1354,31 @@ class BaseConnection(object):
         config, self.__config) or self.DEFAULT_MAX_ENTITY_GROUPS_PER_RPC
 
   def _extract_entity_group(self, value):
-    """Internal helper: extracts the entity group from a key or entity."""
-    if isinstance(value, entity_pb.EntityProto):
+    """Internal helper: extracts the entity group from a key or entity.
+
+    Supports both v3 and v4 protobufs.
+
+    Args:
+      value: an entity_pb.{Reference, EntityProto} or
+          entity_v4_pb.{Key, Entity}.
+
+    Returns:
+      A tuple consisting of:
+        - kind
+        - name, id, or ('new', unique id)
+    """
+    if (isinstance(value, entity_v4_pb.Entity)
+        or isinstance(value, entity_pb.EntityProto)):
       value = value.key()
-    return value.path().element(0)
+    if isinstance(value, entity_v4_pb.Key):
+      elem = value.path_element(0)
+      kind = elem.kind()
+    else:
+      elem = value.path().element(0)
+      kind = elem.type()
+
+
+    return (kind, elem.id() or elem.name() or ('new', id(elem)))
 
   def _map_and_group(self, values, map_fn, group_fn):
     """Internal helper: map values to keys and group by key. Here key is any
@@ -1283,25 +1401,6 @@ class BaseConnection(object):
       indexed_key_groups[group_fn(key)].append((key, index))
     return indexed_key_groups.values()
 
-  def __group_indexed_pbs_by_entity_group(self, values, to_ref):
-    """Internal helper: group pbs by entity group.
-
-    Args:
-      values: The values to be grouped by entity group.
-      to_ref: A function that translates a value to a Reference pb.
-
-    Returns:
-      A list where each element is a list of (pb, index) pairs.  Here index is
-      the location of the value from which pb was derived in the original list.
-    """
-    def get_entity_group(ref):
-      eg = self._extract_entity_group(ref)
-
-
-      return (eg.type(), eg.id() or eg.name() or ('new', id(eg)))
-
-    return self._map_and_group(values, to_ref, get_entity_group)
-
   def __create_result_index_pairs(self, indexes):
     """Internal helper: build a function that ties an index with each result.
 
@@ -1310,7 +1409,6 @@ class BaseConnection(object):
         that the result at location y in the result list needs to be at location
         x in the list of results returned to the user.
     """
-
     def create_result_index_pairs(results):
       return zip(results, indexes)
     return create_result_index_pairs
@@ -1396,9 +1494,12 @@ class BaseConnection(object):
         size += incr_size
     yield (pbs, pb_indexes)
 
-  def _get_base_size(self, base_req):
-    """Internal helper: return request size in bytes."""
-    return base_req.ByteSize()
+  def __force(self, req):
+    """Configure a request to force mutations."""
+    if isinstance(req, datastore_v4_pb.CommitRequest):
+      req.mutable_mutation().set_force(True)
+    else:
+      req.set_force(True)
 
   def get(self, keys):
     """Synchronous Get operation.
@@ -1427,10 +1528,15 @@ class BaseConnection(object):
       A MultiRpc object.
     """
 
-    def make_get_call(req, pbs, extra_hook=None):
+    def make_get_call(base_req, pbs, extra_hook=None):
+      req = copy.deepcopy(base_req)
       req.key_list().extend(pbs)
-      self._set_request_transaction(req)
-      resp = datastore_pb.GetResponse()
+      if self._api_version == _DATASTORE_V4:
+        method = 'Lookup'
+        resp = datastore_v4_pb.LookupResponse()
+      else:
+        method = 'Get'
+        resp = datastore_pb.GetResponse()
 
 
 
@@ -1438,51 +1544,54 @@ class BaseConnection(object):
 
 
 
-      return self.make_rpc_call(config, 'Get', req, resp,
-                                get_result_hook=self.__get_hook,
-                                user_data=(config, pbs, extra_hook))
+      user_data = config, pbs, extra_hook
+      return self._make_rpc_call(config, method, req, resp,
+                                 get_result_hook=self.__get_hook,
+                                 user_data=user_data,
+                                 service_name=self._api_version)
 
-    base_req = datastore_pb.GetRequest()
-    base_req.set_allow_deferred(True)
-    self._set_request_read_policy(base_req, config)
+    if self._api_version == _DATASTORE_V4:
+      base_req = datastore_v4_pb.LookupRequest()
+      key_to_pb = self.__adapter.key_to_pb_v4
+    else:
+      base_req = datastore_pb.GetRequest()
+      base_req.set_allow_deferred(True)
+      key_to_pb = self.__adapter.key_to_pb
+    is_read_current = self._set_request_read_policy(base_req, config)
+    txn = self._set_request_transaction(base_req)
 
 
     if isinstance(config, apiproxy_stub_map.UserRPC) or len(keys) <= 1:
-      pbs = [self.__adapter.key_to_pb(key) for key in keys]
+      pbs = [key_to_pb(key) for key in keys]
       return make_get_call(base_req, pbs, extra_hook)
 
-    base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_get_keys(config, self.__config) or
                  self.MAX_GET_KEYS)
 
-    if base_req.has_strong():
-      is_read_current = base_req.strong()
-    else:
+    indexed_keys_by_entity_group = self._map_and_group(
+        keys, key_to_pb, self._extract_entity_group)
+
+    if is_read_current is None:
       is_read_current = (self.get_datastore_type() ==
                          BaseConnection.HIGH_REPLICATION_DATASTORE)
 
-    indexed_keys_by_entity_group = self.__group_indexed_pbs_by_entity_group(
-        keys, self.__adapter.key_to_pb)
 
 
 
-
-    if is_read_current and not base_req.has_transaction():
+    if is_read_current and txn is None:
       max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
 
 
 
-    pbsgen = self._generate_pb_lists(
-        indexed_keys_by_entity_group, base_size, max_count, max_egs_per_rpc,
-        config)
+    pbsgen = self._generate_pb_lists(indexed_keys_by_entity_group,
+                                     base_req.ByteSize(), max_count,
+                                     max_egs_per_rpc, config)
 
     rpcs = []
     for pbs, indexes in pbsgen:
-      req = datastore_pb.GetRequest()
-      req.CopyFrom(base_req)
-      rpcs.append(make_get_call(req, pbs,
+      rpcs.append(make_get_call(base_req, pbs,
                                 self.__create_result_index_pairs(indexes)))
     return MultiRpc(rpcs, self.__sort_result_index_pairs(extra_hook))
 
@@ -1492,9 +1601,9 @@ class BaseConnection(object):
 
 
 
-    config, refs_from_request, extra_hook = rpc.user_data
+    config, keys_from_request, extra_hook = rpc.user_data
 
-    if rpc.response.in_order():
+    if self._api_version == _DATASTORE_V3 and rpc.response.in_order():
 
 
       entities = []
@@ -1513,16 +1622,20 @@ class BaseConnection(object):
 
 
 
-      deferred_req = datastore_pb.GetRequest()
-      deferred_req.CopyFrom(rpc.request)
-      while current_get_response.deferred_size() > 0:
+      if self._api_version == _DATASTORE_V4:
+        method = 'Lookup'
+        deferred_resp = datastore_v4_pb.LookupResponse()
+      else:
+        method = 'Get'
+        deferred_resp = datastore_pb.GetResponse()
+      deferred_req = copy.deepcopy(rpc.request)
+      while current_get_response.deferred_list():
         deferred_req.clear_key()
         deferred_req.key_list().extend(current_get_response.deferred_list())
-
-        deferred_rpc = self.make_rpc_call(config,
-                                          'Get',
-                                          deferred_req,
-                                          datastore_pb.GetResponse())
+        deferred_resp.Clear()
+        deferred_rpc = self._make_rpc_call(config, method,
+                                           deferred_req, deferred_resp,
+                                           service_name=self._api_version)
         deferred_rpc.get_result()
         current_get_response = deferred_rpc.response
 
@@ -1532,8 +1645,8 @@ class BaseConnection(object):
 
 
 
-      entities = [result_dict.get(datastore_types.ReferenceToKeyValue(ref_pb))
-                  for ref_pb in refs_from_request]
+      entities = [result_dict.get(datastore_types.ReferenceToKeyValue(pb))
+                  for pb in keys_from_request]
 
 
 
@@ -1543,27 +1656,34 @@ class BaseConnection(object):
     return entities
 
   def __add_get_response_entities_to_dict(self, get_response, result_dict):
-    """Converts entities from the GetResponse and adds them to the dict.
+    """Converts entities from the get response and adds them to the dict.
 
     The Key for the dict will be calculated via
     datastore_types.ReferenceToKeyValue.  There will be no entry for entities
     that were not found.
 
     Args:
-      get_response: A datastore_pb.GetResponse.
+      get_response: A datastore_pb.GetResponse or
+          datastore_v4_pb.LookupResponse.
       result_dict: The dict to add results to.
     """
-    for entity_result in get_response.entity_list():
+    if isinstance(get_response, datastore_v4_pb.LookupResponse):
+      for result in get_response.found_list():
+        v4_key = result.entity().key()
+        entity = self.__adapter.pb_v4_to_entity(result.entity())
+        result_dict[datastore_types.ReferenceToKeyValue(v4_key)] = entity
+    else:
+      for entity_result in get_response.entity_list():
 
-      if entity_result.has_entity():
+        if entity_result.has_entity():
 
 
 
 
-        reference_pb = entity_result.entity().key()
-        hashable_key = datastore_types.ReferenceToKeyValue(reference_pb)
-        entity = self.__adapter.pb_to_entity(entity_result.entity())
-        result_dict[hashable_key] = entity
+          reference_pb = entity_result.entity().key()
+          hashable_key = datastore_types.ReferenceToKeyValue(reference_pb)
+          entity = self.__adapter.pb_to_entity(entity_result.entity())
+          result_dict[hashable_key] = entity
 
   def get_indexes(self):
     """Synchronous get indexes operation.
@@ -1587,8 +1707,10 @@ class BaseConnection(object):
     req = api_base_pb.StringProto()
     req.set_value(datastore_types.ResolveAppId(_app))
     resp = datastore_pb.CompositeIndices()
-    return self.make_rpc_call(config, 'GetIndices', req, resp,
-                                self.__get_indexes_hook, extra_hook)
+    return self._make_rpc_call(config, 'GetIndices', req, resp,
+                               get_result_hook=self.__get_indexes_hook,
+                               user_data=extra_hook,
+                               service_name=_DATASTORE_V3)
 
   def __get_indexes_hook(self, rpc):
     """Internal method used as get_result_hook for Get operation."""
@@ -1631,54 +1753,88 @@ class BaseConnection(object):
     *not* patch up those entities with the complete key.
     """
 
-    def make_put_call(req, pbs, user_data=None):
-      req.entity_list().extend(pbs)
-      self._set_request_transaction(req)
-      resp = datastore_pb.PutResponse()
-      return self.make_rpc_call(config, 'Put', req, resp,
-                                self.__put_hook, user_data)
+    def make_put_call(base_req, pbs, user_data=None):
+      req = copy.deepcopy(base_req)
+      if self._api_version == _DATASTORE_V4:
+        mutation = req.mutable_mutation()
+        for entity in pbs:
+          if datastore_pbs.is_complete_v4_key(entity.key()):
+            mutation.upsert_list().append(entity)
+          else:
+            mutation.insert_auto_id_list().append(entity)
+        method = 'Commit'
+        resp = datastore_v4_pb.CommitResponse()
+      else:
+        req.entity_list().extend(pbs)
+        method = 'Put'
+        resp = datastore_pb.PutResponse()
+      user_data = pbs, user_data
+      return self._make_rpc_call(config, method, req, resp,
+                                 get_result_hook=self.__put_hook,
+                                 user_data=user_data,
+                                 service_name=self._api_version)
 
 
-    base_req = datastore_pb.PutRequest()
+    if self._api_version == _DATASTORE_V4:
+      base_req = datastore_v4_pb.CommitRequest()
+      base_req.set_mode(datastore_v4_pb.CommitRequest.NON_TRANSACTIONAL)
+      entity_to_pb = self.__adapter.entity_to_pb_v4
+    else:
+      base_req = datastore_pb.PutRequest()
+      entity_to_pb = self.__adapter.entity_to_pb
+    self._set_request_transaction(base_req)
     if Configuration.force_writes(config, self.__config):
-      base_req.set_force(True)
+      self.__force(base_req)
 
 
     if isinstance(config, apiproxy_stub_map.UserRPC) or len(entities) <= 1:
-      pbs = [self.__adapter.entity_to_pb(entity) for entity in entities]
+      pbs = [entity_to_pb(entity) for entity in entities]
       return make_put_call(base_req, pbs, extra_hook)
 
-    base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_put_entities(config, self.__config) or
                  self.MAX_PUT_ENTITIES)
-    rpcs = []
-    indexed_entities_by_entity_group = self.__group_indexed_pbs_by_entity_group(
-        entities, self.__adapter.entity_to_pb)
     if not base_req.has_transaction():
       max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
 
-    pbsgen = self._generate_pb_lists(
-        indexed_entities_by_entity_group, base_size, max_count, max_egs_per_rpc,
-        config)
+    indexed_entities_by_entity_group = self._map_and_group(
+        entities, entity_to_pb, self._extract_entity_group)
 
+
+
+    pbsgen = self._generate_pb_lists(indexed_entities_by_entity_group,
+                                     base_req.ByteSize(), max_count,
+                                     max_egs_per_rpc, config)
+
+    rpcs = []
     for pbs, indexes in pbsgen:
-      req = datastore_pb.PutRequest()
-      req.CopyFrom(base_req)
-      rpcs.append(make_put_call(req, pbs,
+      rpcs.append(make_put_call(base_req, pbs,
                                 self.__create_result_index_pairs(indexes)))
     return MultiRpc(rpcs, self.__sort_result_index_pairs(extra_hook))
 
   def __put_hook(self, rpc):
     """Internal method used as get_result_hook for Put operation."""
     self.check_rpc_success(rpc)
-    keys = [self.__adapter.pb_to_key(pb)
-            for pb in rpc.response.key_list()]
+    entities_from_request, extra_hook = rpc.user_data
+
+    if isinstance(rpc.response, datastore_v4_pb.CommitResponse):
+      keys = []
+      i = 0
+      for entity in entities_from_request:
+        if datastore_pbs.is_complete_v4_key(entity.key()):
+          keys.append(entity.key())
+        else:
+          keys.append(rpc.response.mutation_result().insert_auto_id_key(i))
+          i += 1
+      keys = [self.__adapter.pb_v4_to_key(key) for key in keys]
+    else:
+      keys = [self.__adapter.pb_to_key(key) for key in rpc.response.key_list()]
 
 
-    if rpc.user_data is not None:
-      keys = rpc.user_data(keys)
+
+    if extra_hook is not None:
+      keys = extra_hook(keys)
     return keys
 
   def delete(self, keys):
@@ -1705,43 +1861,57 @@ class BaseConnection(object):
       A MultiRpc object.
     """
 
-    def make_delete_call(req, pbs, user_data=None):
-      req.key_list().extend(pbs)
-      self._set_request_transaction(req)
-      resp = datastore_pb.DeleteResponse()
-      return self.make_rpc_call(config, 'Delete', req, resp,
-                                self.__delete_hook, user_data)
+    def make_delete_call(base_req, pbs, user_data=None):
+      req = copy.deepcopy(base_req)
+      if self._api_version == _DATASTORE_V4:
+        req.mutable_mutation().delete_list().extend(pbs)
+        method = 'Commit'
+        resp = datastore_v4_pb.CommitResponse()
+      else:
+        req.key_list().extend(pbs)
+        method = 'Delete'
+        resp = datastore_pb.DeleteResponse()
+      return self._make_rpc_call(config, method, req, resp,
+                                 get_result_hook=self.__delete_hook,
+                                 user_data=user_data,
+                                 service_name=self._api_version)
 
 
-    base_req = datastore_pb.DeleteRequest()
+    if self._api_version == _DATASTORE_V4:
+      base_req = datastore_v4_pb.CommitRequest()
+      base_req.set_mode(datastore_v4_pb.CommitRequest.NON_TRANSACTIONAL)
+      key_to_pb = self.__adapter.key_to_pb_v4
+    else:
+      base_req = datastore_pb.DeleteRequest()
+      key_to_pb = self.__adapter.key_to_pb
+    self._set_request_transaction(base_req)
     if Configuration.force_writes(config, self.__config):
-      base_req.set_force(True)
+      self.__force(base_req)
 
 
     if isinstance(config, apiproxy_stub_map.UserRPC) or len(keys) <= 1:
-      pbs = [self.__adapter.key_to_pb(key) for key in keys]
+      pbs = [key_to_pb(key) for key in keys]
       return make_delete_call(base_req, pbs, extra_hook)
 
-    base_size = self._get_base_size(base_req)
     max_count = (Configuration.max_delete_keys(config, self.__config) or
                  self.MAX_DELETE_KEYS)
     if not base_req.has_transaction():
       max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
-    indexed_keys_by_entity_group = self.__group_indexed_pbs_by_entity_group(
-        keys, self.__adapter.key_to_pb)
+
+    indexed_keys_by_entity_group = self._map_and_group(
+        keys, key_to_pb, self._extract_entity_group)
 
 
 
-    pbsgen = self._generate_pb_lists(
-        indexed_keys_by_entity_group, base_size, max_count, max_egs_per_rpc,
-        config)
+    pbsgen = self._generate_pb_lists(indexed_keys_by_entity_group,
+                                     base_req.ByteSize(), max_count,
+                                     max_egs_per_rpc, config)
+
     rpcs = []
     for pbs, _ in pbsgen:
-      req = datastore_pb.DeleteRequest()
-      req.CopyFrom(base_req)
-      rpcs.append(make_delete_call(req, pbs))
+      rpcs.append(make_delete_call(base_req, pbs))
     return MultiRpc(rpcs, extra_hook)
 
   def __delete_hook(self, rpc):
@@ -1764,7 +1934,7 @@ class BaseConnection(object):
       app: Application ID.
 
     Returns:
-      A datastore_pb.Transaction object.
+      An object representing a transaction or None.
     """
     return self.async_begin_transaction(None, app).get_result()
 
@@ -1783,19 +1953,30 @@ class BaseConnection(object):
       raise datastore_errors.BadArgumentError(
         'begin_transaction requires an application id argument (%r)' %
         (app,))
-    req = datastore_pb.BeginTransactionRequest()
-    req.set_app(app)
-    if (TransactionOptions.xg(config, self.__config)):
-      req.set_allow_multiple_eg(True)
-    resp = datastore_pb.Transaction()
-    rpc = self.make_rpc_call(config, 'BeginTransaction', req, resp,
-                             self.__begin_transaction_hook)
-    return rpc
+
+    if self._api_version == _DATASTORE_V4:
+      req = datastore_v4_pb.BeginTransactionRequest()
+      if TransactionOptions.xg(config, self.config):
+        req.set_cross_group(True)
+      resp = datastore_v4_pb.BeginTransactionResponse()
+    else:
+      req = datastore_pb.BeginTransactionRequest()
+      req.set_app(app)
+      if (TransactionOptions.xg(config, self.__config)):
+        req.set_allow_multiple_eg(True)
+      resp = datastore_pb.Transaction()
+
+    return self._make_rpc_call(config, 'BeginTransaction', req, resp,
+                               get_result_hook=self.__begin_transaction_hook,
+                               service_name=self._api_version)
 
   def __begin_transaction_hook(self, rpc):
     """Internal method used as get_result_hook for BeginTransaction."""
     self.check_rpc_success(rpc)
-    return rpc.response
+    if isinstance(rpc.response, datastore_v4_pb.BeginTransactionResponse):
+      return rpc.response.transaction()
+    else:
+      return rpc.response
 
 
 class Connection(BaseConnection):
@@ -1806,7 +1987,7 @@ class Connection(BaseConnection):
   """
 
   @_positional(1)
-  def __init__(self, adapter=None, config=None):
+  def __init__(self, adapter=None, config=None, _api_version=_DATASTORE_V3):
     """Constructor.
 
     All arguments should be specified as keyword arguments.
@@ -1816,7 +1997,8 @@ class Connection(BaseConnection):
         default IdentityAdapter.
       config: Optional Configuration object.
     """
-    super(Connection, self).__init__(adapter=adapter, config=config)
+    super(Connection, self).__init__(adapter=adapter, config=config,
+                                     _api_version=_api_version)
     self.__adapter = self.adapter
     self.__config = self.config
 
@@ -1834,7 +2016,8 @@ class Connection(BaseConnection):
         with this connection's config.
     """
     config = self.__config.merge(config)
-    return TransactionalConnection(adapter=self.__adapter, config=config)
+    return TransactionalConnection(adapter=self.__adapter, config=config,
+                                   _api_version=self._api_version)
 
 
 
@@ -1896,8 +2079,10 @@ class Connection(BaseConnection):
     if max is not None:
       req.set_max(max)
     resp = datastore_pb.AllocateIdsResponse()
-    rpc = self.make_rpc_call(config, 'AllocateIds', req, resp,
-                             self.__allocate_ids_hook, extra_hook)
+    rpc = self._make_rpc_call(config, 'AllocateIds', req, resp,
+                              get_result_hook=self.__allocate_ids_hook,
+                              user_data=extra_hook,
+                              service_name=_DATASTORE_V3)
     return rpc
 
   def __allocate_ids_hook(self, rpc):
@@ -1939,8 +2124,7 @@ class Connection(BaseConnection):
       if key.path().element_size() == 1:
         return 'root_idkey'
       else:
-        eg = self._extract_entity_group(key)
-        return (eg.type(), eg.id() or eg.name())
+        return self._extract_entity_group(key)
 
     keys_by_idkey = self._map_and_group(keys, self.__adapter.key_to_pb,
                                         to_id_key)
@@ -1955,9 +2139,10 @@ class Connection(BaseConnection):
         datastore_pbs.get_entity_converter().v3_to_v4_key(key,
                                                           req.add_reserve())
       resp = datastore_v4_pb.AllocateIdsResponse()
-      rpcs.append(self.make_rpc_call(config, 'AllocateIds', req, resp,
-                                     self.__reserve_keys_hook, extra_hook,
-                                     'datastore_v4'))
+      rpcs.append(self._make_rpc_call(config, 'AllocateIds', req, resp,
+                                      get_result_hook=self.__reserve_keys_hook,
+                                      user_data=extra_hook,
+                                      service_name=_DATASTORE_V4))
     return MultiRpc(rpcs)
 
   def __reserve_keys_hook(self, rpc):
@@ -2056,7 +2241,8 @@ class TransactionalConnection(BaseConnection):
 
   @_positional(1)
   def __init__(self,
-               adapter=None, config=None, transaction=None, entity_group=None):
+               adapter=None, config=None, transaction=None, entity_group=None,
+               _api_version=_DATASTORE_V3):
     """Constructor.
 
     All arguments should be specified as keyword arguments.
@@ -2069,24 +2255,29 @@ class TransactionalConnection(BaseConnection):
       entity_group: Deprecated, do not use.
     """
     super(TransactionalConnection, self).__init__(adapter=adapter,
-                                                  config=config)
+                                                  config=config,
+                                                  _api_version=_api_version)
     self.__adapter = self.adapter
+    self.__config = self.config
     if transaction is None:
       app = TransactionOptions.app(self.config)
       app = datastore_types.ResolveAppId(TransactionOptions.app(self.config))
       self.__transaction_rpc = self.async_begin_transaction(None, app)
     else:
-      if not isinstance(transaction, datastore_pb.Transaction):
+      if self._api_version == _DATASTORE_V4:
+        txn_class = str
+      else:
+        txn_class = datastore_pb.Transaction
+      if not isinstance(transaction, txn_class):
         raise datastore_errors.BadArgumentError(
           'Invalid transaction (%r)' % (transaction,))
       self.__transaction = transaction
       self.__transaction_rpc = None
     self.__finished = False
 
-  def _get_base_size(self, base_req):
-    """Internal helper: return size in bytes plus room for transaction."""
-    return (super(TransactionalConnection, self)._get_base_size(base_req) +
-            self.transaction.lengthString(self.transaction.ByteSize()) + 1)
+
+    self.__pending_v4_upserts = {}
+    self.__pending_v4_deletes = {}
 
   @property
   def finished(self):
@@ -2110,13 +2301,18 @@ class TransactionalConnection(BaseConnection):
       request: A protobuf with a transaction field.
 
     Returns:
-      A datastore_pb.Transaction object or None.
+      An object representing a transaction or None.
     """
     if self.__finished:
       raise datastore_errors.BadRequestError(
           'Cannot start a new operation in a finished transaction.')
     transaction = self.transaction
-    request.mutable_transaction().CopyFrom(transaction)
+    if self._api_version == _DATASTORE_V4:
+      request.mutable_read_options().set_transaction(transaction)
+
+      request.mutable_read_options().clear_read_consistency()
+    else:
+      request.mutable_transaction().CopyFrom(transaction)
     return transaction
 
   def _end_transaction(self):
@@ -2127,7 +2323,7 @@ class TransactionalConnection(BaseConnection):
     can be started using this connection.
 
     Returns:
-      A datastore_pb.Transaction object or None.
+      An object representing a transaction or None.
 
     Raises:
       datastore_errors.BadRequestError if the transaction is already
@@ -2147,6 +2343,133 @@ class TransactionalConnection(BaseConnection):
 
 
 
+  def async_put(self, config, entities, extra_hook=None):
+    """Transactional asynchronous Put operation.
+
+    Args:
+      config: A Configuration object or None.  Defaults are taken from
+        the connection's default configuration.
+      entities: An iterable of user-level entity objects.
+      extra_hook: Optional function to be called on the result once the
+        RPC has completed.
+
+     Returns:
+      A MultiRpc object.
+
+    NOTE: If any of the entities has an incomplete key, this will
+    *not* patch up those entities with the complete key.
+    """
+    if self._api_version != _DATASTORE_V4:
+
+      return super(TransactionalConnection, self).async_put(
+          config, entities, extra_hook)
+
+    v4_entities = [self.adapter.entity_to_pb_v4(entity)
+                   for entity in entities]
+
+
+    v4_req = datastore_v4_pb.AllocateIdsRequest()
+    for v4_entity in v4_entities:
+      if not datastore_pbs.is_complete_v4_key(v4_entity.key()):
+        v4_req.allocate_list().append(v4_entity.key())
+
+    user_data = v4_entities, extra_hook
+
+    if not v4_req.allocate_list():
+
+      return _StubRpc(self.__v4_build_put_result([], user_data))
+
+    return self._make_rpc_call(config, 'AllocateIds', v4_req,
+                              datastore_v4_pb.AllocateIdsResponse(),
+                              get_result_hook=self.__v4_put_allocate_ids_hook,
+                              user_data=user_data,
+                              service_name=_DATASTORE_V4)
+
+  def __v4_put_allocate_ids_hook(self, rpc):
+    """Internal method used as get_result_hook for AllocateIds call."""
+    self.check_rpc_success(rpc)
+    v4_resp = rpc.response
+    return self.__v4_build_put_result(list(v4_resp.allocated_list()),
+                                      rpc.user_data)
+
+  def __v4_build_put_result(self, v4_allocated_keys, user_data):
+    """Internal method that builds the result of a put operation.
+
+    Converts the results from a v4 AllocateIds operation to a list of user-level
+    key objects.
+
+    Args:
+      v4_allocated_keys: a list of datastore_v4_pb.Keys that have been allocated
+      user_data: a tuple consisting of:
+        - a list of datastore_v4_pb.Entity objects
+        - an optional extra_hook
+    """
+    v4_entities, extra_hook = user_data
+    keys = []
+    idx = 0
+    for v4_entity in v4_entities:
+
+
+
+
+
+
+      v4_entity = copy.deepcopy(v4_entity)
+      if not datastore_pbs.is_complete_v4_key(v4_entity.key()):
+        v4_entity.key().CopyFrom(v4_allocated_keys[idx])
+        idx += 1
+      hashable_key = datastore_types.ReferenceToKeyValue(v4_entity.key())
+
+      self.__pending_v4_deletes.pop(hashable_key, None)
+
+
+      self.__pending_v4_upserts[hashable_key] = v4_entity
+      keys.append(self.adapter.pb_v4_to_key(copy.deepcopy(v4_entity.key())))
+
+
+    if extra_hook:
+      keys = extra_hook(keys)
+    return keys
+
+
+
+  def async_delete(self, config, keys, extra_hook=None):
+    """Transactional asynchronous Delete operation.
+
+    Args:
+      config: A Configuration object or None.  Defaults are taken from
+        the connection's default configuration.
+      keys: An iterable of user-level key objects.
+      extra_hook: Optional function to be called once the RPC has completed.
+
+    Returns:
+      A MultiRpc object.
+    """
+    if self._api_version != _DATASTORE_V4:
+
+      return super(TransactionalConnection, self).async_delete(config,
+                                                               keys,
+                                                               extra_hook)
+
+    v4_keys = [self.__adapter.key_to_pb_v4(key) for key in keys]
+
+    for key in v4_keys:
+      hashable_key = datastore_types.ReferenceToKeyValue(key)
+
+      self.__pending_v4_upserts.pop(hashable_key, None)
+
+
+      self.__pending_v4_deletes[hashable_key] = key
+
+
+    return _StubRpc(self.__v4_delete_hook(extra_hook))
+
+  def __v4_delete_hook(self, extra_hook):
+    if extra_hook:
+      extra_hook(None)
+
+
+
   def commit(self):
     """Synchronous Commit operation.
 
@@ -2156,7 +2479,7 @@ class TransactionalConnection(BaseConnection):
     """
 
 
-    rpc = self.create_rpc()
+    rpc = self._create_rpc(service_name=self._api_version)
     rpc = self.async_commit(rpc)
     if rpc is None:
       return True
@@ -2175,10 +2498,30 @@ class TransactionalConnection(BaseConnection):
     transaction = self._end_transaction()
     if transaction is None:
       return None
-    resp = datastore_pb.CommitResponse()
-    rpc = self.make_rpc_call(config, 'Commit', transaction, resp,
-                             self.__commit_hook)
-    return rpc
+
+    if self._api_version == _DATASTORE_V4:
+      req = datastore_v4_pb.CommitRequest()
+      req.set_transaction(transaction)
+      if Configuration.force_writes(config, self.__config):
+        self.__force(req)
+
+
+      mutation = req.mutable_mutation()
+      mutation.upsert_list().extend(self.__pending_v4_upserts.itervalues())
+      mutation.delete_list().extend(self.__pending_v4_deletes.itervalues())
+
+
+      self.__pending_v4_upserts.clear()
+      self.__pending_v4_deletes.clear()
+
+      resp = datastore_v4_pb.CommitResponse()
+    else:
+      req = transaction
+      resp = datastore_pb.CommitResponse()
+
+    return self._make_rpc_call(config, 'Commit', req, resp,
+                               get_result_hook=self.__commit_hook,
+                               service_name=self._api_version)
 
   def __commit_hook(self, rpc):
     """Internal method used as get_result_hook for Commit."""
@@ -2214,10 +2557,18 @@ class TransactionalConnection(BaseConnection):
     transaction = self._end_transaction()
     if transaction is None:
       return None
-    resp = api_base_pb.VoidProto()
-    rpc = self.make_rpc_call(config, 'Rollback', transaction, resp,
-                             self.__rollback_hook)
-    return rpc
+
+    if self._api_version == _DATASTORE_V4:
+      req = datastore_v4_pb.RollbackRequest()
+      req.set_transaction(transaction)
+      resp = datastore_v4_pb.RollbackResponse()
+    else:
+      req = transaction
+      resp = api_base_pb.VoidProto()
+
+    return self._make_rpc_call(config, 'Rollback', req, resp,
+                               get_result_hook=self.__rollback_hook,
+                               service_name=self._api_version)
 
   def __rollback_hook(self, rpc):
     """Internal method used as get_result_hook for Rollback."""

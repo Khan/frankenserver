@@ -59,8 +59,11 @@ def start_process(args, input_string='', env=None, cwd=None, stdout=None,
     logging.debug('Starting process %r with input=%r, env=%r, cwd=%r',
                   args, input_string, env, cwd)
 
-    if sys.platform == 'win32':
-      # Suppress the display of the console window on Windows.
+    # Suppress the display of the console window on Windows.
+    # Note: subprocess.STARTF_USESHOWWINDOW & subprocess.SW_HIDE are only
+    # availalbe after Python 2.7.2 on Windows.
+    if (hasattr(subprocess, 'SW_HIDE') and
+        hasattr(subprocess, 'STARTF_USESHOWWINDOW')):
       startupinfo = subprocess.STARTUPINFO()
       startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
       startupinfo.wShowWindow = subprocess.SW_HIDE

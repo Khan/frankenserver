@@ -19,10 +19,7 @@
 
 namespace google\appengine\api\log;
 
-require_once 'google/appengine/api/log/AppLogLine.php';
-require_once 'google/appengine/util/string_util.php';
-
-use google\appengine\util as util;
+use google\appengine\util\StringUtil;
 
 /**
  * Represents the details of a single request and may optionally contain
@@ -175,7 +172,7 @@ final class RequestLog {
   public function getOffset() {
     if ($this->pb->hasOffset()) {
       $offset = $this->pb->getOffset()->serializeToString();
-      return util\base64UrlEncode($offset);
+      return StringUtil::base64UrlEncode($offset);
     }
     return false;
   }

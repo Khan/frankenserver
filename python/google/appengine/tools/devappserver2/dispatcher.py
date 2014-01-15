@@ -446,8 +446,8 @@ class Dispatcher(request_info.Dispatcher):
     """
     return self._get_module(module_name, version).get_num_instances()
 
-  def start_module(self, module_name, version):
-    """Starts a module.
+  def start_version(self, module_name, version):
+    """Starts a version of a module.
 
     Args:
       module_name: A str containing the name of the module.
@@ -461,8 +461,8 @@ class Dispatcher(request_info.Dispatcher):
     """
     self._get_module(module_name, version).resume()
 
-  def stop_module(self, module_name, version):
-    """Stops a module.
+  def stop_version(self, module_name, version):
+    """Stops a version of a module.
 
     Args:
       module_name: A str containing the name of the module.

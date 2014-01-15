@@ -3525,6 +3525,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   commitcost_ = None
   has_approximate_storage_delta_ = 0
   approximate_storage_delta_ = 0
+  has_id_sequence_updates_ = 0
+  id_sequence_updates_ = 0
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -3614,6 +3616,19 @@ class Cost(ProtocolBuffer.ProtocolMessage):
 
   def has_approximate_storage_delta(self): return self.has_approximate_storage_delta_
 
+  def id_sequence_updates(self): return self.id_sequence_updates_
+
+  def set_id_sequence_updates(self, x):
+    self.has_id_sequence_updates_ = 1
+    self.id_sequence_updates_ = x
+
+  def clear_id_sequence_updates(self):
+    if self.has_id_sequence_updates_:
+      self.has_id_sequence_updates_ = 0
+      self.id_sequence_updates_ = 0
+
+  def has_id_sequence_updates(self): return self.has_id_sequence_updates_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3623,6 +3638,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (x.has_entity_write_bytes()): self.set_entity_write_bytes(x.entity_write_bytes())
     if (x.has_commitcost()): self.mutable_commitcost().MergeFrom(x.commitcost())
     if (x.has_approximate_storage_delta()): self.set_approximate_storage_delta(x.approximate_storage_delta())
+    if (x.has_id_sequence_updates()): self.set_id_sequence_updates(x.id_sequence_updates())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3638,6 +3654,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if self.has_commitcost_ and self.commitcost_ != x.commitcost_: return 0
     if self.has_approximate_storage_delta_ != x.has_approximate_storage_delta_: return 0
     if self.has_approximate_storage_delta_ and self.approximate_storage_delta_ != x.approximate_storage_delta_: return 0
+    if self.has_id_sequence_updates_ != x.has_id_sequence_updates_: return 0
+    if self.has_id_sequence_updates_ and self.id_sequence_updates_ != x.id_sequence_updates_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3653,6 +3671,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
     if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSize()
     if (self.has_approximate_storage_delta_): n += 1 + self.lengthVarInt64(self.approximate_storage_delta_)
+    if (self.has_id_sequence_updates_): n += 1 + self.lengthVarInt64(self.id_sequence_updates_)
     return n
 
   def ByteSizePartial(self):
@@ -3663,6 +3682,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_entity_write_bytes_): n += 1 + self.lengthVarInt64(self.entity_write_bytes_)
     if (self.has_commitcost_): n += 2 + self.commitcost_.ByteSizePartial()
     if (self.has_approximate_storage_delta_): n += 1 + self.lengthVarInt64(self.approximate_storage_delta_)
+    if (self.has_id_sequence_updates_): n += 1 + self.lengthVarInt64(self.id_sequence_updates_)
     return n
 
   def Clear(self):
@@ -3672,6 +3692,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     self.clear_entity_write_bytes()
     self.clear_commitcost()
     self.clear_approximate_storage_delta()
+    self.clear_id_sequence_updates()
 
   def OutputUnchecked(self, out):
     if (self.has_index_writes_):
@@ -3693,6 +3714,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_approximate_storage_delta_):
       out.putVarInt32(64)
       out.putVarInt32(self.approximate_storage_delta_)
+    if (self.has_id_sequence_updates_):
+      out.putVarInt32(72)
+      out.putVarInt32(self.id_sequence_updates_)
 
   def OutputPartial(self, out):
     if (self.has_index_writes_):
@@ -3714,6 +3738,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     if (self.has_approximate_storage_delta_):
       out.putVarInt32(64)
       out.putVarInt32(self.approximate_storage_delta_)
+    if (self.has_id_sequence_updates_):
+      out.putVarInt32(72)
+      out.putVarInt32(self.id_sequence_updates_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3736,6 +3763,9 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       if tt == 64:
         self.set_approximate_storage_delta(d.getVarInt32())
         continue
+      if tt == 72:
+        self.set_id_sequence_updates(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3753,6 +3783,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
       res+=self.commitcost_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
     if self.has_approximate_storage_delta_: res+=prefix+("approximate_storage_delta: %s\n" % self.DebugFormatInt32(self.approximate_storage_delta_))
+    if self.has_id_sequence_updates_: res+=prefix+("id_sequence_updates: %s\n" % self.DebugFormatInt32(self.id_sequence_updates_))
     return res
 
 
@@ -3767,6 +3798,7 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   kCommitCostrequested_entity_puts = 6
   kCommitCostrequested_entity_deletes = 7
   kapproximate_storage_delta = 8
+  kid_sequence_updates = 9
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3778,7 +3810,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     6: "requested_entity_puts",
     7: "requested_entity_deletes",
     8: "approximate_storage_delta",
-  }, 8)
+    9: "id_sequence_updates",
+  }, 9)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3790,7 +3823,8 @@ class Cost(ProtocolBuffer.ProtocolMessage):
     6: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.NUMERIC,
-  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
+    9: ProtocolBuffer.Encoder.NUMERIC,
+  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6816,8 +6850,11 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
   start_ = 0
   has_end_ = 0
   end_ = 0
+  has_cost_ = 0
+  cost_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def start(self): return self.start_
@@ -6846,11 +6883,31 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
 
   def has_end(self): return self.has_end_
 
+  def cost(self):
+    if self.cost_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.cost_ is None: self.cost_ = Cost()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.cost_
+
+  def mutable_cost(self): self.has_cost_ = 1; return self.cost()
+
+  def clear_cost(self):
+
+    if self.has_cost_:
+      self.has_cost_ = 0;
+      if self.cost_ is not None: self.cost_.Clear()
+
+  def has_cost(self): return self.has_cost_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_start()): self.set_start(x.start())
     if (x.has_end()): self.set_end(x.end())
+    if (x.has_cost()): self.mutable_cost().MergeFrom(x.cost())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6858,6 +6915,8 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
     if self.has_start_ and self.start_ != x.start_: return 0
     if self.has_end_ != x.has_end_: return 0
     if self.has_end_ and self.end_ != x.end_: return 0
+    if self.has_cost_ != x.has_cost_: return 0
+    if self.has_cost_ and self.cost_ != x.cost_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6870,12 +6929,14 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: end not set.')
+    if (self.has_cost_ and not self.cost_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     n += self.lengthVarInt64(self.start_)
     n += self.lengthVarInt64(self.end_)
+    if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
@@ -6886,17 +6947,23 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_end_):
       n += 1
       n += self.lengthVarInt64(self.end_)
+    if (self.has_cost_): n += 1 + self.lengthString(self.cost_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_start()
     self.clear_end()
+    self.clear_cost()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
     out.putVarInt64(self.start_)
     out.putVarInt32(16)
     out.putVarInt64(self.end_)
+    if (self.has_cost_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.cost_.ByteSize())
+      self.cost_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_start_):
@@ -6905,6 +6972,10 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_end_):
       out.putVarInt32(16)
       out.putVarInt64(self.end_)
+    if (self.has_cost_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.cost_.ByteSizePartial())
+      self.cost_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6914,6 +6985,12 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 16:
         self.set_end(d.getVarInt64())
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_cost().TryMerge(tmp)
         continue
 
 
@@ -6925,6 +7002,10 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_start_: res+=prefix+("start: %s\n" % self.DebugFormatInt64(self.start_))
     if self.has_end_: res+=prefix+("end: %s\n" % self.DebugFormatInt64(self.end_))
+    if self.has_cost_:
+      res+=prefix+"cost <\n"
+      res+=self.cost_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -6933,18 +7014,21 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
 
   kstart = 1
   kend = 2
+  kcost = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "start",
     2: "end",
-  }, 2)
+    3: "cost",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.NUMERIC,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

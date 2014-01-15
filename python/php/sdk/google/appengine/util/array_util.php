@@ -20,19 +20,20 @@
  */
 namespace google\appengine\util;
 
-/**
- * Find an item in a hash table by a key value, or return null if not found.
- *
- * @param array $array - The array to search
- * @param mixed $key - The key to search for.
- *
- * @return mixed The value of the item in the array with the given key, or null
- * if not found.
- */
-function findByKeyOrNull($array, $key) {
-  if (array_key_exists($key, $array)) {
-    return $array[$key];
+final class ArrayUtil {
+  /**
+   * Find an item in a hash table by a key value, or return null if not found.
+   *
+   * @param array $array - The array to search
+   * @param mixed $key - The key to search for.
+   *
+   * @return mixed The value of the item in the array with the given key,
+   * or null if not found.
+   */
+  public static function findByKeyOrNull($array, $key) {
+    if (array_key_exists($key, $array)) {
+      return $array[$key];
+    }
+    return null;
   }
-  return null;
 }
-

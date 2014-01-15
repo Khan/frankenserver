@@ -47,34 +47,59 @@ _INOTIFY_EVENT_SIZE = _INOTIFY_EVENT.size
 _INTERESTING_INOTIFY_EVENTS = (
     IN_ATTRIB|IN_MODIFY|IN_MOVED_FROM|IN_MOVED_TO|IN_CREATE|IN_DELETE)
 
+# inotify only available on Linux and a ctypes.CDLL will raise if code tries to
+# specify the arg types or return type for a non-existent function.
+if sys.platform.startswith('linux'):
+  _libc = ctypes.CDLL(ctypes.util.find_library('c'), use_errno=True)
+  _libc.inotify_init.argtypes = []
+  _libc.inotify_init.restype = ctypes.c_int
+  _libc.inotify_add_watch.argtypes = [ctypes.c_int,
+                                      ctypes.c_char_p,
+                                      ctypes.c_uint32]
+  _libc.inotify_add_watch.restype = ctypes.c_int
+  _libc.inotify_rm_watch.argtypes = [ctypes.c_int,
+                                     ctypes.c_int]
+  _libc.inotify_rm_watch.restype = ctypes.c_int
+else:
+  _libc = None
+
 
 class InotifyFileWatcher(object):
   """Monitors a directory tree for changes using inotify."""
 
-  _libc = None
+  SUPPORTS_MULTIPLE_DIRECTORIES = True
 
-  def __init__(self, directory):
+  def __init__(self, directories):
     """Initializer for InotifyFileWatcher.
 
     Args:
-      directory: A string representing the path to a directory that should
-          be monitored for changes i.e. files and directories added, renamed,
-          deleted or changed.
+      directories: An iterable of strings representing the path to a directory
+          that should be monitored for changes i.e. files and directories added,
+          renamed, deleted or changed.
+
+    Raises:
+      OSError: if there are no inotify instances available.
     """
-    self._directory = os.path.abspath(directory)
+    assert _libc is not None, 'InotifyFileWatcher only available on Linux.'
+    self._directories = [os.path.abspath(d) for d in directories]
     self._watch_to_directory = {}
     self._directory_to_watch_descriptor = {}
     self._directory_to_subdirs = {}
     self._inotify_events = ''
-    self._inotify_fd = None
-    self._inotify_poll = None
+    self._inotify_fd = _libc.inotify_init()
+    if self._inotify_fd < 0:
+      error = OSError('failed call to inotify_init')
+      error.errno = ctypes.get_errno()
+      error.strerror = errno.errorcode[ctypes.get_errno()]
+      raise error
+    self._inotify_poll = select.poll()
 
 
   def _remove_watch_for_path(self, path):
     logging.debug('_remove_watch_for_path(%r)', path)
     wd = self._directory_to_watch_descriptor[path]
 
-    if InotifyFileWatcher._libc.inotify_rm_watch(self._inotify_fd, wd) < 0:
+    if _libc.inotify_rm_watch(self._inotify_fd, wd) < 0:
       # If the directory is deleted then the watch will removed automatically
       # and inotify_rm_watch will fail. Just log the error.
       logging.debug('inotify_rm_watch failed for %r: %d [%r]',
@@ -108,7 +133,7 @@ class InotifyFileWatcher(object):
         # empty string for symlinks :-(
         parent_path = os.path.dirname(directory_path)
 
-        watch_descriptor = InotifyFileWatcher._libc.inotify_add_watch(
+        watch_descriptor = _libc.inotify_add_watch(
             self._inotify_fd,
             ctypes.create_string_buffer(directory_path),
             _INTERESTING_INOTIFY_EVENTS)
@@ -134,17 +159,9 @@ class InotifyFileWatcher(object):
 
   def start(self):
     """Start watching the directory for changes."""
-    self._class_setup()
-
-    self._inotify_fd = InotifyFileWatcher._libc.inotify_init()
-    if self._inotify_fd < 0:
-      error = OSError('failed call to inotify_init')
-      error.errno = ctypes.get_errno()
-      error.strerror = errno.errorcode[ctypes.get_errno()]
-      raise error
-    self._inotify_poll = select.poll()
     self._inotify_poll.register(self._inotify_fd, select.POLLIN)
-    self._add_watch_for_path(self._directory)
+    for directory in self._directories:
+      self._add_watch_for_path(directory)
 
   def quit(self):
     """Stop watching the directory for changes."""
@@ -204,20 +221,3 @@ class InotifyFileWatcher(object):
 
   def has_changes(self):
     return bool(self._get_changed_paths())
-
-  @classmethod
-  def _class_setup(cls):
-    if cls._libc:
-      return
-
-    libc_name = ctypes.util.find_library('c')
-    cls._libc = ctypes.CDLL(libc_name, use_errno=True)
-    cls._libc.inotify_init.argtypes = []
-    cls._libc.inotify_init.restype = ctypes.c_int
-    cls._libc.inotify_add_watch.argtypes = [ctypes.c_int,
-                                            ctypes.c_char_p,
-                                            ctypes.c_uint32]
-    cls._libc.inotify_add_watch.restype = ctypes.c_int
-    cls._libc.inotify_rm_watch.argtypes = [ctypes.c_int,
-                                           ctypes.c_int]
-    cls._libc.inotify_rm_watch.restype = ctypes.c_int

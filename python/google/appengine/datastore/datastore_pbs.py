@@ -123,6 +123,20 @@ def v4_key_to_string(v4_key):
   return '[%s]' % ', '.join(path_element_strings)
 
 
+def is_complete_v4_key(v4_key):
+  """Returns True if a key specifies an ID or name, False otherwise.
+
+  Args:
+    v4_key: an entity_v4_pb.Key
+
+  Returns:
+    True if the key specifies an ID or name, False otherwise.
+  """
+  assert len(v4_key.path_element_list()) >= 1
+  last_element = v4_key.path_element(len(v4_key.path_element_list()) - 1)
+  return last_element.has_id() or last_element.has_name()
+
+
 def is_valid_utf8(s):
   try:
     s.decode('utf-8')
@@ -248,9 +262,7 @@ class _EntityConverter(object):
       v4_key = v4_entity.key()
       self.v4_to_v3_reference(v4_key, v3_entity.mutable_key())
       v3_ref = v3_entity.key()
-      if (self.__v3_reference_has_id_or_name(v3_ref)
-          or v3_ref.path().element_size() > 1):
-        self.v3_reference_to_group(v3_ref, v3_entity.mutable_entity_group())
+      self.v3_reference_to_group(v3_ref, v3_entity.mutable_entity_group())
     else:
 
 

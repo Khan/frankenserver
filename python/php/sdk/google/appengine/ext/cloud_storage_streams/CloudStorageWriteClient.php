@@ -22,8 +22,6 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-
 // TODO: Retry on transient errors.
 
 final class CloudStorageWriteClient extends CloudStorageClient {

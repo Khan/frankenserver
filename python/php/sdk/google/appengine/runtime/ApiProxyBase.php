@@ -16,18 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/runtime/ArgumentError.php';
-require_once 'google/appengine/runtime/CallNotFoundError.php';
-require_once 'google/appengine/runtime/CancelledError.php';
-require_once 'google/appengine/runtime/CapabilityDisabledError.php';
-require_once 'google/appengine/runtime/DeadlineExceededError.php';
-require_once 'google/appengine/runtime/FeatureNotEnabledError.php';
-require_once 'google/appengine/runtime/OverQuotaError.php';
-require_once 'google/appengine/runtime/RequestTooLargeError.php';
-require_once 'google/appengine/runtime/ResponseTooLargeError.php';
-require_once 'google/appengine/runtime/RPCFailedError.php';
-
 abstract class ApiProxyBase {
   const OK                  =  0;
   const RPC_FAILED          =  1;
@@ -44,32 +32,32 @@ abstract class ApiProxyBase {
   const RESPONSE_TOO_LARGE  = 12;
 
   protected static $exceptionLookupTable = array(
-    ApiProxyBase::RPC_FAILED => array(
+    self::RPC_FAILED => array(
       '\google\appengine\runtime\RPCFailedError',
       'The remote RPC to the application server failed for the call %s.%s().'),
-    ApiProxyBase::CALL_NOT_FOUND => array(
+    self::CALL_NOT_FOUND => array(
       '\google\appengine\runtime\CallNotFoundError',
       "The API package '%s' or call '%s()' was not found."),
-    ApiProxyBase::ARGUMENT_ERROR => array(
+    self::ARGUMENT_ERROR => array(
       '\google\appengine\runtime\ArgumentError',
       'An error occurred parsing (locally or remotely) the arguments to %s.%s().'
     ),
-    ApiProxyBase::DEADLINE_EXCEEDED => array(
+    self::DEADLINE_EXCEEDED => array(
       '\google\appengine\runtime\DeadlineExceededError',
       'The API call %s.%s() took too long to respond and was cancelled.'),
-    ApiProxyBase::CANCELLED => array(
+    self::CANCELLED => array(
       '\google\appengine\runtime\CancelledError',
       'The API call %s.%s() was explicitly cancelled.'),
-    ApiProxyBase::OTHER_ERROR => array(
+    self::OTHER_ERROR => array(
       '\google\appengine\runtime\Error',
       'An error occurred for the API request %s.%s().'),
-    ApiProxyBase::OVER_QUOTA => array(
+    self::OVER_QUOTA => array(
       '\google\appengine\runtime\OverQuotaError',
       'The API call %s.%s() required more quota than is available.'),
-    ApiProxyBase::REQUEST_TOO_LARGE => array(
+    self::REQUEST_TOO_LARGE => array(
       '\google\appengine\runtime\RequestTooLargeError',
       'The request to API call %s.%s() was too large.'),
-    ApiProxyBase::RESPONSE_TOO_LARGE => array(
+    self::RESPONSE_TOO_LARGE => array(
       '\google\appengine\runtime\ResponseTooLargeError',
       'The response from API call %s.%s() was too large.'),
 

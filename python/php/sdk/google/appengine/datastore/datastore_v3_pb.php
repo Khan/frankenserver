@@ -3600,6 +3600,23 @@ namespace google\appengine_datastore_v3 {
     public function hasApproximateStorageDelta() {
       return isset($this->approximate_storage_delta);
     }
+    public function getIdSequenceUpdates() {
+      if (!isset($this->id_sequence_updates)) {
+        return 0;
+      }
+      return $this->id_sequence_updates;
+    }
+    public function setIdSequenceUpdates($val) {
+      $this->id_sequence_updates = $val;
+      return $this;
+    }
+    public function clearIdSequenceUpdates() {
+      unset($this->id_sequence_updates);
+      return $this;
+    }
+    public function hasIdSequenceUpdates() {
+      return isset($this->id_sequence_updates);
+    }
     public function clear() {
       $this->clearIndexWrites();
       $this->clearIndexWriteBytes();
@@ -3607,6 +3624,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearEntityWriteBytes();
       $this->clearCommitCost();
       $this->clearApproximateStorageDelta();
+      $this->clearIdSequenceUpdates();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3633,6 +3651,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->approximate_storage_delta)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->approximate_storage_delta);
+      }
+      if (isset($this->id_sequence_updates)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->id_sequence_updates);
       }
       return $res;
     }
@@ -3662,6 +3684,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(64);
         $out->putVarInt32($this->approximate_storage_delta);
       }
+      if (isset($this->id_sequence_updates)) {
+        $out->putVarInt32(72);
+        $out->putVarInt32($this->id_sequence_updates);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3684,6 +3710,9 @@ namespace google\appengine_datastore_v3 {
             break;
           case 64:
             $this->setApproximateStorageDelta($d->getVarInt32());
+            break;
+          case 72:
+            $this->setIdSequenceUpdates($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3717,6 +3746,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasApproximateStorageDelta()) {
         $this->setApproximateStorageDelta($x->getApproximateStorageDelta());
       }
+      if ($x->hasIdSequenceUpdates()) {
+        $this->setIdSequenceUpdates($x->getIdSequenceUpdates());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3732,6 +3764,8 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->commitcost) && !$this->commitcost->equals($x->commitcost)) return false;
       if (isset($this->approximate_storage_delta) !== isset($x->approximate_storage_delta)) return false;
       if (isset($this->approximate_storage_delta) && !$this->integerEquals($this->approximate_storage_delta, $x->approximate_storage_delta)) return false;
+      if (isset($this->id_sequence_updates) !== isset($x->id_sequence_updates)) return false;
+      if (isset($this->id_sequence_updates) && !$this->integerEquals($this->id_sequence_updates, $x->id_sequence_updates)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3753,6 +3787,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->approximate_storage_delta)) {
         $res .= $prefix . "approximate_storage_delta: " . $this->debugFormatInt32($this->approximate_storage_delta) . "\n";
+      }
+      if (isset($this->id_sequence_updates)) {
+        $res .= $prefix . "id_sequence_updates: " . $this->debugFormatInt32($this->id_sequence_updates) . "\n";
       }
       return $res;
     }
@@ -6767,9 +6804,32 @@ namespace google\appengine_datastore_v3 {
     public function hasEnd() {
       return isset($this->end);
     }
+    public function getCost() {
+      if (!isset($this->cost)) {
+        return new \google\appengine_datastore_v3\Cost();
+      }
+      return $this->cost;
+    }
+    public function mutableCost() {
+      if (!isset($this->cost)) {
+        $res = new \google\appengine_datastore_v3\Cost();
+        $this->cost = $res;
+        return $res;
+      }
+      return $this->cost;
+    }
+    public function clearCost() {
+      if (isset($this->cost)) {
+        unset($this->cost);
+      }
+    }
+    public function hasCost() {
+      return isset($this->cost);
+    }
     public function clear() {
       $this->clearStart();
       $this->clearEnd();
+      $this->clearCost();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -6780,6 +6840,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->end)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->end);
+      }
+      if (isset($this->cost)) {
+        $res += 1;
+        $res += $this->lengthString($this->cost->byteSizePartial());
       }
       return $res;
     }
@@ -6792,6 +6856,11 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(16);
         $out->putVarInt64($this->end);
       }
+      if (isset($this->cost)) {
+        $out->putVarInt32(26);
+        $out->putVarInt32($this->cost->byteSizePartial());
+        $this->cost->outputPartial($out);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -6802,6 +6871,12 @@ namespace google\appengine_datastore_v3 {
             break;
           case 16:
             $this->setEnd($d->getVarInt64());
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableCost()->tryMerge($tmp);
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -6814,6 +6889,7 @@ namespace google\appengine_datastore_v3 {
     public function checkInitialized() {
       if (!isset($this->start)) return 'start';
       if (!isset($this->end)) return 'end';
+      if (isset($this->cost) && (!$this->cost->isInitialized())) return 'cost';
       return null;
     }
     public function mergeFrom($x) {
@@ -6824,6 +6900,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasEnd()) {
         $this->setEnd($x->getEnd());
       }
+      if ($x->hasCost()) {
+        $this->mutableCost()->mergeFrom($x->getCost());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -6831,6 +6910,8 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->start) && !$this->integerEquals($this->start, $x->start)) return false;
       if (isset($this->end) !== isset($x->end)) return false;
       if (isset($this->end) && !$this->integerEquals($this->end, $x->end)) return false;
+      if (isset($this->cost) !== isset($x->cost)) return false;
+      if (isset($this->cost) && !$this->cost->equals($x->cost)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6840,6 +6921,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->end)) {
         $res .= $prefix . "end: " . $this->debugFormatInt64($this->end) . "\n";
+      }
+      if (isset($this->cost)) {
+        $res .= $prefix . "cost <\n" . $this->cost->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

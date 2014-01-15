@@ -56,6 +56,8 @@ sizer rather than when calling them.  In particular:
 
 
 import struct
+import sys
+_PY2 = sys.version_info[0] < 3
 from google.net.proto2.python.internal import wire_format
 
 
@@ -329,7 +331,8 @@ def MessageSetItemSizer(field_number):
 def _VarintEncoder():
   """Return an encoder for a basic varint value (does not include tag)."""
 
-  local_chr = chr
+  local_chr = _PY2 and chr or (lambda x: bytes((x,)))
+
   def EncodeVarint(write, value):
     bits = value & 0x7f
     value >>= 7
@@ -346,7 +349,8 @@ def _SignedVarintEncoder():
   """Return an encoder for a basic signed varint value (does not include
   tag)."""
 
-  local_chr = chr
+  local_chr = _PY2 and chr or (lambda x: bytes((x,)))
+
   def EncodeSignedVarint(write, value):
     if value < 0:
       value += (1 << 64)
@@ -371,7 +375,8 @@ def _VarintBytes(value):
 
   pieces = []
   _EncodeVarint(pieces.append, value)
-  return "".join(pieces)
+  return "".encode("latin1").join(pieces)
+
 
 
 def TagBytes(field_number, wire_type):
@@ -509,26 +514,33 @@ def _FloatingPointEncoder(wire_type, format):
       format:  The format string to pass to struct.pack().
   """
 
+  b = _PY2 and (lambda x:x) or (lambda x:x.encode('latin1'))
   value_size = struct.calcsize(format)
   if value_size == 4:
     def EncodeNonFiniteOrRaise(write, value):
 
       if value == _POS_INF:
-        write('\x00\x00\x80\x7F')
+        write(b('\x00\x00\x80\x7F'))
+
       elif value == _NEG_INF:
-        write('\x00\x00\x80\xFF')
+        write(b('\x00\x00\x80\xFF'))
+
       elif value != value:
-        write('\x00\x00\xC0\x7F')
+        write(b('\x00\x00\xC0\x7F'))
+
       else:
         raise
   elif value_size == 8:
     def EncodeNonFiniteOrRaise(write, value):
       if value == _POS_INF:
-        write('\x00\x00\x00\x00\x00\x00\xF0\x7F')
+        write(b('\x00\x00\x00\x00\x00\x00\xF0\x7F'))
+
       elif value == _NEG_INF:
-        write('\x00\x00\x00\x00\x00\x00\xF0\xFF')
+        write(b('\x00\x00\x00\x00\x00\x00\xF0\xFF'))
+
       elif value != value:
-        write('\x00\x00\x00\x00\x00\x00\xF8\x7F')
+        write(b('\x00\x00\x00\x00\x00\x00\xF8\x7F'))
+
       else:
         raise
   else:
@@ -604,8 +616,10 @@ DoubleEncoder   = _FloatingPointEncoder(wire_format.WIRETYPE_FIXED64, '<d')
 def BoolEncoder(field_number, is_repeated, is_packed):
   """Returns an encoder for a boolean field."""
 
-  false_byte = chr(0)
-  true_byte = chr(1)
+
+
+  false_byte = '\x00'.encode('latin1')
+  true_byte = '\x01'.encode('latin1')
   if is_packed:
     tag_bytes = TagBytes(field_number, wire_format.WIRETYPE_LENGTH_DELIMITED)
     local_EncodeVarint = _EncodeVarint
@@ -741,7 +755,8 @@ def MessageSetItemEncoder(field_number):
       }
     }
   """
-  start_bytes = "".join([
+  start_bytes = "".encode("latin1").join([
+
       TagBytes(1, wire_format.WIRETYPE_START_GROUP),
       TagBytes(2, wire_format.WIRETYPE_VARINT),
       _VarintBytes(field_number),

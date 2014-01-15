@@ -16,8 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/RealApiProxy.php';
-
 class ApiProxy {
   private static $apiProxy = null;
 
@@ -35,11 +33,11 @@ class ApiProxy {
       $request,
       $response,
       $deadline = null) {
-    if (ApiProxy::$apiProxy === null) {
-      ApiProxy::$apiProxy = new RealApiProxy();
+    if (self::$apiProxy === null) {
+      self::$apiProxy = new RealApiProxy();
     }
-    ApiProxy::$apiProxy->makeSyncCall(
-      $package, $call_name, $request, $response, $deadline);
+    self::$apiProxy->makeSyncCall(
+        $package, $call_name, $request, $response, $deadline);
   }
 
   /**
@@ -48,6 +46,6 @@ class ApiProxy {
    * @param resource $apiProxy API Proxy instance to use
    */
   public static function setApiProxy($apiProxy) {
-    ApiProxy::$apiProxy = $apiProxy;
+    self::$apiProxy = $apiProxy;
   }
 }

@@ -21,16 +21,25 @@ import os.path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 
 from google.appengine.tools import app_engine_web_xml_parser
 from google.appengine.tools import backends_xml_parser
+from google.appengine.tools import cron_xml_parser
+from google.appengine.tools import dispatch_xml_parser
+from google.appengine.tools import dos_xml_parser
+from google.appengine.tools import indexes_xml_parser
 from google.appengine.tools import jarfile
+from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import web_xml_parser
 from google.appengine.tools import yaml_translator
 
 
+_CLASSES_JAR_NAME_PREFIX = '_ah_webinf_classes'
+_COMPILED_JSP_JAR_NAME_PREFIX = '_ah_compiled_jsps'
 _LOCAL_JSPC_CLASS = 'com.google.appengine.tools.development.LocalJspC'
+_MAX_COMPILED_JSP_JAR_SIZE = 1024 * 1024 * 5
 
 
 class Error(Exception):
@@ -85,24 +94,89 @@ def AddUpdateOptions(parser):
 
 class JavaAppUpdate(object):
   """Performs Java-specific update configurations."""
+
   _JSP_REGEX = re.compile('.*\\.jspx?')
 
+  class _XmlParser(object):
 
 
+
+    def __init__(self, xml_name, yaml_name, xml_to_yaml_function):
+      self.xml_name = xml_name
+      self.yaml_name = yaml_name
+      self.xml_to_yaml_function = xml_to_yaml_function
+
+  _XML_PARSERS = [
+      _XmlParser('cron.xml', 'cron.yaml', cron_xml_parser.GetCronYaml),
+      _XmlParser('datastore-indexes.xml', 'index.yaml',
+                 indexes_xml_parser.GetIndexYaml),
+      _XmlParser('dispatch.xml', 'dispatch.yaml',
+                 dispatch_xml_parser.GetDispatchYaml),
+      _XmlParser('dos.xml', 'dos.yaml', dos_xml_parser.GetDosYaml),
+      _XmlParser('queue.xml', 'queue.yaml', queue_xml_parser.GetQueueYaml),
+  ]
+
+  _XML_VALIDATOR_CLASS = 'com.google.appengine.tools.admin.XmlValidator'
 
   def __init__(self, basepath, options):
     self.basepath = basepath
     self.options = options
 
+    java_home, exec_suffix = _JavaHomeAndSuffix()
+    self.java_command = os.path.join(java_home, 'bin', 'java' + exec_suffix)
+    self.javac_command = os.path.join(java_home, 'bin', 'javac' + exec_suffix)
+
+    self._ValidateXmlFiles()
+
     self.app_engine_web_xml = self._ReadAppEngineWebXml()
     self.app_engine_web_xml.app_root = self.basepath
+    if self.options.app_id:
+      self.app_engine_web_xml.app_id = self.options.app_id
+    if self.options.version:
+      self.app_engine_web_xml.version_id = self.options.version
     self.web_xml = self._ReadWebXml()
 
-  def _ReadAppEngineWebXml(self, basepath=None):
-    if not basepath:
-      basepath = self.basepath
+  def _ValidateXmlFiles(self):
+
+
+
+
+
+
+
+
+    sdk_dir = os.path.dirname(jarfile.__file__)
+    xml_validator_jar = os.path.join(
+        sdk_dir, 'java', 'lib', 'impl', 'libxmlvalidator.jar')
+    if not os.path.exists(xml_validator_jar):
+
+      print >>sys.stderr, ('Not validating XML files because %s does not '
+                           'exist' % xml_validator_jar)
+      return
+    validator_args = []
+    schema_dir = os.path.join(sdk_dir, 'java', 'docs')
+    for schema_name in os.listdir(schema_dir):
+      basename, extension = os.path.splitext(schema_name)
+      if extension == '.xsd':
+        schema_file = os.path.join(schema_dir, schema_name)
+        xml_file = os.path.join(self.basepath, 'WEB-INF', basename + '.xml')
+        if os.path.exists(xml_file):
+          validator_args += [xml_file, schema_file]
+    if validator_args:
+      command_and_args = [
+          self.java_command,
+          '-classpath',
+          xml_validator_jar,
+          self._XML_VALIDATOR_CLASS,
+      ] + validator_args
+      status = subprocess.call(command_and_args)
+      if status:
+
+        raise ConfigurationError('XML validation failed')
+
+  def _ReadAppEngineWebXml(self):
     return self._ReadAndParseXml(
-        basepath=basepath,
+        basepath=self.basepath,
         file_name='appengine-web.xml',
         parser=app_engine_web_xml_parser.AppEngineWebXmlParser)
 
@@ -114,11 +188,9 @@ class JavaAppUpdate(object):
         file_name='web.xml',
         parser=web_xml_parser.WebXmlParser)
 
-  def _ReadBackendsXml(self, basepath=None):
-    if not basepath:
-      basepath = self.basepath
+  def _ReadBackendsXml(self):
     return self._ReadAndParseXml(
-        basepath=basepath,
+        basepath=self.basepath,
         file_name='backends.xml',
         parser=backends_xml_parser.BackendsXmlParser)
 
@@ -158,7 +230,8 @@ class JavaAppUpdate(object):
     if self.options.compile_jsps:
       self._CompileJspsIfAny(tools_dir, stage_dir)
 
-    web_inf_lib = os.path.join(stage_dir, 'WEB-INF', 'lib')
+    web_inf = os.path.join(stage_dir, 'WEB-INF')
+    web_inf_lib = os.path.join(web_inf, 'lib')
     api_jar_dict = _FindApiJars(web_inf_lib)
     api_versions = set(api_jar_dict.values())
     if not api_versions:
@@ -173,7 +246,23 @@ class JavaAppUpdate(object):
     for staged_api_jar in api_jar_dict:
       os.remove(staged_api_jar)
 
-    self._GenerateAppYaml(stage_dir, api_version)
+    appengine_generated = os.path.join(
+        stage_dir, 'WEB-INF', 'appengine-generated')
+    self._GenerateAppYaml(stage_dir, api_version, appengine_generated)
+
+    app_id = self.options.app_id or self.app_engine_web_xml.app_id
+    assert app_id, 'Missing app id'
+
+
+    for parser in self._XML_PARSERS:
+      xml_name = os.path.join(web_inf, parser.xml_name)
+      if os.path.exists(xml_name):
+        with open(xml_name) as xml_file:
+          xml_string = xml_file.read()
+        yaml_string = parser.xml_to_yaml_function(app_id, xml_string)
+        yaml_file = os.path.join(appengine_generated, parser.yaml_name)
+        with open(yaml_file, 'w') as yaml:
+          yaml.write(yaml_string)
 
     return stage_dir
 
@@ -202,13 +291,15 @@ class JavaAppUpdate(object):
         static_file_list,
         api_version).GetYaml()
 
-  def _GenerateAppYaml(self, stage_dir, api_version):
-    """Creates the app.yaml file in WEB-INF/appengine-generated/."""
+  def _GenerateAppYaml(self, stage_dir, api_version, appengine_generated):
+    """Creates the app.yaml file in WEB-INF/appengine-generated/.
+
+    Returns:
+      The path to the WEB-INF/appengine-generated directory.
+    """
     static_file_list = self._GetStaticFileList(stage_dir)
     yaml_str = self.GenerateAppYamlString(
         stage_dir, static_file_list, api_version)
-    appengine_generated = os.path.join(
-        stage_dir, 'WEB-INF', 'appengine-generated')
     if not os.path.isdir(appengine_generated):
       os.mkdir(appengine_generated)
     with open(os.path.join(appengine_generated, 'app.yaml'), 'w') as handle:
@@ -246,76 +337,88 @@ class JavaAppUpdate(object):
       return
     shutil.copy(source, dest)
 
-  def _CopyOrLinkDirectories(self, source_dir, dest_dir):
-    for name in os.listdir(source_dir):
-      source_path = os.path.join(source_dir, name)
-      dest_path = os.path.join(dest_dir, name)
-      if os.path.isdir(source_path):
-        self._CopyOrLinkDirectories(source_path, dest_path)
+  def _MoveDirectoryContents(self, source_dir, dest_dir):
+    """Move the contents of source_dir to dest_dir, which might not exist.
+
+    Raises:
+      IOError: if the dest_dir hierarchy already contains a file where the
+        source_dir hierarchy has a file or directory of the same name, or if
+        the dest_dir hierarchy already contains a directory where the source_dir
+        hierarchy has a file of the same name.
+    """
+    if not os.path.exists(dest_dir):
+      os.mkdir(dest_dir)
+    for entry in os.listdir(source_dir):
+      source_entry = os.path.join(source_dir, entry)
+      dest_entry = os.path.join(dest_dir, entry)
+      if os.path.exists(dest_entry):
+        if os.path.isdir(source_entry) and os.path.isdir(dest_entry):
+          self._MoveDirectoryContents(source_entry, dest_entry)
+        else:
+          raise IOError('Cannot overwrite existing %s' % dest_entry)
       else:
-        self._CopyOrLinkFile(source_path, dest_path)
+        shutil.move(source_entry, dest_entry)
 
   @staticmethod
   def _GetStaticFileList(staging_dir):
     return _FilesMatching(os.path.join(staging_dir, '__static__'))
 
   def _CompileJspsIfAny(self, tools_dir, staging_dir):
-    """Performs necessary preparations for JSP Compilation."""
+    """Compiles JSP files, if any, into .class files.."""
     if self._MatchingFileExists(self._JSP_REGEX, staging_dir):
-      staging_web_inf = os.path.join(staging_dir, 'WEB-INF')
-      lib_dir = os.path.join(staging_web_inf, 'lib')
-
-      for jar_file in GetUserJspLibFiles(tools_dir):
-        self._CopyOrLinkFile(
-            jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
-      for jar_file in GetSharedJspLibFiles(tools_dir):
-        self._CopyOrLinkFile(
-            jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
-
-      classes_dir = os.path.join(staging_web_inf, 'classes')
       gen_dir = tempfile.mkdtemp()
-      generated_web_xml = os.path.join(staging_web_inf, 'generated_web.xml')
+      try:
+        self._CompileJspsWithGenDir(tools_dir, staging_dir, gen_dir)
+      finally:
+        shutil.rmtree(gen_dir)
 
-      classpath = self._GetJspClasspath(tools_dir, classes_dir, gen_dir)
-      java_home, exec_suffix = _JavaHomeAndSuffix()
+  def _CompileJspsWithGenDir(self, tools_dir, staging_dir, gen_dir):
+    staging_web_inf = os.path.join(staging_dir, 'WEB-INF')
+    lib_dir = os.path.join(staging_web_inf, 'lib')
 
-      java_command = os.path.join(java_home, 'bin', 'java' + exec_suffix)
+    for jar_file in GetUserJspLibFiles(tools_dir):
+      self._CopyOrLinkFile(
+          jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
+    for jar_file in GetSharedJspLibFiles(tools_dir):
+      self._CopyOrLinkFile(
+          jar_file, os.path.join(lib_dir, os.path.basename(jar_file)))
 
-      command_and_args = [
-          java_command,
-          '-classpath', classpath,
-          _LOCAL_JSPC_CLASS,
-          '-uriroot', staging_dir,
-          '-p', 'org.apache.jsp',
-          '-l',
-          '-v',
-          '-webinc', generated_web_xml,
-          '-d', gen_dir,
-          '-javaEncoding', self.options.compile_encoding,
-      ]
+    classes_dir = os.path.join(staging_web_inf, 'classes')
+    generated_web_xml = os.path.join(staging_web_inf, 'generated_web.xml')
 
-      status = subprocess.call(command_and_args)
-      if status:
-        raise CompileError(
-            'Compilation of JSPs exited with status %d' % status)
+    classpath = self._GetJspClasspath(tools_dir, classes_dir, gen_dir)
 
-      self._CompileJavaFiles(classpath, staging_web_inf, gen_dir,
-                             java_home, exec_suffix)
+    command_and_args = [
+        self.java_command,
+        '-classpath', classpath,
+        _LOCAL_JSPC_CLASS,
+        '-uriroot', staging_dir,
+        '-p', 'org.apache.jsp',
+        '-l',
+        '-v',
+        '-webinc', generated_web_xml,
+        '-d', gen_dir,
+        '-javaEncoding', self.options.compile_encoding,
+    ]
+
+    status = subprocess.call(command_and_args)
+    if status:
+      raise CompileError(
+          'Compilation of JSPs exited with status %d' % status)
+
+    self._CompileJavaFiles(classpath, staging_web_inf, gen_dir)
 
 
-      self.web_xml = self._ReadWebXml(staging_dir)
+    self.web_xml = self._ReadWebXml(staging_dir)
 
-  def _CompileJavaFiles(
-      self, classpath, web_inf, jsp_class_dir, java_home, exec_suffix):
+  def _CompileJavaFiles(self, classpath, web_inf, jsp_class_dir):
     """Compile all *.java files found under jsp_class_dir."""
     java_files = _FilesMatching(jsp_class_dir, lambda f: f.endswith('.java'))
     if not java_files:
       return
 
-    javac_command = os.path.join(java_home, 'bin', 'javac' + exec_suffix)
-
     command_and_args = [
-        javac_command,
+        self.javac_command,
         '-classpath', classpath,
         '-d', jsp_class_dir,
         '-encoding', self.options.compile_encoding,
@@ -327,10 +430,10 @@ class JavaAppUpdate(object):
           'Compilation of JSP-generated code exited with status %d' % status)
 
     if self.options.jar_jsps:
-      raise RuntimeError('Only --disable_jar_jsps supported for now')
+      self._ZipJasperGeneratedFiles(web_inf, jsp_class_dir)
     else:
       web_inf_classes = os.path.join(web_inf, 'classes')
-      self._CopyOrLinkDirectories(jsp_class_dir, web_inf_classes)
+      self._MoveDirectoryContents(jsp_class_dir, web_inf_classes)
 
     if self.options.delete_jsps:
       jsps = _FilesMatching(os.path.dirname(web_inf),
@@ -339,8 +442,26 @@ class JavaAppUpdate(object):
         os.remove(f)
 
     if self.options.do_jar_classes:
+      self._ZipWebInfClassesFiles(web_inf)
 
-      raise RuntimeError('--jar_classes not supported yet')
+  @staticmethod
+  def _ZipJasperGeneratedFiles(web_inf, jsp_class_dir):
+    lib_dir = os.path.join(web_inf, 'lib')
+    jarfile.Make(jsp_class_dir, lib_dir, _COMPILED_JSP_JAR_NAME_PREFIX,
+                 maximum_size=_MAX_COMPILED_JSP_JAR_SIZE,
+                 include_predicate=lambda name: not name.endswith('.java'))
+
+  @staticmethod
+  def _ZipWebInfClassesFiles(web_inf):
+
+
+    lib_dir = os.path.join(web_inf, 'lib')
+    classes_dir = os.path.join(web_inf, 'classes')
+    jarfile.Make(classes_dir, lib_dir, _CLASSES_JAR_NAME_PREFIX,
+                 maximum_size=_MAX_COMPILED_JSP_JAR_SIZE)
+    shutil.rmtree(classes_dir)
+
+    os.mkdir(classes_dir)
 
   @staticmethod
   def _GetJspClasspath(tools_dir, classes_dir, gen_dir):
@@ -434,11 +555,21 @@ def _JavaHomeAndSuffix():
     def IsExecutable(binary):
       return os.path.isfile(binary) and os.access(binary, os.X_OK)
 
-    for suffix in ['', '.exe']:
-      if all(IsExecutable(os.path.join(path, 'bin', binary + suffix))
-             for binary in ['java', 'javac', 'jar']):
-        return (path, suffix)
-    return None
+    def ResultFor(path):
+      for suffix in ['', '.exe']:
+        if all(IsExecutable(os.path.join(path, 'bin', binary + suffix))
+               for binary in ['java', 'javac', 'jar']):
+          return (path, suffix)
+      return None
+
+    result = ResultFor(path)
+    if not result:
+
+
+      head, tail = os.path.split(path)
+      if tail == 'jre':
+        result = ResultFor(head)
+    return result
 
   java_home = os.getenv('JAVA_HOME')
   if java_home:
@@ -476,7 +607,8 @@ def _FindApiJars(lib_dir):
   result = {}
   for jar_file in _FilesMatching(lib_dir, lambda f: f.endswith('.jar')):
     manifest = jarfile.ReadManifest(jar_file)
-    section = manifest.sections.get('com/google/appengine/api/')
-    if section and 'Specification-Version' in section:
-      result[jar_file] = section['Specification-Version']
+    if manifest:
+      section = manifest.sections.get('com/google/appengine/api/')
+      if section and 'Specification-Version' in section:
+        result[jar_file] = section['Specification-Version']
   return result

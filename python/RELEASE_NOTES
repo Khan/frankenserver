@@ -3,6 +3,57 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.8.9
+
+All
+==============================
+- Renamed appcfg start to appcfg start_module_version and stop to
+  stop_module_version.
+- Fixed an issue with ID allocation collisions in the Datastore.
+  https://code.google.com/p/googleappengine/issues/detail?id=10134
+- Fixed an issue with Cloud Storage calls failing in the dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=10181
+    https://code.google.com/p/googleappengine/issues/detail?id=10185
+- Fixed an issue with the dev_appserver not starting on Windows when using
+  versions of Python earlier than 2.7.2.
+    https://code.google.com/p/googleappengine/issues/detail?id=10363
+
+Python
+==============================
+- Deprecated start_module, start_module_async, stop_module, stop_module_async
+  get_modules_async, get_versions_async, get_default_version_async,
+  get_num_instances_async, get_hostname_async and added start_version,
+  start_version_async, stop_version, stop_version_async as replacements in the
+  Modules API.
+- Added verbose_name support for ComputedProperty in NDB.
+    https://code.google.com/p/appengine-ndb-experiment/issues/detail?id=239
+- Fixed an issue with deffered.defer not waiting for async operations.
+    https://code.google.com/p/appengine-ndb-experiment/issues/detail?id=238
+- Fixed an issue with LocalStructureProperty not handling None value in NDB.
+    https://code.google.com/p/appengine-ndb-experiment/issues/detail?id=233
+- Fixed an issue NDB not working with sqlite.
+    https://code.google.com/p/googleappengine/issues/detail?id=8381
+- Fixed an issue with debug not working with PyDev in 1.8.8.
+    https://code.google.com/p/googleappengine/issues/detail?id=10390
+- Fixed an issue with object properties not being retrieved in NDB.
+    https://code.google.com/p/googleappengine/issues/detail?id=10467
+
+PHP
+=============================
+- Renamed startModule, stopModule to startVersion, stopVersion in the Modules
+  API.
+- Added support for the ftp extension.
+- Added support for the zip extension.
+- Added support for the gethostname() function.
+- A proper "billing required" message is now given when users attempt to use
+  Sockets API on free apps.
+- Fixed an issue with header keys and values having whitespaces preventing
+  responses from being compressed.
+- Fixed an issue with content-type and metadata not being updated when renaming
+  Google Cloud Storage objects.
+- Fixed an issue with Cloud Storage rename requests failing when an object has
+  a space in its name.
+
 Version 1.8.8
 
 All

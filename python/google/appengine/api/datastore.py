@@ -442,7 +442,7 @@ def _MakeSyncCall(service, call, request, response, config=None):
   if isinstance(request, datastore_pb.Query):
     conn._set_request_read_policy(request, config)
     conn._set_request_transaction(request)
-  rpc = conn.make_rpc_call(config, call, request, response)
+  rpc = conn._make_rpc_call(config, call, request, response)
   conn.check_rpc_success(rpc)
   return response
 
@@ -476,7 +476,7 @@ def CreateRPC(service='datastore_v3',
   config = None
   if deadline is not None:
     config = datastore_rpc.Configuration(deadline=deadline)
-  rpc = conn.create_rpc(config)
+  rpc = conn._create_rpc(config)
   rpc.callback = callback
   if read_policy is not None:
     rpc.read_policy = read_policy

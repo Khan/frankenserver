@@ -364,6 +364,17 @@ def create_command_line_parser():
                          default=False,
                          help='enable XDebug remote debugging')
 
+  # App Identity
+  appidentity_group = parser.add_argument_group('Application Identity')
+  appidentity_group.add_argument(
+      '--appidentity_email_address',
+      help='email address associated with a service account that has a '
+      'downloadable key. May be None for no local application identity.')
+  appidentity_group.add_argument(
+      '--appidentity_private_key_path',
+      help='path to private key file associated with service account '
+      '(.pem format). Must be set if appidentity_email_address is set.')
+
   # Python
   python_group = parser.add_argument_group('Python')
   python_group.add_argument(
@@ -762,6 +773,10 @@ class DevelopmentServer(object):
         # The "trusted" flag is only relevant for Google administrative
         # applications.
         trusted=getattr(options, 'trusted', False),
+        appidentity_email_address=options.appidentity_email_address,
+        appidentity_private_key_path=os.path.abspath(
+            options.appidentity_private_key_path)
+        if options.appidentity_private_key_path else None,
         blobstore_path=blobstore_path,
         datastore_path=datastore_path,
         datastore_consistency=consistency,

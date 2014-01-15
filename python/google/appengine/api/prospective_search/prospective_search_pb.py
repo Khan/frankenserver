@@ -31,7 +31,8 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
-from google.appengine.datastore.entity_pb import EntityProto
+from google.appengine.datastore.entity_pb import *
+import google.appengine.datastore.entity_pb
 class SchemaEntry(ProtocolBuffer.ProtocolMessage):
 
 

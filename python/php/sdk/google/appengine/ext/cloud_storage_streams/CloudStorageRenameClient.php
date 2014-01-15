@@ -21,8 +21,6 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-
 /**
  * Client for deleting objects from Google Cloud Storage.
  */
@@ -88,9 +86,22 @@ final class CloudStorageRenameClient extends CloudStorageClient {
         'x-goog-copy-source' =>
             sprintf("/%s%s", $this->from_bucket, $this->from_object),
         'x-goog-copy-source-if-match' => $from_etag,
-        'content-type' => $content_type,
-        'x-goog-metadata-directive' => 'COPY',
     ];
+
+    if (array_key_exists('Content-Type', $this->context_options)) {
+      $copy_headers['content-type'] = $this->context_options['Content-Type'];
+    } else {
+      $copy_headers['content-type'] = $content_type;
+    }
+
+    if (array_key_exists('metadata', $this->context_options)) {
+      $copy_headers['x-goog-metadata-directive'] = 'REPLACE';
+      foreach ($this->context_options['metadata'] as $key => $val) {
+        $copy_headers['x-goog-meta-' . $key] = $val;
+      }
+    } else {
+      $copy_headers['x-goog-metadata-directive'] = 'COPY';
+    }
 
     if (array_key_exists("acl", $this->context_options)) {
       $acl = $this->context_options["acl"];

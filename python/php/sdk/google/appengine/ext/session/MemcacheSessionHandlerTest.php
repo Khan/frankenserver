@@ -68,4 +68,8 @@ class MemcacheSessionHandlerTest extends \PHPUnit_Framework_TestCase {
 
     $this->assertEquals("Memcache", ini_get("session.save_path"));
   }
+
+  public function testConstant() {
+    $this->assertEquals(1, MEMCACHE_HAVE_SESSION);
+  }
 }

@@ -18,9 +18,10 @@
  * Performs any required initialization before the user's script is run.
  */
 
+// Ensure that the class autoloader is the first include.
+require_once 'google/appengine/runtime/autoloader.php';
 require_once 'google/appengine/runtime/Memcache.php';
 require_once 'google/appengine/runtime/Memcached.php';
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageStreamWrapper.php';
 require_once 'google/appengine/ext/session/MemcacheSessionHandler.php';
 require_once 'google/appengine/api/mail/MailService.php';
 
@@ -38,3 +39,19 @@ if (GAE_INCLUDE_REQUIRE_GS_STREAMS === 1) {
 stream_wrapper_register('gs',
     '\google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper',
     $url_flags);
+
+// Map core PHP function implementations to proper function names. All function
+// implementations should be prefixed with an underscore. The implementations
+// should be mapped to the real (un-prefixed) function name and lazy-loaded.
+// The underscore prefixed functions may then be used for unit testing on an
+// unmodified PHP interpreter which will not allow functions to be redeclared.
+//
+// Additionally due to e2e tests also running on devappserver with an
+// unmodified PHP interpreter the function definitions must be defined
+// conditionally and those e2e tests excluded from devappserver.
+if (strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
+  function gethostname() {
+    require_once 'google/appengine/runtime/GetHostName.php';
+    return google\appengine\runtime\_gethostname();
+  }
+}

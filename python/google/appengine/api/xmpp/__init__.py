@@ -131,6 +131,14 @@ class InvalidStatusError(Error):
   """Error that indicates a send presence request has an invalid status."""
 
 
+class NondefaultModuleError(Error):
+  """Error that indicates the XMPP API was used from a non-default module."""
+
+  def __init__(self):
+    super(NondefaultModuleError, self).__init__(
+        'XMPP API does not support modules')
+
+
 def get_presence(jid, from_jid=None, get_show=False):
   """Gets the presence for a JID.
 
@@ -192,6 +200,9 @@ def get_presence(jid, from_jid=None, get_show=False):
 
 
       raise InvalidJidError()
+    elif (e.application_error ==
+          xmpp_service_pb.XmppServiceError.NONDEFAULT_MODULE):
+      raise NondefaultModuleError()
     else:
       raise Error()
 
@@ -253,6 +264,9 @@ def send_invite(jid, from_jid=None):
     if (e.application_error ==
         xmpp_service_pb.XmppServiceError.INVALID_JID):
       raise InvalidJidError()
+    elif (e.application_error ==
+          xmpp_service_pb.XmppServiceError.NONDEFAULT_MODULE):
+      raise NondefaultModuleError()
     else:
       raise Error()
 
@@ -338,6 +352,9 @@ def send_message(jids, body, from_jid=None, message_type=MESSAGE_TYPE_CHAT,
     elif (e.application_error ==
           xmpp_service_pb.XmppServiceError.NO_BODY):
       raise NoBodyError()
+    elif (e.application_error ==
+          xmpp_service_pb.XmppServiceError.NONDEFAULT_MODULE):
+      raise NondefaultModuleError()
     raise Error()
 
   if single_jid:
@@ -414,11 +431,10 @@ def send_presence(jid, status=None, from_jid=None,
     elif (e.application_error ==
           xmpp_service_pb.XmppServiceError.INVALID_SHOW):
       raise InvalidShowError()
+    elif (e.application_error ==
+          xmpp_service_pb.XmppServiceError.NONDEFAULT_MODULE):
+      raise NondefaultModuleError()
     raise Error()
-
-  return
-
-
 
 
 class Message(object):

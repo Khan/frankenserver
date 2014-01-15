@@ -42,10 +42,9 @@ use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\Error;
 use google\appengine\runtime\MemcacheUtils;
 
-require_once 'google/appengine/api/memcache/memcache_service_pb.php';
-require_once 'google/appengine/runtime/MemcacheUtils.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/Error.php';
+// Define constants for compatibility, but they will be ignored.
+const MEMCACHE_COMPRESSED = 2;
+const MEMCACHE_HAVE_SESSION = 1; // See ext/session/MemcacheSessionHandler.
 
 /**
  * Adds a new item to the cache. Will fail if the key is already present in the

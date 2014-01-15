@@ -23,8 +23,7 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/ext/cloud_storage_streams/CloudStorageClient.php';
-require_once 'google/appengine/ext/cloud_storage_streams/HttpResponse.php';
+use google\appengine\util\StringUtil;
 
 /**
  * Google Cloud Storage Client for reading objects.

@@ -16,21 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-require_once 'google/appengine/runtime/ApiProxyBase.php';
-require_once 'google/appengine/ext/remote_api/remote_api_pb.php';
-
-require_once 'google/appengine/runtime/CallNotFoundError.php';
-require_once 'google/appengine/runtime/ArgumentError.php';
-require_once 'google/appengine/runtime/DeadlineExceededError.php';
-require_once 'google/appengine/runtime/CancelledError.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/runtime/OverQuotaError.php';
-require_once 'google/appengine/runtime/RequestTooLargeError.php';
-require_once 'google/appengine/runtime/ResponseTooLargeError.php';
-require_once 'google/appengine/runtime/CapabilityDisabledError.php';
-require_once 'google/appengine/runtime/FeatureNotEnabledError.php';
-require_once 'google/appengine/runtime/RPCFailedError.php';
-
 use google\appengine\ext\remote_api\Request;
 use google\appengine\ext\remote_api\Response;
 use google\appengine\runtime\RPCFailedError;

@@ -59,7 +59,7 @@ from google.appengine.api import backendinfo
 
 
 _URL_REGEX = r'(?!\^)/.*|\..*|(\(.).*(?!\$).'
-_FILES_REGEX = r'(?!\^).*(?!\$).'
+_FILES_REGEX = r'.+'
 _URL_ROOT_REGEX = r'/.*'
 
 
@@ -1286,6 +1286,27 @@ class EnvironmentVariables(validation.ValidatedDict):
   KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
   VALUE_VALIDATOR = str
 
+  @classmethod
+  def Merge(cls, env_variables_one, env_variables_two):
+    """Merges to EnvironmentVariables instances.
+
+    Args:
+      env_variables_one: The first EnvironmentVariables instance or None.
+      env_variables_two: The second EnvironmentVariables instance or None.
+
+    Returns:
+      The merged EnvironmentVariables instance, or None if both input instances
+      are None or empty.
+
+    If a variable is specified by both instances, the value from
+    env_variables_two is used.
+    """
+
+    result_env_variables = (env_variables_one or {}).copy()
+    result_env_variables.update(env_variables_two or {})
+    return (EnvironmentVariables(**result_env_variables)
+            if result_env_variables else None)
+
 
 def NormalizeVmSettings(appyaml):
   """Normalize Vm settings.
@@ -1330,8 +1351,7 @@ class AppInclude(validation.Validated):
       MANUAL_SCALING: validation.Optional(ManualScaling),
       VM: validation.Optional(bool),
       VM_SETTINGS: validation.Optional(VmSettings),
-
-
+      ENV_VARIABLES: validation.Optional(EnvironmentVariables),
 
 
   }
@@ -1388,6 +1408,11 @@ class AppInclude(validation.Validated):
 
     one.vm_settings = VmSettings.Merge(one.vm_settings,
                                        two.vm_settings)
+
+
+
+    one.env_variables = EnvironmentVariables.Merge(one.env_variables,
+                                                   two.env_variables)
 
     return one
 

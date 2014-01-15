@@ -16,8 +16,6 @@
 #
 
 
-
-
 """Contains container classes to represent different protocol buffer types.
 
 This file defines container classes which represent categories of protocol
@@ -132,8 +130,13 @@ class RepeatedScalarFieldContainer(BaseContainer):
 
   def __setitem__(self, key, value):
     """Sets the item on the specified position."""
-    self._values[key] = self._type_checker.CheckValue(value)
-    self._message_listener.Modified()
+    if isinstance(key, slice):
+      if key.step is not None:
+        raise ValueError('Extended slices not supported')
+      self.__setslice__(key.start, key.stop, value)
+    else:
+      self._values[key] = self._type_checker.CheckValue(value)
+      self._message_listener.Modified()
 
   def __getslice__(self, start, stop):
     """Retrieves the subset of items from between the specified indices."""

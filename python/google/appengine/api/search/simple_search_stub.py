@@ -525,7 +525,7 @@ class SimpleIndex(object):
         else:
           default_value = sort_spec.default_value_numeric()
         val = expression_evaluator.ExpressionEvaluator(
-            scored_doc, self._inverted_index).ValueOf(
+            scored_doc, self._inverted_index, True).ValueOf(
                 sort_spec.sort_expression(), default_value=default_value)
         if isinstance(val, datetime.datetime):
           val = search_util.EpochTime(val)

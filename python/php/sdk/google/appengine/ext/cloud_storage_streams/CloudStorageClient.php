@@ -22,21 +22,13 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-require_once 'google/appengine/api/app_identity/AppIdentityService.php';
-require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
-require_once 'google/appengine/api/urlfetch_service_pb.php';
-require_once 'google/appengine/ext/cloud_storage_streams/HttpResponse.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/util/array_util.php';
-
 use google\appengine\api\app_identity\AppIdentityService;
 use google\appengine\api\app_identity\AppIdentityException;
 use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\URLFetchRequest\RequestMethod;
-use google\appengine\util as util;
+use google\appengine\util\ArrayUtil;
 
 /**
  * CloudStorageClient provides default fail implementations for all of the
@@ -52,6 +44,11 @@ abstract class CloudStorageClient {
 
   // The default amount of time that reads will be held in the cache.
   const DEFAULT_READ_CACHE_EXPIRY_SECONDS = 3600;  // one hour
+
+  // The default maximum number of times that certain (see retryable_statuses)
+  // failed Google Cloud Storage requests will be retried before returning
+  // failure.
+  const DEFAULT_MAXIMUM_NUMBER_OF_RETRIES = 2;
 
   // The default time the writable state of a bucket will be cached for.
   const DEFAULT_WRITABLE_CACHE_EXPIRY_SECONDS = 600;  // ten minutes
@@ -155,9 +152,18 @@ abstract class CloudStorageClient {
       "PATCH" => RequestMethod::PATCH
   ];
 
+  private static $retryable_statuses = [
+      408,  // Request Timeout
+      500,  // Internal Server Error
+      502,  // Bad Gateway
+      503,  // Service Unavailable
+      504,  // Gateway Timeout
+  ];
+
   private static $default_gs_context_options = [
       "enable_cache" => true,
       "enable_optimistic_cache" => false,
+      "max_retries" => self::DEFAULT_MAXIMUM_NUMBER_OF_RETRIES,
       "read_cache_expiry_seconds" => self::DEFAULT_READ_CACHE_EXPIRY_SECONDS,
       "writable_cache_expiry_seconds" =>
           self::DEFAULT_WRITABLE_CACHE_EXPIRY_SECONDS,
@@ -190,8 +196,8 @@ abstract class CloudStorageClient {
     } else {
       $this->context_options = self::$default_gs_context_options;
     }
-    $this->anonymous = util\findByKeyOrNull($this->context_options,
-                                            "anonymous");
+    $this->anonymous = ArrayUtil::findByKeyOrNull($this->context_options,
+                                                  "anonymous");
 
     $this->url = $this->createObjectUrl($bucket, $object);
   }
@@ -364,13 +370,27 @@ abstract class CloudStorageClient {
 
     $resp = new \google\appengine\URLFetchResponse();
 
-    try {
-      ApiProxy::makeSyncCall('urlfetch', 'Fetch', $req, $resp);
-    } catch (ApplicationError $e) {
-      syslog(LOG_ERR,
-             sprintf("Call to URLFetch failed with application error %d.",
-                     $e->getApplicationError()));
-      return false;
+    for ($num_retries = 0; ; $num_retries++) {
+      try {
+        ApiProxy::makeSyncCall('urlfetch', 'Fetch', $req, $resp);
+      } catch (ApplicationError $e) {
+        syslog(LOG_ERR,
+               sprintf("Call to URLFetch failed with application error %d.",
+                       $e->getApplicationError()));
+        return false;
+      }
+      $status_code = $resp->getStatusCode();
+
+      if ($num_retries < $this->context_options['max_retries'] &&
+          in_array($status_code, self::$retryable_statuses) &&
+          (connection_status() & CONNECTION_TIMEOUT) == 0) {
+        usleep(rand(0, 1000000 * pow(2, $num_retries)));
+        if ((connection_status() & CONNECTION_TIMEOUT) == CONNECTION_TIMEOUT) {
+          break;
+        }
+      } else {
+        break;
+      }
     }
 
     $response_headers = [];

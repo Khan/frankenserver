@@ -260,31 +260,25 @@ class CModuleImportHookTest(unittest.TestCase):
     self.assertEqual(hook, hook.find_module('lxml.etree', lxml.__path__))
 
   def test_find_module_not_c_module(self):
-    hook = sandbox.BuiltinImportHook()
+    hook = sandbox.CModuleImportHook([])
     self.assertIsNone(hook.find_module('httplib'))
 
-  def test_load_module(self):
-    hook = sandbox.CModuleImportHook([])
-    self.assertRaises(ImportError, hook.load_module, 'lxml')
-
-
-class BuiltinImportHookTest(unittest.TestCase):
   def test_find_module_whitelisted(self):
-    hook = sandbox.BuiltinImportHook()
+    hook = sandbox.CModuleImportHook([])
     for name in sandbox._WHITE_LIST_C_MODULES:
       self.assertIsNone(hook.find_module(name))
 
   def test_find_module_not_whitelisted(self):
-    hook = sandbox.BuiltinImportHook()
+    hook = sandbox.CModuleImportHook([])
     self.assertEqual(hook, hook.find_module('__builtin__'))
 
-  def test_find_module_not_builtin(self):
-    hook = sandbox.BuiltinImportHook()
-    self.assertIsNone(hook.find_module('httplib'))
+  def test_find_module_not_whitelisted_enabled_via_libaries(self):
+    hook = sandbox.CModuleImportHook([re.compile(r'__builtin__')])
+    self.assertIsNone(hook.find_module('__builtin__'))
 
   def test_load_module(self):
-    hook = sandbox.BuiltinImportHook()
-    self.assertRaises(ImportError, hook.load_module, '__builtin__')
+    hook = sandbox.CModuleImportHook([])
+    self.assertRaises(ImportError, hook.load_module, 'lxml')
 
 
 class PathOverrideImportHookTest(unittest.TestCase):

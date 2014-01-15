@@ -1,5 +1,8 @@
 <?php
 
+// Ensure that the class autoloader is the first include.
+require_once 'google/appengine/runtime/autoloader.php';
+
 function _gae_syslog($priority, $format_string, $message) {
   // TODO(bquinlan): Use the logs service to persist this message.
 }

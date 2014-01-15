@@ -16,6 +16,8 @@
 #
 """Dispatcher to handle Google Cloud Storage stub requests."""
 
+from __future__ import with_statement
+
 
 
 
@@ -26,6 +28,7 @@
 
 import httplib
 import re
+import threading
 import urllib
 import urlparse
 import xml.etree.ElementTree as ET
@@ -33,6 +36,11 @@ import xml.etree.ElementTree as ET
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.ext.cloudstorage import cloudstorage_stub
 from google.appengine.ext.cloudstorage import common
+
+
+BUCKET_ONLY_PATH = re.compile('(/[a-z0-9-_.]+)/?$')
+
+GCS_STUB_LOCK = threading.RLock()
 
 
 class _FakeUrlFetchResult(object):
@@ -68,18 +76,19 @@ def dispatch(method, headers, url, payload):
   gcs_stub = cloudstorage_stub.CloudStorageStub(
       apiproxy_stub_map.apiproxy.GetStub('blobstore').storage)
 
-  if method == 'POST':
-    return _handle_post(gcs_stub, filename, headers)
-  elif method == 'PUT':
-    return _handle_put(gcs_stub, filename, param_dict, headers, payload)
-  elif method == 'GET':
-    return _handle_get(gcs_stub, filename, param_dict, headers)
-  elif method == 'HEAD':
-    return _handle_head(gcs_stub, filename)
-  elif method == 'DELETE':
-    return _handle_delete(gcs_stub, filename)
-  raise ValueError('Unrecognized request method %r.' % method,
-                   httplib.METHOD_NOT_ALLOWED)
+  with GCS_STUB_LOCK:
+    if method == 'POST':
+      return _handle_post(gcs_stub, filename, headers)
+    elif method == 'PUT':
+      return _handle_put(gcs_stub, filename, param_dict, headers, payload)
+    elif method == 'GET':
+      return _handle_get(gcs_stub, filename, param_dict, headers)
+    elif method == 'HEAD':
+      return _handle_head(gcs_stub, filename)
+    elif method == 'DELETE':
+      return _handle_delete(gcs_stub, filename)
+    raise ValueError('Unrecognized request method %r.' % method,
+                     httplib.METHOD_NOT_ALLOWED)
 
 
 def _preprocess(method, headers, url):
@@ -153,6 +162,13 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
 
 
 
+
+  if (headers.get('x-goog-if-generation-match', None) == '0' and
+      gcs_stub.head_object(filename) is not None):
+    return _FakeUrlFetchResult(httplib.PRECONDITION_FAILED, {}, '')
+
+
+
   if not token:
 
     if content_range.length is None:
@@ -222,15 +238,20 @@ def _copy(gcs_stub, filename, headers):
   result = _handle_head(gcs_stub, source)
   if result.status_code == httplib.NOT_FOUND:
     return result
-  gcs_stub.put_copy(source, filename)
+  directive = headers.pop('x-goog-metadata-directive', 'COPY')
+  if directive == 'REPLACE':
+    gcs_stub.put_copy(source, filename, headers)
+  else:
+    gcs_stub.put_copy(source, filename, None)
   return _FakeUrlFetchResult(httplib.OK, {}, '')
 
 
 def _handle_get(gcs_stub, filename, param_dict, headers):
   """Handle GET object and GET bucket."""
-  if filename.rfind('/') == 0:
+  mo = re.match(BUCKET_ONLY_PATH, filename)
+  if mo is not None:
 
-    return _handle_get_bucket(gcs_stub, filename, param_dict)
+    return _handle_get_bucket(gcs_stub, mo.group(1), param_dict)
   else:
 
     result = _handle_head(gcs_stub, filename)

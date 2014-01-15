@@ -61,6 +61,11 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
 
   public function tearDown() {
     $_SERVER = $this->_SERVER;
+
+    // Reset environmental variables.
+    putenv("SERVER_SOFTWARE=");
+    putenv("HTTP_HOST=");
+
     parent::tearDown();
   }
 
@@ -656,19 +661,33 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
   }
 
   public function testGetPublicUrlInProduction() {
-    $bucket = "bucket";
     $object = "object";
-    $gs_filename = sprintf("gs://%s/%s", $bucket, $object);
-    $host = "storage.googleapis.com";
     putenv("SERVER_SOFTWARE=Google App Engine/1.8.6");
 
-    // Get HTTPS URL
-    $expected = "https://storage.googleapis.com/bucket/object";
+    $bucket_with_a_dot = "bucket.name";
+    $gs_filename = sprintf("gs://%s/%s", $bucket_with_a_dot, $object);
+
+    // Get HTTPS URL for bucket containing "." - should use the path format to
+    // avoid SSL certificate validation issue.
+    $expected = "https://storage.googleapis.com/bucket.name/object";
     $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
     $this->assertEquals($expected, $actual);
 
-    // Get HTTP URL
-    $expected = "http://storage.googleapis.com/bucket/object";
+    // Get HTTP URL for bucket contain "." - should use the subdomain format.
+    $expected = "http://bucket.name.storage.googleapis.com/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $this->assertEquals($expected, $actual);
+
+    $bucket_without_dot = "bucket";
+    $gs_filename = sprintf("gs://%s/%s", $bucket_without_dot, $object);
+
+    // Get HTTPS URL for bucket without "." - should use the subdomain format.
+    $expected = "https://bucket.storage.googleapis.com/object";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
+    $this->assertEquals($expected, $actual);
+
+    // Get HTTP URL for bucket without "." - should use the subdomain format.
+    $expected = "http://bucket.storage.googleapis.com/object";
     $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
     $this->assertEquals($expected, $actual);
   }
@@ -677,9 +696,8 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     $bucket = "bucket";
     $object = "object";
     $gs_filename = sprintf("gs://%s/%s", $bucket, $object);
-    $host = "localhost:8080";
     putenv("SERVER_SOFTWARE=Development/2.0");
-    putenv("HTTP_HOST=" . $host);
+    putenv("HTTP_HOST=localhost:8080");
 
     // Get HTTPS URL
     $expected = "http://localhost:8080/_ah/gcs/bucket/object";
@@ -689,6 +707,16 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     // Get HTTP URL
     $expected = "http://localhost:8080/_ah/gcs/bucket/object";
     $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $this->assertEquals($expected, $actual);
+  }
+
+  public function testGetPublicUrlEncoding() {
+    $bucket = "bucket";
+    $object = " %#?";
+    $gs_filename = sprintf("gs://%s/%s", $bucket, $object);
+
+    $expected = "https://bucket.storage.googleapis.com/%20%25%23%3F";
+    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
     $this->assertEquals($expected, $actual);
   }
 
@@ -729,6 +757,24 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
           sprintf("Invalid cloud storage object name '%s'", $object));
       CloudStorageTools::getFilename('foo', $object);
     }
+  }
+
+  public function testParseFilenameWithBucketAndObject() {
+    $gs_filename = 'gs://bucket/object';
+
+    $this->assertEquals(true,
+        CloudStorageTools::parseFilename($gs_filename, $bucket, $object));
+    $this->assertEquals('bucket', $bucket);
+    $this->assertEquals('/object', $object);
+  }
+
+  public function testParseFilenameWithBucketOnly() {
+    $gs_filename = 'gs://bucket';
+
+    $this->assertEquals(true,
+        CloudStorageTools::parseFilename($gs_filename, $bucket, $object));
+    $this->assertEquals('bucket', $bucket);
+    $this->assertEquals(null, $object);
   }
 }
 

@@ -20,44 +20,47 @@
  */
 namespace google\appengine\util;
 
-/**
- * Return true if the first paramater contains the second parameter at the end.
- *
- * @param string $input The input string which may contain the suffix.
- * @param string $suffix The string to look for at the end of the input.
- *
- * @return boolean <code>true</code> iff the input contains the suffix at the
- * end.
- */
-function endsWith($input, $suffix) {
-  return substr($input, -strlen($suffix)) === $suffix;
-}
+final class StringUtil {
+  /**
+   * Return true if the first paramater contains the second parameter at the
+   * end.
+   *
+   * @param string $input The input string which may contain the suffix.
+   * @param string $suffix The string to look for at the end of the input.
+   *
+   * @return boolean <code>true</code> iff the input contains the suffix at the
+   * end.
+   */
+  public static function endsWith($input, $suffix) {
+    return substr($input, -strlen($suffix)) === $suffix;
+  }
 
-/**
- * @param string $input The string which may contain the prefix at the start.
- * @param string $prefix The string to look for at the start of the input.
- *
- * @return boolean <code>true</code> iff the input contains the prefix at the
- * start.
- */
-function startsWith($input, $prefix) {
-  return substr($input, 0, strlen($prefix)) === $prefix;
-}
+  /**
+   * @param string $input The string which may contain the prefix at the start.
+   * @param string $prefix The string to look for at the start of the input.
+   *
+   * @return boolean <code>true</code> iff the input contains the prefix at the
+   * start.
+   */
+  public static function startsWith($input, $prefix) {
+    return substr($input, 0, strlen($prefix)) === $prefix;
+  }
 
-/**
- * @param string $input The string which may not be url safe.
- *
- * @return string A Base64 encoded url safe string.
- */
-function base64UrlEncode($input) {
-  return strtr(base64_encode($input), '+/=', '-_,');
-}
+  /**
+   * @param string $input The string which may not be url safe.
+   *
+   * @return string A Base64 encoded url safe string.
+   */
+  public static function base64UrlEncode($input) {
+    return strtr(base64_encode($input), '+/=', '-_,');
+  }
 
-/**
- * @param string $input The url safe Base64 encoded string.
- *
- * @return string The original string which may not be url safe.
- */
-function base64UrlDecode($input) {
-  return base64_decode(strtr($input, '-_,', '+/='));
+  /**
+   * @param string $input The url safe Base64 encoded string.
+   *
+   * @return string The original string which may not be url safe.
+   */
+  public static function base64UrlDecode($input) {
+    return base64_decode(strtr($input, '-_,', '+/='));
+  }
 }

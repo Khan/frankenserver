@@ -31,6 +31,7 @@ import cStringIO
 import logging
 import os
 import re
+import types
 import urllib
 import urllib2
 
@@ -298,7 +299,7 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
       self.access_token = access_token
       self.client_id = client_id
       self.client_secret = client_secret
-      self.scope = scope if isinstance(scope, basestring) else ' '.join(scope)
+      self.scope = scope
       self.refresh_token = refresh_token
       self.credential_file = credential_file
       self.token_uri = token_uri
@@ -403,7 +404,7 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
       flow = client.OAuth2WebServerFlow(
           client_id=self.oauth2_parameters.client_id,
           client_secret=self.oauth2_parameters.client_secret,
-          scope=self.oauth2_parameters.scope,
+          scope=_ScopesToString(self.oauth2_parameters.scope),
           user_agent=self.user_agent)
       self.credentials = tools.run(flow, self.storage)
     if self.credentials and not self.credentials.invalid:
@@ -415,3 +416,13 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
         self.credentials.authorize(http)
         return
     logger.debug('_Authenticate skipped auth; needs_auth=%s', needs_auth)
+
+
+def _ScopesToString(scopes):
+  """Converts scope value to a string."""
+
+
+  if isinstance(scopes, types.StringTypes):
+    return scopes
+  else:
+    return ' '.join(scopes)

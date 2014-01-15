@@ -372,8 +372,26 @@ namespace google\appengine {
     public function clearBlobKey() {
       $this->blob_key = array();
     }
+    public function getToken() {
+      if (!isset($this->token)) {
+        return '';
+      }
+      return $this->token;
+    }
+    public function setToken($val) {
+      $this->token = $val;
+      return $this;
+    }
+    public function clearToken() {
+      unset($this->token);
+      return $this;
+    }
+    public function hasToken() {
+      return isset($this->token);
+    }
     public function clear() {
       $this->clearBlobKey();
+      $this->clearToken();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -381,6 +399,10 @@ namespace google\appengine {
       $res += 1 * sizeof($this->blob_key);
       foreach ($this->blob_key as $value) {
         $res += $this->lengthString(strlen($value));
+      }
+      if (isset($this->token)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->token));
       }
       return $res;
     }
@@ -390,6 +412,10 @@ namespace google\appengine {
         $out->putVarInt32(10);
         $out->putPrefixedString($value);
       }
+      if (isset($this->token)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->token);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -398,6 +424,11 @@ namespace google\appengine {
           case 10:
             $length = $d->getVarInt32();
             $this->addBlobKey(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->setToken(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -416,6 +447,9 @@ namespace google\appengine {
       foreach ($x->getBlobKeyList() as $v) {
         $this->addBlobKey($v);
       }
+      if ($x->hasToken()) {
+        $this->setToken($x->getToken());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -423,12 +457,17 @@ namespace google\appengine {
       foreach (array_map(null, $this->blob_key, $x->blob_key) as $v) {
         if ($v[0] !== $v[1]) return false;
       }
+      if (isset($this->token) !== isset($x->token)) return false;
+      if (isset($this->token) && $this->token !== $x->token) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
       $res = '';
       foreach ($this->blob_key as $value) {
         $res .= $prefix . "blob_key: " . $this->debugFormatString($value) . "\n";
+      }
+      if (isset($this->token)) {
+        $res .= $prefix . "token: " . $this->debugFormatString($this->token) . "\n";
       }
       return $res;
     }
