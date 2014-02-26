@@ -19,10 +19,6 @@
 
 namespace google\appengine\api\mail;
 
-require_once 'google/appengine/api/mail_service_pb.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-
 use google\appengine\MailAttachment;
 use google\appengine\MailHeader;
 use google\appengine\MailMessage;
@@ -89,7 +85,8 @@ abstract class BaseMessage {
             $func_name = $allowed_functions[$key];
             call_user_func(array($this, $func_name), $value);
           } else {
-            $error = sprintf("Message received an invalid option: %s", $key);
+            $error = sprintf("Message received an invalid option: %s",
+                             htmlspecialchars($key));
             throw new \InvalidArgumentException($error);
           }
         }
@@ -244,7 +241,9 @@ abstract class BaseMessage {
     } else if (!in_array(strtolower($key), self::$allowed_headers)) {
       // Array keys don't have consistent case.
       $error = sprintf("Input header '%s: %s' is not whitelisted for use with" .
-                       " the Google App Engine Mail Service.", $key, $value);
+                       " the Google App Engine Mail Service.",
+                       htmlspecialchars($key),
+                       htmlspecialchars($value));
       return false;
     }
     return true;
@@ -282,7 +281,7 @@ abstract class BaseMessage {
       case ErrorCode::UNAUTHORIZED_SENDER:
         $error = sprintf("Mail Service Error: Sender (%s) is not an " .
                          "authorized email address.",
-                         $this->message->getSender());
+                         htmlspecialchars($this->message->getSender()));
         throw new \InvalidArgumentException($error);
       case ErrorCode::INVALID_ATTACHMENT_TYPE:
         throw new \InvalidArgumentException(
@@ -319,7 +318,8 @@ abstract class BaseMessage {
    */
   public function setReplyTo($email) {
     if (!$this->checkValidEmail($email)) {
-      throw new \InvalidArgumentException("Invalid reply-to: ". $email);
+      throw new \InvalidArgumentException(
+          "Invalid reply-to: ". htmlspecialchars($email));
     }
     $this->message->setReplyto($email);
   }
@@ -333,7 +333,8 @@ abstract class BaseMessage {
    */
   public function setSender($email) {
     if (!$this->checkValidEmail($email)) {
-      throw new \InvalidArgumentException("Invalid sender: ". $email);
+      throw new \InvalidArgumentException(
+          "Invalid sender: ". htmlspecialchars($email));
     }
     $this->message->setSender($email);
   }

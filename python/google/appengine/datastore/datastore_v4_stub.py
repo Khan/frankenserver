@@ -98,18 +98,22 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     try:
       self.__service_validator.validate_commit_req(req)
       if req.has_transaction():
-        resp.mutable_mutation_result()
-        resp.mutable_mutation_result().CopyFrom(
-            self.__apply_v4_mutation(req.mutation(), req.transaction()))
+        resp.mutable_deprecated_mutation_result()
+        resp.mutable_deprecated_mutation_result().CopyFrom(
+            self.__apply_v4_deprecated_mutation(req.deprecated_mutation(),
+                                                req.transaction()))
         v3_req = self.__service_converter.v4_commit_req_to_v3_txn(req)
         v3_resp = datastore_pb.CommitResponse()
         self.__make_v3_call('Commit', v3_req, v3_resp)
-        total_index_updates = (resp.mutable_mutation_result().index_updates()
-                               + v3_resp.cost().index_writes())
-        resp.mutable_mutation_result().set_index_updates(total_index_updates)
+        total_index_updates = (
+            resp.mutable_deprecated_mutation_result().index_updates()
+            + v3_resp.cost().index_writes())
+        resp.mutable_deprecated_mutation_result().set_index_updates(
+            total_index_updates)
       else:
-        resp.mutable_mutation_result().CopyFrom(
-            self.__apply_v4_mutation(req.mutation(), None))
+        resp.mutable_deprecated_mutation_result().CopyFrom(
+            self.__apply_v4_deprecated_mutation(req.deprecated_mutation(),
+                                                None))
     except datastore_pbs.InvalidConversionError, e:
       raise apiproxy_errors.ApplicationError(
           datastore_v4_pb.Error.BAD_REQUEST, str(e))
@@ -280,15 +284,15 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     self.__make_v3_call('Put', v3_put_req, v3_put_resp)
     return v3_put_resp.cost().index_writes()
 
-  def __apply_v4_mutation(self, v4_mutation, v4_txn):
-    """Applies a v4 Mutation.
+  def __apply_v4_deprecated_mutation(self, v4_deprecated_mutation, v4_txn):
+    """Applies a v4 DeprecatedMutation.
 
     Args:
-      v4_mutation: a datastore_v4_pb.Mutation
+      v4_deprecated_mutation: a datastore_v4_pb.DeprecatedMutation
       v4_txn: an optional v4 transaction handle or None
 
     Returns:
-      a datastore_v4_pb.MutationResult
+      a datastore_v4_pb.DeprecatedMutationResult
     """
     index_writes = 0
     v3_txn = None
@@ -297,13 +301,13 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
       self.__service_converter.v4_to_v3_txn(v4_txn, v3_txn)
 
 
-    for v4_entity in v4_mutation.insert_list():
+    for v4_entity in v4_deprecated_mutation.insert_list():
       v3_entity = entity_pb.EntityProto()
       self.__entity_converter.v4_to_v3_entity(v4_entity, v3_entity)
       index_writes += self.__insert_v3_entity(v3_entity, v3_txn)
 
 
-    for v4_entity in v4_mutation.update_list():
+    for v4_entity in v4_deprecated_mutation.update_list():
       v3_entity = entity_pb.EntityProto()
       self.__entity_converter.v4_to_v3_entity(v4_entity, v3_entity)
       index_writes += self.__update_v3_entity(v3_entity, v3_txn)
@@ -312,7 +316,7 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     v3_insert_auto_req = datastore_pb.PutRequest()
     if v3_txn:
       v3_insert_auto_req.mutable_transaction().CopyFrom(v3_txn)
-    for v4_entity in v4_mutation.insert_auto_id_list():
+    for v4_entity in v4_deprecated_mutation.insert_auto_id_list():
       v3_entity = entity_pb.EntityProto()
       self.__entity_converter.v4_to_v3_entity(v4_entity, v3_entity)
       v3_insert_auto_req.entity_list().append(v3_entity)
@@ -324,7 +328,7 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     v3_upsert_req = datastore_pb.PutRequest()
     if v3_txn:
       v3_upsert_req.mutable_transaction().CopyFrom(v3_txn)
-    for v4_entity in v4_mutation.upsert_list():
+    for v4_entity in v4_deprecated_mutation.upsert_list():
       v3_entity = entity_pb.EntityProto()
       self.__entity_converter.v4_to_v3_entity(v4_entity, v3_entity)
       v3_upsert_req.entity_list().append(v3_entity)
@@ -336,20 +340,20 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     v3_delete_req = datastore_pb.DeleteRequest()
     if v3_txn:
       v3_delete_req.mutable_transaction().CopyFrom(v3_txn)
-    for v4_key in v4_mutation.delete_list():
+    for v4_key in v4_deprecated_mutation.delete_list():
       self.__entity_converter.v4_to_v3_reference(v4_key,
                                                  v3_delete_req.add_key())
     v3_delete_resp = datastore_pb.DeleteResponse()
     self.__make_v3_call('Delete', v3_delete_req, v3_delete_resp)
     index_writes += v3_delete_resp.cost().index_writes()
 
-    v4_mutation_result = datastore_v4_pb.MutationResult()
+    v4_deprecated_mutation_result = datastore_v4_pb.DeprecatedMutationResult()
     for v3_ref in v3_insert_auto_id_resp.key_list():
       self.__entity_converter.v3_to_v4_key(
-          v3_ref, v4_mutation_result.add_insert_auto_id_key())
-    v4_mutation_result.set_index_updates(index_writes)
+          v3_ref, v4_deprecated_mutation_result.add_insert_auto_id_key())
+    v4_deprecated_mutation_result.set_index_updates(index_writes)
 
-    return v4_mutation_result
+    return v4_deprecated_mutation_result
 
   def __normalize_v4_run_query_request(self, v4_req):
 

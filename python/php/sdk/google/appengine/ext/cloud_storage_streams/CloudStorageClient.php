@@ -254,6 +254,24 @@ abstract class CloudStorageClient {
   }
 
   /**
+   * Subclass can override this method to return the metadata of the underlying
+   * GCS object.
+   */
+  public function getMetaData() {
+    trigger_error(sprintf("%s does not have metadata", get_class($this)));
+    return false;
+  }
+
+  /**
+   * Subclass can override this method to return the MIME content type of the
+   * underlying GCS object.
+   */
+  public function getContentType() {
+    trigger_error(sprintf("%s does not have content type", get_class($this)));
+    return false;
+  }
+
+  /**
    * Get the OAuth Token HTTP header for the supplied scope.
    *
    * @param $scopes mixed The scopes to acquire the token for.

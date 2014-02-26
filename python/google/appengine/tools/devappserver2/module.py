@@ -46,7 +46,7 @@ from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import endpoints
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
-from google.appengine.tools.devappserver2 import gcs_application
+from google.appengine.tools.devappserver2 import gcs_server
 from google.appengine.tools.devappserver2 import go_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
@@ -208,9 +208,9 @@ class Module(object):
     handlers.append(
         wsgi_handler.WSGIHandler(channel.application, url_pattern))
 
-    url_pattern = '/%s' % gcs_application.GCS_URL_PATTERN
+    url_pattern = '/%s' % gcs_server.GCS_URL_PATTERN
     handlers.append(
-        wsgi_handler.WSGIHandler(gcs_application.Application(), url_pattern))
+        wsgi_handler.WSGIHandler(gcs_server.Application(), url_pattern))
 
     url_pattern = '/%s' % endpoints.API_SERVING_PATTERN
     handlers.append(

@@ -21,11 +21,6 @@
 
 namespace google\appengine\api\log;
 
-require_once 'google/appengine/api/logservice/log_service_pb.php';
-require_once 'google/appengine/api/log/LogService.php';
-require_once 'google/appengine/api/log/RequestLog.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\LogOffset;
 use google\appengine\LogReadRequest;
 use google\appengine\LogReadResponse;

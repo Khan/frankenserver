@@ -48,9 +48,10 @@ final class CloudStorageUrlStatClient extends CloudStorageClient {
    * the object is a 'file' or a 'directory', by listing the contents of the
    * bucket and then matching the results against the supplied object name.
    *
-   * If a file ends with "_$folder$" then Google Cloud Storage Manager will
-   * show it as a 'folder' in the UI tool, so we consider an object that ends
-   * in "_$folder$" as a directory as well.
+   * If a file ends with "/ then Google Cloud Console will show it as a 'folder'
+   * in the UI tool, so we consider an object that ends in "/" as a directory
+   * as well. For backward compatibility, we also treat files with the
+   * "_$folder$" suffix as folders.
    */
   public function stat() {
     $prefix = $this->prefix;

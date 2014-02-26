@@ -2034,31 +2034,31 @@ class SigningService(_server_stub_base_class):
         SignForAppRequest,
         SignForAppResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.GetPublicCertificatesForApp.im_func,
         GetPublicCertificateForAppRequest,
         GetPublicCertificateForAppResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.GetServiceAccountName.im_func,
         GetServiceAccountNameRequest,
         GetServiceAccountNameResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.GetAccessToken.im_func,
         GetAccessTokenRequest,
         GetAccessTokenResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.GetDefaultGcsBucketName.im_func,
         GetDefaultGcsBucketNameRequest,
         GetDefaultGcsBucketNameResponse,
         None,
-        'none')
+        'INTEGRITY')
 
 if _extension_runtime:
   pass

@@ -19,8 +19,6 @@
 
 namespace google\appengine\api\mail;
 
-require_once 'google/appengine/api/mail/BaseMessage.php';
-
 use google\appengine\base\VoidProto;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;

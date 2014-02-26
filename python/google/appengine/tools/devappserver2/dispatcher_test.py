@@ -438,6 +438,22 @@ class DispatcherTest(unittest.TestCase):
     self.assertEqual('default',
                      self.dispatcher._module_for_request('/undispatched'))
 
+  def test_should_use_dispatch_config(self):
+    """Tests the _should_use_dispatch_config method."""
+    self.assertTrue(self.dispatcher._should_use_dispatch_config('/'))
+    self.assertTrue(self.dispatcher._should_use_dispatch_config('/foo/'))
+    self.assertTrue(self.dispatcher._should_use_dispatch_config(
+        '/_ah/queue/deferred'))
+    self.assertTrue(self.dispatcher._should_use_dispatch_config(
+        '/_ah/queue/deferred/blah'))
+
+    self.assertFalse(self.dispatcher._should_use_dispatch_config('/_ah/'))
+    self.assertFalse(self.dispatcher._should_use_dispatch_config('/_ah/foo/'))
+    self.assertFalse(self.dispatcher._should_use_dispatch_config(
+        '/_ah/foo/bar/'))
+    self.assertFalse(self.dispatcher._should_use_dispatch_config(
+        '/_ah/queue/'))
+
   def test_resolve_target(self):
     servr = object()
     inst = object()

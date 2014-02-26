@@ -22,9 +22,11 @@ to the local emulation layer.
 
 
 import httplib
+import logging
 import webob
 
 from google.appengine.ext.cloudstorage import stub_dispatcher
+from google.appengine.tools.devappserver2 import wsgi_server
 
 # Regex for all requests routed through this module.
 GCS_URL_PATTERN = '_ah/gcs/(.+)'
@@ -70,3 +72,17 @@ class Application(object):
     start_response('%d %s' % (status_code, status_message), headers)
 
     return [result.content]
+
+
+class GCSServer(Application, wsgi_server.WsgiServer):
+  """Serves API calls over HTTP."""
+
+  def __init__(self, host, port):
+    self._host = host
+    super(GCSServer, self).__init__((host, port), self)
+
+  def start(self):
+    """Start the API Server."""
+    super(GCSServer, self).start()
+    logging.info('Starting Google Cloud Storage server at: http://%s:%d',
+                 self._host, self.port)

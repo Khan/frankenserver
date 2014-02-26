@@ -19,8 +19,6 @@
 
 namespace google\appengine\api\modules;
 
-require_once "google/appengine/api/modules/ModulesException.php";
-
 /**
  * Thrown when the current state was unexpected when starting/stopping a
  * module.

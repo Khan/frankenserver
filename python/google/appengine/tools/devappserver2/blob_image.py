@@ -24,6 +24,9 @@ from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
 from google.appengine.api.images import images_service_pb
+from google.appengine.ext import blobstore
+from google.appengine.tools.devappserver2 import blob_download
+from google.appengine.tools.devappserver2 import request_rewriter
 
 BLOBIMAGE_URL_PATTERN = '_ah/img(?:/.*)?'
 _BLOB_SERVING_URL_KIND = '__BlobServingUrl__'
@@ -34,6 +37,14 @@ _PATH_RE = re.compile(r'/_ah/img/([-\w:]+)([=]*)([-\w]+)?')
 _MIME_TYPE_MAP = {images_service_pb.OutputSettings.JPEG: 'image/jpeg',
                   images_service_pb.OutputSettings.PNG: 'image/png',
                   images_service_pb.OutputSettings.WEBP: 'image/webp'}
+
+# Check there's a working images stub.
+try:
+  # pylint: disable=g-import-not-at-top, unused-import
+  from google.appengine.api.images import images_stub
+  _HAS_WORKING_IMAGES_STUB = True
+except ImportError:
+  _HAS_WORKING_IMAGES_STUB = False
 
 
 def _get_images_stub():
@@ -51,18 +62,17 @@ class InvalidRequestError(Error):
 class Application(object):
   """A WSGI application that handles image serving requests."""
 
-  def _transform_image(self, blob_key, options):
+  def _transform_image(self, blob_key, resize=None, crop=False):
     """Construct and execute a transform request using the images stub.
 
     Args:
       blob_key: A str containing the blob_key of the image to transform.
-      options: A str containing the resize and crop options to apply to the
-          image.
+      resize: An integer for the size of the resulting image.
+      crop: A boolean determining if the image should be cropped or resized.
 
     Returns:
       A str containing the tranformed (if necessary) image.
     """
-    resize, crop = self._parse_options(options)
     image_data = images_service_pb.ImageData()
     image_data.set_blob_key(blob_key)
     image = _get_images_stub()._OpenImageData(image_data)
@@ -167,6 +177,14 @@ class Application(object):
       blobkey += match.group(2)
     return (blobkey, options)
 
+  def serve_unresized_image(self, blobkey, environ, start_response):
+    """Use blob_download to rewrite and serve unresized image directly."""
+    state = request_rewriter.RewriterState(environ, '200 OK', [
+        (blobstore.BLOB_KEY_HEADER, blobkey)], [])
+    blob_download.blobstore_download_rewriter(state)
+    start_response(state.status, state.headers.items())
+    return state.body
+
   def serve_image(self, environ, start_response):
     """Dynamically serve an image from blobstore."""
     blobkey, options = self._parse_path(environ['PATH_INFO'])
@@ -181,11 +199,22 @@ class Application(object):
                     'called before attempting to serve blobs.', blobkey)
       start_response('404 %s' % httplib.responses[404], [])
       return []
-    image, mime_type = self._transform_image(blobkey, options)
-    start_response('200 OK', [
-        ('Content-Type', mime_type),
-        ('Cache-Control', 'public, max-age=600, no-transform')])
-    return [image]
+
+    resize, crop = self._parse_options(options)
+
+    if resize is None and not crop:
+      return self.serve_unresized_image(blobkey, environ, start_response)
+    elif not _HAS_WORKING_IMAGES_STUB:
+      logging.warning('Serving resized images requires a working Python "PIL" '
+                      'module. The image is served without resizing.')
+      return self.serve_unresized_image(blobkey, environ, start_response)
+    else:
+      # Use Images service to transform blob.
+      image, mime_type = self._transform_image(blobkey, resize, crop)
+      start_response('200 OK', [
+          ('Content-Type', mime_type),
+          ('Cache-Control', 'public, max-age=600, no-transform')])
+      return [image]
 
   def __call__(self, environ, start_response):
     if environ['REQUEST_METHOD'] != 'GET':

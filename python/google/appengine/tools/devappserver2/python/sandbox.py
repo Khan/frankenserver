@@ -775,6 +775,7 @@ _WHITE_LIST_C_MODULES = [
     'exceptions',
     '_fileio',
     '_functools',
+    'future_builtins',
     'gc',
     '_hashlib',
     '_heapq',

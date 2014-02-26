@@ -23,21 +23,23 @@ import unittest
 import google
 import mox
 
-try:
-  from PIL import Image
-except ImportError:
-  try:
-    import Image
-  except ImportError:
-    raise unittest.SkipTest('blob_image_test could not import PIL')
-
 from google.appengine.api import datastore
 from google.appengine.api import datastore_errors
 from google.appengine.api.images import images_service_pb
 from google.appengine.api.images import images_stub
+from google.appengine.ext import blobstore
 from google.appengine.runtime import apiproxy_errors
+from google.appengine.tools.devappserver2 import blob_download
 from google.appengine.tools.devappserver2 import blob_image
 from google.appengine.tools.devappserver2 import wsgi_test_utils
+
+
+class MockImage(object):
+  """A mock PIL Image object."""
+
+  def __init__(self):
+    self.format = None
+    self.size = None
 
 
 class BlobImageTest(wsgi_test_utils.WSGITestCase):
@@ -47,15 +49,22 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.mox = mox.Mox()
     self._environ = {'PATH_INFO': 'http://test.com/_ah/img/SomeBlobKey',
                      'REQUEST_METHOD': 'GET'}
+    self._has_working_images_stub = blob_image._HAS_WORKING_IMAGES_STUB
+    blob_image._HAS_WORKING_IMAGES_STUB = True
     self._images_stub = self.mox.CreateMock(images_stub.ImagesServiceStub)
-    self._image = Image.Image()
+    self._mock_rewriter = self.mox.CreateMockAnything()
+    self._image = MockImage()
     self.app = blob_image.Application()
     os.environ['APPLICATION_ID'] = 'testapp'
     self._get_images_stub = blob_image._get_images_stub
     blob_image._get_images_stub = lambda: self._images_stub
+    self._blobstore_rewriter = blob_download.blobstore_download_rewriter
+    blob_download.blobstore_download_rewriter = self._mock_rewriter
 
   def tearDown(self):
+    blob_image._HAS_WORKING_IMAGES_STUB = self._has_working_images_stub
     blob_image._get_images_stub = self._get_images_stub
+    blob_download.blobstore_download_rewriter = self._blobstore_rewriter
     self.mox.UnsetStubs()
 
   def expect_open_image(self, blob_key, dimensions=None, throw_exception=None,
@@ -89,7 +98,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
       if not isinstance(bottom_y, float):
         raise self.failureException('Crop argument must be a float.')
       crop_xform.set_crop_bottom_y(bottom_y)
-    self._images_stub._Crop(mox.IsA(Image.Image), crop_xform).AndReturn(
+    self._images_stub._Crop(mox.IsA(MockImage), crop_xform).AndReturn(
         self._image)
 
   def expect_resize(self, resize):
@@ -97,7 +106,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     resize_xform = images_service_pb.Transform()
     resize_xform.set_width(resize)
     resize_xform.set_height(resize)
-    self._images_stub._Resize(mox.IsA(Image.Image),
+    self._images_stub._Resize(mox.IsA(MockImage),
                               resize_xform).AndReturn(self._image)
 
   def expect_encode_image(self, data,
@@ -105,7 +114,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     """Setup a mox expectation to images_stub._EncodeImage."""
     output_settings = images_service_pb.OutputSettings()
     output_settings.set_mime_type(mime_type)
-    self._images_stub._EncodeImage(mox.IsA(Image.Image),
+    self._images_stub._EncodeImage(mox.IsA(MockImage),
                                    output_settings).AndReturn(data)
 
   def expect_datatore_lookup(self, blob_key, expected_result):
@@ -126,6 +135,26 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
         [('Content-Type', expected_mimetype),
          ('Cache-Control', 'public, max-age=600, no-transform')],
         expected_content,
+        self.app,
+        self._environ)
+    self.mox.VerifyAll()
+
+  def run_blobstore_serving_request(self, blobkey):
+    def _Validate(state):
+      return state.headers.get(blobstore.BLOB_KEY_HEADER) == blobkey
+
+    def _Rewrite(state):
+      del state.headers[blobstore.BLOB_KEY_HEADER]
+      state.headers['Content-Type'] = 'image/some-type'
+      state.body = ['SomeBlobImage']
+
+    self._mock_rewriter.__call__(mox.Func(_Validate)).WithSideEffects(_Rewrite)
+
+    self.mox.ReplayAll()
+    self.assertResponse(
+        '200 OK',
+        [('Content-Type', 'image/some-type')],
+        'SomeBlobImage',
         self.app,
         self._environ)
     self.mox.VerifyAll()
@@ -184,7 +213,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
             images_service_pb.ImagesServiceError.INVALID_BLOB_KEY))
     self.mox.ReplayAll()
     try:
-      self.app._transform_image('SomeBlobKey', '')
+      self.app._transform_image('SomeBlobKey')
       raise self.failureException('Should have thrown ApplicationError')
     except apiproxy_errors.ApplicationError:
       pass
@@ -197,7 +226,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageInJpeg')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInJpeg', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', ''))
+                      self.app._transform_image('SomeBlobKey'))
     self.mox.VerifyAll()
 
   def test_transform_image_not_upscaled(self):
@@ -206,7 +235,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageInJpeg')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInJpeg', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', ''))
+                      self.app._transform_image('SomeBlobKey'))
     self.mox.VerifyAll()
 
   def test_transform_image_no_resize_png(self):
@@ -217,7 +246,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
                              images_service_pb.OutputSettings.PNG)
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInPng', 'image/png'),
-                      self.app._transform_image('SomeBlobKey', ''))
+                      self.app._transform_image('SomeBlobKey'))
     self.mox.VerifyAll()
 
   def test_transform_image_no_resize_tiff(self):
@@ -228,7 +257,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageInJpeg')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInJpeg', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', ''))
+                      self.app._transform_image('SomeBlobKey'))
     self.mox.VerifyAll()
 
   def test_transform_image_no_resize_gif(self):
@@ -240,7 +269,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
                              images_service_pb.OutputSettings.PNG)
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInPng', 'image/png'),
-                      self.app._transform_image('SomeBlobKey', ''))
+                      self.app._transform_image('SomeBlobKey'))
     self.mox.VerifyAll()
 
   def test_transform_image_resize(self):
@@ -250,7 +279,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageSize32')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageSize32', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', 's32'))
+                      self.app._transform_image('SomeBlobKey', 32))
     self.mox.VerifyAll()
 
   def test_transform_image_original_size(self):
@@ -259,7 +288,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageInJpeg')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageInJpeg', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', 's0'))
+                      self.app._transform_image('SomeBlobKey', 0))
     self.mox.VerifyAll()
 
   def test_transform_image_resize_png(self):
@@ -270,7 +299,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
                              images_service_pb.OutputSettings.PNG)
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageSize32', 'image/png'),
-                      self.app._transform_image('SomeBlobKey', 's32'))
+                      self.app._transform_image('SomeBlobKey', 32))
     self.mox.VerifyAll()
 
   def test_transform_image_resize_and_crop_portrait(self):
@@ -281,7 +310,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageSize32-c')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageSize32-c', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', 's32-c'))
+                      self.app._transform_image('SomeBlobKey', 32, True))
     self.mox.VerifyAll()
 
   def test_transform_image_resize_and_crop_portrait_png(self):
@@ -293,7 +322,7 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
                              images_service_pb.OutputSettings.PNG)
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageSize32-c', 'image/png'),
-                      self.app._transform_image('SomeBlobKey', 's32-c'))
+                      self.app._transform_image('SomeBlobKey', 32, True))
     self.mox.VerifyAll()
 
   def test_transform_image_resize_and_crop_landscape(self):
@@ -304,36 +333,24 @@ class BlobImageTest(wsgi_test_utils.WSGITestCase):
     self.expect_encode_image('SomeImageSize32-c')
     self.mox.ReplayAll()
     self.assertEquals(('SomeImageSize32-c', 'image/jpeg'),
-                      self.app._transform_image('SomeBlobKey', 's32-c'))
+                      self.app._transform_image('SomeBlobKey', 32, True))
     self.mox.VerifyAll()
 
-  def test_basic_run(self):
-    """Tests an image request."""
+  def test_run_no_resize_no_crop(self):
+    """Tests an image request without resizing or cropping."""
     self.expect_datatore_lookup('SomeBlobKey', True)
-    self.expect_open_image('SomeBlobKey', (1600, 1200))
-    self.expect_resize(blob_image._DEFAULT_SERVING_SIZE)
-    self.expect_encode_image('SomeImageInJpeg')
-    self.run_request('image/jpeg', 'SomeImageInJpeg')
 
-  def test_basic_run_png(self):
-    """Tests an image request for a PNG image."""
+    # Should result in serving form blobstore directly.
+    self.run_blobstore_serving_request('SomeBlobKey')
+
+  def test_run_resize_without_working_images_stub(self):
+    """Tests requesting a resized image without working images stub."""
+    blob_image._HAS_WORKING_IMAGES_STUB = False
     self.expect_datatore_lookup('SomeBlobKey', True)
-    self.expect_open_image('SomeBlobKey', (1600, 1200), mime_type='PNG')
-    self.expect_resize(blob_image._DEFAULT_SERVING_SIZE)
-    self.expect_encode_image('SomeImageInPng',
-                             images_service_pb.OutputSettings.PNG)
-    self.run_request('image/png', 'SomeImageInPng')
+    self._environ['PATH_INFO'] += '=s32'
 
-  def test_basic_run_with_padded_blobkey(self):
-    """Tests an image request with a padded blobkey."""
-    padded_blobkey = 'SomeBlobKey====================='
-    self.expect_datatore_lookup(padded_blobkey, True)
-    self.expect_open_image(padded_blobkey, (1600, 1200))
-    self.expect_resize(blob_image._DEFAULT_SERVING_SIZE)
-    self.expect_encode_image('SomeImageInJpeg')
-    self.mox.ReplayAll()
-    self._environ['PATH_INFO'] += '====================='
-    self.run_request('image/jpeg', 'SomeImageInJpeg')
+    # Should result in serving form blobstore directly.
+    self.run_blobstore_serving_request('SomeBlobKey')
 
   def test_run_resize(self):
     """Tests an image request with resizing."""

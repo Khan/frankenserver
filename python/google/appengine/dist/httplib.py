@@ -20,6 +20,7 @@
 
 """Copyright 2008 Python Software Foundation, Ian Bicking, and Google."""
 
+import inspect
 import mimetools
 import StringIO
 import sys
@@ -202,6 +203,16 @@ class HTTPConnection:
   def send(self, data):
     self._body += data
 
+  @staticmethod
+  def _getargspec(callable_object):
+    assert callable(callable_object)
+    try:
+
+      return inspect.getargspec(callable_object)
+    except TypeError:
+
+      return inspect.getargspec(callable_object.__call__)
+
   def getresponse(self):
     if self.port and self.port != self.default_port:
         host = '%s:%s' % (self.host, self.port)
@@ -218,9 +229,18 @@ class HTTPConnection:
     except KeyError:
       raise ValueError("%r is an unrecognized HTTP method" % self._method)
 
+
+
+
+
+    args, _, keywords, _ = self._getargspec(self._fetch)
+    extra_kwargs = (
+        {'validate_certificate': False}
+        if keywords or 'validate_certificate' in args
+        else {})
     response = self._fetch(url, self._body, method, headers,
                            self._allow_truncated, self._follow_redirects,
-                           deadline=self.timeout)
+                           deadline=self.timeout, **extra_kwargs)
     return HTTPResponse(response)
 
   def close(self):

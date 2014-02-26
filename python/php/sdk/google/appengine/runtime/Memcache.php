@@ -399,8 +399,12 @@ class Memcache {
 
     $return_value = array();
     foreach ($response->getItemList() as $item) {
-      $return_value[$item->getKey()] = MemcacheUtils::deserializeValue(
-          $item->getValue(), $item->getFlags());
+      try {
+        $return_value[$item->getKey()] = MemcacheUtils::deserializeValue(
+            $item->getValue(), $item->getFlags());
+      } catch (\UnexpectedValueException $e) {
+        // Skip entries that cannot be deserialized.
+      }
     }
     return $return_value;
   }

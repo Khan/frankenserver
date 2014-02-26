@@ -19,8 +19,6 @@
 
 namespace google\appengine\api\mail;
 
-require_once 'google/appengine/api/mail/BaseMessage.php';
-
 use google\appengine\base\VoidProto;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
@@ -167,12 +165,12 @@ final class Message extends BaseMessage {
       return array($email_list);
     } else if (!is_array($email_list)) {
       $error = sprintf("Invalid %s: %s", $err_str, $email_list);
-      throw new \InvalidArgumentException($error);
+      throw new \InvalidArgumentException(htmlspecialchars($error));
     } else {
       foreach($email_list as $email) {
         if (!$this->checkValidEmail($email)) {
           $error = sprintf("Invalid %s: %s", $err_str, $email);
-          throw new \InvalidArgumentException($error);
+          throw new \InvalidArgumentException(htmlspecialchars($error));
         }
       }
       return $email_list;

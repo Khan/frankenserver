@@ -3389,7 +3389,8 @@ class AppCfgApp(object):
       self.UpdateUsingSpecificFiles()
       return
 
-    if appcfg_java.IsWarFileWithoutYaml(self.basepath):
+    if (self._JavaSupported() and
+        appcfg_java.IsWarFileWithoutYaml(self.basepath)):
       java_app_update = appcfg_java.JavaAppUpdate(self.basepath, self.options)
       sdk_root = os.path.dirname(appcfg_java.__file__)
       self.options.compile_jsps = True

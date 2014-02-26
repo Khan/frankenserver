@@ -152,7 +152,8 @@ class EndpointsDispatcher(object):
     """Dispatch this request if this is a request to a reserved URL.
 
     If the request matches one of our reserved URLs, this calls
-    start_response and returns the response body.
+    start_response and returns the response body.  This also handles OPTIONS
+    CORS requests.
 
     Args:
       request: An ApiRequest, the request from the user.
@@ -165,6 +166,14 @@ class EndpointsDispatcher(object):
     for path_regex, dispatch_function in self._dispatchers:
       if path_regex.match(request.relative_url):
         return dispatch_function(request, start_response)
+
+    if request.http_method == 'OPTIONS':
+      cors_handler = EndpointsDispatcher.__CheckCorsHeaders(request)
+      if cors_handler.allow_cors_request:
+        # The server returns 200 rather than 204, for some reason.
+        return util.send_wsgi_response('200', [], '', start_response,
+                                       cors_handler)
+
     return None
 
   def handle_api_explorer_request(self, request, start_response):

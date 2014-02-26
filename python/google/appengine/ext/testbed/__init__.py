@@ -548,7 +548,7 @@ class Testbed(object):
     stub = file_service_stub.FileServiceStub(self._get_blob_storage())
     self._register_stub(FILES_SERVICE_NAME, stub)
 
-  def init_images_stub(self, enable=True):
+  def init_images_stub(self, enable=True, **stub_kwargs):
     """Enable the images stub.
 
     The images service stub is only available in dev_appserver because
@@ -557,6 +557,7 @@ class Testbed(object):
     Args:
       enable: True, if the fake service should be enabled, False if real
               service should be disabled.
+      stub_kwargs: Keyword arguments passed on to the service stub.
     """
     if not enable:
       self._disable_stub(IMAGES_SERVICE_NAME)
@@ -565,7 +566,7 @@ class Testbed(object):
       msg = ('Could not initialize images API; you are likely '
              'missing the Python "PIL" module.')
       raise StubNotSupportedError(msg)
-    stub = images_stub.ImagesServiceStub()
+    stub = images_stub.ImagesServiceStub(**stub_kwargs)
     self._register_stub(IMAGES_SERVICE_NAME, stub)
 
   def init_logservice_stub(self, enable=True):

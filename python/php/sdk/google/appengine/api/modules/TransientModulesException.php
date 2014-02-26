@@ -19,8 +19,6 @@
 
 namespace google\appengine\api\modules;
 
-require_once "google/appengine/api/modules/ModulesException.php";
-
 /**
  * Thrown when a temporary error occurred. Retry the operation.
  */

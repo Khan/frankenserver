@@ -22,6 +22,7 @@ import threading
 import urlparse
 import wsgiref.headers
 
+from google.appengine.api import appinfo
 from google.appengine.api import request_info
 from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import instance
@@ -38,6 +39,10 @@ _THREAD_POOL = thread_executor.ThreadExecutor()
 
 ResponseTuple = collections.namedtuple('ResponseTuple',
                                        ['status', 'headers', 'content'])
+
+# This must be kept in sync with dispatch_ah_url_path_prefix_whitelist in
+# google/production/borg/apphosting/templates/frontend.borg.
+DISPATCH_AH_URL_PATH_PREFIX_WHITELIST = ('/_ah/queue/deferred',)
 
 
 class PortRegistry(object):
@@ -370,7 +375,7 @@ class Dispatcher(request_info.Dispatcher):
       request_info.VersionDoesNotExistError: The version doesn't exist.
     """
     if not module_name:
-      module_name = 'default'
+      module_name = appinfo.DEFAULT_MODULE
     if module_name not in self._module_name_to_module:
       raise request_info.ModuleDoesNotExistError()
     if (version is not None and
@@ -398,8 +403,8 @@ class Dispatcher(request_info.Dispatcher):
       request_info.VersionDoesNotExistError: The version doesn't exist.
     """
     if not module_name or module_name not in self._module_name_to_module:
-      if 'default' in self._module_name_to_module:
-        module_name = 'default'
+      if appinfo.DEFAULT_MODULE in self._module_name_to_module:
+        module_name = appinfo.DEFAULT_MODULE
       elif self._module_name_to_module:
         # If there is no default module, but there are other modules, take any.
         # This is somewhat of a hack, and can be removed if we ever enforce the
@@ -688,9 +693,26 @@ class Dispatcher(request_info.Dispatcher):
     return self._handle_request(
         environ, start_response, self._module_for_request(environ['PATH_INFO']))
 
+  def _should_use_dispatch_config(self, path):
+    """Determines whether or not to use the dispatch config.
+
+    Args:
+      path: The request path.
+    Returns:
+      A Boolean indicating whether or not to use the rules in dispatch config.
+    """
+    if (not path.startswith('/_ah/') or
+        any(path.startswith(wl) for wl
+            in DISPATCH_AH_URL_PATH_PREFIX_WHITELIST)):
+      return True
+    else:
+      logging.warning('Skipping dispatch.yaml rules because %s is not a '
+                      'dispatchable path.', path)
+      return False
+
   def _module_for_request(self, path):
     dispatch = self._configuration.dispatch
-    if dispatch:
+    if dispatch and self._should_use_dispatch_config(path):
       for url, module_name in dispatch.dispatch:
         if (url.path_exact and path == url.path or
             not url.path_exact and path.startswith(url.path)):

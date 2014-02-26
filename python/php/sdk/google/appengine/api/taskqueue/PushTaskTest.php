@@ -21,9 +21,6 @@
 
 namespace google\appengine\api\taskqueue;
 
-require_once 'google/appengine/api/taskqueue/PushTask.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\api\taskqueue\PushTask;
 use google\appengine\testing\ApiProxyTestBase;
 use google\appengine\TaskQueueAddRequest\RequestMethod;

@@ -21,14 +21,6 @@
 
 namespace google\appengine\api\taskqueue;
 
-require_once 'google/appengine/api/taskqueue/PushTask.php';
-require_once 'google/appengine/api/taskqueue/taskqueue_service_pb.php';
-require_once 'google/appengine/api/taskqueue/TaskAlreadyExistsException.php';
-require_once 'google/appengine/api/taskqueue/TaskQueueException.php';
-require_once 'google/appengine/api/taskqueue/TransientTaskQueueException.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\TaskQueueAddRequest;

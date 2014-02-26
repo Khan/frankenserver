@@ -52,17 +52,6 @@ use google\appengine\util\StringUtil;
 final class LogService {
    use ApiProxyAccess;
 
-   // Map syslog priority levels to appengine severity levels.
-   private static $syslog_priority_map = array(
-       LOG_EMERG => self::LEVEL_CRITICAL,
-       LOG_ALERT => self::LEVEL_CRITICAL,
-       LOG_CRIT => self::LEVEL_CRITICAL,
-       LOG_ERR => self::LEVEL_ERROR,
-       LOG_WARNING => self::LEVEL_WARNING,
-       LOG_NOTICE => self::LEVEL_INFO,
-       LOG_INFO => self::LEVEL_INFO,
-       LOG_DEBUG => self::LEVEL_DEBUG);
-
   /**
    * Constants for application log levels.
    */
@@ -77,7 +66,19 @@ final class LogService {
    */
   const MAX_BATCH_SIZE = 1000;
 
-  # Validation patterns copied from google/appengine/api/logservice/logservice.py
+  // Map syslog priority levels to appengine severity levels.
+  private static $syslog_priority_map = array(
+      LOG_EMERG => self::LEVEL_CRITICAL,
+      LOG_ALERT => self::LEVEL_CRITICAL,
+      LOG_CRIT => self::LEVEL_CRITICAL,
+      LOG_ERR => self::LEVEL_ERROR,
+      LOG_WARNING => self::LEVEL_WARNING,
+      LOG_NOTICE => self::LEVEL_INFO,
+      LOG_INFO => self::LEVEL_INFO,
+      LOG_DEBUG => self::LEVEL_DEBUG);
+
+
+  // Validation patterns copied from google/appengine/api/logservice/logservice.py
   private static $MAJOR_VERSION_ID_REGEX =
       '/^(?:(?:((?!-)[a-z\d\-]{1,63}):)?)((?!-)[a-z\d\-]{1,100})$/';
   private static $REQUEST_ID_REGEX = '/^[\da-fA-F]+$/';
@@ -240,7 +241,7 @@ final class LogService {
             }
             if (!preg_match(self::$MAJOR_VERSION_ID_REGEX, $version)) {
               throw new \InvalidArgumentException(
-                  "Invalid version id $version");
+                  "Invalid version id " . htmlspecialchars($version));
             }
             $request->addModuleVersion()->setVersionId($version);
           }
@@ -256,7 +257,8 @@ final class LogService {
           $batch_size = $value;
           break;
         default:
-          throw new \InvalidArgumentException("Invalid option $key");
+          throw new \InvalidArgumentException(
+              "Invalid option " . htmlspecialchars($key));
       }
     }
 
@@ -312,7 +314,8 @@ final class LogService {
 
     if (is_string($request_ids)) {
       if (!preg_match(self::$REQUEST_ID_REGEX, $request_ids)) {
-        throw new \InvalidArgumentException("Invalid request id $request_ids");
+        throw new \InvalidArgumentException(
+            "Invalid request id " . htmlspecialchars($request_ids));
       }
       $request->addRequestId($request_ids);
     } else if (is_array($request_ids)) {
@@ -324,7 +327,7 @@ final class LogService {
         }
         if (!preg_match(self::$REQUEST_ID_REGEX, $id)) {
           throw new \InvalidArgumentException(
-              "Invalid request id $id");
+              "Invalid request id " . htmlspecialchars($id));
         }
         $request->addRequestId($id);
       }
@@ -358,7 +361,7 @@ final class LogService {
 
   private static function optionTypeException($key, $value, $expected) {
     throw new \InvalidArgumentException(
-        "Option $key must be type $expected but was " .
+        htmlspecialchars("Option $key must be type $expected but was ") .
         self::typeOrClass($value));
   }
 
@@ -377,6 +380,17 @@ final class LogService {
     // DateTime is accurate to seconds, StartTime to micro seconds.
     // The time stamp may only represent a date up to 2038 due to 32 bit ints.
     return (double) $datetime->getTimeStamp() * 1e6;
+  }
+
+  /**
+   * The GAE PECL extension calls this directly instead of the built-in syslog.
+   */
+  private static function syslog($priority, $message) {
+    $log_level = self::getAppEngineLogLevel($priority);
+    self::log($log_level, $message);
+    if (function_exists('_gae_syslog')) {
+      _gae_syslog($log_level);
+    }
   }
 }
 

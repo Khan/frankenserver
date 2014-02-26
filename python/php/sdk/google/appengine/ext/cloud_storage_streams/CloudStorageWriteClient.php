@@ -70,6 +70,7 @@ final class CloudStorageWriteClient extends CloudStorageClient {
 
     if (array_key_exists("Content-Type", $this->context_options)) {
       $headers["Content-Type"] = $this->context_options["Content-Type"];
+      $this->content_type = $this->context_options["Content-Type"];
     }
 
     if (array_key_exists("acl", $this->context_options)) {
@@ -96,6 +97,7 @@ final class CloudStorageWriteClient extends CloudStorageClient {
           return false;
         }
         $headers['x-goog-meta-' . $name] = $value;
+        $this->metadata[$name] = $value;
       }
     }
 
@@ -179,6 +181,22 @@ final class CloudStorageWriteClient extends CloudStorageClient {
    */
   public function close() {
     $this->writeBufferToGS(true);
+  }
+
+  public function getMetaData() {
+    if (array_key_exists("metadata", $this->context_options)) {
+      return $this->context_options["metadata"];
+    }
+
+    return [];
+  }
+
+  public function getContentType() {
+    if (array_key_exists("Content-Type", $this->context_options)) {
+      return $this->context_options["Content-Type"];
+    }
+
+    return null;
   }
 
   private function writeBufferToGS($complete = false) {

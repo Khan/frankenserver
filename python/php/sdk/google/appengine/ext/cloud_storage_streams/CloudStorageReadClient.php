@@ -29,6 +29,8 @@ use google\appengine\util\StringUtil;
  * Google Cloud Storage Client for reading objects.
  */
 final class CloudStorageReadClient extends CloudStorageClient {
+  const METADATA_HEADER_PREFIX = 'x-goog-meta-';
+
   // Buffer for storing data.
   private $read_buffer;
 
@@ -53,6 +55,12 @@ final class CloudStorageReadClient extends CloudStorageClient {
   // When we first read the file we partially complete the stat_result that
   // we then return in calls to stat()
   private $stat_result = [];
+
+  // Metadata for the object as it was first read.
+  private $metadata = [];
+
+  // Content-Type for the object as it was first read.
+  private $content_type;
 
   // HTTP status codes that indicate that there is an object to read, and we
   // need to process the response.
@@ -179,6 +187,14 @@ final class CloudStorageReadClient extends CloudStorageClient {
    */
   public function tell() {
     return $this->buffer_read_position + $this->object_block_start_position;
+  }
+
+  public function getMetaData() {
+    return $this->metadata;
+  }
+
+  public function getContentType() {
+    return $this->content_type;
   }
 
   /**
@@ -315,6 +331,11 @@ final class CloudStorageReadClient extends CloudStorageClient {
       }
     }
 
+    $this->metadata = self::extractMetaData($http_response['headers']);
+
+    $this->content_type = $this->getHeaderValue('Content-Type',
+                                                $http_response['headers']);
+
     $this->object_etag =
         $this->getHeaderValue('ETag', $http_response['headers']);
 
@@ -334,6 +355,22 @@ final class CloudStorageReadClient extends CloudStorageClient {
     }
 
     return true;
+  }
+
+  /**
+   * Extract metadata from HTTP response headers.
+   */
+  private static function extractMetaData($headers) {
+    $metadata = [];
+    foreach($headers as $key => $value) {
+      if (StringUtil::startsWith(strtolower($key),
+                                 self::METADATA_HEADER_PREFIX)) {
+        $metadata_key = substr($key, strlen(self::METADATA_HEADER_PREFIX));
+        $metadata[$metadata_key] = $value;
+      }
+    }
+
+    return $metadata;
   }
 }
 

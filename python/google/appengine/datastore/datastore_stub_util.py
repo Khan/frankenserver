@@ -1070,9 +1070,9 @@ class BaseCursor(object):
       (cursor_entity, inclusive): a entity_pb.EntityProto and if it should
       be included in the result set.
     """
-    assert len(compiled_cursor.position_list()) == 1
+    assert compiled_cursor.has_position()
 
-    position = compiled_cursor.position(0)
+    position = compiled_cursor.position()
 
 
 
@@ -1111,7 +1111,7 @@ class BaseCursor(object):
     if last_result is not None:
 
 
-      position = compiled_cursor.add_position()
+      position = compiled_cursor.mutable_position()
 
 
       if '__key__' in self.__cursor_properties:
@@ -1154,7 +1154,7 @@ class ListCursor(BaseCursor):
           new_results.append(result)
       results = new_results
 
-    if query.has_compiled_cursor() and query.compiled_cursor().position_list():
+    if query.has_compiled_cursor() and query.compiled_cursor().has_position():
       start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
       self.__last_result = start_cursor[0]
       start_cursor_position = self._GetCursorOffset(results, start_cursor)
@@ -1163,7 +1163,7 @@ class ListCursor(BaseCursor):
       start_cursor_position = 0
 
     if query.has_end_compiled_cursor():
-      if query.end_compiled_cursor().position_list():
+      if query.end_compiled_cursor().has_position():
         end_cursor = self._DecodeCompiledCursor(query.end_compiled_cursor())
         end_cursor_position = self._GetCursorOffset(results, end_cursor)
       else:
@@ -3055,16 +3055,32 @@ class DatastoreStub(object):
     self._datastore.DeleteIndex(index, self._trusted, self._app_id)
 
   def _Dynamic_AllocateIds(self, allocate_ids_request, allocate_ids_response):
-    CheckAppId(allocate_ids_request.model_key().app(),
-               self._trusted, self._app_id)
+    Check(not allocate_ids_request.has_model_key()
+          or not allocate_ids_request.reserve_list(),
+          'Cannot allocate and reserve IDs in the same request')
+    if allocate_ids_request.reserve_list():
+      Check(not allocate_ids_request.has_size(),
+            'Cannot specify size when reserving IDs')
+      Check(not allocate_ids_request.has_max(),
+            'Cannot specify max when reserving IDs')
 
-    reference = allocate_ids_request.model_key()
+    if allocate_ids_request.has_model_key():
+      CheckAppId(allocate_ids_request.model_key().app(),
+                 self._trusted, self._app_id)
 
-    (start, end) = self._datastore._AllocateSequentialIds(
-        reference, allocate_ids_request.size(), allocate_ids_request.max())
+      reference = allocate_ids_request.model_key()
 
-    allocate_ids_response.set_start(start)
-    allocate_ids_response.set_end(end)
+      (start, end) = self._datastore._AllocateSequentialIds(
+          reference, allocate_ids_request.size(), allocate_ids_request.max())
+
+      allocate_ids_response.set_start(start)
+      allocate_ids_response.set_end(end)
+    else:
+      for reference in allocate_ids_request.reserve_list():
+        CheckAppId(reference.app(), self._trusted, self._app_id)
+      self._datastore._AllocateIds(allocate_ids_request.reserve_list())
+      allocate_ids_response.set_start(0)
+      allocate_ids_response.set_end(0)
 
   def _SetupIndexes(self, _open=open):
     """Ensure that the set of existing composite indexes matches index.yaml.
@@ -4253,4 +4269,3 @@ def _CopyAndSetMultipleToFalse(prop):
   prop_copy.MergeFrom(prop)
   prop_copy.set_multiple(False)
   return prop_copy
-

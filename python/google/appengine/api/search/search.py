@@ -757,7 +757,6 @@ def _GetIndexes(namespace='', offset=None, limit=20,
   _CheckStatus(response.status())
   return response
 
-
 class Field(object):
   """An abstract base class which represents a field of a document.
 
@@ -2394,6 +2393,8 @@ class Index(object):
       self._namespace = u''
     namespace_manager.validate_namespace(self._namespace, exception=ValueError)
     self._schema = None
+    self._storage_usage = None
+    self._storage_limit = None
 
   @property
   def schema(self):
@@ -2401,6 +2402,25 @@ class Index(object):
 
     Only valid for Indexes returned by search.get_indexes method."""
     return self._schema
+
+  @property
+  def storage_usage(self):
+    """The approximate number of bytes used by this index.
+
+    The number may be slightly stale, as it may not reflect the
+    results of recent changes.
+
+    Returns None for indexes not obtained from search.get_indexes.
+
+    """
+    return self._storage_usage
+
+  @property
+  def storage_limit(self):
+    """The maximum allowable storage for this index, in bytes.
+
+    Returns None for indexes not obtained from search.get_indexes."""
+    return self._storage_limit
 
   @property
   def name(self):
@@ -2434,7 +2454,9 @@ class Index(object):
 
     return _Repr(self, [('name', self.name), ('namespace', self.namespace),
                         ('source', self._source),
-                        ('schema', self.schema)])
+                        ('schema', self.schema),
+                        ('storage_usage', self.storage_usage),
+                        ('storage_limit', self.storage_limit)])
 
   def _NewPutResultFromPb(self, status_pb, doc_id):
     """Constructs PutResult from RequestStatus pb and doc_id."""
@@ -2920,6 +2942,9 @@ def _NewIndexFromPb(index_metadata_pb):
   index = _NewIndexFromIndexSpecPb(index_metadata_pb.index_spec())
   if index_metadata_pb.field_list():
     index._schema = _NewSchemaFromPb(index_metadata_pb.field_list())
+  if index_metadata_pb.has_storage():
+    index._storage_usage = index_metadata_pb.storage().amount_used()
+    index._storage_limit = index_metadata_pb.storage().limit()
   return index
 
 

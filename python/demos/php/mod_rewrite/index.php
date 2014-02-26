@@ -14,14 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- */
-
-namespace google\appengine\api\taskqueue;
-
-/**
- * Thrown when adding a task, but a task with the same name already exists in
- * the queue.
- */
-class TaskAlreadyExistsException extends TaskQueueException {
+if ($_GET['q'] == '/help') {
+  echo 'This is some help text.';
+  exit;
 }
+
+echo 'Welcome to the site!';

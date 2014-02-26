@@ -29,6 +29,7 @@ use google\appengine\ImagesGetUrlBaseRequest;
 use google\appengine\ImagesGetUrlBaseResponse;
 use google\appengine\ImagesServiceError;
 use google\appengine\ext\cloud_storage_streams\CloudStorageClient;
+use google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper;
 use google\appengine\files\GetDefaultGsBucketNameRequest;
 use google\appengine\files\GetDefaultGsBucketNameResponse;
 use google\appengine\runtime\ApiProxy;
@@ -57,7 +58,7 @@ final class CloudStorageTools {
   // - The path format is less secure and should only be used for the specific
   //   case when the subdomain format fails.
   const PRODUCTION_HOST_SUBDOMAIN_FORMAT = "%s.storage.googleapis.com";
-  const PRODUCTION_HOST_PATH_FORMAT = "storage.googleapis.com/%s";
+  const PRODUCTION_HOST_PATH_FORMAT = "storage.googleapis.com";
 
   // The GCS filename format (bucket, object).
   const GS_FILENAME_FORMAT = "gs://%s/%s";
@@ -190,7 +191,7 @@ final class CloudStorageTools {
 
     if (!empty($extra_options)) {
       throw new \InvalidArgumentException('Invalid options supplied: ' .
-          implode(',', $extra_options));
+          htmlspecialchars(implode(',', $extra_options)));
     }
 
     try {
@@ -236,7 +237,7 @@ final class CloudStorageTools {
          self::$get_image_serving_url_default_options));
     if (!empty($extra_options)) {
       throw new \InvalidArgumentException('Invalid options supplied: ' .
-          implode(',', $extra_options));
+          htmlspecialchars(implode(',', $extra_options)));
     }
     $options = array_merge(self::$get_image_serving_url_default_options,
                            $options);
@@ -342,7 +343,8 @@ final class CloudStorageTools {
 
     if (!self::parseFilename($gs_filename, $bucket, $object)) {
       throw new \InvalidArgumentException(
-          sprintf('Invalid Google Cloud Storage filename: %s', $gs_filename));
+          sprintf('Invalid Google Cloud Storage filename: %s',
+                  htmlspecialchars($gs_filename)));
     }
 
     if (self::isDevelServer()) {
@@ -353,14 +355,14 @@ final class CloudStorageTools {
       // Use path format for HTTPS URL when the bucket name contains "." to
       // avoid SSL certificate validation issue.
       if ($use_https && strpos($bucket, '.') !== false) {
-        $format = self::PRODUCTION_HOST_PATH_FORMAT;
+        $host = self::PRODUCTION_HOST_PATH_FORMAT;
+        $path = sprintf('/%s%s', $bucket, $object);
       } else {
-        $format = self::PRODUCTION_HOST_SUBDOMAIN_FORMAT;
+        $host = sprintf(self::PRODUCTION_HOST_SUBDOMAIN_FORMAT, $bucket);
+        $path = strlen($object) > 0 ? $object : '/';
       }
 
       $scheme = $use_https ? 'https' : 'http';
-      $host = sprintf($format, $bucket);
-      $path = $object;
     }
 
     return sprintf('%s://%s%s',
@@ -382,12 +384,14 @@ final class CloudStorageTools {
   public static function getFilename($bucket, $object) {
     if (self::validateBucketName($bucket) === false) {
       throw new \InvalidArgumentException(
-          sprintf('Invalid cloud storage bucket name \'%s\'', $bucket));
+          sprintf('Invalid cloud storage bucket name \'%s\'',
+                  htmlspecialchars($bucket)));
     }
 
     if (self::validateObjectName($object) === false) {
       throw new \InvalidArgumentException(
-          sprintf('Invalid cloud storage object name \'%s\'', $object));
+          sprintf('Invalid cloud storage object name \'%s\'',
+                  htmlspecialchars($object)));
     }
 
     return sprintf(self::GS_FILENAME_FORMAT, $bucket, $object);
@@ -547,7 +551,7 @@ final class CloudStorageTools {
 
     if (!empty($extra_options)) {
       throw new \InvalidArgumentException('Invalid options supplied: ' .
-          implode(',', $extra_options));
+          htmlspecialchars(implode(',', $extra_options)));
     }
 
     // Determine the range to send
@@ -612,6 +616,48 @@ final class CloudStorageTools {
    */
   public static function setSendHeaderFunction($new_header_func) {
     self::$send_header = $new_header_func;
+  }
+
+  /**
+   * Get metadata from a Google Cloud Storage file pointer resource.
+   *
+   * @param resource $handle A Google Cloud Storage file pointer resource that
+   * is typically created using fopen().
+   *
+   * @return array An array that maps metadata keys to values.
+   *
+   * @throws \InvalidArgumentException If $handler is not a Google Cloud Storage
+   * file pointer resource.
+   */
+  public static function getMetaData($handle) {
+    $wrapper = self::getStreamWrapperFromFileHandle($handle);
+    return $wrapper->getMetaData();
+  }
+
+  /**
+   * Get content type from a Google Cloud Storage file pointer resource.
+   *
+   * @param resource $handle A Google Cloud Storage file pointer resource that
+   * is typically created using fopen().
+   *
+   * @return string The content type of the Google Cloud Storage object.
+   *
+   * @throws \InvalidArgumentException If $handler is not a Google Cloud Storage
+   * file pointer resource.
+   */
+  public static function getContentType($handle) {
+    $wrapper = self::getStreamWrapperFromFileHandle($handle);
+    return $wrapper->getContentType();
+  }
+
+  private static function getStreamWrapperFromFileHandle($handle) {
+    $wrapper = stream_get_meta_data($handle)['wrapper_data'];
+    if (!$wrapper instanceof CloudStorageStreamWrapper) {
+      throw new \InvalidArgumentException(
+          '$handle must be a Google Cloud Storage file pointer resource');
+    }
+
+    return $wrapper;
   }
 
   /**

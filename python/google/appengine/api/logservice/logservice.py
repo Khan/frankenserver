@@ -496,13 +496,6 @@ class RequestLog(object):
     return self.__pb.app_id()
 
   @property
-  def server_id(self):
-    """Module id that handled this request, as a string."""
-    logging.warning('The server_id property is deprecated, please use '
-                    'the module_id property instead.')
-    return self.__pb.module_id()
-
-  @property
   def module_id(self):
     """Module id that handled this request, as a string."""
     return self.__pb.module_id()

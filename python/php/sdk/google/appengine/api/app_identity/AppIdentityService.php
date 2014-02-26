@@ -31,12 +31,6 @@ use google\appengine\SignForAppResponse;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 
-require_once 'google/appengine/api/app_identity/app_identity_service_pb.php';
-require_once 'google/appengine/api/app_identity/AppIdentityException.php';
-require_once 'google/appengine/api/app_identity/PublicCertificate.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-
 /**
  * The AppIdentityService allows you to sign arbitrary byte
  * array using per app private key maintained by App Engine. You can also
@@ -175,7 +169,8 @@ final class AppIdentityService {
     } else if (is_array($scopes)) {
       $memcache_key .= implode(self::DOMAIN_SEPARATOR, $scopes);
     } else {
-      throw new \InvalidArgumentException('Invalid scope ' . $scopes);
+      throw new \InvalidArgumentException(
+          'Invalid scope ' . htmlspecialchars($scopes));
     }
 
     $memcache = new \Memcache();
@@ -222,11 +217,12 @@ final class AppIdentityService {
           $req->addScope($scope);
         } else {
           throw new \InvalidArgumentException(
-            'Invalid scope ' . $scope);
+            'Invalid scope ' . htmlspecialchars($scope));
         }
       }
     } else {
-      throw new \InvalidArgumentException('Invalid scope ' . $scopes);
+      throw new \InvalidArgumentException(
+          'Invalid scope ' . htmlspecialchars($scopes));
     }
 
     try {

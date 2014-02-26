@@ -27,12 +27,6 @@ use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\UserServiceError\ErrorCode;
 
-require_once 'google/appengine/api/user_service_pb.php';
-require_once 'google/appengine/api/users/User.php';
-require_once 'google/appengine/api/users/UsersException.php';
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-
 final class UserService {
   /**
    * Computes the login URL for redirection.
@@ -68,7 +62,8 @@ final class UserService {
     try {
       ApiProxy::makeSyncCall('user', 'CreateLoginURL', $req, $resp);
     } catch (ApplicationError $e) {
-      throw self::applicationErrorToException($e, $destination_url);
+      throw self::applicationErrorToException(
+          $e, htmlspecialchars($destination_url));
     }
     return $resp->getLoginUrl();
   }
@@ -94,7 +89,8 @@ final class UserService {
     try {
       ApiProxy::makeSyncCall('user', 'CreateLogoutURL', $req, $resp);
     } catch (ApplicationError $e) {
-      throw self::applicationErrorToException($e, $destination_url);
+      throw self::applicationErrorToException(
+        $e, htmlspecialchars($destination_url));
     }
     return $resp->getLogoutUrl();
   }

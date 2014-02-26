@@ -19,11 +19,6 @@
  *
  */
 
-require_once 'google/appengine/api/mail_service_pb.php';
-require_once 'google/appengine/api/mail/Message.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\base\VoidProto;
 use google\appengine\api\mail\Message;
 use google\appengine\MailMessage;
@@ -101,12 +96,17 @@ class MessageTest extends ApiProxyTestBase {
   }
 
   public function testCheckValidEmails() {
-    $this->assertEquals($this->setupValidEmailTest("invalid.email"),
-                        "Invalid 'to' recipient: invalid.email");
+    $invalid_email = "invalid.email <script>alert('wello')</script>";
+    $converted_invalid_email = htmlspecialchars($invalid_email);
 
-    $array_emails = array("test@test.com", "invalid.email");
+    $this->assertEquals(
+        $this->setupValidEmailTest(
+            $invalid_email),
+        "Invalid 'to' recipient: " .$converted_invalid_email);
+
+    $array_emails = array("test@test.com", $invalid_email);
     $this->assertEquals($this->setupValidEmailTest($array_emails),
-                        "Invalid 'to' recipient: invalid.email");
+                        "Invalid 'to' recipient: " . $converted_invalid_email);
   }
 
   public function testAddHeaderNonWhitelisted() {

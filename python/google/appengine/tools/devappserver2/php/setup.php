@@ -22,9 +22,6 @@ $setup = function() {
            // All values are considered true except the empty string.
            $allowed_buckets ? 1 : 0);
     define('GAE_INCLUDE_GS_BUCKETS', $allowed_buckets);
-
-    unset($_ENV['APPLICATION_ROOT']);
-    unset($_SERVER['APPLICATION_ROOT']);
   };
 
   $configureDefaults = function() {
@@ -49,8 +46,20 @@ $setup = function() {
     unset($_ENV['REAL_SCRIPT_FILENAME']);
     unset($_SERVER['REAL_SCRIPT_FILENAME']);
 
-    // SCRIPT_NAME == PHP_SELF on app engine.
-    $_SERVER['SCRIPT_NAME'] = $_SERVER['PHP_SELF'];
+    // Replicate the SCRIPT_NAME and PHP_SELF setup used in production.
+    // Set SCRIPT_NAME to SCRIPT_FILENAME made relative to APPLICTION_ROOT and
+    // PHP_SELF to SCRIPT_NAME except when the script is included in PATH_INFO (
+    // REQUEST_URI without the query string) which matches Apache behavior.
+    $_SERVER['SCRIPT_NAME'] = substr(
+      $_SERVER['SCRIPT_FILENAME'], strlen($_SERVER['APPLICATION_ROOT']));
+    if (strpos($_SERVER['PATH_INFO'], $_SERVER['SCRIPT_NAME']) === 0) {
+      $_SERVER['PHP_SELF'] = $_SERVER['PATH_INFO'];
+    } else {
+      $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'];
+    }
+
+    unset($_ENV['APPLICATION_ROOT']);
+    unset($_SERVER['APPLICATION_ROOT']);
   };
 
   $setupApiProxy = function() {

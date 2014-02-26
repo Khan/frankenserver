@@ -14,14 +14,4 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- */
-
-namespace google\appengine\api\taskqueue;
-
-/**
- * Thrown when adding a task, but a task with the same name already exists in
- * the queue.
- */
-class TaskAlreadyExistsException extends TaskQueueException {
-}
+echo 'Welcome to the other site.';

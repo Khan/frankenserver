@@ -66,6 +66,25 @@ class EndpointsProtoJson(protojson.ProtoJson):
 
     return super(EndpointsProtoJson, self).encode_field(field, value)
 
+  @staticmethod
+  def __pad_value(value, pad_len_multiple, pad_char):
+    """Add padding characters to the value if needed.
+
+    Args:
+      value: The string value to be padded.
+      pad_len_multiple: Pad the result so its length is a multiple
+          of pad_len_multiple.
+      pad_char: The character to use for padding.
+
+    Returns:
+      The string value with padding characters added.
+    """
+    assert pad_len_multiple > 0
+    assert len(pad_char) == 1
+    padding_length = (pad_len_multiple -
+                      (len(value) % pad_len_multiple)) % pad_len_multiple
+    return value + pad_char * padding_length
+
   def decode_field(self, field, value):
     """Decode a JSON value to a python value.
 
@@ -83,7 +102,8 @@ class EndpointsProtoJson(protojson.ProtoJson):
       try:
 
 
-        return base64.urlsafe_b64decode(str(value))
+        padded_value = self.__pad_value(str(value), 4, '=')
+        return base64.urlsafe_b64decode(padded_value)
       except (TypeError, UnicodeEncodeError), err:
         raise messages.DecodeError('Base64 decoding error: %s' % err)
 

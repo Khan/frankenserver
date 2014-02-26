@@ -1043,7 +1043,7 @@ class _ServiceValidator(object):
     else:
       _assert_condition(False,
                         'Unknown commit mode: %d.' % req.mode())
-    self.__validate_mutation(req.mutation())
+    self.__validate_deprecated_mutation(req.deprecated_mutation())
 
   def validate_run_query_req(self, req):
     """Validates a normalized RunQueryRequest.
@@ -1109,17 +1109,18 @@ class _ServiceValidator(object):
                       ('Cannot specify both a read consistency and'
                        ' a transaction.'))
 
-  def __validate_mutation(self, mutation):
+  def __validate_deprecated_mutation(self, deprecated_mutation):
     self.__entity_validator.validate_entities(WRITE,
-                                              mutation.upsert_list())
+                                              deprecated_mutation.upsert_list())
     self.__entity_validator.validate_entities(WRITE,
-                                              mutation.update_list())
+                                              deprecated_mutation.update_list())
     self.__entity_validator.validate_entities(WRITE,
-                                              mutation.insert_list())
-    self.__entity_validator.validate_entities(WRITE_AUTO_ID,
-                                              mutation.insert_auto_id_list())
+                                              deprecated_mutation.insert_list())
+    self.__entity_validator.validate_entities(
+        WRITE_AUTO_ID,
+        deprecated_mutation.insert_auto_id_list())
     self.__entity_validator.validate_keys(WRITE,
-                                          mutation.delete_list())
+                                          deprecated_mutation.delete_list())
 
 
 

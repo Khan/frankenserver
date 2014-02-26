@@ -53,7 +53,7 @@ class Encoder {
     }
 
     // Cheaper approximate check, then more expensive precise check.
-    // On ia32 we cannot distinguish MAX_INT32 and values larges than
+    // On ia32 we cannot distinguish MAX_INT32 and values larger than
     // MAX_INT32 without bcmath.
     if ($val >= Decoder::MAX_INT32 && bccomp($val, Decoder::MAX_INT32) > 0) {
       throw new ProtocolBufferEncodeError(

@@ -1497,7 +1497,7 @@ class BaseConnection(object):
   def __force(self, req):
     """Configure a request to force mutations."""
     if isinstance(req, datastore_v4_pb.CommitRequest):
-      req.mutable_mutation().set_force(True)
+      req.mutable_deprecated_mutation().set_force(True)
     else:
       req.set_force(True)
 
@@ -1756,12 +1756,12 @@ class BaseConnection(object):
     def make_put_call(base_req, pbs, user_data=None):
       req = copy.deepcopy(base_req)
       if self._api_version == _DATASTORE_V4:
-        mutation = req.mutable_mutation()
+        deprecated_mutation = req.mutable_deprecated_mutation()
         for entity in pbs:
           if datastore_pbs.is_complete_v4_key(entity.key()):
-            mutation.upsert_list().append(entity)
+            deprecated_mutation.upsert_list().append(entity)
           else:
-            mutation.insert_auto_id_list().append(entity)
+            deprecated_mutation.insert_auto_id_list().append(entity)
         method = 'Commit'
         resp = datastore_v4_pb.CommitResponse()
       else:
@@ -1825,7 +1825,8 @@ class BaseConnection(object):
         if datastore_pbs.is_complete_v4_key(entity.key()):
           keys.append(entity.key())
         else:
-          keys.append(rpc.response.mutation_result().insert_auto_id_key(i))
+          keys.append(
+              rpc.response.deprecated_mutation_result().insert_auto_id_key(i))
           i += 1
       keys = [self.__adapter.pb_v4_to_key(key) for key in keys]
     else:
@@ -1864,7 +1865,7 @@ class BaseConnection(object):
     def make_delete_call(base_req, pbs, user_data=None):
       req = copy.deepcopy(base_req)
       if self._api_version == _DATASTORE_V4:
-        req.mutable_mutation().delete_list().extend(pbs)
+        req.mutable_deprecated_mutation().delete_list().extend(pbs)
         method = 'Commit'
         resp = datastore_v4_pb.CommitResponse()
       else:
@@ -2506,9 +2507,11 @@ class TransactionalConnection(BaseConnection):
         self.__force(req)
 
 
-      mutation = req.mutable_mutation()
-      mutation.upsert_list().extend(self.__pending_v4_upserts.itervalues())
-      mutation.delete_list().extend(self.__pending_v4_deletes.itervalues())
+      deprecated_mutation = req.mutable_deprecated_mutation()
+      deprecated_mutation.upsert_list().extend(
+          self.__pending_v4_upserts.itervalues())
+      deprecated_mutation.delete_list().extend(
+          self.__pending_v4_deletes.itervalues())
 
 
       self.__pending_v4_upserts.clear()

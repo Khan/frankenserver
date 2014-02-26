@@ -20,9 +20,6 @@
  */
 namespace google\appengine\api\cloud_storage;
 
-require_once 'google/appengine/api/cloud_storage/CloudStorageTools.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\testing\ApiProxyTestBase;
 use google\appengine\BlobstoreServiceError;
 use google\appengine\ImagesServiceError;
@@ -661,34 +658,39 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
   }
 
   public function testGetPublicUrlInProduction() {
-    $object = "object";
     putenv("SERVER_SOFTWARE=Google App Engine/1.8.6");
-
-    $bucket_with_a_dot = "bucket.name";
-    $gs_filename = sprintf("gs://%s/%s", $bucket_with_a_dot, $object);
 
     // Get HTTPS URL for bucket containing "." - should use the path format to
     // avoid SSL certificate validation issue.
+    $expected = "https://storage.googleapis.com/bucket.name";
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket.name", true);
+    $this->assertEquals($expected, $actual);
     $expected = "https://storage.googleapis.com/bucket.name/object";
-    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket.name/object", true);
     $this->assertEquals($expected, $actual);
 
     // Get HTTP URL for bucket contain "." - should use the subdomain format.
+    $expected = "http://bucket.name.storage.googleapis.com/";
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket.name/", false);
+    $this->assertEquals($expected, $actual);
     $expected = "http://bucket.name.storage.googleapis.com/object";
-    $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket.name/object", false);
     $this->assertEquals($expected, $actual);
 
-    $bucket_without_dot = "bucket";
-    $gs_filename = sprintf("gs://%s/%s", $bucket_without_dot, $object);
-
     // Get HTTPS URL for bucket without "." - should use the subdomain format.
+    $expected = "https://bucket.storage.googleapis.com/";
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket", true);
+    $this->assertEquals($expected, $actual);
     $expected = "https://bucket.storage.googleapis.com/object";
-    $actual = CloudStorageTools::getPublicUrl($gs_filename, true);
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket/object", true);
     $this->assertEquals($expected, $actual);
 
     // Get HTTP URL for bucket without "." - should use the subdomain format.
+    $expected = "http://bucket.storage.googleapis.com/";
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket", false);
+    $this->assertEquals($expected, $actual);
     $expected = "http://bucket.storage.googleapis.com/object";
-    $actual = CloudStorageTools::getPublicUrl($gs_filename, false);
+    $actual = CloudStorageTools::getPublicUrl("gs://bucket/object", false);
     $this->assertEquals($expected, $actual);
   }
 

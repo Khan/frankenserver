@@ -497,8 +497,13 @@ class Memcached {
         $cas_token = $item->getCasId();
       }
       $this->result_code = self::RES_SUCCESS;
-      return MemcacheUtils::deserializeValue($item->getValue(),
-                                             $item->getFlags());
+      try {
+        return MemcacheUtils::deserializeValue($item->getValue(),
+                                               $item->getFlags());
+      } catch (\UnexpectedValueException $e) {
+        $this->result_code = self::RES_NOTFOUND;
+        return false;
+      }
     } else {
       $this->result_code = self::RES_NOTFOUND;
       return false;
@@ -625,8 +630,13 @@ class Memcached {
 
     $return_value = array();
     foreach ($response->getItemList() as $item) {
-      $return_value[$item->getKey()] = MemcacheUtils::deserializeValue(
-          $item->getValue(), $item->getFlags());
+      try {
+        $return_value[$item->getKey()] = MemcacheUtils::deserializeValue(
+            $item->getValue(), $item->getFlags());
+      } catch (\UnexpectedValueException $e) {
+        // Skip entries that cannot be deserialized.
+        continue;
+      }
       if ($item->hasCasId()) {
         $cas_tokens[$item->getKey()] = $item->getCasId();
       }

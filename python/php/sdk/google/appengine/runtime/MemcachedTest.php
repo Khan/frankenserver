@@ -266,6 +266,43 @@ class MemcachedTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testGetMultiUnexpectedValue() {
+    $request = new MemcacheGetRequest();
+    $request->addKey("key");
+    $request->addKey("key1");
+    $request->setForCas(true);
+
+    $response = new MemcacheGetResponse();
+    $item = $response->addItem();
+    $item->setKey("key");
+    $item->setValue("value");
+    $item->setFlags(2);  // Python's picked type.
+    $item->setCasId(123456);
+    $item = $response->addItem();
+    $item->setKey("key1");
+    $item->setValue("value1");
+    $item->setFlags(0);  // String.
+    $item->setCasId(789);
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Get',
+                                    $request,
+                                    $response);
+    $memcached = new Memcached();
+    $keys = ["key", "key1"];
+    $result = $memcached->getMulti($keys,
+                                   $cas_tokens,
+                                   Memcached::GET_PRESERVE_ORDER);
+    $this->assertTrue(array_key_exists("key", $result));
+    $this->assertNull($result["key"]);
+    $this->assertTrue(array_key_exists("key", $cas_tokens));
+    $this->assertNull($cas_tokens["key"]);
+    $this->assertEquals("value1", $result["key1"]);
+    $this->assertEquals(789, $cas_tokens["key1"]);
+    $this->assertEquals($memcached->getResultCode(), Memcached::RES_SUCCESS);
+    $this->apiProxyMock->verify();
+  }
+
   public function testGetCasSuccess() {
     $request = new MemcacheGetRequest();
     $request->addKey("widgets_key");
@@ -336,6 +373,26 @@ class MemcachedTest extends ApiProxyTestBase {
     $request->addKey("key");
 
     $response = new MemcacheGetResponse();
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Get',
+                                    $request,
+                                    $response);
+    $memcached = new Memcached();
+    $this->assertFalse($memcached->get("key"));
+    $this->assertEquals($memcached->getResultCode(), Memcached::RES_NOTFOUND);
+    $this->apiProxyMock->verify();
+  }
+
+  public function testGetUnexpectedValue() {
+    $request = new MemcacheGetRequest();
+    $request->addKey("key");
+
+    $response = new MemcacheGetResponse();
+    $item = $response->addItem();
+    $item->setKey("key");
+    $item->setValue("value");
+    $item->setFlags(2);  // Python's picked type.
 
     $this->apiProxyMock->expectCall('memcache',
                                     'Get',

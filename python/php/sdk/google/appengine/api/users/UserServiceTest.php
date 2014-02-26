@@ -17,10 +17,6 @@
 /**
  */
 
-require_once 'google/appengine/api/users/User.php';
-require_once 'google/appengine/api/users/UserService.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\api\users\User;
 use google\appengine\api\users\UserService;
 use google\appengine\testing\ApiProxyTestBase;

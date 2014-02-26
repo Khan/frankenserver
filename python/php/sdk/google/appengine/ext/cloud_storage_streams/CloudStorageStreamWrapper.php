@@ -77,6 +77,11 @@ final class CloudStorageStreamWrapper {
       return false;
     }
 
+    // Assume opening root directory if no object name is specified in path.
+    if (!isset($object)) {
+      $object = "/";
+    }
+
     $this->client = new CloudStorageDirectoryClient($bucket,
                                                     $object,
                                                     $this->context);
@@ -152,6 +157,26 @@ final class CloudStorageStreamWrapper {
                     E_USER_ERROR);
       return false;
     }
+
+    // If the file being renamed is an uploaded file being moved to an allowed
+    // include bucket trigger a warning.
+    $allowed_buckets = $this->getAllowedBuckets();
+    foreach ($_FILES as $file) {
+      if ($file['tmp_name'] == $from) {
+        foreach ($allowed_buckets as $allowed_bucket) {
+          // 5th character indicates start of bucket since it ignores 'gs://'.
+          if (strpos($to, $allowed_bucket) === 5) {
+            trigger_error(sprintf('Moving uploaded file (%s) to an allowed ' .
+                                  'include bucket (%s) which may be ' .
+                                  'vulnerable to local file inclusion (LFI).',
+                                  $from, $allowed_bucket),
+                          E_USER_WARNING);
+            break 2;
+          }
+        }
+      }
+    }
+
     $client = new CloudStorageRenameClient($from_bucket,
                                            $from_object,
                                            $to_bucket,
@@ -219,12 +244,19 @@ final class CloudStorageStreamWrapper {
     }
 
     if (($options & self::STREAM_OPEN_FOR_INCLUDE) != 0) {
-      $allowed_buckets = explode(",", GAE_INCLUDE_GS_BUCKETS);
+      $allowed_buckets = $this->getAllowedBuckets();
       $include_allowed = false;
       foreach ($allowed_buckets as $bucket_name) {
-        $bucket_name = trim($bucket_name);
+        // Check if the allowed bucket includes a path restriction and if so
+        // separate the path from the bucket name.
+        if (strpos($bucket_name, '/') !== false) {
+          list($bucket_name, $object_path) = explode('/', $bucket_name, 2);
+        }
         if ($bucket_name === $bucket) {
-          $include_allowed = true;
+          // If a path restriction is set then ensure that the object either
+          // starts with or is equal to the path.
+          $include_allowed = !isset($object_path) ||
+              (isset($object) && strpos($object, $object_path) === 1);
           break;
         }
       }
@@ -326,4 +358,22 @@ final class CloudStorageStreamWrapper {
     return $client->stat();
   }
 
+  private function getAllowedBuckets() {
+    static $allowed_buckets;
+
+    if (!isset($allowed_buckets)) {
+      $allowed_buckets = explode(',', GAE_INCLUDE_GS_BUCKETS);
+      $allowed_buckets = array_map('trim', $allowed_buckets);
+    }
+
+    return $allowed_buckets;
+  }
+
+  public function getMetaData() {
+    return $this->client->getMetaData();
+  }
+
+  public function getContentType() {
+    return $this->client->getContentType();
+  }
 }

@@ -482,7 +482,8 @@ class _Group(object):
 
         self._ConstructQueue(queue_name, bucket_capacity=bucket_size,
                              user_specified_rate=max_rate, queue_mode=mode,
-                             acl=acl, retry_parameters=retry_parameters)
+                             acl=acl, retry_parameters=retry_parameters,
+                             target=entry.target)
       else:
 
 
@@ -979,7 +980,7 @@ class _Queue(object):
                user_specified_rate=DEFAULT_RATE, retry_parameters=None,
                max_concurrent_requests=None, paused=False,
                queue_mode=QUEUE_MODE.PUSH, acl=None,
-               _testing_validate_state=None):
+               _testing_validate_state=None, target=None):
 
     self.queue_name = queue_name
     self.bucket_refill_per_second = bucket_refill_per_second
@@ -990,7 +991,7 @@ class _Queue(object):
     self.paused = paused
     self.queue_mode = queue_mode
     self.acl = acl
-
+    self.target = target
     self._testing_validate_state = _testing_validate_state
 
 
@@ -1831,18 +1832,18 @@ class _TaskExecutor(object):
       queue: The queue that this task belongs to, an _Queue instance.
 
     Returns:
-      A tuple of (header_dict, headers), where:
-        header_dict: A mapping from lowercase header name to a list of values.
-        headers: a list of tuples containing the http header and value. There
-            may be be mutiple entries with the same key.
+      A list of tuples containing the http header and value. There
+          may be be mutiple entries with the same key.
     """
     headers = []
-    header_dict = {}
     for header in task.header_list():
       header_key_lower = header.key().lower()
-      if header_key_lower not in BUILT_IN_HEADERS:
+
+      if header_key_lower == 'host' and queue.target is not None:
+        headers.append(
+            (header.key(), '.'.join([queue.target, self._default_host])))
+      elif header_key_lower not in BUILT_IN_HEADERS:
         headers.append((header.key(), header.value()))
-        header_dict.setdefault(header_key_lower, []).append(header.value())
 
 
     headers.append(('X-AppEngine-QueueName', queue.queue_name))
@@ -1852,7 +1853,8 @@ class _TaskExecutor(object):
                     str(_UsecToSec(task.eta_usec()))))
     headers.append(('X-AppEngine-Fake-Is-Admin', '1'))
     headers.append(('Content-Length', str(len(task.body()))))
-    if task.has_body() and 'content-type' not in header_dict:
+    if (task.has_body() and 'content-type' not in
+        [key.lower() for key, _ in headers]):
       headers.append(('Content-Type', 'application/octet-stream'))
     headers.append(('X-AppEngine-TaskExecutionCount',
                     str(task.execution_count())))
@@ -1860,7 +1862,7 @@ class _TaskExecutor(object):
       headers.append(('X-AppEngine-TaskPreviousResponse',
                       str(task.runlog().response_code())))
 
-    return header_dict, headers
+    return headers
 
   def ExecuteTask(self, task, queue):
     """Construct a http request from the task and dispatch it.
@@ -1874,15 +1876,7 @@ class _TaskExecutor(object):
       Http Response code from the task's execution, 0 if an exception occurred.
     """
     method = task.RequestMethod_Name(task.method())
-    header_dict, headers = self._HeadersFromTask(task, queue)
-    connection_host, = header_dict.get('host', [self._default_host])
-    if connection_host is None:
-      logging.error('Could not determine where to send the task "%s" '
-                    '(Url: "%s") in queue "%s". Treating as an error.',
-                    task.task_name(), task.url(), queue.queue_name)
-      return False
-    else:
-      header_dict['Host'] = connection_host
+    headers = self._HeadersFromTask(task, queue)
     dispatcher = self._request_data.get_dispatcher()
     try:
       response = dispatcher.add_request(method, task.url(), headers,

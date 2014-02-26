@@ -32,9 +32,6 @@
 
 namespace google\appengine\api\taskqueue;
 
-require_once 'google/appengine/api/taskqueue/PushQueue.php';
-require_once 'google/appengine/api/taskqueue/taskqueue_service_pb.php';
-
 use google\appengine\TaskQueueAddRequest\RequestMethod;
 
 /**
@@ -127,8 +124,9 @@ final class PushTask {
     $extra_options = array_diff(array_keys($options),
                                 array_keys(self::$default_options));
     if (!empty($extra_options)) {
-      throw new \InvalidArgumentException('Invalid options supplied: ' .
-                                          implode(',', $extra_options));
+      throw new \InvalidArgumentException(
+          'Invalid options supplied: ' .
+          htmlspecialchars(implode(',', $extra_options)));
     }
 
     $this->options = array_merge(self::$default_options, $options);
@@ -147,11 +145,11 @@ final class PushTask {
         $display_len = 1000;
         throw new \InvalidArgumentException('name exceeds maximum length of ' .
             self::MAX_NAME_LENGTH . ". First $display_len characters of name: "
-            . substr($name, 0, $display_len));
+            . htmlspecialchars(substr($name, 0, $display_len)));
       }
       if (!preg_match(self::NAME_PATTERN, $name)) {
         throw new \InvalidArgumentException('name must match pattern: ' .
-            self::NAME_PATTERN . '. name: ' . $name);
+            self::NAME_PATTERN . '. name: ' . htmlspecialchars($name));
       }
     }
     $delay = $this->options['delay_seconds'];
@@ -196,7 +194,8 @@ final class PushTask {
       }
       if (strpos($h, ':') === false) {
         throw new \InvalidArgumentException(
-            'Each header must contain a colon. Header: ' . $h);
+            'Each header must contain a colon. Header: ' .
+            htmlspecialchars($h));
       }
       if ($has_content_type &&
           strncasecmp('content-type', $h, strlen('content-type')) == 0) {

@@ -45,6 +45,12 @@ try:
 except ImportError, e:
   CRYPTO_LIB_INSTALLED = False
 
+try:
+  import rsa
+  RSA_LIB_INSTALLED = True
+except ImportError, e:
+  RSA_LIB_INSTALLED = False
+
 from google.appengine.api import apiproxy_stub
 
 APP_SERVICE_ACCOUNT_NAME = 'test@localhost'
@@ -107,17 +113,31 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
 
   def _Dynamic_SignForApp(self, request, response):
     """Implementation of AppIdentityService::SignForApp."""
-    if not CRYPTO_LIB_INSTALLED:
+    bytes_to_sign = request.bytes_to_sign()
+    if RSA_LIB_INSTALLED:
+
+
+
+
+      signature_bytes = rsa.pkcs1.sign(
+          bytes_to_sign,
+          rsa.key.PrivateKey(N, E, D, 3, 5),
+          'SHA-256')
+    elif CRYPTO_LIB_INSTALLED:
+
+
+      rsa_obj = RSA.construct((N, E, D))
+      hash_obj = SHA256.new()
+      hash_obj.update(bytes_to_sign)
+      padding_length = MODULUS_BYTES - LEN_OF_PREFIX - LENGTH_OF_SHA256_HASH - 3
+      emsa = (HEADER1 + (PADDING * padding_length) + HEADER2 +
+              PREFIX + hash_obj.hexdigest())
+      sig = rsa_obj.sign(binascii.a2b_hex(emsa), '')
+      signature_bytes = number.long_to_bytes(sig[0])
+    else:
       raise NotImplementedError("""Unable to import the pycrypto module,
                                 SignForApp is disabled.""")
-    rsa_obj = RSA.construct((N, E, D))
-    hashObj = SHA256.new()
-    hashObj.update(request.bytes_to_sign())
-    padding_length = MODULUS_BYTES - LEN_OF_PREFIX - LENGTH_OF_SHA256_HASH - 3
-    emsa = (HEADER1 + (PADDING * padding_length) + HEADER2 +
-            PREFIX + hashObj.hexdigest())
-    sig = rsa_obj.sign(binascii.a2b_hex(emsa), '')
-    response.set_signature_bytes(number.long_to_bytes(sig[0]))
+    response.set_signature_bytes(signature_bytes)
     response.set_key_name(SIGNING_KEY_NAME)
 
   def _Dynamic_GetPublicCertificatesForApp(self, request, response):

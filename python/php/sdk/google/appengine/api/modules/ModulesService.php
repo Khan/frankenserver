@@ -21,13 +21,6 @@
 
 namespace google\appengine\api\modules;
 
-require_once 'google/appengine/api/modules/modules_service_pb.php';
-require_once "google/appengine/api/modules/InvalidModuleStateException.php";
-require_once "google/appengine/api/modules/ModulesException.php";
-require_once "google/appengine/api/modules/TransientModulesException.php";
-require_once 'google/appengine/runtime/ApiProxy.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\GetDefaultVersionRequest;

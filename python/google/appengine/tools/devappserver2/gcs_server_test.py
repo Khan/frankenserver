@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Tests for google.appengine.tools.devappserver2.gcs_application."""
+"""Tests for google.appengine.tools.devappserver2.gcs_server."""
 
 import cStringIO
 import httplib
@@ -24,7 +24,7 @@ import google
 import mox
 
 from google.appengine.ext.cloudstorage import stub_dispatcher
-from google.appengine.tools.devappserver2 import gcs_application
+from google.appengine.tools.devappserver2 import gcs_server
 from google.appengine.tools.devappserver2 import wsgi_test_utils
 
 
@@ -40,7 +40,7 @@ class GCSTest(wsgi_test_utils.WSGITestCase):
 
   def setUp(self):
     self.mox = mox.Mox()
-    self.app = gcs_application.Application()
+    self.app = gcs_server.Application()
     self.mox.StubOutWithMock(stub_dispatcher, 'dispatch')
     self._host = 'localhost'
 

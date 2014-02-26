@@ -593,6 +593,12 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
   _VERSION = 1
 
+
+
+
+
+  _MAX_STORAGE_LIMIT = 1024 * 1024 * 1024
+
   def __init__(self, service_name='search', index_file=None):
     """Constructor.
 
@@ -731,6 +737,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       new_index_spec.set_namespace(index_spec.namespace())
       if params.fetch_schema():
         self._AddSchemaInformation(index, metadata)
+      self._AddStorageInformation(index, metadata)
 
   def _AddSchemaInformation(self, index, metadata_pb):
     schema = index.GetSchema()
@@ -738,6 +745,19 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       field_types = schema[name]
       new_field_types = metadata_pb.add_field()
       new_field_types.MergeFrom(field_types)
+
+  def _AddStorageInformation(self, index, metadata_pb):
+    total_usage = 0
+    for document in index.Documents():
+
+
+
+      for field in document.field_list():
+        total_usage += field.ByteSize()
+      total_usage += len(document.id())
+    storage = metadata_pb.mutable_storage()
+    storage.set_amount_used(total_usage)
+    storage.set_limit(self._MAX_STORAGE_LIMIT)
 
   def _AddDocument(self, response, document, ids_only):
     doc = response.add_document()

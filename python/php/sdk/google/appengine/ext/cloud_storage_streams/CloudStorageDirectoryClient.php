@@ -43,15 +43,18 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
   // The current list of files we're enumerating through
   private $current_file_list = null;
 
-  public function __construct($bucket_name, $object_prefix, $context) {
-    parent::__construct($bucket_name, $object_prefix, $context);
-    // Ignore the leading slash
-    if (isset($object_prefix)) {
-      if (!StringUtil::endsWith($object_prefix, '/')) {
-        $object_prefix .= '/';
-      }
-      $this->prefix = substr($object_prefix, 1);
+  public function __construct($bucket_name, $object_name, $context) {
+    // $object_name should end with a trailing slash.
+    if (!StringUtil::endsWith($object_name, parent::DELIMITER)) {
+      $object_name = $object_name . parent::DELIMITER;
     }
+
+    // $prefix is the $object_name without leading slash.
+    if (strlen($object_name) > 1) {
+      $this->prefix = substr($object_name, 1);
+    }
+
+    parent::__construct($bucket_name, $object_name, $context);
   }
 
   /**
@@ -124,7 +127,6 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
    */
   public function mkdir($options) {
     $report_errors = ($options | STREAM_REPORT_ERRORS) != 0;
-    $path = $this->getCorrectPathForDirectoryName();
     $headers = $this->getOAuthTokenHeader(parent::WRITE_SCOPE);
     if ($headers === false) {
       if ($report_errors) {
@@ -136,7 +138,8 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
     // Use x-goog-if-generation-match so we only create a new object.
     $headers['x-goog-if-generation-match'] = 0;
     $headers['Content-Range'] = sprintf(parent::FINAL_CONTENT_RANGE_NO_DATA, 0);
-    $url = $this->createObjectUrl($this->bucket_name, $path);
+
+    $url = $this->createObjectUrl($this->bucket_name, $this->object_name);
     $http_response = $this->makeHttpRequest($url, "PUT", $headers);
 
     if (false === $http_response) {
@@ -190,8 +193,7 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
       return false;
     }
 
-    $path = $this->getCorrectPathForDirectoryName();
-    $url = $this->createObjectUrl($this->bucket_name, $path);
+    $url = $this->createObjectUrl($this->bucket_name, $this->object_name);
     $http_response = $this->makeHttpRequest($url, "DELETE", $headers);
 
     if (false === $http_response) {
@@ -262,32 +264,33 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
     $prefix_len = isset($this->prefix) ? strlen($this->prefix) : 0;
     foreach($xml->Contents as $content) {
       $key = (string) $content->Key;
+
+      // Skip objects end with "_$folder$" or "/" as they exist solely for
+      // the purpose of representing empty directories. Since we create
+      // empty direcotires using the delimiter ("/"), they will always be
+      // captured in the <CommonPrefixies> section.
+      if (StringUtil::endsWith($key, parent::FOLDER_SUFFIX) ||
+          StringUtil::endsWith($key, parent::DELIMITER)) {
+        continue;
+      }
+
       if ($prefix_len != 0) {
         $key = substr($key, $prefix_len);
       }
-      // If the key ends with FOLDER_SUFFIX then replace that value with a '/'
-      // to be consistent with the folder behaviour of Google Cloud Storage
-      // Manager, which supports the creating of 'folders' in the UI. See
-      // https://developers.google.com/storage/docs/gsmanager
-      if (StringUtil::endsWith($key, self::FOLDER_SUFFIX)) {
-        $key = substr_replace($key,
-                              parent::DELIMITER,
-                              -strlen(parent::FOLDER_SUFFIX));
+
+      array_push($this->current_file_list, $key);
+    }
+
+    // All "Subdirectories" are listed as <CommonPrefixes>. See
+    // https://developers.google.com/storage/docs/reference-methods#getbucket
+    foreach($xml->CommonPrefixes as $common_prefixes) {
+      $key = (string) $common_prefixes->Prefix;
+      if ($prefix_len != 0) {
+        $key = substr($key, $prefix_len);
       }
       array_push($this->current_file_list, $key);
     }
-    return true;
-  }
 
-  private function getCorrectPathForDirectoryName() {
-    // Replace the trailing MARKER from the prefix and replace it with the
-    // FOLDER_SUFFIX.
-    if (StringUtil::endsWith($this->object_name, parent::DELIMITER)) {
-      return substr_replace($this->object_name,
-                            parent::FOLDER_SUFFIX,
-                            -strlen(parent::DELIMITER));
-    } else {
-      return $this->object_name . parent::FOLDER_SUFFIX;
-    }
+    return true;
   }
 }

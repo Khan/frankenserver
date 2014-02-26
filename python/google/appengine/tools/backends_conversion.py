@@ -22,6 +22,7 @@ Uses existing backends.yaml and app.yaml files to create a separate
 <module-name>.yaml file for each module defined in backends.yaml.
 """
 
+from __future__ import with_statement
 
 import os
 import sys

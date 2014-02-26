@@ -954,7 +954,7 @@ class ExtendableProtocolMessage(ProtocolMessage):
         extension.number, extension)
     if actual_handle is not extension:
       raise AssertionError(
-          'Extensions "%s" and "%s" both try to extend message type "%s" with'
+          'Extensions "%s" and "%s" both try to extend message type "%s" with '
           'field number %d.' %
           (extension.full_name, actual_handle.full_name,
            cls.__name__, extension.number))

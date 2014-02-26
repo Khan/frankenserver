@@ -21,151 +21,27 @@ import os
 import sys
 
 
-if not hasattr(sys, 'version_info'):
-  sys.stderr.write('Very old versions of Python are not supported. Please '
-                   'use version 2.7.\n')
-  sys.exit(1)
-version_tuple = tuple(sys.version_info[:2])
-if version_tuple < (2, 7):
-  sys.stderr.write('Error: Python %d.%d is not supported. Please use '
-                   'version 2.7.\n' % version_tuple)
-  sys.exit(1)
 
 
-def _get_dir_path(sibling):
-  """Get a path to the directory of this script.
+sys_path = sys.path
+try:
+  sys.path = [os.path.dirname(__file__)] + sys.path
 
-  By default, the canonical path (symlinks resolved) will be returned. In some
-  environments the canonical directory is not sufficient because different
-  parts of the SDK are referenced by symlinks, including this very module's
-  file. In this case, the non-canonical path to this file's directory will be
-  returned (i.e., the directory where the symlink lives, not the directory
-  where it points).
+  import wrapper_util
 
-  Args:
-    sibling: Relative path to a sibiling of this module file. Choose a sibling
-    that is potentially symlinked into the parent directory.
+finally:
+  sys.path = sys_path
 
-  Returns:
-    A directory name.
+wrapper_util.reject_old_python_versions((2, 7))
 
-  Raises:
-    ValueError: If no proper path could be determined.
-  """
-  if 'GAE_SDK_ROOT' in os.environ:
-    gae_sdk_root = os.path.abspath(os.environ['GAE_SDK_ROOT'])
-
-
-
-    os.environ['GAE_SDK_ROOT'] = gae_sdk_root
-    for dir_path in [gae_sdk_root,
-                     os.path.join(gae_sdk_root, 'google_appengine')]:
-      if os.path.exists(os.path.join(dir_path, sibling)):
-        return dir_path
-    raise ValueError('GAE_SDK_ROOT %r does not refer to a valid SDK '
-                     'directory' % gae_sdk_root)
-  else:
-    py_file = __file__.replace('.pyc', '.py')
-    dir_paths = [os.path.abspath(os.path.dirname(os.path.realpath(py_file))),
-                 os.path.abspath(os.path.dirname(py_file))]
-    for dir_path in dir_paths:
-      sibling_path = os.path.join(dir_path, sibling)
-      if os.path.exists(sibling_path):
-        return dir_path
-    raise ValueError('Could not determine SDK root; please set GAE_SDK_ROOT '
-                     'environment variable.')
+_DIR_PATH = wrapper_util.get_dir_path(__file__, os.path.join('lib', 'ipaddr'))
+_PATHS = wrapper_util.Paths(_DIR_PATH)
 
 
 
 
 
-
-
-
-
-_DIR_PATH = _get_dir_path(os.path.join('lib', 'ipaddr'))
-_SCRIPT_DIR = os.path.join(_DIR_PATH, 'google', 'appengine', 'tools')
-_DEVAPPSERVER2_DIR = os.path.join(
-    _DIR_PATH, 'google', 'appengine', 'tools', 'devappserver2')
-_PHP_RUNTIME_DIR = os.path.join(_DEVAPPSERVER2_DIR, 'php')
-_PYTHON_RUNTIME_DIR = os.path.join(_DEVAPPSERVER2_DIR, 'python')
-
-_STUB_DEPENDENCIES = [
-    os.path.join(_DIR_PATH, 'lib', 'antlr3'),
-    os.path.join(_DIR_PATH, 'lib', 'fancy_urllib'),
-    os.path.join(_DIR_PATH, 'lib', 'ipaddr'),
-    os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
-    os.path.join(_DIR_PATH, 'lib', 'rsa'),
-    os.path.join(_DIR_PATH, 'lib', 'pyasn1'),
-    os.path.join(_DIR_PATH, 'lib', 'pyasn1_modules'),
-    ]
-
-
-
-
-
-EXTRA_PATHS = _STUB_DEPENDENCIES + [
-    _DIR_PATH,
-
-    os.path.join(_DIR_PATH, 'lib', 'simplejson'),
-
-
-    os.path.join(_DIR_PATH, 'lib', 'django-1.4'),
-    os.path.join(_DIR_PATH, 'lib', 'endpoints-1.0'),
-    os.path.join(_DIR_PATH, 'lib', 'jinja2-2.6'),
-    os.path.join(_DIR_PATH, 'lib', 'protorpc-1.0'),
-    os.path.join(_DIR_PATH, 'lib', 'PyAMF-0.6.1'),
-    os.path.join(_DIR_PATH, 'lib', 'markupsafe-0.15'),
-    os.path.join(_DIR_PATH, 'lib', 'webob-1.2.3'),
-    os.path.join(_DIR_PATH, 'lib', 'webapp2-2.5.2'),
-    ]
-
-_DEVAPPSERVER2_PATHS = _STUB_DEPENDENCIES + [
-    _DIR_PATH,
-
-    os.path.join(_DIR_PATH, 'lib', 'concurrent'),
-    os.path.join(_DIR_PATH, 'lib', 'cherrypy'),
-    os.path.join(_DIR_PATH, 'lib', 'jinja2-2.6'),
-    os.path.join(_DIR_PATH, 'lib', 'webob-1.2.3'),
-    os.path.join(_DIR_PATH, 'lib', 'webapp2-2.5.1'),
-    ]
-
-_PHP_RUNTIME_PATHS = [
-    _DIR_PATH,
-
-    os.path.join(_DIR_PATH, 'lib', 'concurrent'),
-    os.path.join(_DIR_PATH, 'lib', 'cherrypy'),
-    os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
-    ]
-
-_PYTHON_RUNTIME_PATHS = [
-    _DIR_PATH,
-
-    os.path.join(_DIR_PATH, 'lib', 'concurrent'),
-    os.path.join(_DIR_PATH, 'lib', 'cherrypy'),
-    os.path.join(_DIR_PATH, 'lib', 'fancy_urllib'),
-    os.path.join(_DIR_PATH, 'lib', 'protorpc-1.0'),
-    os.path.join(_DIR_PATH, 'lib', 'yaml-3.10'),
-    ]
-
-
-_BOOTSTAP_NAME_TO_REAL_NAME = {
-    'dev_appserver.py': 'devappserver2.py',
-    '_php_runtime.py': 'runtime.py',
-    '_python_runtime.py': 'runtime.py',
-    }
-
-_SCRIPT_TO_DIR = {
-    'dev_appserver.py': _DEVAPPSERVER2_DIR,
-    '_php_runtime.py': _PHP_RUNTIME_DIR,
-    '_python_runtime.py': _PYTHON_RUNTIME_DIR,
-    }
-
-_SYS_PATH_ADDITIONS = {
-    'dev_appserver.py': _DEVAPPSERVER2_PATHS,
-    '_php_runtime.py': _PHP_RUNTIME_PATHS,
-    '_python_runtime.py': _PYTHON_RUNTIME_PATHS,
-    }
+EXTRA_PATHS = _PATHS.v2_extra_paths
 
 
 def fix_sys_path(extra_extra_paths=()):
@@ -177,10 +53,18 @@ def fix_sys_path(extra_extra_paths=()):
   sys.path[1:1] = EXTRA_PATHS
 
 
-def _run_file(file_path, globals_, script_dir=_SCRIPT_DIR):
-  """Execute the file at the specified path with the passed-in globals."""
+def _run_file(file_path, globals_):
+  """Execute the given script with the passed-in globals.
+
+  Args:
+    file_path: the path to the wrapper for the given script. This will usually
+      be a copy of this file.
+    globals_: the global bindings to be used while executing the wrapped script.
+  """
   script_name = os.path.basename(file_path)
-  sys.path = _SYS_PATH_ADDITIONS[script_name] + sys.path
+
+  sys.path = (_PATHS.script_paths(script_name) +
+              _PATHS.scrub_path(script_name, sys.path))
 
 
 
@@ -191,10 +75,7 @@ def _run_file(file_path, globals_, script_dir=_SCRIPT_DIR):
   if 'google' in sys.modules:
     del sys.modules['google']
 
-  script_dir = _SCRIPT_TO_DIR.get(script_name, script_dir)
-  script_name = _BOOTSTAP_NAME_TO_REAL_NAME.get(script_name, script_name)
-  script_path = os.path.join(script_dir, script_name)
-  execfile(script_path, globals_)
+  execfile(_PATHS.script_file(script_name), globals_)
 
 
 if __name__ == '__main__':

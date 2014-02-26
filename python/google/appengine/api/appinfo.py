@@ -217,6 +217,7 @@ MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
 VM = 'vm'
 VM_SETTINGS = 'vm_settings'
+VM_HEALTH_CHECK = 'vm_health_check'
 VERSION = 'version'
 MAJOR_VERSION = 'major_version'
 MINOR_VERSION = 'minor_version'
@@ -273,6 +274,17 @@ ON = 'on'
 ON_ALIASES = ['yes', 'y', 'True', 't', '1', 'true']
 OFF = 'off'
 OFF_ALIASES = ['no', 'n', 'False', 'f', '0', 'false']
+
+
+
+
+ENABLE_HEALTH_CHECK = 'enable_health_check'
+CHECK_INTERVAL_SEC = 'check_interval_sec'
+TIMEOUT_SEC = 'timeout_sec'
+UNHEALTHY_THRESHOLD = 'unhealthy_threshold'
+HEALTHY_THRESHOLD = 'healthy_threshold'
+RESTART_THRESHOLD = 'restart_threshold'
+HOST = 'host'
 
 
 class _VersionedLibrary(object):
@@ -842,6 +854,8 @@ class URLMap(HandlerBase):
 
       HandlerTypeMissingAttribute: when the handler is missing a
         required attribute for its handler type.
+
+      MissingHandlerAttribute: when a URL handler is missing an attribute
     """
 
 
@@ -968,6 +982,10 @@ class URLMap(HandlerBase):
 
   def ErrorOnPositionForAppInfo(self):
     """Raises an error if position is specified outside of AppInclude objects.
+
+    Raises:
+      PositionUsedInAppYamlHandler: when position attribute is specified for an
+      app.yaml file instead of an include.yaml file.
     """
     if self.position:
       raise appinfo_errors.PositionUsedInAppYamlHandler(
@@ -1093,6 +1111,10 @@ class BuiltinHandler(validation.Validated):
     Whenever validate calls iteritems(), it is always called on ATTRIBUTES,
     not on __dict__, so this override is important to ensure that functions
     such as ToYAML() return the correct set of keys.
+
+    Raises:
+      MultipleBuiltinsSpecified: when more than one builtin is defined in a list
+      element.
     """
     if key == 'builtin_name':
       object.__setattr__(self, key, value)
@@ -1156,9 +1178,9 @@ class BuiltinHandler(validation.Validated):
           deprecated in the given runtime.
 
     Raises:
-      InvalidBuiltinFormat if the name of a Builtinhandler object
+      InvalidBuiltinFormat: if the name of a Builtinhandler object
           cannot be determined.
-      DuplicateBuiltinSpecified if a builtin handler name is used
+      DuplicateBuiltinsSpecified: if a builtin handler name is used
           more than once in the list.
     """
     seen = set()
@@ -1332,6 +1354,19 @@ def NormalizeVmSettings(appyaml):
       appyaml.vm_settings['vm_runtime'] = appyaml.runtime
       appyaml.runtime = 'vm'
   return appyaml
+
+
+class VmHealthCheck(validation.Validated):
+  """Class representing the configuration of a single library."""
+
+  ATTRIBUTES = {
+      ENABLE_HEALTH_CHECK: validation.Optional(validation.TYPE_BOOL),
+      CHECK_INTERVAL_SEC: validation.Optional(validation.TYPE_INT),
+      TIMEOUT_SEC: validation.Optional(validation.TYPE_INT),
+      UNHEALTHY_THRESHOLD: validation.Optional(validation.TYPE_INT),
+      HEALTHY_THRESHOLD: validation.Optional(validation.TYPE_INT),
+      RESTART_THRESHOLD: validation.Optional(validation.TYPE_INT),
+      HOST: validation.Optional(validation.TYPE_STR)}
 
 
 class AppInclude(validation.Validated):
@@ -1528,6 +1563,7 @@ class AppInfoExternal(validation.Validated):
       BASIC_SCALING: validation.Optional(BasicScaling),
       VM: validation.Optional(bool),
       VM_SETTINGS: validation.Optional(VmSettings),
+      VM_HEALTH_CHECK: validation.Optional(VmHealthCheck),
       BUILTINS: validation.Optional(validation.Repeated(BuiltinHandler)),
       INCLUDES: validation.Optional(validation.Type(list)),
       HANDLERS: validation.Optional(validation.Repeated(URLMap)),
@@ -1582,6 +1618,8 @@ class AppInfoExternal(validation.Validated):
           and CGI handlers are specified.
       TooManyScalingSettingsError: if more than one scaling settings block is
           present.
+      RuntimeDoesNotSupportLibraries: if libraries clause is used for a runtime
+          that does not support it (e.g. python25).
     """
     super(AppInfoExternal, self).CheckInitialized()
     if not self.handlers and not self.builtins and not self.includes:
@@ -1613,7 +1651,12 @@ class AppInfoExternal(validation.Validated):
           + datastore_auto_ids_url + '\n' + appcfg_auto_ids_url + '\n')
 
     if self.libraries:
-      if self.runtime != 'python27' and not self._skip_runtime_checks:
+      vm_runtime_python27 = (
+          self.runtime == 'vm' and
+          hasattr(self, 'vm_settings') and
+          self.vm_settings['vm_runtime'] == 'python27')
+      if not self._skip_runtime_checks and not (
+          vm_runtime_python27 or self.runtime == 'python27'):
         raise appinfo_errors.RuntimeDoesNotSupportLibraries(
             'libraries entries are only supported by the "python27" runtime')
 
@@ -1711,7 +1754,8 @@ class AppInfoExternal(validation.Validated):
       backend_name: The name of a backend defined in 'backends'.
 
     Raises:
-      BackendNotFound: If the indicated backend was not listed in 'backends'.
+      BackendNotFound: if the indicated backend was not listed in 'backends'.
+      DuplicateBackend: if backend is found more than once in 'backends'.
     """
     if backend_name is None:
       return
@@ -1774,6 +1818,7 @@ def LoadSingleAppInfo(app_info):
     EmptyConfigurationFile: when there are no documents in YAML file.
     MultipleConfigurationFile: when there is more than one document in YAML
     file.
+    DuplicateBackend: if backend is found more than once in 'backends'.
   """
   builder = yaml_object.ObjectBuilder(AppInfoExternal)
   handler = yaml_builder.BuilderHandler(builder)

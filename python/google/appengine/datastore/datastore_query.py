@@ -1477,13 +1477,15 @@ class Cursor(_BaseComponent):
 
   def reversed(self):
     """Creates a cursor for use in a query with a reversed sort order."""
-    for pos in self.__compiled_cursor.position_list():
+    if self.__compiled_cursor.has_position():
+      pos = self.__compiled_cursor.position()
       if pos.has_start_key():
         raise datastore_errors.BadRequestError('Cursor cannot be reversed.')
 
     rev_pb = datastore_pb.CompiledCursor()
     rev_pb.CopyFrom(self.__compiled_cursor)
-    for pos in rev_pb.position_list():
+    if rev_pb.has_position():
+      pos = rev_pb.position()
       pos.set_start_inclusive(not pos.start_inclusive())
     return Cursor(_cursor_pb=rev_pb)
 

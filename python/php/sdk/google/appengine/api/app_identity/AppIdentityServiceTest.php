@@ -19,11 +19,6 @@
  *
  */
 
-require_once 'google/appengine/api/app_identity/app_identity_service_pb.php';
-require_once 'google/appengine/api/app_identity/AppIdentityService.php';
-require_once 'google/appengine/runtime/Memcache.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\AppIdentityServiceError\ErrorCode;
 use google\appengine\api\app_identity\AppIdentityService;
 use google\appengine\testing\ApiProxyTestBase;

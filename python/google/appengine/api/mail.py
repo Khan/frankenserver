@@ -656,8 +656,8 @@ def _positional(max_pos_args):
 class Attachment(object):
   """Attachment object.
 
-  Subclasses tuple to retain compatibility with existing code. An Attachment
-  object is largely interchangeable with a (filename, payload) tuple.
+  An Attachment object is largely interchangeable with a (filename, payload)
+  tuple.
 
   Note that the behavior is a bit asymmetric with respect to unpacking and
   equality comparison. An Attachment object without a content ID will be
@@ -730,6 +730,15 @@ class Attachment(object):
 
   def __iter__(self):
     return iter((self.filename, self.payload))
+
+  def __getitem__(self, i):
+    return tuple(iter(self))[i]
+
+  def __contains__(self, val):
+    return val in (self.filename, self.payload)
+
+  def __len__(self):
+    return 2
 
 
 class EncodedPayload(object):
@@ -1052,7 +1061,7 @@ class _EmailMessageBase(object):
     if hasattr(self, 'attachments'):
       for attachment in _attachment_sequence(self.attachments):
         if isinstance(attachment.payload, EncodedPayload):
-          data = data.decode()
+          attachment.payload = attachment.payload.decode()
         protoattachment = message.add_attachment()
         protoattachment.set_filename(_to_str(attachment.filename))
         protoattachment.set_data(_to_str(attachment.payload))

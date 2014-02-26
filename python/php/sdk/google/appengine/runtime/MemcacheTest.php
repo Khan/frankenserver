@@ -200,6 +200,26 @@ class MemcacheTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testGetUnexpectedValue() {
+    $memcache = new Memcache();
+
+    $request = new MemcacheGetRequest();
+    $request->addKey("key");
+
+    $response = new MemcacheGetResponse();
+    $item = $response->addItem();
+    $item->setKey("key");
+    $item->setValue("value");
+    $item->setFlags(2);  // Python's picked type.
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Get',
+                                    $request,
+                                    $response);
+    $this->assertFalse(memcache_get($memcache, "key"));
+    $this->apiProxyMock->verify();
+  }
+
   public function testGetMany() {
     $memcache = new Memcache();
 

@@ -972,30 +972,30 @@ class SqlService(_server_stub_base_class):
         ExecRequest,
         ExecResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.ExecOp.im_func,
         ExecOpRequest,
         ExecOpResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.GetMetadata.im_func,
         MetadataRequest,
         MetadataResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.OpenConnection.im_func,
         OpenConnectionRequest,
         OpenConnectionResponse,
         None,
-        'none')
+        'INTEGRITY')
     rpcserver._GetHandlerDecorator(
         self.CloseConnection.im_func,
         CloseConnectionRequest,
         CloseConnectionResponse,
         None,
-        'none')
+        'INTEGRITY')
 
 

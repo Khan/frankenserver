@@ -85,8 +85,8 @@ class MemcacheUtils {
       case self::TYPE_PHP_SERIALIZED:
         return unserialize($value);
       default:
-        throw new UnexpectedValueException("unexpected type flag: " .
-                                           $type_flag);
+        throw new \UnexpectedValueException("unexpected type flag: " .
+                                            $type_flag);
     }
   }
 

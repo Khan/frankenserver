@@ -19,11 +19,6 @@
  *
  */
 
-require_once 'google/appengine/api/mail_service_pb.php';
-require_once 'google/appengine/api/mail/AdminMessage.php';
-require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/testing/ApiProxyTestBase.php';
-
 use google\appengine\api\mail\AdminMessage;
 use google\appengine\base\VoidProto;
 use google\appengine\MailMessage;

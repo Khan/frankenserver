@@ -115,7 +115,7 @@ class ModuleConfiguration(object):
 
   @property
   def module_name(self):
-    return self._module_name or 'default'
+    return self._module_name or appinfo.DEFAULT_MODULE
 
   @property
   def major_version(self):
@@ -123,7 +123,7 @@ class ModuleConfiguration(object):
 
   @property
   def version_id(self):
-    if self.module_name == 'default':
+    if self.module_name == appinfo.DEFAULT_MODULE:
       return '%s.%s' % (
           self.major_version,
           self._minor_version_id)
@@ -570,7 +570,7 @@ class ApplicationConfiguration(object):
                                            module.module_name)
       module_names.add(module.module_name)
     if self.dispatch:
-      if 'default' not in module_names:
+      if appinfo.DEFAULT_MODULE not in module_names:
         raise errors.InvalidAppConfigError(
             'A default module must be specified.')
       missing_modules = (

@@ -3,6 +3,65 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.0
+
+All
+==============================
+- Modules Service API and application management features are now GA.
+- New App Engine Application Identifiers must now start with a letter,
+  in addition to the existing requirements that the identifier be 6-30
+  characters which are letters, numbers, and hyphens, and not start or end with
+  a hyphen.
+
+Python
+==============================
+- The size limit on the Search API is now computed and enforced on a per-index
+  basis, rather than for the app as a whole. The per-index limit is now 10GB.
+  There is no fixed limit on the number of indexes, or on the total amount of
+  Search API storage an application may use.
+- Newly created App Engine applications now have a Google Cloud Storage bucket
+  created automatically as part of the same Google Cloud Project. For more
+  information please see:
+  https://developers.google.com/appengine/docs/python/
+  googlecloudstorageclient/activate#Using_the_default_Gcs_bucket
+- Users now have the ability to embed images in emails via the Content-Id
+  attachment header.
+    https://code.google.com/p/googleappengine/issues/detail?id=965
+    https://code.google.com/p/googleappengine/issues/detail?id=10503
+- Removed deprecated modules.py methods start_module, start_module_async,
+  stop_module, stop_module_async get_modules_async, get_versions_async,
+  get_default_version_async, get_num_instances_async, and get_hostname_async.
+- Fixed an issue with NDB backup/restore corrupting certain compressed
+  entities.
+    https://code.google.com/p/googleappengine/issues/detail?id=8599
+
+PHP
+==============================
+- The PHP interpreter has been upgraded from PHP 5.4.19 to PHP 5.4.22.
+- Autoloading is now available in the SDK so developers will no longer need to
+  explicitly require SDK files.
+- Expanded php.ini setting google_appengine.allow_include_gs_buckets to allow
+  a path filter to be included for improved security.
+- Newly created App Engine applications now have a Google Cloud Storage bucket
+  created automatically as part of the same Google Cloud Project. For more
+  information please see:
+  https://developers.google.com/appengine/docs/php/googlestorage/
+  #before_you_begin
+- An "E_USER_WARNING" warning message is now triggered if an application moves
+  a user uploaded file to a Google Cloud Storage bucket/path. This is due to
+  the fact that code may be included and lead to a local file inclusion
+  vulnerability.
+- Added API functions CloudStorageTools::getMetadata() and
+  CloudStorageTools::getContentType() for retrieving the metadata and content
+  type of Google Cloud Storage objects.
+    https://code.google.com/p/googleappengine/issues/detail?id=10182
+- Fixed an issue with empty Google Cloud Storage folders not displaying
+  correctly in the Developers Console. New folders are now created using the
+  "/" suffix instead of "_$folder_" so that they are displayed correctly.
+- Fixed an issue with PHP_SELF and SCRIPT_NAME not being implemented correctly.
+    https://code.google.com/p/googleappengine/issues/detail?id=9989
+    https://code.google.com/p/googleappengine/issues/detail?id=10478
+
 Version 1.8.9
 
 All

@@ -19,9 +19,6 @@
 
 namespace google\appengine\api\log;
 
-require_once 'google/appengine/api/log/LogService.php';
-require_once 'google/appengine/api/log/RequestLog.php';
-
 use google\appengine\LogReadRequest;
 use google\appengine\LogReadResponse;
 use google\appengine\runtime\ApiProxy;

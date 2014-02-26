@@ -1914,11 +1914,11 @@ goog.dom.getElementsByTagNameAndClass = function(opt_tag, opt_class, opt_el) {
 };
 goog.dom.getElementsByClass = function(className, opt_el) {
   var parent = opt_el || document;
-  return goog.dom.canUseQuerySelector_(parent) ? parent.querySelectorAll("." + className) : parent.getElementsByClassName ? parent.getElementsByClassName(className) : goog.dom.getElementsByTagNameAndClass_(document, "*", className, opt_el);
+  return goog.dom.canUseQuerySelector_(parent) ? parent.querySelectorAll("." + className) : goog.dom.getElementsByTagNameAndClass_(document, "*", className, opt_el);
 };
 goog.dom.getElementByClass = function(className, opt_el) {
   var parent = opt_el || document, retVal = null;
-  return(retVal = goog.dom.canUseQuerySelector_(parent) ? parent.querySelector("." + className) : goog.dom.getElementsByClass(className, opt_el)[0]) || null;
+  return(retVal = goog.dom.canUseQuerySelector_(parent) ? parent.querySelector("." + className) : goog.dom.getElementsByTagNameAndClass_(document, "*", className, opt_el)[0]) || null;
 };
 goog.dom.getRequiredElementByClass = function(className, opt_root) {
   var retValue = goog.dom.getElementByClass(className, opt_root);
@@ -5154,7 +5154,7 @@ goog.net.XhrIo.prototype.send = function(url, opt_method, opt_content, opt_heade
   this.xhrOptions_ = this.xmlHttpFactory_ ? this.xmlHttpFactory_.getOptions() : goog.net.XmlHttp.getOptions();
   this.xhr_.onreadystatechange = goog.bind(this.onReadyStateChange_, this);
   try {
-    goog.log.fine(this.logger_, this.formatMsg_("Opening Xhr")), this.inOpen_ = !0, this.xhr_.open(method, url, !0), this.inOpen_ = !1;
+    goog.log.fine(this.logger_, this.formatMsg_("Opening Xhr")), this.inOpen_ = !0, this.xhr_.open(method, String(url), !0), this.inOpen_ = !1;
   } catch (err) {
     goog.log.fine(this.logger_, this.formatMsg_("Error opening Xhr: " + err.message));
     this.error_(goog.net.ErrorCode.EXCEPTION, err);

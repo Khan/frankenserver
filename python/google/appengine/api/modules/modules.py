@@ -28,25 +28,16 @@ __all__ = [
     'get_current_version_name',
     'get_current_instance_id',
     'get_modules',
-    'get_modules_async',
     'get_versions',
-    'get_versions_async',
     'get_default_version',
-    'get_default_version_async',
     'get_num_instances',
-    'get_num_instances_async',
     'set_num_instances',
     'set_num_instances_async',
-    'start_module',
-    'start_module_async',
     'start_version',
     'start_version_async',
-    'stop_module',
-    'stop_module_async',
     'stop_version',
     'stop_version_async',
-    'get_hostname',
-    'get_hostname_async']
+    'get_hostname']
 
 
 import logging
@@ -179,30 +170,6 @@ def get_modules():
                         _ResultHook).get_result()
 
 
-def get_modules_async():
-  """Returns a UserRPC whose result contains this application's module names.
-
-  DEPRECATED. Please use get_modules instead.
-
-  Returns:
-    A UserRPC whose result contains a list of strings containing the names
-    of modules associated with this application. The 'default' module will be
-    included if it exists, as will the name of the module that is associated
-    with the instance that calls this function.
-  """
-  logging.warning('The get_modules_async function is deprecated. Please '
-                  'use get_modules instead.')
-  def _ResultHook(rpc):
-    _CheckAsyncResult(rpc, [], {})
-
-
-    return list(rpc.response.module_list())
-
-  request = modules_service_pb.GetModulesRequest()
-  response = modules_service_pb.GetModulesResponse()
-  return _MakeAsyncCall('GetModules', request, response, _ResultHook)
-
-
 def get_versions(module=None):
   """Returns a list of versions for a given module.
 
@@ -236,36 +203,6 @@ def get_versions(module=None):
                         _ResultHook).get_result()
 
 
-def get_versions_async(module=None):
-  """Returns a UserRPC whose result contains list of versions for a module.
-
-  DEPRECATED. Please use get_versions instead.
-
-  Args:
-    module: Module to retrieve version for, if None then the current module will
-      be used.
-
-  Returns:
-    Returns a UserRPC whose result contains the list of strings containing
-    the names of versions associated with the specified module.
-  """
-  logging.warning('The get_versions_async function is deprecated. Please '
-                  'use get_versions instead.')
-  def _ResultHook(rpc):
-    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
-                     modules_service_pb.ModulesServiceError.TRANSIENT_ERROR]
-    _CheckAsyncResult(rpc, mapped_errors, {})
-
-
-    return list(rpc.response.version_list())
-
-  request = modules_service_pb.GetVersionsRequest()
-  if module:
-    request.set_module(module)
-  response = modules_service_pb.GetVersionsResponse()
-  return _MakeAsyncCall('GetVersions', request, response, _ResultHook)
-
-
 def get_default_version(module=None):
   """Returns the name of the default version for the module.
 
@@ -294,35 +231,6 @@ def get_default_version(module=None):
                         request,
                         response,
                         _ResultHook).get_result()
-
-
-def get_default_version_async(
-    module=None):
-  """Returns a UserRPC whose result contains a module's default version.
-
-  DEPRECATED. Please use get_default_version instead.
-
-  Args:
-    module: Module to retrieve the default version for, if None then the current
-      module will be used.
-
-  Returns:
-    Returns a UserRPC whose result contains a string holding the name of the
-    default version of the specified module.
-  """
-  logging.warning('The get_default_version_async function is deprecated. '
-                  'Please use get_default_version instead.')
-  def _ResultHook(rpc):
-    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
-                     modules_service_pb.ModulesServiceError.INVALID_VERSION]
-    _CheckAsyncResult(rpc, mapped_errors, {})
-    return rpc.response.version()
-
-  request = modules_service_pb.GetDefaultVersionRequest()
-  if module:
-    request.set_module(module)
-  response = modules_service_pb.GetDefaultVersionResponse()
-  return _MakeAsyncCall('GetDefaultVersion', request, response, _ResultHook)
 
 
 def get_num_instances(module=None,
@@ -361,42 +269,6 @@ def get_num_instances(module=None,
                         request,
                         response,
                         _ResultHook).get_result()
-
-
-def get_num_instances_async(
-    module=None, version=None):
-  """Returns a UserRPC whose result holds the number of instances for a version.
-
-  DEPRECATED. Please use get_num_instances instead.
-
-  This is only valid for fixed modules, an error will be raised for
-  automatically-scaled modules.  Support for automatically-scaled modules may be
-  supported in the future.
-
-  Args:
-    module: String containing the name of the module to fetch this info for, if
-      None the module of the current instance will be used.
-    version: String containing the name of the version to fetch this info for,
-      if None the version of the current instance will be used.  If that version
-      does not exist in the other module, then an InvalidVersionError is raised.
-
-  Returns:
-    A UserRPC whose result holds the number of instances for a version.
-  """
-  logging.warning('The get_num_instances_async function is deprecated. '
-                  'Please use get_num_instances instead.')
-  def _ResultHook(rpc):
-    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_VERSION]
-    _CheckAsyncResult(rpc, mapped_errors, {})
-    return rpc.response.instances()
-
-  request = modules_service_pb.GetNumInstancesRequest()
-  if module:
-    request.set_module(module)
-  if version:
-    request.set_version(version)
-  response = modules_service_pb.GetNumInstancesResponse()
-  return _MakeAsyncCall('GetNumInstances', request, response, _ResultHook)
 
 
 def set_num_instances(instances,
@@ -465,25 +337,6 @@ def start_version(module, version):
   rpc.get_result()
 
 
-def start_module(module,
-                 version):
-  """Start all instances for the given version of the module.
-
-  DEPRECATED. Please use start_version instead.
-
-  Args:
-    module: String containing the name of the module to affect.
-    version: String containing the name of the version of the module to start.
-
-  Raises:
-    InvalidVersionError if the given module version is invalid.
-    TransientError if there is a problem persisting the change.
-  """
-  logging.warning('The start_module function is deprecated, please use the '
-                  'start_version function instead.')
-  start_version(module, version)
-
-
 def start_version_async(module,
                         version):
   """Returns a UserRPC  to start all instances for the given module version.
@@ -512,24 +365,6 @@ def start_version_async(module,
   return _MakeAsyncCall('StartModule', request, response, _ResultHook)
 
 
-def start_module_async(module,
-                       version):
-  """Returns a UserRPC  to start all instances for the given module version.
-
-  DEPRECATED. Please use start_version_async instead.
-
-  Args:
-    module: String containing the name of the module to affect.
-    version: String containing the name of the version of the module to start.
-
-  Returns:
-    A UserRPC  to start all instances for the given module version.
-  """
-  logging.warning('The start_module_async function is deprecated, please use '
-                  'the start_version_async function isntead.')
-  return start_version_async(module, version)
-
-
 def stop_version(module=None,
                  version=None):
   """Stops all instances for the given version of the module.
@@ -545,27 +380,6 @@ def stop_version(module=None,
   """
   rpc = stop_version_async(module, version)
   rpc.get_result()
-
-
-def stop_module(module=None,
-                version=None):
-  """Stops all instances for the given version of the module.
-
-  DEPRECATED. Please use stop_version instead.
-
-  Args:
-    module: The module to affect, if None the current module is used.
-    version: The version of the given module to affect, if None the current
-      version is used.
-
-  Raises:
-    InvalidVersionError if the given module version is invalid.
-    UnexpectedStateError if the module is already stopped, or cannot be stopped.
-    TransientError if there is a problem persisting the change.
-  """
-  logging.warning('The stop_module function is deprecated, please use '
-                  'the stop_version function isntead.')
-  stop_version(module, version)
 
 
 def stop_version_async(module=None,
@@ -597,25 +411,6 @@ def stop_version_async(module=None,
     request.set_version(version)
   response = modules_service_pb.StopModuleResponse()
   return _MakeAsyncCall('StopModule', request, response, _ResultHook)
-
-
-def stop_module_async(module=None,
-                      version=None):
-  """Returns a UserRPC  to stop all instances for the given module version.
-
-  DEPRECATED. Please use stop_version_async instead.
-
-  Args:
-    module: The module to affect, if None the current module is used.
-    version: The version of the given module to affect, if None the current
-      version is used.
-
-  Returns:
-    A UserRPC  to stop all instances for the given module version.
-  """
-  logging.warning('The stop_module_async function is deprecated. Please use '
-                  'the stop_version_async function instead.')
-  return stop_version_async(module, version)
 
 
 def get_hostname(module=None,
@@ -661,49 +456,4 @@ def get_hostname(module=None,
                         request,
                         response,
                         _ResultHook).get_result()
-
-
-def get_hostname_async(module=None,
-                       version=None, instance=None):
-  """Returns a UserRPC whose result contains the hostname to contact a module.
-
-  DEPRECATED. Please use get_hostname instead.
-
-  Args:
-    module: Name of module, if None, take module of the current instance.
-    version: Name of version, if version is None then either use the version of
-      the current instance if that version exists for the target module,
-      otherwise use the default version of the target module.
-    instance: Instance to construct a hostname for, if instance is None, a
-      loadbalanced hostname for the module will be returned.  If the target
-      module is not a fixed module, then instance is not considered valid.
-
-  Returns:
-    Returns a UserRPC whose result contains a valid canonical hostname that
-    can be used to communicate with the given module/version/instance.
-    E.g. 0.v1.module5.myapp.appspot.com
-
-  Raises:
-    TypeError: If the given instance type is invalid.
-  """
-  logging.warning('The get_hostname_async function is deprecated. Please '
-                  'use get_hostname instead.')
-  def _ResultHook(rpc):
-    mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
-                     modules_service_pb.ModulesServiceError.INVALID_INSTANCES]
-    _CheckAsyncResult(rpc, mapped_errors, [])
-    return rpc.response.hostname()
-
-  request = modules_service_pb.GetHostnameRequest()
-  if module:
-    request.set_module(module)
-  if version:
-    request.set_version(version)
-  if instance:
-    if not isinstance(instance, (basestring, long, int)):
-      raise TypeError(
-          "'instance' arg must be of type basestring, long or int.")
-    request.set_instance(str(instance))
-  response = modules_service_pb.GetHostnameResponse()
-  return _MakeAsyncCall('GetHostname', request, response, _ResultHook)
 
