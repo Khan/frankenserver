@@ -21,7 +21,7 @@
 """An interactive python shell that uses remote_api.
 
 Usage:
-  %prog [-s HOSTNAME] [-p PATH] [APPID]
+  %prog [-s HOSTNAME] [-p PATH] [--secure] [APPID]
 
 If the -s HOSTNAME flag is not specified, the APPID must be specified.
 """

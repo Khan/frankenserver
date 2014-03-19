@@ -30,7 +30,7 @@ class MemcacheSessionHandlerTest extends \PHPUnit_Framework_TestCase {
     $stub = $this->getMock('MemcacheContainer', array('close', 'get', 'set',
         'delete'));
 
-    configureMemcacheSessionHandler($stub);
+    MemcacheSessionHandler::configure($stub);
 
     $sessionId = "my_session_id";
     $mySessionId = "_ah_sess_" . $sessionId;
@@ -64,7 +64,7 @@ class MemcacheSessionHandlerTest extends \PHPUnit_Framework_TestCase {
   }
 
   public function testSavePath() {
-    configureMemcacheSessionHandler();
+    MemcacheSessionHandler::configure();
 
     $this->assertEquals("Memcache", ini_get("session.save_path"));
   }

@@ -325,7 +325,14 @@ class InteractivePageHandler(BaseRequestHandler):
   PATH = '/interactive'
 
   def get(self):
-    self.generate('interactive.html')
+
+    if users.is_current_user_admin():
+      self.generate('interactive.html')
+    else:
+      logging.warning(
+          'Non admin user from IP %s attempted to use interactive console',
+          self.request.remote_addr)
+      self.error(404)
 
 
 class InteractiveExecuteHandler(BaseRequestHandler):
@@ -339,35 +346,41 @@ class InteractiveExecuteHandler(BaseRequestHandler):
 
   @xsrf_required
   def post(self):
-    if self.interactive_console_enabled():
+    if users.is_current_user_admin():
+      if self.interactive_console_enabled():
 
-      save_stdout = sys.stdout
-      results_io = cStringIO.StringIO()
-      try:
-        sys.stdout = results_io
-
-
-        code = self.request.get('code')
-        code = code.replace("\r\n", "\n")
-
+        save_stdout = sys.stdout
+        results_io = cStringIO.StringIO()
         try:
-          compiled_code = compile(code, '<string>', 'exec')
-          exec(compiled_code, globals())
-        except Exception, e:
-          traceback.print_exc(file=results_io)
-      finally:
-        sys.stdout = save_stdout
+          sys.stdout = results_io
 
-      results = results_io.getvalue()
-    else:
-      results = """The interactive console has been disabled for security
+
+          code = self.request.get('code')
+          code = code.replace('\r\n', '\n')
+
+          try:
+            compiled_code = compile(code, '<string>', 'exec')
+            exec(compiled_code, globals())
+          except Exception, e:
+            traceback.print_exc(file=results_io)
+        finally:
+          sys.stdout = save_stdout
+
+        results = results_io.getvalue()
+      else:
+        results = """The interactive console has been disabled for security
 because the dev_appserver is listening on a non-default address.
 If you would like to re-enable the console, invoke dev_appserver
 with the --enable_console argument.
 
 See https://developers.google.com/appengine/docs/python/tools/devserver#The_Interactive_Console
 for more information."""
-    self.generate('interactive-output.html', {'output': results})
+      self.generate('interactive-output.html', {'output': results})
+    else:
+      logging.warning(
+          'Non admin user from IP %s attempted to use interactive console',
+          self.request.remote_addr)
+      self.error(404)
 
 
 class CronPageHandler(BaseRequestHandler):

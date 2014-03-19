@@ -35,24 +35,18 @@ TODO: convert all runtimes to START_PROCESS_FILE.
 
 
 import base64
-import contextlib
-import httplib
 import logging
 import os
-import socket
 import subprocess
 import sys
 import time
 import threading
-import urllib
-import wsgiref.headers
 
-from google.appengine.tools.devappserver2 import http_runtime_constants
+from google.appengine.tools.devappserver2 import application_configuration
+from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import instance
-from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import safe_subprocess
 from google.appengine.tools.devappserver2 import tee
-from google.appengine.tools.devappserver2 import util
 
 START_PROCESS = -1
 START_PROCESS_FILE = -2
@@ -140,11 +134,8 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       ValueError: An unknown value for start_process_flavor was used.
     """
     super(HttpRuntimeProxy, self).__init__()
-    self._host = 'localhost'
-    self._port = None
     self._process = None
     self._process_lock = threading.Lock()  # Lock to guard self._process.
-    self._prior_error = None
     self._stderr_tee = None
     self._runtime_config_getter = runtime_config_getter
     self._args = args
@@ -153,14 +144,16 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     if start_process_flavor not in self._VALID_START_PROCESS_FLAVORS:
       raise ValueError('Invalid start_process_flavor.')
     self._start_process_flavor = start_process_flavor
+    self._proxy = None
 
-  def _get_error_file(self):
-    for error_handler in self._module_configuration.error_handlers or []:
-      if not error_handler.error_code or error_handler.error_code == 'default':
-        return os.path.join(self._module_configuration.application_root,
-                            error_handler.file)
-    else:
-      return None
+  def _get_instance_logs(self):
+    # Give the runtime process a bit of time to write to stderr.
+    time.sleep(0.1)
+    return self._stderr_tee.get_buf()
+
+  def _instance_died_unexpectedly(self):
+    with self._process_lock:
+      return self._process and self._process.poll() is not None
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):
@@ -179,145 +172,9 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     Yields:
       A sequence of strings containing the body of the HTTP response.
     """
-    if self._prior_error:
-      yield self._handle_error(self._prior_error, start_response)
-      return
 
-    environ[http_runtime_constants.SCRIPT_HEADER] = match.expand(url_map.script)
-    if request_type == instance.BACKGROUND_REQUEST:
-      environ[http_runtime_constants.REQUEST_TYPE_HEADER] = 'background'
-    elif request_type == instance.SHUTDOWN_REQUEST:
-      environ[http_runtime_constants.REQUEST_TYPE_HEADER] = 'shutdown'
-    elif request_type == instance.INTERACTIVE_REQUEST:
-      environ[http_runtime_constants.REQUEST_TYPE_HEADER] = 'interactive'
-
-    for name in http_runtime_constants.ENVIRONS_TO_PROPAGATE:
-      if http_runtime_constants.INTERNAL_ENVIRON_PREFIX + name not in environ:
-        value = environ.get(name, None)
-        if value is not None:
-          environ[
-              http_runtime_constants.INTERNAL_ENVIRON_PREFIX + name] = value
-    headers = util.get_headers_from_environ(environ)
-    if environ.get('QUERY_STRING'):
-      url = '%s?%s' % (urllib.quote(environ['PATH_INFO']),
-                       environ['QUERY_STRING'])
-    else:
-      url = urllib.quote(environ['PATH_INFO'])
-    if 'CONTENT_LENGTH' in environ:
-      headers['CONTENT-LENGTH'] = environ['CONTENT_LENGTH']
-      data = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
-    else:
-      data = ''
-
-    cookies = environ.get('HTTP_COOKIE')
-    user_email, admin, user_id = login.get_user_info(cookies)
-    if user_email:
-      nickname, organization = user_email.split('@', 1)
-    else:
-      nickname = ''
-      organization = ''
-    headers[http_runtime_constants.REQUEST_ID_HEADER] = request_id
-    headers[http_runtime_constants.INTERNAL_HEADER_PREFIX + 'User-Id'] = (
-        user_id)
-    headers[http_runtime_constants.INTERNAL_HEADER_PREFIX + 'User-Email'] = (
-        user_email)
-    headers[
-        http_runtime_constants.INTERNAL_HEADER_PREFIX + 'User-Is-Admin'] = (
-            str(int(admin)))
-    headers[
-        http_runtime_constants.INTERNAL_HEADER_PREFIX + 'User-Nickname'] = (
-            nickname)
-    headers[
-        http_runtime_constants.INTERNAL_HEADER_PREFIX + 'User-Organization'] = (
-            organization)
-    headers['X-AppEngine-Country'] = 'ZZ'
-    connection = httplib.HTTPConnection(self._host, self._port)
-    with contextlib.closing(connection):
-      try:
-        connection.connect()
-        connection.request(environ.get('REQUEST_METHOD', 'GET'),
-                           url,
-                           data,
-                           dict(headers.items()))
-
-        try:
-          response = connection.getresponse()
-        except httplib.HTTPException as e:
-          # The runtime process has written a bad HTTP response. For example,
-          # a Go runtime process may have crashed in app-specific code.
-          yield self._handle_error(
-              'the runtime process gave a bad HTTP response: %s' % e,
-              start_response)
-          return
-
-        # Ensures that we avoid merging repeat headers into a single header,
-        # allowing use of multiple Set-Cookie headers.
-        headers = []
-        for name in response.msg:
-          for value in response.msg.getheaders(name):
-            headers.append((name, value))
-
-        response_headers = wsgiref.headers.Headers(headers)
-
-        error_file = self._get_error_file()
-        if (error_file and
-            http_runtime_constants.ERROR_CODE_HEADER in response_headers):
-          try:
-            with open(error_file) as f:
-              content = f.read()
-          except IOError:
-            content = 'Failed to load error handler'
-            logging.exception('failed to load error file: %s', error_file)
-          start_response('500 Internal Server Error',
-                         [('Content-Type', 'text/html'),
-                          ('Content-Length', str(len(content)))])
-          yield content
-          return
-        del response_headers[http_runtime_constants.ERROR_CODE_HEADER]
-        start_response('%s %s' % (response.status, response.reason),
-                       response_headers.items())
-
-        # Yield the response body in small blocks.
-        while True:
-          try:
-            block = response.read(512)
-            if not block:
-              break
-            yield block
-          except httplib.HTTPException:
-            # The runtime process has encountered a problem, but has not
-            # necessarily crashed. For example, a Go runtime process' HTTP
-            # handler may have panicked in app-specific code (which the http
-            # package will recover from, so the process as a whole doesn't
-            # crash). At this point, we have already proxied onwards the HTTP
-            # header, so we cannot retroactively serve a 500 Internal Server
-            # Error. We silently break here; the runtime process has presumably
-            # already written to stderr (via the Tee).
-            break
-      except Exception:
-        with self._process_lock:
-          if self._process and self._process.poll() is not None:
-            # The development server is in a bad state. Log and return an error
-            # message.
-            self._prior_error = ('the runtime process for the instance running '
-                                 'on port %d has unexpectedly quit' % (
-                                     self._port))
-            yield self._handle_error(self._prior_error, start_response)
-          else:
-            raise
-
-  def _handle_error(self, message, start_response):
-    # Give the runtime process a bit of time to write to stderr.
-    time.sleep(0.1)
-    buf = self._stderr_tee.get_buf()
-    if buf:
-      message = message + '\n\n' + buf
-    # TODO: change 'text/plain' to 'text/plain; charset=utf-8'
-    # throughout devappserver2.
-    start_response('500 Internal Server Error',
-                   [('Content-Type', 'text/plain'),
-                    ('Content-Length', str(len(message)))])
-    return message
+    return self._proxy.handle(environ, start_response, url_map, match,
+                              request_id, request_type)
 
   def _read_start_process_file(self, max_attempts=10, sleep_base=.125):
     """Read the single line response expected in the start process file.
@@ -395,28 +252,22 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     if self._stderr_tee is None:
       self._stderr_tee = tee.Tee(self._process.stderr, sys.stderr)
       self._stderr_tee.start()
-    self._prior_error = None
-    self._port = None
-    try:
-      self._port = int(line)
-    except ValueError:
-      self._prior_error = 'bad runtime process port [%r]' % line
-      logging.error(self._prior_error)
-    else:
-      # Check if the runtime can serve requests.
-      if not self._can_connect():
-        self._prior_error = 'cannot connect to runtime on port %r' % self._port
-        logging.error(self._prior_error)
 
-  def _can_connect(self):
-    connection = httplib.HTTPConnection(self._host, self._port)
-    with contextlib.closing(connection):
-      try:
-        connection.connect()
-      except socket.error:
-        return False
-      else:
-        return True
+    port = None
+    error = None
+    try:
+      port = int(line)
+    except ValueError:
+      error = 'bad runtime process port [%r]' % line
+      logging.error(error)
+    finally:
+      self._proxy = http_proxy.HttpProxy(
+          host='localhost', port=port,
+          instance_died_unexpectedly=self._instance_died_unexpectedly,
+          instance_logs_getter=self._get_instance_logs,
+          error_handler_file=application_configuration.get_app_error_file(
+              self._module_configuration),
+          prior_error=error)
 
   def quit(self):
     """Causes the runtime process to exit."""

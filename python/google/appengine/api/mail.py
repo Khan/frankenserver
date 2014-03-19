@@ -783,7 +783,7 @@ class EncodedPayload(object):
     payload = self.payload
 
 
-    if self.encoding and self.encoding.lower() != '7bit':
+    if self.encoding and self.encoding.lower() not in ('7bit', '8bit'):
       try:
         payload = payload.decode(self.encoding)
       except LookupError:

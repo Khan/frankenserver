@@ -714,6 +714,13 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
     self.entity4['listprop'] = [10, 11]
     datastore.Put(self.entity4)
 
+    self.entity5 = datastore.Entity('Kind1', id=127, _app=self.app_id)
+    self.entity5['intprop'] = 0
+    self.entity5['boolprop'] = False
+    self.entity5['stringprop'] = ''
+    self.entity5['floatprop'] = 0.0
+    datastore.Put(self.entity5)
+
   def tearDown(self):
     self.mox.UnsetStubs()
 
@@ -725,10 +732,16 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
 
     handler.render(
         'datastore_edit.html',
-        {'fields': [('dateprop',
+        {'fields': [('boolprop',
+                     'bool',
+                     mox.Regex('^<select class="bool"(.|\n)*$')),
+                    ('dateprop',
                      'overflowdatetime',
                      mox.Regex('^<input class="overflowdatetime".*'
                                'value="".*$')),
+                    ('floatprop',
+                     'float',
+                     mox.Regex('^<input class="float".*value="".*$')),
                     ('intprop',
                      'int',
                      mox.Regex('^<input class="int".*value="".*$')),
@@ -791,6 +804,39 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
 
     self.mox.ReplayAll()
     handler.get(str(self.entity1.key()))
+    self.mox.VerifyAll()
+
+  def test_get_entity_zero_props(self):
+    request = webapp2.Request.blank(
+        '/datastore/edit/%s?next=http://next/' % self.entity5.key())
+    response = webapp2.Response()
+    handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
+
+    handler.render(
+        'datastore_edit.html',
+        {'fields': [('boolprop',
+                     'bool',
+                     mox.Regex('^<select class="bool"(.|\n)*$')),
+                    ('floatprop',
+                     'float',
+                     mox.Regex('^<input class="float".*value="0\.0".*$')),
+                    ('intprop',
+                     'int',
+                     mox.Regex('^<input class="int".*value="0".*$')),
+                    ('stringprop',
+                     'string',
+                     mox.Regex('^<input class="string".*value="".*$'))],
+         'key': str(self.entity5.key()),
+         'key_id': 127,
+         'key_name': None,
+         'kind': 'Kind1',
+         'namespace': '',
+         'next': 'http://next/',
+         'parent_key': None,
+         'parent_key_string': None})
+
+    self.mox.ReplayAll()
+    handler.get(str(self.entity5.key()))
     self.mox.VerifyAll()
 
   def test_post_no_entity_key_string(self):

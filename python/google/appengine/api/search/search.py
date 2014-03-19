@@ -941,7 +941,7 @@ class AtomField(Field):
 
 
 class DateField(Field):
-  """A Field that has a date value.
+  """A Field that has a date or datetime value.
 
   The following example shows a date field named creation_date:
     DateField(name='creation_date', value=datetime.date(2011, 03, 11))
@@ -952,10 +952,10 @@ class DateField(Field):
 
     Args:
       name: The name of the field.
-      value: A datetime.date but not a datetime.datetime.
+      value: A datetime.date or a datetime.datetime.
 
     Raises:
-      TypeError: If value is not a datetime.date or is a datetime.datetime.
+      TypeError: If value is not a datetime.date or a datetime.datetime.
     """
     Field.__init__(self, name, value)
 

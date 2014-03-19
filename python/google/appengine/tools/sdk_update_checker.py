@@ -20,6 +20,7 @@ import datetime
 import logging
 import os
 import socket
+import ssl
 import sys
 import time
 import urllib2
@@ -253,7 +254,7 @@ class SDKUpdateChecker(object):
             timestamp=version['timestamp'],
             api_versions=version['api_versions'],
             runtime=runtime))
-    except (urllib2.URLError, socket.error), e:
+    except (urllib2.URLError, socket.error, ssl.SSLError), e:
       logging.info('Update check failed: %s', e)
       return
 

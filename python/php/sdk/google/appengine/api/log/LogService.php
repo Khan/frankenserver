@@ -389,7 +389,7 @@ final class LogService {
     $log_level = self::getAppEngineLogLevel($priority);
     self::log($log_level, $message);
     if (function_exists('_gae_syslog')) {
-      _gae_syslog($log_level);
+      _gae_syslog($log_level, $message);
     }
   }
 }

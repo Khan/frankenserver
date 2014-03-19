@@ -1739,14 +1739,14 @@ class _Queue(object):
     eta = old_task.eta_usec()
     if not self._RemoveTaskFromIndex(
         self._sorted_by_eta, (eta, name, None), old_task):
-      return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
+      return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERROR
 
 
     if old_task.has_tag():
       tag = old_task.tag()
       if not self._RemoveTaskFromIndex(
           self._sorted_by_tag, (tag, eta, name, None), old_task):
-        return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
+        return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERROR
 
     return taskqueue_service_pb.TaskQueueServiceError.OK
 

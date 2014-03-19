@@ -28,7 +28,9 @@ use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\URLFetchRequest\RequestMethod;
+use google\appengine\URLFetchServiceError\ErrorCode;
 use google\appengine\util\ArrayUtil;
+use google\appengine\util\StringUtil;
 
 /**
  * CloudStorageClient provides default fail implementations for all of the
@@ -37,6 +39,23 @@ use google\appengine\util\ArrayUtil;
  * perform.
  */
 abstract class CloudStorageClient {
+  /**
+   * Headers that may be controlled by the user through the stream context.
+   */
+  protected static $METADATA_HEADERS = [
+    'Cache-Control',
+    'Content-Disposition',
+    'Content-Encoding',
+    'Content-Language',
+    'Content-Type',
+    // x-goog-meta-* handled separately.
+  ];
+
+  /**
+   * Prefix for all metadata headers used when parsing and rendering.
+   */
+  const METADATA_HEADER_PREFIX = 'x-goog-meta-';
+
   // The default chunk size that we will read from the file. This value should
   // remain smaller than the maximum object size valid for memcache writes so
   // we can cache the reads.
@@ -131,6 +150,11 @@ abstract class CloudStorageClient {
                                          HttpResponse::BAD_GATEWAY,
                                          HttpResponse::SERVICE_UNAVAILABLE,
                                          HttpResponse::GATEWAY_TIMEOUT];
+
+  protected static $retry_exception_codes = [
+      ErrorCode::DEADLINE_EXCEEDED,
+      ErrorCode::FETCH_ERROR,
+      ErrorCode::INTERNAL_TRANSIENT_ERROR];
 
   // Values that are allowed to be supplied as ACLs when writing objects.
   protected static $valid_acl_values = ["private",
@@ -359,7 +383,6 @@ abstract class CloudStorageClient {
    * @return The value of the header if found, false otherwise.
    */
   protected function getHeaderValue($header_name, $headers) {
-    // Could be more than one header, in which case we keep an array.
     foreach($headers as $key => $value) {
       if (strcasecmp($key, $header_name) === 0) {
         return $value;
@@ -392,11 +415,21 @@ abstract class CloudStorageClient {
       try {
         ApiProxy::makeSyncCall('urlfetch', 'Fetch', $req, $resp);
       } catch (ApplicationError $e) {
-        syslog(LOG_ERR,
-               sprintf("Call to URLFetch failed with application error %d.",
-                       $e->getApplicationError()));
-        return false;
+        if (in_array($e->getApplicationError(), self::$retry_exception_codes)) {
+          // We need to set a plausible value in the URLFetchResponse proto in
+          // case the retry loop falls through - this will also cause a retry
+          // if one is available.
+          $resp->setStatusCode(HttpResponse::GATEWAY_TIMEOUT);
+        } else {
+          syslog(LOG_ERR,
+                 sprintf("Call to URLFetch failed with application error %d " .
+                         "for url %s.",
+                         $e->getApplicationError(),
+                         $url));
+          return false;
+        }
       }
+
       $status_code = $resp->getStatusCode();
 
       if ($num_retries < $this->context_options['max_retries'] &&
@@ -448,6 +481,30 @@ abstract class CloudStorageClient {
     }
 
     return $result;
+  }
+
+  /**
+   * Extract metadata from HTTP response headers.
+   *
+   * Finds all headers that begin with METADATA_HEADER_PREFIX (x-goog-meta-),
+   * strips off the prefix, and creates an associative array.
+   *
+   * @param array $headers
+   *   Associative array of HTTP headers.
+   * @return array
+   *   Array of parsed metadata headers.
+   */
+  protected static function extractMetaData(array $headers) {
+    $metadata = [];
+    foreach($headers as $key => $value) {
+      if (StringUtil::startsWith(strtolower($key),
+                                 static::METADATA_HEADER_PREFIX)) {
+        $metadata_key = substr($key, strlen(static::METADATA_HEADER_PREFIX));
+        $metadata[$metadata_key] = $value;
+      }
+    }
+
+    return $metadata;
   }
 
   /**

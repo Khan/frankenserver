@@ -60,11 +60,8 @@ def IsWarFileWithoutYaml(dir_path):
   if os.path.isfile(os.path.join(dir_path, 'app.yaml')):
     return False
   web_inf = os.path.join(dir_path, 'WEB-INF')
-  if not os.path.isdir(web_inf):
-    return False
-  if not set(['appengine-web.xml', 'web.xml']).issubset(os.listdir(web_inf)):
-    return False
-  return True
+  return (os.path.isdir(web_inf) and
+          set(['appengine-web.xml', 'web.xml']).issubset(os.listdir(web_inf)))
 
 
 def AddUpdateOptions(parser):
@@ -107,6 +104,8 @@ class JavaAppUpdate(object):
       self.xml_to_yaml_function = xml_to_yaml_function
 
   _XML_PARSERS = [
+      _XmlParser('backends.xml', 'backends.yaml',
+                 backends_xml_parser.GetBackendsYaml),
       _XmlParser('cron.xml', 'cron.yaml', cron_xml_parser.GetCronYaml),
       _XmlParser('datastore-indexes.xml', 'index.yaml',
                  indexes_xml_parser.GetIndexYaml),
@@ -188,12 +187,6 @@ class JavaAppUpdate(object):
         file_name='web.xml',
         parser=web_xml_parser.WebXmlParser)
 
-  def _ReadBackendsXml(self):
-    return self._ReadAndParseXml(
-        basepath=self.basepath,
-        file_name='backends.xml',
-        parser=backends_xml_parser.BackendsXmlParser)
-
   def _ReadAndParseXml(self, basepath, file_name, parser):
     with open(os.path.join(basepath, 'WEB-INF', file_name)) as file_handle:
       return parser().ProcessXml(file_handle.read())
@@ -266,12 +259,10 @@ class JavaAppUpdate(object):
 
     return stage_dir
 
-  def GenerateAppYamlString(self, basepath, static_file_list, api_version=None):
+  def GenerateAppYamlString(self, static_file_list, api_version=None):
     """Constructs an app.yaml string equivalent to the XML files under WEB-INF.
 
     Args:
-      basepath: a string that is the path to the WEB-INF directory. This
-        might not be self.basepath, because it might be a staging directory.
       static_file_list: a list of strings that are the absolute path names of
         static file resources.
       api_version: a string that is the Java API version number, or None if
@@ -281,12 +272,8 @@ class JavaAppUpdate(object):
       A string that would have the same effect as the XML files under WEB-INF
       if it were the contents of an app.yaml file.
     """
-    backends = []
-    if os.path.isfile(os.path.join(self.basepath, 'WEB-INF', 'backends.xml')):
-      backends = self._ReadBackendsXml(basepath)
     return yaml_translator.AppYamlTranslator(
         self.app_engine_web_xml,
-        backends,
         self.web_xml,
         static_file_list,
         api_version).GetYaml()
@@ -298,8 +285,7 @@ class JavaAppUpdate(object):
       The path to the WEB-INF/appengine-generated directory.
     """
     static_file_list = self._GetStaticFileList(stage_dir)
-    yaml_str = self.GenerateAppYamlString(
-        stage_dir, static_file_list, api_version)
+    yaml_str = self.GenerateAppYamlString(static_file_list, api_version)
     if not os.path.isdir(appengine_generated):
       os.mkdir(appengine_generated)
     with open(os.path.join(appengine_generated, 'app.yaml'), 'w') as handle:

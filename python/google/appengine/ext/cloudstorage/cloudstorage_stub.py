@@ -516,7 +516,7 @@ class CloudStorageStub(object):
         for info in q.run():
           if not info.filename.startswith(name):
             break
-        if info.filename.startswith(name):
+        if info is not None and info.filename.startswith(name):
           info = None
       else:
         info = q.get()

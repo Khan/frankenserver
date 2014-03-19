@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 /**
- * Unit tests for GetHostName.php [_gethostname()].
+ * Unit tests for SplOverride.php (overriden Standard PHP Library functions).
  */
 
 namespace google\appengine\runtime;
 
 require_once 'google/appengine/api/modules/modules_service_pb.php';
 require_once 'google/appengine/runtime/ApplicationError.php';
-require_once 'google/appengine/runtime/GetHostName.php';
+require_once 'google/appengine/runtime/SplOverride.php';
 require_once 'google/appengine/testing/ApiProxyTestBase.php';
 
 use google\appengine\GetHostnameRequest;
@@ -31,7 +31,7 @@ use google\appengine\ModulesServiceError\ErrorCode;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\testing\ApiProxyTestBase;
 
-class GetHostNameTest extends ApiProxyTestBase {
+class SplOverrideTest extends ApiProxyTestBase {
   // See api\modules\ModulesServiceTest::testGetHostname().
   public function testGetHostName() {
     $req = new GetHostnameRequest();
@@ -41,7 +41,7 @@ class GetHostNameTest extends ApiProxyTestBase {
 
     $this->apiProxyMock->expectCall('modules', 'GetHostname', $req, $resp);
 
-    $this->assertEquals('hostname', _gethostname());
+    $this->assertEquals('hostname', SplOverride::gethostname());
     $this->apiProxyMock->verify();
   }
 
@@ -51,7 +51,15 @@ class GetHostNameTest extends ApiProxyTestBase {
 
     $this->apiProxyMock->expectCall('modules', 'GetHostname', $req, $resp);
 
-    $this->assertEquals(false, _gethostname());
+    $this->assertEquals(false, SplOverride::gethostname());
     $this->apiProxyMock->verify();
+  }
+
+  // Success case is handled in the cloud_storage e2e test which will upload a
+  // file through direct upload resulting in vfs:// wrapper and attempt to move
+  // the file to gs://.
+  public function testMoveUploadedFileNotUploaded() {
+    // Should fail since is_uploaded_file(__FILE__) will result in false.
+    $this->assertFalse(SplOverride::move_uploaded_file(__FILE__, '/dev/null'));
   }
 }

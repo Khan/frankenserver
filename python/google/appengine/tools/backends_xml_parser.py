@@ -16,7 +16,7 @@
 #
 """Directly processes text of backends.xml.
 
-BackendsXmlParser is called with an XML string to produce a BackendsXml object
+BackendsXmlParser is called with an XML string to produce a Backends object
 containing the data from the XML.
 
 BackendsXmlParser: converts XML to BackendsXml objct
@@ -29,6 +29,15 @@ from xml.etree import ElementTree
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
 from google.appengine.tools.value_mixin import ValueMixin
+
+
+def GetBackendsYaml(unused_application, backends_xml_str):
+  """Translates a backends.xml string into a backends.yaml string."""
+  backend_list = BackendsXmlParser().ProcessXml(backends_xml_str)
+  statements = ['backends:']
+  for backend in backend_list:
+    statements += backend.ToYaml()
+  return '\n'.join(statements) + '\n'
 
 
 class BackendsXmlParser(object):
@@ -60,7 +69,7 @@ class BackendsXmlParser(object):
       raise AppEngineConfigException('Bad input -- not valid XML')
 
   def ProcessBackendNode(self, node):
-    """Processes XML nodes labeled 'backend' into a BackendsXml object."""
+    """Processes XML nodes labeled 'backend' into a Backends object."""
     tag = xml_parser_utils.GetTag(node)
     if tag != 'backend':
       self.errors.append('Unrecognized node: <%s>' % tag)
@@ -124,3 +133,19 @@ class Backend(ValueMixin):
     self.options = set()
 
 
+
+  def ToYaml(self):
+    """Convert the backend specification into a list of YAML lines."""
+    statements = ['- name: %s' % self.name]
+    for entry, field in [
+        ('instances', self.instances),
+        ('class', self.instance_class),
+        ('max_concurrent_requests', self.max_concurrent_requests)]:
+      if field is not None:
+        statements += ['  %s: %s' % (entry, str(field))]
+
+    if self.options:
+      options_str = ', '.join(sorted(list(self.options)))
+      statements += ['  options: %s' % options_str]
+
+    return statements

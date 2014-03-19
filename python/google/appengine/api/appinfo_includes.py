@@ -44,13 +44,31 @@ class IncludeFileNotFound(Exception):
 
 
 def Parse(appinfo_file, open_fn=open):
-  """Parse an AppYaml file and merge referenced includes and builtins."""
+  """Parse an AppYaml file and merge referenced includes and builtins.
+
+  Args:
+    appinfo_file: an opened file, for example the result of open('app.yaml').
+    open_fn: a function to open included files.
+
+  Returns:
+    The parsed appinfo.AppInfoExternal object.
+  """
   appyaml, _ = ParseAndReturnIncludePaths(appinfo_file, open_fn)
   return appyaml
 
 
 def ParseAndReturnIncludePaths(appinfo_file, open_fn=open):
-  """Parse an AppYaml file and merge referenced includes and builtins."""
+  """Parse an AppYaml file and merge referenced includes and builtins.
+
+  Args:
+    appinfo_file: an opened file, for example the result of open('app.yaml').
+    open_fn: a function to open included files.
+
+  Returns:
+    A tuple where the first element is the parsed appinfo.AppInfoExternal
+    object and the second element is a list of the absolute paths of the
+    included files, in no particular order.
+  """
   try:
     appinfo_path = appinfo_file.name
     if not os.path.isfile(appinfo_path):
@@ -93,7 +111,9 @@ def _MergeBuiltinsIncludes(appinfo_path, appyaml, open_fn=open):
              reading yaml files.
 
   Returns:
-    the modified appyaml object which incorporates referenced yaml files.
+    A tuple where the first element is the modified appyaml object
+    incorporating the referenced yaml files, and the second element is a list
+    of the absolute paths of the included files, in no particular order.
   """
 
 
@@ -144,12 +164,14 @@ def _ResolveIncludes(included_from, app_include, basepath, runtime, state=None,
     open_fn: file opening function udes, used when reading yaml files.
 
   Returns:
-    AppInclude object merged from following all builtins/includes defined in
-    provided AppInclude object.
+    A two-element tuple where the first element is the AppInclude object merged
+    from following all builtins/includes defined in provided AppInclude object;
+    and the second element is a list of the absolute paths of the included
+    files, in no particular order.
 
   Raises:
     IncludeFileNotFound: if file specified in an include statement cannot be
-    resolved to an includeable file (result from _ResolvePath is False).
+      resolved to an includeable file (result from _ResolvePath is False).
   """
 
   class RecurseState(object):

@@ -2885,8 +2885,11 @@ class DatastoreStub(object):
 
 
     if req.allow_deferred() and req.key_size() > _MAXIMUM_RESULTS:
-      keys_to_get = req.key_list()[:_MAXIMUM_RESULTS]
-      deferred_keys = req.key_list()[_MAXIMUM_RESULTS:]
+
+
+
+      keys_to_get = req.key_list()[-_MAXIMUM_RESULTS:]
+      deferred_keys = req.key_list()[:-_MAXIMUM_RESULTS]
       res.deferred_list().extend(deferred_keys)
     else:
 

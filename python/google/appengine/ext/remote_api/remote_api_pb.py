@@ -386,6 +386,175 @@ class ApplicationError(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.ApplicationError'
+class RpcError(ProtocolBuffer.ProtocolMessage):
+
+
+  UNKNOWN      =    0
+  CALL_NOT_FOUND =    1
+  PARSE_ERROR  =    2
+  SECURITY_VIOLATION =    3
+  OVER_QUOTA   =    4
+  REQUEST_TOO_LARGE =    5
+  CAPABILITY_DISABLED =    6
+  FEATURE_DISABLED =    7
+  BAD_REQUEST  =    8
+  RESPONSE_TOO_LARGE =    9
+  CANCELLED    =   10
+  REPLAY_ERROR =   11
+  DEADLINE_EXCEEDED =   12
+
+  _ErrorCode_NAMES = {
+    0: "UNKNOWN",
+    1: "CALL_NOT_FOUND",
+    2: "PARSE_ERROR",
+    3: "SECURITY_VIOLATION",
+    4: "OVER_QUOTA",
+    5: "REQUEST_TOO_LARGE",
+    6: "CAPABILITY_DISABLED",
+    7: "FEATURE_DISABLED",
+    8: "BAD_REQUEST",
+    9: "RESPONSE_TOO_LARGE",
+    10: "CANCELLED",
+    11: "REPLAY_ERROR",
+    12: "DEADLINE_EXCEEDED",
+  }
+
+  def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
+  ErrorCode_Name = classmethod(ErrorCode_Name)
+
+  has_code_ = 0
+  code_ = 0
+  has_detail_ = 0
+  detail_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def code(self): return self.code_
+
+  def set_code(self, x):
+    self.has_code_ = 1
+    self.code_ = x
+
+  def clear_code(self):
+    if self.has_code_:
+      self.has_code_ = 0
+      self.code_ = 0
+
+  def has_code(self): return self.has_code_
+
+  def detail(self): return self.detail_
+
+  def set_detail(self, x):
+    self.has_detail_ = 1
+    self.detail_ = x
+
+  def clear_detail(self):
+    if self.has_detail_:
+      self.has_detail_ = 0
+      self.detail_ = ""
+
+  def has_detail(self): return self.has_detail_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_code()): self.set_code(x.code())
+    if (x.has_detail()): self.set_detail(x.detail())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_code_ != x.has_code_: return 0
+    if self.has_code_ and self.code_ != x.code_: return 0
+    if self.has_detail_ != x.has_detail_: return 0
+    if self.has_detail_ and self.detail_ != x.detail_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_code_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: code not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthVarInt64(self.code_)
+    if (self.has_detail_): n += 1 + self.lengthString(len(self.detail_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_code_):
+      n += 1
+      n += self.lengthVarInt64(self.code_)
+    if (self.has_detail_): n += 1 + self.lengthString(len(self.detail_))
+    return n
+
+  def Clear(self):
+    self.clear_code()
+    self.clear_detail()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(8)
+    out.putVarInt32(self.code_)
+    if (self.has_detail_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.detail_)
+
+  def OutputPartial(self, out):
+    if (self.has_code_):
+      out.putVarInt32(8)
+      out.putVarInt32(self.code_)
+    if (self.has_detail_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.detail_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_code(d.getVarInt32())
+        continue
+      if tt == 18:
+        self.set_detail(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_code_: res+=prefix+("code: %s\n" % self.DebugFormatInt32(self.code_))
+    if self.has_detail_: res+=prefix+("detail: %s\n" % self.DebugFormatString(self.detail_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kcode = 1
+  kdetail = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "code",
+    2: "detail",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.ext.remote_api.RpcError'
 class Response(ProtocolBuffer.ProtocolMessage):
   has_response_ = 0
   response_ = ""
@@ -395,6 +564,8 @@ class Response(ProtocolBuffer.ProtocolMessage):
   application_error_ = None
   has_java_exception_ = 0
   java_exception_ = ""
+  has_rpc_error_ = 0
+  rpc_error_ = None
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -458,6 +629,25 @@ class Response(ProtocolBuffer.ProtocolMessage):
 
   def has_java_exception(self): return self.has_java_exception_
 
+  def rpc_error(self):
+    if self.rpc_error_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.rpc_error_ is None: self.rpc_error_ = RpcError()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.rpc_error_
+
+  def mutable_rpc_error(self): self.has_rpc_error_ = 1; return self.rpc_error()
+
+  def clear_rpc_error(self):
+
+    if self.has_rpc_error_:
+      self.has_rpc_error_ = 0;
+      if self.rpc_error_ is not None: self.rpc_error_.Clear()
+
+  def has_rpc_error(self): return self.has_rpc_error_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -465,6 +655,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if (x.has_exception()): self.set_exception(x.exception())
     if (x.has_application_error()): self.mutable_application_error().MergeFrom(x.application_error())
     if (x.has_java_exception()): self.set_java_exception(x.java_exception())
+    if (x.has_rpc_error()): self.mutable_rpc_error().MergeFrom(x.rpc_error())
 
   def Equals(self, x):
     if x is self: return 1
@@ -476,11 +667,14 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if self.has_application_error_ and self.application_error_ != x.application_error_: return 0
     if self.has_java_exception_ != x.has_java_exception_: return 0
     if self.has_java_exception_ and self.java_exception_ != x.java_exception_: return 0
+    if self.has_rpc_error_ != x.has_rpc_error_: return 0
+    if self.has_rpc_error_ and self.rpc_error_ != x.rpc_error_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_application_error_ and not self.application_error_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_rpc_error_ and not self.rpc_error_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -489,6 +683,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if (self.has_exception_): n += 1 + self.lengthString(len(self.exception_))
     if (self.has_application_error_): n += 1 + self.lengthString(self.application_error_.ByteSize())
     if (self.has_java_exception_): n += 1 + self.lengthString(len(self.java_exception_))
+    if (self.has_rpc_error_): n += 1 + self.lengthString(self.rpc_error_.ByteSize())
     return n
 
   def ByteSizePartial(self):
@@ -497,6 +692,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if (self.has_exception_): n += 1 + self.lengthString(len(self.exception_))
     if (self.has_application_error_): n += 1 + self.lengthString(self.application_error_.ByteSizePartial())
     if (self.has_java_exception_): n += 1 + self.lengthString(len(self.java_exception_))
+    if (self.has_rpc_error_): n += 1 + self.lengthString(self.rpc_error_.ByteSizePartial())
     return n
 
   def Clear(self):
@@ -504,6 +700,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
     self.clear_exception()
     self.clear_application_error()
     self.clear_java_exception()
+    self.clear_rpc_error()
 
   def OutputUnchecked(self, out):
     if (self.has_response_):
@@ -519,6 +716,10 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if (self.has_java_exception_):
       out.putVarInt32(34)
       out.putPrefixedString(self.java_exception_)
+    if (self.has_rpc_error_):
+      out.putVarInt32(42)
+      out.putVarInt32(self.rpc_error_.ByteSize())
+      self.rpc_error_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_response_):
@@ -534,6 +735,10 @@ class Response(ProtocolBuffer.ProtocolMessage):
     if (self.has_java_exception_):
       out.putVarInt32(34)
       out.putPrefixedString(self.java_exception_)
+    if (self.has_rpc_error_):
+      out.putVarInt32(42)
+      out.putVarInt32(self.rpc_error_.ByteSizePartial())
+      self.rpc_error_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -553,6 +758,12 @@ class Response(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_java_exception(d.getPrefixedString())
         continue
+      if tt == 42:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_rpc_error().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -568,6 +779,10 @@ class Response(ProtocolBuffer.ProtocolMessage):
       res+=self.application_error_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_java_exception_: res+=prefix+("java_exception: %s\n" % self.DebugFormatString(self.java_exception_))
+    if self.has_rpc_error_:
+      res+=prefix+"rpc_error <\n"
+      res+=self.rpc_error_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -578,6 +793,7 @@ class Response(ProtocolBuffer.ProtocolMessage):
   kexception = 2
   kapplication_error = 3
   kjava_exception = 4
+  krpc_error = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -585,7 +801,8 @@ class Response(ProtocolBuffer.ProtocolMessage):
     2: "exception",
     3: "application_error",
     4: "java_exception",
-  }, 4)
+    5: "rpc_error",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -593,7 +810,8 @@ class Response(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1165,4 +1383,4 @@ class TransactionQueryResult(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['Request','ApplicationError','Response','TransactionRequest','TransactionRequest_Precondition','TransactionQueryResult']
+__all__ = ['Request','ApplicationError','RpcError','Response','TransactionRequest','TransactionRequest_Precondition','TransactionQueryResult']

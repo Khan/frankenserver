@@ -18,27 +18,43 @@
  * Performs any required initialization before the user's script is run.
  */
 
-// Ensure that the class autoloader is the first include.
-require_once 'google/appengine/runtime/autoloader.php';
-require_once 'google/appengine/runtime/Memcache.php';
-require_once 'google/appengine/runtime/Memcached.php';
-require_once 'google/appengine/ext/session/MemcacheSessionHandler.php';
-require_once 'google/appengine/api/mail/MailService.php';
+namespace google\appengine\runtime {
+  use google\appengine\ext\session\MemcacheSessionHandler;
 
-// Setup the Memcache session handler
-google\appengine\ext\session\configureMemcacheSessionHandler();
+  // Ensure that the class autoloader is the first include.
+  require_once 'google/appengine/runtime/autoloader.php';
+  require_once 'google/appengine/runtime/Memcache.php';
+  require_once 'google/appengine/runtime/Memcached.php';
+  require_once 'google/appengine/api/mail/MailService.php';
 
-// Setup the GS stream wrapper
-$url_flags = STREAM_IS_URL;
-if (GAE_INCLUDE_REQUIRE_GS_STREAMS === 1) {
-  // By clearing the STREAM_IS_URL flag we allow this stream handler to be used
-  // in include & require calls.
-  $url_flags = 0;
+  // Setup the Memcache session handler
+  MemcacheSessionHandler::configure();
+
+  if (!empty($_FILES)) {
+    // TODO: b/13132830: Remove once feature releases.
+    if (ini_get('google_app_engine.direct_file_upload')) {
+      DirectUploadHandler::handle();
+    }
+    // TODO: b/13132830: Remove once feature releases.
+    if (ini_get('google_app_engine.php_enable_unlink_unused_uploads')) {
+      register_shutdown_function(
+        'google\appengine\runtime\UnlinkUploads::shutdownHook', $_FILES);
+      UnlinkUploads::removeEmptyFiles($_FILES);
+    }
+  }
+
+  // Setup the GS stream wrapper
+  $url_flags = STREAM_IS_URL;
+  if (GAE_INCLUDE_REQUIRE_GS_STREAMS === 1) {
+    // By clearing the STREAM_IS_URL flag we allow this stream handler to be
+    // used in include & require calls.
+    $url_flags = 0;
+  }
+
+  stream_wrapper_register('gs',
+      '\google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper',
+      $url_flags);
 }
-
-stream_wrapper_register('gs',
-    '\google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper',
-    $url_flags);
 
 // Map core PHP function implementations to proper function names. All function
 // implementations should be prefixed with an underscore. The implementations
@@ -49,9 +65,20 @@ stream_wrapper_register('gs',
 // Additionally due to e2e tests also running on devappserver with an
 // unmodified PHP interpreter the function definitions must be defined
 // conditionally and those e2e tests excluded from devappserver.
-if (strpos($_SERVER['SERVER_SOFTWARE'], 'Google App Engine') !== false) {
-  function gethostname() {
-    require_once 'google/appengine/runtime/GetHostName.php';
-    return google\appengine\runtime\_gethostname();
+namespace {
+  use google\appengine\runtime\SplOverride;
+
+  if (!function_exists('gethostname')) {
+    function gethostname() {
+      return SplOverride::gethostname();
+    }
+  }
+
+  if (!function_exists('move_uploaded_file')) {
+    function move_uploaded_file($filename, $destination,
+                                $context_options = null) {
+      return SplOverride::move_uploaded_file($filename, $destination,
+                                             $context_options);
+    }
   }
 }

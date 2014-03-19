@@ -756,7 +756,7 @@ class BufferedFile(object):
     """Return file's current position."""
     return self._position
 
-  def read(self, size):
+  def read(self, size=None):
     """Read data from RAW file.
 
     Args:
@@ -766,6 +766,8 @@ class BufferedFile(object):
     Returns:
       A string with data read.
     """
+    if size is None:
+      size = sys.maxint
     data_list = []
     while True:
       result = self.__readBuffer(size)

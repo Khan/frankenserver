@@ -300,9 +300,9 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
   """
 
 
-  from google.appengine.tools import dev_appserver
+  from google.appengine.tools import old_dev_appserver
 
-  class UploadDispatcher(dev_appserver.URLDispatcher):
+  class UploadDispatcher(old_dev_appserver.URLDispatcher):
     """Dispatcher that handles uploads."""
 
     def __init__(self):
@@ -377,7 +377,7 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
                               'Content-Length: %d\r\n'
                               '\r\n') % (header_text, len(content_text))
 
-          return dev_appserver.AppServerRequest(
+          return old_dev_appserver.AppServerRequest(
               success_path,
               None,
               mimetools.Message(cStringIO.StringIO(complete_headers)),
@@ -411,7 +411,7 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
       Makes sure the application upload handler returned an appropriate status
       code.
       """
-      response = dev_appserver.RewriteResponse(dispatched_output)
+      response = old_dev_appserver.RewriteResponse(dispatched_output)
       logging.info('Upload handler returned %d', response.status_code)
       outfile = cStringIO.StringIO()
       outfile.write('Status: %s\n' % response.status_code)
@@ -423,8 +423,8 @@ def CreateUploadDispatcher(get_blob_storage=GetBlobStorage):
         outfile.write(''.join(response.headers.headers))
 
       outfile.seek(0)
-      dev_appserver.URLDispatcher.EndRedirect(self,
-                                              outfile,
-                                              original_output)
+      old_dev_appserver.URLDispatcher.EndRedirect(self,
+                                                  outfile,
+                                                  original_output)
 
   return UploadDispatcher()

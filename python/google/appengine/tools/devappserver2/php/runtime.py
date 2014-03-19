@@ -30,6 +30,7 @@ import urllib
 import google
 
 from google.appengine.api import appinfo
+from google.appengine.tools.devappserver2 import environ_utils
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import php
 from google.appengine.tools.devappserver2 import request_rewriter
@@ -91,7 +92,7 @@ class PHPRuntime(object):
     """
     user_environ = self.environ_template.copy()
 
-    self.copy_headers(environ, user_environ)
+    environ_utils.propagate_environs(environ, user_environ)
     user_environ['REQUEST_METHOD'] = environ.get('REQUEST_METHOD', 'GET')
     user_environ['PATH_INFO'] = environ['PATH_INFO']
     user_environ['QUERY_STRING'] = environ['QUERY_STRING']
@@ -196,29 +197,6 @@ class PHPRuntime(object):
 
     start_response(status, headers)
     return [message.fp.read()]
-
-  def copy_headers(self, source_environ, dest_environ):
-    """Copy headers from source_environ to dest_environ.
-
-    This extracts headers that represent environ values and propagates all
-    other headers which are not used for internal implementation details or
-    headers that are stripped.
-
-    Args:
-      source_environ: The source environ dict.
-      dest_environ: The environ dict to populate.
-    """
-    # TODO: This method is copied from python/runtime.py. If this
-    # method isn't obsoleted, consider moving it to some sort of utility module.
-    for env in http_runtime_constants.ENVIRONS_TO_PROPAGATE:
-      value = source_environ.get(
-          http_runtime_constants.INTERNAL_ENVIRON_PREFIX + env, None)
-      if value is not None:
-        dest_environ[env] = value
-    for name, value in source_environ.items():
-      if (name.startswith('HTTP_') and
-          not name.startswith(http_runtime_constants.INTERNAL_ENVIRON_PREFIX)):
-        dest_environ[name] = value
 
 
 def main():

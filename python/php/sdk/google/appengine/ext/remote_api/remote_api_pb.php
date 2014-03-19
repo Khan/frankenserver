@@ -335,6 +335,138 @@ namespace google\appengine\ext\remote_api {
     }
   }
 }
+namespace google\appengine\ext\remote_api\RpcError {
+  class ErrorCode {
+    const UNKNOWN = 0;
+    const CALL_NOT_FOUND = 1;
+    const PARSE_ERROR = 2;
+    const SECURITY_VIOLATION = 3;
+    const OVER_QUOTA = 4;
+    const REQUEST_TOO_LARGE = 5;
+    const CAPABILITY_DISABLED = 6;
+    const FEATURE_DISABLED = 7;
+    const BAD_REQUEST = 8;
+    const RESPONSE_TOO_LARGE = 9;
+    const CANCELLED = 10;
+    const REPLAY_ERROR = 11;
+    const DEADLINE_EXCEEDED = 12;
+  }
+}
+namespace google\appengine\ext\remote_api {
+  class RpcError extends \google\net\ProtocolMessage {
+    public function getCode() {
+      if (!isset($this->code)) {
+        return 0;
+      }
+      return $this->code;
+    }
+    public function setCode($val) {
+      $this->code = $val;
+      return $this;
+    }
+    public function clearCode() {
+      unset($this->code);
+      return $this;
+    }
+    public function hasCode() {
+      return isset($this->code);
+    }
+    public function getDetail() {
+      if (!isset($this->detail)) {
+        return '';
+      }
+      return $this->detail;
+    }
+    public function setDetail($val) {
+      $this->detail = $val;
+      return $this;
+    }
+    public function clearDetail() {
+      unset($this->detail);
+      return $this;
+    }
+    public function hasDetail() {
+      return isset($this->detail);
+    }
+    public function clear() {
+      $this->clearCode();
+      $this->clearDetail();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->code)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->code);
+      }
+      if (isset($this->detail)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->detail));
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->code)) {
+        $out->putVarInt32(8);
+        $out->putVarInt32($this->code);
+      }
+      if (isset($this->detail)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->detail);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 8:
+            $this->setCode($d->getVarInt32());
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $this->setDetail(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->code)) return 'code';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasCode()) {
+        $this->setCode($x->getCode());
+      }
+      if ($x->hasDetail()) {
+        $this->setDetail($x->getDetail());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->code) !== isset($x->code)) return false;
+      if (isset($this->code) && !$this->integerEquals($this->code, $x->code)) return false;
+      if (isset($this->detail) !== isset($x->detail)) return false;
+      if (isset($this->detail) && $this->detail !== $x->detail) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->code)) {
+        $res .= $prefix . "code: " . $this->debugFormatInt32($this->code) . "\n";
+      }
+      if (isset($this->detail)) {
+        $res .= $prefix . "detail: " . $this->debugFormatString($this->detail) . "\n";
+      }
+      return $res;
+    }
+  }
+}
 namespace google\appengine\ext\remote_api {
   class Response extends \google\net\ProtocolMessage {
     public function getResponse() {
@@ -410,11 +542,34 @@ namespace google\appengine\ext\remote_api {
     public function hasJavaException() {
       return isset($this->java_exception);
     }
+    public function getRpcError() {
+      if (!isset($this->rpc_error)) {
+        return new \google\appengine\ext\remote_api\RpcError();
+      }
+      return $this->rpc_error;
+    }
+    public function mutableRpcError() {
+      if (!isset($this->rpc_error)) {
+        $res = new \google\appengine\ext\remote_api\RpcError();
+        $this->rpc_error = $res;
+        return $res;
+      }
+      return $this->rpc_error;
+    }
+    public function clearRpcError() {
+      if (isset($this->rpc_error)) {
+        unset($this->rpc_error);
+      }
+    }
+    public function hasRpcError() {
+      return isset($this->rpc_error);
+    }
     public function clear() {
       $this->clearResponse();
       $this->clearException();
       $this->clearApplicationError();
       $this->clearJavaException();
+      $this->clearRpcError();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -433,6 +588,10 @@ namespace google\appengine\ext\remote_api {
       if (isset($this->java_exception)) {
         $res += 1;
         $res += $this->lengthString(strlen($this->java_exception));
+      }
+      if (isset($this->rpc_error)) {
+        $res += 1;
+        $res += $this->lengthString($this->rpc_error->byteSizePartial());
       }
       return $res;
     }
@@ -453,6 +612,11 @@ namespace google\appengine\ext\remote_api {
       if (isset($this->java_exception)) {
         $out->putVarInt32(34);
         $out->putPrefixedString($this->java_exception);
+      }
+      if (isset($this->rpc_error)) {
+        $out->putVarInt32(42);
+        $out->putVarInt32($this->rpc_error->byteSizePartial());
+        $this->rpc_error->outputPartial($out);
       }
     }
     public function tryMerge($d) {
@@ -480,6 +644,12 @@ namespace google\appengine\ext\remote_api {
             $this->setJavaException(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
+          case 42:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableRpcError()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -490,6 +660,7 @@ namespace google\appengine\ext\remote_api {
     }
     public function checkInitialized() {
       if (isset($this->application_error) && (!$this->application_error->isInitialized())) return 'application_error';
+      if (isset($this->rpc_error) && (!$this->rpc_error->isInitialized())) return 'rpc_error';
       return null;
     }
     public function mergeFrom($x) {
@@ -506,6 +677,9 @@ namespace google\appengine\ext\remote_api {
       if ($x->hasJavaException()) {
         $this->setJavaException($x->getJavaException());
       }
+      if ($x->hasRpcError()) {
+        $this->mutableRpcError()->mergeFrom($x->getRpcError());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -517,6 +691,8 @@ namespace google\appengine\ext\remote_api {
       if (isset($this->application_error) && !$this->application_error->equals($x->application_error)) return false;
       if (isset($this->java_exception) !== isset($x->java_exception)) return false;
       if (isset($this->java_exception) && $this->java_exception !== $x->java_exception) return false;
+      if (isset($this->rpc_error) !== isset($x->rpc_error)) return false;
+      if (isset($this->rpc_error) && !$this->rpc_error->equals($x->rpc_error)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -532,6 +708,9 @@ namespace google\appengine\ext\remote_api {
       }
       if (isset($this->java_exception)) {
         $res .= $prefix . "java_exception: " . $this->debugFormatString($this->java_exception) . "\n";
+      }
+      if (isset($this->rpc_error)) {
+        $res .= $prefix . "rpc_error <\n" . $this->rpc_error->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

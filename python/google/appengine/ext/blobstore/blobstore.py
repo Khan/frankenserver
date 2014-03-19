@@ -270,9 +270,9 @@ class BlobInfo(object):
     """
     return self.__key
 
-  def delete(self):
+  def delete(self, _token=None):
     """Permanently delete blob from Blobstore."""
-    delete(self.key())
+    delete(self.key(), _token=_token)
 
   def open(self, *args, **kwargs):
     """Returns a BlobReader for this blob.

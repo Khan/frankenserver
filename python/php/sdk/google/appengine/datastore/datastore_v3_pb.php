@@ -26,47 +26,78 @@ namespace dummy {
 }
 namespace google\appengine_datastore_v3 {
   class InternalHeader extends \google\net\ProtocolMessage {
-    public function getQos() {
-      if (!isset($this->qos)) {
+    public function getRequestingAppId() {
+      if (!isset($this->requesting_app_id)) {
         return '';
       }
-      return $this->qos;
+      return $this->requesting_app_id;
     }
-    public function setQos($val) {
-      $this->qos = $val;
+    public function setRequestingAppId($val) {
+      $this->requesting_app_id = $val;
       return $this;
     }
-    public function clearQos() {
-      unset($this->qos);
+    public function clearRequestingAppId() {
+      unset($this->requesting_app_id);
       return $this;
     }
-    public function hasQos() {
-      return isset($this->qos);
+    public function hasRequestingAppId() {
+      return isset($this->requesting_app_id);
+    }
+    public function getApiSettings() {
+      if (!isset($this->api_settings)) {
+        return '';
+      }
+      return $this->api_settings;
+    }
+    public function setApiSettings($val) {
+      $this->api_settings = $val;
+      return $this;
+    }
+    public function clearApiSettings() {
+      unset($this->api_settings);
+      return $this;
+    }
+    public function hasApiSettings() {
+      return isset($this->api_settings);
     }
     public function clear() {
-      $this->clearQos();
+      $this->clearRequestingAppId();
+      $this->clearApiSettings();
     }
     public function byteSizePartial() {
       $res = 0;
-      if (isset($this->qos)) {
+      if (isset($this->requesting_app_id)) {
         $res += 1;
-        $res += $this->lengthString(strlen($this->qos));
+        $res += $this->lengthString(strlen($this->requesting_app_id));
+      }
+      if (isset($this->api_settings)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->api_settings));
       }
       return $res;
     }
     public function outputPartial($out) {
-      if (isset($this->qos)) {
-        $out->putVarInt32(10);
-        $out->putPrefixedString($this->qos);
+      if (isset($this->requesting_app_id)) {
+        $out->putVarInt32(18);
+        $out->putPrefixedString($this->requesting_app_id);
+      }
+      if (isset($this->api_settings)) {
+        $out->putVarInt32(26);
+        $out->putPrefixedString($this->api_settings);
       }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
         $tt = $d->getVarInt32();
         switch ($tt) {
-          case 10:
+          case 18:
             $length = $d->getVarInt32();
-            $this->setQos(substr($d->buffer(), $d->pos(), $length));
+            $this->setRequestingAppId(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $this->setApiSettings(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -82,20 +113,28 @@ namespace google\appengine_datastore_v3 {
     }
     public function mergeFrom($x) {
       if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
-      if ($x->hasQos()) {
-        $this->setQos($x->getQos());
+      if ($x->hasRequestingAppId()) {
+        $this->setRequestingAppId($x->getRequestingAppId());
+      }
+      if ($x->hasApiSettings()) {
+        $this->setApiSettings($x->getApiSettings());
       }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
-      if (isset($this->qos) !== isset($x->qos)) return false;
-      if (isset($this->qos) && $this->qos !== $x->qos) return false;
+      if (isset($this->requesting_app_id) !== isset($x->requesting_app_id)) return false;
+      if (isset($this->requesting_app_id) && $this->requesting_app_id !== $x->requesting_app_id) return false;
+      if (isset($this->api_settings) !== isset($x->api_settings)) return false;
+      if (isset($this->api_settings) && $this->api_settings !== $x->api_settings) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
       $res = '';
-      if (isset($this->qos)) {
-        $res .= $prefix . "qos: " . $this->debugFormatString($this->qos) . "\n";
+      if (isset($this->requesting_app_id)) {
+        $res .= $prefix . "requesting_app_id: " . $this->debugFormatString($this->requesting_app_id) . "\n";
+      }
+      if (isset($this->api_settings)) {
+        $res .= $prefix . "api_settings: " . $this->debugFormatString($this->api_settings) . "\n";
       }
       return $res;
     }
@@ -2658,6 +2697,23 @@ namespace google\appengine_datastore_v3 {
     public function hasDistinctInfixSize() {
       return isset($this->distinct_infix_size);
     }
+    public function getPlanLabel() {
+      if (!isset($this->plan_label)) {
+        return '';
+      }
+      return $this->plan_label;
+    }
+    public function setPlanLabel($val) {
+      $this->plan_label = $val;
+      return $this;
+    }
+    public function clearPlanLabel() {
+      unset($this->plan_label);
+      return $this;
+    }
+    public function hasPlanLabel() {
+      return isset($this->plan_label);
+    }
     public function clear() {
       $this->clearPrimaryScan();
       $this->clearMergeJoinScan();
@@ -2668,6 +2724,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearIndexDef();
       $this->clearPropertyName();
       $this->clearDistinctInfixSize();
+      $this->clearPlanLabel();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2707,6 +2764,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->distinct_infix_size)) {
         $res += 2;
         $res += $this->lengthVarInt64($this->distinct_infix_size);
+      }
+      if (isset($this->plan_label)) {
+        $res += 2;
+        $res += $this->lengthString(strlen($this->plan_label));
       }
       return $res;
     }
@@ -2753,6 +2814,10 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(200);
         $out->putVarInt32($this->distinct_infix_size);
       }
+      if (isset($this->plan_label)) {
+        $out->putVarInt32(210);
+        $out->putPrefixedString($this->plan_label);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -2789,6 +2854,11 @@ namespace google\appengine_datastore_v3 {
             break;
           case 200:
             $this->setDistinctInfixSize($d->getVarInt32());
+            break;
+          case 210:
+            $length = $d->getVarInt32();
+            $this->setPlanLabel(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -2837,6 +2907,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasDistinctInfixSize()) {
         $this->setDistinctInfixSize($x->getDistinctInfixSize());
       }
+      if ($x->hasPlanLabel()) {
+        $this->setPlanLabel($x->getPlanLabel());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -2862,6 +2935,8 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->distinct_infix_size) !== isset($x->distinct_infix_size)) return false;
       if (isset($this->distinct_infix_size) && !$this->integerEquals($this->distinct_infix_size, $x->distinct_infix_size)) return false;
+      if (isset($this->plan_label) !== isset($x->plan_label)) return false;
+      if (isset($this->plan_label) && $this->plan_label !== $x->plan_label) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2892,6 +2967,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->distinct_infix_size)) {
         $res .= $prefix . "distinct_infix_size: " . $this->debugFormatInt32($this->distinct_infix_size) . "\n";
+      }
+      if (isset($this->plan_label)) {
+        $res .= $prefix . "plan_label: " . $this->debugFormatString($this->plan_label) . "\n";
       }
       return $res;
     }

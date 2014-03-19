@@ -155,12 +155,12 @@ class ApiRequest(object):
   """
   API_PREFIX = '/_ah/api/'
 
-  def __init__(self, base_env_dict, dev_appserver, request=None):
+  def __init__(self, base_env_dict, old_dev_appserver, request=None):
     """Constructor.
 
     Args:
       base_env_dict: Dictionary of CGI environment parameters.
-      dev_appserver: used to call standard SplitURL method.
+      old_dev_appserver: used to call standard SplitURL method.
       request: AppServerRequest.  Can be None.
     """
     self.cgi_env = base_env_dict
@@ -168,7 +168,7 @@ class ApiRequest(object):
     self.http_method = base_env_dict['REQUEST_METHOD']
     self.port = base_env_dict['SERVER_PORT']
     if request:
-      self.path, self.query = dev_appserver.SplitURL(request.relative_url)
+      self.path, self.query = old_dev_appserver.SplitURL(request.relative_url)
 
 
       self.body = request.infile.read()
@@ -804,9 +804,9 @@ def CreateApiserverDispatcher(config_manager=None):
 
 
 
-  from google.appengine.tools import dev_appserver
+  from google.appengine.tools import old_dev_appserver
 
-  class ApiserverDispatcher(dev_appserver.URLDispatcher):
+  class ApiserverDispatcher(old_dev_appserver.URLDispatcher):
     """Dispatcher that handles requests to the built-in apiserver handlers."""
 
     _API_EXPLORER_URL = 'http://apis-explorer.appspot.com/apis-explorer/?base='
@@ -833,7 +833,7 @@ def CreateApiserverDispatcher(config_manager=None):
                           self.HandleApiExplorerRequest)
       self._AddDispatcher('/_ah/api/static/.*$',
                           self.HandleApiStaticRequest)
-      dev_appserver.URLDispatcher.__init__(self, *args, **kwargs)
+      old_dev_appserver.URLDispatcher.__init__(self, *args, **kwargs)
 
     def _AddDispatcher(self, path_regex, dispatch_function):
       """Add a request path and dispatch handler.
@@ -915,7 +915,7 @@ def CreateApiserverDispatcher(config_manager=None):
         return None
 
 
-      self.request = ApiRequest(base_env_dict, dev_appserver, request)
+      self.request = ApiRequest(base_env_dict, old_dev_appserver, request)
 
 
 
@@ -925,7 +925,7 @@ def CreateApiserverDispatcher(config_manager=None):
 
 
       self._request_stage = self.RequestState.GET_API_CONFIGS
-      return self.GetApiConfigs(base_env_dict, dev_appserver)
+      return self.GetApiConfigs(base_env_dict, old_dev_appserver)
 
     def HandleApiExplorerRequest(self, unused_request, outfile, base_env_dict):
       """Handler for requests to _ah/api/explorer.
@@ -1007,20 +1007,21 @@ def CreateApiserverDispatcher(config_manager=None):
       else:
         return self.FailRequest('EndRedirect in unexpected state', outfile)
 
-    def GetApiConfigs(self, cgi_env, dev_appserver):
+    def GetApiConfigs(self, cgi_env, old_dev_appserver):
       """Makes a call to BackendService.getApiConfigs and parses result.
 
       Args:
         cgi_env: CGI environment dictionary as passed in by the framework
-        dev_appserver: dev_appserver instance used to generate AppServerRequest.
+        old_dev_appserver:
+            old_dev_appserver instance used to generate AppServerRequest.
 
       Returns:
         AppServerRequest to be returned as an internal redirect to getApiConfigs
       """
-      request = ApiRequest(cgi_env, dev_appserver)
+      request = ApiRequest(cgi_env, old_dev_appserver)
       request.path = 'BackendService.getApiConfigs'
       request.body = '{}'
-      return BuildCGIRequest(cgi_env, request, dev_appserver)
+      return BuildCGIRequest(cgi_env, request, old_dev_appserver)
 
     @staticmethod
     def VerifyResponse(response, status_code, content_type=None):
@@ -1075,7 +1076,7 @@ def CreateApiserverDispatcher(config_manager=None):
       Returns:
         True on success, False on failure
       """
-      response = dev_appserver.RewriteResponse(dispatched_output)
+      response = old_dev_appserver.RewriteResponse(dispatched_output)
       if self.VerifyResponse(response, 200, 'application/json'):
         self.config_manager.ParseApiConfigResponse(response.body.read())
         return True
@@ -1109,7 +1110,7 @@ def CreateApiserverDispatcher(config_manager=None):
           if not discovery_service.HandleDiscoveryRequest(self.request.path):
             self._request_stage = self.RequestState.SPI_CALL
             return BuildCGIRequest(self.request.cgi_env, self.request,
-                                   dev_appserver)
+                                   old_dev_appserver)
         except RequestRejectionError, rejection_error:
           self._EndRequest()
           return SendCGIRejectedResponse(rejection_error, outfile)
@@ -1169,7 +1170,7 @@ def CreateApiserverDispatcher(config_manager=None):
         None
       """
 
-      response = dev_appserver.AppServerResponse(
+      response = old_dev_appserver.AppServerResponse(
           response_file=dispatched_output)
       response_headers, body = self.ParseCgiResponse(response)
 
@@ -1498,16 +1499,16 @@ def CreateApiserverDispatcher(config_manager=None):
   return ApiserverDispatcher(config_manager)
 
 
-def BuildCGIRequest(base_env_dict, request, dev_appserver):
+def BuildCGIRequest(base_env_dict, request, old_dev_appserver):
   """Build a CGI request to Call a method on an SPI backend.
 
   Args:
     base_env_dict: CGI environment dict
     request: ApiRequest to be converted to a CGI request
-    dev_appserver: Handle to dev_appserver to generate CGI request.
+    old_dev_appserver: Handle to old_dev_appserver to generate CGI request.
 
   Returns:
-    dev_appserver.AppServerRequest internal redirect object
+    old_dev_appserver.AppServerRequest internal redirect object
   """
   if request.headers is None:
     request.headers = {}
@@ -1528,7 +1529,7 @@ def BuildCGIRequest(base_env_dict, request, dev_appserver):
   body_outfile.write(request.body)
   header_outfile.seek(0)
   body_outfile.seek(0)
-  return dev_appserver.AppServerRequest(
+  return old_dev_appserver.AppServerRequest(
       url, None, mimetools.Message(header_outfile), body_outfile)
 
 

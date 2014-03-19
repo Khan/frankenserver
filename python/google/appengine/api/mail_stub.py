@@ -29,6 +29,7 @@ send real email via SMTP or sendmail."""
 
 
 
+from email import encoders
 from email import MIMEBase
 from email import MIMEMultipart
 from email import MIMEText
@@ -283,6 +284,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     import email
 
     mime_message = mail.MailMessageToMIMEMessage(request)
+    _Base64EncodeAttachments(mime_message)
     if self._smtp_host:
 
       self._SendSMTP(mime_message, smtp_lib)
@@ -317,3 +319,15 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       log('Both SMTP and sendmail are enabled.  Ignoring sendmail.')
 
   _Dynamic_SendToAdmins = _SendToAdmins
+
+
+def _Base64EncodeAttachments(mime_message):
+  """Base64 encode all individual attachments that are not text.
+
+  Args:
+    mime_message: MimeMessage to process.
+  """
+  for item in mime_message.get_payload():
+    if (item.get_content_maintype() not in ['multipart', 'text'] and
+        'Content-Transfer-Encoding' not in item):
+      encoders.encode_base64(item)

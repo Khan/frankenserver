@@ -22,7 +22,6 @@
 """
 
 from google.appengine.tools import app_engine_web_xml_parser as aewxp
-from google.appengine.tools import backends_xml_parser
 from google.appengine.tools import handler_generator
 from google.appengine.tools import web_xml_parser
 from google.appengine.tools.app_engine_web_xml_parser import AppEngineConfigException
@@ -32,10 +31,9 @@ NO_API_VERSION = 'none'
 
 
 def TranslateXmlToYaml(app_engine_web_xml_str,
-                       backends_xml_str,
                        web_xml_str,
                        static_files,
-                       api_version):
+                       api_version='1.0'):
   """Does xml-string to yaml-string translation, given each separate file text.
 
   Processes each xml string into an object representing the xml,
@@ -43,7 +41,6 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
 
   Args:
     app_engine_web_xml_str: text from app_engine_web.xml
-    backends_xml_str: text from backends.xml
     web_xml_str: text from web.xml
     static_files: List of static files
     api_version: current api version
@@ -55,13 +52,11 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
     AppEngineConfigException: raised in processing stage for illegal XML.
   """
   aewx_parser = aewxp.AppEngineWebXmlParser()
-  backends_parser = backends_xml_parser.BackendsXmlParser()
   web_parser = web_xml_parser.WebXmlParser()
   app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
-  backends_xml = backends_parser.ProcessXml(backends_xml_str)
   web_xml = web_parser.ProcessXml(web_xml_str)
   translator = AppYamlTranslator(
-      app_engine_web_xml, backends_xml, web_xml, static_files, api_version)
+      app_engine_web_xml, web_xml, static_files, api_version)
   return translator.GetYaml()
 
 
@@ -76,18 +71,15 @@ class AppYamlTranslator(object):
   Attributes:
     app_engine_web_xml: AppEngineWebXml object containing relevant information
       from appengine-web.xml
-    backends_xml: BackendsXml object containing relevant info from backends.xml
   """
 
   def __init__(self,
                app_engine_web_xml,
-               backends_xml,
                web_xml,
                static_files,
                api_version):
 
     self.app_engine_web_xml = app_engine_web_xml
-    self.backends_xml = backends_xml
     self.web_xml = web_xml
     self.static_files = static_files
     self.api_version = api_version
@@ -106,7 +98,6 @@ class AppYamlTranslator(object):
     stmnt_list += self.TranslatePagespeed()
     stmnt_list += self.TranslateVmSettings()
     stmnt_list += self.TranslateErrorHandlers()
-    stmnt_list += self.TranslateBackendsXml()
     stmnt_list += self.TranslateApiVersion()
     stmnt_list += self.TranslateHandlers()
     return '\n'.join(stmnt_list) + '\n'
@@ -256,26 +247,6 @@ class AppYamlTranslator(object):
       if mime_type:
         statements.append('  mime_type: %s' % mime_type)
 
-    return statements
-
-  def TranslateBackendsXml(self):
-    """Translates backends.xml backends settings to yaml."""
-    if not self.backends_xml:
-      return []
-    statements = ['backends:']
-
-    for backend in self.backends_xml:
-      statements.append('- name: %s' % backend.name)
-      for entry, field in [('instances', backend.instances),
-                           ('instance_class', backend.instance_class),
-                           ('max_concurrent_requests',
-                            backend.max_concurrent_requests)]:
-        if field is not None:
-          statements.append('  %s: %s' % (entry, str(field)))
-
-      if backend.options:
-        options_str = ', '.join(sorted(list(backend.options)))
-        statements.append('  options: %s' % options_str)
     return statements
 
   def TranslateHandlers(self):

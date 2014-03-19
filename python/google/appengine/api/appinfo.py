@@ -32,10 +32,11 @@ configuration files.
 
 
 
-import os
 import logging
+import os
 import re
 import string
+import sys
 import wsgiref.util
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -188,6 +189,8 @@ DEFAULT_SKIP_FILES = (r'^(.*/)?('
                       r'(.*/RCS/.*)|'
                       r'(\..*)|'
                       r')$')
+
+SKIP_NO_FILES = r'(?!)'
 
 DEFAULT_NOBUILD_FILES = (r'^$')
 
@@ -1330,6 +1333,28 @@ class EnvironmentVariables(validation.ValidatedDict):
             if result_env_variables else None)
 
 
+def VmSafeSetRuntime(appyaml, runtime):
+  """Sets the runtime while respecting vm runtimes rules for runtime settings.
+
+  Args:
+     appyaml: AppInfoExternal instance, which will be modified.
+     runtime: The runtime to use.
+
+  Returns:
+     The passed in appyaml (which has been modified).
+  """
+  if appyaml.vm:
+    if not appyaml.vm_settings:
+      appyaml.vm_settings = VmSettings()
+
+
+    appyaml.vm_settings['vm_runtime'] = runtime
+    appyaml.runtime = 'vm'
+  else:
+    appyaml.runtime = runtime
+  return appyaml
+
+
 def NormalizeVmSettings(appyaml):
   """Normalize Vm settings.
 
@@ -1349,10 +1374,7 @@ def NormalizeVmSettings(appyaml):
     if not appyaml.vm_settings:
       appyaml.vm_settings = VmSettings()
     if 'vm_runtime' not in appyaml.vm_settings:
-
-
-      appyaml.vm_settings['vm_runtime'] = appyaml.runtime
-      appyaml.runtime = 'vm'
+      appyaml = VmSafeSetRuntime(appyaml, appyaml.runtime)
   return appyaml
 
 
@@ -1361,11 +1383,11 @@ class VmHealthCheck(validation.Validated):
 
   ATTRIBUTES = {
       ENABLE_HEALTH_CHECK: validation.Optional(validation.TYPE_BOOL),
-      CHECK_INTERVAL_SEC: validation.Optional(validation.TYPE_INT),
-      TIMEOUT_SEC: validation.Optional(validation.TYPE_INT),
-      UNHEALTHY_THRESHOLD: validation.Optional(validation.TYPE_INT),
-      HEALTHY_THRESHOLD: validation.Optional(validation.TYPE_INT),
-      RESTART_THRESHOLD: validation.Optional(validation.TYPE_INT),
+      CHECK_INTERVAL_SEC: validation.Optional(validation.Range(0, sys.maxint)),
+      TIMEOUT_SEC: validation.Optional(validation.Range(0, sys.maxint)),
+      UNHEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
+      HEALTHY_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
+      RESTART_THRESHOLD: validation.Optional(validation.Range(0, sys.maxint)),
       HOST: validation.Optional(validation.TYPE_STR)}
 
 
@@ -1387,6 +1409,7 @@ class AppInclude(validation.Validated):
       VM: validation.Optional(bool),
       VM_SETTINGS: validation.Optional(VmSettings),
       ENV_VARIABLES: validation.Optional(EnvironmentVariables),
+      SKIP_FILES: validation.RegexStr(default=SKIP_NO_FILES),
 
 
   }
@@ -1448,6 +1471,8 @@ class AppInclude(validation.Validated):
 
     one.env_variables = EnvironmentVariables.Merge(one.env_variables,
                                                    two.env_variables)
+
+    one.skip_files = cls.MergeSkipFiles(one.skip_files, two.skip_files)
 
     return one
 
@@ -1515,6 +1540,17 @@ class AppInclude(validation.Validated):
       appinclude_one.handlers = appinclude_two.handlers
 
     return cls._CommonMergeOps(appinclude_one, appinclude_two)
+
+  @staticmethod
+  def MergeSkipFiles(skip_files_one, skip_files_two):
+    if skip_files_one == SKIP_NO_FILES:
+      return skip_files_two
+    if skip_files_two == SKIP_NO_FILES:
+      return skip_files_one
+    return validation.RegexStr().Validate(
+        [skip_files_one, skip_files_two], SKIP_FILES)
+
+
 
 
 class AppInfoExternal(validation.Validated):
@@ -1782,6 +1818,17 @@ class AppInfoExternal(validation.Validated):
 
     start_handler = URLMap(url=_START_PATH, script=match.start)
     self.handlers.insert(0, start_handler)
+
+  def GetEffectiveRuntime(self):
+    """Returns the app's runtime, resolving VMs to the underlying vm_runtime.
+
+    Returns:
+      The effective runtime: the value of vm_settings.vm_runtime if runtime is
+      "vm", or runtime otherwise.
+    """
+    if self.runtime == 'vm' and hasattr(self, 'vm_settings'):
+      return self.vm_settings.get('vm_runtime')
+    return self.runtime
 
 
 def ValidateHandlers(handlers, is_include_file=False):

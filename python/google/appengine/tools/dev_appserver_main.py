@@ -172,7 +172,7 @@ from google.appengine.api import yaml_errors
 from google.appengine.dist import py_zipimport
 from google.appengine.tools import appcfg
 from google.appengine.tools import appengine_rpc
-from google.appengine.tools import dev_appserver
+from google.appengine.tools import old_dev_appserver
 from google.appengine.tools import dev_appserver_multiprocess as multiprocess
 from google.appengine.tools import sdk_update_checker
 
@@ -623,10 +623,10 @@ def main(argv):
 
   if '_DEFAULT_ENV_AUTH_DOMAIN' in option_dict:
     auth_domain = option_dict['_DEFAULT_ENV_AUTH_DOMAIN']
-    dev_appserver.DEFAULT_ENV['AUTH_DOMAIN'] = auth_domain
+    old_dev_appserver.DEFAULT_ENV['AUTH_DOMAIN'] = auth_domain
   if '_ENABLE_LOGGING' in option_dict:
     enable_logging = option_dict['_ENABLE_LOGGING']
-    dev_appserver.HardenedModulesHook.ENABLE_LOGGING = enable_logging
+    old_dev_appserver.HardenedModulesHook.ENABLE_LOGGING = enable_logging
 
   log_level = option_dict[ARG_LOG_LEVEL]
 
@@ -640,12 +640,12 @@ def main(argv):
   default_partition = option_dict[ARG_DEFAULT_PARTITION]
   appinfo = None
   try:
-    appinfo, _, _ = dev_appserver.LoadAppConfig(
+    appinfo, _, _ = old_dev_appserver.LoadAppConfig(
         root_path, {}, default_partition=default_partition)
   except yaml_errors.EventListenerError, e:
     logging.error('Fatal error when loading application configuration:\n%s', e)
     return 1
-  except dev_appserver.InvalidAppConfigError, e:
+  except old_dev_appserver.InvalidAppConfigError, e:
     logging.error('Application configuration file invalid:\n%s', e)
     return 1
 
@@ -702,9 +702,9 @@ def main(argv):
     logging.getLogger().setLevel(logging.WARNING)
 
   try:
-    dev_appserver.SetupStubs(appinfo.application,
-                             _use_atexit_for_datastore_stub=True,
-                             **option_dict)
+    old_dev_appserver.SetupStubs(appinfo.application,
+                                 _use_atexit_for_datastore_stub=True,
+                                 **option_dict)
   except:
     exc_type, exc_value, exc_traceback = sys.exc_info()
     logging.error(str(exc_type) + ': ' + str(exc_value))
@@ -715,7 +715,7 @@ def main(argv):
   frontend_port=option_dict.get(ARG_MULTIPROCESS_FRONTEND_PORT, None)
   if frontend_port is not None:
     frontend_port = int(frontend_port)
-  http_server = dev_appserver.CreateServer(
+  http_server = old_dev_appserver.CreateServer(
       root_path,
       login_url,
       port,
@@ -755,7 +755,7 @@ def main(argv):
         done = True
       except KeyboardInterrupt:
         pass
-    dev_appserver.TearDownStubs()
+    old_dev_appserver.TearDownStubs()
 
   return 0
 

@@ -41,12 +41,13 @@ from google.appengine.tools.devappserver2.python import stubs
 CODING_MAGIC_COMMENT_RE = re.compile('coding[:=]\s*([-\w.]+)')
 DEFAULT_ENCODING = 'ascii'
 
-_C_MODULES = frozenset(['numpy', 'Crypto', 'lxml', 'PIL'])
+_C_MODULES = frozenset(['cv', 'Crypto', 'lxml', 'numpy', 'PIL'])
 
 NAME_TO_CMODULE_WHITELIST_REGEX = {
+    'cv': re.compile(r'cv(\..*)?$'),
+    'lxml': re.compile(r'lxml(\..*)?$'),
     'numpy': re.compile(r'numpy(\..*)?$'),
     'pycrypto': re.compile(r'Crypto(\..*)?$'),
-    'lxml': re.compile(r'lxml(\..*)?$'),
     'PIL': re.compile(r'(PIL(\..*)?|_imaging|_imagingft|_imagingmath)$'),
     'ssl': re.compile(r'_ssl$'),
 }
@@ -54,7 +55,7 @@ NAME_TO_CMODULE_WHITELIST_REGEX = {
 # Maps App Engine third-party library names to the Python package name for
 # libraries whose names differ from the package names.
 _THIRD_PARTY_LIBRARY_NAME_OVERRIDES = {
-    'pycrypto': 'Crypto'
+    'pycrypto': 'Crypto',
 }
 
 # The location of third-party libraries will be different for the packaged SDK.

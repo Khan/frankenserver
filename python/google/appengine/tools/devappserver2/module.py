@@ -64,6 +64,7 @@ from google.appengine.tools.devappserver2 import static_files_handler
 from google.appengine.tools.devappserver2 import thread_executor
 from google.appengine.tools.devappserver2 import url_handler
 from google.appengine.tools.devappserver2 import util
+from google.appengine.tools.devappserver2 import vm_runtime_proxy
 from google.appengine.tools.devappserver2 import wsgi_handler
 from google.appengine.tools.devappserver2 import wsgi_server
 
@@ -147,6 +148,7 @@ class Module(object):
       'php': php_runtime.PHPRuntimeInstanceFactory,
       'python': python_runtime.PythonRuntimeInstanceFactory,
       'python27': python_runtime.PythonRuntimeInstanceFactory,
+      'vm': vm_runtime_proxy.VMRuntimeInstanceFactory,
   }
   if java_runtime:
     _RUNTIME_INSTANCE_FACTORIES.update({
@@ -296,6 +298,9 @@ class Module(object):
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
 
+    if self._vm_config:
+      runtime_config.vm_config.CopyFrom(self._vm_config)
+
     return runtime_config
 
   def _maybe_restart_instances(self, config_changed, file_changed):
@@ -359,6 +364,7 @@ class Module(object):
                php_config,
                python_config,
                cloud_sql_config,
+               vm_config,
                default_version_port,
                port_registry,
                request_data,
@@ -369,7 +375,6 @@ class Module(object):
                allow_skipped_files,
                threadsafe_override):
     """Initializer for Module.
-
     Args:
       module_configuration: An application_configuration.ModuleConfiguration
           instance storing the configuration data for a module.
@@ -392,6 +397,9 @@ class Module(object):
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      vm_config: A runtime_config_pb2.VMConfig instance containing
+          VM runtime-specific configuration. If None all docker-related stuff
+          is disabled.
       default_version_port: An int containing the port of the default version.
       port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
           with a mapping of port to Module and Instance.
@@ -422,6 +430,7 @@ class Module(object):
     self._php_config = php_config
     self._python_config = python_config
     self._cloud_sql_config = cloud_sql_config
+    self._vm_config = vm_config
     self._request_data = request_data
     self._allow_skipped_files = allow_skipped_files
     self._threadsafe_override = threadsafe_override
@@ -762,6 +771,7 @@ class Module(object):
                                       self._php_config,
                                       self._python_config,
                                       self._cloud_sql_config,
+                                      self._vm_config,
                                       self._default_version_port,
                                       self._port_registry,
                                       self._request_data,
@@ -865,6 +875,7 @@ class AutoScalingModule(Module):
                php_config,
                python_config,
                cloud_sql_config,
+               unused_vm_config,
                default_version_port,
                port_registry,
                request_data,
@@ -898,6 +909,9 @@ class AutoScalingModule(Module):
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      unused_vm_config: A runtime_config_pb2.VMConfig instance containing
+          VM runtime-specific configuration. Ignored by AutoScalingModule as
+          autoscaling is not yet supported by VM runtimes.
       default_version_port: An int containing the port of the default version.
       port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
           with a mapping of port to Module and Instance.
@@ -927,6 +941,9 @@ class AutoScalingModule(Module):
                                             php_config,
                                             python_config,
                                             cloud_sql_config,
+                                            # VM runtimes does not support
+                                            # autoscaling.
+                                            None,
                                             default_version_port,
                                             port_registry,
                                             request_data,
@@ -936,6 +953,7 @@ class AutoScalingModule(Module):
                                             automatic_restarts,
                                             allow_skipped_files,
                                             threadsafe_override)
+
 
     self._process_automatic_scaling(
         self._module_configuration.automatic_scaling)
@@ -1300,6 +1318,7 @@ class ManualScalingModule(Module):
                php_config,
                python_config,
                cloud_sql_config,
+               vm_config,
                default_version_port,
                port_registry,
                request_data,
@@ -1309,6 +1328,7 @@ class ManualScalingModule(Module):
                automatic_restarts,
                allow_skipped_files,
                threadsafe_override):
+
     """Initializer for ManualScalingModule.
 
     Args:
@@ -1333,6 +1353,9 @@ class ManualScalingModule(Module):
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      vm_config: A runtime_config_pb2.VMConfig instance containing
+          VM runtime-specific configuration. If None all docker-related stuff
+          is disabled.
       default_version_port: An int containing the port of the default version.
       port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
           with a mapping of port to Module and Instance.
@@ -1362,6 +1385,7 @@ class ManualScalingModule(Module):
                                               php_config,
                                               python_config,
                                               cloud_sql_config,
+                                              vm_config,
                                               default_version_port,
                                               port_registry,
                                               request_data,
@@ -1371,6 +1395,7 @@ class ManualScalingModule(Module):
                                               automatic_restarts,
                                               allow_skipped_files,
                                               threadsafe_override)
+
 
     self._process_manual_scaling(module_configuration.manual_scaling)
 
@@ -1799,6 +1824,7 @@ class BasicScalingModule(Module):
                php_config,
                python_config,
                cloud_sql_config,
+               vm_config,
                default_version_port,
                port_registry,
                request_data,
@@ -1808,6 +1834,7 @@ class BasicScalingModule(Module):
                automatic_restarts,
                allow_skipped_files,
                threadsafe_override):
+
     """Initializer for BasicScalingModule.
 
     Args:
@@ -1832,6 +1859,9 @@ class BasicScalingModule(Module):
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      vm_config: A runtime_config_pb2.VMConfig instance containing
+          VM runtime-specific configuration. If None all docker-related stuff
+          is disabled.
       default_version_port: An int containing the port of the default version.
       port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
           with a mapping of port to Module and Instance.
@@ -1861,6 +1891,7 @@ class BasicScalingModule(Module):
                                              php_config,
                                              python_config,
                                              cloud_sql_config,
+                                             vm_config,
                                              default_version_port,
                                              port_registry,
                                              request_data,
@@ -1870,6 +1901,7 @@ class BasicScalingModule(Module):
                                              automatic_restarts,
                                              allow_skipped_files,
                                              threadsafe_override)
+
     self._process_basic_scaling(module_configuration.basic_scaling)
 
     self._instances = []  # Protected by self._condition.
@@ -2224,6 +2256,7 @@ class InteractiveCommandModule(Module):
                php_config,
                python_config,
                cloud_sql_config,
+               vm_config,
                default_version_port,
                port_registry,
                request_data,
@@ -2257,6 +2290,9 @@ class InteractiveCommandModule(Module):
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
+      vm_config: A runtime_config_pb2.VMConfig instance containing
+          VM runtime-specific configuration. If None all docker-related stuff
+          is disabled.
       default_version_port: An int containing the port of the default version.
       port_registry: A dispatcher.PortRegistry used to provide the Dispatcher
           with a mapping of port to Module and Instance.
@@ -2283,6 +2319,7 @@ class InteractiveCommandModule(Module):
         php_config,
         python_config,
         cloud_sql_config,
+        vm_config,
         default_version_port,
         port_registry,
         request_data,

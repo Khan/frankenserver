@@ -40,34 +40,52 @@ import google.appengine.datastore.entity_pb
 from google.appengine.datastore.snapshot_pb import *
 import google.appengine.datastore.snapshot_pb
 class InternalHeader(ProtocolBuffer.ProtocolMessage):
-  has_qos_ = 0
-  qos_ = ""
+  has_requesting_app_id_ = 0
+  requesting_app_id_ = ""
+  has_api_settings_ = 0
+  api_settings_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
 
-  def qos(self): return self.qos_
+  def requesting_app_id(self): return self.requesting_app_id_
 
-  def set_qos(self, x):
-    self.has_qos_ = 1
-    self.qos_ = x
+  def set_requesting_app_id(self, x):
+    self.has_requesting_app_id_ = 1
+    self.requesting_app_id_ = x
 
-  def clear_qos(self):
-    if self.has_qos_:
-      self.has_qos_ = 0
-      self.qos_ = ""
+  def clear_requesting_app_id(self):
+    if self.has_requesting_app_id_:
+      self.has_requesting_app_id_ = 0
+      self.requesting_app_id_ = ""
 
-  def has_qos(self): return self.has_qos_
+  def has_requesting_app_id(self): return self.has_requesting_app_id_
+
+  def api_settings(self): return self.api_settings_
+
+  def set_api_settings(self, x):
+    self.has_api_settings_ = 1
+    self.api_settings_ = x
+
+  def clear_api_settings(self):
+    if self.has_api_settings_:
+      self.has_api_settings_ = 0
+      self.api_settings_ = ""
+
+  def has_api_settings(self): return self.has_api_settings_
 
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_qos()): self.set_qos(x.qos())
+    if (x.has_requesting_app_id()): self.set_requesting_app_id(x.requesting_app_id())
+    if (x.has_api_settings()): self.set_api_settings(x.api_settings())
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_qos_ != x.has_qos_: return 0
-    if self.has_qos_ and self.qos_ != x.qos_: return 0
+    if self.has_requesting_app_id_ != x.has_requesting_app_id_: return 0
+    if self.has_requesting_app_id_ and self.requesting_app_id_ != x.requesting_app_id_: return 0
+    if self.has_api_settings_ != x.has_api_settings_: return 0
+    if self.has_api_settings_ and self.api_settings_ != x.api_settings_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -76,32 +94,44 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_qos_): n += 1 + self.lengthString(len(self.qos_))
+    if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
+    if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_qos_): n += 1 + self.lengthString(len(self.qos_))
+    if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
+    if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
 
   def Clear(self):
-    self.clear_qos()
+    self.clear_requesting_app_id()
+    self.clear_api_settings()
 
   def OutputUnchecked(self, out):
-    if (self.has_qos_):
-      out.putVarInt32(10)
-      out.putPrefixedString(self.qos_)
+    if (self.has_requesting_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.requesting_app_id_)
+    if (self.has_api_settings_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.api_settings_)
 
   def OutputPartial(self, out):
-    if (self.has_qos_):
-      out.putVarInt32(10)
-      out.putPrefixedString(self.qos_)
+    if (self.has_requesting_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.requesting_app_id_)
+    if (self.has_api_settings_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.api_settings_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
-      if tt == 10:
-        self.set_qos(d.getPrefixedString())
+      if tt == 18:
+        self.set_requesting_app_id(d.getPrefixedString())
+        continue
+      if tt == 26:
+        self.set_api_settings(d.getPrefixedString())
         continue
 
 
@@ -111,24 +141,28 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_qos_: res+=prefix+("qos: %s\n" % self.DebugFormatString(self.qos_))
+    if self.has_requesting_app_id_: res+=prefix+("requesting_app_id: %s\n" % self.DebugFormatString(self.requesting_app_id_))
+    if self.has_api_settings_: res+=prefix+("api_settings: %s\n" % self.DebugFormatString(self.api_settings_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kqos = 1
+  krequesting_app_id = 2
+  kapi_settings = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
-    1: "qos",
-  }, 1)
+    2: "requesting_app_id",
+    3: "api_settings",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2430,6 +2464,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   distinct_infix_size_ = 0
   has_entityfilter_ = 0
   entityfilter_ = None
+  has_plan_label_ = 0
+  plan_label_ = ""
 
   def __init__(self, contents=None):
     self.primaryscan_ = CompiledQuery_PrimaryScan()
@@ -2567,6 +2603,19 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
 
   def has_entityfilter(self): return self.has_entityfilter_
 
+  def plan_label(self): return self.plan_label_
+
+  def set_plan_label(self, x):
+    self.has_plan_label_ = 1
+    self.plan_label_ = x
+
+  def clear_plan_label(self):
+    if self.has_plan_label_:
+      self.has_plan_label_ = 0
+      self.plan_label_ = ""
+
+  def has_plan_label(self): return self.has_plan_label_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -2579,6 +2628,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.property_name_size()): self.add_property_name(x.property_name(i))
     if (x.has_distinct_infix_size()): self.set_distinct_infix_size(x.distinct_infix_size())
     if (x.has_entityfilter()): self.mutable_entityfilter().MergeFrom(x.entityfilter())
+    if (x.has_plan_label()): self.set_plan_label(x.plan_label())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2602,6 +2652,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if self.has_distinct_infix_size_ and self.distinct_infix_size_ != x.distinct_infix_size_: return 0
     if self.has_entityfilter_ != x.has_entityfilter_: return 0
     if self.has_entityfilter_ and self.entityfilter_ != x.entityfilter_: return 0
+    if self.has_plan_label_ != x.has_plan_label_: return 0
+    if self.has_plan_label_ and self.plan_label_ != x.plan_label_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2633,6 +2685,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_distinct_infix_size_): n += 2 + self.lengthVarInt64(self.distinct_infix_size_)
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSize()
+    if (self.has_plan_label_): n += 2 + self.lengthString(len(self.plan_label_))
     return n + 4
 
   def ByteSizePartial(self):
@@ -2651,6 +2704,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.property_name_)): n += self.lengthString(len(self.property_name_[i]))
     if (self.has_distinct_infix_size_): n += 2 + self.lengthVarInt64(self.distinct_infix_size_)
     if (self.has_entityfilter_): n += 2 + self.entityfilter_.ByteSizePartial()
+    if (self.has_plan_label_): n += 2 + self.lengthString(len(self.plan_label_))
     return n
 
   def Clear(self):
@@ -2663,6 +2717,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     self.clear_property_name()
     self.clear_distinct_infix_size()
     self.clear_entityfilter()
+    self.clear_plan_label()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(11)
@@ -2694,6 +2749,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_distinct_infix_size_):
       out.putVarInt32(200)
       out.putVarInt32(self.distinct_infix_size_)
+    if (self.has_plan_label_):
+      out.putVarInt32(210)
+      out.putPrefixedString(self.plan_label_)
 
   def OutputPartial(self, out):
     if (self.has_primaryscan_):
@@ -2727,6 +2785,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     if (self.has_distinct_infix_size_):
       out.putVarInt32(200)
       out.putVarInt32(self.distinct_infix_size_)
+    if (self.has_plan_label_):
+      out.putVarInt32(210)
+      out.putPrefixedString(self.plan_label_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2760,6 +2821,9 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 200:
         self.set_distinct_infix_size(d.getVarInt32())
+        continue
+      if tt == 210:
+        self.set_plan_label(d.getPrefixedString())
         continue
 
 
@@ -2799,6 +2863,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"EntityFilter {\n"
       res+=self.entityfilter_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
+    if self.has_plan_label_: res+=prefix+("plan_label: %s\n" % self.DebugFormatString(self.plan_label_))
     return res
 
 
@@ -2828,6 +2893,7 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
   kEntityFilterdistinct = 14
   kEntityFilterkind = 17
   kEntityFilterancestor = 18
+  kplan_label = 26
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -2854,7 +2920,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     23: "end_postfix_value",
     24: "property_name",
     25: "distinct_infix_size",
-  }, 25)
+    26: "plan_label",
+  }, 26)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -2881,7 +2948,8 @@ class CompiledQuery(ProtocolBuffer.ProtocolMessage):
     23: ProtocolBuffer.Encoder.STRING,
     24: ProtocolBuffer.Encoder.STRING,
     25: ProtocolBuffer.Encoder.NUMERIC,
-  }, 25, ProtocolBuffer.Encoder.MAX_TYPE)
+    26: ProtocolBuffer.Encoder.STRING,
+  }, 26, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

@@ -306,7 +306,13 @@ def create_command_line_parser():
 
   parser = argparse.ArgumentParser(
       formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-  parser.add_argument('yaml_files', nargs='+')
+  arg_name = 'yaml_path'
+  arg_help = 'Path to a yaml file, or a directory containing yaml files'
+  if application_configuration.java_supported():
+    arg_name = 'yaml_or_war_path'
+    arg_help += ', or a directory containing WEB-INF/web.xml'
+  parser.add_argument(
+      'config_paths', metavar=arg_name, nargs='+', help=arg_help)
 
   common_group = parser.add_argument_group('Common')
   common_group.add_argument(
@@ -355,6 +361,7 @@ def create_command_line_parser():
       'can be a boolean, in which case all modules threadsafe setting will '
       'be overridden or a comma-separated list of module:threadsafe_override '
       'e.g. "default:False,backend:True"')
+  common_group.add_argument('--docker_daemon_url', help=argparse.SUPPRESS)
 
   # PHP
   php_group = parser.add_argument_group('PHP')
@@ -669,7 +676,7 @@ class DevelopmentServer(object):
         _LOG_LEVEL_TO_PYTHON_CONSTANT[options.dev_appserver_log_level])
 
     configuration = application_configuration.ApplicationConfiguration(
-        options.yaml_files)
+        options.config_paths)
 
     if options.skip_sdk_update_check:
       logging.info('Skipping SDK update check.')
@@ -702,6 +709,7 @@ class DevelopmentServer(object):
         self._create_php_config(options),
         self._create_python_config(options),
         self._create_cloud_sql_config(options),
+        self._create_vm_config(options),
         self._create_module_to_setting(options.max_module_instances,
                                        configuration, '--max_module_instances'),
         options.use_mtime_file_watcher,
@@ -845,6 +853,13 @@ class DevelopmentServer(object):
     if options.mysql_socket:
       cloud_sql_config.mysql_socket = options.mysql_socket
     return cloud_sql_config
+
+  @staticmethod
+  def _create_vm_config(options):
+    vm_config = runtime_config_pb2.VMConfig()
+    if options.docker_daemon_url:
+      vm_config.docker_daemon_url = options.docker_daemon_url
+    return vm_config
 
   @staticmethod
   def _create_module_to_setting(setting, configuration, option):

@@ -52,6 +52,8 @@ import contextlib
 try:
   import json
 except ImportError:
+
+
   import simplejson as json
 import os
 import re
@@ -92,9 +94,10 @@ class ServerRequestException(Exception):
       except (ValueError, TypeError, KeyError):
         pass
     if error_details:
+      error_details_str = ', '.join(error_details)
       error_message = ('HTTP %s (%s) error when communicating with URL: %s.  '
                        'Details: %s' % (http_error.code, http_error.reason,
-                                        http_error.filename, error_details))
+                                        http_error.filename, error_details_str))
     else:
       error_message = ('HTTP %s (%s) error when communicating with URL: %s.' %
                        (http_error.code, http_error.reason,
@@ -119,11 +122,16 @@ class _EndpointsParser(argparse.ArgumentParser):
     Args:
       message: original error message that will be printed to stderr
     """
-    options = ', '.join([repr(command) for command in _VISIBLE_COMMANDS])
+
+
+
+
+    subcommands_quoted = ', '.join(
+        [repr(command) for command in _VISIBLE_COMMANDS])
     subcommands = ', '.join(_VISIBLE_COMMANDS)
     message = re.sub(
         r'(argument {%s}: invalid choice: .*) \(choose from (.*)\)$'
-        % subcommands, r'\1 (choose from %s)' % options, message)
+        % subcommands, r'\1 (choose from %s)' % subcommands_quoted, message)
     super(_EndpointsParser, self).error(message)
 
 
@@ -144,17 +152,17 @@ def _WriteFile(output_path, name, content):
   return path
 
 
-def GenApiConfig(service_class_names, generator=None, hostname=None,
-                 application_path=None):
+def GenApiConfig(service_class_names, config_string_generator=None,
+                 hostname=None, application_path=None):
   """Write an API configuration for endpoints annotated ProtoRPC services.
 
   Args:
     service_class_names: A list of fully qualified ProtoRPC service classes.
-    generator: An generator object that produces API config strings using its
-      pretty_print_config_to_json method.
+    config_string_generator: A generator object that produces API config strings
+      using its pretty_print_config_to_json method.
     hostname: A string hostname which will be used as the default version
       hostname. If no hostname is specificied in the @endpoints.api decorator,
-      this value is the fallback. Defaults to None.
+      this value is the fallback.
     application_path: A string with the path to the AppEngine application.
 
   Raises:
@@ -174,12 +182,11 @@ def GenApiConfig(service_class_names, generator=None, hostname=None,
     module_name, base_service_class_name = service_class_name.rsplit('.', 1)
     module = __import__(module_name, fromlist=base_service_class_name)
     service = getattr(module, base_service_class_name)
-    if not (isinstance(service, type) and issubclass(service, remote.Service)):
+    if not isinstance(service, type) or not issubclass(service, remote.Service):
       raise TypeError('%s is not a ProtoRPC service' % service_class_name)
 
-    services = api_service_map.setdefault((service.api_info.name,
-                                           service.api_info.version),
-                                          [])
+    services = api_service_map.setdefault(
+        (service.api_info.name, service.api_info.version), [])
     services.append(service)
 
 
@@ -187,15 +194,18 @@ def GenApiConfig(service_class_names, generator=None, hostname=None,
   app_yaml_hostname = _GetAppYamlHostname(application_path)
 
   service_map = collections.OrderedDict()
-  generator = generator or api_config.ApiConfigGenerator()
+  config_string_generator = (
+      config_string_generator or api_config.ApiConfigGenerator())
   for api_info, services in api_service_map.iteritems():
+    assert len(services) > 0, 'An API must have at least one ProtoRPC service'
 
 
     hostname = services[0].api_info.hostname or hostname or app_yaml_hostname
 
 
-    service_map['%s-%s' % api_info] = generator.pretty_print_config_to_json(
-        services, hostname=hostname)
+    service_map['%s-%s' % api_info] = (
+        config_string_generator.pretty_print_config_to_json(
+            services, hostname=hostname))
 
   return service_map
 
@@ -394,8 +404,7 @@ def _GenApiConfigCallback(args, api_func=GenApiConfig):
                              application_path=args.application)
 
   for api_name_version, config in service_configs.iteritems():
-    api_name = api_name_version + '.api'
-    _WriteFile(args.output, api_name, config)
+    _WriteFile(args.output, api_name_version + '.api', config)
 
 
 def _GetClientLibCallback(args, client_func=_GetClientLib):
@@ -542,8 +551,7 @@ def main(argv):
     sys.path.insert(0, os.path.abspath(application_path))
 
   args.callback(args)
-  return 0
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv))
+  main(sys.argv)

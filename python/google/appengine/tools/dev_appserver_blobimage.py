@@ -62,9 +62,9 @@ def CreateBlobImageDispatcher(images_stub):
 
 
 
-  from google.appengine.tools import dev_appserver
+  from google.appengine.tools import old_dev_appserver
 
-  class BlobImageDispatcher(dev_appserver.URLDispatcher):
+  class BlobImageDispatcher(old_dev_appserver.URLDispatcher):
     """Dispatcher that handles image serving requests."""
 
     _size_limit = 1600

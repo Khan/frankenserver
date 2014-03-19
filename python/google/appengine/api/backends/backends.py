@@ -17,7 +17,7 @@
 
 
 
-"""Backends API.
+"""DEPRECATED: Backends API.
 
 This API provides utility methods for working with backends.
 """
@@ -30,6 +30,7 @@ This API provides utility methods for working with backends.
 
 
 
+import logging
 import os
 import re
 
@@ -51,8 +52,16 @@ class InvalidInstanceError(Error):
   pass
 
 
+logging.warning('The Backends API is deprecated and will be removed in a '
+                'future release. Please migrate to the Modules API as soon as '
+                'possible.')
+
+
 def get_backend():
-  """Get the name of the backend handling this request.
+  """DEPRECATED: Get the name of the backend handling this request.
+
+  Warning: This API is deprecated and will be removed in a future
+  release. Please migrate to the Modules API as soon as possible.
 
   Returns:
     string: The current backend, or None if this is not a backend.
@@ -61,7 +70,10 @@ def get_backend():
 
 
 def get_instance():
-  """Get the instance number of the backend handling this request.
+  """DEPRECATED: Get the instance number of the backend handling this request.
+
+  Warning: This API is deprecated and will be removed in a future
+  release. Please migrate to the Modules API as soon as possible.
 
   Returns:
     int: The instance, in [0, instances-1], or None if this is not a backend.
@@ -74,7 +86,10 @@ def get_instance():
 
 
 def get_url(backend=None, instance=None, protocol='http'):
-  """Returns a URL pointing to a backend or backend instance.
+  """DEPRECATED: Returns a URL pointing to a backend or backend instance.
+
+  Warning: This API is deprecated and will be removed in a future
+  release. Please migrate to the Modules API as soon as possible.
 
   This method works in both production and development environments.
 
@@ -109,7 +124,10 @@ def get_url(backend=None, instance=None, protocol='http'):
 
 
 def get_hostname(backend=None, instance=None):
-  """Returns the hostname for a backend or backend instance.
+  """DEPRECATED: Returns the hostname for a backend or backend instance.
+
+  Warning: This API is deprecated and will be removed in a future
+  release. Please migrate to the Modules API as soon as possible.
 
   Args:
     backend: The name of the backend. If None, the current backend will be used.

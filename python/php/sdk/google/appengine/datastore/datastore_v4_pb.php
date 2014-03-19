@@ -2232,7 +2232,6 @@ namespace google\appengine\datastore\v4\Mutation {
     const UPDATE = 2;
     const UPSERT = 3;
     const DELETE = 4;
-    const INSERT_WITH_AUTO_ID = 99;
   }
 }
 namespace google\appengine\datastore\v4 {

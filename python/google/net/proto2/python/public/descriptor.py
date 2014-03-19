@@ -454,12 +454,17 @@ class FieldDescriptor(DescriptorBase):
     if api_implementation.Type() == 'cpp':
       if is_extension:
         if api_implementation.Version() == 2:
-          self._cdescriptor = _message.GetExtensionDescriptor(full_name)
+
+          self._cdescriptor = (
+              _message.Message._GetExtensionDescriptor(full_name))
+
         else:
           self._cdescriptor = cpp_message.GetExtensionDescriptor(full_name)
       else:
         if api_implementation.Version() == 2:
-          self._cdescriptor = _message.GetFieldDescriptor(full_name)
+
+          self._cdescriptor = _message.Message._GetFieldDescriptor(full_name)
+
         else:
           self._cdescriptor = cpp_message.GetFieldDescriptor(full_name)
     else:
@@ -676,7 +681,9 @@ class FileDescriptor(DescriptorBase):
     if (api_implementation.Type() == 'cpp' and
         self.serialized_pb is not None):
       if api_implementation.Version() == 2:
-        _message.BuildFile(self.serialized_pb)
+
+        _message.Message._BuildFile(self.serialized_pb)
+
       else:
         cpp_message.BuildFile(self.serialized_pb)
 
@@ -737,7 +744,9 @@ def MakeDescriptor(desc_proto, package='', build_file_if_cpp=True):
       file_descriptor_proto.name = proto_name + '.proto'
 
     if api_implementation.Version() == 2:
-      _message.BuildFile(file_descriptor_proto.SerializeToString())
+
+      _message.Message._BuildFile(file_descriptor_proto.SerializeToString())
+
     else:
       cpp_message.BuildFile(file_descriptor_proto.SerializeToString())
 

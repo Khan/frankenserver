@@ -673,12 +673,10 @@ class FacetValue(ProtocolBuffer.ProtocolMessage):
 
 
   ATOM         =    2
-  DATE         =    3
   NUMBER       =    4
 
   _ContentType_NAMES = {
     2: "ATOM",
-    3: "DATE",
     4: "NUMBER",
   }
 

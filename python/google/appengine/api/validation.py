@@ -985,7 +985,7 @@ class _RegexStrValue(object):
       regex_list.append(self.__AsString(item))
 
     if sequence:
-      return '|'.join('(?:%s)' % item for item in regex_list)
+      return '|'.join('%s' % item for item in regex_list)
     else:
       return regex_list[0]
 

@@ -58,9 +58,9 @@ def CreateChannelDispatcher(channel_service_stub):
 
 
 
-  from google.appengine.tools import dev_appserver
+  from google.appengine.tools import old_dev_appserver
 
-  class ChannelDispatcher(dev_appserver.URLDispatcher):
+  class ChannelDispatcher(old_dev_appserver.URLDispatcher):
     """Dispatcher that handles channel polls."""
 
     def __init__(self, channel_service_stub):

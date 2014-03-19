@@ -23,14 +23,10 @@
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-use google\appengine\util\StringUtil;
-
 /**
  * Google Cloud Storage Client for reading objects.
  */
 final class CloudStorageReadClient extends CloudStorageClient {
-  const METADATA_HEADER_PREFIX = 'x-goog-meta-';
-
   // Buffer for storing data.
   private $read_buffer;
 
@@ -355,22 +351,6 @@ final class CloudStorageReadClient extends CloudStorageClient {
     }
 
     return true;
-  }
-
-  /**
-   * Extract metadata from HTTP response headers.
-   */
-  private static function extractMetaData($headers) {
-    $metadata = [];
-    foreach($headers as $key => $value) {
-      if (StringUtil::startsWith(strtolower($key),
-                                 self::METADATA_HEADER_PREFIX)) {
-        $metadata_key = substr($key, strlen(self::METADATA_HEADER_PREFIX));
-        $metadata[$metadata_key] = $value;
-      }
-    }
-
-    return $metadata;
   }
 }
 

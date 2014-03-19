@@ -162,20 +162,20 @@ final class MemcacheSessionHandler implements \SessionHandlerInterface {
     // Handled by "expire" in Memcache.
     return true;
   }
-}
-
-/**
- * Configure the session handler to use the Memcache API.
- * @param MemcacheContainer $memcacheContainer Optional, for mocking in tests
- */
-function configureMemcacheSessionHandler($memcacheContainer = null) {
-  $handler = new MemcacheSessionHandler($memcacheContainer);
-
-  session_set_save_handler($handler, true);
 
   /**
-   * Set so that it is clear that Memcache is being used for session handling,
-   * as retrieving session.save_handler just returns "user".
+   * Configure the session handler to use the Memcache API.
+   * @param MemcacheContainer $memcacheContainer Optional, for mocking in tests
    */
-  session_save_path("Memcache");
+  public static function configure($memcacheContainer = null) {
+    $handler = new MemcacheSessionHandler($memcacheContainer);
+
+    session_set_save_handler($handler, true);
+
+    /**
+     * Set so that it is clear that Memcache is being used for session handling,
+     * as retrieving session.save_handler just returns "user".
+     */
+    session_save_path("Memcache");
+  }
 }

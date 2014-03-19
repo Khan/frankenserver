@@ -19,12 +19,17 @@
 
 SERVER_SOFTWARE = 'Development/2.0'
 
-INTERNAL_HEADER_PREFIX = 'X-Appengine-Internal-'
-INTERNAL_ENVIRON_PREFIX = 'HTTP_X_APPENGINE_INTERNAL_'
+# Internal AppEngine prefix for Headers (Environment variables)
+# used in production. See apphosting/base/http_proto.cc for the full list.
+APPENGINE_HEADER_PREFIX = 'X-Appengine-'
+APPENGINE_ENVIRON_PREFIX = 'HTTP_X_APPENGINE_'
 
-REQUEST_ID_HEADER = 'X-Appengine-Internal-Request-Id'
-REQUEST_ID_ENVIRON = 'HTTP_X_APPENGINE_INTERNAL_REQUEST_ID'
+# Prefix for Headers (Environment variables) used in Dev AppServer only.
+APPENGINE_DEV_HEADER_PREFIX = APPENGINE_HEADER_PREFIX + 'Dev-'
+APPENGINE_DEV_ENVIRON_PREFIX = APPENGINE_ENVIRON_PREFIX + 'DEV_'
 
+# These values are passed as part of UPRequest proto in Prod.
+# Propagation rule: Cut the prefix.
 ENVIRONS_TO_PROPAGATE = set([
     'BACKEND_ID',
     'DEFAULT_VERSION_HOSTNAME',
@@ -41,11 +46,17 @@ ENVIRONS_TO_PROPAGATE = set([
     'SERVER_PROTOCOL',
     ])
 
-SCRIPT_HEADER = INTERNAL_ENVIRON_PREFIX + 'SCRIPT'
+REQUEST_ID_HEADER = APPENGINE_DEV_HEADER_PREFIX + 'Request-Id'
+REQUEST_ID_ENVIRON = APPENGINE_DEV_ENVIRON_PREFIX + 'REQUEST_ID'
+
+# TODO: rename to SCRIPT_ENVIRON
+SCRIPT_HEADER = APPENGINE_DEV_ENVIRON_PREFIX + 'SCRIPT'
+
+# TODO: rename to REQUEST_TYPE_ENVIRON
 # A request header where the value is a string containing the request type, e.g.
 # background.
-REQUEST_TYPE_HEADER = INTERNAL_ENVIRON_PREFIX + 'REQUEST_TYPE'
+REQUEST_TYPE_HEADER = APPENGINE_DEV_ENVIRON_PREFIX + 'REQUEST_TYPE'
 
 # A response header used by the runtime to indicate that an uncaught error has
 # ocurred and that a user-specified error handler should be used if available.
-ERROR_CODE_HEADER = '%sError-Code' % INTERNAL_HEADER_PREFIX
+ERROR_CODE_HEADER = '%sError-Code' % APPENGINE_HEADER_PREFIX

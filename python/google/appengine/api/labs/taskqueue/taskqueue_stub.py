@@ -221,7 +221,7 @@ class _DummyTaskStore(object):
     pos = bisect.bisect_left(self._sorted_by_eta, (eta, name, None))
     if self._sorted_by_eta[pos][2] is not old_task:
       logging.error('task store corrupted')
-      return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERRROR
+      return taskqueue_service_pb.TaskQueueServiceError.INTERNAL_ERROR
     self._sorted_by_eta.pop(pos)
     return taskqueue_service_pb.TaskQueueServiceError.OK
 
