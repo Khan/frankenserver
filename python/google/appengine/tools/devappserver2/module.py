@@ -148,7 +148,8 @@ class Module(object):
       'php': php_runtime.PHPRuntimeInstanceFactory,
       'python': python_runtime.PythonRuntimeInstanceFactory,
       'python27': python_runtime.PythonRuntimeInstanceFactory,
-      'vm': vm_runtime_proxy.VMRuntimeInstanceFactory,
+      # TODO: uncomment for GA.
+      # 'vm': vm_runtime_proxy.VMRuntimeInstanceFactory,
   }
   if java_runtime:
     _RUNTIME_INSTANCE_FACTORIES.update({
@@ -440,6 +441,11 @@ class Module(object):
     self._use_mtime_file_watcher = use_mtime_file_watcher
     self._default_version_port = default_version_port
     self._port_registry = port_registry
+
+    # TODO: remove when GA.
+    if self._vm_config and self._vm_config.HasField('docker_daemon_url'):
+      self._RUNTIME_INSTANCE_FACTORIES['vm'] = (
+          vm_runtime_proxy.VMRuntimeInstanceFactory)
 
     self._instance_factory = self._create_instance_factory(
         self._module_configuration)

@@ -93,6 +93,8 @@ class TestModuleConfiguration(unittest.TestCase):
 
     self.assertEqual(os.path.realpath('/appdir'), config.application_root)
     self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('dev', config.partition)
     self.assertEqual('module1', config.module_name)
     self.assertEqual('1', config.major_version)
     self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
@@ -106,6 +108,40 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(handlers, config.handlers)
     self.assertEqual(['warmup'], config.inbound_services)
     self.assertEqual(env_variables, config.env_variables)
+    self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
+
+  def test_vm_app_yaml_configuration(self):
+    manual_scaling = appinfo.ManualScaling()
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+    )
+    application_configuration.ModuleConfiguration._parse_configuration(
+        '/appdir/app.yaml').AndReturn((info, ['/appdir/app.yaml']))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+
+    self.mox.VerifyAll()
+    self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('dev', config.partition)
+    self.assertEqual('module1', config.module_name)
+    self.assertEqual('1', config.major_version)
+    self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
+    self.assertEqual('vm', config.runtime)
+    self.assertEqual(vm_settings['vm_runtime'], config.effective_runtime)
+    self.assertFalse(config.threadsafe)
+    self.assertEqual(manual_scaling, config.manual_scaling)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
 
   def test_check_for_updates_unchanged_mtime(self):
@@ -522,6 +558,8 @@ class TestBackendConfiguration(unittest.TestCase):
 
     self.assertEqual(os.path.realpath('/appdir'), config.application_root)
     self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('dev', config.partition)
     self.assertEqual('static', config.module_name)
     self.assertEqual('1', config.major_version)
     self.assertRegexpMatches(config.version_id, r'static:1\.\d+')
@@ -540,7 +578,8 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertEqual(env_variables, config.env_variables)
 
     whitelist_fields = ['module_name', 'version_id', 'automatic_scaling',
-                        'manual_scaling', 'basic_scaling', 'is_backend']
+                        'manual_scaling', 'basic_scaling', 'is_backend',
+                        'minor_version']
     # Check that all public attributes and methods in a ModuleConfiguration
     # exist in a BackendConfiguration.
     for field in dir(module_config):
@@ -552,6 +591,53 @@ class TestBackendConfiguration(unittest.TestCase):
           # equal values in the BackendConfiguration to the ModuleConfiguration
           # from which it inherits.
           self.assertEqual(value, getattr(config, field))
+
+  def test_vm_app_yaml_configuration(self):
+    automatic_scaling = appinfo.AutomaticScaling(min_pending_latency='1.0s',
+                                                 max_pending_latency='2.0s',
+                                                 min_idle_instances=1,
+                                                 max_idle_instances=2)
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        automatic_scaling=automatic_scaling,
+    )
+    backend_entry = backendinfo.BackendEntry(
+        name='static',
+        instances='3',
+        options='public')
+    application_configuration.ModuleConfiguration._parse_configuration(
+        '/appdir/app.yaml').AndReturn((info, ['/appdir/app.yaml']))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    module_config = application_configuration.ModuleConfiguration(
+        '/appdir/app.yaml')
+    config = application_configuration.BackendConfiguration(
+        module_config, None, backend_entry)
+
+    self.mox.VerifyAll()
+    self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('dev', config.partition)
+    self.assertEqual('static', config.module_name)
+    self.assertEqual('1', config.major_version)
+    self.assertRegexpMatches(config.version_id, r'static:1\.\d+')
+    self.assertEqual('vm', config.runtime)
+    self.assertEqual(vm_settings['vm_runtime'], config.effective_runtime)
+    self.assertFalse(config.threadsafe)
+    # Resident backends are assigned manual scaling.
+    self.assertEqual(None, config.automatic_scaling)
+    self.assertEqual(None, config.basic_scaling)
+    self.assertEqual(appinfo.ManualScaling(instances='3'),
+                     config.manual_scaling)
 
   def test_good_configuration_dynamic_scaling(self):
     automatic_scaling = appinfo.AutomaticScaling(min_pending_latency='1.0s',
@@ -621,12 +707,12 @@ class TestBackendConfiguration(unittest.TestCase):
     changes = object()
     backends_config.check_for_updates('backend').AndReturn([])
     backends_config.check_for_updates('backend').AndReturn(changes)
-    minor_version = config._minor_version_id
+    minor_version = config.minor_version
     self.mox.ReplayAll()
     self.assertEqual([], config.check_for_updates())
-    self.assertEqual(minor_version, config._minor_version_id)
+    self.assertEqual(minor_version, config.minor_version)
     self.assertEqual(changes, config.check_for_updates())
-    self.assertNotEqual(minor_version, config._minor_version_id)
+    self.assertNotEqual(minor_version, config.minor_version)
     self.mox.VerifyAll()
 
 

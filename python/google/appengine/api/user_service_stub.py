@@ -80,7 +80,7 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     self._logout_url = logout_url
     self.__scopes = None
 
-    self.SetOAuthUser()
+    self.SetOAuthUser(is_admin=(os.environ.get('OAUTH_IS_ADMIN', '0') == '1'))
 
 
 

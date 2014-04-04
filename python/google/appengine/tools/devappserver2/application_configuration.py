@@ -96,7 +96,8 @@ class ModuleConfiguration(object):
     self._app_info_external, files_to_check = self._parse_configuration(
         self._config_path)
     self._mtimes = self._get_mtimes(files_to_check)
-    self._application = 'dev~%s' % self._app_info_external.application
+    self._application = '%s~%s' % (self.partition,
+                                   self.application_external_name)
     self._api_version = self._app_info_external.api_version
     self._module_name = self._app_info_external.module
     self._version = self._app_info_external.version
@@ -125,6 +126,14 @@ class ModuleConfiguration(object):
     return self._application
 
   @property
+  def partition(self):
+    return 'dev'
+
+  @property
+  def application_external_name(self):
+    return self._app_info_external.application
+
+  @property
   def api_version(self):
     return self._api_version
 
@@ -135,6 +144,10 @@ class ModuleConfiguration(object):
   @property
   def major_version(self):
     return self._version
+
+  @property
+  def minor_version(self):
+    return self._minor_version_id
 
   @property
   def version_id(self):
@@ -151,6 +164,10 @@ class ModuleConfiguration(object):
   @property
   def runtime(self):
     return self._runtime
+
+  @property
+  def effective_runtime(self):
+    return self._app_info_external.GetEffectiveRuntime()
 
   @property
   def threadsafe(self):
@@ -426,6 +443,14 @@ class BackendConfiguration(object):
     return self._module_configuration.application
 
   @property
+  def partition(self):
+    return self._module_configuration.partition
+
+  @property
+  def application_external_name(self):
+    return self._module_configuration.application_external_name
+
+  @property
   def api_version(self):
     return self._module_configuration.api_version
 
@@ -438,6 +463,10 @@ class BackendConfiguration(object):
     return self._module_configuration.major_version
 
   @property
+  def minor_version(self):
+    return self._minor_version_id
+
+  @property
   def version_id(self):
     return '%s:%s.%s' % (
         self.module_name,
@@ -447,6 +476,10 @@ class BackendConfiguration(object):
   @property
   def runtime(self):
     return self._module_configuration.runtime
+
+  @property
+  def effective_runtime(self):
+    return self._module_configuration.effective_runtime
 
   @property
   def threadsafe(self):

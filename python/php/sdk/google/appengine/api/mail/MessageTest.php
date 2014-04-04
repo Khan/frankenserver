@@ -134,6 +134,14 @@ class MessageTest extends ApiProxyTestBase {
     $message->addHeaderArray("string");
   }
 
+  public function testInvalidContentId() {
+    $message = new Message();
+    $this->setExpectedException(
+        "InvalidArgumentException",
+        "Content-id must begin and end with angle brackets.");
+    $message->addAttachment("foo.jpg", "image data", "invalid content id");
+  }
+
   public function testSetHtmlBody() {
     $message = new Message();
     $this->setExpectedException(
@@ -275,25 +283,62 @@ class MessageTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
-  public function testSucceedWithOptionsArray() {
+  private function makeAttachmentTestOptions() {
     $headers = array('in-reply-to' => 'data',
                      'list-id' => 'data2',
                      'references' => 'data3');
-    $attachments = array('test.gif' => 'data',
-                         't.jpg' => 'data2',
-                         'z.png' => 'data3');
-    $options = array('sender' => 'test@example.com',
-                     'replyto' => 'test@example.com',
-                     'to' => array('b@test.com', 'c@test.com'),
-                     'cc' => array('d@test.com', 'e@test.com'),
-                     'bcc' => array('f@test.com', 'g@test.com'),
-                     'subject' => 'test',
-                     'textBody' => 'text body',
-                     'htmlBody' => 'html body',
-                     'header' => $headers,
-                     'attachment' => $attachments);
+    return array('sender' => 'test@example.com',
+                 'replyto' => 'test@example.com',
+                 'to' => array('b@test.com', 'c@test.com'),
+                 'cc' => array('d@test.com', 'e@test.com'),
+                 'bcc' => array('f@test.com', 'g@test.com'),
+                 'subject' => 'test',
+                 'textBody' => 'text body',
+                 'htmlBody' => 'html body',
+                 'header' => $headers);
+  }
 
+  public function testSucceedWithOptionsArray() {
+    $options = $this->makeAttachmentTestOptions();
+    $options['attachment'] = array('test.gif' => 'data',
+                                   't.jpg' => 'data2',
+                                   'z.png' => 'data3');
     $message = new Message($options);
+    $message_proto = $this->setUpAttachmentMessageProto();
+
+    $response = new VoidProto();
+    $this->apiProxyMock->expectCall('mail', 'Send', $message_proto, $response);
+    $message->send();
+    $this->apiProxyMock->verify();
+  }
+
+  public function testSucceedWithOptionsArrayContentID() {
+    $attachments =
+    $options = $this->makeAttachmentTestOptions();
+    $options['attachments'] = array(['name' => 'test.gif',
+                                     'data' => 'data'],
+                                    ['name' => 't.jpg',
+                                     'data' => 'data2'],
+                                    ['name' => 'z.png',
+                                     'data' => 'data3'],
+                                    ['name' => 'c.jpg',
+                                     'data' => 'data4',
+                                      'content_id' => '<cid>']);
+
+    $message_proto = $this->setUpAttachmentMessageProto();
+    $attach = $message_proto->addAttachment();
+    $attach->setFilename('c.jpg');
+    $attach->setData('data4');
+    $attach->setContentId('<cid>');
+
+    $response = new VoidProto();
+    $this->apiProxyMock->expectCall('mail', 'Send', $message_proto, $response);
+    $message = new Message($options);
+    $message->send();
+    $this->apiProxyMock->verify();
+  }
+
+  private function setUpAttachmentMessageProto() {
     $message_proto = new MailMessage();
 
     $message_proto->setSender("test@example.com");
@@ -328,10 +373,7 @@ class MessageTest extends ApiProxyTestBase {
     $attach->setFilename("z.png");
     $attach->setData("data3");
 
-    $response = new VoidProto();
-    $this->apiProxyMock->expectCall('mail', 'Send', $message_proto, $response);
-    $message->send();
-    $this->apiProxyMock->verify();
+    return $message_proto;
   }
 
   public function testSucceedWithAttachments() {
@@ -353,6 +395,14 @@ class MessageTest extends ApiProxyTestBase {
     $attach = $message_proto->addAttachment();
     $attach->setFilename("z.");
     $attach->setData("data3");
+
+    $message->addAttachmentsArray([["name" => "f.jpg",
+                                    "data" => "data",
+                                    "content_id" => "<cid>"]]);
+    $attach = $message_proto->addAttachment();
+    $attach->setFilename("f.jpg");
+    $attach->setData("data");
+    $attach->setContentId("<cid>");
 
     $response = new VoidProto();
     $this->apiProxyMock->expectCall('mail', 'Send', $message_proto, $response);

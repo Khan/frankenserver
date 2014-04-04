@@ -61,7 +61,8 @@ abstract class BaseMessage {
                                         'textBody' => 'setTextBody',
                                         'htmlBody' => 'setHtmlBody',
                                         'header' => 'addHeaderArray',
-                                        'attachment' => 'addAttachmentArray');
+                                        'attachment' => 'addAttachmentArray',
+                                        'attachments' => 'addAttachmentsArray');
 
   /**
    * Construct an instance of Message.
@@ -102,12 +103,16 @@ abstract class BaseMessage {
    *
    * @param string $filename Filename of the attachment.
    * @param mixed $data File data of the attachment.
+   * @param string $content_id Optional Content-ID header value of the
+   * attachment. Must be enclosed by angle brackets (<>).
    * @throws \InvalidArgumentException If the input is not an array or if the
    * attachment type is invalid (i.e. the filename is not a string, or the
    * file extension is blacklisted).
    */
-  public function addAttachment($filename, $data) {
-    $this->addAttachmentArray(array($filename => $data));
+  public function addAttachment($filename, $data, $content_id = null) {
+    $this->addAttachmentsArray([["name" => $filename,
+                                 "data" => $data,
+                                 "content_id" => $content_id]]);
   }
 
   /**
@@ -118,8 +123,12 @@ abstract class BaseMessage {
    * @throws \InvalidArgumentException If the input is not an array or if the
    * attachment type is invalid (i.e. the filename is not a string, or the
    * file extension is blacklisted).
+   * @deprecated
    */
   public function addAttachmentArray($attach_array) {
+    syslog(LOG_WARNING, "Both \$options['attachment'] and " .
+        "addAttachmentArray() are deprecated. Use \$options['attachments'] " .
+        "and addAttachmentsArray() instead.");
     if (!is_array($attach_array)) {
       $error = sprintf("Input is not an array (Actual type: %s).",
                        gettype($attach_array));
@@ -137,6 +146,43 @@ abstract class BaseMessage {
       $new_attachment = $this->message->addAttachment();
       $new_attachment->setFilename($filename);
       $new_attachment->setData($data);
+    }
+  }
+
+  /**
+   * Adds an array of attachments to the Message object.
+   *
+   * @param array Array of arrays that represent attachments. Each attachment
+   * array supports name, data, and (optionally) content_id keys.  Example:
+   * [['name' => 'foo.jpg', 'data' => 'data', 'content_id' => '<foo>']]
+   * @throws \InvalidArgumentException If the input is not an array or if the
+   * attachment type is invalid (i.e. the filename is not a string, or the
+   * file extension is blacklisted).
+   */
+  public function addAttachmentsArray($attach_array) {
+    if (!is_array($attach_array)) {
+      throw new \InvalidArgumentException(sprintf(
+        "Input is not an array (Actual type: %s).", gettype($attach_array)));
+    }
+
+    $error = "";
+    foreach($attach_array as $attachment) {
+      if (!$this->checkValidAttachment($attachment["name"], $error)) {
+        throw new \InvalidArgumentException($error);
+      }
+    }
+
+    foreach($attach_array as $attachment) {
+      $new_attachment = $this->message->addAttachment();
+      $new_attachment->setFilename($attachment["name"]);
+      $new_attachment->setData($attachment["data"]);
+      if (isset($attachment["content_id"])) {
+        if (!preg_match("/^\<.*\>$/", $attachment["content_id"])) {
+          throw new \InvalidArgumentException(
+            "Content-id must begin and end with angle brackets.");
+        }
+        $new_attachment->setContentId($attachment["content_id"]);
+      }
     }
   }
 

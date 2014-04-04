@@ -60,9 +60,45 @@ namespace google\appengine_datastore_v3 {
     public function hasApiSettings() {
       return isset($this->api_settings);
     }
+    public function getRequestingProjectId() {
+      if (!isset($this->requesting_project_id)) {
+        return '';
+      }
+      return $this->requesting_project_id;
+    }
+    public function setRequestingProjectId($val) {
+      $this->requesting_project_id = $val;
+      return $this;
+    }
+    public function clearRequestingProjectId() {
+      unset($this->requesting_project_id);
+      return $this;
+    }
+    public function hasRequestingProjectId() {
+      return isset($this->requesting_project_id);
+    }
+    public function getRequestingVersionId() {
+      if (!isset($this->requesting_version_id)) {
+        return '';
+      }
+      return $this->requesting_version_id;
+    }
+    public function setRequestingVersionId($val) {
+      $this->requesting_version_id = $val;
+      return $this;
+    }
+    public function clearRequestingVersionId() {
+      unset($this->requesting_version_id);
+      return $this;
+    }
+    public function hasRequestingVersionId() {
+      return isset($this->requesting_version_id);
+    }
     public function clear() {
       $this->clearRequestingAppId();
       $this->clearApiSettings();
+      $this->clearRequestingProjectId();
+      $this->clearRequestingVersionId();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -74,6 +110,14 @@ namespace google\appengine_datastore_v3 {
         $res += 1;
         $res += $this->lengthString(strlen($this->api_settings));
       }
+      if (isset($this->requesting_project_id)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->requesting_project_id));
+      }
+      if (isset($this->requesting_version_id)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->requesting_version_id));
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -84,6 +128,14 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->api_settings)) {
         $out->putVarInt32(26);
         $out->putPrefixedString($this->api_settings);
+      }
+      if (isset($this->requesting_project_id)) {
+        $out->putVarInt32(34);
+        $out->putPrefixedString($this->requesting_project_id);
+      }
+      if (isset($this->requesting_version_id)) {
+        $out->putVarInt32(42);
+        $out->putPrefixedString($this->requesting_version_id);
       }
     }
     public function tryMerge($d) {
@@ -98,6 +150,16 @@ namespace google\appengine_datastore_v3 {
           case 26:
             $length = $d->getVarInt32();
             $this->setApiSettings(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 34:
+            $length = $d->getVarInt32();
+            $this->setRequestingProjectId(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 42:
+            $length = $d->getVarInt32();
+            $this->setRequestingVersionId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -119,6 +181,12 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasApiSettings()) {
         $this->setApiSettings($x->getApiSettings());
       }
+      if ($x->hasRequestingProjectId()) {
+        $this->setRequestingProjectId($x->getRequestingProjectId());
+      }
+      if ($x->hasRequestingVersionId()) {
+        $this->setRequestingVersionId($x->getRequestingVersionId());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -126,6 +194,10 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->requesting_app_id) && $this->requesting_app_id !== $x->requesting_app_id) return false;
       if (isset($this->api_settings) !== isset($x->api_settings)) return false;
       if (isset($this->api_settings) && $this->api_settings !== $x->api_settings) return false;
+      if (isset($this->requesting_project_id) !== isset($x->requesting_project_id)) return false;
+      if (isset($this->requesting_project_id) && $this->requesting_project_id !== $x->requesting_project_id) return false;
+      if (isset($this->requesting_version_id) !== isset($x->requesting_version_id)) return false;
+      if (isset($this->requesting_version_id) && $this->requesting_version_id !== $x->requesting_version_id) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -135,6 +207,12 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->api_settings)) {
         $res .= $prefix . "api_settings: " . $this->debugFormatString($this->api_settings) . "\n";
+      }
+      if (isset($this->requesting_project_id)) {
+        $res .= $prefix . "requesting_project_id: " . $this->debugFormatString($this->requesting_project_id) . "\n";
+      }
+      if (isset($this->requesting_version_id)) {
+        $res .= $prefix . "requesting_version_id: " . $this->debugFormatString($this->requesting_version_id) . "\n";
       }
       return $res;
     }
@@ -6489,6 +6567,7 @@ namespace google\appengine_datastore_v3 {
     private $result = array();
     private $index = array();
     private $version = array();
+    private $result_compiled_cursor = array();
     public function getCursor() {
       if (!isset($this->cursor)) {
         return new \google\appengine_datastore_v3\Cursor();
@@ -6730,6 +6809,59 @@ namespace google\appengine_datastore_v3 {
     public function clearVersion() {
       $this->version = array();
     }
+    public function getResultCompiledCursorSize() {
+      return sizeof($this->result_compiled_cursor);
+    }
+    public function getResultCompiledCursorList() {
+      return $this->result_compiled_cursor;
+    }
+    public function mutableResultCompiledCursor($idx) {
+      if (!isset($this->result_compiled_cursor[$idx])) {
+        $val = new \google\appengine_datastore_v3\CompiledCursor();
+        $this->result_compiled_cursor[$idx] = $val;
+        return $val;
+      }
+      return $this->result_compiled_cursor[$idx];
+    }
+    public function getResultCompiledCursor($idx) {
+      if (isset($this->result_compiled_cursor[$idx])) {
+        return $this->result_compiled_cursor[$idx];
+      }
+      if ($idx >= end(array_keys($this->result_compiled_cursor))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \google\appengine_datastore_v3\CompiledCursor();
+    }
+    public function addResultCompiledCursor() {
+      $val = new \google\appengine_datastore_v3\CompiledCursor();
+      $this->result_compiled_cursor[] = $val;
+      return $val;
+    }
+    public function clearResultCompiledCursor() {
+      $this->result_compiled_cursor = array();
+    }
+    public function getSkippedResultsCompiledCursor() {
+      if (!isset($this->skipped_results_compiled_cursor)) {
+        return new \google\appengine_datastore_v3\CompiledCursor();
+      }
+      return $this->skipped_results_compiled_cursor;
+    }
+    public function mutableSkippedResultsCompiledCursor() {
+      if (!isset($this->skipped_results_compiled_cursor)) {
+        $res = new \google\appengine_datastore_v3\CompiledCursor();
+        $this->skipped_results_compiled_cursor = $res;
+        return $res;
+      }
+      return $this->skipped_results_compiled_cursor;
+    }
+    public function clearSkippedResultsCompiledCursor() {
+      if (isset($this->skipped_results_compiled_cursor)) {
+        unset($this->skipped_results_compiled_cursor);
+      }
+    }
+    public function hasSkippedResultsCompiledCursor() {
+      return isset($this->skipped_results_compiled_cursor);
+    }
     public function clear() {
       $this->clearCursor();
       $this->clearResult();
@@ -6742,6 +6874,8 @@ namespace google\appengine_datastore_v3 {
       $this->clearIndexOnly();
       $this->clearSmallOps();
       $this->clearVersion();
+      $this->clearResultCompiledCursor();
+      $this->clearSkippedResultsCompiledCursor();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -6787,6 +6921,15 @@ namespace google\appengine_datastore_v3 {
       $res += 1 * sizeof($this->version);
       foreach ($this->version as $value) {
         $res += $this->lengthVarInt64($value);
+      }
+      $this->checkProtoArray($this->result_compiled_cursor);
+      $res += 1 * sizeof($this->result_compiled_cursor);
+      foreach ($this->result_compiled_cursor as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->skipped_results_compiled_cursor)) {
+        $res += 1;
+        $res += $this->lengthString($this->skipped_results_compiled_cursor->byteSizePartial());
       }
       return $res;
     }
@@ -6843,6 +6986,17 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(88);
         $out->putVarInt64($value);
       }
+      $this->checkProtoArray($this->result_compiled_cursor);
+      foreach ($this->result_compiled_cursor as $value) {
+        $out->putVarInt32(98);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
+      }
+      if (isset($this->skipped_results_compiled_cursor)) {
+        $out->putVarInt32(106);
+        $out->putVarInt32($this->skipped_results_compiled_cursor->byteSizePartial());
+        $this->skipped_results_compiled_cursor->outputPartial($out);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -6896,6 +7050,18 @@ namespace google\appengine_datastore_v3 {
           case 88:
             $this->addVersion($d->getVarInt64());
             break;
+          case 98:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addResultCompiledCursor()->tryMerge($tmp);
+            break;
+          case 106:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableSkippedResultsCompiledCursor()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -6915,6 +7081,10 @@ namespace google\appengine_datastore_v3 {
       foreach ($this->index as $value) {
         if (!$value->isInitialized()) return 'index';
       }
+      foreach ($this->result_compiled_cursor as $value) {
+        if (!$value->isInitialized()) return 'result_compiled_cursor';
+      }
+      if (isset($this->skipped_results_compiled_cursor) && (!$this->skipped_results_compiled_cursor->isInitialized())) return 'skipped_results_compiled_cursor';
       return null;
     }
     public function mergeFrom($x) {
@@ -6952,6 +7122,12 @@ namespace google\appengine_datastore_v3 {
       foreach ($x->getVersionList() as $v) {
         $this->addVersion($v);
       }
+      foreach ($x->getResultCompiledCursorList() as $v) {
+        $this->addResultCompiledCursor()->copyFrom($v);
+      }
+      if ($x->hasSkippedResultsCompiledCursor()) {
+        $this->mutableSkippedResultsCompiledCursor()->mergeFrom($x->getSkippedResultsCompiledCursor());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -6983,6 +7159,12 @@ namespace google\appengine_datastore_v3 {
       foreach (array_map(null, $this->version, $x->version) as $v) {
         if (!$this->integerEquals($v[0], $v[1])) return false;
       }
+      if (sizeof($this->result_compiled_cursor) !== sizeof($x->result_compiled_cursor)) return false;
+      foreach (array_map(null, $this->result_compiled_cursor, $x->result_compiled_cursor) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
+      if (isset($this->skipped_results_compiled_cursor) !== isset($x->skipped_results_compiled_cursor)) return false;
+      if (isset($this->skipped_results_compiled_cursor) && !$this->skipped_results_compiled_cursor->equals($x->skipped_results_compiled_cursor)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -7019,6 +7201,12 @@ namespace google\appengine_datastore_v3 {
       }
       foreach ($this->version as $value) {
         $res .= $prefix . "version: " . $this->debugFormatInt64($value) . "\n";
+      }
+      foreach ($this->result_compiled_cursor as $value) {
+        $res .= $prefix . "result_compiled_cursor <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->skipped_results_compiled_cursor)) {
+        $res .= $prefix . "skipped_results_compiled_cursor <\n" . $this->skipped_results_compiled_cursor->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

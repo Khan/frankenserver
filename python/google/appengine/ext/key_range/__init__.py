@@ -790,6 +790,59 @@ class KeyRange(object):
 
     return key_end
 
+  @classmethod
+  def compute_split_points(cls, kind, count):
+    """Computes a set of KeyRanges that are split points for a kind.
+
+    Args:
+      kind: String with the entity kind to split.
+      count: Number of non-overlapping KeyRanges to generate.
+
+    Returns:
+      A list of KeyRange objects that are non-overlapping. At most "count" + 1
+      KeyRange objects will be returned. At least one will be returned.
+    """
+    query = datastore.Query(kind=kind, keys_only=True)
+    query.Order("__scatter__")
+    random_keys = query.Get(count)
+
+    if not random_keys:
+
+      return [cls()]
+
+    random_keys.sort()
+
+
+
+    key_ranges = []
+
+
+    key_ranges.append(cls(
+        key_start=None,
+        key_end=random_keys[0],
+        direction=cls.ASC,
+        include_start=False,
+        include_end=False))
+
+
+    for i in xrange(0, len(random_keys) - 1):
+      key_ranges.append(cls(
+          key_start=random_keys[i],
+          key_end=random_keys[i + 1],
+          direction=cls.ASC,
+          include_start=True,
+          include_end=False))
+
+
+    key_ranges.append(cls(
+        key_start=random_keys[-1],
+        key_end=None,
+        direction=cls.ASC,
+        include_start=True,
+        include_end=False))
+
+    return key_ranges
+
   def to_json(self):
     """Serialize KeyRange to json.
 

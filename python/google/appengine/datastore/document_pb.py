@@ -954,6 +954,101 @@ class Facet(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.Facet'
+class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
+  has_version_ = 0
+  version_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def version(self): return self.version_
+
+  def set_version(self, x):
+    self.has_version_ = 1
+    self.version_ = x
+
+  def clear_version(self):
+    if self.has_version_:
+      self.has_version_ = 0
+      self.version_ = 0
+
+  def has_version(self): return self.has_version_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_version()): self.set_version(x.version())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_version_ != x.has_version_: return 0
+    if self.has_version_ and self.version_ != x.version_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    return n
+
+  def Clear(self):
+    self.clear_version()
+
+  def OutputUnchecked(self, out):
+    if (self.has_version_):
+      out.putVarInt32(8)
+      out.putVarInt64(self.version_)
+
+  def OutputPartial(self, out):
+    if (self.has_version_):
+      out.putVarInt32(8)
+      out.putVarInt64(self.version_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.set_version(d.getVarInt64())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kversion = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "version",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.DocumentMetadata'
 class Document(ProtocolBuffer.ProtocolMessage):
 
 
@@ -976,8 +1071,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
   storage_ = 0
   has_acl_ = 0
   acl_ = None
-  has_version_ = 0
-  version_ = 0
 
   def __init__(self, contents=None):
     self.field_ = []
@@ -1072,19 +1165,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def has_acl(self): return self.has_acl_
 
-  def version(self): return self.version_
-
-  def set_version(self, x):
-    self.has_version_ = 1
-    self.version_ = x
-
-  def clear_version(self):
-    if self.has_version_:
-      self.has_version_ = 0
-      self.version_ = 0
-
-  def has_version(self): return self.has_version_
-
   def facet_size(self): return len(self.facet_)
   def facet_list(self): return self.facet_
 
@@ -1110,7 +1190,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (x.has_order_id()): self.set_order_id(x.order_id())
     if (x.has_storage()): self.set_storage(x.storage())
     if (x.has_acl()): self.mutable_acl().MergeFrom(x.acl())
-    if (x.has_version()): self.set_version(x.version())
     for i in xrange(x.facet_size()): self.add_facet().CopyFrom(x.facet(i))
 
   def Equals(self, x):
@@ -1128,8 +1207,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if self.has_storage_ and self.storage_ != x.storage_: return 0
     if self.has_acl_ != x.has_acl_: return 0
     if self.has_acl_ and self.acl_ != x.acl_: return 0
-    if self.has_version_ != x.has_version_: return 0
-    if self.has_version_ and self.version_ != x.version_: return 0
     if len(self.facet_) != len(x.facet_): return 0
     for e1, e2 in zip(self.facet_, x.facet_):
       if e1 != e2: return 0
@@ -1153,7 +1230,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
     if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSize())
-    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSize())
     return n
@@ -1167,7 +1243,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
     if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSizePartial())
-    if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSizePartial())
     return n
@@ -1179,7 +1254,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.clear_order_id()
     self.clear_storage()
     self.clear_acl()
-    self.clear_version()
     self.clear_facet()
 
   def OutputUnchecked(self, out):
@@ -1203,9 +1277,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(50)
       out.putVarInt32(self.acl_.ByteSize())
       self.acl_.OutputUnchecked(out)
-    if (self.has_version_):
-      out.putVarInt32(56)
-      out.putVarInt64(self.version_)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSize())
@@ -1232,9 +1303,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(50)
       out.putVarInt32(self.acl_.ByteSizePartial())
       self.acl_.OutputPartial(out)
-    if (self.has_version_):
-      out.putVarInt32(56)
-      out.putVarInt64(self.version_)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSizePartial())
@@ -1267,9 +1335,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_acl().TryMerge(tmp)
         continue
-      if tt == 56:
-        self.set_version(d.getVarInt64())
-        continue
       if tt == 66:
         length = d.getVarInt32()
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
@@ -1300,7 +1365,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"acl <\n"
       res+=self.acl_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
-    if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
     cnt=0
     for e in self.facet_:
       elm=""
@@ -1321,7 +1385,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
   korder_id = 4
   kstorage = 5
   kacl = 6
-  kversion = 7
   kfacet = 8
 
   _TEXT = _BuildTagLookupTable({
@@ -1332,7 +1395,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     4: "order_id",
     5: "storage",
     6: "acl",
-    7: "version",
     8: "facet",
   }, 8)
 
@@ -1344,7 +1406,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
     6: ProtocolBuffer.Encoder.STRING,
-    7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.STRING,
   }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
@@ -1355,4 +1416,4 @@ class Document(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','FacetValue','Facet','Document']
+__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','FacetValue','Facet','DocumentMetadata','Document']

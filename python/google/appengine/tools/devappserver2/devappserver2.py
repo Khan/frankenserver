@@ -142,6 +142,73 @@ def _get_default_php_path():
   return None
 
 
+def _generate_gcd_app(app_id):
+  """Generates an app in tmp for a cloud datastore implementation."""
+  if sys.platform == 'win32':
+    # The temp directory is per-user on Windows so there is no reason to add
+    # the username to the generated directory name.
+    user_format = ''
+  else:
+    try:
+      user_name = getpass.getuser()
+    except Exception:  # The possible set of exceptions is not documented.
+      user_format = ''
+    else:
+      user_format = '.%s' % user_name
+
+  tempdir = tempfile.gettempdir()
+
+  gcd_path = os.path.join(tempdir,
+                          'appengine-gcd-war.%s%s' % (app_id, user_format))
+
+  if not os.path.exists(gcd_path):
+    os.mkdir(gcd_path, 0700)
+    os.mkdir(os.path.join(gcd_path, 'WEB-INF'), 0700)
+
+  with open(os.path.join(gcd_path, 'WEB-INF', 'web.xml'), 'w') as f:
+    f.write("""<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5">
+
+  <security-constraint>
+    <web-resource-collection>
+      <url-pattern>/datastore/*</url-pattern>
+    </web-resource-collection>
+    <user-data-constraint>
+      <transport-guarantee>CONFIDENTIAL</transport-guarantee>
+    </user-data-constraint>
+  </security-constraint>
+
+  <servlet>
+    <servlet-name>DatastoreApiServlet</servlet-name>
+    <servlet-class>
+      com.google.apphosting.client.datastoreservice.app.DatastoreApiServlet
+    </servlet-class>
+    <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+    <servlet-name>DatastoreApiServlet</servlet-name>
+    <url-pattern>/datastore/*</url-pattern>
+  </servlet-mapping>
+
+</web-app>""")
+
+  gcd_app_xml = os.path.join(gcd_path, 'WEB-INF', 'appengine-web.xml')
+  with open(gcd_app_xml, 'w') as f:
+    f.write("""<?xml version="1.0" encoding="utf-8"?>
+<appengine-web-app xmlns="http://appengine.google.com/ns/1.0">
+  <application>%s</application>
+  <version>1</version>
+  <module>google-cloud-datastore</module>
+
+  <precompilation-enabled>true</precompilation-enabled>
+  <threadsafe>true</threadsafe>
+
+</appengine-web-app>""" % app_id)
+
+  return gcd_app_xml
+
+
 class PortParser(object):
   """A parser for ints that represent ports."""
 
@@ -426,7 +493,7 @@ def create_command_line_parser():
   cloud_sql_group.add_argument(
       '--mysql_password',
       default='',
-      help='passpord to use when connecting to the MySQL server specified in '
+      help='password to use when connecting to the MySQL server specified in '
       '--mysql_host and --mysql_port or --mysql_socket')
   cloud_sql_group.add_argument(
       '--mysql_socket',
@@ -469,6 +536,13 @@ def create_command_line_parser():
       'deprecated. This flag will be removed in a future '
       'release. Please do not rely on sequential IDs in your '
       'tests.')
+  datastore_group.add_argument(
+      '--enable_cloud_datastore',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help=argparse.SUPPRESS #'enable the Google Cloud Datastore API.'
+      )
 
   # Logs
   logs_group = parser.add_argument_group('Logs API')
@@ -491,7 +565,7 @@ def create_command_line_parser():
       const=True,
       default=False,
       help='use the "sendmail" tool to transmit e-mail sent '
-      'using the Mail API (ignored if --smpt_host is set)')
+      'using the Mail API (ignored if --smtp_host is set)')
   mail_group.add_argument(
       '--smtp_host', default='',
       help='host name of an SMTP server to use to transmit '
@@ -677,6 +751,14 @@ class DevelopmentServer(object):
 
     configuration = application_configuration.ApplicationConfiguration(
         options.config_paths)
+
+    if options.enable_cloud_datastore:
+      # This requires the oauth server stub to return that the logged in user
+      # is in fact an admin.
+      os.environ['OAUTH_IS_ADMIN'] = '1'
+      gcd_module = application_configuration.ModuleConfiguration(
+          _generate_gcd_app(configuration.app_id.split('~')[1]))
+      configuration.modules.append(gcd_module)
 
     if options.skip_sdk_update_check:
       logging.info('Skipping SDK update check.')

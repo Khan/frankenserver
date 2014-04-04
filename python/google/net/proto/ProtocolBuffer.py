@@ -22,6 +22,17 @@ import array
 import httplib
 import re
 import struct
+try:
+  from google.net.proto import proto1
+except ImportError:
+
+  class ProtocolBufferDecodeError(Exception): pass
+  class ProtocolBufferEncodeError(Exception): pass
+  class ProtocolBufferReturnError(Exception): pass
+else:
+  ProtocolBufferDecodeError = proto1.ProtocolBufferDecodeError
+  ProtocolBufferEncodeError = proto1.ProtocolBufferEncodeError
+  ProtocolBufferReturnError = proto1.ProtocolBufferReturnError
 
 __all__ = ['ProtocolMessage', 'Encoder', 'Decoder',
            'ExtendableProtocolMessage',
@@ -29,8 +40,8 @@ __all__ = ['ProtocolMessage', 'Encoder', 'Decoder',
            'ProtocolBufferEncodeError',
            'ProtocolBufferReturnError']
 
-
 URL_RE = re.compile('^(https?)://([^/]+)(/.*)$')
+
 
 class ProtocolMessage:
 
@@ -958,7 +969,3 @@ class ExtendableProtocolMessage(ProtocolMessage):
           'field number %d.' %
           (extension.full_name, actual_handle.full_name,
            cls.__name__, extension.number))
-
-class ProtocolBufferDecodeError(Exception): pass
-class ProtocolBufferEncodeError(Exception): pass
-class ProtocolBufferReturnError(Exception): pass

@@ -31,7 +31,6 @@ from google.appengine.tools.devappserver2 import java_application
 
 # TODO: figure out what's needed to react to file changes
 
-
 class JavaRuntimeInstanceFactory(instance.InstanceFactory):
   """A factory that creates new Java runtime Instances."""
 
@@ -70,8 +69,20 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     # We should be in .../google/appengine/tools/devappserver2/java_runtime.py
     # and we want to find .../google/appengine/tools and thence
     # .../google/appengine/tools/java/lib
-    tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-    java_dir = os.path.join(tools_dir, 'java')
+
+    java_home = os.environ.get('JAVA_HOME')
+
+    if java_home and os.path.exists(java_home):
+      java_bin = os.path.join(java_home, 'bin/java')
+    else:
+      java_bin = 'java'
+
+    java_dir = os.environ['APP_ENGINE_JAVA_PATH']
+
+    if not java_dir or not os.path.exists(java_dir):
+      tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+      java_dir = os.path.join(tools_dir, 'java')
+
     java_lib_dir = os.path.join(java_dir, 'lib')
     assert os.path.isdir(java_lib_dir), java_lib_dir
     class_path = os.path.join(java_lib_dir, 'appengine-tools-api.jar')
@@ -80,7 +91,7 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
                                      'appengine-dev-jdk-overrides.jar')
     assert os.path.isfile(jdk_overrides_jar), jdk_overrides_jar
     return [
-        'java',
+        java_bin,
         '-cp', class_path,
         '-Dappengine.sdk.root=' + java_dir,
         '-Xbootclasspath/p:' + jdk_overrides_jar,

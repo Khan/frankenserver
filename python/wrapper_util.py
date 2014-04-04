@@ -200,6 +200,11 @@ class Paths(object):
         dir_path,
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
+
+        os.path.join(dir_path, 'lib', 'requests'),
+        os.path.join(dir_path, 'lib', 'six'),
+        os.path.join(dir_path, 'lib', 'websocket'),
+        os.path.join(dir_path, 'lib', 'docker'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.1'),

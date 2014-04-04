@@ -265,10 +265,11 @@ class AppEngineWebXmlParser(object):
 
   def ProcessWarmupRequestsEnabledNode(self, node):
     warmup_requests_enabled = xml_parser_utils.BooleanValue(node.text)
+    warmup_service = AppEngineWebXml.WARMUP_SERVICE
     if warmup_requests_enabled:
-      self.inbound_services.add(self.WARMUP_SERVICE)
+      self.app_engine_web_xml.inbound_services.add(warmup_service)
     else:
-      self.inbound_services.remove(self.WARMUP_SERVICE)
+      self.app_engine_web_xml.inbound_services.remove(warmup_service)
 
   def ProcessThreadsafeNode(self, node):
     value = xml_parser_utils.BooleanValue(node.text)

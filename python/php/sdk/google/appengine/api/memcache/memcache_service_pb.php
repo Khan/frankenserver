@@ -27,6 +27,7 @@ namespace google\appengine\MemcacheServiceError {
     const NAMESPACE_NOT_SET = 2;
     const PERMISSION_DENIED = 3;
     const INVALID_VALUE = 6;
+    const UNAVAILABLE = 9;
   }
 }
 namespace google\appengine {

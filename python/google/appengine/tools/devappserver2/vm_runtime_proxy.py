@@ -17,20 +17,17 @@
 """Manages a VM Runtime process running inside of a docker container.
 """
 
-# TODO: add to third_party
-try:
-  import docker
-except ImportError:
-  docker = None
-
 import logging
 import socket
 
 import google
+import docker
 
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import instance
+from google.appengine.tools.docker import containers
+
 
 class VMRuntimeProxy(instance.RuntimeProxy):
   """Manages a VM Runtime process running inside of a docker container"""
@@ -48,14 +45,12 @@ class VMRuntimeProxy(instance.RuntimeProxy):
           instance respresenting the configuration of the module that owns the
           runtime.
     """
-    assert docker, "VM instances are not supported without docker-py installed"
-
     super(VMRuntimeProxy, self).__init__()
 
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
     self._docker_client = docker_client
-    self._container_id = None
+    self._container = None
     self._proxy = None
 
   def handle(self, environ, start_response, url_map, match, request_id,
@@ -96,44 +91,39 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     api_host = socket.gethostbyname(socket.gethostname()) if (
         runtime_config.api_host == '0.0.0.0') else runtime_config.api_host
 
-    image_id, _ = self._docker_client.build(
-        path=self._module_configuration.application_root,
-        tag='vme.python.%(APP_ID)s.%(MODULE)s.%(VERSION)s' % {
-            'APP_ID': self._module_configuration.application,
-            'MODULE': self._module_configuration.module_name,
-            'VERSION': self._module_configuration.version_id},
-        quiet=False, fileobj=None, nocache=False, rm=False, stream=False)
-
     # Must be HTTP_PORT from apphosting/ext/vmruntime/vmservice.py
     # TODO: update apphosting/ext/vmruntime/vmservice.py to use
     # env var set here.
     PORT = 8080
 
-    self._container_id = self._docker_client.create_container(
-        image=image_id, hostname=None, user=None, detach=True, stdin_open=False,
-        tty=False, mem_limit=0,
-        ports=[PORT],
-        # TODO: set environment variable for MetadataServer
-        environment={'API_HOST': api_host,
-                     'API_PORT': runtime_config.api_port},
-        dns=None,
-        network_disabled=False, name=None)
+    self._container = containers.Container(
+        self._docker_client,
+        containers.ContainerOptions(
+            image_opts=containers.ImageOptions(
+                dockerfile_dir=self._module_configuration.application_root,
+                tag='vm.%(RUNTIME)s.%(APP_ID)s.%(MODULE)s.%(VERSION)s' % {
+                    'APP_ID': self._module_configuration.application,
+                    'MODULE': self._module_configuration.module_name,
+                    'RUNTIME': self._module_configuration.effective_runtime,
+                    'VERSION': self._module_configuration.major_version},
+                nocache=False),
+            port=PORT,
+            environment={
+                'API_HOST': api_host,
+                'API_PORT': runtime_config.api_port,
+                'GAE_LONG_APP_ID':
+                    self._module_configuration.application_external_name,
+                'GAE_PARTITION': self._module_configuration.partition,
+                'GAE_MODULE_NAME': self._module_configuration.module_name,
+                'GAE_MODULE_VERSION': self._module_configuration.major_version,
+                'GAE_MINOR_VERSION': self._module_configuration.minor_version,
+                'GAE_MODULE_INSTANCE': runtime_config.instance_id},
+            volumes={'/var/log/app_engine/app': '/var/log/app_engine/app:rw'}))
 
-    logging.info('Container %s created' % self._container_id)
-
-    self._docker_client.start(
-        self._container_id,
-        # Assigns random available docker port
-        port_bindings={PORT: None})
-
-    logging.info('Container %s started' % self._container_id)
-
-    container_info = self._docker_client.inspect_container(self._container_id)
-    port = int(
-        container_info['NetworkSettings']['Ports']['8080/tcp'][0]['HostPort'])
+    self._container.Start()
 
     self._proxy = http_proxy.HttpProxy(
-        host='localhost', port=port,
+        host=self._container.host, port=self._container.port,
         instance_died_unexpectedly=self._instance_died_unexpectedly,
         instance_logs_getter=self._get_instance_logs,
         error_handler_file=application_configuration.get_app_error_file(
@@ -141,15 +131,17 @@ class VMRuntimeProxy(instance.RuntimeProxy):
 
   def quit(self):
     """Kills running container and removes it."""
-    self._docker_client.kill(self._container_id)
-    self._docker_client.remove_container(self._container_id, v=False,
-                                         link=False)
+    self._container.Stop()
+
 
 class VMRuntimeInstanceFactory(instance.InstanceFactory):
-  """A factory that creates new VM Python runtime Instances."""
+  """A factory that creates new VM runtime Instances."""
 
   SUPPORTS_INTERACTIVE_REQUESTS = True
   FILE_CHANGE_INSTANCE_RESTART_POLICY = instance.ALWAYS
+
+  # Timeout of HTTP request from docker-py client to docker daemon, in seconds.
+  DOCKER_D_REQUEST_TIMEOUT = 60
 
   def __init__(self, request_data, runtime_config_getter, module_configuration):
     """Initializer for VMRuntimeInstanceFactory.
@@ -174,7 +166,7 @@ class VMRuntimeInstanceFactory(instance.InstanceFactory):
     docker_daemon_url = runtime_config_getter().vm_config.docker_daemon_url
     self._docker_client = docker.Client(base_url=docker_daemon_url,
                                         version='1.6',
-                                        timeout=10)
+                                        timeout=self.DOCKER_D_REQUEST_TIMEOUT)
     if not self._docker_client:
       logging.error('Couldn\'t connect to docker daemon on %s' %
                     docker_daemon_url)
@@ -193,8 +185,13 @@ class VMRuntimeInstanceFactory(instance.InstanceFactory):
       The newly created instance.Instance.
     """
 
+    def runtime_config_getter():
+      runtime_config = self._runtime_config_getter()
+      runtime_config.instance_id = str(instance_id)
+      return runtime_config
+
     proxy = VMRuntimeProxy(self._docker_client,
-                           self._runtime_config_getter,
+                           runtime_config_getter,
                            self._module_configuration)
     return instance.Instance(self.request_data,
                              instance_id,

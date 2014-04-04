@@ -19,16 +19,20 @@
 
 import cStringIO
 import pickle
+import re
 import tempfile
 import unittest
 import urllib
 import wsgiref.util
+
+from google.net.rpc.python.testing import rpc_test_harness
 
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import urlfetch_service_pb
 from google.appengine.api import user_service_pb
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.datastore import datastore_v4_pb
 from google.appengine.ext.remote_api import remote_api_pb
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools.devappserver2 import api_server
@@ -69,6 +73,14 @@ class FakeURLFetchServiceStub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(23, 'details')
 
 
+class FakeDatastoreV4ServiceStub(apiproxy_stub.APIProxyStub):
+  def __init__(self):
+    super(FakeDatastoreV4ServiceStub, self).__init__('datastore_v4')
+
+  def _Dynamic_BeginTransaction(self, request, response):
+    response.set_transaction('whatever')
+
+
 def setup_stubs():
   """Setup the API stubs. This can only be done once."""
   api_server.test_setup_stubs(
@@ -93,7 +105,10 @@ def setup_stubs():
       taskqueue_default_http_server=TASKQUEUE_DEFAULT_HTTP_SERVER,
       user_login_url=USER_LOGIN_URL,
       user_logout_url=USER_LOGOUT_URL)
-  apiproxy_stub_map.apiproxy.ReplaceStub('urlfetch', FakeURLFetchServiceStub())
+  apiproxy_stub_map.apiproxy.ReplaceStub(
+      'urlfetch', FakeURLFetchServiceStub())
+  apiproxy_stub_map.apiproxy.ReplaceStub(
+      'datastore_v4', FakeDatastoreV4ServiceStub())
 
 
 class TestAPIServer(wsgi_test_utils.WSGITestCase):
@@ -153,6 +168,30 @@ class TestAPIServer(wsgi_test_utils.WSGITestCase):
 
     self._assert_remote_call(
         expected_remote_response, logout_request, 'user', 'CreateLogoutURL')
+
+  def test_datastore_v4_api_call(self):
+    begin_transaction_response = datastore_v4_pb.BeginTransactionResponse()
+    begin_transaction_response.set_transaction('whatever')
+
+    expected_remote_response = remote_api_pb.Response()
+    expected_remote_response.set_response(
+        begin_transaction_response.Encode())
+
+    begin_transaction_request = datastore_v4_pb.BeginTransactionRequest()
+
+    self._assert_remote_call(
+        expected_remote_response, begin_transaction_request,
+        'datastore_v4', 'BeginTransaction')
+
+  def test_datastore_v4_api_calls_handled(self):
+    # We are only using RpcTestHarness as a clean way to get the list of
+    # service methods.
+    harness = rpc_test_harness.RpcTestHarness(
+        datastore_v4_pb.DatastoreV4Service)
+    deprecated = ['Get', 'Write']
+    methods = set([k for k in harness.__dict__.keys()
+                   if k not in deprecated and not k.startswith('_')])
+    self.assertEqual(methods, set(api_server._DATASTORE_V4_METHODS.keys()))
 
   def test_GET(self):
     environ = {'REQUEST_METHOD': 'GET',

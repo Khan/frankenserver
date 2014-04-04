@@ -25,6 +25,8 @@ SecurityConstraint: Contains information about specified security constraints.
 
 """
 
+import logging
+
 from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
@@ -68,9 +70,23 @@ class WebXmlParser(object):
     except ElementTree.ParseError:
       raise AppEngineConfigException('Bad input -- not valid XML')
 
+
+
+
+
+  _IGNORED_NODES = frozenset([
+      'context-param', 'description', 'display-name', 'distributable',
+      'ejb-local-ref', 'ejb-ref', 'env-entry', 'filter', 'icon',
+      'jsp-config', 'listener', 'locale-encoding-mapping-list',
+      'login-config', 'message-destination', 'message-destination-ref',
+      'persistence-context-ref', 'persistence-unit-ref', 'post-construct',
+      'pre-destroy', 'resource-env-ref', 'resource-ref', 'security-role',
+      'service-ref', 'servlet', 'session-config', 'taglib',
+  ])
+
   def ProcessSecondLevelNode(self, node):
     element_name = xml_parser_utils.GetTag(node)
-    if element_name in ['servlet', 'filter', 'display-name', 'taglib']:
+    if element_name in self._IGNORED_NODES:
 
 
       return
@@ -80,7 +96,7 @@ class WebXmlParser(object):
         method_name is not 'ProcessSecondLevelNode'):
       getattr(self, method_name)(node)
     else:
-      self.errors.append('Second-level tag not recognized: %s' % element_name)
+      logging.warning('Second-level tag not recognized: %s', element_name)
 
   def ProcessServletMappingNode(self, node):
     self._ProcessUrlMappingNode(node)

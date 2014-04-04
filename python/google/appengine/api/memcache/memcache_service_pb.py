@@ -39,6 +39,7 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
   NAMESPACE_NOT_SET =    2
   PERMISSION_DENIED =    3
   INVALID_VALUE =    6
+  UNAVAILABLE  =    9
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -46,6 +47,7 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
     2: "NAMESPACE_NOT_SET",
     3: "PERMISSION_DENIED",
     6: "INVALID_VALUE",
+    9: "UNAVAILABLE",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

@@ -3,6 +3,27 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.2
+
+All
+==============================
+- We are pleased to announce the availability of Dedicated Memcache service
+  to our customers in the EU.
+
+PHP
+==============================
+- Users now have the ability to embed images in emails via the Content-Id
+  attachment header.
+    https://code.google.com/p/googleappengine/issues/detail?id=965
+- The Zip module is now included in the SDK.
+    https://code.google.com/p/googleappengine/issues/detail?id=10703
+- Fixed an issue with the Google Cloud Storage upload proxy truncating POST
+  field data when it is longer than 80 characters.
+    https://code.google.com/p/googleappengine/issues/detail?id=10355
+- Fixed an issue with default max sized uploads no longer handling unlimited
+  size uploads.
+    https://code.google.com/p/googleappengine/issues/detail?id=10727
+
 Version 1.9.1
 
 All

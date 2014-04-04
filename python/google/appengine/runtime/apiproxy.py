@@ -37,6 +37,12 @@ from google.net.proto2.python.public import message
 
 
 
+MEMCACHE_UNAVAILABLE = 9
+
+
+
+
+
 
 
 
@@ -170,10 +176,20 @@ class RPC(apiproxy_rpc.RPC):
     self.__state = RPC.FINISHING
     self.cpu_usage_mcycles = self.__result_dict['cpu_usage_mcycles']
     if self.__result_dict['error'] == APPLICATION_ERROR:
-      self.__exception = apiproxy_errors.ApplicationError(
-          self.__result_dict['application_error'],
-          self.__result_dict['error_detail'])
+      appl_err = self.__result_dict['application_error']
+      if appl_err == MEMCACHE_UNAVAILABLE and self.package == 'memcache':
+
+
+        self.__exception = apiproxy_errors.CapabilityDisabledError(
+            'The memcache service is temporarily unavailable. %s'
+            % self.__result_dict['error_detail'])
+      else:
+
+        self.__exception = apiproxy_errors.ApplicationError(
+            appl_err,
+            self.__result_dict['error_detail'])
     elif self.__result_dict['error'] == CAPABILITY_DISABLED:
+
       if self.__result_dict['error_detail']:
         self.__exception = apiproxy_errors.CapabilityDisabledError(
             self.__result_dict['error_detail'])

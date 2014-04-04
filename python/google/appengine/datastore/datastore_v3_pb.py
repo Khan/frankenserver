@@ -42,6 +42,10 @@ import google.appengine.datastore.snapshot_pb
 class InternalHeader(ProtocolBuffer.ProtocolMessage):
   has_requesting_app_id_ = 0
   requesting_app_id_ = ""
+  has_requesting_project_id_ = 0
+  requesting_project_id_ = ""
+  has_requesting_version_id_ = 0
+  requesting_version_id_ = ""
   has_api_settings_ = 0
   api_settings_ = ""
 
@@ -61,6 +65,32 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
 
   def has_requesting_app_id(self): return self.has_requesting_app_id_
 
+  def requesting_project_id(self): return self.requesting_project_id_
+
+  def set_requesting_project_id(self, x):
+    self.has_requesting_project_id_ = 1
+    self.requesting_project_id_ = x
+
+  def clear_requesting_project_id(self):
+    if self.has_requesting_project_id_:
+      self.has_requesting_project_id_ = 0
+      self.requesting_project_id_ = ""
+
+  def has_requesting_project_id(self): return self.has_requesting_project_id_
+
+  def requesting_version_id(self): return self.requesting_version_id_
+
+  def set_requesting_version_id(self, x):
+    self.has_requesting_version_id_ = 1
+    self.requesting_version_id_ = x
+
+  def clear_requesting_version_id(self):
+    if self.has_requesting_version_id_:
+      self.has_requesting_version_id_ = 0
+      self.requesting_version_id_ = ""
+
+  def has_requesting_version_id(self): return self.has_requesting_version_id_
+
   def api_settings(self): return self.api_settings_
 
   def set_api_settings(self, x):
@@ -78,12 +108,18 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_requesting_app_id()): self.set_requesting_app_id(x.requesting_app_id())
+    if (x.has_requesting_project_id()): self.set_requesting_project_id(x.requesting_project_id())
+    if (x.has_requesting_version_id()): self.set_requesting_version_id(x.requesting_version_id())
     if (x.has_api_settings()): self.set_api_settings(x.api_settings())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_requesting_app_id_ != x.has_requesting_app_id_: return 0
     if self.has_requesting_app_id_ and self.requesting_app_id_ != x.requesting_app_id_: return 0
+    if self.has_requesting_project_id_ != x.has_requesting_project_id_: return 0
+    if self.has_requesting_project_id_ and self.requesting_project_id_ != x.requesting_project_id_: return 0
+    if self.has_requesting_version_id_ != x.has_requesting_version_id_: return 0
+    if self.has_requesting_version_id_ and self.requesting_version_id_ != x.requesting_version_id_: return 0
     if self.has_api_settings_ != x.has_api_settings_: return 0
     if self.has_api_settings_ and self.api_settings_ != x.api_settings_: return 0
     return 1
@@ -95,17 +131,23 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
+    if (self.has_requesting_project_id_): n += 1 + self.lengthString(len(self.requesting_project_id_))
+    if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
     if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
+    if (self.has_requesting_project_id_): n += 1 + self.lengthString(len(self.requesting_project_id_))
+    if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
     if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
 
   def Clear(self):
     self.clear_requesting_app_id()
+    self.clear_requesting_project_id()
+    self.clear_requesting_version_id()
     self.clear_api_settings()
 
   def OutputUnchecked(self, out):
@@ -115,6 +157,12 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     if (self.has_api_settings_):
       out.putVarInt32(26)
       out.putPrefixedString(self.api_settings_)
+    if (self.has_requesting_project_id_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.requesting_project_id_)
+    if (self.has_requesting_version_id_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.requesting_version_id_)
 
   def OutputPartial(self, out):
     if (self.has_requesting_app_id_):
@@ -123,6 +171,12 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     if (self.has_api_settings_):
       out.putVarInt32(26)
       out.putPrefixedString(self.api_settings_)
+    if (self.has_requesting_project_id_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.requesting_project_id_)
+    if (self.has_requesting_version_id_):
+      out.putVarInt32(42)
+      out.putPrefixedString(self.requesting_version_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -133,6 +187,12 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
       if tt == 26:
         self.set_api_settings(d.getPrefixedString())
         continue
+      if tt == 34:
+        self.set_requesting_project_id(d.getPrefixedString())
+        continue
+      if tt == 42:
+        self.set_requesting_version_id(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -142,6 +202,8 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_requesting_app_id_: res+=prefix+("requesting_app_id: %s\n" % self.DebugFormatString(self.requesting_app_id_))
+    if self.has_requesting_project_id_: res+=prefix+("requesting_project_id: %s\n" % self.DebugFormatString(self.requesting_project_id_))
+    if self.has_requesting_version_id_: res+=prefix+("requesting_version_id: %s\n" % self.DebugFormatString(self.requesting_version_id_))
     if self.has_api_settings_: res+=prefix+("api_settings: %s\n" % self.DebugFormatString(self.api_settings_))
     return res
 
@@ -150,19 +212,25 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   krequesting_app_id = 2
+  krequesting_project_id = 4
+  krequesting_version_id = 5
   kapi_settings = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     2: "requesting_app_id",
     3: "api_settings",
-  }, 3)
+    4: "requesting_project_id",
+    5: "requesting_version_id",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STRING,
+    5: ProtocolBuffer.Encoder.STRING,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6627,11 +6695,14 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   compiled_query_ = None
   has_compiled_cursor_ = 0
   compiled_cursor_ = None
+  has_skipped_results_compiled_cursor_ = 0
+  skipped_results_compiled_cursor_ = None
 
   def __init__(self, contents=None):
     self.result_ = []
     self.index_ = []
     self.version_ = []
+    self.result_compiled_cursor_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -6804,6 +6875,41 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   def clear_version(self):
     self.version_ = []
 
+  def result_compiled_cursor_size(self): return len(self.result_compiled_cursor_)
+  def result_compiled_cursor_list(self): return self.result_compiled_cursor_
+
+  def result_compiled_cursor(self, i):
+    return self.result_compiled_cursor_[i]
+
+  def mutable_result_compiled_cursor(self, i):
+    return self.result_compiled_cursor_[i]
+
+  def add_result_compiled_cursor(self):
+    x = CompiledCursor()
+    self.result_compiled_cursor_.append(x)
+    return x
+
+  def clear_result_compiled_cursor(self):
+    self.result_compiled_cursor_ = []
+  def skipped_results_compiled_cursor(self):
+    if self.skipped_results_compiled_cursor_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.skipped_results_compiled_cursor_ is None: self.skipped_results_compiled_cursor_ = CompiledCursor()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.skipped_results_compiled_cursor_
+
+  def mutable_skipped_results_compiled_cursor(self): self.has_skipped_results_compiled_cursor_ = 1; return self.skipped_results_compiled_cursor()
+
+  def clear_skipped_results_compiled_cursor(self):
+
+    if self.has_skipped_results_compiled_cursor_:
+      self.has_skipped_results_compiled_cursor_ = 0;
+      if self.skipped_results_compiled_cursor_ is not None: self.skipped_results_compiled_cursor_.Clear()
+
+  def has_skipped_results_compiled_cursor(self): return self.has_skipped_results_compiled_cursor_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -6818,6 +6924,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (x.has_compiled_cursor()): self.mutable_compiled_cursor().MergeFrom(x.compiled_cursor())
     for i in xrange(x.index_size()): self.add_index().CopyFrom(x.index(i))
     for i in xrange(x.version_size()): self.add_version(x.version(i))
+    for i in xrange(x.result_compiled_cursor_size()): self.add_result_compiled_cursor().CopyFrom(x.result_compiled_cursor(i))
+    if (x.has_skipped_results_compiled_cursor()): self.mutable_skipped_results_compiled_cursor().MergeFrom(x.skipped_results_compiled_cursor())
 
   def Equals(self, x):
     if x is self: return 1
@@ -6846,6 +6954,11 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if len(self.version_) != len(x.version_): return 0
     for e1, e2 in zip(self.version_, x.version_):
       if e1 != e2: return 0
+    if len(self.result_compiled_cursor_) != len(x.result_compiled_cursor_): return 0
+    for e1, e2 in zip(self.result_compiled_cursor_, x.result_compiled_cursor_):
+      if e1 != e2: return 0
+    if self.has_skipped_results_compiled_cursor_ != x.has_skipped_results_compiled_cursor_: return 0
+    if self.has_skipped_results_compiled_cursor_ and self.skipped_results_compiled_cursor_ != x.skipped_results_compiled_cursor_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -6861,6 +6974,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_compiled_cursor_ and not self.compiled_cursor_.IsInitialized(debug_strs)): initialized = 0
     for p in self.index_:
       if not p.IsInitialized(debug_strs): initialized=0
+    for p in self.result_compiled_cursor_:
+      if not p.IsInitialized(debug_strs): initialized=0
+    if (self.has_skipped_results_compiled_cursor_ and not self.skipped_results_compiled_cursor_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -6878,6 +6994,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSize())
     n += 1 * len(self.version_)
     for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
+    n += 1 * len(self.result_compiled_cursor_)
+    for i in xrange(len(self.result_compiled_cursor_)): n += self.lengthString(self.result_compiled_cursor_[i].ByteSize())
+    if (self.has_skipped_results_compiled_cursor_): n += 1 + self.lengthString(self.skipped_results_compiled_cursor_.ByteSize())
     return n + 2
 
   def ByteSizePartial(self):
@@ -6897,6 +7016,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.index_)): n += self.lengthString(self.index_[i].ByteSizePartial())
     n += 1 * len(self.version_)
     for i in xrange(len(self.version_)): n += self.lengthVarInt64(self.version_[i])
+    n += 1 * len(self.result_compiled_cursor_)
+    for i in xrange(len(self.result_compiled_cursor_)): n += self.lengthString(self.result_compiled_cursor_[i].ByteSizePartial())
+    if (self.has_skipped_results_compiled_cursor_): n += 1 + self.lengthString(self.skipped_results_compiled_cursor_.ByteSizePartial())
     return n
 
   def Clear(self):
@@ -6911,6 +7033,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     self.clear_compiled_cursor()
     self.clear_index()
     self.clear_version()
+    self.clear_result_compiled_cursor()
+    self.clear_skipped_results_compiled_cursor()
 
   def OutputUnchecked(self, out):
     if (self.has_cursor_):
@@ -6950,6 +7074,14 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.version_)):
       out.putVarInt32(88)
       out.putVarInt64(self.version_[i])
+    for i in xrange(len(self.result_compiled_cursor_)):
+      out.putVarInt32(98)
+      out.putVarInt32(self.result_compiled_cursor_[i].ByteSize())
+      self.result_compiled_cursor_[i].OutputUnchecked(out)
+    if (self.has_skipped_results_compiled_cursor_):
+      out.putVarInt32(106)
+      out.putVarInt32(self.skipped_results_compiled_cursor_.ByteSize())
+      self.skipped_results_compiled_cursor_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -6990,6 +7122,14 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.version_)):
       out.putVarInt32(88)
       out.putVarInt64(self.version_[i])
+    for i in xrange(len(self.result_compiled_cursor_)):
+      out.putVarInt32(98)
+      out.putVarInt32(self.result_compiled_cursor_[i].ByteSizePartial())
+      self.result_compiled_cursor_[i].OutputPartial(out)
+    if (self.has_skipped_results_compiled_cursor_):
+      out.putVarInt32(106)
+      out.putVarInt32(self.skipped_results_compiled_cursor_.ByteSizePartial())
+      self.skipped_results_compiled_cursor_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -7042,6 +7182,18 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       if tt == 88:
         self.add_version(d.getVarInt64())
         continue
+      if tt == 98:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_result_compiled_cursor().TryMerge(tmp)
+        continue
+      if tt == 106:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_skipped_results_compiled_cursor().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -7089,6 +7241,18 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("version%s: %s\n" % (elm, self.DebugFormatInt64(e)))
       cnt+=1
+    cnt=0
+    for e in self.result_compiled_cursor_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("result_compiled_cursor%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
+    if self.has_skipped_results_compiled_cursor_:
+      res+=prefix+"skipped_results_compiled_cursor <\n"
+      res+=self.skipped_results_compiled_cursor_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -7106,6 +7270,8 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   kcompiled_cursor = 6
   kindex = 8
   kversion = 11
+  kresult_compiled_cursor = 12
+  kskipped_results_compiled_cursor = 13
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -7120,7 +7286,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     9: "index_only",
     10: "small_ops",
     11: "version",
-  }, 11)
+    12: "result_compiled_cursor",
+    13: "skipped_results_compiled_cursor",
+  }, 13)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -7135,7 +7303,9 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
     9: ProtocolBuffer.Encoder.NUMERIC,
     10: ProtocolBuffer.Encoder.NUMERIC,
     11: ProtocolBuffer.Encoder.NUMERIC,
-  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
+    12: ProtocolBuffer.Encoder.STRING,
+    13: ProtocolBuffer.Encoder.STRING,
+  }, 13, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

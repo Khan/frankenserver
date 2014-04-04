@@ -63,6 +63,7 @@ from google.appengine.cron import groctimespecification
 from google.appengine.api import appinfo
 from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
+from google.appengine.api import client_deployinfo
 from google.appengine.api import croninfo
 from google.appengine.api import dispatchinfo
 from google.appengine.api import dosinfo
@@ -416,7 +417,7 @@ def BuildClonePostBody(file_tuples):
   return LIST_DELIMITER.join(file_list)
 
 
-def GetRemoteResourceLimits(rpcserver, config, error_fh=sys.stderr):
+def _GetRemoteResourceLimits(logging_context):
   """Get the resource limit as reported by the admin console.
 
   Get the resource limits by querying the admin_console/appserver. The
@@ -424,18 +425,13 @@ def GetRemoteResourceLimits(rpcserver, config, error_fh=sys.stderr):
   could be missing values we expect or include extra values.
 
   Args:
-    rpcserver: The RPC server to use.
-    config: The appyaml configuration.
-    error_fh: Where to send status and error messages.
+    logging_context: The _ClientDeployLoggingContext for this upload.
 
   Returns:
     A dictionary.
   """
   try:
-    StatusUpdate('Getting current resource limits.', error_fh)
-    yaml_data = rpcserver.Send('/api/appversion/getresourcelimits',
-                               app_id=config.application,
-                               version=config.version)
+    yaml_data = logging_context.Send('/api/appversion/getresourcelimits')
 
   except urllib2.HTTPError, err:
 
@@ -448,7 +444,7 @@ def GetRemoteResourceLimits(rpcserver, config, error_fh=sys.stderr):
   return yaml.safe_load(yaml_data)
 
 
-def GetResourceLimits(rpcserver, config, error_fh=sys.stderr):
+def GetResourceLimits(logging_context, error_fh=sys.stderr):
   """Gets the resource limits.
 
   Gets the resource limits that should be applied to apps. Any values
@@ -457,15 +453,15 @@ def GetResourceLimits(rpcserver, config, error_fh=sys.stderr):
   values we don't know about).
 
   Args:
-    rpcserver: The RPC server to use.
-    config: The appyaml configuration.
+    logging_context: The _ClientDeployLoggingContext for this upload.
     error_fh: Where to send status and error messages.
 
   Returns:
     A dictionary.
   """
   resource_limits = DEFAULT_RESOURCE_LIMITS.copy()
-  resource_limits.update(GetRemoteResourceLimits(rpcserver, config, error_fh))
+  StatusUpdate('Getting current resource limits.', error_fh)
+  resource_limits.update(_GetRemoteResourceLimits(logging_context))
   logging.debug('Using resource limits: %s', resource_limits)
   return resource_limits
 
@@ -1321,19 +1317,17 @@ def FindSentinel(filename, blocksize=2**16, error_fh=sys.stderr):
 class UploadBatcher(object):
   """Helper to batch file uploads."""
 
-  def __init__(self, what, rpcserver, params):
+  def __init__(self, what, logging_context):
     """Constructor.
 
     Args:
       what: Either 'file' or 'blob' or 'errorblob' indicating what kind of
         objects this batcher uploads.  Used in messages and URLs.
-      rpcserver: The RPC server.
-      params: A dictionary object containing URL params to add to HTTP requests.
+      logging_context: The _ClientDeployLoggingContext for this upload.
     """
     assert what in ('file', 'blob', 'errorblob'), repr(what)
     self.what = what
-    self.params = params
-    self.rpcserver = rpcserver
+    self.logging_context = logging_context
     self.single_url = '/api/appversion/add' + what
     self.batch_url = self.single_url + 's'
     self.batching = True
@@ -1375,10 +1369,9 @@ class UploadBatcher(object):
     payload = delimiter.join(parts)
     logging.info('Uploading batch of %d %ss to %s with boundary="%s".',
                  len(self.batch), self.what, self.batch_url, boundary)
-    self.rpcserver.Send(self.batch_url,
-                        payload=payload,
-                        content_type='message/rfc822',
-                        **self.params)
+    self.logging_context.Send(self.batch_url,
+                              payload=payload,
+                              content_type='message/rfc822')
     self.batch = []
     self.batch_size = 0
 
@@ -1386,11 +1379,10 @@ class UploadBatcher(object):
     """Send a single file on its way."""
     logging.info('Uploading %s %s (%s bytes, type=%s) to %s.',
                  self.what, path, len(payload), mime_type, self.single_url)
-    self.rpcserver.Send(self.single_url,
-                        payload=payload,
-                        content_type=mime_type,
-                        path=path,
-                        **self.params)
+    self.logging_context.Send(self.single_url,
+                              payload=payload,
+                              content_type=mime_type,
+                              path=path)
 
   def Flush(self):
     """Flush the current batch.
@@ -1646,6 +1638,94 @@ def DoDownloadApp(rpcserver, out_dir, app_id, module, app_version,
     logging.error('Number of errors: %d.  See output for details.', num_errors)
 
 
+class _ClientDeployLoggingContext(object):
+  """Context for sending and recording server rpc requests.
+
+  Attributes:
+    rpcserver: The AbstractRpcServer to use for the upload.
+    requests: A list of client_deployinfo.Request objects to include
+      with the client deploy log.
+    time_func: Function to get the current time in milliseconds.
+    request_params: A dictionary with params to append to requests
+  """
+
+  def __init__(self,
+               rpcserver,
+               request_params,
+               usage_reporting,
+               time_func=time.time):
+    """Creates a new AppVersionUpload.
+
+    Args:
+      rpcserver: The RPC server to use. Should be an instance of HttpRpcServer
+        or TestRpcServer.
+      request_params: A dictionary with params to append to requests
+      usage_reporting: Whether to actually upload data.
+      time_func: Function to return the current time in millisecods
+        (default time.time).
+    """
+    self.rpcserver = rpcserver
+    self.request_params = request_params
+    self.usage_reporting = usage_reporting
+    self.time_func = time_func
+    self.requests = []
+
+  def Send(self, url, payload='', **kwargs):
+    """Sends a request to the server, with common params."""
+    start_time_usec = self.GetCurrentTimeUsec()
+    request_size_bytes = len(payload)
+    try:
+      logging.info('Send: %s, params=%s', url, self.request_params)
+
+      kwargs.update(self.request_params)
+      result = self.rpcserver.Send(url, payload=payload, **kwargs)
+      self._RegisterReqestForLogging(url, 200, start_time_usec,
+                                     request_size_bytes)
+      return result
+    except urllib2.HTTPError, e:
+      self._RegisterReqestForLogging(url, e.code, start_time_usec,
+                                     request_size_bytes)
+      raise e
+
+  def GetCurrentTimeUsec(self):
+    """Returns the current time in microseconds."""
+    return int(round(self.time_func() * 1000 * 1000))
+
+  def _RegisterReqestForLogging(self, path, response_code, start_time_usec,
+                                request_size_bytes):
+    """Registers a request for client deploy logging purposes."""
+    end_time_usec = self.GetCurrentTimeUsec()
+    self.requests.append(client_deployinfo.Request(
+        path=path,
+        response_code=response_code,
+        start_time_usec=start_time_usec,
+        end_time_usec=end_time_usec,
+        request_size_bytes=request_size_bytes))
+
+  def LogClientDeploy(self, runtime, start_time_usec, success):
+    """Logs a client deployment attempt.
+
+    Args:
+      runtime: The runtime for the app being deployed.
+      start_time_usec: The start time of the deployment in micro seconds.
+      success: True if the deployment succeeded otherwise False.
+    """
+    if not self.usage_reporting:
+      logging.info('Skipping usage reporting.')
+      return
+    end_time_usec = self.GetCurrentTimeUsec()
+    try:
+      info = client_deployinfo.ClientDeployInfoExternal(
+          runtime=runtime,
+          start_time_usec=start_time_usec,
+          end_time_usec=end_time_usec,
+          requests=self.requests,
+          success=success)
+      self.Send('/api/logclientdeploy', info.ToYAML())
+    except BaseException, e:
+      logging.debug('Exception logging deploy info continuing - %s', e)
+
+
 class AppVersionUpload(object):
   """Provides facilities to upload a new appversion to the hosting service.
 
@@ -1661,12 +1741,14 @@ class AppVersionUpload(object):
       An AppVersionUpload can do only one transaction at a time.
     deployed: True iff the Deploy method has been called.
     started: True iff the StartServing method has been called.
+    logging_context: The _ClientDeployLoggingContext for this upload.
   """
 
   def __init__(self, rpcserver, config, module_yaml_path='app.yaml',
                backend=None,
                error_fh=None,
-               get_version=sdk_update_checker.GetVersionObject):
+               get_version=sdk_update_checker.GetVersionObject,
+               usage_reporting=False):
     """Creates a new AppVersionUpload.
 
     Args:
@@ -1681,6 +1763,7 @@ class AppVersionUpload(object):
       error_fh: Unexpected HTTPErrors are printed to this file handle.
       get_version: Method for determining the current SDK version. The override
         is used for testing.
+      usage_reporting: Whether or not to report usage.
     """
     self.rpcserver = rpcserver
     self.config = config
@@ -1713,10 +1796,12 @@ class AppVersionUpload(object):
     self.deployed = False
     self.started = False
     self.batching = True
-    self.file_batcher = UploadBatcher('file', self.rpcserver, self.params)
-    self.blob_batcher = UploadBatcher('blob', self.rpcserver, self.params)
-    self.errorblob_batcher = UploadBatcher('errorblob', self.rpcserver,
-                                           self.params)
+    self.logging_context = _ClientDeployLoggingContext(rpcserver,
+                                                       self.params,
+                                                       usage_reporting)
+    self.file_batcher = UploadBatcher('file', self.logging_context)
+    self.blob_batcher = UploadBatcher('blob', self.logging_context)
+    self.errorblob_batcher = UploadBatcher('errorblob', self.logging_context)
 
     if not self.config.vm_settings:
       self.config.vm_settings = appinfo.VmSettings()
@@ -1729,11 +1814,6 @@ class AppVersionUpload(object):
 
     if not self.config.auto_id_policy:
       self.config.auto_id_policy = appinfo.DATASTORE_ID_POLICY_DEFAULT
-
-  def Send(self, url, payload=''):
-    """Sends a request to the server, with common params."""
-    logging.info('Send: %s, params=%s', url, self.params)
-    return self.rpcserver.Send(url, payload=payload, **self.params)
 
   def AddFile(self, path, file_handle):
     """Adds the provided file to the list to be pushed to the server.
@@ -1800,7 +1880,7 @@ class AppVersionUpload(object):
           url.static_files = '%s/%s' % (STATIC_FILE_PREFIX, url.static_files)
           url.upload = '%s/%s' % (STATIC_FILE_PREFIX, url.upload)
 
-    response = self.Send(
+    response = self.logging_context.Send(
         '/api/appversion/create',
         payload=config_copy.ToYAML())
 
@@ -1860,7 +1940,8 @@ class AppVersionUpload(object):
           StatusUpdate('Cloned %d files.' % i, self.error_fh)
 
         chunk = files[i:min(len(files), i + max_files)]
-        result = self.Send(url, payload=BuildClonePostBody(chunk))
+        result = self.logging_context.Send(url,
+                                           payload=BuildClonePostBody(chunk))
         if result:
           to_upload = {}
           for f in result.split(LIST_DELIMITER):
@@ -1957,7 +2038,8 @@ class AppVersionUpload(object):
       or a list of files to be precompiled subsequently.
     """
     payload = LIST_DELIMITER.join(files)
-    response = self.Send('/api/appversion/precompile', payload=payload)
+    response = self.logging_context.Send('/api/appversion/precompile',
+                                         payload=payload)
     if not response:
       return []
     return response.split(LIST_DELIMITER)
@@ -2047,7 +2129,7 @@ class AppVersionUpload(object):
       raise RuntimeError('Not all required files have been uploaded.')
 
     StatusUpdate('Starting deployment.', self.error_fh)
-    result = self.Send('/api/appversion/deploy')
+    result = self.logging_context.Send('/api/appversion/deploy')
     self.deployed = True
 
     if result:
@@ -2067,7 +2149,7 @@ class AppVersionUpload(object):
     assert self.deployed, 'Deploy() must be called before IsReady().'
 
     StatusUpdate('Checking if deployment succeeded.', self.error_fh)
-    result = self.Send('/api/appversion/isready')
+    result = self.logging_context.Send('/api/appversion/isready')
     return result == '1'
 
   def StartServing(self):
@@ -2083,7 +2165,7 @@ class AppVersionUpload(object):
 
     StatusUpdate('Deployment successful.', self.error_fh)
     self.params['willcheckserving'] = '1'
-    result = self.Send('/api/appversion/startserving')
+    result = self.logging_context.Send('/api/appversion/startserving')
     del self.params['willcheckserving']
     self.started = True
     return result
@@ -2122,7 +2204,7 @@ class AppVersionUpload(object):
     StatusUpdate('Checking if updated app version is serving.', self.error_fh)
 
     self.params['new_serving_resp'] = '1'
-    result = self.Send('/api/appversion/isserving')
+    result = self.logging_context.Send('/api/appversion/isserving')
     del self.params['new_serving_resp']
     if result in ['0', '1']:
       return result == '1', {}
@@ -2184,7 +2266,7 @@ class AppVersionUpload(object):
     StatusUpdate('Checking if Endpoints configuration has been updated.',
                  self.error_fh)
 
-    result = self.Send('/api/isconfigupdated')
+    result = self.logging_context.Send('/api/isconfigupdated')
     result = AppVersionUpload._ValidateIsEndpointsConfigUpdatedYaml(result)
     if result is None:
       raise CannotStartServingError(
@@ -2196,7 +2278,7 @@ class AppVersionUpload(object):
     if not self.in_transaction:
       return
     StatusUpdate('Rolling back the update.', self.error_fh)
-    self.Send('/api/appversion/rollback')
+    self.logging_context.Send('/api/appversion/rollback')
     self.in_transaction = False
     self.files = {}
 
@@ -2211,6 +2293,7 @@ class AppVersionUpload(object):
       An appinfo.AppInfoSummary if one was returned from the server, None
       otherwise.
     """
+    start_time_usec = self.logging_context.GetCurrentTimeUsec()
     logging.info('Reading app configuration.')
 
     StatusUpdate('\nStarting update of %s' % self.Describe(), self.error_fh)
@@ -2218,13 +2301,16 @@ class AppVersionUpload(object):
 
     path = ''
     try:
-      self.resource_limits = GetResourceLimits(
-          self.rpcserver, self.config, self.error_fh)
+      self.resource_limits = GetResourceLimits(self.logging_context,
+                                               self.error_fh)
       self._AddFilesThatAreSmallEnough(paths, openfunc)
     except KeyboardInterrupt:
       logging.info('User interrupted. Aborting.')
       raise
     except EnvironmentError, e:
+      if self._IsExceptionClientDeployLoggable(e):
+        self.logging_context.LogClientDeploy(self.config.runtime,
+                                             start_time_usec, False)
       logging.error('An error occurred processing file \'%s\': %s. Aborting.',
                     path, e)
       raise
@@ -2258,14 +2344,41 @@ class AppVersionUpload(object):
 
       app_summary = self.Commit()
       StatusUpdate('Completed update of %s' % self.Describe(), self.error_fh)
-
+      self.logging_context.LogClientDeploy(self.config.runtime, start_time_usec,
+                                           True)
     except BaseException, e:
-      self._LogDoUploadException(e)
-      self.Rollback()
+      try:
+        self._LogDoUploadException(e)
+        self.Rollback()
+      finally:
+        if self._IsExceptionClientDeployLoggable(e):
+          self.logging_context.LogClientDeploy(self.config.runtime,
+                                               start_time_usec, False)
+
       raise
 
     logging.info('Done!')
     return app_summary
+
+  def _IsExceptionClientDeployLoggable(self, exception):
+    """Determines if an exception qualifes for client deploy log reistration.
+
+    Args:
+      exception: The exception to check.
+
+    Returns:
+      True iff exception qualifies for client deploy logging - basically a
+      system error rather than a user or error or cancellation.
+    """
+
+    if isinstance(exception, KeyboardInterrupt):
+      return False
+
+    if (isinstance(exception, urllib2.HTTPError)
+        and 400 <= exception.code <= 499):
+      return False
+
+    return True
 
   def _AddFilesThatAreSmallEnough(self, paths, openfunc):
     """Calls self.AddFile on files that are small enough.
@@ -2364,6 +2477,40 @@ class AppVersionUpload(object):
       logging.error(exception.message)
     else:
       logging.exception('An unexpected error occurred. Aborting.')
+
+
+class DoDebugAction(object):
+  """Turns on VM Debugging for a particular vm app version."""
+
+  def __init__(self, rpcserver, app_id, version, module, file_handle):
+    self.rpcserver = rpcserver
+    self.app_id = app_id
+    self.version = version
+    self.module = module
+    self.file_handle = file_handle
+
+  def GetState(self):
+    yaml_data = self.rpcserver.Send('/api/vms/debugstate',
+                                    app_id=self.app_id,
+                                    version_match=self.version,
+                                    module=self.module)
+    state = yaml.safe_load(yaml_data)
+    done = state['state'] != 'PENDING'
+    if done:
+      print >> self.file_handle, state['message']
+    return (done, state['message'])
+
+  def PrintRetryMessage(self, msg, delay):
+    StatusUpdate('%s.  Will try again in %d seconds.' % (msg, delay),
+                 self.file_handle)
+
+  def Do(self):
+    response = self.rpcserver.Send('/api/vms/debug',
+                                   app_id=self.app_id,
+                                   version_match=self.version,
+                                   module=self.module)
+    print >> self.file_handle, response
+    RetryWithBackoff(self.GetState, self.PrintRetryMessage, 1, 2, 5, 20)
 
 
 def FileIterator(base, skip_files, runtime, separator=os.path.sep):
@@ -3457,7 +3604,8 @@ class AppCfgApp(object):
                                   appyaml,
                                   module_yaml_path=module_yaml_path,
                                   backend=backend,
-                                  error_fh=self.error_fh)
+                                  error_fh=self.error_fh,
+                                  usage_reporting=self.options.usage_reporting)
     return appversion.DoUpload(paths, openfunc)
 
   def UpdateUsingSpecificFiles(self):
@@ -3650,6 +3798,9 @@ class AppCfgApp(object):
     parser.add_option('--backends', action='store_true',
                       dest='backends', default=False,
                       help='Update backends when performing appcfg update.')
+    parser.add_option('--no_usage_reporting', action='store_false',
+                      dest='usage_reporting', default=True,
+                      help='Disable usage reporting.')
     if self._JavaSupported():
       appcfg_java.AddUpdateOptions(parser)
 
@@ -3990,11 +4141,8 @@ class AppCfgApp(object):
       version = self.options.version
 
     rpcserver = self._GetRpcServer()
-    response = rpcserver.Send('/api/vms/debug',
-                              app_id=app_id,
-                              version_match=version,
-                              module=module)
-    print >> self.out_fh, response
+    DoDebugAction(
+        rpcserver, app_id, version, module, self.out_fh).Do()
 
   def _ParseAndValidateModuleYamls(self, yaml_paths):
     """Validates given yaml paths and returns the parsed yaml objects.
@@ -4665,9 +4813,12 @@ class AppCfgApp(object):
     Args:
       output: The file handle to write the output to (used for testing).
     """
+    rpcserver = self._GetRpcServer()
     appyaml = self._ParseAppInfoFromYaml(self.basepath)
-    resource_limits = GetResourceLimits(
-        self._GetRpcServer(), appyaml, self.error_fh)
+    request_params = {'app_id': appyaml.application, 'version': appyaml.version}
+    logging_context = _ClientDeployLoggingContext(rpcserver, request_params,
+                                                  usage_reporting=False)
+    resource_limits = GetResourceLimits(logging_context, self.error_fh)
 
 
     for attr_name in sorted(resource_limits):
@@ -5012,7 +5163,9 @@ are enforced."""),
           short_desc='List all uploaded versions for an app.',
           long_desc="""
 The 'list_versions' command outputs the uploaded versions for each module of
-an application in YAML.""",
+an application in YAML. The YAML is in formatted as an associative array,
+mapping module_ids to the list of versions uploaded for that module. The
+default version will be first in the list.""",
           uses_basepath=False),
 
       'delete_version': Action(

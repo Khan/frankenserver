@@ -36,7 +36,6 @@ class RemoteSocketServiceError(ProtocolBuffer.ProtocolMessage):
 
   SYSTEM_ERROR =    1
   GAI_ERROR    =    2
-  SSL_ERROR    =    3
   FAILURE      =    4
   PERMISSION_DENIED =    5
   INVALID_REQUEST =    6
@@ -45,7 +44,6 @@ class RemoteSocketServiceError(ProtocolBuffer.ProtocolMessage):
   _ErrorCode_NAMES = {
     1: "SYSTEM_ERROR",
     2: "GAI_ERROR",
-    3: "SSL_ERROR",
     4: "FAILURE",
     5: "PERMISSION_DENIED",
     6: "INVALID_REQUEST",
