@@ -104,4 +104,4 @@ def available():
   Returns:
     True if shuffler service is available, False otherwise.
   """
-  return files._get_capabilities().shuffle_available()
+  return False

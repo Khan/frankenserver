@@ -1225,6 +1225,9 @@ class ListCursor(BaseCursor):
       self.__offset += limited_offset
       result.set_skipped_results(limited_offset)
 
+    if compile and result.skipped_results() > 0:
+      self._EncodeCompiledCursor(self.__results[self.__offset - 1],
+          result.mutable_skipped_results_compiled_cursor())
     if offset == limited_offset and count:
 
       if count > _MAXIMUM_RESULTS:
@@ -1240,6 +1243,10 @@ class ListCursor(BaseCursor):
       result.result_list().extend(
           LoadEntity(entity, self.keys_only, self.property_names)
           for entity in results)
+      if compile:
+        for entity in results:
+          self._EncodeCompiledCursor(entity,
+                                     result.add_result_compiled_cursor())
 
     if self.__offset:
 

@@ -852,7 +852,7 @@ def _AddIsInitializedMethod(message_descriptor, cls):
           errors.extend(self.FindInitializationErrors())
         return False
 
-    for field, value in self._fields.iteritems():
+    for field, value in list(self._fields.items()):
       if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
         if field.label == _FieldDescriptor.LABEL_REPEATED:
           for element in value:

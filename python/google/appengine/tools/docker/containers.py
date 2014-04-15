@@ -25,7 +25,10 @@ ImageOptions = namedtuple(
     'ImageOptions', [
         'dockerfile_dir',
         'tag',
-        'nocache'
+        'nocache',
+        # If this one is specified no build is needed, Container can use the
+        # ready to go image.
+        'image_id'
     ]
 )
 # TODO: add rm option
@@ -43,32 +46,21 @@ ContainerOptions = namedtuple(
 )
 
 
-class Image(object):
-  """Docker Image."""
+class BaseImage(object):
+  """Base class for Docker images."""
 
-  def __init__(self, docker_client, image_opts):
-    self._docker_client = docker_client
+  def __init__(self, image_opts):
     self._image_opts = image_opts
-    self._image_id = None
 
   def Build(self):
-    assert not self._image_id
-    logging.info('Building image %s...', self._image_opts.tag)
-    self._image_id, _ = self._docker_client.build(
-        path=self._image_opts.dockerfile_dir,
-        tag=self._image_opts.tag,
-        quiet=False, fileobj=None, nocache=self._image_opts.nocache,
-        rm=False, stream=False)
-    logging.info('Image %s built.', self._image_opts.tag)
+    raise NotImplementedError
 
   def Remove(self):
-    if self._image_id:
-      self._docker_client.remove_image(self._image_id)
-      self._image_id = None
+    raise NotImplementedError
 
   @property
   def id(self):
-    return self._image_id
+    raise NotImplementedError
 
   def __enter__(self):
     self.Build()
@@ -82,6 +74,60 @@ class Image(object):
     self.Remove()
 
 
+class Image(BaseImage):
+  """Docker image that requires building and should be removed afterwards."""
+
+  def __init__(self, docker_client, image_opts):
+    assert not image_opts.image_id
+    super(Image, self).__init__(image_opts)
+
+    self._docker_client = docker_client
+    self._image_id = None
+
+  def Build(self):
+    logging.info('Building image %s...', self._image_opts.tag)
+    self._image_id, _ = self._docker_client.build(
+        path=self._image_opts.dockerfile_dir,
+        tag=self._image_opts.tag,
+        quiet=False, fileobj=None, nocache=self._image_opts.nocache,
+        rm=False, stream=False)
+    logging.info('Image %s built.', self._image_opts.tag)
+
+  def Remove(self):
+    if self._image_id:
+      self._docker_client.remove_image(self.id)
+      self._image_id = None
+
+  @property
+  def id(self):
+    return self._image_id
+
+
+class PrebuiltImage(BaseImage):
+  """Prebuilt Docker image. Build and Remove functions are noops."""
+
+  def __init__(self, image_opts):
+    assert image_opts.image_id
+    super(PrebuiltImage, self).__init__(image_opts)
+
+  def Build(self):
+    pass
+
+  def Remove(self):
+    pass
+
+  @property
+  def id(self):
+    return self._image_opts.image_id
+
+
+def CreateImage(docker_client, image_opts):
+  """Creates an object to represent Docker image."""
+
+  return PrebuiltImage(image_opts) if image_opts.image_id else (
+      Image(docker_client, image_opts))
+
+
 class Container(object):
   """Docker Container."""
 
@@ -89,7 +135,7 @@ class Container(object):
     self._docker_client = docker_client
     self._container_opts = container_opts
 
-    self._image = Image(docker_client, container_opts.image_opts)
+    self._image = CreateImage(docker_client, container_opts.image_opts)
     self._container_id = None
     self._port = None
 
@@ -122,12 +168,13 @@ class Container(object):
                      ['%d/tcp' % self._container_opts.port][0]['HostPort'])
 
   def Stop(self):
-    """Stops a running container, removes it."""
+    """Stops a running container, removes it and underlying image if needed."""
     if self._container_id:
       self._docker_client.stop(self._container_id)
       self._docker_client.remove_container(self._container_id, v=False,
                                            link=False)
       self._container_id = None
+      self._image.Remove()
 
   @property
   def host(self):

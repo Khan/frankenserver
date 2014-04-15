@@ -3,6 +3,19 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.3
+
+Python
+=============================
+- Fixed an issue with NDB deserialization going into an infinite loop when
+  repeated nested structured properties are None.
+    https://code.google.com/p/googleappengine/issues/detail?id=10758
+
+PHP
+==============================
+- Fixed an issue with the fnmatch() function not being supported in production.
+    https://code.google.com/p/googleappengine/issues/detail?id=10723
+
 Version 1.9.2
 
 All

@@ -126,6 +126,8 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
   code_ = 0
   has_error_detail_ = 0
   error_detail_ = ""
+  has_canonical_code_ = 0
+  canonical_code_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -156,11 +158,25 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
 
   def has_error_detail(self): return self.has_error_detail_
 
+  def canonical_code(self): return self.canonical_code_
+
+  def set_canonical_code(self, x):
+    self.has_canonical_code_ = 1
+    self.canonical_code_ = x
+
+  def clear_canonical_code(self):
+    if self.has_canonical_code_:
+      self.has_canonical_code_ = 0
+      self.canonical_code_ = 0
+
+  def has_canonical_code(self): return self.has_canonical_code_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_code()): self.set_code(x.code())
     if (x.has_error_detail()): self.set_error_detail(x.error_detail())
+    if (x.has_canonical_code()): self.set_canonical_code(x.canonical_code())
 
   def Equals(self, x):
     if x is self: return 1
@@ -168,6 +184,8 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
     if self.has_code_ and self.code_ != x.code_: return 0
     if self.has_error_detail_ != x.has_error_detail_: return 0
     if self.has_error_detail_ and self.error_detail_ != x.error_detail_: return 0
+    if self.has_canonical_code_ != x.has_canonical_code_: return 0
+    if self.has_canonical_code_ and self.canonical_code_ != x.canonical_code_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -182,6 +200,7 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthVarInt64(self.code_)
     if (self.has_error_detail_): n += 1 + self.lengthString(len(self.error_detail_))
+    if (self.has_canonical_code_): n += 1 + self.lengthVarInt64(self.canonical_code_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -190,11 +209,13 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthVarInt64(self.code_)
     if (self.has_error_detail_): n += 1 + self.lengthString(len(self.error_detail_))
+    if (self.has_canonical_code_): n += 1 + self.lengthVarInt64(self.canonical_code_)
     return n
 
   def Clear(self):
     self.clear_code()
     self.clear_error_detail()
+    self.clear_canonical_code()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -202,6 +223,9 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
     if (self.has_error_detail_):
       out.putVarInt32(18)
       out.putPrefixedString(self.error_detail_)
+    if (self.has_canonical_code_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.canonical_code_)
 
   def OutputPartial(self, out):
     if (self.has_code_):
@@ -210,6 +234,9 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
     if (self.has_error_detail_):
       out.putVarInt32(18)
       out.putPrefixedString(self.error_detail_)
+    if (self.has_canonical_code_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.canonical_code_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -219,6 +246,9 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.set_error_detail(d.getPrefixedString())
+        continue
+      if tt == 24:
+        self.set_canonical_code(d.getVarInt32())
         continue
 
 
@@ -230,6 +260,7 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_code_: res+=prefix+("code: %s\n" % self.DebugFormatInt32(self.code_))
     if self.has_error_detail_: res+=prefix+("error_detail: %s\n" % self.DebugFormatString(self.error_detail_))
+    if self.has_canonical_code_: res+=prefix+("canonical_code: %s\n" % self.DebugFormatInt32(self.canonical_code_))
     return res
 
 
@@ -238,18 +269,21 @@ class RequestStatus(ProtocolBuffer.ProtocolMessage):
 
   kcode = 1
   kerror_detail = 2
+  kcanonical_code = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "code",
     2: "error_detail",
-  }, 2)
+    3: "canonical_code",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

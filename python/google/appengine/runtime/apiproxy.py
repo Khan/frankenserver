@@ -27,6 +27,10 @@ the Google Apphosting environment.
 
 
 import sys
+
+apiproxy_stub_map_loaded = (
+    'google.appengine.api.apiproxy_stub_map' in sys.modules)
+
 from google.net.proto import ProtocolBuffer
 from google.appengine import runtime
 from google.appengine.api import apiproxy_rpc
@@ -37,8 +41,20 @@ from google.net.proto2.python.public import message
 
 
 
-MEMCACHE_UNAVAILABLE = 9
 
+
+
+
+
+
+assert (('google.appengine.api.apiproxy_stub_map' in sys.modules) ==
+        apiproxy_stub_map_loaded), ('apiproxy_stub_map imported which breaks '
+                                    'apiproxy_stub_map.GetDefaultAPIProxy due '
+                                    'to circular import.')
+
+
+
+MEMCACHE_UNAVAILABLE = 9
 
 
 

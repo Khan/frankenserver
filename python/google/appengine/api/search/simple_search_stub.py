@@ -35,6 +35,7 @@ import copy
 import cPickle as pickle
 import datetime
 import functools
+import hashlib
 import logging
 import math
 import os
@@ -71,6 +72,10 @@ __all__ = ['IndexConsistencyError',
 _VISIBLE_PRINTABLE_ASCII = frozenset(
     set(string.printable) - set(string.whitespace))
 
+_FAILED_TO_PARSE_SEARCH_REQUEST = 'Failed to parse search request \"%s\"; %s'
+
+class _InvalidCursorException(Exception):
+  """Raised when parsing a cursor fails."""
 
 class IndexConsistencyError(Exception):
   """Deprecated 1.7.7. Accessed index with same name different consistency."""
@@ -244,6 +249,12 @@ class FieldTypesDict(object):
       if name == f.name():
         return f
     raise KeyError, name
+
+  def IsType(self, name, field_type):
+    if name not in self:
+      return False
+    schema_type = self[name]
+    return field_type in schema_type.type_list()
 
   def AddFieldType(self, name, field_type):
     field_types = None
@@ -494,7 +505,8 @@ class SimpleIndex(object):
         for doc in matched_documents]
     return scored_documents
 
-  def _Sort(self, docs, search_params, score):
+  def _Sort(self, docs, search_params, query, score):
+    """Return sorted docs with score or evaluated search_params as sort key."""
     if score:
       return sorted(docs, key=lambda doc: doc.score, reverse=True)
 
@@ -524,9 +536,14 @@ class SimpleIndex(object):
           default_value = sort_spec.default_value_text()
         else:
           default_value = sort_spec.default_value_numeric()
-        val = expression_evaluator.ExpressionEvaluator(
-            scored_doc, self._inverted_index, True).ValueOf(
-                sort_spec.sort_expression(), default_value=default_value)
+        try:
+          val = expression_evaluator.ExpressionEvaluator(
+              scored_doc, self._inverted_index, True).ValueOf(
+                  sort_spec.sort_expression(), default_value=default_value)
+        except expression_evaluator.ExpressionEvaluationError, e:
+          raise query_parser.QueryException(
+              _FAILED_TO_PARSE_SEARCH_REQUEST % (query, e))
+
         if isinstance(val, datetime.datetime):
           val = search_util.EpochTime(val)
         expr_vals.append(val)
@@ -566,7 +583,7 @@ class SimpleIndex(object):
         query = unicode(query, 'utf-8')
       query_tree = query_parser.ParseAndSimplify(query)
       docs = self._Evaluate(query_tree, score=score)
-    docs = self._Sort(docs, search_request, score)
+    docs = self._Sort(docs, search_request, query, score)
     docs = self._AttachExpressions(docs, search_request)
     return docs
 
@@ -943,7 +960,12 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
     offset = 0
     if params.has_cursor():
-      doc_id = self._DecodeCursor(params.cursor())
+      try:
+        doc_id = self._DecodeCursor(params.cursor())
+      except _InvalidCursorException, e:
+        self._InvalidRequest(response.mutable_status(), e)
+        response.set_matched_count(0)
+        return
       for i, result in enumerate(results):
         if result.document.id() == doc_id:
           offset = i + 1
@@ -980,10 +1002,20 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
 
   def _EncodeCursor(self, document):
-    return base64.urlsafe_b64encode(document.id())
+    doc_id_hash = hashlib.sha224(document.id()).hexdigest()
+    cursor = doc_id_hash + '|' + document.id()
+    return base64.urlsafe_b64encode(cursor)
 
-  def _DecodeCursor(self, cursor):
-    return base64.urlsafe_b64decode(cursor)
+  def _DecodeCursor(self, encoded_cursor):
+    cursor = base64.urlsafe_b64decode(encoded_cursor)
+    separator = cursor.find('|')
+    if separator < 0:
+      raise _InvalidCursorException('Invalid cursor string: ' + encoded_cursor)
+    doc_id_hash = cursor[:separator]
+    doc_id = cursor[separator+1:]
+    if hashlib.sha224(doc_id).hexdigest() == doc_id_hash:
+      return doc_id
+    raise _InvalidCursorException('Invalid cursor string: ' + encoded_cursor)
 
   def __repr__(self):
     return search_util.Repr(self, [('__indexes', self.__indexes)])

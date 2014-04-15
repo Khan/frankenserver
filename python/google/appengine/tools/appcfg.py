@@ -162,6 +162,8 @@ APP_YAML_FILENAME = 'app.yaml'
 
 
 GO_APP_BUILDER = os.path.join('goroot', 'bin', 'go-app-builder')
+if sys.platform.startswith('win'):
+  GO_APP_BUILDER += '.exe'
 
 
 class Error(Exception):
@@ -1691,6 +1693,11 @@ class _ClientDeployLoggingContext(object):
     """Returns the current time in microseconds."""
     return int(round(self.time_func() * 1000 * 1000))
 
+  def GetSdkVersion(self):
+    """Returns the current SDK Version."""
+    sdk_version = sdk_update_checker.GetVersionObject()
+    return sdk_version.get('release', '?') if sdk_version else '?'
+
   def _RegisterReqestForLogging(self, path, response_code, start_time_usec,
                                 request_size_bytes):
     """Registers a request for client deploy logging purposes."""
@@ -1720,7 +1727,8 @@ class _ClientDeployLoggingContext(object):
           start_time_usec=start_time_usec,
           end_time_usec=end_time_usec,
           requests=self.requests,
-          success=success)
+          success=success,
+          sdk_version=self.GetSdkVersion())
       self.Send('/api/logclientdeploy', info.ToYAML())
     except BaseException, e:
       logging.debug('Exception logging deploy info continuing - %s', e)

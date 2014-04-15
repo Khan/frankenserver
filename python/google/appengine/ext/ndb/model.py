@@ -634,11 +634,7 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
     if pb.key().path().element_size():
       key = Key(reference=pb.key())
       kind = key.kind()
-    modelclass = Model._kind_map.get(kind, self.default_model)
-    if modelclass is None:
-      raise KindError(
-        "No model class found for kind '%s'. Did you forget to import it?" %
-        kind)
+    modelclass = Model._lookup_model(kind, self.default_model)
     entity = modelclass._from_pb(pb, key=key, set_key=False)
     if self.want_pbs:
       entity._orig_pb = pb
@@ -2985,6 +2981,26 @@ class Model(_NotEqualMixin):
         keep[name] = value
     cls._kind_map.clear()
     cls._kind_map.update(keep)
+
+  @classmethod
+  def _lookup_model(cls, kind, default_model=None):
+    """Get the model class for the kind.
+
+    Args:
+      kind: A string representing the name of the kind to lookup.
+      default_model: The model class to use if the kind can't be found.
+
+    Returns:
+      The model class for the requested kind.
+    Raises:
+      KindError: The kind was not found and no default_model was provided.
+    """
+    modelclass = cls._kind_map.get(kind, default_model)
+    if modelclass is None:
+      raise KindError(
+          "No model class found for kind '%s'. Did you forget to import it?" %
+          kind)
+    return modelclass
 
   def _has_complete_key(self):
     """Return whether this entity has a complete key."""

@@ -92,7 +92,7 @@ _EXIF_TAGS = {
     36868: "DateTimeDigitized",
     37383: "MeteringMode",
     37385: "Flash",
-    41987: "WhiteBallance"}
+    41987: "WhiteBalance"}
 
 
 def _ArgbToRgbaTuple(argb):

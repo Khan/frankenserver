@@ -63,6 +63,10 @@ _SNIPPET_PREFIX = '...'
 _SNIPPET_SUFFIX = '...'
 
 
+class ExpressionEvaluationError(Exception):
+  """Exposed version of _ExpressionError."""
+
+
 class _ExpressionError(Exception):
   """Raised when evaluating an expression fails."""
 
@@ -370,11 +374,30 @@ class ExpressionEvaluator(object):
     Returns:
       The value of the expression on the evaluator's document, or default_value
       if the expression cannot be evaluated on the document.
+
+    Raises:
+      ExpressionEvaluationError: expression cannot be evaluated because the
+      expression is malformed. Callers of ValueOf should catch and return error
+      to user in response.
     """
     expression_tree = Parse(expression)
     if not expression_tree.getType() and expression_tree.children:
       expression_tree = expression_tree.children[0]
 
+
+
+
+
+    name = query_parser.GetQueryNodeText(expression_tree)
+    schema = self._inverted_index.GetSchema()
+    if (expression_tree.getType() == ExpressionParser.NAME and
+        schema.IsType(name, document_pb.FieldValue.DATE)):
+      if isinstance(default_value, basestring):
+        try:
+          default_value = search_util.DeserializeDate(default_value)
+        except ValueError:
+          raise ExpressionEvaluationError('failed to parse date \"' +
+                                          default_value + '\"')
     result = default_value
     try:
       result = self._Eval(expression_tree)

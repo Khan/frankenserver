@@ -106,7 +106,8 @@ class VMRuntimeProxy(instance.RuntimeProxy):
                     'MODULE': self._module_configuration.module_name,
                     'RUNTIME': self._module_configuration.effective_runtime,
                     'VERSION': self._module_configuration.major_version},
-                nocache=False),
+                nocache=False,
+                image_id=None),
             port=PORT,
             environment={
                 'API_HOST': api_host,

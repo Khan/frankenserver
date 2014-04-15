@@ -344,8 +344,9 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
       if module_version.has_module_id():
         module = module_version.module_id()
       module_values.append(module)
-    filters.append('(' + ' or '.join(module_filters) + ')')
-    values += module_values
+    if module_filters:
+      filters.append('(' + ' or '.join(module_filters) + ')')
+      values += module_values
 
     if request.has_offset():
       filters.append('RequestLogs.id < ?')

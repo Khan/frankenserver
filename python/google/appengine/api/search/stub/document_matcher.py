@@ -47,7 +47,7 @@ class DistanceMatcher(object):
     self._distance = distance
 
   def _CheckOp(self, op):
-    if op == QueryParser.EQ:
+    if op == QueryParser.EQ or op == QueryParser.HAS:
       raise ExpressionTreeException('Equality comparison not available for Geo type')
     if op == QueryParser.NE:
       raise ExpressionTreeException('!= comparison operator is not available')
@@ -152,6 +152,9 @@ class DocumentMatcher(object):
   def _MatchTextField(self, field, match, document):
     """Check if a textual field matches a query tree node."""
 
+    if match.getType() == QueryParser.FUZZY:
+      return self._MatchTextField(field, match.getChild(0), document)
+
     if match.getType() == QueryParser.VALUE:
       if query_parser.IsPhrase(match):
         return self._MatchPhrase(field, match, document)
@@ -184,7 +187,9 @@ class DocumentMatcher(object):
       return document.id() in matching_docids
 
     def ExtractGlobalEq(node):
-      if node.getType() == QueryParser.EQ and len(node.children) >= 2:
+      op = node.getType()
+      if ((op == QueryParser.EQ or op == QueryParser.HAS) and
+          len(node.children) >= 2):
         if node.children[0].getType() == QueryParser.GLOBAL:
           return node.children[1]
       return node
@@ -264,7 +269,7 @@ class DocumentMatcher(object):
     else:
       return False
 
-    if op == QueryParser.EQ:
+    if op == QueryParser.EQ or op == QueryParser.HAS:
       return field_val == match_val
     if op == QueryParser.NE:
       raise ExpressionTreeException('!= comparison operator is not available')
@@ -308,7 +313,7 @@ class DocumentMatcher(object):
     """
 
     if field.value().type() in search_util.TEXT_DOCUMENT_FIELD_TYPES:
-      if operator != QueryParser.EQ:
+      if operator != QueryParser.EQ and operator != QueryParser.HAS:
         return False
       return self._MatchTextField(field, match, document)
 

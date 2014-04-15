@@ -729,6 +729,7 @@ class DevelopmentServer(object):
     # A list of servers that are currently running.
     self._running_modules = []
     self._module_to_port = {}
+    self._dispatcher = None
 
   def module_to_address(self, module_name, instance=None):
     """Returns the address of a module."""
@@ -809,7 +810,6 @@ class DevelopmentServer(object):
     self._running_modules.append(apis)
 
     self._dispatcher.start(options.api_host, apis.port, request_data)
-    self._running_modules.append(self._dispatcher)
 
     xsrf_path = os.path.join(storage_path, 'xsrf')
     admin = admin_server.AdminServer(options.admin_host, options.admin_port,
@@ -821,6 +821,8 @@ class DevelopmentServer(object):
     """Stops all running devappserver2 modules."""
     while self._running_modules:
       self._running_modules.pop().quit()
+    if self._dispatcher:
+      self._dispatcher.quit()
 
   @staticmethod
   def _create_api_server(request_data, storage_path, options, configuration):
