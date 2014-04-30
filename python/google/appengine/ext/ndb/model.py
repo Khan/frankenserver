@@ -444,7 +444,7 @@ class _NestedCounter(object):
       self.__make_parent_node()
       return self.__sub_counters[parts[0]].increment(parts[1:])
     if self.__is_parent_node():
-      return -1
+      return None
     self.__counter += 1
     return self.__counter
 
@@ -2374,7 +2374,8 @@ class StructuredProperty(_StructuredGetForDictMixin):
     if self._has_value(entity):
       # If an entire subentity has been set to None, we have to loop
       # to advance until we find the next partial entity.
-      while next_index < self._get_value_size(entity):
+      while (next_index is not None
+             and next_index < self._get_value_size(entity)):
         subentity = self._get_base_value_at_index(entity, next_index)
         if not isinstance(subentity, self._modelclass):
           raise TypeError('sub-entities must be instances '

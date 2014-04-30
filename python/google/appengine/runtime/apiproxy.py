@@ -138,7 +138,7 @@ class RPC(apiproxy_rpc.RPC):
     overriden by values passed to MakeCall.
     """
     super(RPC, self).__init__(*args, **kargs)
-    self.__result_dict = {}
+    self._result_dict = {}
 
   def _WaitImpl(self):
     """Waits on the API call associated with this RPC. The callback,
@@ -182,50 +182,50 @@ class RPC(apiproxy_rpc.RPC):
 
     request_data = self.request.SerializeToString()
 
-    self.__state = RPC.RUNNING
+    self._state = RPC.RUNNING
 
     _apphosting_runtime___python__apiproxy.MakeCall(
-        self.package, self.call, request_data, self.__result_dict,
-        self.__MakeCallDone, self, deadline=(self.deadline or -1))
+        self.package, self.call, request_data, self._result_dict,
+        self._MakeCallDone, self, deadline=(self.deadline or -1))
 
-  def __MakeCallDone(self):
-    self.__state = RPC.FINISHING
-    self.cpu_usage_mcycles = self.__result_dict['cpu_usage_mcycles']
-    if self.__result_dict['error'] == APPLICATION_ERROR:
-      appl_err = self.__result_dict['application_error']
+  def _MakeCallDone(self):
+    self._state = RPC.FINISHING
+    self.cpu_usage_mcycles = self._result_dict['cpu_usage_mcycles']
+    if self._result_dict['error'] == APPLICATION_ERROR:
+      appl_err = self._result_dict['application_error']
       if appl_err == MEMCACHE_UNAVAILABLE and self.package == 'memcache':
 
 
-        self.__exception = apiproxy_errors.CapabilityDisabledError(
+        self._exception = apiproxy_errors.CapabilityDisabledError(
             'The memcache service is temporarily unavailable. %s'
-            % self.__result_dict['error_detail'])
+            % self._result_dict['error_detail'])
       else:
 
-        self.__exception = apiproxy_errors.ApplicationError(
+        self._exception = apiproxy_errors.ApplicationError(
             appl_err,
-            self.__result_dict['error_detail'])
-    elif self.__result_dict['error'] == CAPABILITY_DISABLED:
+            self._result_dict['error_detail'])
+    elif self._result_dict['error'] == CAPABILITY_DISABLED:
 
-      if self.__result_dict['error_detail']:
-        self.__exception = apiproxy_errors.CapabilityDisabledError(
-            self.__result_dict['error_detail'])
+      if self._result_dict['error_detail']:
+        self._exception = apiproxy_errors.CapabilityDisabledError(
+            self._result_dict['error_detail'])
       else:
-        self.__exception = apiproxy_errors.CapabilityDisabledError(
+        self._exception = apiproxy_errors.CapabilityDisabledError(
             "The API call %s.%s() is temporarily unavailable." % (
             self.package, self.call))
-    elif self.__result_dict['error'] == FEATURE_DISABLED:
-      self.__exception = apiproxy_errors.FeatureNotEnabledError(
-            self.__result_dict['error_detail'])
-    elif self.__result_dict['error'] in _ExceptionsMap:
-      exception_entry = _ExceptionsMap[self.__result_dict['error']]
-      self.__exception = exception_entry[0](
+    elif self._result_dict['error'] == FEATURE_DISABLED:
+      self._exception = apiproxy_errors.FeatureNotEnabledError(
+            self._result_dict['error_detail'])
+    elif self._result_dict['error'] in _ExceptionsMap:
+      exception_entry = _ExceptionsMap[self._result_dict['error']]
+      self._exception = exception_entry[0](
           exception_entry[1] % (self.package, self.call))
     else:
       try:
-        self.response.ParseFromString(self.__result_dict['result_string'])
+        self.response.ParseFromString(self._result_dict['result_string'])
       except Exception, e:
-        self.__exception = e
-    self.__Callback()
+        self._exception = e
+    self._Callback()
 
 def CreateRPC():
   """Create a RPC instance. suitable for talking to remote services.

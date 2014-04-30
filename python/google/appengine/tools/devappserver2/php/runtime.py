@@ -144,6 +144,9 @@ class PHPRuntime(object):
 
     args = [self.config.php_config.php_executable_path, '-d', include_path]
 
+    # Load php.ini from application's root.
+    args.extend(['-c', self.config.application_root])
+
     if self.config.php_config.enable_debugger:
       args.extend(['-d', 'xdebug.remote_enable="1"'])
       user_environ['XDEBUG_CONFIG'] = os.environ.get('XDEBUG_CONFIG', '')

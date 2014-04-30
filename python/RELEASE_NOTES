@@ -3,10 +3,51 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.4
+
+Python
+==============================
+- Fixed an issue with the Search API where it does not correctly parse
+  expressions that use the subtraction operator without surrounding
+  whitespaces.
+- Fixed an issue with the devappserver Search API allowing searches for a field
+  with a negated value.
+- Fixed an issue with the devappserver Search API not handling searches for
+  empty quotes the same way as production.
+- Fixed an issue with the devappserver Search API not matching documents with
+  atom fields the same way as production.
+- Fixed an issue with the devappserver Search API allowing expressions that
+  use the snippet operator over a numeric field.
+- Fixed an issue with the devappserver Search API allowing sorting expressions
+  to use the snippet operator.
+- Fixed an issue with the devappserver Search API not validating that cursors
+  are from a previous search.
+- Fixed an issue with the devappserver Search API not parsing queries that use
+  the fuzzy search operator (~).
+- Fixed an issue with the devappserver Search API not validating the default
+  value for sorting expressions on date fields.
+- Fixed an issue with the devappserver memcache viewer not displaying items
+  with non-ASCII characters properly.
+    https://code.google.com/p/googleappengine/issues/detail?id=9459
+- Fixed an issue with the devappserver allowing arbitrarily large file uploads
+  using HTTP POST requests.  It now matches production limits of 32MB.
+    https://code.google.com/p/googleappengine/issues/detail?id=10384
+- Fixed an issue with NDB deserialization looping infinitely when nested value
+  is None.
+    https://code.google.com/p/googleappengine/issues/detail?id=10758
+
+PHP
+==============================
+- Fixed an issue with libcurl giving a load error for Mac OS X Snow Leopard
+  clients.
+    https://code.google.com/p/googleappengine/issues/detail?id=10405
+- Fixed an issue with making simultaneous mysqli connections to the same
+  CloudSQL instance causing the request to time out.
+
 Version 1.9.3
 
 Python
-=============================
+==============================
 - Fixed an issue with NDB deserialization going into an infinite loop when
   repeated nested structured properties are None.
     https://code.google.com/p/googleappengine/issues/detail?id=10758

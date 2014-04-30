@@ -158,6 +158,8 @@ class LogServiceStub(apiproxy_stub.APIProxyStub):
     """
     if module is None:
       module = appinfo.DEFAULT_MODULE
+    if version_id is None:
+      version_id = 'NO-VERSION'
     major_version_id = version_id.split('.', 1)[0]
     if start_time is None:
       start_time = self._get_time_usec()

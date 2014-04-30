@@ -44,11 +44,52 @@ class StringValueConverter(object):
 
   @staticmethod
   def to_display(cache_value):
-    return cache_value
+    """Convert a memcache string into a displayable representation.
+
+    Make a memcache string into a text string that can be displayed or edited.
+    While called a string, it is technically just an array of bytes. Because
+    we do not know what encoding the bytes are (and possibly they are not an
+    encoded text string - for example they could be an MD5 hash) we display
+    in string-escaped form.
+
+    Args:
+      cache_value: an array of bytes
+
+    Returns:
+      A unicode string that represents the sequence of bytes and can be
+      roundtripped back to the sequence of bytes.
+    """
+
+    # As we don't know what encoding the bytes are, we string escape so any
+    # byte sequence is legal ASCII. Once we have a legal ASCII byte sequence
+    # we can safely convert to a unicode/text string.
+    return cache_value.encode('string-escape').decode('ascii')
 
   @staticmethod
   def to_cache(display_value):
-    return display_value
+    """Convert a displayable representation to a memcache string.
+
+    Take a displayable/editable text string and convert into a memcache string.
+    As a memcache string is technically an array of bytes, we only allow
+    characters from the ASCII range and require all other bytes to be indicated
+    via string escape. (because if we see the Unicode character Yen sign
+    (U+00A5) we don't know if they want the byte 0xA5 or the UTF-8 two byte
+    sequence 0xC2 0xA5).
+
+    Args:
+      display_value: a text (i.e. unicode string) using only ASCII characters;
+        non-ASCII characters must be represented string escapes.
+
+    Returns:
+      An array of bytes.
+
+    Raises:
+      UnicodeEncodeError: a non-ASCII character is part of the input.
+    """
+
+    # Since we don't know how they want their Unicode encoded, this will raise
+    # an exception (which will be displayed nicely) if they include non-ASCII.
+    return display_value.encode('ascii').decode('string-escape')
 
 
 class UnicodeValueConverter(object):

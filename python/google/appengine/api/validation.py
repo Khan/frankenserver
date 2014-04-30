@@ -1102,17 +1102,24 @@ class Range(Validator):
   def __init__(self, minimum, maximum, range_type=int, default=None):
     """Initializer for range.
 
+    At least one of minimum and maximum must be supplied.
+
     Args:
       minimum: Minimum for attribute.
       maximum: Maximum for attribute.
       range_type: Type of field.  Defaults to int.
+
+    Raises:
+      AttributeDefinitionError: if the specified parameters are incorrect.
     """
     super(Range, self).__init__(default)
-    if not isinstance(minimum, range_type):
+    if minimum is None and maximum is None:
+      raise AttributeDefinitionError('Must specify minimum or maximum.')
+    if minimum is not None and not isinstance(minimum, range_type):
       raise AttributeDefinitionError(
           'Minimum value must be of type %s, instead it is %s (%s).' %
           (str(range_type), str(type(minimum)), str(minimum)))
-    if not isinstance(maximum, range_type):
+    if maximum is not None and not isinstance(maximum, range_type):
       raise AttributeDefinitionError(
           'Maximum value must be of type %s, instead it is %s (%s).' %
           (str(range_type), str(type(maximum)), str(maximum)))
@@ -1133,15 +1140,20 @@ class Range(Validator):
 
     Raises:
       ValidationError: when value is out of range.  ValidationError when value
-      is notd of the same range type.
+      is not of the same range type.
     """
     cast_value = self._type_validator.Validate(value, key)
-    if cast_value < self.minimum or cast_value > self.maximum:
+    if self.maximum is None and cast_value < self.minimum:
+      raise ValidationError('Value \'%s\' for %s less than %s'
+                            % (value, key, self.minimum))
+    elif self.minimum is None and cast_value > self.maximum:
+      raise ValidationError('Value \'%s\' for %s greater than %s'
+                            % (value, key, self.maximum))
+
+    elif ((self.minimum is not None and cast_value < self.minimum) or
+          (self.maximum is not None and cast_value > self.maximum)):
       raise ValidationError('Value \'%s\' for %s is out of range %s - %s'
-                            % (str(value),
-                               key,
-                               str(self.minimum),
-                               str(self.maximum)))
+                            % (value, key, self.minimum, self.maximum))
     return cast_value
 
 

@@ -1,10 +1,13 @@
 (function() { var goog = goog || {};
 goog.global = this;
+goog.isDef = function(val) {
+  return void 0 !== val;
+};
 goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
   var parts = name.split("."), cur = opt_objectToExportTo || goog.global;
   parts[0] in cur || !cur.execScript || cur.execScript("var " + parts[0]);
   for (var part;parts.length && (part = parts.shift());) {
-    parts.length || void 0 === opt_object ? cur = cur[part] ? cur[part] : cur[part] = {} : cur[part] = opt_object;
+    !parts.length && goog.isDef(opt_object) ? cur[part] = opt_object : cur = cur[part] ? cur[part] : cur[part] = {};
   }
 };
 goog.define = function(name, defaultValue) {
@@ -170,9 +173,6 @@ goog.typeOf = function(value) {
   }
   return s;
 };
-goog.isDef = function(val) {
-  return void 0 !== val;
-};
 goog.isNull = function(val) {
   return null === val;
 };
@@ -318,7 +318,7 @@ goog.getMsg = function(str, opt_values) {
   var values = opt_values || {}, key;
   for (key in values) {
     var value = ("" + values[key]).replace(/\$/g, "$$$$");
-    str = str.replace(RegExp("\\{\\$" + key + "\\}", "gi"), value);
+    str = str.replace(new RegExp("\\{\\$" + key + "\\}", "gi"), value);
   }
   return str;
 };
@@ -674,11 +674,11 @@ goog.string.removeAt = function(s, index, stringLength) {
   return resultStr;
 };
 goog.string.remove = function(s, ss) {
-  var re = RegExp(goog.string.regExpEscape(ss), "");
+  var re = new RegExp(goog.string.regExpEscape(ss), "");
   return s.replace(re, "");
 };
 goog.string.removeAll = function(s, ss) {
-  var re = RegExp(goog.string.regExpEscape(ss), "g");
+  var re = new RegExp(goog.string.regExpEscape(ss), "g");
   return s.replace(re, "");
 };
 goog.string.regExpEscape = function(s) {
@@ -748,7 +748,7 @@ goog.string.toSelectorCase = function(str) {
   return String(str).replace(/([A-Z])/g, "-$1").toLowerCase();
 };
 goog.string.toTitleCase = function(str, opt_delimiters) {
-  var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s", delimiters = delimiters ? "|[" + delimiters + "]+" : "", regexp = RegExp("(^" + delimiters + ")([a-z])", "g");
+  var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s", delimiters = delimiters ? "|[" + delimiters + "]+" : "", regexp = new RegExp("(^" + delimiters + ")([a-z])", "g");
   return str.replace(regexp, function(all, p1, p2) {
     return p1 + p2.toUpperCase();
   });
@@ -834,6 +834,7 @@ goog.array.ASSUME_NATIVE_FUNCTIONS = !1;
 goog.array.peek = function(array) {
   return array[array.length - 1];
 };
+goog.array.last = goog.array.peek;
 goog.array.ARRAY_PROTOTYPE_ = Array.prototype;
 goog.array.indexOf = goog.NATIVE_ARRAY_PROTOTYPES && (goog.array.ASSUME_NATIVE_FUNCTIONS || goog.array.ARRAY_PROTOTYPE_.indexOf) ? function(arr, obj, opt_fromIndex) {
   goog.asserts.assert(null != arr.length);
@@ -1427,7 +1428,7 @@ goog.math.isFiniteNumber = function(num) {
 goog.math.log10Floor = function(num) {
   if (0 < num) {
     var x = Math.round(Math.log(num) * Math.LOG10E);
-    return x - (Math.pow(10, x) > num);
+    return x - (parseFloat("1e" + x) > num);
   }
   return 0 == num ? -Infinity : NaN;
 };

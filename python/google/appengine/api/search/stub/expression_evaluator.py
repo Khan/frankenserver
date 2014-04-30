@@ -63,6 +63,10 @@ _SNIPPET_PREFIX = '...'
 _SNIPPET_SUFFIX = '...'
 
 
+class QueryExpressionEvaluationError(Exception):
+  """ExpressionEvaluation Error that needs to return query as error status."""
+
+
 class ExpressionEvaluationError(Exception):
   """Exposed version of _ExpressionError."""
 
@@ -224,8 +228,26 @@ class ExpressionEvaluator(object):
 
     Returns:
       A snippet for the field with the query term bolded.
+
+    Raises:
+      ExpressionEvaluationError: if this is a sort expression.
     """
     field = query_parser.GetQueryNodeText(field)
+
+    if self._is_sort_expression:
+      raise ExpressionEvaluationError(
+          'Failed to parse sort expression \'snippet(' +
+          query_parser.GetQueryNodeText(query) + ', ' + field +
+          ')\': snippet() is not supported in sort expressions')
+
+
+    schema = self._inverted_index.GetSchema()
+    if schema.IsType(field, document_pb.FieldValue.NUMBER):
+      raise ExpressionEvaluationError(
+          'Failed to parse field expression \'snippet(' +
+          query_parser.GetQueryNodeText(query) + ', ' + field +
+          ')\': snippet() argument 2 must be text')
+
     terms = self._tokenizer.TokenizeText(
         query_parser.GetQueryNodeText(query).strip('"'))
     for term in terms:
@@ -376,9 +398,11 @@ class ExpressionEvaluator(object):
       if the expression cannot be evaluated on the document.
 
     Raises:
-      ExpressionEvaluationError: expression cannot be evaluated because the
-      expression is malformed. Callers of ValueOf should catch and return error
-      to user in response.
+      ExpressionEvaluationError: sort expression cannot be evaluated
+      because the expression or default value is malformed. Callers of
+      ValueOf should catch and return error to user in response.
+      QueryExpressionEvaluationError: same as ExpressionEvaluationError but
+      these errors should return query as error status to users.
     """
     expression_tree = Parse(expression)
     if not expression_tree.getType() and expression_tree.children:
@@ -396,7 +420,7 @@ class ExpressionEvaluator(object):
         try:
           default_value = search_util.DeserializeDate(default_value)
         except ValueError:
-          raise ExpressionEvaluationError('failed to parse date \"' +
+          raise QueryExpressionEvaluationError('failed to parse date \"' +
                                           default_value + '\"')
     result = default_value
     try:

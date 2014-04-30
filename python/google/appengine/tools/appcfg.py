@@ -1093,6 +1093,7 @@ class LogsRequester(object):
     kwds = {'app_id': self.app_id,
             'version': self.version_id,
             'limit': 1000,
+            'no_header': 1,
            }
     if self.module:
       kwds['module'] = self.module
@@ -1111,13 +1112,6 @@ class LogsRequester(object):
     lines = response.splitlines()
     logging.info('Received %d bytes, %d records.', len(response), len(lines))
     offset = None
-    if lines and lines[0].startswith('#'):
-      match = re.match(r'^#\s*next_offset=(\S+)\s*$', lines[0])
-      del lines[0]
-      if match:
-        offset = match.group(1)
-    if lines and lines[-1].startswith('#'):
-      del lines[-1]
 
     valid_dates = self.valid_dates
     sentinel = self.sentinel
@@ -1126,6 +1120,12 @@ class LogsRequester(object):
     if sentinel:
       len_sentinel = len(sentinel)
     for line in lines:
+      if line.startswith('#'):
+        match = re.match(r'^#\s*next_offset=(\S+)\s*$', line)
+        if match:
+          offset = match.group(1)
+        continue
+
       if (sentinel and
           line.startswith(sentinel) and
           line[len_sentinel : len_sentinel+1] in ('', '\0')):

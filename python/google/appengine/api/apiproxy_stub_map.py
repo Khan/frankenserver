@@ -679,8 +679,8 @@ class UserRPC(object):
 
 
 
-        err.rpc._RPC__exception = None
-        err.rpc._RPC__traceback = None
+        err.rpc._exception = None
+        err.rpc._traceback = None
     finally:
       cls.__local.may_interrupt_wait = False
     finished, runnning = cls.__check_one(rpcs)

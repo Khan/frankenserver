@@ -77,7 +77,7 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     else:
       java_bin = 'java'
 
-    java_dir = os.environ['APP_ENGINE_JAVA_PATH']
+    java_dir = os.environ.get('APP_ENGINE_JAVA_PATH', None)
 
     if not java_dir or not os.path.exists(java_dir):
       tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))

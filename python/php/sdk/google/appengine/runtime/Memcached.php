@@ -724,7 +724,7 @@ class Memcached {
         return "FAILURE";
       case self::RES_NOTSTORED:
         return "NOT STORED";
-      case self::RES_NOT_FOUND:
+      case self::RES_NOTFOUND:
         return "NOT FOUND";
     }
     return "UNKNOWN";

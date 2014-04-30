@@ -381,6 +381,7 @@ class MemcachedTest extends ApiProxyTestBase {
     $memcached = new Memcached();
     $this->assertFalse($memcached->get("key"));
     $this->assertEquals($memcached->getResultCode(), Memcached::RES_NOTFOUND);
+    $this->assertEquals($memcached->getResultMessage(), 'NOT FOUND');
     $this->apiProxyMock->verify();
   }
 

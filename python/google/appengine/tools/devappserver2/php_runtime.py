@@ -137,7 +137,7 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
     self._bad_environment_proxy = None
 
   @staticmethod
-  def _check_environment(php_executable_path):
+  def _check_environment(php_executable_path, application_root):
     if php_executable_path is None:
       raise _PHPBinaryError('The development server must be started with the '
                             '--php_executable_path flag set to the path of the '
@@ -157,15 +157,16 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
     if 'SYSTEMROOT' in os.environ:
       env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
 
-    version_process = safe_subprocess.start_process([php_executable_path, '-v'],
+    args = [php_executable_path, '-v', '-n']
+    version_process = safe_subprocess.start_process(args,
                                                     stdout=subprocess.PIPE,
                                                     stderr=subprocess.PIPE,
                                                     env=env)
     version_stdout, version_stderr = version_process.communicate()
     if version_process.returncode:
       raise _PHPEnvironmentError(
-          '"%s -v" returned an error [%d]\n%s%s' % (
-              php_executable_path,
+          '"%s" returned an error [%d]\n%s%s' % (
+              args,
               version_process.returncode,
               version_stderr,
               version_stdout))
@@ -173,8 +174,8 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
     version_match = re.search(r'PHP (\d+).(\d+)', version_stdout)
     if version_match is None:
       raise _PHPEnvironmentError(
-          '"%s -v" returned an unexpected version string:\n%s%s' % (
-              php_executable_path,
+          '"%s" returned an unexpected version string:\n%s%s' % (
+              args,
               version_stderr,
               version_stdout))
 
@@ -183,8 +184,10 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
       raise _PHPEnvironmentError(
           'The PHP interpreter must be version >= 5.4, %d.%d found' % version)
 
+    args = [php_executable_path, '-c', application_root, '-f',
+            _CHECK_ENVIRONMENT_SCRIPT_PATH]
     check_process = safe_subprocess.start_process(
-        [php_executable_path, '-f', _CHECK_ENVIRONMENT_SCRIPT_PATH],
+        args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env)
@@ -216,7 +219,8 @@ class PHPRuntimeInstanceFactory(instance.InstanceFactory):
 
     if php_executable_path not in self._php_binary_to_error_proxy:
       try:
-        self._check_environment(php_executable_path)
+        self._check_environment(php_executable_path,
+                                self._runtime_config_getter().application_root)
       except Exception as e:
         self._php_binary_to_error_proxy[php_executable_path] = (
             _BadPHPEnvironmentRuntimeProxy(php_executable_path, e))

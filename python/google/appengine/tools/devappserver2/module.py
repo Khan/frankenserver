@@ -93,6 +93,18 @@ _EMPTY_MATCH = re.match('', '')
 _DUMMY_URLMAP = appinfo.URLMap(script='/')
 _SHUTDOWN_TIMEOUT = 30
 
+_MAX_UPLOAD_MEGABYTES = 32
+_MAX_UPLOAD_BYTES = _MAX_UPLOAD_MEGABYTES * 1024 * 1024
+_MAX_UPLOAD_NO_TRIGGER_BAD_CLIENT_BYTES = 64 * 1024 * 1024
+
+_REDIRECT_HTML = '''\
+<HTML><HEAD><meta http-equiv="content-type" content="%(content-type)s">
+<TITLE>%(status)d Moved</TITLE></HEAD>
+<BODY><H1>%(status)d Moved</H1>
+The document has moved'
+<A HREF="%(correct-url)s">here</A>.
+</BODY></HTML>'''
+
 
 def _static_files_regex_from_handlers(handlers):
   patterns = []
@@ -627,18 +639,45 @@ class Module(object):
                         'content_length': content_length or '-'})
         return start_response(status, response_headers, exc_info)
 
+      content_length = int(environ.get('CONTENT_LENGTH', '0'))
+
       if (environ['REQUEST_METHOD'] in ('GET', 'HEAD', 'TRACE') and
-          int(environ.get('CONTENT_LENGTH') or '0') != 0):
+          content_length != 0):
         # CONTENT_LENGTH may be empty or absent.
         wrapped_start_response('400 Bad Request', [])
         return ['"%s" requests may not contain bodies.' %
                 environ['REQUEST_METHOD']]
 
+      # Do not apply request limits to internal _ah handlers (known to break
+      # blob uploads).
+      # TODO: research if _ah handlers need limits.
+      if (not environ.get('REQUEST_URI', '/').startswith('/_ah/') and
+          content_length > _MAX_UPLOAD_BYTES):
+        # As allowed by the RFC, cherrypy closes the connection for 413 errors.
+        # Most clients do not handle this correctly and treat the page as
+        # unavailable if the connection is closed before the client can send
+        # all the data. To match the behavior of production, for large files
+        # < 64M read the data to prevent the client bug from being triggered.
+
+        if content_length <= _MAX_UPLOAD_NO_TRIGGER_BAD_CLIENT_BYTES:
+          environ['wsgi.input'].read(content_length)
+        status = '%d %s' % (httplib.REQUEST_ENTITY_TOO_LARGE,
+                            httplib.responses[httplib.REQUEST_ENTITY_TOO_LARGE])
+        wrapped_start_response(status, [])
+        return ['Upload limited to %d megabytes.' % _MAX_UPLOAD_MEGABYTES]
+
       with self._handler_lock:
         handlers = self._handlers
 
       try:
-        request_url = environ['PATH_INFO']
+        path_info = environ['PATH_INFO']
+        path_info_normal = self._normpath(path_info)
+        if path_info_normal != path_info:
+          # While a 301 Moved Permanently makes more sense for non-normal
+          # paths, prod issues a 302 so we do the same.
+          return self._redirect_302_path_info(path_info_normal,
+                                              environ,
+                                              wrapped_start_response)
         if request_type in (instance.BACKGROUND_REQUEST,
                             instance.INTERACTIVE_REQUEST,
                             instance.SHUTDOWN_REQUEST):
@@ -651,7 +690,7 @@ class Module(object):
           return request_rewriter.frontend_rewriter_middleware(app)(
               environ, wrapped_start_response)
         for handler in handlers:
-          match = handler.match(request_url)
+          match = handler.match(path_info)
           if match:
             auth_failure = handler.handle_authorization(environ,
                                                         wrapped_start_response)
@@ -672,7 +711,7 @@ class Module(object):
         return self._no_handler_for_request(environ, wrapped_start_response,
                                             request_id)
       except StandardError, e:
-        logging.exception('Request to %r failed', request_url)
+        logging.exception('Request to %r failed', path_info)
         wrapped_start_response('500 Internal Server Error', [], e)
         return []
 
@@ -695,6 +734,81 @@ class Module(object):
       time_to_wait = force_shutdown_time - time.time()
       self._quit_event.wait(time_to_wait)
       inst.quit(force=True)
+
+  @staticmethod
+  def _quote_querystring(qs):
+    """Quote a query string to protect against XSS."""
+
+    parsed_qs = urlparse.parse_qs(qs, keep_blank_values=True)
+    # urlparse.parse returns a dictionary with values as lists while
+    # urllib.urlencode does not handle those. Expand to a list of
+    # key values.
+    expanded_qs = []
+    for key, multivalue in parsed_qs.items():
+      for value in multivalue:
+        expanded_qs.append((key, value))
+    return urllib.urlencode(expanded_qs)
+
+  def _redirect_302_path_info(self, updated_path_info, environ, start_response):
+    """Redirect to an updated path.
+
+    Respond to the current request with a 302 Found status with an updated path
+    but preserving the rest of the request.
+
+    Notes:
+    - WSGI does not make the fragment available so we are not able to preserve
+      it. Luckily prod does not preserve the fragment so it works out.
+
+    Args:
+      updated_path_info: the new HTTP path to redirect to.
+      environ: WSGI environ object.
+      start_response: WSGI start response callable.
+
+    Returns:
+      WSGI-compatible iterable object representing the body of the response.
+    """
+    correct_url = urlparse.urlunsplit(
+        (environ['wsgi.url_scheme'],
+         environ['HTTP_HOST'],
+         urllib.quote(updated_path_info),
+         self._quote_querystring(environ['QUERY_STRING']),
+         None))
+
+    content_type = 'text/html; charset=utf-8'
+    output = _REDIRECT_HTML % {
+        'content-type': content_type,
+        'status': httplib.FOUND,
+        'correct-url': correct_url
+    }
+
+    start_response('%d %s' % (httplib.FOUND, httplib.responses[httplib.FOUND]),
+                   [('Content-Type', content_type),
+                    ('Location', correct_url),
+                    ('Content-Length', str(len(output)))])
+    return output
+
+  @staticmethod
+  def _normpath(path):
+    """Normalize the path by handling . and .. directory entries.
+
+    Normalizes the path. A directory entry of . is just dropped while a
+    directory entry of .. removes the previous entry. Note that unlike
+    os.path.normpath, redundant separators remain in place to match prod.
+
+    Args:
+      path: an HTTP path.
+
+    Returns:
+      A normalized HTTP path.
+    """
+    normalized_path_entries = []
+    for entry in path.split('/'):
+      if entry == '..':
+        if normalized_path_entries:
+          normalized_path_entries.pop()
+      elif entry != '.':
+        normalized_path_entries.append(entry)
+    return '/'.join(normalized_path_entries)
 
   def _insert_log_message(self, message, level, request_id):
     logs_group = log_service_pb.UserAppLogGroup()

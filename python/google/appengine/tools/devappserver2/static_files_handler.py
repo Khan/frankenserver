@@ -19,6 +19,7 @@
 
 import base64
 import errno
+import httplib
 import mimetypes
 import os
 import os.path
@@ -227,6 +228,43 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
         return True
     return False
 
+  @staticmethod
+  def _is_relative_path_valid(path):
+    """Check if the relative path for a file is valid.
+
+    To match prod, redirection logic only fires on paths that contain a . or ..
+    as an entry, but ignores redundant separators. Since Dev App Server simply
+    passes the path to open, redundant separators are ignored (i.e. path/to/file
+    and path//to///file both map to the same thing). Since prod uses logic
+    that treats redundant separators as significant, we need to handle them
+    specially.
+
+    A related problem is that if a redundant separator is placed as the file
+    relative path, it can be passed to a StaticHandler as an absolute path.
+    As os.path.join causes an absolute path to throw away previous components
+    that could allow an attacker to read any file on the file system (i.e.
+    if there a static directory handle for /static and an attacker asks for the
+    path '/static//etc/passwd', '/etc/passwd' is passed as the relative path and
+    calling os.path.join([root_dir, '/etc/passwd']) returns '/etc/passwd'.)
+
+    Args:
+      path: a path relative to a static handler base.
+
+    Returns:
+      bool indicating whether the path is valid or not.
+    """
+
+    # Note: can't do something like path == os.path.normpath(path) as Windows
+    # would normalize separators to backslashes.
+    return not os.path.isabs(path) and '' not in path.split('/')
+
+  @staticmethod
+  def _not_found_404(environ, start_response):
+    status = httplib.NOT_FOUND
+    start_response('%d %s' % (status, httplib.responses[status]),
+                   [('Content-Type', 'text/plain')])
+    return ['%s not found' % environ['PATH_INFO']]
+
 
 class StaticFilesHandler(StaticContentHandler):
   """Servers content for the "static_files" handler.
@@ -269,8 +307,10 @@ class StaticFilesHandler(StaticContentHandler):
     Returns:
       An iterable over strings containing the body of the HTTP response.
     """
-    full_path = os.path.join(self._root_path,
-                             match.expand(self._url_map.static_files))
+    relative_path = match.expand(self._url_map.static_files)
+    if not self._is_relative_path_valid(relative_path):
+      return self._not_found_404(environ, start_response)
+    full_path = os.path.join(self._root_path, relative_path)
     return self._handle_path(full_path, environ, start_response)
 
 
@@ -320,7 +360,10 @@ class StaticDirHandler(StaticContentHandler):
     Returns:
       An iterable over strings containing the body of the HTTP response.
     """
+    relative_path = match.group('file')
+    if not self._is_relative_path_valid(relative_path):
+      return self._not_found_404(environ, start_response)
     full_path = os.path.join(self._root_path,
                              self._url_map.static_dir,
-                             match.group('file'))
+                             relative_path)
     return self._handle_path(full_path, environ, start_response)

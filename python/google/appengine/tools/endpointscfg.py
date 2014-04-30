@@ -86,9 +86,11 @@ class ServerRequestException(Exception):
         based on.
     """
     error_details = None
+    error_response = None
     if http_error.fp:
       try:
-        error_body = json.load(http_error.fp)
+        error_response = http_error.fp.read()
+        error_body = json.loads(error_response)
         error_details = ['%s: %s' % (detail['message'], detail['debug_info'])
                          for detail in error_body['error']['errors']]
       except (ValueError, TypeError, KeyError):
@@ -99,9 +101,10 @@ class ServerRequestException(Exception):
                        'Details: %s' % (http_error.code, http_error.reason,
                                         http_error.filename, error_details_str))
     else:
-      error_message = ('HTTP %s (%s) error when communicating with URL: %s.' %
-                       (http_error.code, http_error.reason,
-                        http_error.filename))
+      error_message = ('HTTP %s (%s) error when communicating with URL: %s. '
+                       'Response: %s' % (http_error.code, http_error.reason,
+                                         http_error.filename,
+                                         error_response))
     super(ServerRequestException, self).__init__(error_message)
 
 
@@ -488,7 +491,7 @@ def MakeParser(prog):
       parser.add_argument('-o', '--output', default='.',
                           help='The directory to store output files')
     if 'language' in args:
-      parser.add_argument('language', choices=['java'],
+      parser.add_argument('language',
                           help='The target output programming language')
     if 'service' in args:
       parser.add_argument('service', nargs='+',

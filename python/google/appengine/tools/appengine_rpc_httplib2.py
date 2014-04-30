@@ -254,7 +254,7 @@ class HttpRpcServerHttpLib2(object):
         loc = response_info.get('location')
         logger.debug('Got 302 redirect. Location: %s', loc)
         if (loc.startswith('https://www.google.com/accounts/ServiceLogin') or
-            re.match(r'https://www.google.com/a/[a-z0-9.-]+/ServiceLogin',
+            re.match(r'https://www\.google\.com/a/[a-z0-9.-]+/ServiceLogin',
                      loc)):
           NeedAuth()
           continue

@@ -540,10 +540,9 @@ class SimpleIndex(object):
           val = expression_evaluator.ExpressionEvaluator(
               scored_doc, self._inverted_index, True).ValueOf(
                   sort_spec.sort_expression(), default_value=default_value)
-        except expression_evaluator.ExpressionEvaluationError, e:
-          raise query_parser.QueryException(
+        except expression_evaluator.QueryExpressionEvaluationError, e:
+          raise expression_evaluator.ExpressionEvaluationError(
               _FAILED_TO_PARSE_SEARCH_REQUEST % (query, e))
-
         if isinstance(val, datetime.datetime):
           val = search_util.EpochTime(val)
         expr_vals.append(val)
@@ -949,6 +948,10 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     try:
       results = index.Search(params)
     except query_parser.QueryException, e:
+      self._InvalidRequest(response.mutable_status(), e)
+      response.set_matched_count(0)
+      return
+    except expression_evaluator.ExpressionEvaluationError, e:
       self._InvalidRequest(response.mutable_status(), e)
       response.set_matched_count(0)
       return

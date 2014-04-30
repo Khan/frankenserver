@@ -66,9 +66,10 @@ class SimpleTokenizer(object):
     else:
       return value.lower()
 
-  def TokenizeText(self, text, token_position=0):
+  def TokenizeText(self, text, token_position=0,
+                   input_field_type=document_pb.FieldValue.TEXT):
     """Tokenizes the text into a sequence of Tokens."""
-    return self._TokenizeForType(field_type=document_pb.FieldValue.TEXT,
+    return self._TokenizeForType(field_type=input_field_type,
                                  value=text, token_position=token_position)
 
   def TokenizeValue(self, field_value, token_position=0):
