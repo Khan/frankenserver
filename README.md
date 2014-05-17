@@ -65,6 +65,8 @@ configured the mirror to skip the java/ directory because it contains large
 build artifacts that GitHub won't accept and are unnecessary for our needs. The
 command to set up the mirror was:
 
-`git svn clone --stdlayout --ignore-paths="^trunk/java" http://googleappengine.googlecode.com/svn/ frankenserver`
+```
+git svn clone --stdlayout --ignore-paths="^trunk/java" http://googleappengine.googlecode.com/svn/ frankenserver
+```
 
 And the command to fetch upstream changes is `git svn fetch`.
