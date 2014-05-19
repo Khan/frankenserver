@@ -16,9 +16,18 @@
 #
 """Common functionality for file watchers."""
 
+import os
+
 
 # Directories that we should not watch at all.
 _IGNORED_DIRS = ('.git', '.hg', '.svn')
+
+# File prefixes that should be ignored.
+_IGNORED_FILE_PREFIXES = (
+  # Emacs
+  '.#',
+)
+
 # File suffixes that should be ignored.
 _IGNORED_FILE_SUFFIXES = (
     # Python temporaries
@@ -36,7 +45,10 @@ _IGNORED_FILE_SUFFIXES = (
 
 def ignore_file(filename):
   """Report whether a file should not be watched."""
-  return any(filename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES)
+  basename = os.path.basename(filename)
+  return (
+    any(basename.startswith(prefix) for prefix in _IGNORED_FILE_PREFIXES) or
+    any(basename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES))
 
 
 def remove_ignored_dirs(dirs):
