@@ -288,4 +288,6 @@ class InotifyFileWatcher(object):
               self._add_watch_for_path(path)
           if path not in paths and not watcher_common.ignore_file(path):
             paths.add(path)
+            logging.warning("Reloading instances due to change in %s", path)
+
     return paths
