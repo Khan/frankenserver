@@ -315,6 +315,5 @@ class InotifyFileWatcher(object):
               not watcher_common.ignore_file(
                   path, self._skip_files_re, self._watcher_ignore_re)):
             paths.add(path)
-            logging.warning("Reloading instances due to change in %s", path)
 
     return paths
