@@ -83,9 +83,6 @@ class MtimeFileWatcher(object):
       # returns immediately if we found a difference.
       if diff_items or timeout_ms == 0:
         for path, _ in diff_items:
-          relative_path = os.path.relpath(path, self._directory)
-          logging.warning("Reloading instances due to change in %s",
-                          relative_path)
         return {k for k, _ in diff_items}
 
       self._timeout.wait(timeout_s)

@@ -436,7 +436,7 @@ class Module(object):
 
     file_changes = self._watcher.changes(timeout)
     if file_changes:
-      logging.info(
+      logging.warning(
           '[%s] Detected file changes:\n  %s', self.name,
           '\n  '.join(sorted(file_changes)))
       self._instance_factory.files_changed()
