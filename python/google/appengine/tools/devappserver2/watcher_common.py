@@ -51,6 +51,17 @@ def ignore_file(filename):
     any(basename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES))
 
 
+def ignore_dir(dirname):
+  """Report whether a directory should not be watched."""
+  while dirname:
+    dirname, tail = os.path.split(dirname)
+    if not tail:
+      break
+    if tail in _IGNORED_DIRS:
+      return True
+  return False
+
+
 def remove_ignored_dirs(dirs):
   """Remove directories from dirs that should not be watched."""
   for d in _IGNORED_DIRS:
