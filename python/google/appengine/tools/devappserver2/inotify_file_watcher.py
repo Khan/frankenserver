@@ -264,4 +264,9 @@ class InotifyFileWatcher(object):
     return paths
 
   def has_changes(self):
-    return bool(self._get_changed_paths())
+    changed_paths = self._get_changed_paths()
+
+    for path in changed_paths:
+      logging.warning("Reloading instances due to change in %s", path)
+
+    return bool(changed_paths)
