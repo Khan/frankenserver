@@ -630,9 +630,6 @@ class Dispatcher(request_info.Dispatcher):
         _module: The module.Module that should handle this request.
         inst: The instance.Instance that should handle this request or None if
             the module's load balancing should decide on the instance.
-
-    Raises:
-      request_info.ModuleDoesNotExistError: if hostname is not known.
     """
     if self._port == 80:
       default_address = self.host
@@ -663,7 +660,7 @@ class Dispatcher(request_info.Dispatcher):
       try:
         _module, inst = self._port_registry.get(port)
       except KeyError:
-        raise request_info.ModuleDoesNotExistError(hostname)
+        _module, inst = None, None
     if not _module:
       _module = self._module_for_request(path)
     return _module, inst
