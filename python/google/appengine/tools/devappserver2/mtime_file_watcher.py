@@ -16,6 +16,7 @@
 #
 """Monitors a directory tree for changes using mtime polling."""
 
+import logging
 import os
 import threading
 import warnings
@@ -73,8 +74,19 @@ class MtimeFileWatcher(object):
   def _has_changed_paths(self):
     self._filename_to_mtime, old_filename_to_mtime = (
         self._generate_filename_to_mtime(), self._filename_to_mtime)
-    return (old_filename_to_mtime is not None and
-            self._filename_to_mtime != old_filename_to_mtime)
+
+    if old_filename_to_mtime is None:
+      return False
+
+    old_items = set(old_filename_to_mtime.iteritems())
+    new_items = set(self._filename_to_mtime.iteritems())
+    changed_paths = set(item[0] for item in old_items ^ new_items)
+
+    for path in changed_paths:
+      relative_path = os.path.relpath(path, self._directory)
+      logging.warning("Reloading instances due to change in %s", relative_path)
+
+    return bool(changed_paths)
 
   def _generate_filename_to_mtime(self):
     filename_to_mtime = {}
