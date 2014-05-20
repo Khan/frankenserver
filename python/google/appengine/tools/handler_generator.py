@@ -176,11 +176,12 @@ class DynamicHandlerGenerator(HandlerGenerator):
     self.has_api_endpoint = API_ENDPOINT_REGEX in self.web_xml.patterns
     self.patterns = [pattern for pattern in self.web_xml.patterns if
                      pattern not in ('/', '/*', API_ENDPOINT_REGEX)]
+    self.has_jsps = web_xml.has_jsps
 
   def MakeServletPatternsIntoHandlers(self):
     """Creates SimpleHandlers from servlet and filter mappings in web.xml."""
     handler_patterns = []
-    has_jsps = False
+    has_jsps = self.has_jsps
     if self.fall_through:
       return [handler.SimpleHandler('/*', {'type': 'dynamic'})]
 

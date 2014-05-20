@@ -30,15 +30,16 @@ import time
 from google.appengine.api import appinfo
 from google.appengine.datastore import datastore_stub_util
 from google.appengine.tools import boolean_action
-from google.appengine.tools.devappserver2.admin import admin_server
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import dispatcher
+from google.appengine.tools.devappserver2 import gcd_application
 from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import shutdown
 from google.appengine.tools.devappserver2 import update_checker
 from google.appengine.tools.devappserver2 import wsgi_request_info
+from google.appengine.tools.devappserver2.admin import admin_server
 
 # Initialize logging early -- otherwise some library packages may
 # pre-empt our log formatting.  NOTE: the level is provisional; it may
@@ -140,73 +141,6 @@ def _get_default_php_path():
       os.path.exists(default_php_executable_path)):
     return default_php_executable_path
   return None
-
-
-def _generate_gcd_app(app_id):
-  """Generates an app in tmp for a cloud datastore implementation."""
-  if sys.platform == 'win32':
-    # The temp directory is per-user on Windows so there is no reason to add
-    # the username to the generated directory name.
-    user_format = ''
-  else:
-    try:
-      user_name = getpass.getuser()
-    except Exception:  # The possible set of exceptions is not documented.
-      user_format = ''
-    else:
-      user_format = '.%s' % user_name
-
-  tempdir = tempfile.gettempdir()
-
-  gcd_path = os.path.join(tempdir,
-                          'appengine-gcd-war.%s%s' % (app_id, user_format))
-
-  if not os.path.exists(gcd_path):
-    os.mkdir(gcd_path, 0700)
-    os.mkdir(os.path.join(gcd_path, 'WEB-INF'), 0700)
-
-  with open(os.path.join(gcd_path, 'WEB-INF', 'web.xml'), 'w') as f:
-    f.write("""<?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns="http://java.sun.com/xml/ns/javaee" version="2.5">
-
-  <security-constraint>
-    <web-resource-collection>
-      <url-pattern>/datastore/*</url-pattern>
-    </web-resource-collection>
-    <user-data-constraint>
-      <transport-guarantee>CONFIDENTIAL</transport-guarantee>
-    </user-data-constraint>
-  </security-constraint>
-
-  <servlet>
-    <servlet-name>DatastoreApiServlet</servlet-name>
-    <servlet-class>
-      com.google.apphosting.client.datastoreservice.app.DatastoreApiServlet
-    </servlet-class>
-    <load-on-startup>1</load-on-startup>
-  </servlet>
-
-  <servlet-mapping>
-    <servlet-name>DatastoreApiServlet</servlet-name>
-    <url-pattern>/datastore/*</url-pattern>
-  </servlet-mapping>
-
-</web-app>""")
-
-  gcd_app_xml = os.path.join(gcd_path, 'WEB-INF', 'appengine-web.xml')
-  with open(gcd_app_xml, 'w') as f:
-    f.write("""<?xml version="1.0" encoding="utf-8"?>
-<appengine-web-app xmlns="http://appengine.google.com/ns/1.0">
-  <application>%s</application>
-  <version>1</version>
-  <module>google-cloud-datastore</module>
-
-  <precompilation-enabled>true</precompilation-enabled>
-  <threadsafe>true</threadsafe>
-
-</appengine-web-app>""" % app_id)
-
-  return gcd_app_xml
 
 
 class PortParser(object):
@@ -584,6 +518,13 @@ def create_command_line_parser():
       '--smtp_password', default='',
       help='password to use when connecting to the SMTP server '
       'specified in --smtp_host and --smtp_port')
+  mail_group.add_argument(
+      '--smtp_allow_tls',
+      action=boolean_action.BooleanAction,
+      const=True,
+      default=False,
+      help='Allow TLS to be used when the SMTP server announces TLS support '
+      '(ignored if --smtp_host is not set)')
 
   # Matcher
   prospective_search_group = parser.add_argument_group('Prospective Search API')
@@ -758,7 +699,7 @@ class DevelopmentServer(object):
       # is in fact an admin.
       os.environ['OAUTH_IS_ADMIN'] = '1'
       gcd_module = application_configuration.ModuleConfiguration(
-          _generate_gcd_app(configuration.app_id.split('~')[1]))
+          gcd_application.generate_gcd_app(configuration.app_id.split('~')[1]))
       configuration.modules.append(gcd_module)
 
     if options.skip_sdk_update_check:
@@ -897,6 +838,7 @@ class DevelopmentServer(object):
         mail_smtp_password=options.smtp_password,
         mail_enable_sendmail=options.enable_sendmail,
         mail_show_mail_body=options.show_mail_body,
+        mail_allow_tls=options.smtp_allow_tls,
         matcher_prospective_search_path=prospective_search_path,
         search_index_path=search_index_path,
         taskqueue_auto_run_tasks=options.enable_task_running,

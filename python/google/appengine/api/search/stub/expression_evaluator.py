@@ -420,8 +420,9 @@ class ExpressionEvaluator(object):
         try:
           default_value = search_util.DeserializeDate(default_value)
         except ValueError:
-          raise QueryExpressionEvaluationError('failed to parse date \"' +
-                                          default_value + '\"')
+          raise QueryExpressionEvaluationError(
+              'Default text value is not appropriate for sort expression \'' +
+              name + '\': failed to parse date \"' + default_value + '\"')
     result = default_value
     try:
       result = self._Eval(expression_tree)

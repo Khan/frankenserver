@@ -121,7 +121,8 @@ SDK_PRODUCT = 'appcfg_py'
 DAY = 24*3600
 SUNDAY = 6
 
-SUPPORTED_RUNTIMES = ('go', 'php', 'python', 'python27', 'java', 'java7', 'vm')
+SUPPORTED_RUNTIMES = (
+    'go', 'php', 'python', 'python27', 'java', 'java7', 'vm', 'custom')
 
 
 
@@ -4814,6 +4815,11 @@ class AppCfgApp(object):
                       action='store',
                       help='The name of the file where the generated template'
                       ' is to be written. (Required)')
+    parser.add_option('--result_db_filename', type='string',
+                      dest='result_db_filename',
+                      action='store',
+                      help='Database to write entities to during config '
+                      'generation.')
 
   def ResourceLimitsInfo(self, output=None):
     """Outputs the current resource limits.

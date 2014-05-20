@@ -251,6 +251,7 @@ def _SetupStubs(
     mail_smtp_password,
     mail_enable_sendmail,
     mail_show_mail_body,
+    mail_allow_tls,
     matcher_prospective_search_path,
     taskqueue_auto_run_tasks,
     taskqueue_task_retry_seconds,
@@ -297,6 +298,7 @@ def _SetupStubs(
         sending e-mails. This argument is ignored if mail_smtp_host is not None.
     mail_show_mail_body: A bool indicating whether the body of sent e-mails
         should be written to the logs.
+    mail_allow_tls: A bool indicating whether to allow TLS support.
     matcher_prospective_search_path: The path to the file that should be used to
         save prospective search subscriptions.
     taskqueue_auto_run_tasks: A bool indicating whether taskqueue tasks should
@@ -407,7 +409,8 @@ def _SetupStubs(
                                 mail_smtp_user,
                                 mail_smtp_password,
                                 enable_sendmail=mail_enable_sendmail,
-                                show_mail_body=mail_show_mail_body))
+                                show_mail_body=mail_show_mail_body,
+                                allow_tls=mail_allow_tls))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'memcache',
@@ -536,6 +539,10 @@ def ParseCommandArguments(args):
                       action=boolean_action.BooleanAction,
                       const=True,
                       default=False)
+  parser.add_argument('--smtp_allow_tls',
+                      action=boolean_action.BooleanAction,
+                      const=True,
+                      default=False)
 
 
   parser.add_argument('--prospective_search_path', default=None)
@@ -594,6 +601,7 @@ class APIServerProcess(object):
                smtp_password=None,
                smtp_port=None,
                smtp_user=None,
+               smtp_allow_tls=None,
                task_retry_seconds=None,
                trusted=None,
                use_sqlite=None,
@@ -653,6 +661,7 @@ class APIServerProcess(object):
       smtp_user: The username to use when authenticating with the
           SMTP server. This value may be None if smtp_host is also None or if
           the SMTP server does not require authentication.
+      smtp_allow_tls: A bool indicating whether to enable TLS.
       task_retry_seconds: An int representing the number of seconds to
           wait before a retrying a failed taskqueue task.
       trusted: A bool indicating if privileged APIs should be made available.
@@ -691,6 +700,7 @@ class APIServerProcess(object):
     self._BindArgument('--smtp_password', smtp_password)
     self._BindArgument('--smtp_port', smtp_port)
     self._BindArgument('--smtp_user', smtp_user)
+    self._BindArgument('--smtp_allow_tls', smtp_allow_tls)
     self._BindArgument('--task_retry_seconds', task_retry_seconds)
     self._BindArgument('--trusted', trusted)
     self._BindArgument('--use_sqlite', use_sqlite)
@@ -883,6 +893,7 @@ def main():
               mail_smtp_password=args.smtp_password,
               mail_enable_sendmail=args.enable_sendmail,
               mail_show_mail_body=args.show_mail_body,
+              mail_allow_tls=args.smtp_allow_tls,
               matcher_prospective_search_path=args.prospective_search_path,
               taskqueue_auto_run_tasks=args.enable_task_running,
               taskqueue_task_retry_seconds=args.task_retry_seconds,

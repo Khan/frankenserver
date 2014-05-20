@@ -3,6 +3,25 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.5
+
+Python
+==============================
+- STARTTLS support for the dev_appserver is now available.
+    https://code.google.com/p/googleappengine/issues/detail?id=497
+- Fixed an issue with the Search API where searching for geo points whose
+  distance from a fixed point is greater than some value returns documents that
+  do not include that field.
+- Fixed an issue with the Search API where querying for a field that does not
+  exist returns an error instead of returning zero matches on that field.
+    https://code.google.com/p/googleappengine/issues/detail?id=10407
+
+PHP
+==============================
+- Fixed an issue where certain legal Cloud Storage bucket names fail to
+  validate.
+    https://code.google.com/p/googleappengine/issues/detail?id=10745
+
 Version 1.9.4
 
 Python

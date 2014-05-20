@@ -1154,9 +1154,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
         join_name = 'ebp_%d' % (len(joins),)
         join_name_map.setdefault(name, join_name)
         joins.append(
-            'INNER JOIN (SELECT kind, name, value, __path__ '
-            'FROM "%s!EntitiesByProperty" '
-            'ORDER BY kind, name, value, __path__) AS %s '
+            'INNER JOIN "%s!EntitiesByProperty" AS %s '
             'ON Entities.__path__ = %s.__path__'
             % (prefix, join_name, join_name))
         filters.append(('%s.kind' % join_name, datastore_pb.Query_Filter.EQUAL,

@@ -71,9 +71,6 @@ class _SharedCherryPyThreadPool(object):
     self._connections = set()  # Protected by self._condition.
 
   def stop(self, timeout=5):
-    _THREAD_POOL.submit(self._stop, timeout)
-
-  def _stop(self, timeout):
     timeout_time = time.time() + timeout
     with self._condition:
       while self._connections and time.time() < timeout_time:

@@ -466,13 +466,19 @@ final class CloudStorageTools {
       return false;
     }
 
-    if (strlen($bucket_name) > 222) {
+    if (filter_var($bucket_name, FILTER_VALIDATE_IP) !== false) {
       return false;
     }
 
     $parts = explode('.', $bucket_name);
+    if (count($parts) > 1) {
+      if (strlen($bucket_name) > 222) {
+        return false;
+      }
+    }
+
     foreach ($parts as $part) {
-      if (strlen($part) < 3 || strlen($part) > 63) {
+      if (strlen($part) > 63) {
         return false;
       }
     }
@@ -485,7 +491,7 @@ final class CloudStorageTools {
    * https://developers.google.com/storage/docs/bucketnaming.
    */
   private static function validateObjectName($object_name) {
-    $invalid_object_regex = "/[\n\r]/";
+    $invalid_object_regex = "/[\n\r\v\f]/";
     if (preg_match($invalid_object_regex, $object_name) === 1) {
       return false;
     }

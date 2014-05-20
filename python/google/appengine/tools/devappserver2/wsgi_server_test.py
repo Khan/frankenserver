@@ -126,24 +126,23 @@ class SharedCherryPyThreadPoolTest(unittest.TestCase):
     self.assertEqual(set(), self.thread_pool._connections)
 
   def test_stop(self):
-    wsgi_server._THREAD_POOL.submit(self.thread_pool._stop, 3)
     self.mox.ReplayAll()
     self.thread_pool.stop(3)
     self.mox.VerifyAll()
 
-  def test__stop_no_connections(self):
+  def test_stop_no_connections(self):
     self.mox.ReplayAll()
-    self.thread_pool._stop(0.1)
+    self.thread_pool.stop(0.1)
     self.mox.VerifyAll()
 
-  def test__stop_with_connections(self):
+  def test_stop_with_connections(self):
     connection = self.mox.CreateMock(wsgiserver.HTTPConnection)
     self.thread_pool._connections.add(connection)
     self.mox.StubOutWithMock(self.thread_pool, '_shutdown_connection')
     self.thread_pool._shutdown_connection(connection)
 
     self.mox.ReplayAll()
-    self.thread_pool._stop(1)
+    self.thread_pool.stop(1)
     self.mox.VerifyAll()
 
   def test_shutdown_connection(self):

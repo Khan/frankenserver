@@ -130,32 +130,6 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
   }
 
   /**
-   * @dataProvider invalidGCSBuckets
-   */
-  public function testInvalidBucketName($bucket_name) {
-    $gcs_name = sprintf('gs://%s/file.txt', $bucket_name);
-    $this->assertFalse(fopen($gcs_name, 'r'));
-
-    $this->assertEquals(E_USER_ERROR, $this->triggered_errors[0]["errno"]);
-    $this->assertEquals("Invalid cloud storage bucket name '$bucket_name'",
-                        $this->triggered_errors[0]["errstr"]);
-    $this->assertEquals(E_WARNING, $this->triggered_errors[1]["errno"]);
-    $this->assertStringStartsWith("fopen($gcs_name): failed to open stream",
-                                  $this->triggered_errors[1]["errstr"]);
-  }
-
-  public function invalidGCSBuckets() {
-    return [["BadBucketName"],
-            [".another_bad_bucket"],
-            ["a"],
-            ["goog_bucket"],
-            [str_repeat('a', 224)],
-            ["a.bucket"],
-            ["foobar" . str_repeat('a', 64)],
-            ];
-  }
-
-  /**
    * @dataProvider invalidGCSModes
    */
   public function testInvalidMode($mode) {

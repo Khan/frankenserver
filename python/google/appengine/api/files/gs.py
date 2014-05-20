@@ -54,7 +54,7 @@ _USER_METADATA_PREFIX = 'x-goog-meta-'
 
 
 
-_GS_RESTFUL_URL = 'commondatastorage.googleapis.com'
+_GS_RESTFUL_URL = 'storage.googleapis.com'
 _GS_RESTFUL_SCOPE_READ_ONLY = (
     'https://www.googleapis.com/auth/devstorage.read_only')
 _GS_RESTFUL_API_VERSION = '2'

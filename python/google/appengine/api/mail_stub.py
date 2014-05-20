@@ -65,17 +65,20 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
                password='',
                enable_sendmail=False,
                show_mail_body=False,
-               service_name='mail'):
+               service_name='mail',
+               allow_tls=False):
     """Constructor.
 
     Args:
       host: Host of SMTP mail server.
-      post: Port of SMTP mail server.
+      port: Port of SMTP mail server.
       user: Sending user of SMTP mail.
       password: SMTP password.
       enable_sendmail: Whether sendmail enabled or not.
       show_mail_body: Whether to show mail body in log.
       service_name: Service name expected for all calls.
+      allow_tls: Allow TLS support. If True, use TLS provided the server
+        announces support in the EHLO response. If False, do not use TLS.
     """
     super(MailServiceStub, self).__init__(service_name,
                                           max_request_size=MAX_REQUEST_SIZE)
@@ -85,6 +88,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
     self._smtp_password = password
     self._enable_sendmail = enable_sendmail
     self._show_mail_body = show_mail_body
+    self._allow_tls = allow_tls
 
     self._cached_messages = []
 
@@ -195,10 +199,16 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
       mime_message: MimeMessage to send.  Create using ToMIMEMessage.
       smtp_lib: Class of SMTP library.  Used for dependency injection.
     """
-
     smtp = smtp_lib()
     try:
       smtp.connect(self._smtp_host, self._smtp_port)
+
+      smtp.ehlo_or_helo_if_needed()
+      if self._allow_tls and smtp.has_extn('STARTTLS'):
+        smtp.starttls()
+
+
+        smtp.ehlo()
       if self._smtp_user:
         smtp.login(self._smtp_user, self._smtp_password)
 

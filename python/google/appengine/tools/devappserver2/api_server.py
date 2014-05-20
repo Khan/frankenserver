@@ -258,6 +258,7 @@ def setup_stubs(
     mail_smtp_password,
     mail_enable_sendmail,
     mail_show_mail_body,
+    mail_allow_tls,
     matcher_prospective_search_path,
     search_index_path,
     taskqueue_auto_run_tasks,
@@ -311,6 +312,9 @@ def setup_stubs(
         sending e-mails. This argument is ignored if mail_smtp_host is not None.
     mail_show_mail_body: A bool indicating whether the body of sent e-mails
         should be written to the logs.
+    mail_allow_tls: A bool indicating whether TLS should be allowed when
+        communicating with an SMTP server. This argument is ignored if
+        mail_smtp_host is None.
     matcher_prospective_search_path: The path to the file that should be used to
         save prospective search subscriptions.
     search_index_path: The path to the file that should be used for search index
@@ -395,7 +399,8 @@ def setup_stubs(
                                 mail_smtp_user,
                                 mail_smtp_password,
                                 enable_sendmail=mail_enable_sendmail,
-                                show_mail_body=mail_show_mail_body))
+                                show_mail_body=mail_show_mail_body,
+                                allow_tls=mail_allow_tls))
 
   apiproxy_stub_map.apiproxy.RegisterStub(
       'memcache',
@@ -520,6 +525,7 @@ def test_setup_stubs(
     mail_smtp_password='',
     mail_enable_sendmail=False,
     mail_show_mail_body=False,
+    mail_allow_tls=False,
     matcher_prospective_search_path='/dev/null',
     search_index_path=None,
     taskqueue_auto_run_tasks=False,
@@ -556,6 +562,7 @@ def test_setup_stubs(
               mail_smtp_password,
               mail_enable_sendmail,
               mail_show_mail_body,
+              mail_allow_tls,
               matcher_prospective_search_path,
               search_index_path,
               taskqueue_auto_run_tasks,

@@ -33,6 +33,7 @@ NO_API_VERSION = 'none'
 def TranslateXmlToYaml(app_engine_web_xml_str,
                        web_xml_str,
                        static_files,
+                       has_jsps,
                        api_version='1.0'):
   """Does xml-string to yaml-string translation, given each separate file text.
 
@@ -42,7 +43,8 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
   Args:
     app_engine_web_xml_str: text from app_engine_web.xml
     web_xml_str: text from web.xml
-    static_files: List of static files
+    static_files: list of static files
+    has_jsps: true if the app has any *.jsp files
     api_version: current api version
 
   Returns:
@@ -54,7 +56,7 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
   aewx_parser = aewxp.AppEngineWebXmlParser()
   web_parser = web_xml_parser.WebXmlParser()
   app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
-  web_xml = web_parser.ProcessXml(web_xml_str)
+  web_xml = web_parser.ProcessXml(web_xml_str, has_jsps)
   translator = AppYamlTranslator(
       app_engine_web_xml, web_xml, static_files, api_version)
   return translator.GetYaml()

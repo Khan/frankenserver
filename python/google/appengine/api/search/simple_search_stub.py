@@ -507,10 +507,9 @@ class SimpleIndex(object):
 
   def _Sort(self, docs, search_params, query, score):
     """Return sorted docs with score or evaluated search_params as sort key."""
-    if score:
-      return sorted(docs, key=lambda doc: doc.score, reverse=True)
-
     if not search_params.sort_spec_size():
+      if score:
+        return sorted(docs, key=lambda doc: doc.score, reverse=True)
       return sorted(docs, key=lambda doc: doc.document.order_id(), reverse=True)
 
     def SortKey(scored_doc):

@@ -1044,6 +1044,10 @@ class GeoPoint(object):
                        'inclusive, was %f' % value)
     return value
 
+  def __eq__(self, other):
+    return (self.latitude == other.latitude and
+      self.longitude == other.longitude)
+
   def __repr__(self):
     return _Repr(self,
                  [('latitude', self.latitude),

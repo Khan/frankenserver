@@ -3591,7 +3591,8 @@ def SetupStubs(app_id, **config):
                                   smtp_user,
                                   smtp_password,
                                   enable_sendmail=enable_sendmail,
-                                  show_mail_body=show_mail_body))
+                                  show_mail_body=show_mail_body,
+                                  allow_tls=False))
 
     apiproxy_stub_map.apiproxy.RegisterStub(
         'memcache',

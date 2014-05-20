@@ -23,7 +23,9 @@ import httplib
 import re
 import struct
 try:
-  from google.net.proto import proto1
+
+
+  import google.net.proto.proto1 as proto1
 except ImportError:
 
   class ProtocolBufferDecodeError(Exception): pass

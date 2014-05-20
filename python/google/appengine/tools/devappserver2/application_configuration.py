@@ -316,8 +316,7 @@ class ModuleConfiguration(object):
         config, files = appinfo_includes.ParseAndReturnIncludePaths(f)
     return config, [configuration_path] + files
 
-  @staticmethod
-  def _parse_java_configuration(app_engine_web_xml_path):
+  def _parse_java_configuration(self, app_engine_web_xml_path):
     """Parse appengine-web.xml and web.xml.
 
     Args:
@@ -339,8 +338,13 @@ class ModuleConfiguration(object):
       web_xml_str = f.read()
     static_files = []
     # TODO: need to enumerate static files here
+    has_jsps = False
+    for _, _, filenames in os.walk(self.application_root):
+      if any(f.endswith('.jsp') for f in filenames):
+        has_jsps = True
+        break
     app_yaml_str = yaml_translator.TranslateXmlToYaml(
-        app_engine_web_xml_str, web_xml_str, static_files)
+        app_engine_web_xml_str, web_xml_str, static_files, has_jsps)
     config = appinfo.LoadSingleAppInfo(app_yaml_str)
     return config, [app_engine_web_xml_path, web_xml_path]
 

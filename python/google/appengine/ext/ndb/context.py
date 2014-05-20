@@ -141,8 +141,6 @@ class AutoBatcher(object):
   arguments into batches and passes along results back to respective futures.
   This class is mainly a helper that invokes todo_tasklet with the right
   arguments at the right time.
-
-  So simple and obvious.
   """
 
   def __init__(self, todo_tasklet, limit):

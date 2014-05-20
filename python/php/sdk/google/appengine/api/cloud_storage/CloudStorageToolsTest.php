@@ -730,35 +730,88 @@ class CloudStorageToolsTest extends ApiProxyTestBase {
     $this->assertEquals($expected, $actual);
   }
 
-  public function testGetFilenameFromInvalidBucketNames() {
-    $invalid_bucket_names = [
-        'BadBucketName',
-        '.another_bad_bucket',
-        'a',
-        'goog_bucket',
-        str_repeat('a', 224),
-        'a.bucket',
-        'foobar' . str_repeat('a', 64)
+  /**
+   * DataProvider for
+   * - testGetFilenameFromValidBucketNames
+   */
+  public function validBucketNames() {
+    return [
+        ['fancy-bucket_name1'],  // Must contain only [a-z0-9\-_].
+        ['1_bucket'],  // Must start with a number or letter.
+        ['bucket.1'],  // Must end with a number or letter.
+        ['foo'],  // Must be longer than 3 characters.
+        ['a.b'],  // Must be longer than 3 characters even with dots in name.
+        [str_repeat('a', 63)],  // Must not be longer than 63 characters.
+        // Must not exceed 222 characters with dots in name.
+        [implode('.', [str_repeat('a', 63), str_repeat('b', 63),
+                       str_repeat('c', 63), str_repeat('d', 30)])],
+        // Each component must not be exceed 63 characters.
+        ['a.' . str_repeat('b', 63)],
+        ['256.1.1.1'], // Must not be an IP address.
+        ['foo.goog'],  // Must not begin with "goog".
     ];
-    foreach ($invalid_bucket_names as $bucket) {
-      $this->setExpectedException(
-          "\InvalidArgumentException",
-          sprintf("Invalid cloud storage bucket name '%s'", $bucket));
-      CloudStorageTools::getFilename($bucket, 'foo.txt');
-    }
   }
 
-  public function testGetFilenameFromInvalidObjecNames() {
-    $invalid_object_names = [
-        "WithCarriageReturn\r",
-        "WithLineFeed\n",
+  /**
+   * DataProvider for
+   * - testGetFilenameFromInvalidBucketNames
+   */
+  public function invalidBucketNames() {
+    return [
+        ['BadBucketName'],  // Must contain only [a-z0-9\-_].
+        ['.another_bad_bucket'],  // Must start with a number or letter.
+        ['another_bad_bucket_'],  // Must end with a number or letter.
+        ['a'],  // Must be longer than 3 characters.
+        ['a.'],  // Must be longer than 3 characters even with dots in name.
+        [str_repeat('a', 64)],  // Must not be longer than 63 characters.
+        // Must not exceed 222 characters with dots in name.
+        [implode('.', [str_repeat('a', 63), str_repeat('b', 63),
+                       str_repeat('c', 63), str_repeat('d', 31)])],
+        // Each component must not be exceed 63 characters.
+        ['a.' . str_repeat('b', 64)],
+        ['192.168.1.1'], // Must not be an IP address.
+        ['goog_bucket'],  // Must not begin with "goog".
     ];
-    foreach ($invalid_object_names as $object) {
-      $this->setExpectedException(
-          "\InvalidArgumentException",
-          sprintf("Invalid cloud storage object name '%s'", $object));
-      CloudStorageTools::getFilename('foo', $object);
-    }
+  }
+
+  /**
+   * DataProvider for
+   * - testGetFilenameFromInvalidObjectNames
+   */
+  public function invalidObjectNames() {
+    return [
+        ["WithCarriageReturn\r"],
+        ["WithLineFeed\n"],
+        ["WithFormFeed\f"],
+        ["WithverticalTab\v"],
+    ];
+  }
+
+  /**
+   * @dataProvider validBucketNames
+   */
+  public function testGetFilenameFromValidBucketNames($bucket) {
+    CloudStorageTools::getFilename($bucket, 'foo.txt');
+  }
+
+  /**
+   * @dataProvider invalidBucketNames
+   */
+  public function testGetFilenameFromInvalidBucketNames($bucket) {
+    $this->setExpectedException(
+        "\InvalidArgumentException",
+        sprintf("Invalid cloud storage bucket name '%s'", $bucket));
+     CloudStorageTools::getFilename($bucket, 'foo.txt');
+  }
+
+  /**
+   * @dataProvider invalidObjectNames
+   */
+  public function testGetFilenameFromInvalidObjecNames($object) {
+    $this->setExpectedException(
+        "\InvalidArgumentException",
+        sprintf("Invalid cloud storage object name '%s'", $object));
+    CloudStorageTools::getFilename('foo', $object);
   }
 
   public function testParseFilenameWithBucketAndObject() {

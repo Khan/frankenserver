@@ -2406,13 +2406,14 @@ goog.dom.isWindow = function(obj) {
   return goog.isObject(obj) && obj.window == obj;
 };
 goog.dom.getParentElement = function(element) {
+  var parent;
   if (goog.dom.BrowserFeature.CAN_USE_PARENT_ELEMENT_PROPERTY) {
     var isIe9 = goog.userAgent.IE && goog.userAgent.isVersionOrHigher("9") && !goog.userAgent.isVersionOrHigher("10");
-    if (!(isIe9 && goog.global.SVGElement && element instanceof goog.global.SVGElement)) {
-      return element.parentElement;
+    if (!(isIe9 && goog.global.SVGElement && element instanceof goog.global.SVGElement) && (parent = element.parentElement)) {
+      return parent;
     }
   }
-  var parent = element.parentNode;
+  parent = element.parentNode;
   return goog.dom.isElement(parent) ? parent : null;
 };
 goog.dom.contains = function(parent, descendant) {
@@ -2505,6 +2506,7 @@ goog.dom.findCommonAncestor = function(var_args) {
   return output;
 };
 goog.dom.getOwnerDocument = function(node) {
+  goog.asserts.assert(node, "Node cannot be null or undefined.");
   return node.nodeType == goog.dom.NodeType.DOCUMENT ? node : node.ownerDocument || node.document;
 };
 goog.dom.getFrameContentDocument = function(frame) {
