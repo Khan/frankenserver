@@ -34,6 +34,7 @@ from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
 from google.appengine.tools import yaml_translator
 from google.appengine.tools.devappserver2 import errors
+from google.appengine.tools.devappserver2 import watcher_common
 
 # Constants passed to functions registered with
 # ModuleConfiguration.add_change_callback.
@@ -241,26 +242,6 @@ class ModuleConfiguration(object):
 
     self._mtimes = self._get_mtimes(files_to_check)
 
-    for app_info_attribute, self_attribute in self._IMMUTABLE_PROPERTIES:
-      app_info_value = getattr(app_info_external, app_info_attribute)
-      self_value = getattr(self, self_attribute)
-      if (app_info_value == self_value or
-          app_info_value == getattr(self._app_info_external,
-                                    app_info_attribute)):
-        # Only generate a warning if the value is both different from the
-        # immutable value *and* different from the last loaded value.
-        continue
-
-      if isinstance(app_info_value, types.StringTypes):
-        logging.warning('Restart the development module to see updates to "%s" '
-                        '["%s" => "%s"]',
-                        app_info_attribute,
-                        self_value,
-                        app_info_value)
-      else:
-        logging.warning('Restart the development module to see updates to "%s"',
-                        app_info_attribute)
-
     changes = set()
     if (app_info_external.GetNormalizedLibraries() !=
         self.normalized_libraries):
@@ -314,6 +295,9 @@ class ModuleConfiguration(object):
     else:
       with open(configuration_path) as f:
         config, files = appinfo_includes.ParseAndReturnIncludePaths(f)
+      if config.skip_files:
+        watcher_common.set_skip_files_regexp(
+          config.module or 'default', config.skip_files)
     return config, [configuration_path] + files
 
   def _parse_java_configuration(self, app_engine_web_xml_path):

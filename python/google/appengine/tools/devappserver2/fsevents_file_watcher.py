@@ -79,14 +79,10 @@ class FSEventsFileWatcher(object):
                       FSEvents.kFSEventStreamEventFlagItemXattrMod):
         continue
 
-      if watcher_common.ignore_file(os.path.basename(path)):
-        continue
-
-      if watcher_common.ignore_dir(os.path.dirname(path)):
+      if watcher_common.ignore_path(path):
         continue
 
       logging.warning("Reloading instances due to change in %s", path)
-
       self._has_changes = True
 
   def _watch_changes(self):

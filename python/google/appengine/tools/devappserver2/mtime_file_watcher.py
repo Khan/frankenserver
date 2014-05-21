@@ -93,9 +93,10 @@ class MtimeFileWatcher(object):
     num_files = 0
     for dirname, dirnames, filenames in os.walk(self._directory,
                                                 followlinks=True):
-      watcher_common.remove_ignored_dirs(dirnames)
-      filenames = [f for f in filenames if not watcher_common.ignore_file(f)]
       for filename in filenames + dirnames:
+        path = os.path.join(dirname, filename)
+        if watcher_common.ignore_path(path):
+          continue
         if num_files == 10000:
           warnings.warn(
               'There are too many files in your application for '
@@ -104,7 +105,6 @@ class MtimeFileWatcher(object):
               'files.')
           return filename_to_mtime
         num_files += 1
-        path = os.path.join(dirname, filename)
         try:
           mtime = os.path.getmtime(path)
         except (IOError, OSError):
