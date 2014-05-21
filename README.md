@@ -69,4 +69,4 @@ command to set up the mirror was:
 git svn clone --stdlayout --ignore-paths="^trunk/java" http://googleappengine.googlecode.com/svn/ frankenserver
 ```
 
-And the command to fetch upstream changes is `git svn fetch`.
+And the command to bring in upstream changes is `git svn rebase`.
