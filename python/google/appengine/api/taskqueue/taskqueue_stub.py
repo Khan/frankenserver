@@ -329,9 +329,11 @@ class _Group(object):
         queue_dict['mode'] = 'push'
       queue_dict['acl'] = queue.acl
 
-      if queue.Oldest():
-        queue_dict['oldest_task'] = _FormatEta(queue.Oldest())
-        queue_dict['eta_delta'] = _EtaDelta(queue.Oldest(), now)
+
+      oldest_eta = queue.Oldest()
+      if oldest_eta:
+        queue_dict['oldest_task'] = _FormatEta(oldest_eta)
+        queue_dict['eta_delta'] = _EtaDelta(oldest_eta, now)
       else:
         queue_dict['oldest_task'] = ''
         queue_dict['eta_delta'] = ''

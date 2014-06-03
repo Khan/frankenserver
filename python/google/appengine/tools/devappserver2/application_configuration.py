@@ -336,15 +336,13 @@ class ModuleConfiguration(object):
     web_xml_path = os.path.join(web_inf_dir, 'web.xml')
     with open(web_xml_path) as f:
       web_xml_str = f.read()
-    static_files = []
-    # TODO: need to enumerate static files here
     has_jsps = False
     for _, _, filenames in os.walk(self.application_root):
       if any(f.endswith('.jsp') for f in filenames):
         has_jsps = True
         break
-    app_yaml_str = yaml_translator.TranslateXmlToYaml(
-        app_engine_web_xml_str, web_xml_str, static_files, has_jsps)
+    app_yaml_str = yaml_translator.TranslateXmlToYamlForDevAppServer(
+        app_engine_web_xml_str, web_xml_str, has_jsps, self.application_root)
     config = appinfo.LoadSingleAppInfo(app_yaml_str)
     return config, [app_engine_web_xml_path, web_xml_path]
 

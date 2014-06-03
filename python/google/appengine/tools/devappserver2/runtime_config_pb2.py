@@ -22,8 +22,11 @@ _b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))
 from google.net.proto2.python.public import descriptor as _descriptor
 from google.net.proto2.python.public import message as _message
 from google.net.proto2.python.public import reflection as _reflection
+from google.net.proto2.python.public import symbol_database as _symbol_database
 from google.net.proto2.proto import descriptor_pb2
 # @@protoc_insertion_point(imports)
+
+_sym_db = _symbol_database.Default()
 
 
 
@@ -33,6 +36,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='apphosting.tools.devappserver2',
   serialized_pb=_b('\n3apphosting/tools/devappserver2/runtime_config.proto\x12\x1e\x61pphosting.tools.devappserver2\"\xaf\x05\n\x06\x43onfig\x12\x0e\n\x06\x61pp_id\x18\x01 \x02(\x0c\x12\x12\n\nversion_id\x18\x02 \x02(\x0c\x12\x18\n\x10\x61pplication_root\x18\x03 \x02(\x0c\x12\x19\n\nthreadsafe\x18\x04 \x01(\x08:\x05\x66\x61lse\x12\x1b\n\x08\x61pi_host\x18\x11 \x01(\t:\tlocalhost\x12\x10\n\x08\x61pi_port\x18\x05 \x02(\x05\x12:\n\tlibraries\x18\x06 \x03(\x0b\x32\'.apphosting.tools.devappserver2.Library\x12\x16\n\nskip_files\x18\x07 \x01(\t:\x02^$\x12\x18\n\x0cstatic_files\x18\x08 \x01(\t:\x02^$\x12\x43\n\rpython_config\x18\x0e \x01(\x0b\x32,.apphosting.tools.devappserver2.PythonConfig\x12=\n\nphp_config\x18\t \x01(\x0b\x32).apphosting.tools.devappserver2.PhpConfig\x12\x38\n\x07\x65nviron\x18\n \x03(\x0b\x32\'.apphosting.tools.devappserver2.Environ\x12\x42\n\x10\x63loud_sql_config\x18\x0b \x01(\x0b\x32(.apphosting.tools.devappserver2.CloudSQL\x12\x12\n\ndatacenter\x18\x0c \x02(\t\x12\x13\n\x0binstance_id\x18\r \x02(\t\x12\x1b\n\x10stderr_log_level\x18\x0f \x01(\x03:\x01\x31\x12\x13\n\x0b\x61uth_domain\x18\x10 \x02(\t\x12\x15\n\rmax_instances\x18\x12 \x01(\x05\x12;\n\tvm_config\x18\x13 \x01(\x0b\x32(.apphosting.tools.devappserver2.VMConfig\"A\n\tPhpConfig\x12\x1b\n\x13php_executable_path\x18\x01 \x01(\x0c\x12\x17\n\x0f\x65nable_debugger\x18\x03 \x02(\x08\"<\n\x0cPythonConfig\x12\x16\n\x0estartup_script\x18\x01 \x01(\t\x12\x14\n\x0cstartup_args\x18\x02 \x01(\t\"t\n\x08\x43loudSQL\x12\x12\n\nmysql_host\x18\x01 \x02(\t\x12\x12\n\nmysql_port\x18\x02 \x02(\x05\x12\x12\n\nmysql_user\x18\x03 \x02(\t\x12\x16\n\x0emysql_password\x18\x04 \x02(\t\x12\x14\n\x0cmysql_socket\x18\x05 \x01(\t\"(\n\x07Library\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0f\n\x07version\x18\x02 \x02(\t\"%\n\x07\x45nviron\x12\x0b\n\x03key\x18\x01 \x02(\x0c\x12\r\n\x05value\x18\x02 \x02(\x0c\"%\n\x08VMConfig\x12\x19\n\x11\x64ocker_daemon_url\x18\x01 \x01(\tB2\n,com.google.appengine.tools.development.proto \x02P\x01')
 )
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -433,42 +437,49 @@ Config = _reflection.GeneratedProtocolMessageType('Config', (_message.Message,),
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.Config)
   ))
+_sym_db.RegisterMessage(Config)
 
 PhpConfig = _reflection.GeneratedProtocolMessageType('PhpConfig', (_message.Message,), dict(
   DESCRIPTOR = _PHPCONFIG,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.PhpConfig)
   ))
+_sym_db.RegisterMessage(PhpConfig)
 
 PythonConfig = _reflection.GeneratedProtocolMessageType('PythonConfig', (_message.Message,), dict(
   DESCRIPTOR = _PYTHONCONFIG,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.PythonConfig)
   ))
+_sym_db.RegisterMessage(PythonConfig)
 
 CloudSQL = _reflection.GeneratedProtocolMessageType('CloudSQL', (_message.Message,), dict(
   DESCRIPTOR = _CLOUDSQL,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.CloudSQL)
   ))
+_sym_db.RegisterMessage(CloudSQL)
 
 Library = _reflection.GeneratedProtocolMessageType('Library', (_message.Message,), dict(
   DESCRIPTOR = _LIBRARY,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.Library)
   ))
+_sym_db.RegisterMessage(Library)
 
 Environ = _reflection.GeneratedProtocolMessageType('Environ', (_message.Message,), dict(
   DESCRIPTOR = _ENVIRON,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.Environ)
   ))
+_sym_db.RegisterMessage(Environ)
 
 VMConfig = _reflection.GeneratedProtocolMessageType('VMConfig', (_message.Message,), dict(
   DESCRIPTOR = _VMCONFIG,
   __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.VMConfig)
   ))
+_sym_db.RegisterMessage(VMConfig)
 
 
 DESCRIPTOR.has_options = True

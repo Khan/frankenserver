@@ -22,8 +22,11 @@ _b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))
 from google.net.proto2.python.public import descriptor as _descriptor
 from google.net.proto2.python.public import message as _message
 from google.net.proto2.python.public import reflection as _reflection
+from google.net.proto2.python.public import symbol_database as _symbol_database
 from google.net.proto2.proto import descriptor_pb2
 
+
+_sym_db = _symbol_database.Default()
 
 
 
@@ -33,6 +36,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='speckle.sql',
   serialized_pb=_b('\n-storage/speckle/proto/client_error_code.proto\x12\x0bspeckle.sql\"\xb3\x08\n\x15SqlServiceClientError\"\x99\x08\n\x0f\x43lientErrorCode\x12\x06\n\x02OK\x10\x00\x12\x13\n\x0fTRANSIENT_ERROR\x10\x01\x12\x12\n\x0eINTERNAL_ERROR\x10\x02\x12\x13\n\x0fINVALID_REQUEST\x10\x03\x12\x16\n\x12\x44\x45PRECATED_TIMEOUT\x10\x04\x12\x1d\n\x19\x44\x45PRECATED_NOT_AUTHORIZED\x10\x05\x12\x1a\n\x16\x44\x45PRECATED_RDBMS_ERROR\x10\x06\x12\"\n\x1d\x45RROR_PUBLIC_ERROR_CODE_START\x10\xe8\x07\x12\x10\n\x0b\x45RROR_RDBMS\x10\xe9\x07\x12\x12\n\rERROR_TIMEOUT\x10\xea\x07\x12\x19\n\x14\x45RROR_NOT_AUTHORIZED\x10\xeb\x07\x12\x1d\n\x18\x45RROR_INSTANCE_SUSPENDED\x10\xec\x07\x12\x1c\n\x17\x45RROR_INVALID_PARAMETER\x10\xed\x07\x12\"\n\x1d\x45RROR_NOT_ALL_VARIABLES_BOUND\x10\xee\x07\x12\x1d\n\x18\x45RROR_UNKNOWN_CONNECTION\x10\xef\x07\x12\x1c\n\x17\x45RROR_UNKNOWN_STATEMENT\x10\xf0\x07\x12\x1a\n\x15\x45RROR_UNKNOWN_CATALOG\x10\xf1\x07\x12\x19\n\x14\x45RROR_UNKNOWN_CURSOR\x10\xf2\x07\x12\x1b\n\x16\x45RROR_CURSOR_EXHAUSTED\x10\xfc\x07\x12\x1e\n\x19\x45RROR_NOT_YET_IMPLEMENTED\x10\x86\x08\x12\x1a\n\x15\x45RROR_NOT_IMPLEMENTED\x10\x87\x08\x12\x1f\n\x1a\x45RROR_INSTANCE_MAINTENANCE\x10\x88\x08\x12\'\n\"ERROR_TOO_MANY_CONCURRENT_REQUESTS\x10\x89\x08\x12\"\n\x1d\x45RROR_RESOURCE_DOES_NOT_EXIST\x10\x8a\x08\x12\"\n\x1d\x45RROR_RESOURCE_ALREADY_EXISTS\x10\x8b\x08\x12\x1c\n\x17\x45RROR_CONNECTION_IN_USE\x10\x8c\x08\x12!\n\x1c\x45RROR_CLIENT_VERSION_TOO_OLD\x10\x8d\x08\x12\x1b\n\x16\x45RROR_RESPONSE_PENDING\x10\x8e\x08\x12(\n#ERROR_INSTANCE_SUSPENDED_BY_BILLING\x10\x8f\x08\x12\x1e\n\x19\x45RROR_RESULTSET_TOO_LARGE\x10\x90\x08\x12)\n$ERROR_ACTIVATION_POLICY_SET_TO_NEVER\x10\x91\x08\x12&\n!ERROR_INSTANCE_SUSPENDED_BY_LEGAL\x10\x92\x08\x12\x19\n\x14\x45RROR_QUOTA_EXCEEDED\x10\x93\x08\x12\x32\n-ERROR_INVALID_BINLOG_COORDINATES_IN_DUMP_FILE\x10\x94\x08\x42%\n\x1b\x63om.google.protos.cloud.sql\x10\x02 \x02(\x02P\x01')
 )
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -184,6 +188,7 @@ _SQLSERVICECLIENTERROR_CLIENTERRORCODE = _descriptor.EnumDescriptor(
   serialized_start=89,
   serialized_end=1138,
 )
+_sym_db.RegisterEnumDescriptor(_SQLSERVICECLIENTERROR_CLIENTERRORCODE)
 
 
 _SQLSERVICECLIENTERROR = _descriptor.Descriptor(
@@ -215,6 +220,7 @@ SqlServiceClientError = _reflection.GeneratedProtocolMessageType('SqlServiceClie
   __module__ = 'google.storage.speckle.proto.client_error_code_pb2'
 
   ))
+_sym_db.RegisterMessage(SqlServiceClientError)
 
 
 DESCRIPTOR.has_options = True

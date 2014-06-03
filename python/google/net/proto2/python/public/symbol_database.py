@@ -19,7 +19,7 @@
 SymbolDatabase makes it easy to create new instances of a registered type, given
 only the type's protocol buffer symbol name. Once all symbols are registered,
 they can be accessed using either the MessageFactory interface which
-SymbolDatabase exposes, or the BasicDescriptorPool interface of the underlying
+SymbolDatabase exposes, or the DescriptorPool interface of the underlying
 pool.
 
 Example usage:
@@ -46,7 +46,7 @@ Example usage:
 """
 
 
-from google.net.proto2.python.public import basic_descriptor_pool
+from google.net.proto2.python.public import descriptor_pool
 
 
 class SymbolDatabase(object):
@@ -63,7 +63,7 @@ class SymbolDatabase(object):
 
     self._symbols = {}
     self._symbols_by_file = {}
-    self.pool = basic_descriptor_pool.BasicDescriptorPool()
+    self.pool = descriptor_pool.DescriptorPool()
 
   def RegisterMessage(self, message):
     """Registers the given message type in the local database.
@@ -80,7 +80,7 @@ class SymbolDatabase(object):
     if desc.file.name not in self._symbols_by_file:
       self._symbols_by_file[desc.file.name] = {}
     self._symbols_by_file[desc.file.name][desc.full_name] = message
-    self.pool.AddMessage(desc)
+    self.pool.AddDescriptor(desc)
     return message
 
   def RegisterEnumDescriptor(self, enum_descriptor):
@@ -92,7 +92,7 @@ class SymbolDatabase(object):
     Returns:
       The provided descriptor.
     """
-    self.pool.AddEnum(enum_descriptor)
+    self.pool.AddEnumDescriptor(enum_descriptor)
     return enum_descriptor
 
   def RegisterFileDescriptor(self, file_descriptor):
@@ -104,7 +104,7 @@ class SymbolDatabase(object):
     Returns:
       The provided descriptor.
     """
-    self.pool.AddFile(file_descriptor)
+    self.pool.AddFileDescriptor(file_descriptor)
 
   def GetSymbol(self, symbol):
     """Tries to find a symbol in the local database.

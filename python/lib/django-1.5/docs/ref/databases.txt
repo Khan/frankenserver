@@ -156,8 +156,8 @@ in the server configuration.
 
 Until MySQL 5.5.4, the default engine was MyISAM_ [#]_. The main drawbacks of
 MyISAM are that it doesn't support transactions or enforce foreign-key
-constraints. On the plus side, it's currently the only engine that supports
-full-text indexing and searching.
+constraints. On the plus side, it was the only engine that supported full-text
+indexing and searching until MySQL 5.6.4.
 
 Since MySQL 5.5.5, the default storage engine is InnoDB_. This engine is fully
 transactional and supports foreign key references. It's probably the best
@@ -247,7 +247,7 @@ the model definition.
 .. _documented thoroughly: http://dev.mysql.com/doc/refman/5.0/en/charset.html
 
 By default, with a UTF-8 database, MySQL will use the
-``utf8_general_ci_swedish`` collation. This results in all string equality
+``utf8_general_ci`` collation. This results in all string equality
 comparisons being done in a *case-insensitive* manner. That is, ``"Fred"`` and
 ``"freD"`` are considered equal at the database level. If you have a unique
 constraint on a field, it would be illegal to try to insert both ``"aa"`` and
@@ -284,7 +284,7 @@ bytestrings (which shouldn't be too difficult) as described above is the
 recommended solution.
 
 Should you decide to use ``utf8_bin`` collation for some of your tables with
-MySQLdb 1.2.1p2 or 1.2.2, you should still use ``utf8_collation_ci_swedish``
+MySQLdb 1.2.1p2 or 1.2.2, you should still use ``utf8_general_ci``
 (the default) collation for the ``django.contrib.sessions.models.Session``
 table (usually called ``django_session``) and the
 ``django.contrib.admin.models.LogEntry`` table (usually called
@@ -428,6 +428,22 @@ Row locking with ``QuerySet.select_for_update()``
 MySQL does not support the ``NOWAIT`` option to the ``SELECT ... FOR UPDATE``
 statement. If ``select_for_update()`` is used with ``nowait=True`` then a
 ``DatabaseError`` will be raised.
+
+Automatic typecasting can cause unexpected results
+--------------------------------------------------
+
+When performing a query on a string type, but with an integer value, MySQL will
+coerce the types of all values in the table to an integer before performing the
+comparison. If your table contains the values ``'abc'``, ``'def'`` and you
+query for ``WHERE mycolumn=0``, both rows will match. Similarly, ``WHERE mycolumn=1``
+will match the value ``'abc1'``. Therefore, string type fields included in Django
+will always cast the value to a string before using it in a query.
+
+If you implement custom model fields that inherit from :class:`~django.db.models.Field`
+directly, are overriding :meth:`~django.db.models.Field.get_prep_value`, or use
+:meth:`extra() <django.db.models.query.QuerySet.extra>` or
+:meth:`raw() <django.db.models.Manager.raw>`, you should ensure that you
+perform the appropriate typecasting.
 
 .. _sqlite-notes:
 
@@ -699,6 +715,22 @@ Naming issues
 Oracle imposes a name length limit of 30 characters. To accommodate this, the
 backend truncates database identifiers to fit, replacing the final four
 characters of the truncated name with a repeatable MD5 hash value.
+Additionally, the backend turns database identifiers to all-uppercase.
+
+To prevent these transformations (this is usually required only when dealing
+with legacy databases or accessing tables which belong to other users), use
+a quoted name as the value for ``db_table``::
+
+    class LegacyModel(models.Model):
+        class Meta:
+       	    db_table = '"name_left_in_lowercase"'
+
+    class ForeignModel(models.Model):
+        class Meta:
+       	    db_table = '"OTHER_USER"."NAME_ONLY_SEEMS_OVER_30"'
+
+Quoted names can also be used with Django's other supported database 
+backends; except for Oracle, however, the quotes have no effect.
 
 When running syncdb, an ``ORA-06552`` error may be encountered if
 certain Oracle keywords are used as the name of a model field or the

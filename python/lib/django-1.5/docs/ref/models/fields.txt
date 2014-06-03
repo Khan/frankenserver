@@ -550,7 +550,8 @@ Also has one optional argument:
     Optional. A storage object, which handles the storage and retrieval of your
     files. See :doc:`/topics/files` for details on how to provide this object.
 
-The default form widget for this field is a :class:`~django.forms.FileInput`.
+The default form widget for this field is a
+:class:`~django.forms.ClearableFileInput`.
 
 Using a :class:`FileField` or an :class:`ImageField` (see below) in a model
 takes a few steps:
@@ -798,6 +799,9 @@ By default, :class:`ImageField` instances are created as ``varchar(100)``
 columns in your database. As with other fields, you can change the maximum
 length using the :attr:`~CharField.max_length` argument.
 
+The default form widget for this field is a
+:class:`~django.forms.ClearableFileInput`.
+
 ``IntegerField``
 ----------------
 
@@ -1019,14 +1023,13 @@ define the details of how the relation works.
 .. attribute:: ForeignKey.limit_choices_to
 
     A dictionary of lookup arguments and values (see :doc:`/topics/db/queries`)
-    that limit the available admin or ModelForm choices for this object. Use
-    this with functions from the Python ``datetime`` module to limit choices of
-    objects by date. For example::
+    that limit the available admin or :class:`ModelForm <django.forms.ModelForm>`
+    choices for this object. For example::
 
-        limit_choices_to = {'pub_date__lte': datetime.date.today}
+        staff_member = models.ForeignKey(User, limit_choices_to={'is_staff': True})
 
-    only allows the choice of related objects with a ``pub_date`` before the
-    current date to be chosen.
+    causes the corresponding field on the ``ModelForm`` to list only ``Users``
+    that have ``is_staff=True``.
 
     Instead of a dictionary this can also be a :class:`~django.db.models.Q`
     object for more :ref:`complex queries <complex-lookups-with-q>`. However,
@@ -1223,6 +1226,27 @@ related. This works exactly the same as it does for :class:`ForeignKey`,
 including all the options regarding :ref:`recursive <recursive-relationships>`
 and :ref:`lazy <lazy-relationships>` relationships.
 
+If you do not specify the the :attr:`~ForeignKey.related_name` argument for
+the ``OneToOneField``, Django will use the lower-case name of the current model
+as default value.
+
+With the following example::
+
+    from django.db import models
+    from django.contrib.auth.models import User
+
+    class MySpecialUser(models.Model):
+        user = models.OneToOneField(User)
+        supervisor = models.OneToOneField(User, related_name='supervisor_of')
+
+your resulting ``User`` model will have the following attributes::
+
+    >>> user = User.objects.get(pk=1)
+    >>> hasattr(user, 'myspecialuser')
+    True
+    >>> hasattr(user, 'supervisor_of')
+    True
+
 .. _onetoone-arguments:
 
 Additionally, ``OneToOneField`` accepts all of the extra arguments
@@ -1235,3 +1259,6 @@ accepted by :class:`ForeignKey`, plus one extra argument:
     link back to the parent class, rather than the extra
     ``OneToOneField`` which would normally be implicitly created by
     subclassing.
+
+See :doc:`One-to-one relationships </topics/db/examples/one_to_one>` for usage
+examples of ``OneToOneField``.

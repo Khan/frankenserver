@@ -133,10 +133,21 @@ final class CloudStorageReadClient extends CloudStorageClient {
   }
 
   /**
-   * Seek within the current file. We only deal with SEEK_SET which we expect
-   * the upper layers of PHP to convert and SEEK_CUR or SEEK_END calls to.
+   * Seek within the current file. We expect the upper layers of PHP to convert
+   * SEEK_CUR to SEEK_SET.
    */
   public function seek($offset, $whence) {
+    if ($whence == SEEK_END) {
+      if (isset($this->object_total_length)) {
+        $whence = SEEK_SET;
+        $offset = $this->object_total_length + $offset;
+      } else {
+        trigger_error("Unable to seek from end for objects with unkonwn size",
+                      E_USER_WARNING);
+        return false;
+      }
+    }
+
     if ($whence != SEEK_SET) {
       trigger_error(sprintf("Unsupported seek mode: %d", $whence),
                     E_USER_WARNING);
@@ -144,7 +155,7 @@ final class CloudStorageReadClient extends CloudStorageClient {
     }
     // If we know the size, then make sure they are only seeking within it.
     if (isset($this->object_total_length) &&
-        $offset > $this->object_total_length) {
+        $offset >= $this->object_total_length) {
       return false;
     }
     if ($offset < 0) {
@@ -156,7 +167,8 @@ final class CloudStorageReadClient extends CloudStorageClient {
     // Check if we can seek inside the current buffer
     $buffer_end = $this->object_block_start_position +
                   strlen($this->read_buffer);
-    if ($this->object_block_start_position <= $offset && $offset < $buffer_end) {
+    if ($this->object_block_start_position <= $offset &&
+        $offset < $buffer_end) {
       $this->buffer_read_position = $offset -
           $this->object_block_start_position;
     } else {

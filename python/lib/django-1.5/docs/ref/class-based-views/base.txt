@@ -110,6 +110,7 @@ TemplateView
     This view inherits methods and attributes from the following views:
 
     * :class:`django.views.generic.base.TemplateResponseMixin`
+    * :class:`django.views.generic.base.ContextMixin`
     * :class:`django.views.generic.base.View`
 
     **Method Flowchart**
@@ -145,8 +146,8 @@ TemplateView
 
     **Context**
 
-    * ``params``: The dictionary of keyword arguments captured from the URL
-      pattern that served the view.
+    * Populated (through :class:`~django.views.generic.base.ContextMixin`) with
+      the keyword arguments captured from the URL pattern that served the view.
 
 RedirectView
 ------------
@@ -178,6 +179,7 @@ RedirectView
 
     **Example views.py**::
 
+        from django.core.urlresolvers import reverse
         from django.shortcuts import get_object_or_404
         from django.views.generic.base import RedirectView
 

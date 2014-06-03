@@ -22,6 +22,11 @@ Final releases
 .. toctree::
    :maxdepth: 1
 
+   1.5.8
+   1.5.7
+   1.5.6
+   1.5.5
+   1.5.4
    1.5.3
    1.5.2
    1.5.1
@@ -32,6 +37,12 @@ Final releases
 .. toctree::
    :maxdepth: 1
 
+   1.4.13
+   1.4.12
+   1.4.11
+   1.4.10
+   1.4.9
+   1.4.8
    1.4.7
    1.4.6
    1.4.5
@@ -96,6 +107,16 @@ Pre-1.0 releases
    0.96
    0.95
 
+Security releases
+=================
+
+Whenever a security issue is disclosed via :doc:`Django's security
+policies </internals/security>`, appropriate release notes are now
+added to all affected release series.
+
+Additionally, :doc:`an archive of disclosed security issues
+</releases/security>` is maintained.
+
 Development releases
 ====================
 
@@ -106,6 +127,7 @@ notes.
 .. toctree::
    :maxdepth: 1
 
+   security
    1.5-beta-1
    1.5-alpha-1
    1.4-beta-1

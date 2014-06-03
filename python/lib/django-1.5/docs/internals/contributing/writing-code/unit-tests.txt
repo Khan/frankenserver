@@ -33,7 +33,7 @@ with this sample ``settings`` module:
 
 .. code-block:: bash
 
-    git clone git@github.com:django/django.git django-repo
+   $ git clone https://github.com:django/django.git django-repo
     cd django-repo/tests
     PYTHONPATH=..:$PYTHONPATH python ./runtests.py --settings=test_sqlite
 
@@ -65,8 +65,8 @@ two databases:
 If you're using a backend that isn't SQLite, you will need to provide other
 details for each database:
 
-* The :setting:`USER` option for each of your databases needs to
-  specify an existing user account for the database.
+* The :setting:`USER` option needs to specify an existing user account
+  for the database.
 
 * The :setting:`PASSWORD` option needs to provide the password for
   the :setting:`USER` that has been specified.
@@ -138,6 +138,7 @@ Running all the tests
 If you want to run the full suite of tests, you'll need to install a number of
 dependencies:
 
+*  numpy_
 *  PIL_
 *  py-bcrypt_
 *  PyYAML_
@@ -168,6 +169,7 @@ and install the Geospatial libraries</ref/contrib/gis/install/index>`.
 Each of these dependencies is optional. If you're missing any of them, the
 associated tests will be skipped.
 
+.. _numpy: https://pypi.python.org/pypi/numpy
 .. _PIL: https://pypi.python.org/pypi/PIL
 .. _py-bcrypt: https://pypi.python.org/pypi/py-bcrypt/
 .. _PyYAML: http://pyyaml.org/wiki/PyYAML

@@ -3,6 +3,16 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.6
+
+Python
+==============================
+- Django 1.5.4 has been upgraded to 1.5.8.
+- Django 1.4.3 has been upgraded to 1.4.13.
+- Fixed an issue with taskqueue_stub.py _Group.GetQueuesAsDict() raising
+  TypeError intermittently.
+    https://code.google.com/p/googleappengine/issues/detail?id=10131
+
 Version 1.9.5
 
 Python

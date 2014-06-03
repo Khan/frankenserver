@@ -201,6 +201,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'concurrent'),
         os.path.join(dir_path, 'lib', 'cherrypy'),
 
+        os.path.join(dir_path, 'lib', 'distutils'),
         os.path.join(dir_path, 'lib', 'requests'),
         os.path.join(dir_path, 'lib', 'six'),
         os.path.join(dir_path, 'lib', 'websocket'),

@@ -40,7 +40,11 @@ _FLOAT_INFINITY = re.compile('-?inf(?:inity)?f?', re.IGNORECASE)
 _FLOAT_NAN = re.compile('nanf?', re.IGNORECASE)
 
 
-class ParseError(Exception):
+class Error(Exception):
+  """Top-level module error for text_format."""
+
+
+class ParseError(Error):
   """Thrown in case of ASCII parsing error."""
 
 

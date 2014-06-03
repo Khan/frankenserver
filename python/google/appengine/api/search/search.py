@@ -2728,7 +2728,7 @@ class Index(object):
           query=Query('subject:first good',
               options=QueryOptions(limit=20,
                   cursor=Cursor(),
-                  sortOptions=SortOptions(
+                  sort_options=SortOptions(
                       expressions=[SortExpression(expression='subject')],
                       limit=1000),
                   returned_fields=['author', 'subject', 'summary'],

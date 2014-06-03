@@ -23,7 +23,7 @@ goog.provide = function(name) {
 };
 goog.setTestOnly = function(opt_message) {
   if (!goog.DEBUG) {
-    throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + opt_message ? ": " + opt_message : ".");
+    throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + (opt_message ? ": " + opt_message : "."));
   }
 };
 goog.forwardDeclare = function() {
@@ -385,6 +385,40 @@ goog.MODIFY_FUNCTION_PROTOTYPES && (Function.prototype.bind = Function.prototype
 }, Function.prototype.mixin = function(source) {
   goog.mixin(this.prototype, source);
 });
+goog.defineClass = function(superClass, def) {
+  var constructor = def.constructor, statics = def.statics;
+  if (!constructor || constructor == Object.prototype.constructor) {
+    throw Error("constructor property is required.");
+  }
+  var cls = goog.defineClass.createSealingConstructor_(constructor);
+  superClass && goog.inherits(cls, superClass);
+  delete def.constructor;
+  delete def.statics;
+  goog.defineClass.applyProperties_(cls.prototype, def);
+  null != statics && (statics instanceof Function ? statics(cls) : goog.defineClass.applyProperties_(cls, statics));
+  return cls;
+};
+goog.defineClass.SEAL_CLASS_INSTANCES = goog.DEBUG;
+goog.defineClass.createSealingConstructor_ = function(ctr) {
+  if (goog.defineClass.SEAL_CLASS_INSTANCES && Object.seal instanceof Function) {
+    var wrappedCtr = function() {
+      var instance = ctr.apply(this, arguments) || this;
+      this.constructor === wrappedCtr && Object.seal(instance);
+      return instance;
+    };
+    return wrappedCtr;
+  }
+  return ctr;
+};
+goog.defineClass.OBJECT_PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
+goog.defineClass.applyProperties_ = function(target, source) {
+  for (var key in source) {
+    Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+  }
+  for (var i = 0;i < goog.defineClass.OBJECT_PROTOTYPE_FIELDS_.length;i++) {
+    key = goog.defineClass.OBJECT_PROTOTYPE_FIELDS_[i], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+  }
+};
 goog.debug = {};
 goog.debug.Error = function(opt_msg) {
   if (Error.captureStackTrace) {
@@ -400,6 +434,7 @@ goog.debug.Error.prototype.name = "CustomError";
 goog.dom = {};
 goog.dom.NodeType = {ELEMENT:1, ATTRIBUTE:2, TEXT:3, CDATA_SECTION:4, ENTITY_REFERENCE:5, ENTITY:6, PROCESSING_INSTRUCTION:7, COMMENT:8, DOCUMENT:9, DOCUMENT_TYPE:10, DOCUMENT_FRAGMENT:11, NOTATION:12};
 goog.string = {};
+goog.string.DETECT_DOUBLE_ESCAPING = !1;
 goog.string.Unicode = {NBSP:"\u00a0"};
 goog.string.startsWith = function(str, prefix) {
   return 0 == str.lastIndexOf(prefix, 0);
@@ -515,24 +550,29 @@ goog.string.newLineToBr = function(str, opt_xml) {
 };
 goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
   if (opt_isLikelyToContainHtmlChars) {
-    return str.replace(goog.string.amperRe_, "&amp;").replace(goog.string.ltRe_, "&lt;").replace(goog.string.gtRe_, "&gt;").replace(goog.string.quotRe_, "&quot;").replace(goog.string.singleQuoteRe_, "&#39;");
+    str = str.replace(goog.string.AMP_RE_, "&amp;").replace(goog.string.LT_RE_, "&lt;").replace(goog.string.GT_RE_, "&gt;").replace(goog.string.QUOT_RE_, "&quot;").replace(goog.string.SINGLE_QUOTE_RE_, "&#39;").replace(goog.string.NULL_RE_, "&#0;"), goog.string.DETECT_DOUBLE_ESCAPING && (str = str.replace(goog.string.E_RE_, "&#101;"));
+  } else {
+    if (!goog.string.ALL_RE_.test(str)) {
+      return str;
+    }
+    -1 != str.indexOf("&") && (str = str.replace(goog.string.AMP_RE_, "&amp;"));
+    -1 != str.indexOf("<") && (str = str.replace(goog.string.LT_RE_, "&lt;"));
+    -1 != str.indexOf(">") && (str = str.replace(goog.string.GT_RE_, "&gt;"));
+    -1 != str.indexOf('"') && (str = str.replace(goog.string.QUOT_RE_, "&quot;"));
+    -1 != str.indexOf("'") && (str = str.replace(goog.string.SINGLE_QUOTE_RE_, "&#39;"));
+    -1 != str.indexOf("\x00") && (str = str.replace(goog.string.NULL_RE_, "&#0;"));
+    goog.string.DETECT_DOUBLE_ESCAPING && -1 != str.indexOf("e") && (str = str.replace(goog.string.E_RE_, "&#101;"));
   }
-  if (!goog.string.allRe_.test(str)) {
-    return str;
-  }
-  -1 != str.indexOf("&") && (str = str.replace(goog.string.amperRe_, "&amp;"));
-  -1 != str.indexOf("<") && (str = str.replace(goog.string.ltRe_, "&lt;"));
-  -1 != str.indexOf(">") && (str = str.replace(goog.string.gtRe_, "&gt;"));
-  -1 != str.indexOf('"') && (str = str.replace(goog.string.quotRe_, "&quot;"));
-  -1 != str.indexOf("'") && (str = str.replace(goog.string.singleQuoteRe_, "&#39;"));
   return str;
 };
-goog.string.amperRe_ = /&/g;
-goog.string.ltRe_ = /</g;
-goog.string.gtRe_ = />/g;
-goog.string.quotRe_ = /"/g;
-goog.string.singleQuoteRe_ = /'/g;
-goog.string.allRe_ = /[&<>"']/;
+goog.string.AMP_RE_ = /&/g;
+goog.string.LT_RE_ = /</g;
+goog.string.GT_RE_ = />/g;
+goog.string.QUOT_RE_ = /"/g;
+goog.string.SINGLE_QUOTE_RE_ = /'/g;
+goog.string.NULL_RE_ = /\x00/g;
+goog.string.E_RE_ = /e/g;
+goog.string.ALL_RE_ = goog.string.DETECT_DOUBLE_ESCAPING ? /[\x00&<>"'e]/ : /[\x00&<>"']/;
 goog.string.unescapeEntities = function(str) {
   return goog.string.contains(str, "&") ? "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(str) : goog.string.unescapePureXmlEntities_(str) : str;
 };
@@ -541,7 +581,7 @@ goog.string.unescapeEntitiesWithDocument = function(str, document) {
 };
 goog.string.unescapeEntitiesUsingDom_ = function(str, opt_document) {
   var seen = {"&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"'}, div;
-  div = opt_document ? opt_document.createElement("div") : document.createElement("div");
+  div = opt_document ? opt_document.createElement("div") : goog.global.document.createElement("div");
   return str.replace(goog.string.HTML_ENTITY_PATTERN_, function(s, entity) {
     var value = seen[s];
     if (value) {
@@ -580,6 +620,9 @@ goog.string.unescapePureXmlEntities_ = function(str) {
 goog.string.HTML_ENTITY_PATTERN_ = /&([^;\s<&]+);?/g;
 goog.string.whitespaceEscape = function(str, opt_xml) {
   return goog.string.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
+};
+goog.string.preserveSpaces = function(str) {
+  return str.replace(/(^|[\n ]) /g, "$1" + goog.string.Unicode.NBSP);
 };
 goog.string.stripQuotes = function(str, quoteChars) {
   for (var length = quoteChars.length, i = 0;i < length;i++) {
@@ -2143,7 +2186,11 @@ goog.dom.getDocumentHeight = function() {
 goog.dom.getDocumentHeight_ = function(win) {
   var doc = win.document, height = 0;
   if (doc) {
-    var vh = goog.dom.getViewportSize_(win).height, body = doc.body, docEl = doc.documentElement;
+    var body = doc.body, docEl = doc.documentElement;
+    if (!body && !docEl) {
+      return 0;
+    }
+    var vh = goog.dom.getViewportSize_(win).height;
     if (goog.dom.isCss1CompatMode_(doc) && docEl.scrollHeight) {
       height = docEl.scrollHeight != vh ? docEl.scrollHeight : docEl.offsetHeight;
     } else {
@@ -2701,7 +2748,7 @@ goog.dom.getActiveElement = function(doc) {
 };
 goog.dom.getPixelRatio = goog.functions.cacheReturnValue(function() {
   var win = goog.dom.getWindow(), isFirefoxMobile = goog.userAgent.GECKO && goog.userAgent.MOBILE;
-  return goog.isDef(win.devicePixelRatio) && !isFirefoxMobile ? win.devicePixelRatio : win.matchMedia ? goog.dom.matchesPixelRatio_(0.75) || goog.dom.matchesPixelRatio_(1.5) || goog.dom.matchesPixelRatio_(2) || goog.dom.matchesPixelRatio_(3) || 1 : 1;
+  return goog.isDef(win.devicePixelRatio) && !isFirefoxMobile ? win.devicePixelRatio : win.matchMedia ? goog.dom.matchesPixelRatio_(.75) || goog.dom.matchesPixelRatio_(1.5) || goog.dom.matchesPixelRatio_(2) || goog.dom.matchesPixelRatio_(3) || 1 : 1;
 });
 goog.dom.matchesPixelRatio_ = function(pixelRatio) {
   var win = goog.dom.getWindow(), query = "(-webkit-min-device-pixel-ratio: " + pixelRatio + "),(min--moz-device-pixel-ratio: " + pixelRatio + "),(min-resolution: " + pixelRatio + "dppx)";
@@ -3262,7 +3309,7 @@ goog.events.removeAll = function(opt_obj, opt_type) {
   var count = 0, typeStr = opt_type && opt_type.toString(), type;
   for (type in listenerMap.listeners) {
     if (!typeStr || type == typeStr) {
-      for (var listeners = goog.array.clone(listenerMap.listeners[type]), i = 0;i < listeners.length;++i) {
+      for (var listeners = listenerMap.listeners[type].concat(), i = 0;i < listeners.length;++i) {
         goog.events.unlistenByKey(listeners[i]) && ++count;
       }
     }
@@ -3319,7 +3366,7 @@ goog.events.fireListeners_ = function(obj, type, capture, eventObject) {
   if (listenerMap) {
     var listenerArray = listenerMap.listeners[type.toString()];
     if (listenerArray) {
-      for (var listenerArray = goog.array.clone(listenerArray), i = 0;i < listenerArray.length;i++) {
+      for (var listenerArray = listenerArray.concat(), i = 0;i < listenerArray.length;i++) {
         var listener = listenerArray[i];
         listener && listener.capture == capture && !listener.removed && (retval &= !1 !== goog.events.fireListener(listener, eventObject));
       }
@@ -3462,7 +3509,7 @@ goog.events.EventTarget.prototype.fireListeners = function(type, capture, eventO
   if (!listenerArray) {
     return!0;
   }
-  for (var listenerArray = goog.array.clone(listenerArray), rv = !0, i = 0;i < listenerArray.length;++i) {
+  for (var listenerArray = listenerArray.concat(), rv = !0, i = 0;i < listenerArray.length;++i) {
     var listener = listenerArray[i];
     if (listener && !listener.removed && listener.capture == capture) {
       var listenerFn = listener.listener, listenerHandler = listener.handler || listener.src;
@@ -4695,6 +4742,7 @@ goog.debug.Logger = function(name) {
   this.name_ = name;
   this.handlers_ = this.children_ = this.level_ = this.parent_ = null;
 };
+goog.debug.Logger.ROOT_LOGGER_NAME = "";
 goog.debug.Logger.ENABLE_HIERARCHY = !0;
 goog.debug.Logger.ENABLE_HIERARCHY || (goog.debug.Logger.rootHandlers_ = []);
 goog.debug.Logger.Level = function(name, value) {
@@ -4837,7 +4885,7 @@ goog.debug.LogManager = {};
 goog.debug.LogManager.loggers_ = {};
 goog.debug.LogManager.rootLogger_ = null;
 goog.debug.LogManager.initialize = function() {
-  goog.debug.LogManager.rootLogger_ || (goog.debug.LogManager.rootLogger_ = new goog.debug.Logger(""), goog.debug.LogManager.loggers_[""] = goog.debug.LogManager.rootLogger_, goog.debug.LogManager.rootLogger_.setLevel(goog.debug.Logger.Level.CONFIG));
+  goog.debug.LogManager.rootLogger_ || (goog.debug.LogManager.rootLogger_ = new goog.debug.Logger(goog.debug.Logger.ROOT_LOGGER_NAME), goog.debug.LogManager.loggers_[goog.debug.Logger.ROOT_LOGGER_NAME] = goog.debug.LogManager.rootLogger_, goog.debug.LogManager.rootLogger_.setLevel(goog.debug.Logger.Level.CONFIG));
 };
 goog.debug.LogManager.getLoggers = function() {
   return goog.debug.LogManager.loggers_;
@@ -4868,6 +4916,7 @@ goog.debug.LogManager.createLogger_ = function(name) {
 };
 goog.log = {};
 goog.log.ENABLED = goog.debug.LOGGING_ENABLED;
+goog.log.ROOT_LOGGER_NAME = goog.debug.Logger.ROOT_LOGGER_NAME;
 goog.log.Logger = goog.debug.Logger;
 goog.log.Level = goog.debug.Logger.Level;
 goog.log.LogRecord = goog.debug.LogRecord;
@@ -4911,7 +4960,7 @@ goog.inherits(goog.Timer, goog.events.EventTarget);
 goog.Timer.MAX_TIMEOUT_ = 2147483647;
 goog.Timer.prototype.enabled = !1;
 goog.Timer.defaultTimerObject = goog.global;
-goog.Timer.intervalScale = 0.8;
+goog.Timer.intervalScale = .8;
 goog.Timer.prototype.timer_ = null;
 goog.Timer.prototype.setInterval = function(interval) {
   this.interval_ = interval;

@@ -16,6 +16,7 @@ import json
 import re
 import shlex
 import struct
+import warnings
 
 import requests
 import requests.exceptions
@@ -24,48 +25,14 @@ import six
 from .auth import auth
 from .unixconn import unixconn
 from .utils import utils
+from . import errors
 
 if not six.PY3:
     import websocket
 
-DEFAULT_DOCKER_API_VERSION = '1.8'
+DEFAULT_DOCKER_API_VERSION = '1.9'
 DEFAULT_TIMEOUT_SECONDS = 60
 STREAM_HEADER_SIZE_BYTES = 8
-
-
-class APIError(requests.exceptions.HTTPError):
-    def __init__(self, message, response, explanation=None):
-        # requests 1.2 supports response as a keyword argument, but
-        # requests 1.1 doesn't
-        super(APIError, self).__init__(message)
-        self.response = response
-
-        self.explanation = explanation
-
-        if self.explanation is None and response.content:
-            self.explanation = response.content.strip()
-
-    def __str__(self):
-        message = super(APIError, self).__str__()
-
-        if self.is_client_error():
-            message = '%s Client Error: %s' % (
-                self.response.status_code, self.response.reason)
-
-        elif self.is_server_error():
-            message = '%s Server Error: %s' % (
-                self.response.status_code, self.response.reason)
-
-        if self.explanation:
-            message = '%s ("%s")' % (message, self.explanation)
-
-        return message
-
-    def is_client_error(self):
-        return 400 <= self.response.status_code < 500
-
-    def is_server_error(self):
-        return 500 <= self.response.status_code < 600
 
 
 class Client(requests.Session):
@@ -112,7 +79,7 @@ class Client(requests.Session):
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            raise APIError(e, response, explanation=explanation)
+            raise errors.APIError(e, response, explanation=explanation)
 
     def _result(self, response, json=False, binary=False):
         assert not (json and binary)
@@ -129,7 +96,7 @@ class Client(requests.Session):
                           mem_limit=0, ports=None, environment=None, dns=None,
                           volumes=None, volumes_from=None,
                           network_disabled=False, entrypoint=None,
-                          cpu_shares=None, working_dir=None):
+                          cpu_shares=None, working_dir=None, domainname=None):
         if isinstance(command, six.string_types):
             command = shlex.split(str(command))
         if isinstance(environment, dict):
@@ -155,6 +122,13 @@ class Client(requests.Session):
                 volumes_dict[vol] = {}
             volumes = volumes_dict
 
+        if volumes_from:
+            if not isinstance(volumes_from, six.string_types):
+                volumes_from = ','.join(volumes_from)
+        else:
+            # Force None, an empty list or dict causes client.start to fail
+            volumes_from = None
+
         attach_stdin = False
         attach_stdout = False
         attach_stderr = False
@@ -168,27 +142,36 @@ class Client(requests.Session):
                 attach_stdin = True
                 stdin_once = True
 
+        if utils.compare_version('1.10', self._version) >= 0:
+            message = ('{0!r} parameter has no effect on create_container().'
+                       ' It has been moved to start()')
+            if dns is not None:
+                raise errors.DockerException(message.format('dns'))
+            if volumes_from is not None:
+                raise errors.DockerException(message.format('volumes_from'))
+
         return {
-            'Hostname':     hostname,
+            'Hostname': hostname,
+            'Domainname': domainname,
             'ExposedPorts': ports,
-            'User':         user,
-            'Tty':          tty,
-            'OpenStdin':    stdin_open,
-            'StdinOnce':    stdin_once,
-            'Memory':       mem_limit,
-            'AttachStdin':  attach_stdin,
+            'User': user,
+            'Tty': tty,
+            'OpenStdin': stdin_open,
+            'StdinOnce': stdin_once,
+            'Memory': mem_limit,
+            'AttachStdin': attach_stdin,
             'AttachStdout': attach_stdout,
             'AttachStderr': attach_stderr,
-            'Env':          environment,
-            'Cmd':          command,
-            'Dns':          dns,
-            'Image':        image,
-            'Volumes':      volumes,
-            'VolumesFrom':  volumes_from,
+            'Env': environment,
+            'Cmd': command,
+            'Dns': dns,
+            'Image': image,
+            'Volumes': volumes,
+            'VolumesFrom': volumes_from,
             'NetworkDisabled': network_disabled,
-            'Entrypoint':   entrypoint,
-            'CpuShares':    cpu_shares,
-            'WorkingDir':    working_dir
+            'Entrypoint': entrypoint,
+            'CpuShares': cpu_shares,
+            'WorkingDir': working_dir
         }
 
     def _post_json(self, url, data, **kwargs):
@@ -226,31 +209,18 @@ class Client(requests.Session):
     def _create_websocket_connection(self, url):
         return websocket.create_connection(url)
 
-    def _stream_result(self, response):
-        """Generator for straight-out, non chunked-encoded HTTP responses."""
+    def _get_raw_response_socket(self, response):
         self._raise_for_status(response)
-        for line in response.iter_lines(chunk_size=1, decode_unicode=True):
-            # filter out keep-alive new lines
-            if line:
-                yield line + '\n'
-
-    def _stream_result_socket(self, response):
-        self._raise_for_status(response)
-        return response.raw._fp.fp._sock
+        if six.PY3:
+            return response.raw._fp.fp.raw._sock
+        else:
+            return response.raw._fp.fp._sock
 
     def _stream_helper(self, response):
         """Generator for data coming from a chunked-encoded HTTP response."""
-        socket_fp = self._stream_result_socket(response)
-        socket_fp.setblocking(1)
-        socket = socket_fp.makefile()
-        while True:
-            size = int(socket.readline(), 16)
-            if size <= 0:
-                break
-            data = socket.readline()
-            if not data:
-                break
-            yield data
+        for line in response.iter_lines(chunk_size=32):
+            if line:
+                yield line
 
     def _multiplexed_buffer_helper(self, response):
         """A generator of multiplexed data blocks read from a buffered
@@ -269,17 +239,20 @@ class Client(requests.Session):
     def _multiplexed_socket_stream_helper(self, response):
         """A generator of multiplexed data blocks coming from a response
         socket."""
-        socket = self._stream_result_socket(response)
+        socket = self._get_raw_response_socket(response)
 
         def recvall(socket, size):
-            data = ''
+            blocks = []
             while size > 0:
                 block = socket.recv(size)
                 if not block:
                     return None
 
-                data += block
+                blocks.append(block)
                 size -= len(block)
+
+            sep = bytes() if six.PY3 else str()
+            data = sep.join(blocks)
             return data
 
         while True:
@@ -308,9 +281,18 @@ class Client(requests.Session):
         u = self._url("/containers/{0}/attach".format(container))
         response = self._post(u, params=params, stream=stream)
 
-        # Stream multi-plexing was introduced in API v1.6.
+        # Stream multi-plexing was only introduced in API v1.6. Anything before
+        # that needs old-style streaming.
         if utils.compare_version('1.6', self._version) < 0:
-            return stream and self._stream_result(response) or \
+            def stream_result():
+                self._raise_for_status(response)
+                for line in response.iter_lines(chunk_size=1,
+                                                decode_unicode=True):
+                    # filter out keep-alive new lines
+                    if line:
+                        yield line
+
+            return stream_result() if stream else \
                 self._result(response, binary=True)
 
         return stream and self._multiplexed_socket_stream_helper(response) or \
@@ -323,27 +305,38 @@ class Client(requests.Session):
                 'stderr': 1,
                 'stream': 1
             }
+
         if ws:
             return self._attach_websocket(container, params)
 
         if isinstance(container, dict):
             container = container.get('Id')
+
         u = self._url("/containers/{0}/attach".format(container))
-        return self._stream_result_socket(self.post(
+        return self._get_raw_response_socket(self.post(
             u, None, params=self._attach_params(params), stream=True))
 
     def build(self, path=None, tag=None, quiet=False, fileobj=None,
-              nocache=False, rm=False, stream=False, timeout=None):
+              nocache=False, rm=False, stream=False, timeout=None,
+              custom_context=False, encoding=None):
         remote = context = headers = None
         if path is None and fileobj is None:
-            raise Exception("Either path or fileobj needs to be provided.")
+            raise TypeError("Either path or fileobj needs to be provided.")
 
-        if fileobj is not None:
+        if custom_context:
+            if not fileobj:
+                raise TypeError("You must specify fileobj with custom_context")
+            context = fileobj
+        elif fileobj is not None:
             context = utils.mkbuildcontext(fileobj)
-        elif path.startswith(('http://', 'https://', 'git://', 'github.com/')):
+        elif path.startswith(('http://', 'https://',
+                              'git://', 'github.com/')):
             remote = path
         else:
             context = utils.tar(path)
+
+        if utils.compare_version('1.8', self._version) >= 0:
+            stream = True
 
         u = self._url('/build')
         params = {
@@ -353,8 +346,24 @@ class Client(requests.Session):
             'nocache': nocache,
             'rm': rm
         }
+
         if context is not None:
             headers = {'Content-Type': 'application/tar'}
+            if encoding:
+                headers['Content-Encoding'] = encoding
+
+        if utils.compare_version('1.9', self._version) >= 0:
+            # If we don't have any auth data so far, try reloading the config
+            # file one more time in case anything showed up in there.
+            if not self._auth_configs:
+                self._auth_configs = auth.load_config()
+
+            # Send the full auth configuration (if any exists), since the build
+            # could use any (or all) of the registries.
+            if self._auth_configs:
+                headers['X-Registry-Config'] = auth.encode_full_header(
+                    self._auth_configs
+                )
 
         response = self._post(
             u,
@@ -367,8 +376,9 @@ class Client(requests.Session):
 
         if context is not None:
             context.close()
-        if stream or utils.compare_version('1.8', self._version) >= 0:
-            return self._stream_result(response)
+
+        if stream:
+            return self._stream_helper(response)
         else:
             output = self._result(response)
             srch = r'Successfully built ([0-9a-f]+)'
@@ -422,12 +432,12 @@ class Client(requests.Session):
                          mem_limit=0, ports=None, environment=None, dns=None,
                          volumes=None, volumes_from=None,
                          network_disabled=False, name=None, entrypoint=None,
-                         cpu_shares=None, working_dir=None):
+                         cpu_shares=None, working_dir=None, domainname=None):
 
         config = self._container_config(
             image, command, hostname, user, detach, stdin_open, tty, mem_limit,
             ports, environment, dns, volumes, volumes_from, network_disabled,
-            entrypoint, cpu_shares, working_dir
+            entrypoint, cpu_shares, working_dir, domainname
         )
         return self.create_container_from_config(config, name)
 
@@ -446,21 +456,7 @@ class Client(requests.Session):
                             format(container))), True)
 
     def events(self):
-        u = self._url("/events")
-
-        socket = self._stream_result_socket(self.get(u, stream=True))
-
-        while True:
-            chunk = socket.recv(4096)
-            if chunk:
-                # Messages come in the format of length, data, newline.
-                length, data = chunk.split("\n", 1)
-                length = int(length, 16)
-                if length > len(data):
-                    data += socket.recv(length - len(data))
-                yield json.loads(data)
-            else:
-                break
+        return self._stream_helper(self.get(self._url('/events'), stream=True))
 
     def export(self, container):
         if isinstance(container, dict):
@@ -626,7 +622,7 @@ class Client(requests.Session):
                 self._auth_configs = auth.load_config()
             authcfg = auth.resolve_authconfig(self._auth_configs, registry)
 
-            # Do not fail here if no atuhentication exists for this specific
+            # Do not fail here if no authentication exists for this specific
             # registry as we can have a readonly pull. Just put the header if
             # we can.
             if authcfg:
@@ -652,7 +648,7 @@ class Client(requests.Session):
                 self._auth_configs = auth.load_config()
             authcfg = auth.resolve_authconfig(self._auth_configs, registry)
 
-            # Do not fail here if no atuhentication exists for this specific
+            # Do not fail here if no authentication exists for this specific
             # registry as we can have a readonly pull. Just put the header if
             # we can.
             if authcfg:
@@ -660,7 +656,7 @@ class Client(requests.Session):
 
             response = self._post_json(u, None, headers=headers, stream=stream)
         else:
-            response = self._post_json(u, authcfg, stream=stream)
+            response = self._post_json(u, None, stream=stream)
 
         return stream and self._stream_helper(response) \
             or self._result(response)
@@ -691,7 +687,8 @@ class Client(requests.Session):
                             True)
 
     def start(self, container, binds=None, port_bindings=None, lxc_conf=None,
-              publish_all_ports=False, links=None, privileged=False):
+              publish_all_ports=False, links=None, privileged=False,
+              dns=None, volumes_from=None):
         if isinstance(container, dict):
             container = container.get('Id')
 
@@ -706,8 +703,12 @@ class Client(requests.Session):
         }
         if binds:
             bind_pairs = [
-                '{0}:{1}'.format(host, dest) for host, dest in binds.items()
+                '%s:%s:%s' % (
+                    h, d['bind'],
+                    'ro' if 'ro' in d and d['ro'] else 'rw'
+                ) for h, d in binds.items()
             ]
+
             start_config['Binds'] = bind_pairs
 
         if port_bindings:
@@ -728,6 +729,25 @@ class Client(requests.Session):
             start_config['Links'] = formatted_links
 
         start_config['Privileged'] = privileged
+
+        if utils.compare_version('1.10', self._version) >= 0:
+            if dns is not None:
+                start_config['Dns'] = dns
+            if volumes_from is not None:
+                if isinstance(volumes_from, six.string_types):
+                    volumes_from = volumes_from.split(',')
+                start_config['VolumesFrom'] = volumes_from
+        else:
+            warning_message = ('{0!r} parameter is discarded. It is only'
+                               ' available for API version greater or equal'
+                               ' than 1.10')
+
+            if dns is not None:
+                warnings.warn(warning_message.format('dns'),
+                              DeprecationWarning)
+            if volumes_from is not None:
+                warnings.warn(warning_message.format('volumes_from'),
+                              DeprecationWarning)
 
         url = self._url("/containers/{0}/start".format(container))
         res = self._post_json(url, data=start_config)
@@ -770,3 +790,8 @@ class Client(requests.Session):
         if 'StatusCode' in json_:
             return json_['StatusCode']
         return -1
+
+    # TODO(gloom): add to public docker-py source.
+    def load_image(self, path_to_tar):
+        u = self._url("/images/load")
+        return self._result(self._post(u, data=open(path_to_tar, 'rb').read()))

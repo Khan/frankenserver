@@ -257,6 +257,17 @@ MAXIMUM_IDLE_INSTANCES = 'max_idle_instances'
 MAXIMUM_CONCURRENT_REQUEST = 'max_concurrent_requests'
 
 
+
+
+MIN_NUM_INSTANCES = 'min_num_instances'
+MAX_NUM_INSTANCES = 'max_num_instances'
+COOL_DOWN_PERIOD_SEC = 'cool_down_period_sec'
+CPU_UTILIZATION = 'cpu_utilization'
+CPU_UTILIZATION_UTILIZATION = 'target_utilization'
+CPU_UTILIZATION_AGGREGATION_WINDOW_LENGTH_SEC = 'aggregation_window_length_sec'
+
+
+
 INSTANCES = 'instances'
 
 
@@ -1258,6 +1269,17 @@ class Library(validation.Validated):
                 '", "'.join(supported_library.non_deprecated_versions)))
 
 
+class CpuUtilization(validation.Validated):
+  """Class representing the configuration of VM CPU utilization."""
+
+  ATTRIBUTES = {
+      CPU_UTILIZATION_UTILIZATION: validation.Optional(
+          validation.Range(1e-6, 1.0, float)),
+      CPU_UTILIZATION_AGGREGATION_WINDOW_LENGTH_SEC: validation.Optional(
+          validation.Range(1, sys.maxint)),
+  }
+
+
 class AutomaticScaling(validation.Validated):
   """Class representing automatic scaling settings in the AppInfoExternal."""
   ATTRIBUTES = {
@@ -1267,6 +1289,12 @@ class AutomaticScaling(validation.Validated):
       MAXIMUM_PENDING_LATENCY: validation.Optional(_PENDING_LATENCY_REGEX),
       MAXIMUM_CONCURRENT_REQUEST: validation.Optional(
           _CONCURRENT_REQUESTS_REGEX),
+
+      MIN_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
+      MAX_NUM_INSTANCES: validation.Optional(validation.Range(1, sys.maxint)),
+      COOL_DOWN_PERIOD_SEC: validation.Optional(
+          validation.Range(60, sys.maxint, int)),
+      CPU_UTILIZATION: validation.Optional(CpuUtilization),
   }
 
 
@@ -1379,7 +1407,7 @@ def NormalizeVmSettings(appyaml):
 
 
 class VmHealthCheck(validation.Validated):
-  """Class representing the configuration of a single library."""
+  """Class representing the configuration of VM health check."""
 
   ATTRIBUTES = {
       ENABLE_HEALTH_CHECK: validation.Optional(validation.TYPE_BOOL),

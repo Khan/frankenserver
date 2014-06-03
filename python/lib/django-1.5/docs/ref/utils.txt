@@ -616,15 +616,23 @@ escaping HTML.
 
 .. function:: strip_tags(value)
 
-    Removes anything that looks like an html tag from the string, that is
-    anything contained within ``<>``.
+    Tries to remove anything that looks like an HTML tag from the string, that
+    is anything contained within ``<>``.
+    Absolutely NO guaranty is provided about the resulting string being entirely
+    HTML safe. So NEVER mark safe the result of a ``strip_tag`` call without
+    escaping it first, for example with :func:`~django.utils.html.escape`.
 
     For example::
 
         strip_tags(value)
 
-    If ``value`` is ``"<b>Joel</b> <button>is</button> a <span>slug</span>"`` the
-    return value will be ``"Joel is a slug"``.
+    If ``value`` is ``"<b>Joel</b> <button>is</button> a <span>slug</span>"``
+    the return value will be ``"Joel is a slug"``.
+
+    If you are looking for a more robust solution, take a look at the `bleach`_
+    Python library.
+
+    .. _bleach: https://pypi.python.org/pypi/bleach
 
 .. function:: remove_tags(value, tags)
 
@@ -746,6 +754,17 @@ appropriate entities.
 
     Can be called multiple times on a single string.
 
+    String marked safe will become unsafe again if modified. For example::
+
+        >>> mystr = '<b>Hello World</b>   '
+        >>> mystr = mark_safe(mystr)
+        >>> type(mystr)
+        <class 'django.utils.safestring.SafeBytes'>
+
+        >>> mystr = mystr.strip()  # removing whitespace
+        >>> type(mystr)
+        <type 'str'>
+
 .. function:: mark_for_escaping(s)
 
     Explicitly mark a string as requiring HTML escaping upon output. Has no
@@ -829,7 +848,7 @@ For a complete discussion on the usage of the following see the
 
 .. function:: ngettext_lazy(singular, plural, number)
 .. function:: ungettext_lazy(singular, plural, number)
-.. function:: npgettext_lazy(singular, plural, number)
+.. function:: npgettext_lazy(context, singular, plural, number)
 
     Same as the non-lazy versions above, but using lazy execution.
 

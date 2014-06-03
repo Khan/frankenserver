@@ -205,9 +205,8 @@ when calling :meth:`~django.forms.Form.is_valid()` or accessing the
 ``full_clean()``, although you will typically not use the latter method in
 practice.
 
-``Model`` validation (:meth:`Model.full_clean()
-<django.db.models.Model.full_clean()>`) is triggered from within the form
-validation step, right after the form's ``clean()`` method is called.
+``Model`` validation is triggered from within the form validation step,
+right after the form's ``clean()`` method is called.
 
 .. warning::
 
@@ -647,6 +646,30 @@ instances of the model, you can specify an empty QuerySet::
 
    >>> AuthorFormSet(queryset=Author.objects.none())
 
+Changing the ``form``
+---------------------
+
+By default, when you use ``modelformset_factory``, a model form will
+be created using :func:`~django.forms.models.modelform_factory`.
+Often, it can be useful to specify a custom model form. For example,
+you can create a custom model form that has custom validation::
+
+    class AuthorForm(forms.ModelForm):
+        class Meta:
+            model = Author
+            fields = ('name', 'title')
+
+        def clean_name(self):
+            # custom validation for the name field
+            ...
+
+Then, pass your model form to the factory function::
+
+    AuthorFormSet = modelformset_factory(Author, form=AuthorForm)
+
+It is not always necessary to define a custom model form. The
+``modelformset_factory`` function has several arguments which are
+passed through to ``modelform_factory``, which are described below.
 
 Controlling which fields are used with ``fields`` and ``exclude``
 -----------------------------------------------------------------
@@ -711,6 +734,12 @@ This gives you the ability to attach data to the instances before saving them
 to the database. If your formset contains a ``ManyToManyField``, you'll also
 need to call ``formset.save_m2m()`` to ensure the many-to-many relationships
 are saved properly.
+
+.. note::
+
+    While calling ``formset.save(commit=False)`` does not save new or changed
+    objects to the database, it *does* delete objects that have been marked for
+    deletion. This behavior will be corrected in Django 1.7.
 
 .. _model-formsets-max-num:
 
@@ -786,9 +815,10 @@ class's ``clean`` method::
     class MyModelFormSet(BaseModelFormSet):
         def clean(self):
             super(MyModelFormSet, self).clean()
-            # example custom validation across forms in the formset:
+            # example custom validation across forms in the formset
             for form in self.forms:
                 # your custom formset validation
+                ...
 
 Using a custom queryset
 -----------------------
@@ -909,12 +939,34 @@ a particular author, you could do this::
 
     :ref:`Manually rendered can_delete and can_order <manually-rendered-can-delete-and-can-order>`.
 
-Overriding ``clean()`` on an ``InlineFormSet``
-----------------------------------------------
+Overriding methods on an ``InlineFormSet``
+------------------------------------------
 
-See :ref:`model-formsets-overriding-clean`, but subclass
+When overriding methods on ``InlineFormSet``, you should subclass
 :class:`~models.BaseInlineFormSet` rather than
 :class:`~models.BaseModelFormSet`.
+
+For example, if you want to override ``clean()``::
+
+    from django.forms.models import BaseInlineFormSet
+
+    class CustomInlineFormSet(BaseInlineFormSet):
+        def clean(self):
+            super(CustomInlineFormSet, self).clean()
+            # example custom validation across forms in the formset
+            for form in self.forms:
+                # your custom formset validation
+                ...
+
+See also :ref:`model-formsets-overriding-clean`.
+
+Then when you create your inline formset, pass in the optional argument
+``formset``::
+
+    >>> from django.forms.models import inlineformset_factory
+    >>> BookFormSet = inlineformset_factory(Author, Book, formset=CustomInlineFormSet)
+    >>> author = Author.objects.get(name=u'Mike Royko')
+    >>> formset = BookFormSet(instance=author)
 
 More than one foreign key to the same model
 -------------------------------------------

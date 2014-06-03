@@ -510,7 +510,7 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
-  public function testSeekReadObjectSuccess() {
+  public function testSeekSetReadObjectSuccess() {
     $body = "Hello from PHP";
 
     $this->expectFileReadRequest($body,
@@ -525,6 +525,37 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     $this->assertEquals(-1, fseek($fp, 100, SEEK_SET));
     $this->assertTrue(fclose($fp));
 
+    $this->apiProxyMock->verify();
+  }
+
+  public function testSeekCurReadObjectSuccess() {
+    $body = "Hello world!";
+
+    $this->expectFileReadRequest($body,
+                                 0,
+                                 CloudStorageReadClient::DEFAULT_READ_SIZE,
+                                 null);
+
+    $valid_path = "gs://bucket/object_name.png";
+    $fp = fopen($valid_path, "r");
+    $this->assertEquals(0, fseek($fp, 2, SEEK_SET));
+    $this->assertEquals(0, fseek($fp, 4, SEEK_CUR));
+    $this->assertEquals('world!', fread($fp, 6));
+    $this->apiProxyMock->verify();
+  }
+
+  public function testSeekEndReadObjectSuccess() {
+    $body = "Hello world!";
+
+    $this->expectFileReadRequest($body,
+                                 0,
+                                 CloudStorageReadClient::DEFAULT_READ_SIZE,
+                                 null);
+
+    $valid_path = "gs://bucket/object_name.png";
+    $fp = fopen($valid_path, "r");
+    $this->assertEquals(0, fseek($fp, -6, SEEK_END));
+    $this->assertEquals('world!', fread($fp, 6));
     $this->apiProxyMock->verify();
   }
 

@@ -1,3 +1,5 @@
+.. _internals-security:
+
 ==========================
 Django's security policies
 ==========================
@@ -55,6 +57,9 @@ for several versions of Django:
   release of Django 1.5, support will be provided for Django 1.4 and
   Django 1.3. Upon the release of Django 1.5, Django 1.3's security
   support will end.
+
+* :ref:`Long-term support (LTS) releases <lts-releases>` will receive
+  security updates for a specified period.
 
 When new releases are issued for security reasons, the accompanying
 notice will include a list of affected versions. This list is
@@ -123,6 +128,10 @@ us affects other frameworks or tools in the Python/web ecosystem, we
 may privately contact and discuss those issues with the appropriate
 maintainers, and coordinate our own disclosure and resolution with
 theirs.
+
+The Django team also maintains an :doc:`archive of security issues
+disclosed in Django</releases/security>`.
+
 
 .. _security-notifications:
 

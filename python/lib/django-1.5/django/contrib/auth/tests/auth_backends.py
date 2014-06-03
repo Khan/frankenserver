@@ -7,7 +7,8 @@ from django.contrib.auth.tests.utils import skipIfCustomUser
 from django.contrib.auth.tests.custom_user import ExtensionUser, CustomPermissionsUser, CustomUser
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user
+from django.http import HttpRequest
 from django.test import TestCase
 from django.test.utils import override_settings
 
@@ -367,3 +368,27 @@ class InActiveUserBackendTest(TestCase):
     def test_has_module_perms(self):
         self.assertEqual(self.user1.has_module_perms("app1"), False)
         self.assertEqual(self.user1.has_module_perms("app2"), False)
+
+
+@skipIfCustomUser
+class ImproperlyConfiguredUserModelTest(TestCase):
+    """
+    Tests that an exception from within get_user_model is propagated and doesn't
+    raise an UnboundLocalError.
+
+    Regression test for ticket #21439
+    """
+    def setUp(self):
+        self.user1 = User.objects.create_user('test', 'test@example.com', 'test')
+        self.client.login(
+            username='test',
+            password='test'
+        )
+
+    @override_settings(AUTH_USER_MODEL='thismodel.doesntexist')
+    def test_does_not_shadow_exception(self):
+        # Prepare a request object
+        request = HttpRequest()
+        request.session = self.client.session
+
+        self.assertRaises(ImproperlyConfigured, get_user, request)

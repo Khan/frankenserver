@@ -194,7 +194,7 @@ def _is_fetching_self(url, method):
       "PATH_INFO" not in os.environ):
     return False
 
-  scheme, host_port, path, query, fragment = urlparse.urlsplit(url)
+  _, host_port, path, _, _ = urlparse.urlsplit(url)
 
   if host_port == os.environ['HTTP_HOST']:
     current_path = urllib2.unquote(os.environ['PATH_INFO'])
@@ -374,11 +374,8 @@ def _get_fetch_result(rpc):
   try:
     rpc.check_success()
   except apiproxy_errors.RequestTooLargeError, err:
-    error_detail = ''
-    if err.error_detail:
-      error_detail = ' Error: ' + err.error_detail
     raise InvalidURLError(
-        'Invalid request URL: ' + url + error_detail)
+        'Request body too large fetching URL: ' + url)
   except apiproxy_errors.ApplicationError, err:
     error_detail = ''
     if err.error_detail:

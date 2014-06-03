@@ -1068,6 +1068,16 @@ of the arguments is required, but you should use at least one of them.
 
       Entry.objects.extra(where=['headline=%s'], params=['Lennon'])
 
+.. warning::
+
+    If you are performing queries on MySQL, note that MySQL's silent type coercion
+    may cause unexpected results when mixing types. If you query on a string
+    type column, but with an integer value, MySQL will coerce the types of all values
+    in the table to an integer before performing the comparison. For example, if your
+    table contains the values ``'abc'``, ``'def'`` and you query for ``WHERE mycolumn=0``,
+    both rows will match. To prevent this, perform the correct typecasting
+    before using the value in a query.
+
 defer
 ~~~~~
 
@@ -1397,11 +1407,11 @@ where ``get_or_create`` will raise an :exc:`~django.db.IntegrityError` but the
 object won't appear in a subsequent :meth:`~django.db.models.query.QuerySet.get`
 call.
 
-Finally, a word on using ``get_or_create()`` in Django views: please make sure
-to use it only in ``POST`` requests unless you have a good reason not to
-``GET`` requests shouldn't have any effect on data; use ``POST`` whenever a
-request to a page as a side effect on your data. For more, see `Safe methods`_
-in the HTTP spec.
+Finally, a word on using ``get_or_create()`` in Django views. Please make sure
+to use it only in ``POST`` requests unless you have a good reason not to.
+``GET`` requests shouldn't have any effect on data. Instead, use ``POST``
+whenever a request to a page has a side effect on your data. For more, see
+`Safe methods`_ in the HTTP spec.
 
 .. _Safe methods: http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html#sec9.1.1
 

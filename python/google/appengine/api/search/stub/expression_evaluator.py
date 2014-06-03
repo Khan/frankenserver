@@ -140,21 +140,33 @@ class ExpressionEvaluator(object):
       return geo_util.LatLng(value.lat(), value.lng())
     raise TypeError('No conversion defined for type %s' % value_type)
 
-  def _Min(self, *nodes):
-    return min(self._Eval(node) for node in nodes)
+  def _Min(self, return_type, *nodes):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Min cannot be converted to a text type')
+    return min(self._Eval(
+        node, document_pb.FieldValue.NUMBER) for node in nodes)
 
-  def _Max(self, *nodes):
-    return max(self._Eval(node) for node in nodes)
+  def _Max(self, return_type, *nodes):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Max cannot be converted to a text type')
+    return max(self._Eval(
+        node, document_pb.FieldValue.NUMBER) for node in nodes)
 
-  def _Distance(self, *nodes):
+  def _Distance(self, return_type, *nodes):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Distance cannot be converted to a text type')
     lhs, rhs = nodes
-    return self._Eval(lhs) - self._Eval(rhs)
+    return (self._Eval(lhs, document_pb.FieldValue.GEO) -
+            self._Eval(rhs, document_pb.FieldValue.GEO))
 
-  def _Geopoint(self, *nodes):
-    latitude, longitude = (self._Eval(node) for node in nodes)
+  def _Geopoint(self, return_type, *nodes):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Geopoint cannot be converted to a text type')
+    latitude, longitude = (self._Eval(
+        node, document_pb.FieldValue.NUMBER) for node in nodes)
     return geo_util.LatLng(latitude, longitude)
 
-  def _Count(self, node):
+  def _Count(self, return_type, node):
 
 
 
@@ -218,7 +230,7 @@ class ExpressionEvaluator(object):
 
 
 
-  def _Snippet(self, query, field, *args):
+  def _Snippet(self, return_type, query, field, *args):
     """Create a snippet given a query and the field to query on.
 
     Args:
@@ -256,7 +268,6 @@ class ExpressionEvaluator(object):
       for posting in postings:
         if posting.doc_id != self._doc_pb.id() or not posting.positions:
           continue
-
         field_val = self._GetFieldValue(
             search_util.GetFieldInDocument(self._doc_pb, field))
         if not field_val:
@@ -296,48 +307,67 @@ class ExpressionEvaluator(object):
           '%s is currently unsupported on dev_appserver.' % method)
     return RaiseUnsupported
 
-  def _EvalBinaryOp(self, op, op_name, node):
-    """Evaluate a binary operator on the document.
+  def _EvalNumericBinaryOp(self, op, op_name, node, return_type):
+    """Evaluate a Numeric Binary operator on the document.
 
     Args:
       op: The operator function. Must take exactly two arguments.
       op_name: The name of the operator. Used in error messages.
       node: The expression AST node representing the operator application.
+      return_type: The type to retrieve for fields with multiple types
+        in the expression. Used when the field type is ambiguous and cannot be
+        inferred from the context. If None, we retrieve the first field type
+        found in doc list.
 
     Returns:
       The result of applying op to node's two children.
 
     Raises:
       ValueError: The node does not have exactly two children.
+      _ExpressionError: The return type is Text.
     """
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Expression cannot be converted to a text type')
     if len(node.children) != 2:
       raise ValueError('%s operator must always have two arguments' % op_name)
     n1, n2 = node.children
-    return op(self._Eval(n1), self._Eval(n2))
+    return op(self._Eval(n1, document_pb.FieldValue.NUMBER),
+              self._Eval(n2, document_pb.FieldValue.NUMBER))
 
-  def _EvalUnaryOp(self, op, op_name, node):
+  def _EvalNumericUnaryOp(self, op, op_name, node, return_type):
     """Evaluate a unary operator on the document.
 
     Args:
       op: The operator function. Must take exactly one argument.
       op_name: The name of the operator. Used in error messages.
       node: The expression AST node representing the operator application.
+      return_type: The type to retrieve for fields with multiple types
+        in the expression. Used when the field type is ambiguous and cannot be
+        inferred from the context. If None, we retrieve the first field type
+        found in doc list.
 
     Returns:
       The result of applying op to node's child.
 
     Raises:
       ValueError: The node does not have exactly one child.
+      _ExpressionError: The return type is Text.
     """
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Expression cannot be converted to a text type')
     if len(node.children) != 1:
       raise ValueError('%s operator must always have one arguments' % op_name)
-    return op(self._Eval(node.children[0]))
+    return op(self._Eval(node.children[0], document_pb.FieldValue.NUMBER))
 
-  def _Eval(self, node):
+  def _Eval(self, node, return_type=None):
     """Evaluate an expression node on the document.
 
     Args:
       node: The expression AST node representing an expression subtree.
+      return_type: The type to retrieve for fields with multiple types
+        in the expression. Used when the field type is ambiguous and cannot be
+        inferred from the context. If None, we retrieve the first field type
+        found in doc list.
 
     Returns:
       The Python value that maps to the value of node. Types are inferred from
@@ -357,19 +387,23 @@ class ExpressionEvaluator(object):
       func = self._function_table[node.getType()]
 
 
-      return func(*node.children)
+      return func(return_type, *node.children)
 
     if node.getType() == ExpressionParser.PLUS:
-      return self._EvalBinaryOp(lambda a, b: a + b, 'addition', node)
+      return self._EvalNumericBinaryOp(lambda a, b: a + b, 'addition', node,
+                                       return_type)
     if node.getType() == ExpressionParser.MINUS:
-      return self._EvalBinaryOp(lambda a, b: a - b, 'subtraction', node)
+      return self._EvalNumericBinaryOp(lambda a, b: a - b, 'subtraction', node,
+                                       return_type)
     if node.getType() == ExpressionParser.DIV:
-      return self._EvalBinaryOp(lambda a, b: a / b, 'division', node)
+      return self._EvalNumericBinaryOp(lambda a, b: a / b, 'division', node,
+                                       return_type)
     if node.getType() == ExpressionParser.TIMES:
-      return self._EvalBinaryOp(lambda a, b: a * b, 'multiplication', node)
+      return self._EvalNumericBinaryOp(lambda a, b: a * b,
+                                       'multiplication', node, return_type)
     if node.getType() == ExpressionParser.NEG:
-      return self._EvalUnaryOp(lambda a: -a, 'negation', node)
-
+      return self._EvalNumericUnaryOp(lambda a: -a, 'negation', node,
+                                      return_type)
     if node.getType() in (ExpressionParser.INT, ExpressionParser.FLOAT):
       return float(query_parser.GetQueryNodeText(node))
     if node.getType() == ExpressionParser.PHRASE:
@@ -379,19 +413,24 @@ class ExpressionEvaluator(object):
       name = query_parser.GetQueryNodeText(node)
       if name == '_score':
         return self._doc.score
-      field = search_util.GetFieldInDocument(self._doc_pb, name)
+      field = search_util.GetFieldInDocument(self._doc_pb, name,
+                                             return_type)
       if field:
         return self._GetFieldValue(field)
       raise _ExpressionError('No field %s in document' % name)
 
     raise _ExpressionError('Unable to handle node %s' % node)
 
-  def ValueOf(self, expression, default_value=None):
+  def ValueOf(self, expression, default_value=None, return_type=None):
     """Returns the value of an expression on a document.
 
     Args:
       expression: The expression string.
       default_value: The value to return if the expression cannot be evaluated.
+      return_type: The type the expression should evaluate to. Used to create
+        multiple sorts for ambiguous expressions. If None, the expression
+        evaluates to the inferred type or first type of a field it encounters in
+        a document.
 
     Returns:
       The value of the expression on the evaluator's document, or default_value
@@ -415,17 +454,25 @@ class ExpressionEvaluator(object):
     name = query_parser.GetQueryNodeText(expression_tree)
     schema = self._inverted_index.GetSchema()
     if (expression_tree.getType() == ExpressionParser.NAME and
-        schema.IsType(name, document_pb.FieldValue.DATE)):
-      if isinstance(default_value, basestring):
-        try:
-          default_value = search_util.DeserializeDate(default_value)
-        except ValueError:
-          raise QueryExpressionEvaluationError(
-              'Default text value is not appropriate for sort expression \'' +
-              name + '\': failed to parse date \"' + default_value + '\"')
+        name in schema):
+      contains_text_result = False
+      for field_type in schema[name].type_list():
+        if field_type in search_util.TEXT_DOCUMENT_FIELD_TYPES:
+          contains_text_result = True
+
+
+      if (schema.IsType(name, document_pb.FieldValue.DATE) and
+          not contains_text_result):
+        if isinstance(default_value, basestring):
+          try:
+            default_value = search_util.DeserializeDate(default_value)
+          except ValueError:
+            raise QueryExpressionEvaluationError(
+                'Default text value is not appropriate for sort expression \'' +
+                name + '\': failed to parse date \"' + default_value + '\"')
     result = default_value
     try:
-      result = self._Eval(expression_tree)
+      result = self._Eval(expression_tree, return_type=return_type)
     except _ExpressionError, e:
 
 

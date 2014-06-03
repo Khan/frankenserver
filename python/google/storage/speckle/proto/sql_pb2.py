@@ -22,6 +22,7 @@ _b=sys.version_info[0]<3 and (lambda x:x) or (lambda x:x.encode('latin1'))
 from google.net.proto2.python.public import descriptor as _descriptor
 from google.net.proto2.python.public import message as _message
 from google.net.proto2.python.public import reflection as _reflection
+from google.net.proto2.python.public import symbol_database as _symbol_database
 from google.net.proto2.proto import descriptor_pb2
 import sys
 try:
@@ -40,6 +41,8 @@ except ImportError:
   _server_stub_base_class = object
 
 
+_sym_db = _symbol_database.Default()
+
 
 import google.storage.speckle.proto.client_pb2
 
@@ -50,6 +53,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   serialized_pb=_b('\n\x1fstorage/speckle/proto/sql.proto\x12\x0bspeckle.sql\x1a\"storage/speckle/proto/client.proto\"\x8c\x03\n\x0b\x45xecRequest\x12\x10\n\x08instance\x18\x01 \x02(\t\x12\x14\n\x0cstatement_id\x18\x02 \x01(\x04\x12\x11\n\tstatement\x18\x03 \x01(\t\x12\x31\n\rbind_variable\x18\x04 \x03(\x0b\x32\x1a.speckle.BindVariableProto\x12\x15\n\rconnection_id\x18\x05 \x02(\x0c\x12%\n\x07options\x18\x06 \x01(\x0b\x32\x14.speckle.ExecOptions\x12I\n\x0estatement_type\x18\t \x01(\x0e\x32&.speckle.sql.ExecRequest.StatementType:\tSTATEMENT\x12\"\n\x05\x62\x61tch\x18\n \x01(\x0b\x32\x13.speckle.BatchProto\x12\x12\n\nrequest_id\x18\x0b \x01(\x04\"N\n\rStatementType\x12\r\n\tSTATEMENT\x10\x01\x12\x16\n\x12PREPARED_STATEMENT\x10\x02\x12\x16\n\x12\x43\x41LLABLE_STATEMENT\x10\x03\"b\n\x0c\x45xecResponse\x12$\n\x06result\x18\x01 \x01(\x0b\x32\x14.speckle.ResultProto\x12,\n\rsql_exception\x18\x02 \x01(\x0b\x32\x15.speckle.SqlException\"j\n\rExecOpRequest\x12\x10\n\x08instance\x18\x01 \x02(\t\x12\x15\n\rconnection_id\x18\x02 \x02(\x0c\x12\x1c\n\x02op\x18\x03 \x02(\x0b\x32\x10.speckle.OpProto\x12\x12\n\nrequest_id\x18\x08 \x01(\x04\"\xed\x01\n\x0e\x45xecOpResponse\x12\x12\n\nnative_sql\x18\x01 \x01(\t\x12%\n\tsavepoint\x18\x02 \x01(\x0b\x32\x12.speckle.SavePoint\x12,\n\rsql_exception\x18\x03 \x01(\x0b\x32\x15.speckle.SqlException\x12$\n\x06result\x18\x04 \x01(\x0b\x32\x14.speckle.ResultProto\x12\x30\n\x10\x63\x61\x63hed_rpc_error\x18\x05 \x01(\x0b\x32\x16.speckle.RpcErrorProto\x12\x1a\n\x0e\x63\x61\x63hed_payload\x18\x06 \x01(\x0c\x42\x02\x08\x01\"\xaa\x01\n\x0fMetadataRequest\x12\x10\n\x08instance\x18\x01 \x02(\t\x12\'\n\x08metadata\x18\x03 \x02(\x0e\x32\x15.speckle.MetadataType\x12\x31\n\rbind_variable\x18\x04 \x03(\x0b\x32\x1a.speckle.BindVariableProto\x12\x15\n\rconnection_id\x18\x05 \x02(\x0c\x12\x12\n\nrequest_id\x18\x08 \x01(\x04\"\xaa\x01\n\x10MetadataResponse\x12$\n\x06result\x18\x01 \x01(\x0b\x32\x14.speckle.ResultProto\x12\x42\n\x16jdbc_database_metadata\x18\x02 \x01(\x0b\x32\".speckle.JdbcDatabaseMetaDataProto\x12,\n\rsql_exception\x18\x03 \x01(\x0b\x32\x15.speckle.SqlException\"\xac\x01\n\x15OpenConnectionRequest\x12\x10\n\x08instance\x18\x01 \x02(\t\x12#\n\x08property\x18\x02 \x03(\x0b\x32\x11.speckle.Property\x12\x1b\n\x10protocol_version\x18\x05 \x01(\x04:\x01\x31\x12?\n\x0b\x63lient_type\x18\x06 \x01(\x0e\x32\x13.speckle.ClientType:\x15\x43LIENT_TYPE_JAVA_JDBC\"\x86\x01\n\x16OpenConnectionResponse\x12\x15\n\rconnection_id\x18\x01 \x01(\x0c\x12,\n\rsql_exception\x18\x02 \x01(\x0b\x32\x15.speckle.SqlException\x12\'\n\x08warnings\x18\x06 \x03(\x0b\x32\x15.speckle.SqlException\"A\n\x16\x43loseConnectionRequest\x12\x10\n\x08instance\x18\x01 \x02(\t\x12\x15\n\rconnection_id\x18\x02 \x02(\x0c\"G\n\x17\x43loseConnectionResponse\x12,\n\rsql_exception\x18\x01 \x01(\x0b\x32\x15.speckle.SqlException2\xac\x03\n\nSqlService\x12?\n\x04\x45xec\x12\x18.speckle.sql.ExecRequest\x1a\x19.speckle.sql.ExecResponse\"\x02P\x01\x12\x45\n\x06\x45xecOp\x12\x1a.speckle.sql.ExecOpRequest\x1a\x1b.speckle.sql.ExecOpResponse\"\x02P\x01\x12N\n\x0bGetMetadata\x12\x1c.speckle.sql.MetadataRequest\x1a\x1d.speckle.sql.MetadataResponse\"\x02P\x01\x12\x64\n\x0eOpenConnection\x12\".speckle.sql.OpenConnectionRequest\x1a#.speckle.sql.OpenConnectionResponse\"\tP\x01\x9a\x01\x04read\x12`\n\x0f\x43loseConnection\x12#.speckle.sql.CloseConnectionRequest\x1a$.speckle.sql.CloseConnectionResponse\"\x02P\x01\x42.\n\x1b\x63om.google.protos.cloud.sql\x10\x02 \x02(\x02P\x01\x80\x01\x00\x88\x01\x00\x90\x01\x00')
   ,
   dependencies=[google.storage.speckle.proto.client_pb2.DESCRIPTOR,])
+_sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 
@@ -77,6 +81,7 @@ _EXECREQUEST_STATEMENTTYPE = _descriptor.EnumDescriptor(
   serialized_start=403,
   serialized_end=481,
 )
+_sym_db.RegisterEnumDescriptor(_EXECREQUEST_STATEMENTTYPE)
 
 
 _EXECREQUEST = _descriptor.Descriptor(
@@ -600,60 +605,70 @@ ExecRequest = _reflection.GeneratedProtocolMessageType('ExecRequest', (_message.
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(ExecRequest)
 
 ExecResponse = _reflection.GeneratedProtocolMessageType('ExecResponse', (_message.Message,), dict(
   DESCRIPTOR = _EXECRESPONSE,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(ExecResponse)
 
 ExecOpRequest = _reflection.GeneratedProtocolMessageType('ExecOpRequest', (_message.Message,), dict(
   DESCRIPTOR = _EXECOPREQUEST,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(ExecOpRequest)
 
 ExecOpResponse = _reflection.GeneratedProtocolMessageType('ExecOpResponse', (_message.Message,), dict(
   DESCRIPTOR = _EXECOPRESPONSE,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(ExecOpResponse)
 
 MetadataRequest = _reflection.GeneratedProtocolMessageType('MetadataRequest', (_message.Message,), dict(
   DESCRIPTOR = _METADATAREQUEST,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(MetadataRequest)
 
 MetadataResponse = _reflection.GeneratedProtocolMessageType('MetadataResponse', (_message.Message,), dict(
   DESCRIPTOR = _METADATARESPONSE,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(MetadataResponse)
 
 OpenConnectionRequest = _reflection.GeneratedProtocolMessageType('OpenConnectionRequest', (_message.Message,), dict(
   DESCRIPTOR = _OPENCONNECTIONREQUEST,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(OpenConnectionRequest)
 
 OpenConnectionResponse = _reflection.GeneratedProtocolMessageType('OpenConnectionResponse', (_message.Message,), dict(
   DESCRIPTOR = _OPENCONNECTIONRESPONSE,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(OpenConnectionResponse)
 
 CloseConnectionRequest = _reflection.GeneratedProtocolMessageType('CloseConnectionRequest', (_message.Message,), dict(
   DESCRIPTOR = _CLOSECONNECTIONREQUEST,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(CloseConnectionRequest)
 
 CloseConnectionResponse = _reflection.GeneratedProtocolMessageType('CloseConnectionResponse', (_message.Message,), dict(
   DESCRIPTOR = _CLOSECONNECTIONRESPONSE,
   __module__ = 'google.storage.speckle.proto.sql_pb2'
 
   ))
+_sym_db.RegisterMessage(CloseConnectionResponse)
 
 
 DESCRIPTOR.has_options = True

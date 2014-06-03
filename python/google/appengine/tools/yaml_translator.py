@@ -21,6 +21,9 @@
   AppYamlTranslator: Class that facilitates xml-to-yaml translation
 """
 
+import os
+import re
+
 from google.appengine.tools import app_engine_web_xml_parser as aewxp
 from google.appengine.tools import handler_generator
 from google.appengine.tools import web_xml_parser
@@ -32,9 +35,7 @@ NO_API_VERSION = 'none'
 
 def TranslateXmlToYaml(app_engine_web_xml_str,
                        web_xml_str,
-                       static_files,
-                       has_jsps,
-                       api_version='1.0'):
+                       has_jsps):
   """Does xml-string to yaml-string translation, given each separate file text.
 
   Processes each xml string into an object representing the xml,
@@ -43,9 +44,7 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
   Args:
     app_engine_web_xml_str: text from app_engine_web.xml
     web_xml_str: text from web.xml
-    static_files: list of static files
     has_jsps: true if the app has any *.jsp files
-    api_version: current api version
 
   Returns:
     The full text of the app.yaml generated from the xml files.
@@ -57,8 +56,41 @@ def TranslateXmlToYaml(app_engine_web_xml_str,
   web_parser = web_xml_parser.WebXmlParser()
   app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
   web_xml = web_parser.ProcessXml(web_xml_str, has_jsps)
-  translator = AppYamlTranslator(
-      app_engine_web_xml, web_xml, static_files, api_version)
+  translator = AppYamlTranslator(app_engine_web_xml, web_xml, [], '1.0')
+  return translator.GetYaml()
+
+
+def TranslateXmlToYamlForDevAppServer(app_engine_web_xml_str,
+                                      web_xml_str,
+                                      has_jsps,
+                                      war_root):
+  """Does xml-string to yaml-string translation, given each separate file text.
+
+  Processes each xml string into an object representing the xml,
+  and passes these to the translator. This variant is used in the Dev App Server
+  context, where files are served directly from the input war directory, unlike
+  the appcfg case where they are copied or linked into a parallel hierarchy.
+  This means that there is no __static__ directory containing exactly the files
+  that are supposed to be served statically.
+
+  Args:
+    app_engine_web_xml_str: text from app_engine_web.xml
+    web_xml_str: text from web.xml
+    has_jsps: true if the app has any *.jsp files
+    war_root: the path to the root directory of the war hierarchy
+
+  Returns:
+    The full text of the app.yaml generated from the xml files.
+
+  Raises:
+    AppEngineConfigException: raised in processing stage for illegal XML.
+  """
+  aewx_parser = aewxp.AppEngineWebXmlParser()
+  web_parser = web_xml_parser.WebXmlParser()
+  app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
+  web_xml = web_parser.ProcessXml(web_xml_str, has_jsps)
+  translator = AppYamlTranslatorForDevAppServer(
+      app_engine_web_xml, web_xml, war_root)
   return translator.GetYaml()
 
 
@@ -234,22 +266,39 @@ class AppYamlTranslator(object):
       return []
     statements = ['error_handlers:']
     for error_handler in self.app_engine_web_xml.static_error_handlers:
-      name = error_handler.name
-      if not name.startswith('/'):
-        name = '/' + name
 
-      if ('__static__' + name) not in self.static_files:
-        raise AppEngineConfigException(
-            'No static file found for error handler: %s, out of %s' %
-            (name, self.static_files))
-      statements.append('- file: __static__%s' % name)
+      path = self.ErrorHandlerPath(error_handler)
+      statements.append('- file: %s' % path)
       if error_handler.code:
         statements.append('  error_code: %s' % error_handler.code)
-      mime_type = self.web_xml.GetMimeTypeForPath(name)
+      mime_type = self.web_xml.GetMimeTypeForPath(error_handler.name)
       if mime_type:
         statements.append('  mime_type: %s' % mime_type)
 
     return statements
+
+  def ErrorHandlerPath(self, error_handler):
+    """Returns the relative path name for the given error handler.
+
+    Args:
+      error_handler: an app_engine_web_xml.ErrorHandler.
+
+    Returns:
+      the relative path name for the handler.
+
+    Raises:
+      AppEngineConfigException: if the named file is not an existing static
+        file.
+    """
+    name = error_handler.name
+    if not name.startswith('/'):
+      name = '/' + name
+    path = '__static__' + name
+    if path not in self.static_files:
+      raise AppEngineConfigException(
+          'No static file found for error handler: %s, out of %s' %
+          (name, self.static_files))
+    return path
 
   def TranslateHandlers(self):
     return handler_generator.GenerateYamlHandlersList(
@@ -268,3 +317,155 @@ class AppYamlTranslator(object):
     if missing:
       raise AppEngineConfigException('Missing required fields: %s' %
                                      ', '.join(missing))
+
+
+def _XmlPatternToRegEx(xml_pattern):
+  r"""Translates an appengine-web.xml pattern into a regular expression.
+
+  Specially, this applies to the patterns that appear in the <include> and
+  <exclude> elements inside <static-files>. They look like '/**.png' or
+  '/stylesheets/*.css', and are translated into expressions like
+  '^/.*\.png$' or '^/stylesheets/.*\.css$'.
+
+  Args:
+    xml_pattern: a string like '/**.png'
+
+  Returns:
+    a compiled regular expression like re.compile('^/.*\.png$').
+  """
+  result = ['^']
+  while xml_pattern:
+    if xml_pattern.startswith('**'):
+      result.append(r'.*')
+      xml_pattern = xml_pattern[1:]
+    elif xml_pattern.startswith('*'):
+      result.append(r'[^/]*')
+    elif xml_pattern.startswith('/'):
+
+
+      result.append('/')
+    else:
+      result.append(re.escape(xml_pattern[0]))
+    xml_pattern = xml_pattern[1:]
+  result.append('$')
+  return re.compile(''.join(result))
+
+
+class AppYamlTranslatorForDevAppServer(AppYamlTranslator):
+  """Subclass of AppYamlTranslator specialized for the Dev App Server case.
+
+  The key difference is that static files are served directly from the war
+  directory, which means that the app.yaml patterns we define must cover
+  exactly those files in that directory hierarchy that are supposed to be static
+  while not covering any files that are not supposed to be static.
+
+  Attributes:
+    war_root: the root directory of the war hierarchy.
+    static_urls: a list of two-item tuples where the first item is a URL that
+      should be served statically and the second item corresponds to the
+      <include> element that caused that URL to be included.
+  """
+
+  def __init__(self,
+               app_engine_web_xml,
+               web_xml,
+               war_root):
+    super(AppYamlTranslatorForDevAppServer, self).__init__(
+        app_engine_web_xml, web_xml, [], '1.0')
+    self.war_root = war_root
+    self.static_urls = self.IncludedStaticUrls()
+
+  def IncludedStaticUrls(self):
+    """Returns the URLs that should be resolved statically for this app.
+
+    The result includes a URL for every file in the war hierarchy that is
+    covered by one of the <include> elements for <static-files> and not covered
+    by any of the <exclude> elements.
+
+    Returns:
+      a list of two-item tuples where the first item is a URL that should be
+      served statically and the second item corresponds to the <include>
+      element that caused that URL to be included.
+    """
+
+
+
+
+
+
+    includes = self.app_engine_web_xml.static_file_includes
+    if not includes:
+
+
+
+      includes = [aewxp.StaticFileInclude('**', None, {})]
+    excludes = self.app_engine_web_xml.static_file_excludes
+    files = os.listdir(self.war_root)
+    web_inf_name = os.path.normcase('WEB-INF')
+    files = [f for f in files if os.path.normcase(f) != web_inf_name]
+    static_urls = []
+    includes_and_res = [(include, _XmlPatternToRegEx(include.pattern))
+                        for include in includes]
+    exclude_res = [_XmlPatternToRegEx(exclude) for exclude in excludes]
+    self.ComputeIncludedStaticUrls(
+        static_urls, self.war_root, '/', files, includes_and_res, exclude_res)
+    return static_urls
+
+
+
+
+
+  def ComputeIncludedStaticUrls(
+      self,
+      static_urls, dirpath, url_prefix, files, includes_and_res, exclude_res):
+    """Compute the URLs that should be resolved statically.
+
+    This recursive method is called for the war directory and every
+    subdirectory except the top-level WEB-INF directory. If we have arrived
+    at the directory <war-root>/foo/bar then dirpath will be <war-root>/foo/bar
+    and url_prefix will be /foo/bar.
+
+    Args:
+      static_urls: a list to be filled with the result, two-item tuples where
+        the first item is a URL and the second is a parsed <include> element.
+      dirpath: the path to the directory inside the war hierarchy that we have
+        reached at this point in the recursion.
+      url_prefix: the URL prefix that we have reached at this point in the
+        recursion.
+      files: the contents of the dirpath directory, minus the WEB-INF directory
+        if dirpath is the war directory itself.
+      includes_and_res: a list of two-item tuples where the first item is a
+        parsed <include> element and the second item is a compiled regular
+        expression corresponding to the path= pattern from that element.
+      exclude_res: a list of compiled regular expressions corresponding to the
+        path= patterns from <exclude> elements.
+    """
+    for f in files:
+      path = os.path.join(dirpath, f)
+      if os.path.isfile(path):
+        url = url_prefix + f
+        if not any(exclude_re.search(url) for exclude_re in exclude_res):
+          for include, include_re in includes_and_res:
+            if include_re.search(url):
+              static_urls.append((url, include))
+              break
+      else:
+        self.ComputeIncludedStaticUrls(
+            static_urls, path, url_prefix + f + '/', os.listdir(path),
+            includes_and_res, exclude_res)
+
+  def TranslateHandlers(self):
+    return handler_generator.GenerateYamlHandlersListForDevAppServer(
+        self.app_engine_web_xml,
+        self.web_xml,
+        self.static_urls)
+
+  def ErrorHandlerPath(self, error_handler):
+    name = error_handler.name
+    if name.startswith('/'):
+      name = name[1:]
+    if name not in self.static_files:
+      raise AppEngineConfigException(
+          'No static file found for error handler: %s, out of %s' %
+          (name, self.static_files))
+    return name

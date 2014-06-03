@@ -199,8 +199,14 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
     if host and protocol:
       return continue_url
 
-    protocol, host, _, _, _, _ = urlparse.urlparse(
-        self.request_data.get_request_url(request_id))
+    try:
+      protocol, host, _, _, _, _ = urlparse.urlparse(
+          self.request_data.get_request_url(request_id))
+    except KeyError:
+
+
+
+      pass
 
 
     if path == '':

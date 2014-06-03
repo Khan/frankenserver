@@ -68,6 +68,47 @@ of (Full name, email address). Example::
 Note that Django will email *all* of these people whenever an error happens.
 See :doc:`/howto/error-reporting` for more information.
 
+.. setting:: ALLOWED_HOSTS
+
+ALLOWED_HOSTS
+-------------
+
+Default: ``['*']``
+
+A list of strings representing the host/domain names that this Django site can
+serve. This is a security measure to prevent an attacker from poisoning caches
+and password reset emails with links to malicious hosts by submitting requests
+with a fake HTTP ``Host`` header, which is possible even under many
+seemingly-safe webserver configurations.
+
+Values in this list can be fully qualified names (e.g. ``'www.example.com'``),
+in which case they will be matched against the request's ``Host`` header
+exactly (case-insensitive, not including port). A value beginning with a period
+can be used as a subdomain wildcard: ``'.example.com'`` will match
+``example.com``, ``www.example.com``, and any other subdomain of
+``example.com``. A value of ``'*'`` will match anything; in this case you are
+responsible to provide your own validation of the ``Host`` header (perhaps in a
+middleware; if so this middleware must be listed first in
+:setting:`MIDDLEWARE_CLASSES`).
+
+If the ``Host`` header (or ``X-Forwarded-Host`` if
+:setting:`USE_X_FORWARDED_HOST` is enabled) does not match any value in this
+list, the :meth:`django.http.HttpRequest.get_host()` method will raise
+:exc:`~django.core.exceptions.SuspiciousOperation`.
+
+When :setting:`DEBUG` is ``True`` or when running tests, host validation is
+disabled; any host will be accepted. Thus it's usually only necessary to set it
+in production.
+
+This validation only applies via :meth:`~django.http.HttpRequest.get_host()`;
+if your code accesses the ``Host`` header directly from ``request.META`` you
+are bypassing this security protection.
+
+The default value of this setting in Django 1.4.4+ is ``['*']`` (accept any
+host) in order to avoid breaking backwards-compatibility in a security update,
+but in Django 1.5+ the default is ``[]`` and explicitly configuring this
+setting is required.
+
 .. setting:: ALLOWED_INCLUDE_ROOTS
 
 ALLOWED_INCLUDE_ROOTS
@@ -1521,6 +1562,25 @@ format has higher precedence and will be applied instead.
 
 See also :setting:`DECIMAL_SEPARATOR`, :setting:`THOUSAND_SEPARATOR` and
 :setting:`USE_THOUSAND_SEPARATOR`.
+
+.. setting:: PASSWORD_HASHERS
+
+PASSWORD_HASHERS
+----------------
+
+.. versionadded:: 1.4
+
+See :ref:`auth_password_storage`.
+
+Default::
+
+    ('django.contrib.auth.hashers.PBKDF2PasswordHasher',
+     'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+     'django.contrib.auth.hashers.BCryptPasswordHasher',
+     'django.contrib.auth.hashers.SHA1PasswordHasher',
+     'django.contrib.auth.hashers.MD5PasswordHasher',
+     'django.contrib.auth.hashers.UnsaltedMD5PasswordHasher',
+     'django.contrib.auth.hashers.CryptPasswordHasher',)
 
 .. setting:: PASSWORD_RESET_TIMEOUT_DAYS
 

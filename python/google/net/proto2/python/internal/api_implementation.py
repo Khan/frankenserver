@@ -16,15 +16,11 @@
 #
 
 
-
-
+"""Determine which implementation of the protobuf API is used in this process.
 """
-This module is the central entity that determines which implementation of the
-API is used.
-"""
-
 
 import os
+import sys
 
 try:
 
@@ -32,6 +28,7 @@ try:
 
 
   _api_version = _api_implementation.api_version
+  del _api_implementation
 except ImportError:
   _api_version = 0
 
@@ -47,19 +44,8 @@ _default_version_str = (
 _implementation_type = os.getenv('PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION',
                                  _default_implementation_type)
 
-
 if _implementation_type != 'python':
-
-
-
   _implementation_type = 'cpp'
-
-
-
-
-
-
-
 
 
 
@@ -69,13 +55,11 @@ _implementation_version_str = os.getenv(
     'PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION_VERSION',
     _default_version_str)
 
-
 if _implementation_version_str not in ('1', '2'):
   raise ValueError(
       "unsupported PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION_VERSION: '" +
       _implementation_version_str + "' (supported versions: 1, 2)"
       )
-
 
 _implementation_version = int(_implementation_version_str)
 
@@ -86,6 +70,7 @@ _implementation_version = int(_implementation_version_str)
 
 def Type():
   return _implementation_type
+
 
 
 def Version():

@@ -165,10 +165,7 @@ class AppEngineWebXmlParser(object):
     for sub_node in xml_parser_utils.GetNodes(node, 'include'):
       path = xml_parser_utils.GetAttribute(sub_node, 'path').strip()
       expiration = xml_parser_utils.GetAttribute(sub_node, 'expiration').strip()
-      static_file_include = StaticFileInclude()
-      static_file_include.pattern = path
-      static_file_include.expiration = expiration
-      static_file_include.http_headers = {}
+      static_file_include = StaticFileInclude(path, expiration, {})
 
       for http_header_node in xml_parser_utils.GetNodes(
           sub_node, 'http-header'):
@@ -556,4 +553,8 @@ class PrioritySpecifierEntry(ValueMixin):
 
 class StaticFileInclude(ValueMixin):
   """Instances describe static files to be included in app configuration."""
-  pass
+
+  def __init__(self, pattern, expiration, http_headers):
+    self.pattern = pattern
+    self.expiration = expiration
+    self.http_headers = http_headers

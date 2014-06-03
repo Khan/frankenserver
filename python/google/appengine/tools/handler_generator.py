@@ -38,14 +38,16 @@ MAX_HANDLERS = 100
 
 def GenerateYamlHandlersList(app_engine_web_xml, web_xml, static_files):
   """Produces a list of Yaml strings for dynamic and static handlers."""
+  welcome_properties = _MakeWelcomeProperties(web_xml, static_files)
   static_handler_generator = StaticHandlerGenerator(
-      app_engine_web_xml, web_xml, static_files)
+      app_engine_web_xml, web_xml, welcome_properties)
   dynamic_handler_generator = DynamicHandlerGenerator(
       app_engine_web_xml, web_xml)
 
-  if (len(static_handler_generator.GenerateOrderedHandlerList()) +
-      len(dynamic_handler_generator.GenerateOrderedHandlerList())
-      > MAX_HANDLERS):
+  handler_length = len(dynamic_handler_generator.GenerateOrderedHandlerList())
+  if static_files:
+    handler_length += len(static_handler_generator.GenerateOrderedHandlerList())
+  if handler_length > MAX_HANDLERS:
 
 
 
@@ -55,19 +57,74 @@ def GenerateYamlHandlersList(app_engine_web_xml, web_xml, static_files):
 
   yaml_statements = ['handlers:']
   if static_files:
-    static_handler_generator = StaticHandlerGenerator(
-        app_engine_web_xml, web_xml, static_files)
     yaml_statements += static_handler_generator.GetHandlerYaml()
   yaml_statements += dynamic_handler_generator.GetHandlerYaml()
 
   return yaml_statements
 
 
-def GenerateYamlHandlers(app_engine_web_xml, web_xml, static_files):
-  """Produces Yaml string writable to a file."""
-  handler_yaml = '\n'.join(
-      GenerateYamlHandlersList(app_engine_web_xml, web_xml, static_files))
-  return handler_yaml + '\n'
+def GenerateYamlHandlersListForDevAppServer(
+    app_engine_web_xml, web_xml, static_urls):
+  r"""Produces a list of Yaml strings for dynamic and static handlers.
+
+  This variant of GenerateYamlHandlersList is for the Dev App Server case.
+  The key difference there is that we serve files directly from the war
+  directory rather than constructing a parallel hierarchy with a special
+  __static__ directory. Since app.yaml doesn't support excluding URL patterns
+  and appengine-web.xml does, this means that we have to define patterns that
+  cover exactly the set of static files we want without pulling in any files
+  that are not supposed to be served as static files.
+
+  Args:
+    app_engine_web_xml: an app_engine_web_xml_parser.AppEngineWebXml object.
+    web_xml: a web_xml_parser.WebXml object.
+    static_urls: a list of two-item tuples where the first item is a URL pattern
+      string for a static file, such as '/stylesheets/main\.css', and the
+      second item is the app_engine_web_xml_parser.StaticFileInclude
+      representing the <static-files><include> XML element that caused that URL
+      pattern to be included in the list.
+
+  Returns:
+    A list of strings that together make up the lines of the generated app.yaml
+    file.
+  """
+  static_handler_generator = StaticHandlerGeneratorForDevAppServer(
+      app_engine_web_xml, web_xml, static_urls)
+  dynamic_handler_generator = DynamicHandlerGenerator(
+      app_engine_web_xml, web_xml)
+  return (['handlers:'] +
+          static_handler_generator.GetHandlerYaml() +
+          dynamic_handler_generator.GetHandlerYaml())
+
+
+def _MakeWelcomeProperties(web_xml, static_files):
+  """Makes the welcome_properties dict given web_xml and the static files.
+
+  Args:
+    web_xml: a parsed web.xml that may contain a <welcome-file-list> clause.
+    static_files: the list of all static files found in the app.
+
+  Returns:
+    A dict with a single entry where the key is 'welcome' and the value is
+    either None or a tuple of the file names in all the <welcome-file> clauses
+    that were retained.  A <welcome-file> clause is retained if its file name
+    matches at least one actual file in static_files.
+
+    For example, if the input looked like this:
+      <welcome-file-list>
+        <welcome-file>index.jsp</welcome-file>
+        <welcome-file>index.html</welcome-file>
+      </welcome-file-list>
+    and if there was a file /foo/bar/index.html but no file called index.jsp
+    anywhere in static_files, the result would be {'welcome': ('index.html',)}.
+  """
+  static_welcome_files = []
+  for welcome_file in web_xml.welcome_files:
+    if any(f.endswith('/' + welcome_file) for f in static_files):
+      static_welcome_files.append(welcome_file)
+
+  welcome_value = tuple(static_welcome_files) or None
+  return {'welcome': welcome_value}
 
 
 class HandlerGenerator(object):
@@ -223,22 +280,14 @@ class DynamicHandlerGenerator(HandlerGenerator):
 class StaticHandlerGenerator(HandlerGenerator):
   """Generates static handler yaml entries for app.yaml."""
 
-  def __init__(self, app_engine_web_xml, web_xml, static_files):
+  def __init__(self, app_engine_web_xml, web_xml, welcome_properties):
     super(StaticHandlerGenerator, self).__init__(app_engine_web_xml, web_xml)
-    self.static_files = static_files
-    static_welcome_files = []
-    for welcome_file in self.web_xml.welcome_files:
-      for static_file in static_files:
-        if static_file.endswith('/' + welcome_file):
-          static_welcome_files.append(welcome_file)
-          break
-
-    welcome_value = tuple(static_welcome_files) or None
-    self.welcome_properties = {'welcome': welcome_value}
+    self.static_file_includes = self.app_engine_web_xml.static_file_includes
+    self.welcome_properties = welcome_properties
 
   def MakeStaticFilePatternsIntoHandlers(self):
     """Creates SimpleHandlers out of XML-specified static file includes."""
-    includes = self.app_engine_web_xml.static_file_includes
+    includes = self.static_file_includes
     if not includes:
       return [handler.SimpleHandler('/*', {'type': 'static'})]
 
@@ -306,3 +355,58 @@ class StaticHandlerGenerator(HandlerGenerator):
       statements.append('  http_headers:')
       statements += ['    %s: %s' % pair for pair in http_headers]
     return statements
+
+
+class StaticHandlerGeneratorForDevAppServer(StaticHandlerGenerator):
+  """Generates static handler yaml entries for app.yaml in Dev App Server.
+
+  This class overrides the GenerateOrderedHanderList and TranslateHandler
+  methods from its parent to work with the Dev App Server environment.
+  See the GenerateYamlHandlersListForDevAppServer method above for further
+  details.
+  """
+
+  def __init__(self, app_engine_web_xml, web_xml, static_urls):
+    super(StaticHandlerGeneratorForDevAppServer, self).__init__(
+        app_engine_web_xml, web_xml, {})
+    self.static_urls = static_urls
+
+  def GenerateOrderedHandlerList(self):
+    handler_patterns = self.MakeStaticUrlsIntoHandlers()
+
+
+
+
+    return handler.GetOrderedIntersection(handler_patterns)
+
+  def MakeStaticUrlsIntoHandlers(self):
+    handler_patterns = []
+    for url, include in self.static_urls:
+      properties = {'type': 'static'}
+      if include.expiration:
+        properties['expiration'] = include.expiration
+      if include.http_headers:
+        properties['http_headers'] = tuple(sorted(include.http_headers.items()))
+      handler_patterns.append(handler.SimpleHandler(url, properties))
+    return handler_patterns
+
+  def TranslateHandler(self, h):
+    """Translates SimpleHandler to static handler yaml statements."""
+
+    root = self.app_engine_web_xml.public_root
+
+
+    regex = h.Regexify()
+
+
+
+    split = 1 if regex.startswith('/') else 0
+
+    statements = ['- url: /(%s)' % regex[split:],
+                  '  static_files: %s\\1' % root,
+                  '  upload: __NOT_USED__',
+                  '  require_matching_file: True']
+
+    return (statements +
+            self.TranslateAdditionalOptions(h) +
+            self.TranslateAdditionalStaticOptions(h))

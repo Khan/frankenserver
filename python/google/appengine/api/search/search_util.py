@@ -19,7 +19,6 @@
 """Provides utility methods used by modules in the FTS API stub."""
 
 
-
 import datetime
 import re
 
@@ -29,6 +28,9 @@ from google.appengine.api.search import QueryParser
 
 
 DEFAULT_MAX_SNIPPET_LENGTH = 160
+
+EXPRESSION_RETURN_TYPE_TEXT = 1
+EXPRESSION_RETURN_TYPE_NUMERIC = 2
 
 TEXT_DOCUMENT_FIELD_TYPES = [
     document_pb.FieldValue.ATOM,
@@ -53,11 +55,29 @@ class UnsupportedOnDevError(Exception):
   """Indicates attempt to perform an action unsupported on the dev server."""
 
 
-def GetFieldInDocument(document, field_name):
-  """Find and return the first field with the provided name in the document."""
-  for f in document.field_list():
-    if f.name() == field_name:
-      return f
+def GetFieldInDocument(document, field_name, return_type=None):
+  """Find and return the field with the provided name and type."""
+  if return_type is not None:
+
+    field_list = [f for f in document.field_list() if f.name() == field_name]
+    field_types_dict = dict((f.value().type(), f) for f in field_list)
+    if return_type == EXPRESSION_RETURN_TYPE_TEXT:
+      if document_pb.FieldValue.HTML in field_types_dict:
+        return field_types_dict[document_pb.FieldValue.HTML]
+      if document_pb.FieldValue.ATOM in field_types_dict:
+        return field_types_dict[document_pb.FieldValue.ATOM]
+      return field_types_dict.get(document_pb.FieldValue.TEXT)
+    elif return_type == EXPRESSION_RETURN_TYPE_NUMERIC:
+      if document_pb.FieldValue.NUMBER in field_types_dict:
+        return field_types_dict[document_pb.FieldValue.NUMBER]
+      return field_types_dict.get(document_pb.FieldValue.DATE)
+    else:
+      return field_types_dict.get(return_type)
+  else:
+
+    for f in document.field_list():
+      if f.name() == field_name:
+        return f
   return None
 
 

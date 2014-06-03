@@ -2075,12 +2075,34 @@ namespace google\appengine\datastore\v4 {
     public function hasSkippedResults() {
       return isset($this->skipped_results);
     }
+    public function getSnapshotVersion() {
+      if (!isset($this->snapshot_version)) {
+        return "0";
+      }
+      return $this->snapshot_version;
+    }
+    public function setSnapshotVersion($val) {
+      if (is_double($val)) {
+        $this->snapshot_version = sprintf('%0.0F', $val);
+      } else {
+        $this->snapshot_version = $val;
+      }
+      return $this;
+    }
+    public function clearSnapshotVersion() {
+      unset($this->snapshot_version);
+      return $this;
+    }
+    public function hasSnapshotVersion() {
+      return isset($this->snapshot_version);
+    }
     public function clear() {
       $this->clearEntityResultType();
       $this->clearEntityResult();
       $this->clearEndCursor();
       $this->clearMoreResults();
       $this->clearSkippedResults();
+      $this->clearSnapshotVersion();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2104,6 +2126,10 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->skipped_results)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->skipped_results);
+      }
+      if (isset($this->snapshot_version)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->snapshot_version);
       }
       return $res;
     }
@@ -2130,6 +2156,10 @@ namespace google\appengine\datastore\v4 {
         $out->putVarInt32(48);
         $out->putVarInt32($this->skipped_results);
       }
+      if (isset($this->snapshot_version)) {
+        $out->putVarInt32(56);
+        $out->putVarInt64($this->snapshot_version);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -2154,6 +2184,9 @@ namespace google\appengine\datastore\v4 {
             break;
           case 48:
             $this->setSkippedResults($d->getVarInt32());
+            break;
+          case 56:
+            $this->setSnapshotVersion($d->getVarInt64());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -2188,6 +2221,9 @@ namespace google\appengine\datastore\v4 {
       if ($x->hasSkippedResults()) {
         $this->setSkippedResults($x->getSkippedResults());
       }
+      if ($x->hasSnapshotVersion()) {
+        $this->setSnapshotVersion($x->getSnapshotVersion());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -2203,6 +2239,8 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->more_results) && $this->more_results !== $x->more_results) return false;
       if (isset($this->skipped_results) !== isset($x->skipped_results)) return false;
       if (isset($this->skipped_results) && !$this->integerEquals($this->skipped_results, $x->skipped_results)) return false;
+      if (isset($this->snapshot_version) !== isset($x->snapshot_version)) return false;
+      if (isset($this->snapshot_version) && !$this->integerEquals($this->snapshot_version, $x->snapshot_version)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2222,12 +2260,16 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->skipped_results)) {
         $res .= $prefix . "skipped_results: " . $this->debugFormatInt32($this->skipped_results) . "\n";
       }
+      if (isset($this->snapshot_version)) {
+        $res .= $prefix . "snapshot_version: " . $this->debugFormatInt64($this->snapshot_version) . "\n";
+      }
       return $res;
     }
   }
 }
 namespace google\appengine\datastore\v4\Mutation {
   class Operation {
+    const UNKNOWN = 0;
     const INSERT = 1;
     const UPDATE = 2;
     const UPSERT = 3;
@@ -2238,7 +2280,7 @@ namespace google\appengine\datastore\v4 {
   class Mutation extends \google\net\ProtocolMessage {
     public function getOp() {
       if (!isset($this->op)) {
-        return 1;
+        return 0;
       }
       return $this->op;
     }
@@ -2362,7 +2404,6 @@ namespace google\appengine\datastore\v4 {
       };
     }
     public function checkInitialized() {
-      if (!isset($this->op)) return 'op';
       if (isset($this->key) && (!$this->key->isInitialized())) return 'key';
       if (isset($this->entity) && (!$this->entity->isInitialized())) return 'entity';
       return null;

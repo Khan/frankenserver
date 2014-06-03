@@ -29,6 +29,10 @@ ADMINS = ()
 #   * Receive x-headers
 INTERNAL_IPS = ()
 
+# Hosts/domain names that are valid for this site.
+# "*" matches anything, ".example.com" matches example.com and all subdomains
+ALLOWED_HOSTS = ['*']
+
 # Local time zone for this installation. All choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name (although not all
 # systems may support all possibilities). When USE_TZ is True, this is
@@ -512,6 +516,7 @@ PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.BCryptPasswordHasher',
     'django.contrib.auth.hashers.SHA1PasswordHasher',
     'django.contrib.auth.hashers.MD5PasswordHasher',
+    'django.contrib.auth.hashers.UnsaltedSHA1PasswordHasher',
     'django.contrib.auth.hashers.UnsaltedMD5PasswordHasher',
     'django.contrib.auth.hashers.CryptPasswordHasher',
 )

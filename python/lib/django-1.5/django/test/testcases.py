@@ -4,6 +4,7 @@ import difflib
 import json
 import os
 import re
+import socket
 import sys
 from copy import copy
 from functools import wraps
@@ -24,8 +25,7 @@ from django.core.handlers.wsgi import WSGIHandler
 from django.core.management import call_command
 from django.core.management.color import no_style
 from django.core.signals import request_started
-from django.core.servers.basehttp import (WSGIRequestHandler, WSGIServer,
-    WSGIServerException)
+from django.core.servers.basehttp import WSGIRequestHandler, WSGIServer
 from django.core.urlresolvers import clear_url_caches
 from django.core.validators import EMPTY_VALUES
 from django.db import (transaction, connection, connections, DEFAULT_DB_ALIAS,
@@ -1064,10 +1064,9 @@ class LiveServerThread(threading.Thread):
                 try:
                     self.httpd = StoppableWSGIServer(
                         (self.host, port), QuietWSGIRequestHandler)
-                except WSGIServerException as e:
+                except socket.error as e:
                     if (index + 1 < len(self.possible_ports) and
-                        hasattr(e.args[0], 'errno') and
-                        e.args[0].errno == errno.EADDRINUSE):
+                        e.errno == errno.EADDRINUSE):
                         # This port is already in use, so we go on and try with
                         # the next one in the list.
                         continue
@@ -1157,12 +1156,15 @@ class LiveServerTestCase(TransactionTestCase):
         # Wait for the live server to be ready
         cls.server_thread.is_ready.wait()
         if cls.server_thread.error:
+            # Clean up behind ourselves, since tearDownClass won't get called in
+            # case of errors.
+            cls._tearDownClassInternal()
             raise cls.server_thread.error
 
         super(LiveServerTestCase, cls).setUpClass()
 
     @classmethod
-    def tearDownClass(cls):
+    def _tearDownClassInternal(cls):
         # There may not be a 'server_thread' attribute if setUpClass() for some
         # reasons has raised an exception.
         if hasattr(cls, 'server_thread'):
@@ -1175,4 +1177,7 @@ class LiveServerTestCase(TransactionTestCase):
                 and conn.settings_dict['NAME'] == ':memory:'):
                 conn.allow_thread_sharing = False
 
+    @classmethod
+    def tearDownClass(cls):
+        cls._tearDownClassInternal()
         super(LiveServerTestCase, cls).tearDownClass()
