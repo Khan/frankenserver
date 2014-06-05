@@ -12,23 +12,6 @@ the SDK.
 frankenserver is specifically targeted at the Python SDK running on Mac OS X or
 Linux. Other App Engine runtimes and operating systems are not supported.
 
-## Roadmap
-
-- Port over most or all of the patches from the original
-[Homebrew formula](https://github.com/dylanvee/homebrew-gae_sdk) with
-additional improvements and bug fixes
-
-- Submit these changes upstream to the App Engine team
-
-- Provide a Homebrew formula for easy installation for Mac OS X users
-
-- Provide an install script for easy installation for Linux users
-
-- Integrate frankenserver into the Khan Academy onboarding docs and code
-
-- Set up dependency installation and a runner script or shell alias to take
-care of the extra credit stuff discussed below
-
 ## Installation
 
 For now, just `git clone` this repository into a convenient location and set
@@ -53,8 +36,6 @@ to give your request logs some color.
 frankenserver and kake, our build system, in a single terminal window.
 (You can run `tail -f genfiles/kake-server.log` from your webapp directory to
 get kake's log output.)
-
-- Help out with one of the roadmap items listed above!
 
 ## Dealing with the upstream codebase
 
