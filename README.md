@@ -22,12 +22,9 @@ frankenserver.
 
 **For others:** Just `git clone` this repository into a convenient location and
 set up a symlink or shell alias for running `python python/dev_appserver.py`
-with your desired dev_appserver.py flags.
-
-**Important:** To enable the FSEvents-based file watcher on Mac OS X you'll
-need to run `pip install pyobjc-framework-FSEvents` first. frankenserver will
-log a warning if it can't find this Python package because the fallback file
-watcher, which polls files' mtimes, is much worse.
+with your desired dev_appserver.py flags. To enable the FSEvents-based file
+watcher on Mac OS X you'll also need to run
+`pip install pyobjc-framework-FSEvents` (highly recommended).
 
 ## Extra credit
 
