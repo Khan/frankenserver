@@ -32,6 +32,7 @@ class MtimeFileWatcher(object):
 
   def __init__(self, directory):
     self._directory = directory
+    self._skip_files_re = None
     self._quit_event = threading.Event()
     self._filename_to_mtime = None
     self._has_changes = False
@@ -42,6 +43,10 @@ class MtimeFileWatcher(object):
   def start(self):
     """Start watching a directory for changes."""
     self._watcher_thread.start()
+
+  def set_skip_files_re(self, skip_files_re):
+    """Set a new skip_files regular expression."""
+    self._skip_files_re = skip_files_re
 
   def quit(self):
     """Stop watching a directory for changes."""
@@ -95,7 +100,8 @@ class MtimeFileWatcher(object):
                                                 followlinks=True):
       for filename in filenames + dirnames:
         path = os.path.join(dirname, filename)
-        if watcher_common.ignore_path(path):
+        relative_path = os.path.relpath(path, self._directory)
+        if watcher_common.ignore_path(relative_path, self._skip_files_re):
           continue
         if num_files == 10000:
           warnings.warn(

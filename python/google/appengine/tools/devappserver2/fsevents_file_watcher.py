@@ -54,6 +54,7 @@ class FSEventsFileWatcher(object):
           added, renamed, deleted or changed.
     """
     self._directories = [os.path.abspath(d) for d in directories]
+    self._skip_files_re = None
     self._has_changes = None
     self._quit_event = threading.Event()
     self._event_watcher_thread = threading.Thread(target=self._watch_changes)
@@ -79,7 +80,7 @@ class FSEventsFileWatcher(object):
                       FSEvents.kFSEventStreamEventFlagItemXattrMod):
         continue
 
-      if watcher_common.ignore_path(path):
+      if watcher_common.ignore_path(path, self._skip_files_re):
         continue
 
       logging.warning("Reloading instances due to change in %s", path)
@@ -120,6 +121,10 @@ class FSEventsFileWatcher(object):
     """Start watching the directory for changes."""
     self._has_changes = False
     self._event_watcher_thread.start()
+
+  def set_skip_files_re(self, skip_files_re):
+    """Set a new skip_files regular expression."""
+    self._skip_files_re = skip_files_re
 
   def quit(self):
     """Stop watching the directory for changes."""

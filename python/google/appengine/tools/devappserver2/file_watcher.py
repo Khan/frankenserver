@@ -46,6 +46,10 @@ class _MultipleFileWatcher(object):
     for watcher in self._file_watchers:
       watcher.start()
 
+  def set_skip_files_re(self, skip_files_re):
+    for watcher in self._file_watchers:
+      watcher.set_skip_files_re(skip_files_re)
+
   def quit(self):
     for watcher in self._file_watchers:
       watcher.quit()

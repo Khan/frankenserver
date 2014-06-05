@@ -34,7 +34,6 @@ from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
 from google.appengine.tools import yaml_translator
 from google.appengine.tools.devappserver2 import errors
-from google.appengine.tools.devappserver2 import watcher_common
 
 # Constants passed to functions registered with
 # ModuleConfiguration.add_change_callback.
@@ -56,23 +55,9 @@ def java_supported():
 class ModuleConfiguration(object):
   """Stores module configuration information.
 
-  Most configuration options are mutable and may change any time
-  check_for_updates is called. Client code must be able to cope with these
-  changes.
-
-  Other properties are immutable (see _IMMUTABLE_PROPERTIES) and are guaranteed
-  to be constant for the lifetime of the instance.
+  Configuration options are guaranteed to be constant for the lifetime of the
+  instance.
   """
-
-  _IMMUTABLE_PROPERTIES = [
-      ('application', 'application'),
-      ('version', 'major_version'),
-      ('runtime', 'runtime'),
-      ('threadsafe', 'threadsafe'),
-      ('module', 'module_name'),
-      ('basic_scaling', 'basic_scaling'),
-      ('manual_scaling', 'manual_scaling'),
-      ('automatic_scaling', 'automatic_scaling')]
 
   def __init__(self, config_path):
     """Initializer for ModuleConfiguration.
@@ -295,9 +280,6 @@ class ModuleConfiguration(object):
     else:
       with open(configuration_path) as f:
         config, files = appinfo_includes.ParseAndReturnIncludePaths(f)
-      if config.skip_files:
-        watcher_common.set_skip_files_regexp(
-          config.module or 'default', config.skip_files)
     return config, [configuration_path] + files
 
   def _parse_java_configuration(self, app_engine_web_xml_path):

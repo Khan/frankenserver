@@ -82,6 +82,7 @@ class InotifyFileWatcher(object):
     """
     assert _libc is not None, 'InotifyFileWatcher only available on Linux.'
     self._directories = [os.path.abspath(d) for d in directories]
+    self._skip_files_re = None
     self._watch_to_directory = {}
     self._directory_to_watch_descriptor = {}
     self._directory_to_subdirs = {}
@@ -128,7 +129,7 @@ class InotifyFileWatcher(object):
         os.walk(path, topdown=True, followlinks=True)):
       for directory in directories:
         directory_path = os.path.join(dirpath, directory)
-        if watcher_common.ignore_path(directory_path):
+        if watcher_common.ignore_path(directory_path, self._skip_files_re):
           continue
         # dirpath cannot be used as the parent directory path because it is the
         # empty string for symlinks :-(
@@ -163,6 +164,10 @@ class InotifyFileWatcher(object):
     self._inotify_poll.register(self._inotify_fd, select.POLLIN)
     for directory in self._directories:
       self._add_watch_for_path(directory)
+
+  def set_skip_files_re(self, skip_files_re):
+    """Set a new skip_files regular expression."""
+    self._skip_files_re = skip_files_re
 
   def quit(self):
     """Stop watching the directory for changes."""
@@ -216,7 +221,8 @@ class InotifyFileWatcher(object):
             self._add_watch_for_path(path)
           elif mask & IN_MOVED_TO:
             self._add_watch_for_path(path)
-        if path not in paths and not watcher_common.ignore_path(path):
+        if (path not in paths
+              and not watcher_common.ignore_path(path, self._skip_files_re)):
           paths.add(path)
     return paths
 
