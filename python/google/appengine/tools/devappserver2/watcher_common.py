@@ -38,6 +38,8 @@ _IGNORED_RE = re.compile('|'.join([
   r'^(.+)#$',         # Emacs
   r'^(.+)\.sw[po]$',  # Vim
 
+  r'^(.+)\.sqlite-journal$',  # SQLite journal file
+
   # Specific to Khan Academy
   r'^(.*/)?genfiles(/.*)?$'
 ]))
