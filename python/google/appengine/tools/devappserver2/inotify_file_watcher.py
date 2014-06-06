@@ -128,9 +128,9 @@ class InotifyFileWatcher(object):
         [(os.path.dirname(path), [os.path.basename(path)], None)],
         os.walk(path, topdown=True, followlinks=True)):
       for directory in directories:
-        directory_path = os.path.join(dirpath, directory)
-        if watcher_common.ignore_path(directory_path, self._skip_files_re):
+        if watcher_common.ignore_path(directory, self._skip_files_re):
           continue
+        directory_path = os.path.join(dirpath, directory)
         # dirpath cannot be used as the parent directory path because it is the
         # empty string for symlinks :-(
         parent_path = os.path.dirname(directory_path)
@@ -221,8 +221,10 @@ class InotifyFileWatcher(object):
             self._add_watch_for_path(path)
           elif mask & IN_MOVED_TO:
             self._add_watch_for_path(path)
+        relative_path = os.path.relpath(directory, path)
         if (path not in paths
-              and not watcher_common.ignore_path(path, self._skip_files_re)):
+              and not watcher_common.ignore_path(relative_path,
+                                                  self._skip_files_re)):
           paths.add(path)
     return paths
 
