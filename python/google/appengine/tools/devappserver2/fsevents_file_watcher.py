@@ -109,6 +109,9 @@ class FSEventsFileWatcher(object):
 
     assert FSEvents.FSEventStreamStart(event_stream), (
         'event stream could not be started')
+
+    logging.info("Started %s", self.__class__.__name__)
+
     while not self._quit_event.is_set():
       FSEvents.CFRunLoopRunInMode(FSEvents.kCFRunLoopDefaultMode,
                                   0.1,    # seconds

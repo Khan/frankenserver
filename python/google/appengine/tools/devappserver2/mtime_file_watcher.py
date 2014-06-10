@@ -43,6 +43,7 @@ class MtimeFileWatcher(object):
   def start(self):
     """Start watching a directory for changes."""
     self._watcher_thread.start()
+    logging.info("Started %s", self.__class__.__name__)
 
   def set_skip_files_re(self, skip_files_re):
     """Set a new skip_files regular expression."""

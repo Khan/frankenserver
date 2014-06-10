@@ -67,21 +67,21 @@ else:
 class InotifyFileWatcher(object):
   """Monitors a directory tree for changes using inotify."""
 
-  SUPPORTS_MULTIPLE_DIRECTORIES = True
+  SUPPORTS_MULTIPLE_DIRECTORIES = False
 
-  def __init__(self, directories):
+  def __init__(self, directory):
     """Initializer for InotifyFileWatcher.
 
     Args:
-      directories: An iterable of strings representing the path to a directory
-          that should be monitored for changes i.e. files and directories added,
-          renamed, deleted or changed.
+      directory: A string representing the path to a directory that should be
+          monitored for changes i.e. files and directories added, renamed,
+          deleted or changed.
 
     Raises:
       OSError: if there are no inotify instances available.
     """
     assert _libc is not None, 'InotifyFileWatcher only available on Linux.'
-    self._directories = [os.path.abspath(d) for d in directories]
+    self._directory = os.path.abspath(directory)
     self._skip_files_re = None
     self._watch_to_directory = {}
     self._directory_to_watch_descriptor = {}
@@ -127,9 +127,13 @@ class InotifyFileWatcher(object):
     for dirpath, directories, _ in itertools.chain(
         [(os.path.dirname(path), [os.path.basename(path)], None)],
         os.walk(path, topdown=True, followlinks=True)):
+
+      relative_path = os.path.relpath(dirpath, path)
+      if (relative_path not in (".", "..") and
+          watcher_common.ignore_path(relative_path, self._skip_files_re)):
+        continue
+
       for directory in directories:
-        if watcher_common.ignore_path(directory, self._skip_files_re):
-          continue
         directory_path = os.path.join(dirpath, directory)
         # dirpath cannot be used as the parent directory path because it is the
         # empty string for symlinks :-(
@@ -162,8 +166,8 @@ class InotifyFileWatcher(object):
   def start(self):
     """Start watching the directory for changes."""
     self._inotify_poll.register(self._inotify_fd, select.POLLIN)
-    for directory in self._directories:
-      self._add_watch_for_path(directory)
+    self._add_watch_for_path(self._directory)
+    logging.info("Started %s", self.__class__.__name__)
 
   def set_skip_files_re(self, skip_files_re):
     """Set a new skip_files regular expression."""
@@ -221,17 +225,18 @@ class InotifyFileWatcher(object):
             self._add_watch_for_path(path)
           elif mask & IN_MOVED_TO:
             self._add_watch_for_path(path)
-        relative_path = os.path.relpath(directory, path)
-        if (path not in paths
-              and not watcher_common.ignore_path(relative_path,
-                                                  self._skip_files_re)):
-          paths.add(path)
+
+        relative_path = os.path.relpath(path, self._directory)
+        if not watcher_common.ignore_path(relative_path, self._skip_files_re):
+            paths.add(path)
+
     return paths
 
   def has_changes(self):
     changed_paths = self._get_changed_paths()
 
     for path in changed_paths:
-      logging.warning("Reloading instances due to change in %s", path)
+      relative_path = os.path.relpath(path, self._directory)
+      logging.warning("Reloading instances due to change in %s", relative_path)
 
     return bool(changed_paths)
