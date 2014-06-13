@@ -56,7 +56,12 @@ def ignore_path(path, skip_files_re=None):
   if _IGNORED_RE.match(path):
     return True
 
-  if skip_files_re and skip_files_re.match(path):
-    return True
+  if skip_files_re:
+    # We must check all components of the path because a skip_files entry like
+    # '^deploy$' should cause us to ignore files like 'deploy/deploy.py'.
+    while path:
+      if skip_files_re.match(path):
+        return True
+      path = os.path.dirname(path)
 
   return False
