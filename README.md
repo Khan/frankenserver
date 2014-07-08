@@ -17,14 +17,14 @@ app.yaml.
 ## Installation
 
 **For Khan Academy developers:** frankenserver is a subrepo of webapp so
-there's nothing to install. Simply run `make serve` to serve webapp using
-frankenserver.
+there's nothing to install (assuming you've run `make deps`). Simply run
+`make serve` to serve webapp using frankenserver.
 
 **For others:** Just `git clone` this repository into a convenient location and
 set up a symlink or shell alias for running `python python/dev_appserver.py`
 with your desired dev_appserver.py flags. To enable the FSEvents-based file
 watcher on Mac OS X you'll also need to run
-`pip install pyobjc-framework-FSEvents` (highly recommended).
+`pip install -r requirements.txt` (*highly* recommended).
 
 ## Extra credit
 

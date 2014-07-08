@@ -135,8 +135,9 @@ def _create_mac_watcher(directories):
                            fsevents_file_watcher.FSEventsFileWatcher)
   else:
     logging.warning('Could not create FSEventsFileWatcher; falling back to '
-                    'MTimeFileWatcher. To fix this, run "pip install '
-                    'pyobjc-framework-FSEvents".')
+                    'the slower MTimeFileWatcher. To fix this, run '
+                    '"pip install -r requirements.txt" from your '
+                    'frankenserver directory.')
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
 
 def get_file_watcher(directories, use_mtime_file_watcher):
