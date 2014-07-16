@@ -74,6 +74,10 @@ def AddUpdateOptions(parser):
                     dest='retain_upload_dir', default=False,
                     help='Do not delete temporary (staging) directory used '
                     'in uploading Java apps')
+  parser.add_option('--no_symlinks', action='store_true',
+                    dest='no_symlinks', default=False,
+                    help='Do not use symbolic links when making the temporary '
+                    '(staging) directory for uploading Java apps')
   parser.add_option('--compile_encoding', action='store',
                     dest='compile_encoding', default='UTF-8',
                     help='Set the encoding to be used when compiling Java '
@@ -118,8 +122,11 @@ class JavaAppUpdate(object):
   _XML_VALIDATOR_CLASS = 'com.google.appengine.tools.admin.XmlValidator'
 
   def __init__(self, basepath, options):
-    self.basepath = basepath
+    self.basepath = os.path.abspath(basepath)
     self.options = options
+    if not hasattr(self.options, 'no_symlinks'):
+
+      self.options.no_symlinks = True
 
     java_home, exec_suffix = _JavaHomeAndSuffix()
     self.java_command = os.path.join(java_home, 'bin', 'java' + exec_suffix)
@@ -213,11 +220,10 @@ class JavaAppUpdate(object):
       ConfigurationError: if the app to be staged has a configuration error.
       IOError: if there was an I/O problem, for example when scanning jar files.
     """
-    full_basepath = os.path.abspath(self.basepath)
     stage_dir = tempfile.mkdtemp(prefix='appcfgpy')
     static_dir = os.path.join(stage_dir, '__static__')
     os.mkdir(static_dir)
-    self._CopyOrLink(full_basepath, stage_dir, static_dir, False)
+    self._CopyOrLink(self.basepath, stage_dir, static_dir, False)
     self.app_engine_web_xml.app_root = stage_dir
 
     if self.options.compile_jsps:
@@ -292,6 +298,9 @@ class JavaAppUpdate(object):
       handle.write(yaml_str)
 
   def _CopyOrLink(self, source_dir, stage_dir, static_dir, inside_web_inf):
+    source_dir = os.path.abspath(source_dir)
+    stage_dir = os.path.abspath(stage_dir)
+    static_dir = os.path.abspath(static_dir)
     for file_name in os.listdir(source_dir):
       file_path = os.path.join(source_dir, file_name)
 
@@ -318,10 +327,10 @@ class JavaAppUpdate(object):
 
     if not os.path.exists(os.path.dirname(dest)):
       os.makedirs(os.path.dirname(dest))
-    if not source.endswith('web.xml'):
+    if source.endswith('web.xml') or self.options.no_symlinks:
+      shutil.copy(source, dest)
+    else:
       os.symlink(source, dest)
-      return
-    shutil.copy(source, dest)
 
   def _MoveDirectoryContents(self, source_dir, dest_dir):
     """Move the contents of source_dir to dest_dir, which might not exist.

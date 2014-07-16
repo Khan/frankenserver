@@ -23,8 +23,8 @@ import logging
 import os
 import os.path
 import shutil
-import sys
 import subprocess
+import sys
 import tempfile
 
 import google
@@ -33,9 +33,9 @@ from google.appengine.tools.devappserver2 import safe_subprocess
 
 
 _SDKROOT = os.path.dirname(os.path.dirname(google.__file__))
-_GOROOT = os.path.join(_SDKROOT, 'goroot')
+GOROOT = os.path.join(_SDKROOT, 'goroot')
 
-_GAB_PATH = os.path.join(_GOROOT, 'bin', 'go-app-builder')
+_GAB_PATH = os.path.join(GOROOT, 'bin', 'go-app-builder')
 if sys.platform.startswith('win'):
   _GAB_PATH += '.exe'
 
@@ -57,6 +57,97 @@ def _escape_tool_flags(*flags):
     A single escaped string.
   """
   return ','.join([f.replace('\\', r'\\').replace(',', r'\,') for f in flags])
+
+
+def _get_base_gab_args(module_config, arch):
+  """Returns the base arguments for invoking go-app-builder.
+
+  Args:
+    module_config: An application_configuration.ModuleConfiguration
+        instance storing the configuration data for a module.
+    arch: The one-character architecture designator (5, 6, or 8).
+
+  Returns:
+    List of strings of arguments for invoking go-app-builder.
+  """
+  # Go's regexp package does not implicitly anchor to the start.
+  nobuild_files = '^' + str(module_config.nobuild_files)
+  gab_args = [
+      _GAB_PATH,
+      '-app_base', module_config.application_root,
+      '-arch', arch,
+      '-dynamic',
+      '-goroot', GOROOT,
+      '-nobuild_files', nobuild_files,
+      '-unsafe',
+  ]
+  if 'GOPATH' in os.environ:
+    gab_args.extend(['-gopath', os.environ['GOPATH']])
+  return gab_args
+
+
+def list_go_files(module_config):
+  """Returns a list of all Go files under the application root.
+
+  Args:
+    module_config: An application_configuration.ModuleConfiguration
+        instance storing the configuration data for a module.
+
+  Returns:
+    A list of every .go file under the application root, relative to
+    that root.
+  """
+  go_files = []
+  for root, _, file_names in os.walk(module_config.application_root):
+    for file_name in file_names:
+      if not file_name.endswith('.go'):
+        continue
+      full_path = os.path.join(root, file_name)
+      rel_path = os.path.relpath(full_path, module_config.application_root)
+      if module_config.skip_files.match(rel_path):
+        continue
+      if module_config.nobuild_files.match(rel_path):
+        continue
+
+      go_files.append(rel_path)
+  return go_files
+
+
+def get_app_extras_for_vm(module_config):
+  """Returns an iterable describing extra Go files needed to build VM apps.
+
+  The Go files are decided based on the production environment linux/amd64.
+
+  Args:
+    module_config: An application_configuration.ModuleConfiguration
+        instance storing the configuration data for a module.
+
+  Returns:
+    An iterable of pairs, one per extra Go file. The first pair element
+    is the relative path at which to import the Go file; the second is its
+    absolute path.
+
+  Raises:
+    BuildError: if the go application builder fails.
+  """
+  gab_args = _get_base_gab_args(module_config, '6')
+  gab_args.extend(['-print_extras', '-vm'])
+  gab_args.extend(list_go_files(module_config))
+  env = {
+      'GOOS': 'linux',
+      'GOARCH': 'amd64',
+  }
+
+  gab_process = safe_subprocess.start_process(gab_args,
+                                              stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE,
+                                              env=env)
+  gab_stdout, gab_stderr = gab_process.communicate()
+  if gab_process.returncode:
+    raise BuildError(
+        '(Executed command: %s)\n\n%s' % (' '.join(gab_args),
+                                          gab_stderr))
+  return [l.split('|') for l in gab_stdout.split('\n') if l]
 
 
 class BuildError(errors.Error):
@@ -88,7 +179,7 @@ class GoApplication(object):
 
   def get_environment(self):
     """Return the environment that used be used to run the Go executable."""
-    environ = {'GOROOT': _GOROOT,
+    environ = {'GOROOT': GOROOT,
                'PWD': self._module_configuration.application_root,
                'TZ': 'UTC',
                'RUN_WITH_DEVAPPSERVER': '1'}
@@ -105,43 +196,22 @@ class GoApplication(object):
         'amd64': '6',
         '386': '8',
     }
-    for platform in os.listdir(os.path.join(_GOROOT, 'pkg', 'tool')):
+    for platform in os.listdir(os.path.join(GOROOT, 'pkg', 'tool')):
       # Look for 'linux_amd64', 'windows_386', etc.
       if '_' not in platform:
         continue
       architecture = platform.split('_', 1)[1]
       if architecture in architecture_map:
         return architecture_map[architecture]
-    raise BuildError('No known compiler found in goroot (%s)' % _GOROOT)
+    raise BuildError('No known compiler found in goroot (%s)' % GOROOT)
 
   @staticmethod
   def _get_pkg_path():
-    for n in os.listdir(os.path.join(_GOROOT, 'pkg')):
+    for n in os.listdir(os.path.join(GOROOT, 'pkg')):
       # Look for 'linux_amd64_appengine', 'windows_386_appengine', etc.
       if n.endswith('_appengine'):
-        return os.path.join(_GOROOT, 'pkg', n)
-    raise BuildError('No package path found in goroot (%s)' % _GOROOT)
-
-  def _get_gab_args(self):
-    # Go's regexp package does not implicitly anchor to the start.
-    nobuild_files = '^' + str(self._module_configuration.nobuild_files)
-    gab_args = [
-        _GAB_PATH,
-        '-app_base', self._module_configuration.application_root,
-        '-arch', self._arch,
-        '-binary_name', '_go_app',
-        '-dynamic',
-        '-extra_imports', 'appengine_internal/init',
-        '-goroot', _GOROOT,
-        '-nobuild_files', nobuild_files,
-        '-unsafe',
-        '-work_dir', self._work_dir,
-        '-gcflags', _escape_tool_flags('-I', self._pkg_path),
-        '-ldflags', _escape_tool_flags('-L', self._pkg_path),
-    ]
-    if 'GOPATH' in os.environ:
-      gab_args.extend(['-gopath', os.environ['GOPATH']])
-    return gab_args
+        return os.path.join(GOROOT, 'pkg', n)
+    raise BuildError('No package path found in goroot (%s)' % GOROOT)
 
   def _get_go_files_to_mtime(self):
     """Returns a dict mapping all Go files to their mtimes.
@@ -151,26 +221,16 @@ class GoApplication(object):
       file in the application root, or any of its subdirectories, to the file's
       modification time.
     """
+    app_root = self._module_configuration.application_root
     go_file_to_mtime = {}
-    for root, _, file_names in os.walk(
-        self._module_configuration.application_root):
-      for file_name in file_names:
-        if not file_name.endswith('.go'):
-          continue
-        full_path = os.path.join(root, file_name)
-        rel_path = os.path.relpath(
-            full_path, self._module_configuration.application_root)
-        if self._module_configuration.skip_files.match(rel_path):
-          continue
-        if self._module_configuration.nobuild_files.match(rel_path):
-          continue
-
-        try:
-          go_file_to_mtime[rel_path] = os.path.getmtime(full_path)
-        except OSError as e:
-          # Ignore deleted files.
-          if e.errno != errno.ENOENT:
-            raise
+    for rel_path in list_go_files(self._module_configuration):
+      full_path = os.path.join(app_root, rel_path)
+      try:
+        go_file_to_mtime[rel_path] = os.path.getmtime(full_path)
+      except OSError as e:
+        # Ignore deleted files.
+        if e.errno != errno.ENOENT:
+          raise
     return go_file_to_mtime
 
   def _get_extras_hash(self):
@@ -182,7 +242,7 @@ class GoApplication(object):
     Raises:
       BuildError: if the go application builder fails.
     """
-    gab_args = self._get_gab_args()
+    gab_args = _get_base_gab_args(self._module_configuration, self._arch)
     gab_args.append('-print_extras_hash')
     gab_args.extend(self._go_file_to_mtime)
 
@@ -202,7 +262,14 @@ class GoApplication(object):
     assert self._go_file_to_mtime, 'no .go files'
     logging.debug('Building Go application')
 
-    gab_args = self._get_gab_args()
+    gab_args = _get_base_gab_args(self._module_configuration, self._arch)
+    gab_args.extend([
+        '-binary_name', '_go_app',
+        '-extra_imports', 'appengine_internal/init',
+        '-work_dir', self._work_dir,
+        '-gcflags', _escape_tool_flags('-I', self._pkg_path),
+        '-ldflags', _escape_tool_flags('-L', self._pkg_path),
+    ])
     gab_args.extend(self._go_file_to_mtime)
 
     gab_process = safe_subprocess.start_process(gab_args,

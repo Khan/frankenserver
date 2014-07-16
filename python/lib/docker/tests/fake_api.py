@@ -12,7 +12,7 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-CURRENT_VERSION = 'v1.8'
+CURRENT_VERSION = 'v1.9'
 
 FAKE_CONTAINER_ID = '3cc2351ab11b'
 FAKE_IMAGE_ID = 'e9aa60c60128'
@@ -24,8 +24,8 @@ FAKE_FILE_NAME = 'file'
 FAKE_URL = 'myurl'
 FAKE_PATH = '/path'
 
-### Each method is prefixed with HTTP method (get, post...)
-### for clarity and readability
+# Each method is prefixed with HTTP method (get, post...)
+# for clarity and readability
 
 
 def get_fake_version():
@@ -278,7 +278,7 @@ def post_fake_tag_image():
     return status_code, response
 
 
-## maps real api url to fake response callback
+# Maps real api url to fake response callback
 prefix = 'http+unix://var/run/docker.sock'
 fake_responses = {
     '{1}/{0}/version'.format(CURRENT_VERSION, prefix):

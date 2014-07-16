@@ -5,6 +5,13 @@ docker-py
 
 An API client for docker written in Python
 
+Installation
+============
+
+Our latest stable is always available on PyPi.
+
+    pip install docker-py
+
 API
 ===
 
@@ -13,7 +20,7 @@ a Docker daemon, simply do:
 
 ```python
 c = docker.Client(base_url='unix://var/run/docker.sock',
-                  version='1.6',
+                  version='1.9',
                   timeout=10)
 ```
 
@@ -23,13 +30,19 @@ is hosted. `version` is the version of the API the client will use and
 
 ```python
 c.build(path=None, tag=None, quiet=False, fileobj=None, nocache=False,
-        rm=False, stream=False)
+        rm=False, stream=False, timeout=None,
+        custom_context=False, encoding=None):
 ```
 
 Similar to the `docker build` command. Either `path` or `fileobj` needs
 to be set. `path` can be a local path (to a directory containing a
 Dockerfile) or a remote URL. `fileobj` must be a readable file-like
 object to a Dockerfile.
+
+If you have a tar file for the docker build context (including a dockerfile)
+already, pass a readable file-like object to `fileobj` and also pass
+`custom_context=True`. If the stream is compressed also, set `encoding` to
+the correct value (e.g `gzip`).
 
 ```python
 c.commit(container, repository=None, tag=None, message=None, author=None,
@@ -56,13 +69,19 @@ c.create_container(image, command=None, hostname=None, user=None,
                    detach=False, stdin_open=False, tty=False, mem_limit=0,
                    ports=None, environment=None, dns=None, volumes=None,
                    volumes_from=None, network_disabled=False, name=None,
-                   entrypoint=None, cpu_shares=None, working_dir=None)
+                   entrypoint=None, cpu_shares=None, working_dir=None,
+                   memswap_limit=0)
 ```
 
 Creates a container that can then be `start`ed. Parameters are similar
 to those for the `docker run` command except it doesn't support the
 attach options (`-a`). See "Port bindings" and "Using volumes" below for
 more information on how to create port bindings and volume mappings.
+
+`volumes_from` and `dns` arguments raise TypeError exception if they are used
+against v1.10 of docker remote API. Those arguments should be passed to
+`start()` instead.
+
 
 ```python
 c.diff(container)
@@ -136,7 +155,7 @@ c.login(username, password=None, email=None, registry=None)
 Identical to the `docker login` command (but non-interactive, obviously).
 
 ```python
-c.logs(container, stdout=True, stderr=True, stream=False)
+c.logs(container, stdout=True, stderr=True, stream=False, timestamps=False)
 ```
 
 Identical to the `docker logs` command. The `stream` parameter makes the
@@ -150,6 +169,13 @@ c.attach(container, stdout=True, stderr=True, stream=False, logs=False)
 The `logs` function is a wrapper around this one, which you can use
 instead if you want to fetch/stream container output without first
 retrieving the entire backlog.
+
+```python
+c.ping()
+```
+
+Hits the /_ping endpoint of the remote API and returns the result.
+An exception will be raised if the endpoint isn't responding.
 
 ```python
 c.port(container, private_port)
@@ -194,7 +220,8 @@ Identical to the `docker search` command.
 
 ```python
 c.start(container, binds=None, port_bindings=None, lxc_conf=None,
-        publish_all_ports=False, links=None, privileged=False)
+        publish_all_ports=False, links=None, privileged=False,
+        dns=None, dns_search=None, volumes_from=None, network_mode=None)
 ```
 
 Similar to the `docker start` command, but doesn't support attach
@@ -210,6 +237,15 @@ dictionary. `privileged` starts the container in privileged mode.
 can be specified with the `links` argument. They can either be
 specified as a dictionary mapping name to alias or as a list of
 `(name, alias)` tuples.
+
+`dns` and `volumes_from` are only available if they are used with version v1.10
+of docker remote API. Otherwise they are ignored.
+
+`network_mode` is available since v1.11 and sets the Network mode for the
+container ('bridge': creates a new network stack for the container on the
+docker bridge, 'none': no networking for this container, 'container:[name|id]':
+reuses another container network stack), 'host': use the host network stack
+inside the container.
 
 ```python
 c.stop(container, timeout=10)
@@ -253,12 +289,6 @@ open inside the container in the `Client.create_container` method.
 c.create_container('busybox', 'ls', ports=[1111, 2222])
 ```
 
-If you wish to use UDP instead of TCP (default), you can declare it like such:
-
-```python
-c.create_container('busybox', 'ls', ports=[(1111, 'udp'), 2222])
-```
-
 Bindings are then declared in the `Client.start` method.
 
 ```python
@@ -277,6 +307,14 @@ Or without host port assignment:
 c.start(container_id, port_bindings={1111: ('127.0.0.1',)})
 ```
 
+If you wish to use UDP instead of TCP (default), you need to declare it
+like such in both the `create_container()` and `start()` calls:
+
+```python
+container_id = c.create_container('busybox', 'ls', ports=[(1111, 'udp'), 2222])
+c.start(container_id, port_bindings={'1111/udp': 4567, 2222: None})
+```
+
 
 Using volumes
 =============
@@ -292,7 +330,15 @@ Volume mappings are then declared inside the `Client.start` method like this:
 
 ```python
 c.start(container_id, binds={
-    '/home/user1/': '/mnt/vol2',
-    '/var/www': '/mnt/vol1'
+    '/home/user1/':
+        {
+            'bind': '/mnt/vol2',
+            'ro': False
+        },
+    '/var/www':
+        {
+            'bind': '/mnt/vol1',
+            'ro': True
+        }
 })
 ```

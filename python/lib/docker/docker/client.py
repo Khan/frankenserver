@@ -96,7 +96,8 @@ class Client(requests.Session):
                           mem_limit=0, ports=None, environment=None, dns=None,
                           volumes=None, volumes_from=None,
                           network_disabled=False, entrypoint=None,
-                          cpu_shares=None, working_dir=None, domainname=None):
+                          cpu_shares=None, working_dir=None, domainname=None,
+                          memswap_limit=0):
         if isinstance(command, six.string_types):
             command = shlex.split(str(command))
         if isinstance(environment, dict):
@@ -171,7 +172,8 @@ class Client(requests.Session):
             'NetworkDisabled': network_disabled,
             'Entrypoint': entrypoint,
             'CpuShares': cpu_shares,
-            'WorkingDir': working_dir
+            'WorkingDir': working_dir,
+            'MemorySwap': memswap_limit
         }
 
     def _post_json(self, url, data, **kwargs):
@@ -218,9 +220,23 @@ class Client(requests.Session):
 
     def _stream_helper(self, response):
         """Generator for data coming from a chunked-encoded HTTP response."""
-        for line in response.iter_lines(chunk_size=32):
-            if line:
-                yield line
+        socket_fp = self._get_raw_response_socket(response)
+        socket_fp.setblocking(1)
+        socket = socket_fp.makefile()
+        while True:
+            # Because Docker introduced newlines at the end of chunks in v0.9,
+            # and only on some API endpoints, we have to cater for both cases.
+            size_line = socket.readline()
+            if size_line == '\r\n':
+                size_line = socket.readline()
+
+            size = int(size_line, 16)
+            if size <= 0:
+                break
+            data = socket.readline()
+            if not data:
+                break
+            yield data
 
     def _multiplexed_buffer_helper(self, response):
         """A generator of multiplexed data blocks read from a buffered
@@ -432,12 +448,13 @@ class Client(requests.Session):
                          mem_limit=0, ports=None, environment=None, dns=None,
                          volumes=None, volumes_from=None,
                          network_disabled=False, name=None, entrypoint=None,
-                         cpu_shares=None, working_dir=None, domainname=None):
+                         cpu_shares=None, working_dir=None, domainname=None,
+                         memswap_limit=0):
 
         config = self._container_config(
             image, command, hostname, user, detach, stdin_open, tty, mem_limit,
             ports, environment, dns, volumes, volumes_from, network_disabled,
-            entrypoint, cpu_shares, working_dir, domainname
+            entrypoint, cpu_shares, working_dir, domainname, memswap_limit
         )
         return self.create_container_from_config(config, name)
 
@@ -580,7 +597,17 @@ class Client(requests.Session):
             self._auth_configs[registry] = req_data
         return self._result(response, json=True)
 
-    def logs(self, container, stdout=True, stderr=True, stream=False):
+    def logs(self, container, stdout=True, stderr=True, stream=False,
+             timestamps=False):
+        if utils.compare_version('1.11', self._version) >= 0:
+            params = {'stderr': stderr and 1 or 0,
+                      'stdout': stdout and 1 or 0,
+                      'timestamps': timestamps and 1 or 0,
+                      'follow': stream and 1 or 0}
+            url = self._url("/containers/{0}/logs".format(container))
+            res = self._get(url, params=params, stream=stream)
+            return stream and self._multiplexed_socket_stream_helper(res) or \
+                ''.join([x for x in self._multiplexed_buffer_helper(res)])
         return self.attach(
             container,
             stdout=stdout,
@@ -588,6 +615,9 @@ class Client(requests.Session):
             stream=stream,
             logs=True
         )
+
+    def ping(self):
+        return self._result(self._get(self._url('/_ping')))
 
     def port(self, container, private_port):
         if isinstance(container, dict):
@@ -661,16 +691,17 @@ class Client(requests.Session):
         return stream and self._stream_helper(response) \
             or self._result(response)
 
-    def remove_container(self, container, v=False, link=False):
+    def remove_container(self, container, v=False, link=False, force=False):
         if isinstance(container, dict):
             container = container.get('Id')
-        params = {'v': v, 'link': link}
+        params = {'v': v, 'link': link, 'force': force}
         res = self._delete(self._url("/containers/" + container),
                            params=params)
         self._raise_for_status(res)
 
-    def remove_image(self, image):
-        res = self._delete(self._url("/images/" + image))
+    def remove_image(self, image, force=False, noprune=False):
+        params = {'force': force, 'noprune': noprune}
+        res = self._delete(self._url("/images/" + image), params=params)
         self._raise_for_status(res)
 
     def restart(self, container, timeout=10):
@@ -688,7 +719,7 @@ class Client(requests.Session):
 
     def start(self, container, binds=None, port_bindings=None, lxc_conf=None,
               publish_all_ports=False, links=None, privileged=False,
-              dns=None, volumes_from=None):
+              dns=None, dns_search=None, volumes_from=None, network_mode=None):
         if isinstance(container, dict):
             container = container.get('Id')
 
@@ -702,14 +733,7 @@ class Client(requests.Session):
             'LxcConf': lxc_conf
         }
         if binds:
-            bind_pairs = [
-                '%s:%s:%s' % (
-                    h, d['bind'],
-                    'ro' if 'ro' in d and d['ro'] else 'rw'
-                ) for h, d in binds.items()
-            ]
-
-            start_config['Binds'] = bind_pairs
+            start_config['Binds'] = utils.convert_volume_binds(binds)
 
         if port_bindings:
             start_config['PortBindings'] = utils.convert_port_bindings(
@@ -748,6 +772,12 @@ class Client(requests.Session):
             if volumes_from is not None:
                 warnings.warn(warning_message.format('volumes_from'),
                               DeprecationWarning)
+
+        if dns_search:
+            start_config['DnsSearch'] = dns_search
+
+        if network_mode:
+            start_config['NetworkMode'] = network_mode
 
         url = self._url("/containers/{0}/start".format(container))
         res = self._post_json(url, data=start_config)
@@ -795,3 +825,4 @@ class Client(requests.Session):
     def load_image(self, path_to_tar):
         u = self._url("/images/load")
         return self._result(self._post(u, data=open(path_to_tar, 'rb').read()))
+

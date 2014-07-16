@@ -94,11 +94,6 @@ def TranslateXmlToYamlForDevAppServer(app_engine_web_xml_str,
   return translator.GetYaml()
 
 
-def GetRuntime():
-
-  return 'java7'
-
-
 class AppYamlTranslator(object):
   """Object that contains relevant information for generating app.yaml.
 
@@ -118,6 +113,9 @@ class AppYamlTranslator(object):
     self.static_files = static_files
     self.api_version = api_version
 
+  def GetRuntime(self):
+    return 'custom' if self.app_engine_web_xml.vm else 'java7'
+
   def GetYaml(self):
     """Returns full yaml text."""
     self.VerifyRequiredEntriesPresent()
@@ -130,6 +128,7 @@ class AppYamlTranslator(object):
     stmnt_list += self.TranslateAdminConsolePages()
     stmnt_list += self.TranslateApiConfig()
     stmnt_list += self.TranslatePagespeed()
+    stmnt_list += self.TranslateEnvVariables()
     stmnt_list += self.TranslateVmSettings()
     stmnt_list += self.TranslateErrorHandlers()
     stmnt_list += self.TranslateApiVersion()
@@ -152,7 +151,7 @@ class AppYamlTranslator(object):
         basic_statements.append(
             '%s: %s' % (entry_name, self.SanitizeForYaml(field)))
     for entry_name, field in [
-        ('runtime', GetRuntime()),
+        ('runtime', self.GetRuntime()),
         ('vm', self.app_engine_web_xml.vm),
         ('threadsafe', self.app_engine_web_xml.threadsafe),
         ('instance_class', self.app_engine_web_xml.instance_class),
@@ -236,6 +235,19 @@ class AppYamlTranslator(object):
         statements += ['  - %s' % url for url in urls]
     return statements
 
+  def TranslateEnvVariables(self):
+    if (not self.app_engine_web_xml.vm or
+        not self.app_engine_web_xml.env_variables):
+      return []
+
+    variables = self.app_engine_web_xml.env_variables
+    statements = ['env_variables:']
+    for name, value in sorted(variables.iteritems()):
+      statements.append(
+          '  %s: %s' % (
+              self.SanitizeForYaml(name), self.SanitizeForYaml(value)))
+    return statements
+
   def TranslateVmSettings(self):
     """Translates VM settings in appengine-web.xml to yaml."""
     if (not self.app_engine_web_xml.vm or
@@ -308,9 +320,7 @@ class AppYamlTranslator(object):
 
   def VerifyRequiredEntriesPresent(self):
     required = {
-        'app_id': self.app_engine_web_xml.app_id,
-        'version_id': self.app_engine_web_xml.version_id,
-        'runtime': GetRuntime(),
+        'runtime': self.GetRuntime(),
         'threadsafe': self.app_engine_web_xml.threadsafe_value_provided,
     }
     missing = [field for (field, value) in required.items() if not value]
@@ -410,7 +420,6 @@ class AppYamlTranslatorForDevAppServer(AppYamlTranslator):
     self.ComputeIncludedStaticUrls(
         static_urls, self.war_root, '/', files, includes_and_res, exclude_res)
     return static_urls
-
 
 
 

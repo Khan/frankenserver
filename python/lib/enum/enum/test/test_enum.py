@@ -16,9 +16,9 @@ import unittest
 import operator
 
 import google3
-from enum.test import tools
+from deprecated_enum.test import tools
 
-import enum
+import deprecated_enum as enum
 
 
 class Mock_Enum(object):
@@ -88,7 +88,7 @@ class Test_Module(unittest.TestCase):
     def setUp(self):
         """ Set up test fixtures. """
         from sys import modules
-        self.module = modules['enum']
+        self.module = modules['deprecated_enum']
 
     def test_author_name_is_string(self):
         """ Module should have __author_name__ string. """

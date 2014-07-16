@@ -536,7 +536,8 @@ class MemcachedTest extends ApiProxyTestBase {
   public function testDecrementSuccess() {
     $request = new MemcacheIncrementRequest();
     $request->setKey("widgets_key");
-    $request->setDelta(-5);
+    $request->setDelta(5);
+    $request->setDirection(MemcacheIncrementRequest\Direction::DECREMENT);
     $request->setInitialValue(500);
 
     $response = new MemcacheIncrementResponse();

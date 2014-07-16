@@ -1,6 +1,68 @@
 ChangeLog
 =========
 
+0.3.2
+-----
+
+_In development._
+
+0.3.1
+-----
+
+* Default API version is now 1.9
+* Streaming responses no longer yield blank lines.
+* `Client.create_container` now supports the `domainname` parameter.
+* `volumes_from` parameter in `Client.create_container` now supports
+  iterables.
+* Auth credentials are provided to the docker daemon when using `Client.build`
+  (new feature in API version 1.9)
+
+
+### Bugfixes
+
+* Various fixes for response streams (`logs`, `pull`, etc.).
+* Fixed a bug with `Client.push` when using API version < 1.5
+* Fixed a bug with API version checks.
+
+### Miscellaneous
+
+* `mock` has been removed from the runtime requirements.
+* Added installation instructions in the README.
+
+0.3.0
+-----
+
+* **This version introduces breaking changes!**
+* Support for API version 1.7 through 1.9 (Docker 0.8.0+)
+* Default API version is now 1.8
+* The client has been updated to support Requests 2.x. `requests==2.2.1`
+  is now the recommended version.
+* Links can now be specified as tuples in `Client.start` (see docs for
+  more information)
+* Added support for various options in `Client.create_container`
+  (`network_disabled`, `cpu_shares`, `working_dir` and `entrypoint`)
+* `Client.attach` has been reworked to work similarly to `Client.logs`
+  minus the historical data.
+* Logs can now be streamed using the `stream` parameter.
+* Added support for `tcp://` URLs as client `base_url`.
+* Various auth improvements.
+* Added support for custom `Client.build` timeout.
+
+
+### Bugfixes
+
+* Fixed a bug where determining the protocol of a private registry
+  would sometimes yield the wrong result.
+* Fixed a bug where `Client.copy` wouldn't accept a dict as argument.
+* Fixed several streaming bugs.
+* Removed unused parameter in `Client.import_image`.
+* The client's `base_url` now tolerates trailing slashes.
+
+#### Miscellaneous
+
+* Updated integration tests
+* Small doc fixes
+
 0.2.3
 -----
 

@@ -1419,6 +1419,23 @@ namespace google\appengine {
     public function hasAppEngineRelease() {
       return isset($this->app_engine_release);
     }
+    public function getTraceId() {
+      if (!isset($this->trace_id)) {
+        return '';
+      }
+      return $this->trace_id;
+    }
+    public function setTraceId($val) {
+      $this->trace_id = $val;
+      return $this;
+    }
+    public function clearTraceId() {
+      unset($this->trace_id);
+      return $this;
+    }
+    public function hasTraceId() {
+      return isset($this->trace_id);
+    }
     public function clear() {
       $this->clearAppId();
       $this->clearVersionId();
@@ -1458,6 +1475,7 @@ namespace google\appengine {
       $this->clearLinesIncomplete();
       $this->clearModuleId();
       $this->clearAppEngineRelease();
+      $this->clearTraceId();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1607,6 +1625,10 @@ namespace google\appengine {
       if (isset($this->app_engine_release)) {
         $res += 2;
         $res += $this->lengthString(strlen($this->app_engine_release));
+      }
+      if (isset($this->trace_id)) {
+        $res += 2;
+        $res += $this->lengthString(strlen($this->trace_id));
       }
       return $res;
     }
@@ -1765,6 +1787,10 @@ namespace google\appengine {
       if (isset($this->app_engine_release)) {
         $out->putVarInt32(306);
         $out->putPrefixedString($this->app_engine_release);
+      }
+      if (isset($this->trace_id)) {
+        $out->putVarInt32(314);
+        $out->putPrefixedString($this->trace_id);
       }
     }
     public function tryMerge($d) {
@@ -1929,6 +1955,11 @@ namespace google\appengine {
             $this->setAppEngineRelease(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
+          case 314:
+            $length = $d->getVarInt32();
+            $this->setTraceId(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -2075,6 +2106,9 @@ namespace google\appengine {
       if ($x->hasAppEngineRelease()) {
         $this->setAppEngineRelease($x->getAppEngineRelease());
       }
+      if ($x->hasTraceId()) {
+        $this->setTraceId($x->getTraceId());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -2156,6 +2190,8 @@ namespace google\appengine {
       if (isset($this->module_id) && $this->module_id !== $x->module_id) return false;
       if (isset($this->app_engine_release) !== isset($x->app_engine_release)) return false;
       if (isset($this->app_engine_release) && $this->app_engine_release !== $x->app_engine_release) return false;
+      if (isset($this->trace_id) !== isset($x->trace_id)) return false;
+      if (isset($this->trace_id) && $this->trace_id !== $x->trace_id) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2273,6 +2309,9 @@ namespace google\appengine {
       }
       if (isset($this->app_engine_release)) {
         $res .= $prefix . "app_engine_release: " . $this->debugFormatString($this->app_engine_release) . "\n";
+      }
+      if (isset($this->trace_id)) {
+        $res .= $prefix . "trace_id: " . $this->debugFormatString($this->trace_id) . "\n";
       }
       return $res;
     }

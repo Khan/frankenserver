@@ -14,14 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Manages a VM Runtime process running inside of a docker container.
-"""
+"""Manages a VM Runtime process running inside of a docker container."""
 
-import logging
-import socket
+import os
 
 import google
-import docker
 
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import http_proxy
@@ -29,11 +26,22 @@ from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.docker import containers
 
 
+_DOCKER_IMAGE_NAME_FORMAT = '{display}.{module}.{version}'
+
+
+class Error(Exception):
+  """Base class for errors in this module."""
+
+
+class InvalidEnvVariableError(Error):
+  """Raised if an environment variable name or value cannot be supported."""
+
+
 class VMRuntimeProxy(instance.RuntimeProxy):
-  """Manages a VM Runtime process running inside of a docker container"""
+  """Manages a VM Runtime process running inside of a docker container."""
 
   def __init__(self, docker_client, runtime_config_getter,
-               module_configuration):
+               module_configuration, default_port=8080, port_bindings=None):
     """Initializer for VMRuntimeProxy.
 
     Args:
@@ -44,19 +52,23 @@ class VMRuntimeProxy(instance.RuntimeProxy):
       module_configuration: An application_configuration.ModuleConfiguration
           instance respresenting the configuration of the module that owns the
           runtime.
+      default_port: int, main port inside of the container that instance is
+          listening on.
+      port_bindings: dict, additional ports for debugging.
     """
     super(VMRuntimeProxy, self).__init__()
 
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
     self._docker_client = docker_client
+    self._default_port = default_port
+    self._port_bindings = port_bindings
     self._container = None
     self._proxy = None
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):
-    """Serves this request by forwarding it to application instance
-    via HttpProxy.
+    """Serves request by forwarding it to application instance via HttpProxy.
 
     Args:
       environ: An environ dict for the request as defined in PEP-333.
@@ -68,8 +80,12 @@ class VMRuntimeProxy(instance.RuntimeProxy):
       request_type: The type of the request. See instance.*_REQUEST module
           constants.
 
-    Yields:
-      A sequence of strings containing the body of the HTTP response.
+    Returns:
+      Generator of sequence of strings containing the body of the HTTP response.
+
+    Raises:
+      InvalidEnvVariableError: if user tried to redefine any of the reserved
+          environment variables.
     """
     return self._proxy.handle(environ, start_response, url_map, match,
                               request_id, request_type)
@@ -82,46 +98,67 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     # TODO: Check if container is still up and running
     return False
 
-  def start(self):
+  def start(self, dockerfile_dir=None):
     runtime_config = self._runtime_config_getter()
+
+    if not dockerfile_dir:
+      dockerfile_dir = self._module_configuration.application_root
 
     # api_host set to 'localhost' won't be accessible from a docker container
     # because container will have it's own 'localhost'.
-    # TODO: this works only when /etc/hosts is configured properly.
-    api_host = socket.gethostbyname(socket.gethostname()) if (
-        runtime_config.api_host == '0.0.0.0') else runtime_config.api_host
+    # 10.0.2.2 is a special network setup by virtualbox to connect from the
+    # guest to the host.
+    api_host = runtime_config.api_host
+    if runtime_config.api_host in ('0.0.0.0', 'localhost'):
+      api_host = '10.0.2.2'
 
-    # Must be HTTP_PORT from apphosting/ext/vmruntime/vmservice.py
-    # TODO: update apphosting/ext/vmruntime/vmservice.py to use
-    # env var set here.
-    PORT = 8080
+    image_name = _DOCKER_IMAGE_NAME_FORMAT.format(
+        # Escape domain if it is present.
+        display=self._module_configuration.application_external_name.replace(
+            ':', '.'),
+        module=self._module_configuration.module_name,
+        version=self._module_configuration.major_version)
 
+    environment = {
+        'API_HOST': api_host,
+        'API_PORT': runtime_config.api_port,
+        'GAE_LONG_APP_ID': self._module_configuration.application_external_name,
+        'GAE_PARTITION': self._module_configuration.partition,
+        'GAE_MODULE_NAME': self._module_configuration.module_name,
+        'GAE_MODULE_VERSION': self._module_configuration.major_version,
+        'GAE_MINOR_VERSION': self._module_configuration.minor_version,
+        'GAE_MODULE_INSTANCE': runtime_config.instance_id,
+        'GAE_SERVER_PORT': runtime_config.server_port,
+        'MODULE_YAML_PATH': os.path.basename(
+            self._module_configuration.config_path)
+    }
+
+    # Handle user defined environment variables
+    if self._module_configuration.env_variables:
+      ev = (environment.viewkeys() &
+            self._module_configuration.env_variables.viewkeys())
+      if ev:
+        raise InvalidEnvVariableError(
+            'Environment variables [%s] are reserved for App Engine use' %
+            ', '.join(ev))
+      environment.update(self._module_configuration.env_variables)
+
+    port_bindings = self._port_bindings if self._port_bindings else {}
+    port_bindings.setdefault(self._default_port, None)
     self._container = containers.Container(
         self._docker_client,
         containers.ContainerOptions(
             image_opts=containers.ImageOptions(
-                dockerfile_dir=self._module_configuration.application_root,
-                tag='vm.%(RUNTIME)s.%(APP_ID)s.%(MODULE)s.%(VERSION)s' % {
-                    'APP_ID': self._module_configuration.application,
-                    'MODULE': self._module_configuration.module_name,
-                    'RUNTIME': self._module_configuration.effective_runtime,
-                    'VERSION': self._module_configuration.major_version},
+                dockerfile_dir=dockerfile_dir,
+                tag=image_name,
                 nocache=False),
-            port=PORT,
-            environment={
-                'API_HOST': api_host,
-                'API_PORT': runtime_config.api_port,
-                'GAE_LONG_APP_ID':
-                    self._module_configuration.application_external_name,
-                'GAE_PARTITION': self._module_configuration.partition,
-                'GAE_MODULE_NAME': self._module_configuration.module_name,
-                'GAE_MODULE_VERSION': self._module_configuration.major_version,
-                'GAE_MINOR_VERSION': self._module_configuration.minor_version,
-                'GAE_MODULE_INSTANCE': runtime_config.instance_id},
+            port=self._default_port,
+            port_bindings=port_bindings,
+            environment=environment,
             volumes={
                 '/var/log/app_engine/app': {'bind': '/var/log/app_engine/app'}
-            },
-            volumes_from=None))
+            }
+        ))
 
     self._container.Start()
 
@@ -131,74 +168,20 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         instance_logs_getter=self._get_instance_logs,
         error_handler_file=application_configuration.get_app_error_file(
             self._module_configuration))
+    self._proxy.wait_for_connection()
 
   def quit(self):
     """Kills running container and removes it."""
     self._container.Stop()
 
-
-class VMRuntimeInstanceFactory(instance.InstanceFactory):
-  """A factory that creates new VM runtime Instances."""
-
-  SUPPORTS_INTERACTIVE_REQUESTS = True
-  FILE_CHANGE_INSTANCE_RESTART_POLICY = instance.ALWAYS
-
-  # Timeout of HTTP request from docker-py client to docker daemon, in seconds.
-  DOCKER_D_REQUEST_TIMEOUT = 60
-
-  def __init__(self, request_data, runtime_config_getter, module_configuration):
-    """Initializer for VMRuntimeInstanceFactory.
+  def PortBinding(self, port):
+    """Get the host binding of a container port.
 
     Args:
-      request_data: A wsgi_request_info.WSGIRequestInfo that will be provided
-          with request information for use by API stubs.
-      runtime_config_getter: A function that can be called without arguments
-          and returns the runtime_config_pb2.Config containing the configuration
-          for the runtime.
-      module_configuration: An application_configuration.ModuleConfiguration
-          instance representing the configuration of the module that owns the
-          runtime.
-    """
-    assert runtime_config_getter().vm_config.HasField('docker_daemon_url'), (
-        'VM runtime requires docker_daemon_url to be specified')
-    super(VMRuntimeInstanceFactory, self).__init__(
-        request_data,
-        8 if runtime_config_getter().threadsafe else 1, 10)
-    self._runtime_config_getter = runtime_config_getter
-    self._module_configuration = module_configuration
-    docker_daemon_url = runtime_config_getter().vm_config.docker_daemon_url
-    self._docker_client = docker.Client(base_url=docker_daemon_url,
-                                        version='1.6',
-                                        timeout=self.DOCKER_D_REQUEST_TIMEOUT)
-    if not self._docker_client:
-      logging.error('Couldn\'t connect to docker daemon on %s' %
-                    docker_daemon_url)
-
-  def new_instance(self, instance_id, expect_ready_request=False):
-    """Create and return a new Instance.
-
-    Args:
-      instance_id: A string or integer representing the unique (per module) id
-          of the instance.
-      expect_ready_request: If True then the instance will be sent a special
-          request (i.e. /_ah/warmup or /_ah/start) before it can handle external
-          requests.
+      port: Port inside container.
 
     Returns:
-      The newly created instance.Instance.
+      Port on the host system mapped to the given port inside of
+          the container.
     """
-
-    def runtime_config_getter():
-      runtime_config = self._runtime_config_getter()
-      runtime_config.instance_id = str(instance_id)
-      return runtime_config
-
-    proxy = VMRuntimeProxy(self._docker_client,
-                           runtime_config_getter,
-                           self._module_configuration)
-    return instance.Instance(self.request_data,
-                             instance_id,
-                             proxy,
-                             self.max_concurrent_requests,
-                             self.max_background_threads,
-                             expect_ready_request)
+    return self._container.PortBinding(port)

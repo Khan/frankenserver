@@ -14,6 +14,7 @@
 
 import time
 import base64
+import json
 import io
 import os
 import signal
@@ -41,17 +42,17 @@ class BaseTestCase(unittest.TestCase):
         for img in self.tmp_imgs:
             try:
                 self.client.remove_image(img)
-            except docker.APIError:
+            except docker.errors.APIError:
                 pass
         for container in self.tmp_containers:
             try:
                 self.client.stop(container, timeout=1)
                 self.client.remove_container(container)
-            except docker.APIError:
+            except docker.errors.APIError:
                 pass
 
 #########################
-##  INFORMATION TESTS  ##
+#   INFORMATION TESTS   #
 #########################
 
 
@@ -80,7 +81,7 @@ class TestSearch(BaseTestCase):
         self.assertIn('description', base_img[0])
 
 ###################
-## LISTING TESTS ##
+#  LISTING TESTS  #
 ###################
 
 
@@ -88,12 +89,9 @@ class TestImages(BaseTestCase):
     def runTest(self):
         res1 = self.client.images(all=True)
         self.assertIn('Id', res1[0])
-        res10 = [x for x in res1 if x['Id'].startswith('e9aa60c60128')][0]
+        res10 = res1[0]
         self.assertIn('Created', res10)
-        self.assertIn('Repository', res10)
-        self.assertIn('Tag', res10)
-        self.assertEqual(res10['Tag'], 'latest')
-        self.assertEqual(res10['Repository'], 'busybox')
+        self.assertIn('RepoTags', res10)
         distinct = []
         for img in res1:
             if img['Id'] not in distinct:
@@ -111,7 +109,7 @@ class TestListContainers(BaseTestCase):
     def runTest(self):
         res0 = self.client.containers(all=True)
         size = len(res0)
-        res1 = self.client.create_container('busybox', 'true')
+        res1 = self.client.create_container('busybox', 'true;')
         self.assertIn('Id', res1)
         self.client.start(res1['Id'])
         self.tmp_containers.append(res1['Id'])
@@ -121,13 +119,13 @@ class TestListContainers(BaseTestCase):
         self.assertEqual(len(retrieved), 1)
         retrieved = retrieved[0]
         self.assertIn('Command', retrieved)
-        self.assertEqual(retrieved['Command'], 'true ')
+        self.assertEqual(retrieved['Command'], 'true;')
         self.assertIn('Image', retrieved)
         self.assertEqual(retrieved['Image'], 'busybox:latest')
         self.assertIn('Status', retrieved)
 
 #####################
-## CONTAINER TESTS ##
+#  CONTAINER TESTS  #
 #####################
 
 
@@ -152,7 +150,15 @@ class TestCreateContainerWithBinds(BaseTestCase):
                 ['ls', mount_dest], volumes={mount_dest: {}}
             )
             container_id = container['Id']
-            self.client.start(container_id, binds={mount_origin: mount_dest})
+            self.client.start(
+                container_id,
+                binds={
+                    mount_origin: {
+                        'bind': mount_dest,
+                        'ro': False,
+                    },
+                },
+            )
             self.tmp_containers.append(container_id)
             exitcode = self.client.wait(container_id)
             self.assertEqual(exitcode, 0)
@@ -427,17 +433,17 @@ class TestPort(BaseTestCase):
 
         port_bindings = {
             1111: ('127.0.0.1', '4567'),
-            2222: ('192.168.0.100', '4568')
+            2222: ('127.0.0.1', '4568')
         }
 
         container = self.client.create_container(
             'busybox', ['sleep', '60'], ports=port_bindings.keys()
-            )
+        )
         id = container['Id']
 
         self.client.start(container, port_bindings=port_bindings)
 
-        #Call the port function on each biding and compare expected vs actual
+        # Call the port function on each biding and compare expected vs actual
         for port in port_bindings:
             actual_bindings = self.client.port(container, port)
             port_binding = actual_bindings.pop()
@@ -517,6 +523,36 @@ class TestRemoveContainerWithDictInsteadOfId(BaseTestCase):
         self.assertEqual(len(res), 0)
 
 
+class TestStartContainerWithVolumesFrom(BaseTestCase):
+    def runTest(self):
+        vol_names = ['foobar_vol0', 'foobar_vol1']
+
+        res0 = self.client.create_container(
+            'busybox', 'true',
+            name=vol_names[0])
+        container1_id = res0['Id']
+        self.tmp_containers.append(container1_id)
+        self.client.start(container1_id)
+
+        res1 = self.client.create_container(
+            'busybox', 'true',
+            name=vol_names[1])
+        container2_id = res1['Id']
+        self.tmp_containers.append(container2_id)
+        self.client.start(container2_id)
+
+        res2 = self.client.create_container(
+            'busybox', 'cat',
+            detach=True, stdin_open=True,
+            volumes_from=vol_names)
+        container3_id = res2['Id']
+        self.tmp_containers.append(container3_id)
+        self.client.start(container3_id)
+
+        info = self.client.inspect_container(res2['Id'])
+        self.assertEqual(info['Config']['VolumesFrom'], ','.join(vol_names))
+
+
 class TestStartContainerWithLinks(BaseTestCase):
     def runTest(self):
         res0 = self.client.create_container(
@@ -564,7 +600,7 @@ class TestStartContainerWithLinks(BaseTestCase):
         self.assertIn('{0}_ENV_FOO=1'.format(link_env_prefix2), logs)
 
 #################
-## LINKS TESTS ##
+#  LINKS TESTS  #
 #################
 
 
@@ -605,7 +641,7 @@ class TestRemoveLink(BaseTestCase):
         self.assertEqual(len(retrieved), 2)
 
 ##################
-## IMAGES TESTS ##
+#  IMAGES TESTS  #
 ##################
 
 
@@ -614,14 +650,14 @@ class TestPull(BaseTestCase):
         try:
             self.client.remove_image('joffrey/test001')
             self.client.remove_image('376968a23351')
-        except docker.APIError:
+        except docker.errors.APIError:
             pass
         info = self.client.info()
         self.assertIn('Images', info)
         img_count = info['Images']
         res = self.client.pull('joffrey/test001')
         self.assertEqual(type(res), six.text_type)
-        self.assertEqual(img_count + 2, self.client.info()['Images'])
+        self.assertEqual(img_count + 3, self.client.info()['Images'])
         img_info = self.client.inspect_image('joffrey/test001')
         self.assertIn('id', img_info)
         self.tmp_imgs.append('joffrey/test001')
@@ -633,17 +669,15 @@ class TestPullStream(BaseTestCase):
         try:
             self.client.remove_image('joffrey/test001')
             self.client.remove_image('376968a23351')
-        except docker.APIError:
+        except docker.errors.APIError:
             pass
         info = self.client.info()
         self.assertIn('Images', info)
         img_count = info['Images']
         stream = self.client.pull('joffrey/test001', stream=True)
-        res = u''
         for chunk in stream:
-            res += chunk
-        self.assertEqual(type(res), six.text_type)
-        self.assertEqual(img_count + 2, self.client.info()['Images'])
+            json.loads(chunk)  # ensure chunk is a single, valid JSON blob
+        self.assertEqual(img_count + 3, self.client.info()['Images'])
         img_info = self.client.inspect_image('joffrey/test001')
         self.assertIn('id', img_info)
         self.tmp_imgs.append('joffrey/test001')
@@ -693,6 +727,8 @@ class TestRemoveImage(BaseTestCase):
 
 class TestBuild(BaseTestCase):
     def runTest(self):
+        if self.client._version >= 1.8:
+            return
         script = io.BytesIO('\n'.join([
             'FROM busybox',
             'MAINTAINER docker-py',
@@ -733,6 +769,7 @@ class TestBuildStream(BaseTestCase):
         stream = self.client.build(fileobj=script, stream=True)
         logs = ''
         for chunk in stream:
+            json.loads(chunk)  # ensure chunk is a single, valid JSON blob
             logs += chunk
         self.assertNotEqual(logs, '')
 
@@ -749,26 +786,39 @@ class TestBuildFromStringIO(BaseTestCase):
             'ADD https://dl.dropboxusercontent.com/u/20637798/silence.tar.gz'
             ' /tmp/silence.tar.gz'
         ]))
-        img, logs = self.client.build(fileobj=script)
-        self.assertNotEqual(img, None)
-        self.assertNotEqual(img, '')
+        stream = self.client.build(fileobj=script, stream=True)
+        logs = ''
+        for chunk in stream:
+            logs += chunk
         self.assertNotEqual(logs, '')
-        container1 = self.client.create_container(img, 'test -d /tmp/test')
-        id1 = container1['Id']
-        self.client.start(id1)
-        self.tmp_containers.append(id1)
-        exitcode1 = self.client.wait(id1)
-        self.assertEqual(exitcode1, 0)
-        container2 = self.client.create_container(img, 'test -d /tmp/test')
-        id2 = container2['Id']
-        self.client.start(id2)
-        self.tmp_containers.append(id2)
-        exitcode2 = self.client.wait(id2)
-        self.assertEqual(exitcode2, 0)
-        self.tmp_imgs.append(img)
+
+
+class TestBuildWithAuth(BaseTestCase):
+    def runTest(self):
+        if self.client._version < 1.9:
+            return
+
+        k = 'K4104GON3P4Q6ZUJFZRRC2ZQTBJ5YT0UMZD7TGT7ZVIR8Y05FAH2TJQI6Y90SMIB'
+        self.client.login('quay+fortesting', k, registry='https://quay.io/v1/',
+                          email='')
+
+        script = io.BytesIO('\n'.join([
+            'FROM quay.io/quay/teststuff',
+            'MAINTAINER docker-py',
+            'RUN mkdir -p /tmp/test',
+        ]).encode('ascii'))
+
+        stream = self.client.build(fileobj=script, stream=True)
+        logs = ''
+        for chunk in stream:
+            logs += chunk
+
+        self.assertNotEqual(logs, '')
+        self.assertEqual(logs.find('HTTP code: 403'), -1)
+
 
 #######################
-## PY SPECIFIC TESTS ##
+#  PY SPECIFIC TESTS  #
 #######################
 
 

@@ -257,13 +257,16 @@ def _handle_get(gcs_stub, filename, param_dict, headers):
     result = _handle_head(gcs_stub, filename)
     if result.status_code == httplib.NOT_FOUND:
       return result
+
+
+
     start, end = _Range(headers).value
     st_size = result.headers['content-length']
-    if end is None:
-      end = st_size - 1
-    result.headers['content-range'] = 'bytes: %d-%d/%d' % (start,
-                                                           end,
-                                                           st_size)
+    if end is not None:
+      result.status_code = httplib.PARTIAL_CONTENT
+      end = min(end, st_size - 1)
+      result.headers['content-range'] = 'bytes %d-%d/%d' % (start, end, st_size)
+
     result.content = gcs_stub.get_object(filename, start, end)
     result.headers['content-length'] = len(result.content)
     return result

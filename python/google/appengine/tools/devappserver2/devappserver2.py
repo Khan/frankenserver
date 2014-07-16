@@ -376,6 +376,16 @@ def create_command_line_parser():
                          default=False,
                          help='enable XDebug remote debugging')
 
+  # Dart
+  dart_group = parser.add_argument_group('Dart')
+  dart_group.add_argument('--dart_sdk', help=argparse.SUPPRESS)
+  dart_group.add_argument('--dart_dev_mode',
+                          choices=['dev', 'deploy'],
+                          help=argparse.SUPPRESS)
+  dart_group.add_argument('--dart_pub_serve_host', help=argparse.SUPPRESS)
+  dart_group.add_argument('--dart_pub_serve_port',
+                          type=PortParser(), help=argparse.SUPPRESS)
+
   # App Identity
   appidentity_group = parser.add_argument_group('Application Identity')
   appidentity_group.add_argument(
@@ -885,6 +895,14 @@ class DevelopmentServer(object):
     vm_config = runtime_config_pb2.VMConfig()
     if options.docker_daemon_url:
       vm_config.docker_daemon_url = options.docker_daemon_url
+    if options.dart_sdk:
+      vm_config.dart_config.dart_sdk = os.path.abspath(options.dart_sdk)
+    if options.dart_dev_mode:
+      vm_config.dart_config.dart_dev_mode = options.dart_dev_mode
+    if options.dart_pub_serve_host:
+      vm_config.dart_config.dart_pub_serve_host = options.dart_pub_serve_host
+    if options.dart_pub_serve_port:
+      vm_config.dart_config.dart_pub_serve_port = options.dart_pub_serve_port
     return vm_config
 
   @staticmethod

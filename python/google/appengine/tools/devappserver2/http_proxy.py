@@ -33,6 +33,14 @@ from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import util
 
 
+class Error(Exception):
+  """Base class for errors in this module."""
+
+
+class HostNotReachable(Error):
+  """Raised if host can't be reached at given port."""
+
+
 class HttpProxy:
   """Forwards HTTP requests to an application instance."""
   def __init__(self, host, port, instance_died_unexpectedly,
@@ -71,6 +79,33 @@ class HttpProxy:
                    [('Content-Type', 'text/plain'),
                     ('Content-Length', str(len(message)))])
     return message
+
+  def wait_for_connection(self, retries=100000):
+    """Waits while instance is booting.
+
+    Args:
+      retries: int, Number of connection retries.
+
+    Raises:
+      HostNotReachable: if host:port can't be reached after given number of
+        retries.
+    """
+    def ping():
+      connection = httplib.HTTPConnection(self._host, self._port)
+      with contextlib.closing(connection):
+        try:
+          connection.connect()
+        except socket.error, httplib.HTTPException:
+          return False
+        else:
+          return True
+
+    while not ping() and retries > 0:
+      retries -= 1
+    if not retries:
+      raise HostNotReachable(
+          'Cannot connect to the instance on {host}:{port}'.format(
+              host=self._host, port=self._port))
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):

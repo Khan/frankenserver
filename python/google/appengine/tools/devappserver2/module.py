@@ -64,7 +64,7 @@ from google.appengine.tools.devappserver2 import static_files_handler
 from google.appengine.tools.devappserver2 import thread_executor
 from google.appengine.tools.devappserver2 import url_handler
 from google.appengine.tools.devappserver2 import util
-from google.appengine.tools.devappserver2 import vm_runtime_proxy
+from google.appengine.tools.devappserver2 import vm_runtime_factory
 from google.appengine.tools.devappserver2 import wsgi_handler
 from google.appengine.tools.devappserver2 import wsgi_server
 
@@ -161,7 +161,7 @@ class Module(object):
       'python': python_runtime.PythonRuntimeInstanceFactory,
       'python27': python_runtime.PythonRuntimeInstanceFactory,
       # TODO: uncomment for GA.
-      # 'vm': vm_runtime_proxy.VMRuntimeInstanceFactory,
+      # 'vm': vm_runtime_factory.VMRuntimeInstanceFactory,
   }
   if java_runtime:
     _RUNTIME_INSTANCE_FACTORIES.update({
@@ -290,6 +290,7 @@ class Module(object):
           self._module_configuration.handlers)
     runtime_config.api_host = self._api_host
     runtime_config.api_port = self._api_port
+    runtime_config.server_port = self._balanced_port
     runtime_config.stderr_log_level = self._runtime_stderr_loglevel
     runtime_config.datacenter = 'us1'
     runtime_config.auth_domain = self._auth_domain
@@ -457,7 +458,7 @@ class Module(object):
     # TODO: remove when GA.
     if self._vm_config and self._vm_config.HasField('docker_daemon_url'):
       self._RUNTIME_INSTANCE_FACTORIES['vm'] = (
-          vm_runtime_proxy.VMRuntimeInstanceFactory)
+          vm_runtime_factory.VMRuntimeInstanceFactory)
 
     self._instance_factory = self._create_instance_factory(
         self._module_configuration)

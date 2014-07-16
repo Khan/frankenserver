@@ -92,6 +92,7 @@ class TestModuleConfiguration(unittest.TestCase):
     self.mox.VerifyAll()
 
     self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual(os.path.realpath('/appdir/app.yaml'), config.config_path)
     self.assertEqual('dev~app', config.application)
     self.assertEqual('app', config.application_external_name)
     self.assertEqual('dev', config.partition)
@@ -132,6 +133,7 @@ class TestModuleConfiguration(unittest.TestCase):
 
     self.mox.VerifyAll()
     self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual(os.path.realpath('/appdir/app.yaml'), config.config_path)
     self.assertEqual('dev~app', config.application)
     self.assertEqual('app', config.application_external_name)
     self.assertEqual('dev', config.partition)

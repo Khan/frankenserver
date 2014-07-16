@@ -3,6 +3,35 @@
 Release History
 ---------------
 
+2.3.0 (2014-05-16)
+++++++++++++++++++
+
+**API Changes**
+
+- New ``Response`` property ``is_redirect``, which is true when the
+  library could have processed this response as a redirection (whether
+  or not it actually did).
+- The ``timeout`` parameter now affects requests with both ``stream=True`` and
+  ``stream=False`` equally.
+- The change in v2.0.0 to mandate explicit proxy schemes has been reverted.
+  Proxy schemes now default to ``http://``.
+- The ``CaseInsensitiveDict`` used for HTTP headers now behaves like a normal
+  dictionary when references as string or viewd in the interpreter.
+
+**Bugfixes**
+
+- No longer expose Authorization or Proxy-Authorization headers on redirect.
+  Fix CVE-2014-1829 and CVE-2014-1830 respectively.
+- Authorization is re-evaluated each redirect.
+- On redirect, pass url as native strings.
+- Fall-back to autodetected encoding for JSON when Unicode detection fails.
+- Headers set to ``None`` on the ``Session`` are now correctly not sent.
+- Correctly honor ``decode_unicode`` even if it wasn't used earlier in the same
+  response.
+- Stop advertising ``compress`` as a supported Content-Encoding.
+- The ``Response.history`` parameter is now always a list.
+- Many, many ``urllib3`` bugfixes.
+
 2.2.1 (2014-01-23)
 ++++++++++++++++++
 
@@ -128,6 +157,8 @@ Release History
 1.2.1 (2013-05-20)
 ++++++++++++++++++
 
+- 301 and 302 redirects now change the verb to GET for all verbs, not just
+  POST, improving browser compatibility.
 - Python 3.3.2 compatibility
 - Always percent-encode location headers
 - Fix connection adapter matching to be most-specific first

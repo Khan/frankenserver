@@ -300,6 +300,26 @@ class MemcacheTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testDecrementSuccess() {
+    $memcache = new Memcache();
+
+    $request = new MemcacheIncrementRequest();
+    $request->setKey("key");
+    $request->setDelta(4);
+    $request->setDirection(MemcacheIncrementRequest\Direction::DECREMENT);
+
+    $response = new MemcacheIncrementResponse();
+    $response->setNewValue(8);
+
+    $this->apiProxyMock->expectCall('memcache',
+                                    'Increment',
+                                    $request,
+                                    $response);
+    $this->assertEquals(8, memcache_decrement($memcache, "key", 4));
+    $this->apiProxyMock->verify();
+  }
+
+
   public function testReplaceSuccess() {
     $memcache = new Memcache();
 

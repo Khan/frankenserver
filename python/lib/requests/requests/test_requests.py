@@ -8,7 +8,9 @@ import json
 import os
 import pickle
 import unittest
+import collections
 
+import io
 import requests
 import pytest
 from requests.adapters import HTTPAdapter
@@ -17,7 +19,11 @@ from requests.compat import (
     Morsel, cookielib, getproxies, str, urljoin, urlparse)
 from requests.cookies import cookiejar_from_dict, morsel_to_cookie
 from requests.exceptions import InvalidURL, MissingSchema
+from requests.models import PreparedRequest, Response
 from requests.structures import CaseInsensitiveDict
+from requests.sessions import SessionRedirectMixin
+from requests.models import PreparedRequest, urlencode
+from requests.hooks import default_hooks
 
 try:
     import StringIO
@@ -115,6 +121,8 @@ class RequestsTestCase(unittest.TestCase):
     def test_HTTP_302_ALLOW_REDIRECT_GET(self):
         r = requests.get(httpbin('redirect', '1'))
         assert r.status_code == 200
+        assert r.history[0].status_code == 302
+        assert r.history[0].is_redirect
 
     # def test_HTTP_302_ALLOW_REDIRECT_POST(self):
     #     r = requests.post(httpbin('status', '302'), data={'some': 'data'})
@@ -208,6 +216,24 @@ class RequestsTestCase(unittest.TestCase):
         urls = [r.url for r in resp.history]
         req_urls = [r.request.url for r in resp.history]
         assert urls == req_urls
+
+    def test_history_is_always_a_list(self):
+        """
+        Show that even with redirects, Response.history is always a list.
+        """
+        resp = requests.get(httpbin('get'))
+        assert isinstance(resp.history, list)
+        resp = requests.get(httpbin('redirect/1'))
+        assert isinstance(resp.history, list)
+        assert not isinstance(resp.history, tuple)
+
+    def test_headers_on_session_with_None_are_not_sent(self):
+        """Do not send headers in Session.headers with None values."""
+        ses = requests.Session()
+        ses.headers['Accept-Encoding'] = None
+        req = requests.Request('GET', 'http://httpbin.org/get')
+        prep = ses.prepare_request(req)
+        assert 'Accept-Encoding' not in prep.headers
 
     def test_user_agent_transfers(self):
 
@@ -411,6 +437,9 @@ class RequestsTestCase(unittest.TestCase):
 
     def test_unicode_header_name(self):
         requests.put(httpbin('put'), headers={str('Content-Type'): 'application/octet-stream'}, data='\xff') # compat.str is unicode.
+
+    def test_pyopenssl_redirect(self):
+        requests.get('https://httpbin.org/status/301')
 
     def test_urlencoded_get_query_multivalued_param(self):
 
@@ -677,6 +706,26 @@ class RequestsTestCase(unittest.TestCase):
         assert next(iter(r))
         io.close()
 
+    def test_response_decode_unicode(self):
+        """
+        When called with decode_unicode, Response.iter_content should always
+        return unicode.
+        """
+        r = requests.Response()
+        r._content_consumed = True
+        r._content = b'the content'
+        r.encoding = 'ascii'
+
+        chunks = r.iter_content(decode_unicode=True)
+        assert all(isinstance(chunk, str) for chunk in chunks)
+
+        # also for streaming
+        r = requests.Response()
+        r.raw = io.BytesIO(b'the content')
+        r.encoding = 'ascii'
+        chunks = r.iter_content(decode_unicode=True)
+        assert all(isinstance(chunk, str) for chunk in chunks)
+
     def test_request_and_response_are_pickleable(self):
         r = requests.get(httpbin('get'))
 
@@ -851,6 +900,61 @@ class RequestsTestCase(unittest.TestCase):
             req = requests.Request('GET', test_url)
             preq = req.prepare()
             assert test_url == preq.url
+
+    def test_auth_is_stripped_on_redirect_off_host(self):
+        r = requests.get(
+            httpbin('redirect-to'),
+            params={'url': 'http://www.google.co.uk'},
+            auth=('user', 'pass'),
+        )
+        assert r.history[0].request.headers['Authorization']
+        assert not r.request.headers.get('Authorization', '')
+
+    def test_auth_is_retained_for_redirect_on_host(self):
+        r = requests.get(httpbin('redirect/1'), auth=('user', 'pass'))
+        h1 = r.history[0].request.headers['Authorization']
+        h2 = r.request.headers['Authorization']
+
+        assert h1 == h2
+
+    def test_manual_redirect_with_partial_body_read(self):
+        s = requests.Session()
+        r1 = s.get(httpbin('redirect/2'), allow_redirects=False, stream=True)
+        assert r1.is_redirect
+        rg = s.resolve_redirects(r1, r1.request, stream=True)
+
+        # read only the first eight bytes of the response body,
+        # then follow the redirect
+        r1.iter_content(8)
+        r2 = next(rg)
+        assert r2.is_redirect
+
+        # read all of the response via iter_content,
+        # then follow the redirect
+        for _ in r2.iter_content():
+            pass
+        r3 = next(rg)
+        assert not r3.is_redirect
+
+    def _patch_adapter_gzipped_redirect(self, session, url):
+        adapter = session.get_adapter(url=url)
+        org_build_response = adapter.build_response
+        self._patched_response = False
+
+        def build_response(*args, **kwargs):
+            resp = org_build_response(*args, **kwargs)
+            if not self._patched_response:
+                resp.raw.headers['content-encoding'] = 'gzip'
+                self._patched_response = True
+            return resp
+
+        adapter.build_response = build_response
+
+    def test_redirect_with_wrong_gzipped_header(self):
+        s = requests.Session()
+        url = httpbin('redirect/1')
+        self._patch_adapter_gzipped_redirect(s, url)
+        s.get(url)
 
 
 class TestContentEncodingDetection(unittest.TestCase):
@@ -1164,6 +1268,98 @@ class TestMorselToCookieMaxAge(unittest.TestCase):
         morsel['max-age'] = 'woops'
         with pytest.raises(TypeError):
             morsel_to_cookie(morsel)
+
+
+class TestTimeout:
+    def test_stream_timeout(self):
+        try:
+            r = requests.get('https://httpbin.org/delay/10', timeout=5.0)
+        except requests.exceptions.Timeout as e:
+            assert 'Read timed out' in e.args[0].args[0]
+
+
+SendCall = collections.namedtuple('SendCall', ('args', 'kwargs'))
+
+
+class RedirectSession(SessionRedirectMixin):
+    def __init__(self, order_of_redirects):
+        self.redirects = order_of_redirects
+        self.calls = []
+        self.max_redirects = 30
+        self.cookies = {}
+        self.trust_env = False
+
+    def send(self, *args, **kwargs):
+        self.calls.append(SendCall(args, kwargs))
+        return self.build_response()
+
+    def build_response(self):
+        request = self.calls[-1].args[0]
+        r = requests.Response()
+
+        try:
+            r.status_code = int(self.redirects.pop(0))
+        except IndexError:
+            r.status_code = 200
+
+        r.headers = CaseInsensitiveDict({'Location': '/'})
+        r.raw = self._build_raw()
+        r.request = request
+        return r
+
+    def _build_raw(self):
+        string = StringIO.StringIO('')
+        setattr(string, 'release_conn', lambda *args: args)
+        return string
+
+
+class TestRedirects:
+    default_keyword_args = {
+        'stream': False,
+        'verify': True,
+        'cert': None,
+        'timeout': None,
+        'allow_redirects': False,
+        'proxies': {},
+    }
+
+    def test_requests_are_updated_each_time(self):
+        session = RedirectSession([303, 307])
+        prep = requests.Request('POST', 'http://httpbin.org/post').prepare()
+        r0 = session.send(prep)
+        assert r0.request.method == 'POST'
+        assert session.calls[-1] == SendCall((r0.request,), {})
+        redirect_generator = session.resolve_redirects(r0, prep)
+        for response in redirect_generator:
+            assert response.request.method == 'GET'
+            send_call = SendCall((response.request,),
+                                 TestRedirects.default_keyword_args)
+            assert session.calls[-1] == send_call
+
+
+@pytest.fixture
+def list_of_tuples():
+    return [
+            (('a', 'b'), ('c', 'd')),
+            (('c', 'd'), ('a', 'b')),
+            (('a', 'b'), ('c', 'd'), ('e', 'f')),
+            ]
+
+
+def test_data_argument_accepts_tuples(list_of_tuples):
+    """
+    Ensure that the data argument will accept tuples of strings
+    and properly encode them.
+    """
+    for data in list_of_tuples:
+        p = PreparedRequest()
+        p.prepare(
+            method='GET',
+            url='http://www.example.com',
+            data=data,
+            hooks=default_hooks()
+        )
+        assert p.body == urlencode(data)
 
 
 if __name__ == '__main__':

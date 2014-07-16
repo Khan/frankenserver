@@ -31,6 +31,7 @@ import google
 import mox
 
 from google.appengine.api import appinfo
+from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import login
@@ -126,6 +127,9 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
     self.url_map = appinfo.URLMap(url=r'/(get|post).*',
                                   script=r'\1.py')
 
+    self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
+    http_proxy.HttpProxy.wait_for_connection()
+
   def tearDown(self):
     shutil.rmtree(self.tmpdir)
     self.mox.UnsetStubs()
@@ -213,6 +217,9 @@ class HttpRuntimeProxyFileFlavorTest(wsgi_test_utils.WSGITestCase):
     self.mox.StubOutWithMock(time, 'sleep')
     self.url_map = appinfo.URLMap(url=r'/(get|post).*',
                                   script=r'\1.py')
+
+    self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
+    http_proxy.HttpProxy.wait_for_connection()
 
   def tearDown(self):
     shutil.rmtree(self.tmpdir)

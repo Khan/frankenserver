@@ -122,7 +122,7 @@ DAY = 24*3600
 SUNDAY = 6
 
 SUPPORTED_RUNTIMES = (
-    'go', 'php', 'python', 'python27', 'java', 'java7', 'vm', 'custom')
+    'dart', 'go', 'php', 'python', 'python27', 'java', 'java7', 'vm', 'custom')
 
 
 
@@ -145,7 +145,8 @@ DEFAULT_RESOURCE_LIMITS = {
 
 APPCFG_CLIENT_ID = '550516889912.apps.googleusercontent.com'
 APPCFG_CLIENT_NOTSOSECRET = 'ykPq-0UYfKNprLRjVx1hBBar'
-APPCFG_SCOPES = ('https://www.googleapis.com/auth/appengine.admin',)
+APPCFG_SCOPES = ('https://www.googleapis.com/auth/appengine.admin',
+                 'https://www.googleapis.com/auth/cloud-platform')
 
 
 STATIC_FILE_PREFIX = '__static__'
@@ -476,7 +477,7 @@ def RetryWithBackoff(callable_func, retry_notify_func,
 
   Args:
     callable_func: A function that performs some operation that should be
-      retried a number of times up on failure.  Signature: () -> (done, value)
+      retried a number of times upon failure.  Signature: () -> (done, value)
       If 'done' is True, we'll immediately return (True, value)
       If 'done' is False, we'll delay a bit and try again, unless we've
       hit the 'max_tries' limit, in which case we'll return (False, value).
@@ -515,6 +516,43 @@ def RetryWithBackoff(callable_func, retry_notify_func,
     retry_notify_func(opaque_value, delay)
     time.sleep(delay)
     delay = min(delay * backoff_factor, max_delay)
+
+
+def RetryNoBackoff(callable_func,
+                   retry_notify_func,
+                   delay=5,
+                   max_tries=200):
+  """Calls a function multiple times, with the same delay each time.
+
+  Args:
+    callable_func: A function that performs some operation that should be
+      retried a number of times upon failure.  Signature: () -> (done, value)
+      If 'done' is True, we'll immediately return (True, value)
+      If 'done' is False, we'll delay a bit and try again, unless we've
+      hit the 'max_tries' limit, in which case we'll return (False, value).
+    retry_notify_func: This function will be called immediately before the
+      next retry delay.  Signature: (value, delay) -> None
+      'value' is the value returned by the last call to 'callable_func'
+      'delay' is the retry delay, in seconds
+    delay: Delay between tries, in seconds.
+    max_tries: Maximum number of tries (the first one counts).
+
+  Returns:
+    What the last call to 'callable_func' returned, which is of the form
+    (done, value).  If 'done' is True, you know 'callable_func' returned True
+    before we ran out of retries.  If 'done' is False, you know 'callable_func'
+    kept returning False and we ran out of retries.
+
+  Raises:
+    Whatever the function raises--an exception will immediately stop retries.
+  """
+
+  return RetryWithBackoff(callable_func,
+                          retry_notify_func,
+                          delay,
+                          1,
+                          delay,
+                          max_tries)
 
 
 def MigratePython27Notice():
@@ -1123,7 +1161,9 @@ class LogsRequester(object):
     for line in lines:
       if line.startswith('#'):
         match = re.match(r'^#\s*next_offset=(\S+)\s*$', line)
-        if match:
+
+
+        if match and match.group(1) != 'None':
           offset = match.group(1)
         continue
 
@@ -1735,6 +1775,23 @@ class _ClientDeployLoggingContext(object):
       logging.debug('Exception logging deploy info continuing - %s', e)
 
 
+class EndpointsState(object):
+  SERVING = 'serving'
+  PENDING = 'pending'
+  FAILED = 'failed'
+  _STATES = frozenset((SERVING, PENDING, FAILED))
+
+  @classmethod
+  def Parse(cls, value):
+    state = value.lower()
+    if state not in cls._STATES:
+      lst = sorted(cls._STATES)
+      pretty_states = ', '.join(lst[:-1]) + ', or ' + lst[-1]
+      raise ValueError('Unexpected Endpoints state "%s"; should be %s.' %
+                       (value, pretty_states))
+    return state
+
+
 class AppVersionUpload(object):
   """Provides facilities to upload a new appversion to the hosting service.
 
@@ -2095,8 +2152,7 @@ class AppVersionUpload(object):
       if result == '0':
         raise CannotStartServingError(
             'Another operation on this version is in progress.')
-      success, response = RetryWithBackoff(
-          self.IsServing, PrintRetryMessage, 1, 2, 60, 20)
+      success, response = RetryNoBackoff(self.IsServing, PrintRetryMessage)
       if not success:
 
         logging.warning('Version still not serving, aborting.')
@@ -2106,13 +2162,14 @@ class AppVersionUpload(object):
 
       check_config_updated = response.get('check_endpoints_config')
       if check_config_updated:
-        success, unused_contents = RetryWithBackoff(
-            lambda: (self.IsEndpointsConfigUpdated(), None),
+        unused_done, last_state = RetryWithBackoff(
+            self.IsEndpointsConfigUpdated,
             PrintRetryMessage, 1, 2, 60, 20)
-        if not success:
-          error_message = ('Failed to update Endpoints configuration.  Check '
-                           'the app\'s AppEngine logs for errors: %s' %
-                           self.GetLogUrl())
+        if last_state != EndpointsState.SERVING:
+          error_message = (
+              'Failed to update Endpoints configuration (last result %s).  '
+              'Check the app\'s AppEngine logs for errors: %s' %
+              (last_state, self.GetLogUrl()))
           StatusUpdate(error_message, self.error_fh)
           logging.warning(error_message)
           raise RuntimeError(error_message)
@@ -2241,7 +2298,8 @@ class AppVersionUpload(object):
       Otherwise returns False.
     """
     response_dict = yaml.safe_load(resp)
-    if 'updated' not in response_dict:
+
+    if 'updated' not in response_dict and 'updatedDetail' not in response_dict:
       return None
     return response_dict
 
@@ -2266,7 +2324,10 @@ class AppVersionUpload(object):
         response.
 
     Returns:
-      True if the configuration has been updated, False if not.
+      (done, updated_state), where done is False if this function should
+      be called again to retry, True if not.  updated_state is an
+      EndpointsState value indicating whether the Endpoints configuration has
+      been updated on the server.
     """
 
     assert self.started, ('StartServing() must be called before '
@@ -2280,7 +2341,17 @@ class AppVersionUpload(object):
     if result is None:
       raise CannotStartServingError(
           'Internal error: Could not parse IsEndpointsConfigUpdated response.')
-    return result['updated']
+    if 'updatedDetail' in result:
+      updated_state = EndpointsState.Parse(result['updatedDetail'])
+    else:
+
+
+
+
+
+      updated_state = (EndpointsState.SERVING if result['updated']
+                       else EndpointsState.PENDING)
+    return updated_state != EndpointsState.PENDING, updated_state
 
   def Rollback(self):
     """Rolls back the transaction if one is in progress."""
@@ -2488,14 +2559,17 @@ class AppVersionUpload(object):
       logging.exception('An unexpected error occurred. Aborting.')
 
 
-class DoDebugAction(object):
-  """Turns on VM Debugging for a particular vm app version."""
+class DoLockAction(object):
+  """Locks/unlocks a particular vm app version and shows state."""
 
-  def __init__(self, rpcserver, app_id, version, module, file_handle):
+  def __init__(
+      self, url, rpcserver, app_id, version, module, instance, file_handle):
+    self.url = url
     self.rpcserver = rpcserver
     self.app_id = app_id
     self.version = version
     self.module = module
+    self.instance = instance
     self.file_handle = file_handle
 
   def GetState(self):
@@ -2514,10 +2588,13 @@ class DoDebugAction(object):
                  self.file_handle)
 
   def Do(self):
-    response = self.rpcserver.Send('/api/vms/debug',
-                                   app_id=self.app_id,
-                                   version_match=self.version,
-                                   module=self.module)
+    kwargs = {'app_id': self.app_id,
+              'version_match': self.version,
+              'module': self.module}
+    if self.instance:
+      kwargs['instance'] = self.instance
+
+    response = self.rpcserver.Send(self.url, **kwargs)
     print >> self.file_handle, response
     RetryWithBackoff(self.GetState, self.PrintRetryMessage, 1, 2, 5, 20)
 
@@ -3581,12 +3658,15 @@ class AppCfgApp(object):
         ]
         if goroot:
           gab_argv.extend(['-goroot', goroot])
+        if appyaml.runtime == 'vm':
+          gab_argv.append('-vm')
         gab_argv.extend(go_files)
 
         env = {
             'GOOS': 'linux',
             'GOARCH': 'amd64',
         }
+        logging.info('Invoking go-app-builder: %s', ' '.join(gab_argv))
         try:
           p = subprocess.Popen(gab_argv, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, env=env)
@@ -4124,8 +4204,8 @@ class AppCfgApp(object):
 
     print >> self.out_fh, response
 
-  def DebugAction(self):
-    """Sets the specified version and instance for an app to be debuggable."""
+  def _LockingAction(self, url):
+    """Changes the locking state for a given version."""
     if len(self.args) == 1:
       appyaml = self._ParseAppInfoFromYaml(self.args[0])
       app_id = appyaml.application
@@ -4150,8 +4230,29 @@ class AppCfgApp(object):
       version = self.options.version
 
     rpcserver = self._GetRpcServer()
-    DoDebugAction(
-        rpcserver, app_id, version, module, self.out_fh).Do()
+    DoLockAction(
+        url,
+        rpcserver,
+        app_id, version, module,
+        self.options.instance,
+        self.out_fh).Do()
+
+  def DebugAction(self):
+    """Sets the specified version and instance for an app to be debuggable."""
+    self._LockingAction('/api/vms/debug')
+
+  def LockAction(self):
+    """Locks the specified version and instance for an app."""
+    self._LockingAction('/api/vms/lock')
+
+  def _LockActionOptions(self, parser):
+    """Adds lock/unlock-specific options to 'parser'.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    parser.add_option('-I', '--instance', type='string', dest='instance',
+                      help='Instance to lock/unlock.')
 
   def _ParseAndValidateModuleYamls(self, yaml_paths):
     """Validates given yaml paths and returns the parsed yaml objects.
@@ -5194,13 +5295,26 @@ application."""),
 
       'debug': Action(
           function='DebugAction',
-          usage='%prog [options] debug [-A app_id] [-V version] '
-          ' [-M module] [directory]',
+          usage='%prog [options] debug [-A app_id] [-V version]'
+          ' [-M module] [-I instance] [directory]',
+          options=_LockActionOptions,
           short_desc='Debug a vm runtime application.',
           hidden=True,
           uses_basepath=False,
           long_desc="""
-The 'debug' command configures a vm runtime to be accessable for debugging."""),
+The 'debug' command configures a vm runtime application to be accessable
+for debugging."""),
+
+      'lock': Action(
+          function='LockAction',
+          usage='%prog [options] lock [-A app_id] [-V version]'
+          ' [-M module] [-I instance] [directory]',
+          options=_LockActionOptions,
+          short_desc='Lock a debugged vm runtime application.',
+          hidden=True,
+          uses_basepath=False,
+          long_desc="""
+The 'lock' command relocks a debugged vm runtime application."""),
   }
 
 

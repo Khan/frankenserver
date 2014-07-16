@@ -37,8 +37,12 @@ $setup = function() {
   };
 
   $updateScriptFilename = function() {
+    $unixPath = function($path) {
+      return str_replace(DIRECTORY_SEPARATOR, "/", $path);
+    };
+
     global $unsetEnv;
-    $_SERVER['DOCUMENT_ROOT'] = $_SERVER['APPLICATION_ROOT'];
+    $_SERVER['DOCUMENT_ROOT'] = $unixPath($_SERVER['APPLICATION_ROOT']);
     $unsetEnv('APPLICATION_ROOT');
 
     putenv('SCRIPT_FILENAME=' . getenv('REAL_SCRIPT_FILENAME'));
@@ -51,7 +55,7 @@ $setup = function() {
     $actualPath = stream_resolve_include_path($relativePath);
     chdir($actualPath);
 
-    $_SERVER['SCRIPT_FILENAME'] = getenv('REAL_SCRIPT_FILENAME');
+    $_SERVER['SCRIPT_FILENAME'] = $unixPath(getenv('REAL_SCRIPT_FILENAME'));
     $unsetEnv('REAL_SCRIPT_FILENAME');
 
     // Replicate the SCRIPT_NAME and PHP_SELF setup used in production.

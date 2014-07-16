@@ -17,8 +17,8 @@
 """Common functionality for file watchers."""
 
 
-# Directories that we should not watch at all.
-_IGNORED_DIRS = ('.git', '.hg', '.svn')
+# A prefix for files and directories that we should not watch at all.
+_IGNORED_PREFIX = '.'
 # File suffixes that should be ignored.
 _IGNORED_FILE_SUFFIXES = (
     # Python temporaries
@@ -36,11 +36,22 @@ _IGNORED_FILE_SUFFIXES = (
 
 def ignore_file(filename):
   """Report whether a file should not be watched."""
-  return any(filename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES)
+  return (
+      filename.startswith(_IGNORED_PREFIX) or
+      any(filename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES))
+
+
+def _remove_pred(lst, pred):
+  """Remove items from a list that match a predicate."""
+
+  # Walk the list in reverse because once an item is deleted,
+  # the indexes of any subsequent items change.
+  for idx in reversed(xrange(len(lst))):
+    if pred(lst[idx]):
+      del lst[idx]
 
 
 def remove_ignored_dirs(dirs):
   """Remove directories from dirs that should not be watched."""
-  for d in _IGNORED_DIRS:
-    if d in dirs:
-      dirs.remove(d)
+
+  _remove_pred(dirs, lambda d: d.startswith(_IGNORED_PREFIX))

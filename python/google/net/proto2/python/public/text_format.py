@@ -38,6 +38,8 @@ _INTEGER_CHECKERS = (type_checkers.Uint32ValueChecker(),
                      type_checkers.Int64ValueChecker())
 _FLOAT_INFINITY = re.compile('-?inf(?:inity)?f?', re.IGNORECASE)
 _FLOAT_NAN = re.compile('nanf?', re.IGNORECASE)
+_FLOAT_TYPES = frozenset([descriptor.FieldDescriptor.CPPTYPE_FLOAT,
+                          descriptor.FieldDescriptor.CPPTYPE_DOUBLE])
 
 
 class Error(Exception):
@@ -49,10 +51,29 @@ class ParseError(Error):
 
 
 def MessageToString(message, as_utf8=False, as_one_line=False,
-                    pointy_brackets=False):
+                    pointy_brackets=False, float_format=None):
+  """Convert protobuf message to text format.
+
+  Floating point values can be formatted compactly with 15 digits of
+  precision (which is the most that IEEE 754 "double" can guarantee)
+  using float_format='.15g'.
+
+  Args:
+    message: The protocol buffers message.
+    as_utf8: Produce text output in UTF8 format.
+    as_one_line: Don't introduce newlines between fields.
+    pointy_brackets: If True, use angle brackets instead of curly braces for
+      nesting.
+    float_format: If set, use this to specify floating point number formatting
+      (per the "Format Specification Mini-Language"); otherwise, str() is used.
+
+  Returns:
+    A string of the text formatted protocol buffer message.
+  """
   out = cStringIO.StringIO()
   PrintMessage(message, out, as_utf8=as_utf8, as_one_line=as_one_line,
-               pointy_brackets=pointy_brackets)
+               pointy_brackets=pointy_brackets,
+               float_format=float_format)
   result = out.getvalue()
   out.close()
   if as_one_line:
@@ -61,19 +82,21 @@ def MessageToString(message, as_utf8=False, as_one_line=False,
 
 
 def PrintMessage(message, out, indent=0, as_utf8=False, as_one_line=False,
-                 pointy_brackets=False):
+                 pointy_brackets=False, float_format=None):
   for field, value in message.ListFields():
     if field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
       for element in value:
         PrintField(field, element, out, indent, as_utf8, as_one_line,
-                   pointy_brackets=pointy_brackets)
+                   pointy_brackets=pointy_brackets,
+                   float_format=float_format)
     else:
       PrintField(field, value, out, indent, as_utf8, as_one_line,
-                 pointy_brackets=pointy_brackets)
+                 pointy_brackets=pointy_brackets,
+                 float_format=float_format)
 
 
 def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
-               pointy_brackets=False):
+               pointy_brackets=False, float_format=None):
   """Print a single field name/value pair.  For repeated fields, the value
   should be a single element."""
 
@@ -100,7 +123,8 @@ def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
     out.write(': ')
 
   PrintFieldValue(field, value, out, indent, as_utf8, as_one_line,
-                  pointy_brackets=pointy_brackets)
+                  pointy_brackets=pointy_brackets,
+                  float_format=float_format)
   if as_one_line:
     out.write(' ')
   else:
@@ -108,7 +132,8 @@ def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
 
 
 def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
-                    as_one_line=False, pointy_brackets=False):
+                    as_one_line=False, pointy_brackets=False,
+                    float_format=None):
   """Print a single field value (not including name).  For repeated fields,
   the value should be a single element."""
 
@@ -123,12 +148,14 @@ def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
     if as_one_line:
       out.write(' %s ' % openb)
       PrintMessage(value, out, indent, as_utf8, as_one_line,
-                   pointy_brackets=pointy_brackets)
+                   pointy_brackets=pointy_brackets,
+                   float_format=float_format)
       out.write(closeb)
     else:
       out.write(' %s\n' % openb)
       PrintMessage(value, out, indent + 2, as_utf8, as_one_line,
-                   pointy_brackets=pointy_brackets)
+                   pointy_brackets=pointy_brackets,
+                   float_format=float_format)
       out.write(' ' * indent + closeb)
   elif field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_ENUM:
     enum_value = field.enum_type.values_by_number.get(value, None)
@@ -154,6 +181,8 @@ def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
       out.write('true')
     else:
       out.write('false')
+  elif field.cpp_type in _FLOAT_TYPES and float_format is not None:
+    out.write('{1:{0}}'.format(float_format, value))
   else:
     out.write(str(value))
 

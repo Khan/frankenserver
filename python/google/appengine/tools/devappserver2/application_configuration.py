@@ -217,6 +217,10 @@ class ModuleConfiguration(object):
   def is_backend(self):
     return False
 
+  @property
+  def config_path(self):
+    return self._config_path
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
@@ -536,6 +540,10 @@ class BackendConfiguration(object):
   def is_backend(self):
     return True
 
+  @property
+  def config_path(self):
+    return self._module_configuration.config_path
+
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
 
@@ -688,7 +696,7 @@ class ApplicationConfiguration(object):
     If the directory contains a subdirectory WEB-INF then we expect to find
     web.xml and application-web.xml in that subdirectory. The returned list
     will consist of the path to application-web.xml, which we treat as if it
-    included xml.
+    included web.xml.
 
     Otherwise, we expect to find an app.yaml and optionally a backends.yaml,
     and we return those in the list.

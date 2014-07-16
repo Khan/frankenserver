@@ -1203,9 +1203,7 @@ class Document(object):
 
     self._field_map = None
 
-    doc_rank = None
-    if not rank is None:
-      doc_rank = rank
+    doc_rank = rank
     if doc_rank is None:
       doc_rank = self._GetDefaultRank()
     self._rank = self._CheckRank(doc_rank)

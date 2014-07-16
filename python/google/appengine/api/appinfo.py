@@ -114,10 +114,14 @@ DEFAULT_MODULE = 'default'
 
 
 
-PARTITION_RE_STRING = (r'[a-z\d\-]{1,%d}\%s' %
-                       (APP_ID_MAX_LEN, PARTITION_SEPARATOR))
-DOMAIN_RE_STRING = (r'(?!\-)[a-z\d\-\.]{1,%d}%s' %
-                    (APP_ID_MAX_LEN, DOMAIN_SEPARATOR))
+PARTITION_RE_STRING_WITHOUT_SEPARATOR = (r'[a-z\d\-]{1,%d}' % APP_ID_MAX_LEN)
+PARTITION_RE_STRING = (r'%s\%s' %
+                       (PARTITION_RE_STRING_WITHOUT_SEPARATOR,
+                        PARTITION_SEPARATOR))
+DOMAIN_RE_STRING_WITHOUT_SEPARATOR = (r'(?!\-)[a-z\d\-\.]{1,%d}' %
+                                      APP_ID_MAX_LEN)
+DOMAIN_RE_STRING = (r'%s%s' %
+                    (DOMAIN_RE_STRING_WITHOUT_SEPARATOR, DOMAIN_SEPARATOR))
 DISPLAY_APP_ID_RE_STRING = r'(?!-)[a-z\d\-]{0,%d}[a-z\d]' % (APP_ID_MAX_LEN - 1)
 APPLICATION_RE_STRING = (r'(?:%s)?(?:%s)?%s' %
                          (PARTITION_RE_STRING,
@@ -211,6 +215,7 @@ EXPIRATION = 'expiration'
 API_ENDPOINT = 'api_endpoint'
 HTTP_HEADERS = 'http_headers'
 APPLICATION_READABLE = 'application_readable'
+REDIRECT_HTTP_RESPONSE_CODE = 'redirect_http_response_code'
 
 
 APPLICATION = 'application'
@@ -829,10 +834,13 @@ class URLMap(HandlerBase):
           (ON, ON_ALIASES),
           (OFF, OFF_ALIASES))),
 
+      REDIRECT_HTTP_RESPONSE_CODE: validation.Optional(validation.Options(
+          '301', '302', '303', '307')),
   }
   ATTRIBUTES.update(HandlerBase.ATTRIBUTES)
 
-  COMMON_FIELDS = set([URL, LOGIN, AUTH_FAIL_ACTION, SECURE])
+  COMMON_FIELDS = set([
+      URL, LOGIN, AUTH_FAIL_ACTION, SECURE, REDIRECT_HTTP_RESPONSE_CODE])
 
 
 
@@ -1671,6 +1679,7 @@ class AppInfoExternal(validation.Validated):
       - If the runtime is python27 and threadsafe is set, then no CGI handlers
         can be used.
       - That the version name doesn't start with BUILTIN_NAME_PREFIX
+      - If redirect_http_response_code exists, it is in the list of valid 300s.
 
     Raises:
       DuplicateLibrary: if the name library name is specified more than once.

@@ -559,6 +559,43 @@ class CloudStorageStreamWrapperTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
+  public function testTeelWithinBufferSuccess() {
+    $buffer_size = CloudStorageReadClient::DEFAULT_READ_SIZE;
+    $body = str_repeat('a', $buffer_size);
+    $this->expectFileReadRequest($body, 0, $buffer_size, null);
+
+    $valid_path = "gs://bucket/object_name.png";
+    $fp = fopen($valid_path, "r");
+    $this->assertEquals(0, fseek($fp, 10));
+    $this->assertEquals(10, ftell($fp));
+    $this->assertEquals('aa', fread($fp, 2));
+    $this->assertEquals(0, fseek($fp, $buffer_size-1));
+    $this->assertEquals($buffer_size-1, ftell($fp));
+    $this->assertEquals('a', fread($fp, 2));
+    $this->assertTrue(fclose($fp));
+
+    $this->apiProxyMock->verify();
+  }
+
+  public function testTeelOutsideBufferSuccess() {
+    $buffer_size = CloudStorageReadClient::DEFAULT_READ_SIZE;
+    $body = str_repeat('a', $buffer_size) . '0123456789';
+    $this->expectFileReadRequest($body, 0, $buffer_size, null, true);
+    $this->expectFileReadRequest($body, $buffer_size, $buffer_size, 'deadbeef',
+                                 true);
+
+    $valid_path = "gs://bucket/object_name.png";
+    $fp = fopen($valid_path, "r");
+    $this->assertEquals(0, fseek($fp, $buffer_size));
+    $this->assertEquals($buffer_size, ftell($fp));
+    $this->assertEquals('012', fread($fp, 3));
+    $this->assertEquals(0, fseek($fp, $buffer_size+5));
+    $this->assertEquals($buffer_size+5, ftell($fp));
+    $this->assertEquals('56789', fread($fp, 5));
+    $this->assertTrue(fclose($fp));
+
+    $this->apiProxyMock->verify();
+  }
   public function testReadZeroSizedObjectSuccess() {
     $this->expectFileReadRequest("",
                                  0,

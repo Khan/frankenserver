@@ -35,6 +35,7 @@ from collections import namedtuple
 
 import logging
 import re
+import urlparse
 
 import google
 import docker
@@ -203,6 +204,8 @@ class Image(BaseImage):
     if isinstance(build_res, tuple):
       # Older API returns pair (image_id, warnings)
       self._id = build_res[0]
+      if build_res[1]:
+        logging.debug(build_res[1])
     else:
       # Newer API returns stream_helper generator where last message is saying
       # about the success of the build.
@@ -216,7 +219,7 @@ class Image(BaseImage):
       logging.info('Image %s built, id = %s', self.tag, self.id)
     else:
       # TODO: figure out the build error.
-      raise ImageError('There was a build error for the image %s.', self.tag)
+      raise ImageError('There was a build error for the image %s.' % self.tag)
 
   def Remove(self):
     """Calls "docker rmi"."""
@@ -265,7 +268,7 @@ class PrebuiltImage(BaseImage):
         name=self.tag, quiet=True, all=False, viz=False)
 
     if not images:
-      raise ImageError('Image with tag %s was not found', self.tag)
+      raise ImageError('Image with tag %s was not found' % self.tag)
 
     # TODO: check if it's possible to have more than one image returned.
     self._id = images[0]
@@ -393,7 +396,13 @@ class Container(object):
   def host(self):
     """Host the container can be reached at by the host (i.e. client) system."""
     # TODO: make this work when Dockerd is running on GCE.
-    return 'localhost'
+    parsed_url = urlparse.urlparse(self._docker_client.base_url)
+    # Socket url schemes look like: unix:// or http+unix://.
+    # If the user is running docker locally and connecting over a socket, we
+    # should just use localhost.
+    if 'unix' in parsed_url.scheme:
+      return 'localhost'
+    return parsed_url.hostname
 
   @property
   def port(self):
