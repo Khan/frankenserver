@@ -146,6 +146,24 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(manual_scaling, config.manual_scaling)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
 
+  def test_override_app_id(self):
+    info = appinfo.AppInfoExternal(
+        application='ignored-app',
+        module='default',
+        version='version',
+        runtime='python27',
+        threadsafe=False)
+    application_configuration.ModuleConfiguration._parse_configuration(
+        '/appdir/app.yaml').AndReturn((info, ['/appdir/app.yaml']))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration(
+        '/appdir/app.yaml', 'overriding-app')
+    self.mox.VerifyAll()
+    self.assertEqual('overriding-app', config.application_external_name)
+    self.assertEqual('dev~overriding-app', config.application)
+
   def test_check_for_updates_unchanged_mtime(self):
     info = appinfo.AppInfoExternal(
         application='app',
@@ -339,7 +357,7 @@ class TestBackendsConfiguration(unittest.TestCase):
         backends=[static_backend_entry, dynamic_backend_entry])
     module_config = object()
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml').AndReturn(module_config)
+        '/appdir/app.yaml', None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
     static_configuration = object()
@@ -366,7 +384,7 @@ class TestBackendsConfiguration(unittest.TestCase):
     backend_info = backendinfo.BackendInfoExternal()
     module_config = object()
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml').AndReturn(module_config)
+        '/appdir/app.yaml', None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
 
@@ -386,7 +404,7 @@ class TestBackendsConfiguration(unittest.TestCase):
         application_configuration.ModuleConfiguration)
     self.mox.StubOutWithMock(application_configuration, 'ModuleConfiguration')
     application_configuration.ModuleConfiguration(
-        '/appdir/app.yaml').AndReturn(module_config)
+        '/appdir/app.yaml', None).AndReturn(module_config)
     application_configuration.BackendsConfiguration._parse_configuration(
         '/appdir/backends.yaml').AndReturn(backend_info)
     module_config.check_for_updates().AndReturn(set())
@@ -760,11 +778,11 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config1 = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config1)
+        absnames[0], None).AndReturn(module_config1)
 
     module_config2 = ModuleConfigurationStub(module_name='other')
     application_configuration.ModuleConfiguration(
-        absnames[1]).AndReturn(module_config2)
+        absnames[1], None).AndReturn(module_config2)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -779,12 +797,12 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config1 = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config1)
+        absnames[0], None).AndReturn(module_config1)
 
     module_config2 = ModuleConfigurationStub(application='other_app',
                                              module_name='other')
     application_configuration.ModuleConfiguration(
-        absnames[1]).AndReturn(module_config2)
+        absnames[1], None).AndReturn(module_config2)
 
     self.mox.ReplayAll()
     self.assertRaises(errors.InvalidAppConfigError,
@@ -797,10 +815,10 @@ class TestApplicationConfiguration(unittest.TestCase):
         ['appdir/app.yaml', 'appdir/other.yaml'])
 
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(ModuleConfigurationStub())
+        absnames[0], None).AndReturn(ModuleConfigurationStub())
 
     application_configuration.ModuleConfiguration(
-        absnames[1]).AndReturn(ModuleConfigurationStub())
+        absnames[1], None).AndReturn(ModuleConfigurationStub())
 
     self.mox.ReplayAll()
     self.assertRaises(errors.InvalidAppConfigError,
@@ -813,7 +831,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -828,10 +846,10 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     app_yaml_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(app_yaml_config)
+        absnames[0], None).AndReturn(app_yaml_config)
     my_module_config = ModuleConfigurationStub(module_name='my_module')
     application_configuration.ModuleConfiguration(
-        absnames[1]).AndReturn(my_module_config)
+        absnames[1], None).AndReturn(my_module_config)
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
         [os.path.dirname(absnames[0]), absnames[1]])
@@ -844,7 +862,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -885,7 +903,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(absnames)
@@ -899,13 +917,13 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1]).AndReturn(backends_config)
+        absnames[0], absnames[1], None).AndReturn(backends_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(
@@ -920,14 +938,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub()
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1]).AndReturn(backends_config)
+        absnames[0], absnames[1], None).AndReturn(backends_config)
 
     self.mox.ReplayAll()
     config = application_configuration.ApplicationConfiguration(absnames)
@@ -941,14 +959,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     backend_config = ModuleConfigurationStub(module_name='backend')
     backends_config = self.mox.CreateMock(
         application_configuration.BackendsConfiguration)
     backends_config.get_backend_configurations().AndReturn([backend_config])
     application_configuration.BackendsConfiguration(
-        absnames[0], absnames[1]).AndReturn(backends_config)
+        absnames[0], absnames[1], None).AndReturn(backends_config)
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'backend')])
     application_configuration.DispatchConfiguration(
@@ -967,7 +985,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='not-default')
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     dispatch_config = DispatchConfigurationStub([(None, 'default')])
     application_configuration.DispatchConfiguration(
@@ -985,7 +1003,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'fake-module')])
@@ -1005,7 +1023,7 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        absnames[0]).AndReturn(module_config)
+        absnames[0], None).AndReturn(module_config)
 
     self.mox.ReplayAll()
     with _java_temporarily_supported():
@@ -1048,14 +1066,14 @@ class TestApplicationConfiguration(unittest.TestCase):
 
     module1_config = ModuleConfigurationStub(module_name='default')
     application_configuration.ModuleConfiguration(
-        app_yaml).AndReturn(module1_config)
+        app_yaml, None).AndReturn(module1_config)
     dispatch_config = DispatchConfigurationStub(
         [(None, 'default'), (None, 'module2')])
     application_configuration.DispatchConfiguration(
         dispatch_yaml).AndReturn(dispatch_config)
     module2_config = ModuleConfigurationStub(module_name='module2')
     application_configuration.ModuleConfiguration(
-        appengine_web_xml).AndReturn(module2_config)
+        appengine_web_xml, None).AndReturn(module2_config)
 
     self.mox.ReplayAll()
     with _java_temporarily_supported():

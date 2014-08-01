@@ -134,39 +134,122 @@ def _ParseManifestSection(section):
     raise InvalidJarError('Invalid manifest %r' % section)
 
 
-def Make(input_directory, output_directory, base_name,
-         maximum_size=sys.maxint,
+def Make(input_directory, output_directory, base_name, maximum_size=sys.maxint,
          include_predicate=lambda name: True):
-  """Makes one or more jars.
+  """Makes one or more jars from a directory hierarchy.
 
   Args:
-    input_directory: the root of the directory hierarchy from which files will
-      be put in the jar.
-    output_directory: the directory into which the output jars will be put.
+    input_directory: a string that is the root of the directory hierarchy from
+      which files will be put in the jar.
+    output_directory: a string that is the directory to put the output jars.
     base_name: the name to be used for each output jar. If the name is 'foo'
       then each jar will be called 'foo-nnnn.jar', where nnnn is a sequence of
       digits.
     maximum_size: the maximum allowed total uncompressed size of the files in
       any given jar.
     include_predicate: a function that is called once for each file in the
-      directory hierarchy. It is given the absolute path name of the file, and
-      must return a true value if the file is to be included.
+      directory hierarchy. It is given the name that the file will have in the
+      output jar(s), and it must return a true value if the file is to be
+      included.
+
+  Raises:
+    IOError: if input files cannot be read or output jars cannot be written.
+    JarWriteError: if an input file is bigger than maximum_size.
   """
-  _Make(input_directory, output_directory, base_name, maximum_size,
-        include_predicate)
+  zip_names = []
+  abs_dir = os.path.abspath(input_directory)
+  for dirpath, _, files in os.walk(abs_dir):
+    if dirpath == abs_dir:
+      prefix = ''
+    else:
+      assert dirpath.startswith(abs_dir)
+      prefix = dirpath[len(abs_dir) + 1:].replace(os.sep, '/') + '/'
 
 
-class _Make(object):
-  """Makes one or more jars when it is constructed."""
+    zip_names.extend([prefix + f for f in files])
 
-  def __init__(self, input_directory, output_directory, base_name,
-               maximum_size=sys.maxint,
-               include_predicate=lambda name: True):
+  with _Maker(output_directory, base_name, maximum_size) as maker:
+    for name in sorted(zip_names):
+      abs_fs_name = os.path.join(abs_dir, os.path.normpath(name))
+
+      if include_predicate(name):
+        size = os.path.getsize(abs_fs_name)
+        if size > maximum_size:
+          raise JarWriteError(
+              'File %s has size %d which is bigger than the maximum '
+              'jar size %d' % (abs_fs_name, size, maximum_size))
+        maker.Write(name, abs_fs_name)
+
+
+def SplitJar(input_jar, output_directory, maximum_size=sys.maxint,
+             include_predicate=lambda name: True):
+  """Copies an input jar into a directory, splitting if necessary.
+
+  If its size is > maximum_size, then new jars will be created in
+  output_directory, called foo-0000.jar, foo-0001.jar, etc. The jar manifest
+  (META-INF/MANIFEST.MF) is not included in the split jars, and neither is the
+  index (INDEX.LIST) if any. Manifests are not heavily used at runtime, and
+  it's not clear what the correct manifest would be in each individual jar.
+
+  Args:
+    input_jar: a string that is the path to the jar to be copied.
+    output_directory: a string that is the directory to put the copy or copies.
+    maximum_size: the maximum allowed total uncompressed size of the files in
+      any given jar.
+    include_predicate: a function that is called once for each entry in the
+      input jar. It is given the name of the entry, and must return a true value
+      if the entry is to be included in the output jar(s).
+
+  Raises:
+    IOError: if the input jar cannot be read or the output jars cannot be
+      written.
+    ValueError: if input_jar does not end with '.jar'.
+    JarWriteError: if an entry in the input jar is bigger than maximum_size.
+  """
+  if not input_jar.lower().endswith('.jar'):
+    raise ValueError('Does not end with .jar: %s' % input_jar)
+
+  base_name = os.path.splitext(os.path.basename(input_jar))[0]
+  with _Maker(output_directory, base_name, maximum_size) as maker:
+    for name, contents in JarContents(input_jar):
+      if (name != 'META-INF/MANIFEST.MF' and name != 'INDEX.LIST' and
+          include_predicate(name)):
+        size = len(contents)
+        if size > maximum_size:
+          raise JarWriteError(
+              'Entry %s in %s has size %d which is bigger than the maximum jar '
+              'size %d' % (name, input_jar, size, maximum_size))
+        maker.WriteStr(name, contents)
+
+
+def JarContents(jar_path):
+  """Generates (name, contents) pairs for the given jar.
+
+  Each generated tuple consists of the relative name within the jar of an entry,
+  for example 'java/lang/Object.class', and a str that is the corresponding
+  contents.
+
+  Args:
+    jar_path: a str that is the path to the jar.
+
+  Yields:
+    A (name, contents) pair.
+  """
+  with zipfile.ZipFile(jar_path) as jar:
+    for name in jar.namelist():
+      yield name, jar.read(name)
+
+
+class _Maker(object):
+  """Writes jars to contain the entries supplied to its Write method.
+
+  This class is designed to be used in a with statement.
+  """
+
+  def __init__(self, output_directory, base_name, maximum_size=sys.maxint):
     self.base_name = base_name
-    self.input_directory = input_directory
-    self.output_directory = output_directory.rstrip(r'\/')
+    self.output_directory = os.path.normpath(output_directory)
     self.maximum_size = maximum_size
-    self.include_predicate = include_predicate
 
     if not os.path.exists(self.output_directory):
       os.makedirs(self.output_directory)
@@ -179,35 +262,52 @@ class _Make(object):
     self.current_jar = None
     self.current_jar_size = 0
     self.jar_suffix = 0
-    self._Write('')
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, t, value, traceback):
     if self.current_jar:
       self.current_jar.close()
 
-  def _Write(self, relative_dir):
+  def WriteStr(self, name, content):
+    """Write a str as an entry to a jar, creating a new one if necessary.
 
+    If the total uncompressed size of all the entries written to the current jar
+    excludes the maximum, the current jar will be closed and a new one created.
 
+    Args:
+      name: the relative name of the jar entry, for example
+        'java/lang/String.class'.
+      content: a str that is the bytes to be written to the jar entry.
+    """
+    self._WriteEntry(len(content),
+                     lambda: self.current_jar.writestr(name, content))
 
+  def Write(self, name, path):
+    """Write file as an entry to a jar, creating a new one if necessary.
 
+    If the total uncompressed size of all the entries written to the current jar
+    excludes the maximum, the current jar will be closed and a new one created.
 
-    absolute_dir = os.path.join(self.input_directory, relative_dir)
-    for entry in sorted(os.listdir(absolute_dir)):
-      absolute_entry = os.path.join(absolute_dir, entry)
-      if os.path.isdir(absolute_entry):
-        self._Write(os.path.join(relative_dir, entry).replace(os.sep, '/'))
-      elif os.path.isfile(absolute_entry):
-        self._WriteEntry(relative_dir, entry, absolute_entry)
-      else:
-        raise JarWriteError(
-            'Item %s is neither a file nor a directory' % absolute_entry)
+    Args:
+      name: the relative name of the jar entry, for example
+        'java/lang/String.class'.
+      path: a str that is the path of the file to be written
+    """
+    self._WriteEntry(os.path.getsize(path),
+                     lambda: self.current_jar.write(path, name))
 
-  def _WriteEntry(self, relative_dir, entry, absolute_entry):
-    if not self.include_predicate(absolute_entry):
-      return
-    size = os.path.getsize(absolute_entry)
-    if size > self.maximum_size:
-      raise JarWriteError(
-          'File %s has size %d which is bigger than the maximum '
-          'jar size %d' % (absolute_entry, size, self.maximum_size))
+  def _WriteEntry(self, size, write_func):
+    """Write an entry to a jar, creating a new one if necessary.
+
+    If the total uncompressed size of all the entries written to the current jar
+    excludes the maximum, the current jar will be closed and a new one created.
+
+    Args:
+      size: the size in bytes of the new entry, uncompressed.
+      write_func: a function that writes that entry to self.current_jar.
+    """
     if self.current_jar_size + size > self.maximum_size:
       self.current_jar.close()
       self.current_jar = None
@@ -219,5 +319,4 @@ class _Make(object):
           full_jar_name, 'w', zipfile.ZIP_DEFLATED)
       self.current_jar_size = 0
     self.current_jar_size += size
-    entry_name = relative_dir + '/' + entry
-    self.current_jar.write(absolute_entry, entry_name)
+    write_func()

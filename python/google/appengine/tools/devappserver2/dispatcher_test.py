@@ -17,6 +17,7 @@
 """Tests for google.appengine.tools.devappserver2.dispatcher."""
 
 import logging
+import socket
 import unittest
 
 import google
@@ -80,6 +81,10 @@ MODULE_CONFIGURATIONS = [
     ModuleConfigurationStub(application='app',
                             module_name='other',
                             version='version2',
+                            manual_scaling=True),
+    ModuleConfigurationStub(application='app',
+                            module_name='another',
+                            version='version3',
                             manual_scaling=True),
     ]
 
@@ -215,12 +220,17 @@ class DispatcherTest(unittest.TestCase):
     self.module2 = ManualScalingModuleFacade(app_config.modules[0],
                                              balanced_port=2,
                                              host='localhost')
+    self.module3 = ManualScalingModuleFacade(app_config.modules[0],
+                                             balanced_port=3,
+                                             host='0.0.0.0')
 
     self.mox.StubOutWithMock(self.dispatcher, '_create_module')
     self.dispatcher._create_module(app_config.modules[0], 1).AndReturn(
         (self.module1, 2))
     self.dispatcher._create_module(app_config.modules[1], 2).AndReturn(
         (self.module2, 3))
+    self.dispatcher._create_module(app_config.modules[2], 3).AndReturn(
+        (self.module3, 4))
     self.mox.ReplayAll()
     self.dispatcher.start('localhost', 12345, object())
     app_config.dispatch = self.dispatch_config
@@ -232,7 +242,7 @@ class DispatcherTest(unittest.TestCase):
     self.mox.UnsetStubs()
 
   def test_get_module_names(self):
-    self.assertItemsEqual(['default', 'other'],
+    self.assertItemsEqual(['default', 'other', 'another'],
                           self.dispatcher.get_module_names())
 
   def test_get_hostname(self):
@@ -254,6 +264,11 @@ class DispatcherTest(unittest.TestCase):
                       'nomodule',
                       'version2',
                       None)
+    self.assertEqual('%s:3' % socket.gethostname(),
+                     self.dispatcher.get_hostname('another', 'version3'))
+    self.assertEqual(
+        '%s:1000' % socket.gethostname(),
+        self.dispatcher.get_hostname('another', 'version3', '0'))
 
   def test_get_module_by_name(self):
     self.assertEqual(self.module1,

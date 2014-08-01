@@ -418,12 +418,18 @@ class SimpleIndex(object):
   def DeleteDocuments(self, document_ids, response):
     """Deletes documents for the given document_ids."""
     for document_id in document_ids:
-      if document_id in self._documents:
-        document = self._documents[document_id]
-        self._inverted_index.RemoveDocument(document)
-        del self._documents[document_id]
-      delete_status = response.add_status()
+      self.DeleteDocument(document_id, response.add_status())
+
+  def DeleteDocument(self, document_id, delete_status):
+    """Deletes the document, if any, with the given document_id."""
+    if document_id in self._documents:
+      document = self._documents[document_id]
+      self._inverted_index.RemoveDocument(document)
+      del self._documents[document_id]
       delete_status.set_code(search_service_pb.SearchServiceError.OK)
+    else:
+      delete_status.set_code(search_service_pb.SearchServiceError.OK)
+      delete_status.set_error_detail('Not found')
 
   def Documents(self):
     """Returns the documents in the index."""
@@ -703,10 +709,13 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     params = request.params()
     index_spec = params.index_spec()
     index = self._GetIndex(index_spec)
-    if index is None:
-      self._UnknownIndex(response.add_status(), index_spec)
-      return
-    index.DeleteDocuments(params.doc_id_list(), response)
+    for document_id in params.doc_id_list():
+      delete_status = response.add_status()
+      if index is None:
+        delete_status.set_code(search_service_pb.SearchServiceError.OK)
+        delete_status.set_error_detail('Not found')
+      else:
+        index.DeleteDocument(document_id, delete_status)
 
   def _Dynamic_ListIndexes(self, request, response):
     """A local implementation of SearchService.ListIndexes RPC.

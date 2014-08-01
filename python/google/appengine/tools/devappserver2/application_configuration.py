@@ -73,12 +73,14 @@ class ModuleConfiguration(object):
       ('manual_scaling', 'manual_scaling'),
       ('automatic_scaling', 'automatic_scaling')]
 
-  def __init__(self, config_path):
+  def __init__(self, config_path, app_id=None):
     """Initializer for ModuleConfiguration.
 
     Args:
       config_path: A string containing the full path of the yaml or xml file
           containing the configuration for this module.
+      app_id: A string that is the application id, or None if the application id
+          from the yaml or xml file should be used.
     """
     self._config_path = config_path
     root = os.path.dirname(config_path)
@@ -95,6 +97,8 @@ class ModuleConfiguration(object):
 
     self._app_info_external, files_to_check = self._parse_configuration(
         self._config_path)
+    if app_id:
+      self._app_info_external.application = app_id
     self._mtimes = self._get_mtimes(files_to_check)
     self._application = '%s~%s' % (self.partition,
                                    self.application_external_name)
@@ -354,7 +358,7 @@ class ModuleConfiguration(object):
 class BackendsConfiguration(object):
   """Stores configuration information for a backends.yaml file."""
 
-  def __init__(self, app_config_path, backend_config_path):
+  def __init__(self, app_config_path, backend_config_path, app_id=None):
     """Initializer for BackendsConfiguration.
 
     Args:
@@ -362,9 +366,12 @@ class BackendsConfiguration(object):
           containing the configuration for this module.
       backend_config_path: A string containing the full path of the
           backends.yaml file containing the configuration for backends.
+      app_id: A string that is the application id, or None if the application id
+          from the yaml or xml file should be used.
     """
     self._update_lock = threading.RLock()
-    self._base_module_configuration = ModuleConfiguration(app_config_path)
+    self._base_module_configuration = ModuleConfiguration(
+        app_config_path, app_id)
     backend_info_external = self._parse_configuration(
         backend_config_path)
 
@@ -610,12 +617,14 @@ class DispatchConfiguration(object):
 class ApplicationConfiguration(object):
   """Stores application configuration information."""
 
-  def __init__(self, config_paths):
+  def __init__(self, config_paths, app_id=None):
     """Initializer for ApplicationConfiguration.
 
     Args:
       config_paths: A list of strings containing the paths to yaml files,
           or to directories containing them.
+      app_id: A string that is the application id, or None if the application id
+          from the yaml or xml file should be used.
     """
     self.modules = []
     self.dispatch = None
@@ -629,9 +638,10 @@ class ApplicationConfiguration(object):
           config_path.endswith('backends.yml')):
         # TODO: Reuse the ModuleConfiguration created for the app.yaml
         # instead of creating another one for the same file.
+        app_yaml = config_path.replace('backends.y', 'app.y')
         self.modules.extend(
-            BackendsConfiguration(config_path.replace('backends.y', 'app.y'),
-                                  config_path).get_backend_configurations())
+            BackendsConfiguration(
+                app_yaml, config_path, app_id).get_backend_configurations())
       elif (config_path.endswith('dispatch.yaml') or
             config_path.endswith('dispatch.yml')):
         if self.dispatch:
@@ -639,7 +649,7 @@ class ApplicationConfiguration(object):
               'Multiple dispatch.yaml files specified')
         self.dispatch = DispatchConfiguration(config_path)
       else:
-        module_configuration = ModuleConfiguration(config_path)
+        module_configuration = ModuleConfiguration(config_path, app_id)
         self.modules.append(module_configuration)
     application_ids = set(module.application
                           for module in self.modules)

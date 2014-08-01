@@ -70,6 +70,7 @@ final class ClassLoader {
         'google\appengine\datastore\v4\partitionid' => 'google/appengine/datastore/entity_v4_pb.php',
         'google\appengine\datastore\v4\key\pathelement' => 'google/appengine/datastore/entity_v4_pb.php',
         'google\appengine\datastore\v4\key' => 'google/appengine/datastore/entity_v4_pb.php',
+        'google\appengine\datastore\v4\geopoint' => 'google/appengine/datastore/entity_v4_pb.php',
         'google\appengine\datastore\v4\value' => 'google/appengine/datastore/entity_v4_pb.php',
         'google\appengine\datastore\v4\property' => 'google/appengine/datastore/entity_v4_pb.php',
         'google\appengine\datastore\v4\entity' => 'google/appengine/datastore/entity_v4_pb.php',

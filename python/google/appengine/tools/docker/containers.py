@@ -35,10 +35,12 @@ from collections import namedtuple
 
 import logging
 import re
+import threading
 import urlparse
 
 import google
 import docker
+import requests
 
 
 _SUCCESSFUL_BUILD_PATTERN = re.compile(
@@ -115,6 +117,10 @@ class ContainerError(Error):
   """Container related erorrs."""
 
 
+class DockerDaemonConnectionError(Error):
+  """Raised if the docker client can't connect to the docker daemon."""
+
+
 class BaseImage(object):
   """Abstract base class for Docker images."""
 
@@ -126,10 +132,21 @@ class BaseImage(object):
           Docker daemon.
       image_opts: an instance of ImageOptions class describing the parameters
           passed to docker commands.
+
+    Raises:
+      DockerDaemonConnectionError: If the docker daemon isn't responding.
     """
     self._docker_client = docker_client
     self._image_opts = image_opts
     self._id = None
+
+    try:
+      self._docker_client.ping()
+    except requests.exceptions.ConnectionError:
+      raise DockerDaemonConnectionError(
+          'Couldn\'t connect to the docker daemon at %s. Please check that '
+          'the docker daemon is running and that you have specified the '
+          'correct docker host.' % self._docker_client.base_url)
 
   def Build(self):
     """Calls "docker build" if needed."""
@@ -203,23 +220,28 @@ class Image(BaseImage):
 
     if isinstance(build_res, tuple):
       # Older API returns pair (image_id, warnings)
-      self._id = build_res[0]
-      if build_res[1]:
-        logging.debug(build_res[1])
+      self._id, error = build_res
+      if not self.id:
+        raise ImageError(
+            'There was a build error for the image %s. Error: %s' % (self.tag,
+                                                                     error))
     else:
-      # Newer API returns stream_helper generator where last message is saying
-      # about the success of the build.
+      # Newer API returns stream_helper generator. Each message contains output
+      # from the build, and the last message contains the status.
       for x in build_res:
+        x = x.strip()
+        logging.debug(x)
         m = _SUCCESSFUL_BUILD_PATTERN.match(x)
         if m:
           self._id = m.group(1)
           break
-
+      else:
+        # There was no line indicating a successful response.
+        raise ImageError(
+            'There was a build error for the image %s. Error: %s. Run with '
+            '\'--verbosity debug\' for more information.' % (self.tag, x))
     if self.id:
       logging.info('Image %s built, id = %s', self.tag, self.id)
-    else:
-      # TODO: figure out the build error.
-      raise ImageError('There was a build error for the image %s.' % self.tag)
 
   def Remove(self):
     """Calls "docker rmi"."""
@@ -293,6 +315,17 @@ def CreateImage(docker_client, image_opts):
   return image(docker_client, image_opts)
 
 
+def GetDockerHost(docker_client):
+  parsed_url = urlparse.urlparse(docker_client.base_url)
+
+  # Socket url schemes look like: unix:// or http+unix://.
+  # If the user is running docker locally and connecting over a socket, we
+  # should just use localhost.
+  if 'unix' in parsed_url.scheme:
+    return 'localhost'
+  return parsed_url.hostname
+
+
 class Container(object):
   """Docker Container."""
 
@@ -309,12 +342,17 @@ class Container(object):
 
     self._image = CreateImage(docker_client, container_opts.image_opts)
     self._id = None
-    self._host = None
+    self._host = GetDockerHost(self._docker_client)
+    self._container_host = None
     self._port = None
     # Port bindings will be set to a dictionary mapping exposed ports
     # to the interface they are bound to. This will be populated from
     # the container options passed when the container is started.
     self._port_bindings = None
+
+    # Use the daemon flag in case we leak these threads.
+    self._logs_listener = threading.Thread(target=self._ListenToLogs)
+    self._logs_listener.daemon = True
 
   def Start(self):
     """Builds an image (if necessary) and runs a container.
@@ -326,7 +364,11 @@ class Container(object):
     if self.id:
       raise ContainerError('Trying to start already running container.')
 
-    self._image.Build()
+    try:
+      self._image.Build()
+    except ImageError, e:
+      logging.error('Error starting container: %s', e)
+      raise
 
     logging.info('Creating container...')
     port_bindings = self._container_opts.port_bindings or {}
@@ -347,6 +389,9 @@ class Container(object):
         dns=None,
         network_disabled=False,
         name=self.name)
+    # create_container returns a dict sometimes.
+    if isinstance(self.id, dict):
+      self._id = self.id.get('Id')
     logging.info('Container %s created.', self.id)
 
     self._docker_client.start(
@@ -359,13 +404,15 @@ class Container(object):
         # in start.
         volumes_from=self._container_opts.volumes_from)
 
+    self._logs_listener.start()
+
     if not port_bindings:
       # Nothing to inspect
       return
 
     container_info = self._docker_client.inspect_container(self._id)
     network_settings = container_info['NetworkSettings']
-    self._host = network_settings['IPAddress']
+    self._container_host = network_settings['IPAddress']
     self._port_bindings = {
         port: int(network_settings['Ports']['%d/tcp' % port][0]['HostPort'])
         for port in port_bindings
@@ -395,14 +442,7 @@ class Container(object):
   @property
   def host(self):
     """Host the container can be reached at by the host (i.e. client) system."""
-    # TODO: make this work when Dockerd is running on GCE.
-    parsed_url = urlparse.urlparse(self._docker_client.base_url)
-    # Socket url schemes look like: unix:// or http+unix://.
-    # If the user is running docker locally and connecting over a socket, we
-    # should just use localhost.
-    if 'unix' in parsed_url.scheme:
-      return 'localhost'
-    return parsed_url.hostname
+    return self._host
 
   @property
   def port(self):
@@ -422,12 +462,24 @@ class Container(object):
   @property
   def container_addr(self):
     """An address the container can be reached at by another container."""
-    return '%s:%d' % (self._host, self._container_opts.port)
+    return '%s:%d' % (self._container_host, self._container_opts.port)
 
   @property
   def name(self):
     """String, identifying a container. Required for data containers."""
     return self._container_opts.name
+
+  def _ListenToLogs(self):
+    """Logs all output from the docker container.
+
+    The docker.Client.logs method returns a generator that yields log lines.
+    This method iterates over that generator and outputs those log lines to
+    the devappserver2 logs.
+    """
+    log_lines = self._docker_client.logs(container=self.id, stream=True)
+    for line in log_lines:
+      line = line.strip()
+      logging.debug('Container: %s: %s', self.id[0:12], line)
 
   def __enter__(self):
     """Makes Container usable with "with" statement."""

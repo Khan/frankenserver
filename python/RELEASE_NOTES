@@ -3,6 +3,24 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.8
+
+All
+=============================
+- Fixed an issue with Datastore Admin not properly restoring backups if writes
+  are disabled.
+    https://code.google.com/p/googleappengine/issues/detail?id=11090
+
+Python
+=============================
+- Fixed an issue with NDB repeated, nested structures growing exponentially
+  when saving.
+    https://code.google.com/p/googleappengine/issues/detail?id=11082
+
+PHP
+=============================
+- PHP is now updated to 5.4.30.
+
 Version 1.9.7
 
 All

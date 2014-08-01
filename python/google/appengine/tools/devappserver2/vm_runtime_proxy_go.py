@@ -32,7 +32,7 @@ DEBUG_PORT = 5858
 VM_SERVICE_PORT = 8181
 DEFAULT_DOCKER_FILE = """FROM google/golang
 ADD . /app
-RUN /app/_ah/build.sh
+RUN /bin/bash /app/_ah/build.sh
 
 EXPOSE 8080
 CMD []
@@ -44,7 +44,7 @@ ENTRYPOINT ["/app/_ah/exe"]
 # into the Docker image for building the Go App Engine app.
 # There is no need to add '.exe' here because it is always a Linux executable.
 _GO_APP_BUILDER = os.path.join(
-    go_application.GOROOT, 'pkg', 'tool', 'linux_amd64', 'go-app-builder')
+    go_application.GOROOT, 'pkg', 'tool', 'docker-gab')
 
 
 class GoVMRuntimeProxy(instance.RuntimeProxy):
@@ -182,10 +182,13 @@ class GoVMRuntimeProxy(instance.RuntimeProxy):
             go_application.list_go_files(self._module_configuration))
         gab_args.extend([x[0] for x in extras])
         dst_build = os.path.join(ah_dir, 'build.sh')
-        with open(dst_build, 'w') as fd:
+        with open(dst_build, 'wb') as fd:
           fd.write('#!/bin/bash\n')
           fd.write('set -e\n')
           fd.write('mkdir -p /tmp/work\n')
+          fd.write('chmod a+x /app/_ah/gab\n')
+          # Without this line, Windows errors "text file busy".
+          fd.write('shasum /app/_ah/gab\n')
           fd.write(' '.join(gab_args) + '\n')
           fd.write('mv /tmp/work/_ah_exe /app/_ah/exe\n')
           fd.write('rm -rf /tmp/work\n')

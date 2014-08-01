@@ -157,7 +157,7 @@ ALTERNATE_HOSTNAME_SEPARATOR = '-dot-'
 
 BUILTIN_NAME_PREFIX = 'ah-builtin'
 
-RUNTIME_RE_STRING = r'[a-z][a-z0-9]{0,29}'
+RUNTIME_RE_STRING = r'[a-z][a-z0-9\-]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
 
@@ -1384,6 +1384,15 @@ def VmSafeSetRuntime(appyaml, runtime):
       appyaml.vm_settings = VmSettings()
 
 
+    appyaml.vm_settings['has_docker_image'] = True
+
+
+
+    if runtime == 'dart' or runtime == 'contrib-dart':
+      runtime = 'dart'
+
+
+
     appyaml.vm_settings['vm_runtime'] = runtime
     appyaml.runtime = 'vm'
   else:
@@ -1889,6 +1898,9 @@ def ValidateHandlers(handlers, is_include_file=False):
 def LoadSingleAppInfo(app_info):
   """Load a single AppInfo object where one and only one is expected.
 
+  Validates that the the values in the AppInfo match the validators defined
+  in this file. (in particular, in AppInfoExternal.ATTRIBUTES)
+
   Args:
     app_info: A file-like object or string.  If it is a string, parse it as
     a configuration file.  If it is a file-like object, read in data and
@@ -1903,6 +1915,7 @@ def LoadSingleAppInfo(app_info):
     MultipleConfigurationFile: when there is more than one document in YAML
     file.
     DuplicateBackend: if backend is found more than once in 'backends'.
+    yaml_errors.EventError: if the app.yaml fails validation.
   """
   builder = yaml_object.ObjectBuilder(AppInfoExternal)
   handler = yaml_builder.BuilderHandler(builder)

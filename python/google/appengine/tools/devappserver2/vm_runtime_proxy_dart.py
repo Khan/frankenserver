@@ -25,7 +25,6 @@ import tempfile
 
 import google
 
-from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import vm_runtime_proxy
 
@@ -33,35 +32,15 @@ DEBUG_PORT = 5858
 VM_SERVICE_PORT = 8181
 DEV_MODE = 'dev'
 DEPLOY_MODE = 'deploy'
-DEFAULT_PUB_SERVE_HOST = '127.0.0.1'
 DEFAULT_DOCKER_FILE = 'FROM google/appengine-dart'
 
 
 class DartVMRuntimeProxy(instance.RuntimeProxy):
   """Manages a Dart VM Runtime process running inside of a docker container.
-
-  The Dart VM Runtime can run in two modes:
-
-    Development
-    Deployment
-
-  When in development mode this proxy will first try to forward
-  requests to 'pub serve' for asset transformation. If 'pub serve'
-  does not have the resource the request is forwarded to the Dart
-  application instance running in the container.
-
-  When in deployment mode all requests are forwarded to the Dart
-  application instance.
-
-  When building the container there is also a difference between
-  development mode and depolyment mode. In deployment mode 'pub build'
-  is run on the 'web' directory to produce the 'build' directory. In
-  development mode this step is skipped and the resources which would
-  otherwise be in the 'build' directory are produced by 'pub serve'.
   """
 
   def __init__(self, docker_client, runtime_config_getter,
-               module_configuration):
+               module_configuration, default_port=8080, port_bindings=None):
     """Initializer for VMRuntimeProxy.
 
     Args:
@@ -72,19 +51,18 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
       module_configuration: An application_configuration.ModuleConfiguration
           instance respresenting the configuration of the module that owns the
           runtime.
+      default_port: int, main port inside of the container that instance is
+          listening on.
+      port_bindings: dict, Additional port bindings from the container.
     """
     super(DartVMRuntimeProxy, self).__init__()
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
-    port_bindings = {
-        DEBUG_PORT: None,
-        VM_SERVICE_PORT: None,
-    }
-    self._vm_runtime_proxy = vm_runtime_proxy.VMRuntimeProxy(
-        docker_client=docker_client,
-        runtime_config_getter=runtime_config_getter,
-        module_configuration=module_configuration,
-        port_bindings=port_bindings)
+
+    if not port_bindings:
+      port_bindings = {
+          VM_SERVICE_PORT: None,
+      }
 
     # Get the Dart configuration.
     runtime_config = self._runtime_config_getter()
@@ -95,13 +73,24 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
       self._pub = os.path.join(dart_config.dart_sdk, 'bin', 'pub')
     else:
       self._pub = 'pub'
-    self._pub_serve_proxy = None
 
     # Get 'pub serve' and mode configuration.
-    self._pub_serve_host = (dart_config.dart_pub_serve_host
-                            or DEFAULT_PUB_SERVE_HOST)
+    self._pub_serve_host = dart_config.dart_pub_serve_host
     self._pub_serve_port = dart_config.dart_pub_serve_port
     self._mode = dart_config.dart_dev_mode or DEV_MODE
+
+    additional_environment = None
+    if self._use_pub_serve:
+      pub_serve = 'http://%s:%s' % (self._pub_serve_host, self._pub_serve_port)
+      additional_environment = {'DART_PUB_SERVE': pub_serve}
+
+    self._vm_runtime_proxy = vm_runtime_proxy.VMRuntimeProxy(
+        docker_client=docker_client,
+        runtime_config_getter=runtime_config_getter,
+        module_configuration=module_configuration,
+        default_port=default_port,
+        port_bindings=port_bindings,
+        additional_environment=additional_environment)
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):
@@ -122,57 +111,12 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
       request_type: The type of the request. See instance.*_REQUEST module
           constants.
 
-    Yields:
-      A sequence of strings containing the body of the HTTP response.
+    Returns:
+      Generator of sequence of strings containing the body of the HTTP response.
     """
 
-    # Variable which can be mutated in pub_start_response.
-    found_in_pub = [False]
-
-    def pub_start_response(status, response_headers, exc_info=None):
-      if len(status) >= 3 and status[:3] != '404':
-        found_in_pub[0] = True
-        start_response(status, response_headers, exc_info)
-      else:
-        found_in_pub[0] = False
-
-    # Proxy directly to the application instance if 'pub serve' is not
-    # used or if this is an internal request.
-    if self._pub_serve_proxy is None or environ['PATH_INFO'][:5] == '/_ah/':
-      it = self._vm_runtime_proxy.handle(environ, start_response, url_map,
+    return self._vm_runtime_proxy.handle(environ, start_response, url_map,
                                          match, request_id, request_type)
-      for data in it:
-        yield data
-    else:
-      # If 'pub serve' is used try to proxy to that. The function handle
-      # is a generator. Therefore if there is a socket connection error
-      # the exception will be throws when next() is called.
-      try:
-        it = self._pub_serve_proxy.handle(environ, pub_start_response, url_map,
-                                          match, request_id, request_type)
-        # If the resource was found in 'pub serve' forward the
-        # data. Otherwise get the resource from the application
-        # instance.
-        first = True
-        for data in it:
-          if found_in_pub[0]:
-            yield data
-          else:
-            if first:
-              first = False
-              it = self._vm_runtime_proxy.handle(environ, start_response,
-                                                 url_map, match,
-                                                 request_id, request_type)
-              for data in it:
-                yield data
-      except IOError as e:
-        # If there was an exception connecting to 'pub serve' get the
-        # resource from the application instance.
-        logging.error("Cannot access 'pub serve': %s", str(e))
-        it = self._vm_runtime_proxy.handle(environ, start_response, url_map,
-                                           match, request_id, request_type)
-        for data in it:
-          yield data
 
   def start(self):
     logging.info('Starting Dart VM Deployment process')
@@ -215,18 +159,12 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
 
         self._vm_runtime_proxy.start(dockerfile_dir=dst_application_dir)
 
-      logging.info('DartVM debugger available at 127.0.0.1:%s !',
-                   self._vm_runtime_proxy.PortBinding(DEBUG_PORT))
       logging.info(
-          'DartVM vmservice available at http://127.0.0.1:%s/ !',
-          self._vm_runtime_proxy.PortBinding(VM_SERVICE_PORT))
-
-      if self._use_pub_serve:
-        self._pub_serve_proxy = http_proxy.HttpProxy(
-            host=self._pub_serve_host, port=self._pub_serve_port,
-            instance_died_unexpectedly=self._pub_died_unexpectedly,
-            instance_logs_getter=self._get_pub_logs,
-            error_handler_file=None)
+          'To access Dart VM observatory for module {module} '
+          'open http://{host}:{port}'.format(
+              module=self._module_configuration.module_name,
+              host=self._vm_runtime_proxy.ContainerHost(),
+              port=self._vm_runtime_proxy.PortBinding(VM_SERVICE_PORT)))
 
     except Exception as e:
       logging.info('Dart VM Deployment process failed: %s', str(e))
@@ -234,14 +172,6 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
 
   def quit(self):
     self._vm_runtime_proxy.quit()
-
-  def _get_pub_logs(self):
-    # There is no log available from pub.
-    return ''
-
-  def _pub_died_unexpectedly(self):
-    # Return false to make the HTTP proxy throw on errors.
-    return False
 
   @property
   def _use_pub_serve(self):

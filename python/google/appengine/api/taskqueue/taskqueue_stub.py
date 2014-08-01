@@ -2024,7 +2024,7 @@ class TaskQueueServiceStub(apiproxy_stub.APIProxyStub):
                auto_task_running=False,
                task_retry_seconds=30,
                _all_queues_valid=False,
-               default_http_server=None,
+               default_http_server='localhost',
                _testing_validate_state=False,
                request_data=None):
     """Constructor.

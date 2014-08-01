@@ -547,7 +547,8 @@ def _verify_signed_jwt_with_certs(
 
 
 
-    raise _AppIdentityError('Wrong number of segments in token: %r' % jwt)
+    raise _AppIdentityError('Token is not an id_token (Wrong number of '
+                            'segments)')
   signed = '%s.%s' % (segments[0], segments[1])
 
   signature = _urlsafe_b64decode(segments[2])
@@ -561,7 +562,7 @@ def _verify_signed_jwt_with_certs(
   try:
     header = json.loads(header_body)
   except:
-    raise _AppIdentityError("Can't parse header: %r" % header_body)
+    raise _AppIdentityError("Can't parse header")
   if header.get('alg') != 'RS256':
     raise _AppIdentityError('Unexpected encryption algorithm: %r' %
                             header.get('alg'))
@@ -571,12 +572,12 @@ def _verify_signed_jwt_with_certs(
   try:
     parsed = json.loads(json_body)
   except:
-    raise _AppIdentityError("Can't parse token body: %r" % json_body)
+    raise _AppIdentityError("Can't parse token body")
 
   certs = _get_cached_certs(cert_uri, cache)
   if certs is None:
     raise _AppIdentityError(
-        'Unable to retrieve certs needed to verify the signed JWT: %r' % jwt)
+        'Unable to retrieve certs needed to verify the signed JWT')
 
 
 
@@ -607,27 +608,27 @@ def _verify_signed_jwt_with_certs(
     if verified:
       break
   if not verified:
-    raise _AppIdentityError('Invalid token signature: %r' % jwt)
+    raise _AppIdentityError('Invalid token signature')
 
 
   iat = parsed.get('iat')
   if iat is None:
-    raise _AppIdentityError('No iat field in token: %r' % json_body)
+    raise _AppIdentityError('No iat field in token')
   earliest = iat - _CLOCK_SKEW_SECS
 
 
   exp = parsed.get('exp')
   if exp is None:
-    raise _AppIdentityError('No exp field in token: %r' % json_body)
+    raise _AppIdentityError('No exp field in token')
   if exp >= time_now + _MAX_TOKEN_LIFETIME_SECS:
-    raise _AppIdentityError('exp field too far in future: %r' % json_body)
+    raise _AppIdentityError('exp field too far in future')
   latest = exp + _CLOCK_SKEW_SECS
 
   if time_now < earliest:
-    raise _AppIdentityError('Token used too early, %d < %d: %r' %
-                            (time_now, earliest, json_body))
+    raise _AppIdentityError('Token used too early, %d < %d' %
+                            (time_now, earliest))
   if time_now > latest:
-    raise _AppIdentityError('Token used too late, %d > %d: %r' %
-                            (time_now, latest, json_body))
+    raise _AppIdentityError('Token used too late, %d > %d' %
+                            (time_now, latest))
 
   return parsed

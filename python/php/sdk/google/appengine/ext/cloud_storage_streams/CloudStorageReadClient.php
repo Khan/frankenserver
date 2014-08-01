@@ -165,10 +165,12 @@ final class CloudStorageReadClient extends CloudStorageClient {
     $this->eof = false;
 
     // Check if we can seek inside the current buffer
-    $block_start = $this->object_block_start_position;
-    $buffer_end = $block_start + strlen($this->read_buffer);
-    if ($block_start <= $offset && $offset < $buffer_end) {
-      $this->buffer_read_position = $offset - $block_start;
+    $buffer_end = $this->object_block_start_position +
+                  strlen($this->read_buffer);
+    if ($this->object_block_start_position <= $offset &&
+        $offset < $buffer_end) {
+      $this->buffer_read_position = $offset -
+          $this->object_block_start_position;
     } else {
       $this->read_buffer = "";
       $this->buffer_read_position = 0;
@@ -192,11 +194,7 @@ final class CloudStorageReadClient extends CloudStorageClient {
    * Having tell() at this level in the stack seems bonkers.
    */
   public function tell() {
-    if (strlen($this->read_buffer) == 0) {
-      return $this->next_read_position;
-    } else {
-      return $this->buffer_read_position + $this->object_block_start_position;
-    }
+    return $this->buffer_read_position + $this->object_block_start_position;
   }
 
   public function getMetaData() {

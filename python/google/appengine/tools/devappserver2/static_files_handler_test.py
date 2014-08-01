@@ -464,6 +464,32 @@ class TestStaticContentHandlerHandlePath(wsgi_test_utils.WSGITestCase):
         static_files_handler.StaticContentHandler._filename_to_mtime_and_etag,
         {'/home/appdir/index.html': (12345.6, 'NDcyNDU2MzU1')})
 
+  def test_nonstandard_mimetype(self):
+    url_map = appinfo.URLMap(url='/',
+                             static_files='simple.dart')
+
+    h = static_files_handler.StaticContentHandler(
+        root_path=None,
+        url_map=url_map,
+        url_pattern='/$')
+
+    os.path.getmtime('/home/appdir/simple.dart').AndReturn(12345.6)
+    static_files_handler.StaticContentHandler._read_file(
+        '/home/appdir/simple.dart').AndReturn('void main() {}')
+
+    self.mox.ReplayAll()
+    self.assertResponse('200 OK',
+                        {'Content-type': 'application/dart',
+                         'Content-length': '14',
+                         'Expires': 'Fri, 01 Jan 1990 00:00:00 GMT',
+                         'Cache-Control': 'no-cache',
+                         'ETag': '"LTE2OTA2MzYyMTM="'},
+                        'void main() {}',
+                        h._handle_path,
+                        '/home/appdir/simple.dart',
+                        {'REQUEST_METHOD': 'GET'})
+    self.mox.VerifyAll()
+
 
 class TestStaticContentHandlerCheckEtagMatch(unittest.TestCase):
   """Tests for static_files_handler.StaticContentHandler._check_etag_match."""

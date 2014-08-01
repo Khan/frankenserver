@@ -88,8 +88,38 @@ def create_fancy_connection(tunnel_host=None, key_file=None,
         else:
           self.cert_reqs = ssl.CERT_NONE
 
+    def _get_hostport(self, host, port):
+      # Python 2.7.7rc1 (hg r90728:568041fd8090), 3.4.1 and 3.5 rename
+      # _set_hostport to _get_hostport and changes it's functionality.  The
+      # Python 2.7.7rc1 version of this method is included here for
+      # compatibility with earlier versions of Python.  Without this, HTTPS over
+      # HTTP CONNECT proxies cannot be used.
+
+      # This method may be removed if compatibility with Python <2.7.7rc1 is not
+      # required.
+
+      # Python bug: http://bugs.python.org/issue7776
+      if port is None:
+        i = host.rfind(":")
+        j = host.rfind("]")         # ipv6 addresses have [...]
+        if i > j:
+          try:
+            port = int(host[i+1:])
+          except ValueError:
+            if host[i+1:] == "":  # http://foo.com:/ == http://foo.com/
+              port = self.default_port
+            else:
+              raise httplib.InvalidURL("nonnumeric port: '%s'" % host[i+1:])
+          host = host[:i]
+        else:
+          port = self.default_port
+        if host and host[0] == "[" and host[-1] == "]":
+          host = host[1:-1]
+
+      return (host, port)
+
     def _tunnel(self):
-      self._set_hostport(self._tunnel_host, None)
+      self.host, self.port = self._get_hostport(self._tunnel_host, None)
       logging.info("Connecting through tunnel to: %s:%d",
                    self.host, self.port)
 

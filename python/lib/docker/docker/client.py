@@ -15,6 +15,9 @@
 import json
 import re
 import shlex
+# This file uses a variable named 'socket' several times. Rename the socket
+# library to minimize changes.
+import socket as socket_lib
 import struct
 import warnings
 
@@ -222,6 +225,10 @@ class Client(requests.Session):
         """Generator for data coming from a chunked-encoded HTTP response."""
         socket_fp = self._get_raw_response_socket(response)
         socket_fp.setblocking(1)
+        # _socket.socket objects don't have a 'makefile' method on Windows.
+        # Convert to a socket._socketobject.
+        if not hasattr(socket_fp, 'makefile'):
+            socket_fp = socket_lib.socket(_sock=socket_fp)
         socket = socket_fp.makefile()
         while True:
             # Because Docker introduced newlines at the end of chunks in v0.9,

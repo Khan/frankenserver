@@ -18,6 +18,7 @@
 
 import collections
 import logging
+import socket
 import threading
 import urlparse
 import wsgiref.headers
@@ -245,7 +246,9 @@ class Dispatcher(request_info.Dispatcher):
                    self._allow_skipped_files,
                    threadsafe_override)
 
-    if module_configuration.manual_scaling:
+    # TODO: Remove this 'or' statement when we support auto-scaled VMs.
+    if (module_configuration.manual_scaling or
+        module_configuration.runtime == 'vm'):
       _module = module.ManualScalingModule(*module_args)
     elif module_configuration.basic_scaling:
       _module = module.BasicScalingModule(*module_args)
@@ -265,6 +268,7 @@ class Dispatcher(request_info.Dispatcher):
 
     If instance_id is set, this will return a hostname for that particular
     instances. Otherwise, it will return the hostname for load-balancing.
+    Returning 0.0.0.0 is modified to be a more useful address to the user.
 
     Args:
       module_name: A str containing the name of the module.
@@ -282,9 +286,21 @@ class Dispatcher(request_info.Dispatcher):
     """
     _module = self._get_module(module_name, version)
     if instance_id is None:
-      return _module.balanced_address
+      hostname = _module.balanced_address
     else:
-      return _module.get_instance_address(instance_id)
+      hostname = _module.get_instance_address(instance_id)
+
+    parts = hostname.split(':')
+    # 0.0.0.0 or 0 binds to all interfaces but only connects to localhost.
+    # Convert to an address that can connect from local and remote machines.
+    # TODO: handle IPv6 bind-all address (::).
+    try:
+      if socket.inet_aton(parts[0]) == '\0\0\0\0':
+        hostname = ':'.join([socket.gethostname()] + parts[1:])
+    except socket.error:
+      # socket.inet_aton raised an exception so parts[0] is not an IP address.
+      pass
+    return hostname
 
   def get_module_names(self):
     """Returns a list of module names."""

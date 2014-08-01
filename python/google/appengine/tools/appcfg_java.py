@@ -91,6 +91,17 @@ def AddUpdateOptions(parser):
   parser.add_option('--enable_jar_classes', action='store_true',
                     dest='do_jar_classes', default=False,
                     help='Jar the WEB-INF/classes content.')
+  parser.add_option('--enable_jar_splitting', action='store_true',
+                    dest='do_jar_splitting', default=False,
+                    help='Split large jar files (> 32M) into smaller '
+                    'fragments.')
+  parser.add_option('--jar_splitting_excludes', action='store',
+                    dest='jar_splitting_exclude_suffixes', default='',
+                    help='When --enable_jar_splitting is specified and '
+                    '--jar_splitting_excludes specifies a comma-separated list '
+                    'of suffixes, a file in a jar whose name ends with one '
+                    'of the suffixes will not be included in the split jar '
+                    'fragments.')
 
 
 class JavaAppUpdate(object):
@@ -325,9 +336,12 @@ class JavaAppUpdate(object):
 
   def _CopyOrLinkFile(self, source, dest):
 
-    if not os.path.exists(os.path.dirname(dest)):
-      os.makedirs(os.path.dirname(dest))
-    if source.endswith('web.xml') or self.options.no_symlinks:
+    destdir = os.path.dirname(dest)
+    if not os.path.exists(destdir):
+      os.makedirs(destdir)
+    if self._ShouldSplitJar(source):
+      self._SplitJar(source, destdir)
+    elif source.endswith('web.xml') or self.options.no_symlinks:
       shutil.copy(source, dest)
     else:
       os.symlink(source, dest)
@@ -353,6 +367,32 @@ class JavaAppUpdate(object):
           raise IOError('Cannot overwrite existing %s' % dest_entry)
       else:
         shutil.move(source_entry, dest_entry)
+
+  _MAX_SIZE = 32 * 1000 * 1000
+
+
+  def _ShouldSplitJar(self, path):
+    return (path.lower().endswith('.jar') and self.options.do_jar_splitting and
+            os.path.getsize(path) >= self._MAX_SIZE)
+
+  def _SplitJar(self, jar_path, dest_dir):
+    """Split a source jar into two or more jars in the given dest_dir.
+
+    Args:
+      jar_path: string that is the path to jar to be split. The contents of this
+        jar will be copied into the output jars, but the jar itself will not be
+        affected.
+      dest_dir: directory into which to put the jars that result from splitting
+        the input jar.
+
+    Raises:
+      IOError: if the jar cannot be split.
+    """
+
+    exclude_suffixes = (
+        set(self.options.jar_splitting_exclude_suffixes.split(',')) - set(['']))
+    include = lambda name: not any(name.endswith(s) for s in exclude_suffixes)
+    jarfile.SplitJar(jar_path, dest_dir, self._MAX_SIZE, include)
 
   @staticmethod
   def _GetStaticFileList(staging_dir):

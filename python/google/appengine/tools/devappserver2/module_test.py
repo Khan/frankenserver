@@ -25,6 +25,7 @@ import time
 import unittest
 
 import google
+from concurrent import futures
 import mox
 
 from google.appengine.api import appinfo
@@ -1647,16 +1648,15 @@ class TestManualScalingInstancePoolSuspendAndResume(unittest.TestCase):
     self._new_instance = self.mox.CreateMock(instance.Instance)
     self.factory.new_instance(0, expect_ready_request=True).AndReturn(
         self._new_instance)
-    module._THREAD_POOL.submit(self.module._suspend_instance, self._instance,
-                               self._wsgi_server.port)
+
+    f = futures.Future()
+    f.set_result(True)
     module._THREAD_POOL.submit(self.module._start_instance, self._wsgi_server,
-                               self._new_instance)
-    self._instance.quit(expect_shutdown=True)
+                               self._new_instance).AndReturn(f)
+    self._instance.quit(force=True)
     port = object()
-    self.module._shutdown_instance(self._instance, port)
     self.mox.ReplayAll()
     self.module.restart()
-    self.module._suspend_instance(self._instance, port)
     self.mox.VerifyAll()
     self.assertEqual(self.module._handle_request,
                      self._wsgi_server._app.func)

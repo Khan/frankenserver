@@ -51,7 +51,8 @@ class ParseError(Error):
 
 
 def MessageToString(message, as_utf8=False, as_one_line=False,
-                    pointy_brackets=False, float_format=None):
+                    pointy_brackets=False, use_index_order=False,
+                    float_format=None):
   """Convert protobuf message to text format.
 
   Floating point values can be formatted compactly with 15 digits of
@@ -64,6 +65,9 @@ def MessageToString(message, as_utf8=False, as_one_line=False,
     as_one_line: Don't introduce newlines between fields.
     pointy_brackets: If True, use angle brackets instead of curly braces for
       nesting.
+    use_index_order: If True, print fields of a proto message using the order
+      defined in source code instead of the field number. By default, use the
+      field number order.
     float_format: If set, use this to specify floating point number formatting
       (per the "Format Specification Mini-Language"); otherwise, str() is used.
 
@@ -73,6 +77,7 @@ def MessageToString(message, as_utf8=False, as_one_line=False,
   out = cStringIO.StringIO()
   PrintMessage(message, out, as_utf8=as_utf8, as_one_line=as_one_line,
                pointy_brackets=pointy_brackets,
+               use_index_order=use_index_order,
                float_format=float_format)
   result = out.getvalue()
   out.close()
@@ -82,8 +87,12 @@ def MessageToString(message, as_utf8=False, as_one_line=False,
 
 
 def PrintMessage(message, out, indent=0, as_utf8=False, as_one_line=False,
-                 pointy_brackets=False, float_format=None):
-  for field, value in message.ListFields():
+                 pointy_brackets=False, use_index_order=False,
+                 float_format=None):
+  fields = message.ListFields()
+  if use_index_order:
+    fields.sort(key=lambda x: x[0].index)
+  for field, value in fields:
     if field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
       for element in value:
         PrintField(field, element, out, indent, as_utf8, as_one_line,

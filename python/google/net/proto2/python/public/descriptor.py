@@ -228,7 +228,7 @@ class Descriptor(_NestedDescriptorBase):
     super(Descriptor, self).__init__(
         options, 'MessageOptions', name, full_name, file,
         containing_type, serialized_start=serialized_start,
-        serialized_end=serialized_start)
+        serialized_end=serialized_end)
 
 
 
@@ -259,9 +259,6 @@ class Descriptor(_NestedDescriptorBase):
     self.extensions_by_name = dict((f.name, f) for f in extensions)
     self.is_extendable = is_extendable
     self.extension_ranges = extension_ranges
-
-    self._serialized_start = serialized_start
-    self._serialized_end = serialized_end
 
   def EnumValueName(self, enum, value):
     """Returns the string name of an enum value.
@@ -527,16 +524,13 @@ class EnumDescriptor(_NestedDescriptorBase):
     super(EnumDescriptor, self).__init__(
         options, 'EnumOptions', name, full_name, file,
         containing_type, serialized_start=serialized_start,
-        serialized_end=serialized_start)
+        serialized_end=serialized_end)
 
     self.values = values
     for value in self.values:
       value.type = self
     self.values_by_name = dict((v.name, v) for v in values)
     self.values_by_number = dict((v.number, v) for v in values)
-
-    self._serialized_start = serialized_start
-    self._serialized_end = serialized_end
 
   def CopyToProto(self, proto):
     """Copies this to a descriptor_pb2.EnumDescriptorProto.

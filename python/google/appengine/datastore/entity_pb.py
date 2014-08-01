@@ -3571,6 +3571,8 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
   key_ = None
   has_before_ = 0
   before_ = 1
+  has_before_ascending_ = 0
+  before_ascending_ = 0
 
   def __init__(self, contents=None):
     self.index_value_ = []
@@ -3625,12 +3627,26 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
 
   def has_before(self): return self.has_before_
 
+  def before_ascending(self): return self.before_ascending_
+
+  def set_before_ascending(self, x):
+    self.has_before_ascending_ = 1
+    self.before_ascending_ = x
+
+  def clear_before_ascending(self):
+    if self.has_before_ascending_:
+      self.has_before_ascending_ = 0
+      self.before_ascending_ = 0
+
+  def has_before_ascending(self): return self.has_before_ascending_
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.index_value_size()): self.add_index_value().CopyFrom(x.index_value(i))
     if (x.has_key()): self.mutable_key().MergeFrom(x.key())
     if (x.has_before()): self.set_before(x.before())
+    if (x.has_before_ascending()): self.set_before_ascending(x.before_ascending())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3641,6 +3657,8 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
     if self.has_key_ and self.key_ != x.key_: return 0
     if self.has_before_ != x.has_before_: return 0
     if self.has_before_ and self.before_ != x.before_: return 0
+    if self.has_before_ascending_ != x.has_before_ascending_: return 0
+    if self.has_before_ascending_ and self.before_ascending_ != x.before_ascending_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3656,6 +3674,7 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.index_value_)): n += self.lengthString(self.index_value_[i].ByteSize())
     if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSize())
     if (self.has_before_): n += 2
+    if (self.has_before_ascending_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -3664,12 +3683,14 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.index_value_)): n += self.lengthString(self.index_value_[i].ByteSizePartial())
     if (self.has_key_): n += 1 + self.lengthString(self.key_.ByteSizePartial())
     if (self.has_before_): n += 2
+    if (self.has_before_ascending_): n += 2
     return n
 
   def Clear(self):
     self.clear_index_value()
     self.clear_key()
     self.clear_before()
+    self.clear_before_ascending()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.index_value_)):
@@ -3683,6 +3704,9 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
     if (self.has_before_):
       out.putVarInt32(24)
       out.putBoolean(self.before_)
+    if (self.has_before_ascending_):
+      out.putVarInt32(32)
+      out.putBoolean(self.before_ascending_)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.index_value_)):
@@ -3696,6 +3720,9 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
     if (self.has_before_):
       out.putVarInt32(24)
       out.putBoolean(self.before_)
+    if (self.has_before_ascending_):
+      out.putVarInt32(32)
+      out.putBoolean(self.before_ascending_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3714,6 +3741,9 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 24:
         self.set_before(d.getBoolean())
+        continue
+      if tt == 32:
+        self.set_before_ascending(d.getBoolean())
         continue
 
 
@@ -3736,6 +3766,7 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
       res+=self.key_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_before_: res+=prefix+("before: %s\n" % self.DebugFormatBool(self.before_))
+    if self.has_before_ascending_: res+=prefix+("before_ascending: %s\n" % self.DebugFormatBool(self.before_ascending_))
     return res
 
 
@@ -3745,20 +3776,23 @@ class IndexPostfix(ProtocolBuffer.ProtocolMessage):
   kindex_value = 1
   kkey = 2
   kbefore = 3
+  kbefore_ascending = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "index_value",
     2: "key",
     3: "before",
-  }, 3)
+    4: "before_ascending",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

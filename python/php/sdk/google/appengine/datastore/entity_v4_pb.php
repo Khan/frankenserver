@@ -448,6 +448,118 @@ namespace google\appengine\datastore\v4 {
   }
 }
 namespace google\appengine\datastore\v4 {
+  class GeoPoint extends \google\net\ProtocolMessage {
+    public function getLatitude() {
+      if (!isset($this->latitude)) {
+        return 0.0;
+      }
+      return $this->latitude;
+    }
+    public function setLatitude($val) {
+      $this->latitude = $val;
+      return $this;
+    }
+    public function clearLatitude() {
+      unset($this->latitude);
+      return $this;
+    }
+    public function hasLatitude() {
+      return isset($this->latitude);
+    }
+    public function getLongitude() {
+      if (!isset($this->longitude)) {
+        return 0.0;
+      }
+      return $this->longitude;
+    }
+    public function setLongitude($val) {
+      $this->longitude = $val;
+      return $this;
+    }
+    public function clearLongitude() {
+      unset($this->longitude);
+      return $this;
+    }
+    public function hasLongitude() {
+      return isset($this->longitude);
+    }
+    public function clear() {
+      $this->clearLatitude();
+      $this->clearLongitude();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->latitude)) {
+        $res += 9;
+      }
+      if (isset($this->longitude)) {
+        $res += 9;
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->latitude)) {
+        $out->putVarInt32(9);
+        $out->putDouble($this->latitude);
+      }
+      if (isset($this->longitude)) {
+        $out->putVarInt32(17);
+        $out->putDouble($this->longitude);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 9:
+            $this->setLatitude($d->getDouble());
+            break;
+          case 17:
+            $this->setLongitude($d->getDouble());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->latitude)) return 'latitude';
+      if (!isset($this->longitude)) return 'longitude';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasLatitude()) {
+        $this->setLatitude($x->getLatitude());
+      }
+      if ($x->hasLongitude()) {
+        $this->setLongitude($x->getLongitude());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->latitude) !== isset($x->latitude)) return false;
+      if (isset($this->latitude) && $this->latitude !== $x->latitude) return false;
+      if (isset($this->longitude) !== isset($x->longitude)) return false;
+      if (isset($this->longitude) && $this->longitude !== $x->longitude) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->latitude)) {
+        $res .= $prefix . "latitude: " . $this->debugFormatDouble($this->latitude) . "\n";
+      }
+      if (isset($this->longitude)) {
+        $res .= $prefix . "longitude: " . $this->debugFormatDouble($this->longitude) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace google\appengine\datastore\v4 {
   class Value extends \google\net\ProtocolMessage {
     private $list_value = array();
     public function getBooleanValue() {
@@ -601,6 +713,28 @@ namespace google\appengine\datastore\v4 {
     public function clearListValue() {
       $this->list_value = array();
     }
+    public function getGeoPointValue() {
+      if (!isset($this->geo_point_value)) {
+        return new \google\appengine\datastore\v4\GeoPoint();
+      }
+      return $this->geo_point_value;
+    }
+    public function mutableGeoPointValue() {
+      if (!isset($this->geo_point_value)) {
+        $res = new \google\appengine\datastore\v4\GeoPoint();
+        $this->geo_point_value = $res;
+        return $res;
+      }
+      return $this->geo_point_value;
+    }
+    public function clearGeoPointValue() {
+      if (isset($this->geo_point_value)) {
+        unset($this->geo_point_value);
+      }
+    }
+    public function hasGeoPointValue() {
+      return isset($this->geo_point_value);
+    }
     public function getMeaning() {
       if (!isset($this->meaning)) {
         return 0;
@@ -694,6 +828,7 @@ namespace google\appengine\datastore\v4 {
       $this->clearKeyValue();
       $this->clearEntityValue();
       $this->clearListValue();
+      $this->clearGeoPointValue();
       $this->clearMeaning();
       $this->clearIndexed();
       $this->clearBlobKeyValue();
@@ -728,6 +863,10 @@ namespace google\appengine\datastore\v4 {
       $res += 1 * sizeof($this->list_value);
       foreach ($this->list_value as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->geo_point_value)) {
+        $res += 1;
+        $res += $this->lengthString($this->geo_point_value->byteSizePartial());
       }
       if (isset($this->meaning)) {
         $res += 1;
@@ -782,6 +921,11 @@ namespace google\appengine\datastore\v4 {
         $out->putVarInt32(58);
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
+      }
+      if (isset($this->geo_point_value)) {
+        $out->putVarInt32(66);
+        $out->putVarInt32($this->geo_point_value->byteSizePartial());
+        $this->geo_point_value->outputPartial($out);
       }
       if (isset($this->meaning)) {
         $out->putVarInt32(112);
@@ -838,6 +982,12 @@ namespace google\appengine\datastore\v4 {
             $d->skip($length);
             $this->addListValue()->tryMerge($tmp);
             break;
+          case 66:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableGeoPointValue()->tryMerge($tmp);
+            break;
           case 112:
             $this->setMeaning($d->getVarInt32());
             break;
@@ -873,6 +1023,7 @@ namespace google\appengine\datastore\v4 {
       foreach ($this->list_value as $value) {
         if (!$value->isInitialized()) return 'list_value';
       }
+      if (isset($this->geo_point_value) && (!$this->geo_point_value->isInitialized())) return 'geo_point_value';
       return null;
     }
     public function mergeFrom($x) {
@@ -897,6 +1048,9 @@ namespace google\appengine\datastore\v4 {
       }
       foreach ($x->getListValueList() as $v) {
         $this->addListValue()->copyFrom($v);
+      }
+      if ($x->hasGeoPointValue()) {
+        $this->mutableGeoPointValue()->mergeFrom($x->getGeoPointValue());
       }
       if ($x->hasMeaning()) {
         $this->setMeaning($x->getMeaning());
@@ -932,6 +1086,8 @@ namespace google\appengine\datastore\v4 {
       foreach (array_map(null, $this->list_value, $x->list_value) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->geo_point_value) !== isset($x->geo_point_value)) return false;
+      if (isset($this->geo_point_value) && !$this->geo_point_value->equals($x->geo_point_value)) return false;
       if (isset($this->meaning) !== isset($x->meaning)) return false;
       if (isset($this->meaning) && !$this->integerEquals($this->meaning, $x->meaning)) return false;
       if (isset($this->indexed) !== isset($x->indexed)) return false;
@@ -966,6 +1122,9 @@ namespace google\appengine\datastore\v4 {
       }
       foreach ($this->list_value as $value) {
         $res .= $prefix . "list_value <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->geo_point_value)) {
+        $res .= $prefix . "geo_point_value <\n" . $this->geo_point_value->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       if (isset($this->meaning)) {
         $res .= $prefix . "meaning: " . $this->debugFormatInt32($this->meaning) . "\n";

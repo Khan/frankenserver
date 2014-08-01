@@ -33,6 +33,8 @@ import urllib
 import urlparse
 import wsgiref.headers
 
+from concurrent import futures
+
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import appinfo
@@ -642,7 +644,7 @@ class Module(object):
 
       content_length = int(environ.get('CONTENT_LENGTH', '0'))
 
-      if (environ['REQUEST_METHOD'] in ('GET', 'HEAD', 'TRACE') and
+      if (environ['REQUEST_METHOD'] in ('GET', 'HEAD', 'DELETE', 'TRACE') and
           content_length != 0):
         # CONTENT_LENGTH may be empty or absent.
         wrapped_start_response('400 Bad Request', [])
@@ -717,7 +719,7 @@ class Module(object):
         return []
 
   def _async_shutdown_instance(self, inst, port):
-    _THREAD_POOL.submit(self._shutdown_instance, inst, port)
+    return _THREAD_POOL.submit(self._shutdown_instance, inst, port)
 
   def _shutdown_instance(self, inst, port):
     force_shutdown_time = time.time() + _SHUTDOWN_TIMEOUT
@@ -1296,7 +1298,7 @@ class AutoScalingModule(Module):
 
   def _async_warmup(self, inst):
     """Asynchronously send a markup request to the given Instance."""
-    _THREAD_POOL.submit(self._warmup, inst)
+    return _THREAD_POOL.submit(self._warmup, inst)
 
   def _trim_outstanding_request_history(self):
     """Removes obsolete entries from _outstanding_request_history."""
@@ -1713,25 +1715,31 @@ class ManualScalingModule(Module):
       self._async_start_instance(wsgi_servr, inst)
 
   def _async_start_instance(self, wsgi_servr, inst):
-    _THREAD_POOL.submit(self._start_instance, wsgi_servr, inst)
+    return _THREAD_POOL.submit(self._start_instance, wsgi_servr, inst)
 
   def _start_instance(self, wsgi_servr, inst):
-    if inst.start():
-      logging.debug('Started instance: %s at http://%s:%s', inst, self.host,
-                    wsgi_servr.port)
-      try:
-        environ = self.build_request_environ(
-            'GET', '/_ah/start', [], '', '0.1.0.3', wsgi_servr.port,
-            fake_login=True)
-        self._handle_request(environ,
-                             start_response_utils.null_start_response,
-                             inst=inst,
-                             request_type=instance.READY_REQUEST)
-        logging.debug('Sent start request: %s', inst)
-        with self._condition:
-          self._condition.notify(self.max_instance_concurrent_requests)
-      except:
-        logging.exception('Internal error while handling start request.')
+    try:
+      if not inst.start():
+        return
+    except:
+      logging.exception('Internal error while starting instance.')
+      raise
+
+    logging.debug('Started instance: %s at http://%s:%s', inst, self.host,
+                  wsgi_servr.port)
+    try:
+      environ = self.build_request_environ(
+          'GET', '/_ah/start', [], '', '0.1.0.3', wsgi_servr.port,
+          fake_login=True)
+      self._handle_request(environ,
+                           start_response_utils.null_start_response,
+                           inst=inst,
+                           request_type=instance.READY_REQUEST)
+      logging.debug('Sent start request: %s', inst)
+      with self._condition:
+        self._condition.notify(self.max_instance_concurrent_requests)
+    except Exception, e:  # pylint: disable=broad-except
+      logging.exception('Internal error while handling start request: %s', e)
 
   def _choose_instance(self, timeout_time):
     """Returns an Instance to handle a request or None if all are busy."""
@@ -1799,7 +1807,7 @@ class ManualScalingModule(Module):
         self._async_quit_instance(inst, wsgi_servr)
 
   def _async_quit_instance(self, inst, wsgi_servr):
-    _THREAD_POOL.submit(self._quit_instance, inst, wsgi_servr)
+    return _THREAD_POOL.submit(self._quit_instance, inst, wsgi_servr)
 
   def _quit_instance(self, inst, wsgi_servr):
     port = wsgi_servr.port
@@ -1821,7 +1829,7 @@ class ManualScalingModule(Module):
       self._async_suspend_instance(inst, wsgi_servr.port)
 
   def _async_suspend_instance(self, inst, port):
-    _THREAD_POOL.submit(self._suspend_instance, inst, port)
+    return _THREAD_POOL.submit(self._suspend_instance, inst, port)
 
   def _suspend_instance(self, inst, port):
     inst.quit(expect_shutdown=True)
@@ -1871,10 +1879,20 @@ class ManualScalingModule(Module):
         if self._quit_event.is_set():
           return
         self._instances[:] = instances_to_start
-    for inst, wsgi_servr in zip(instances_to_stop, wsgi_servers):
-      self._async_suspend_instance(inst, wsgi_servr.port)
-    for wsgi_servr, inst in zip(wsgi_servers, instances_to_start):
-      self._async_start_instance(wsgi_servr, inst)
+
+    # Just force instances to stop for a faster restart.
+    for inst in instances_to_stop:
+      inst.quit(force=True)
+
+    start_futures = [
+        self._async_start_instance(wsgi_servr, inst)
+        for wsgi_servr, inst in zip(wsgi_servers, instances_to_start)]
+    logging.info('Waiting for instances to restart')
+    _, not_done = futures.wait(start_futures, timeout=_SHUTDOWN_TIMEOUT)
+    if not_done:
+      logging.warning('All instances may not have restarted')
+    else:
+      logging.info('Instances restarted')
 
   def get_instance(self, instance_id):
     """Returns the instance with the provided instance ID."""
@@ -2222,7 +2240,7 @@ class BasicScalingModule(Module):
     return inst
 
   def _async_start_instance(self, instance_id):
-    _THREAD_POOL.submit(self._start_instance, instance_id)
+    return _THREAD_POOL.submit(self._start_instance, instance_id)
 
   def _start_instance(self, instance_id):
     with self._condition:

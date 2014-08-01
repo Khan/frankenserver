@@ -14,18 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+"""Augment the mimetypes provided by Python."""
+
+import mimetypes
 
 
-
-
-"""Appengine Files API.
-
-.. deprecated:: 1.8.1
-   Use GCS client library instead.
-"""
-
-
-from file import *
-import blobstore
-import gs
-import shuffler
+def init():
+  mimetypes.add_type('application/dart', '.dart')

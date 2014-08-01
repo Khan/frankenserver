@@ -23,6 +23,7 @@ IndexesXmlParser: converts XML to Index object.
 Index: describes a single index specified in datastore-indexes.xml
 """
 
+from collections import OrderedDict
 from xml.etree import ElementTree
 
 from google.appengine.tools import xml_parser_utils
@@ -104,7 +105,7 @@ class IndexesXmlParser(object):
       self.errors.append(MISSING_KIND)
     index.ancestor = xml_parser_utils.BooleanValue(
         xml_parser_utils.GetAttribute(node, 'ancestor'))
-    index.properties = {}
+    index.properties = OrderedDict()
     for property_node in xml_parser_utils.GetNodes(node, 'property'):
       name = xml_parser_utils.GetAttribute(property_node, 'name')
       if not name:
@@ -128,7 +129,7 @@ class Index(object):
       statements.append('  ancestor: yes')
     if self.properties:
       statements.append('  properties:')
-      for name in sorted(self.properties):
+      for name in self.properties:
         statements += ['  - name: "%s"' % name,
                        '    direction: %s' % self.properties[name]]
     return statements

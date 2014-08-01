@@ -20,11 +20,20 @@ import logging
 
 import google
 import docker
+import requests
 
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import vm_runtime_proxy
 from google.appengine.tools.devappserver2 import vm_runtime_proxy_dart
 from google.appengine.tools.devappserver2 import vm_runtime_proxy_go
+
+
+class Error(Exception):
+  """Base class for errors in this module."""
+
+
+class DockerDaemonConnectionError(Error):
+  """Raised if the docker client can't connect to the docker daemon."""
 
 
 class VMRuntimeInstanceFactory(instance.InstanceFactory):
@@ -63,11 +72,14 @@ class VMRuntimeInstanceFactory(instance.InstanceFactory):
     self._module_configuration = module_configuration
     docker_daemon_url = runtime_config_getter().vm_config.docker_daemon_url
     self._docker_client = docker.Client(base_url=docker_daemon_url,
-                                        version='1.6',
+                                        version='1.9',
                                         timeout=self.DOCKER_D_REQUEST_TIMEOUT)
-    if not self._docker_client:
-      logging.error('Couldn\'t connect to docker daemon on %s',
-                    docker_daemon_url)
+    try:
+      self._docker_client.ping()
+    except requests.exceptions.ConnectionError:
+      raise DockerDaemonConnectionError(
+          'Couldn\'t connect to the docker daemon at %s. Please check that the '
+          'docker daemon is running.' % docker_daemon_url)
 
   def new_instance(self, instance_id, expect_ready_request=False):
     """Create and return a new Instance.

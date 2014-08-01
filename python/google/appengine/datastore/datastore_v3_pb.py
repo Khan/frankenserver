@@ -3146,6 +3146,8 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
   key_ = None
   has_start_inclusive_ = 0
   start_inclusive_ = 1
+  has_before_ascending_ = 0
+  before_ascending_ = 0
 
   def __init__(self, contents=None):
     self.indexvalue_ = []
@@ -3213,6 +3215,19 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
 
   def has_start_inclusive(self): return self.has_start_inclusive_
 
+  def before_ascending(self): return self.before_ascending_
+
+  def set_before_ascending(self, x):
+    self.has_before_ascending_ = 1
+    self.before_ascending_ = x
+
+  def clear_before_ascending(self):
+    if self.has_before_ascending_:
+      self.has_before_ascending_ = 0
+      self.before_ascending_ = 0
+
+  def has_before_ascending(self): return self.has_before_ascending_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -3220,6 +3235,7 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.indexvalue_size()): self.add_indexvalue().CopyFrom(x.indexvalue(i))
     if (x.has_key()): self.mutable_key().MergeFrom(x.key())
     if (x.has_start_inclusive()): self.set_start_inclusive(x.start_inclusive())
+    if (x.has_before_ascending()): self.set_before_ascending(x.before_ascending())
 
   def Equals(self, x):
     if x is self: return 1
@@ -3232,6 +3248,8 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
     if self.has_key_ and self.key_ != x.key_: return 0
     if self.has_start_inclusive_ != x.has_start_inclusive_: return 0
     if self.has_start_inclusive_ and self.start_inclusive_ != x.start_inclusive_: return 0
+    if self.has_before_ascending_ != x.has_before_ascending_: return 0
+    if self.has_before_ascending_ and self.before_ascending_ != x.before_ascending_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3248,6 +3266,7 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.indexvalue_)): n += self.indexvalue_[i].ByteSize()
     if (self.has_key_): n += 2 + self.lengthString(self.key_.ByteSize())
     if (self.has_start_inclusive_): n += 3
+    if (self.has_before_ascending_): n += 3
     return n
 
   def ByteSizePartial(self):
@@ -3257,6 +3276,7 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.indexvalue_)): n += self.indexvalue_[i].ByteSizePartial()
     if (self.has_key_): n += 2 + self.lengthString(self.key_.ByteSizePartial())
     if (self.has_start_inclusive_): n += 3
+    if (self.has_before_ascending_): n += 3
     return n
 
   def Clear(self):
@@ -3264,6 +3284,7 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
     self.clear_indexvalue()
     self.clear_key()
     self.clear_start_inclusive()
+    self.clear_before_ascending()
 
   def OutputUnchecked(self, out):
     if (self.has_start_key_):
@@ -3280,6 +3301,9 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(258)
       out.putVarInt32(self.key_.ByteSize())
       self.key_.OutputUnchecked(out)
+    if (self.has_before_ascending_):
+      out.putVarInt32(264)
+      out.putBoolean(self.before_ascending_)
 
   def OutputPartial(self, out):
     if (self.has_start_key_):
@@ -3296,6 +3320,9 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(258)
       out.putVarInt32(self.key_.ByteSizePartial())
       self.key_.OutputPartial(out)
+    if (self.has_before_ascending_):
+      out.putVarInt32(264)
+      out.putBoolean(self.before_ascending_)
 
   def TryMerge(self, d):
     while 1:
@@ -3315,6 +3342,9 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_key().TryMerge(tmp)
+        continue
+      if tt == 264:
+        self.set_before_ascending(d.getBoolean())
         continue
 
 
@@ -3338,11 +3368,16 @@ class CompiledCursor_Position(ProtocolBuffer.ProtocolMessage):
       res+=self.key_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_start_inclusive_: res+=prefix+("start_inclusive: %s\n" % self.DebugFormatBool(self.start_inclusive_))
+    if self.has_before_ascending_: res+=prefix+("before_ascending: %s\n" % self.DebugFormatBool(self.before_ascending_))
     return res
 
 class CompiledCursor(ProtocolBuffer.ProtocolMessage):
   has_position_ = 0
   position_ = None
+  has_postfix_position_ = 0
+  postfix_position_ = None
+  has_absolute_position_ = 0
+  absolute_position_ = None
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -3367,52 +3402,132 @@ class CompiledCursor(ProtocolBuffer.ProtocolMessage):
 
   def has_position(self): return self.has_position_
 
+  def postfix_position(self):
+    if self.postfix_position_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.postfix_position_ is None: self.postfix_position_ = IndexPostfix()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.postfix_position_
+
+  def mutable_postfix_position(self): self.has_postfix_position_ = 1; return self.postfix_position()
+
+  def clear_postfix_position(self):
+
+    if self.has_postfix_position_:
+      self.has_postfix_position_ = 0;
+      if self.postfix_position_ is not None: self.postfix_position_.Clear()
+
+  def has_postfix_position(self): return self.has_postfix_position_
+
+  def absolute_position(self):
+    if self.absolute_position_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.absolute_position_ is None: self.absolute_position_ = IndexPosition()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.absolute_position_
+
+  def mutable_absolute_position(self): self.has_absolute_position_ = 1; return self.absolute_position()
+
+  def clear_absolute_position(self):
+
+    if self.has_absolute_position_:
+      self.has_absolute_position_ = 0;
+      if self.absolute_position_ is not None: self.absolute_position_.Clear()
+
+  def has_absolute_position(self): return self.has_absolute_position_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_position()): self.mutable_position().MergeFrom(x.position())
+    if (x.has_postfix_position()): self.mutable_postfix_position().MergeFrom(x.postfix_position())
+    if (x.has_absolute_position()): self.mutable_absolute_position().MergeFrom(x.absolute_position())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_position_ != x.has_position_: return 0
     if self.has_position_ and self.position_ != x.position_: return 0
+    if self.has_postfix_position_ != x.has_postfix_position_: return 0
+    if self.has_postfix_position_ and self.postfix_position_ != x.postfix_position_: return 0
+    if self.has_absolute_position_ != x.has_absolute_position_: return 0
+    if self.has_absolute_position_ and self.absolute_position_ != x.absolute_position_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_position_ and not self.position_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_postfix_position_ and not self.postfix_position_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_absolute_position_ and not self.absolute_position_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_position_): n += 2 + self.position_.ByteSize()
+    if (self.has_postfix_position_): n += 1 + self.lengthString(self.postfix_position_.ByteSize())
+    if (self.has_absolute_position_): n += 1 + self.lengthString(self.absolute_position_.ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_position_): n += 2 + self.position_.ByteSizePartial()
+    if (self.has_postfix_position_): n += 1 + self.lengthString(self.postfix_position_.ByteSizePartial())
+    if (self.has_absolute_position_): n += 1 + self.lengthString(self.absolute_position_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_position()
+    self.clear_postfix_position()
+    self.clear_absolute_position()
 
   def OutputUnchecked(self, out):
+    if (self.has_postfix_position_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.postfix_position_.ByteSize())
+      self.postfix_position_.OutputUnchecked(out)
     if (self.has_position_):
       out.putVarInt32(19)
       self.position_.OutputUnchecked(out)
       out.putVarInt32(20)
+    if (self.has_absolute_position_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.absolute_position_.ByteSize())
+      self.absolute_position_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
+    if (self.has_postfix_position_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.postfix_position_.ByteSizePartial())
+      self.postfix_position_.OutputPartial(out)
     if (self.has_position_):
       out.putVarInt32(19)
       self.position_.OutputPartial(out)
       out.putVarInt32(20)
+    if (self.has_absolute_position_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.absolute_position_.ByteSizePartial())
+      self.absolute_position_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_postfix_position().TryMerge(tmp)
+        continue
       if tt == 19:
         self.mutable_position().TryMerge(d)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_absolute_position().TryMerge(tmp)
         continue
 
 
@@ -3426,6 +3541,14 @@ class CompiledCursor(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"Position {\n"
       res+=self.position_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
+    if self.has_postfix_position_:
+      res+=prefix+"postfix_position <\n"
+      res+=self.postfix_position_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_absolute_position_:
+      res+=prefix+"absolute_position <\n"
+      res+=self.absolute_position_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -3439,28 +3562,37 @@ class CompiledCursor(ProtocolBuffer.ProtocolMessage):
   kPositionIndexValuevalue = 31
   kPositionkey = 32
   kPositionstart_inclusive = 28
+  kPositionbefore_ascending = 33
+  kpostfix_position = 1
+  kabsolute_position = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
+    1: "postfix_position",
     2: "Position",
+    3: "absolute_position",
     27: "start_key",
     28: "start_inclusive",
     29: "IndexValue",
     30: "property",
     31: "value",
     32: "key",
-  }, 32)
+    33: "before_ascending",
+  }, 33)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STARTGROUP,
+    3: ProtocolBuffer.Encoder.STRING,
     27: ProtocolBuffer.Encoder.STRING,
     28: ProtocolBuffer.Encoder.NUMERIC,
     29: ProtocolBuffer.Encoder.STARTGROUP,
     30: ProtocolBuffer.Encoder.STRING,
     31: ProtocolBuffer.Encoder.STRING,
     32: ProtocolBuffer.Encoder.STRING,
-  }, 32, ProtocolBuffer.Encoder.MAX_TYPE)
+    33: ProtocolBuffer.Encoder.NUMERIC,
+  }, 33, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -7320,6 +7452,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
   size_ = 0
   has_max_ = 0
   max_ = 0
+  has_trusted_ = 0
+  trusted_ = 0
 
   def __init__(self, contents=None):
     self.reserve_ = []
@@ -7406,6 +7540,19 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def clear_reserve(self):
     self.reserve_ = []
+  def trusted(self): return self.trusted_
+
+  def set_trusted(self, x):
+    self.has_trusted_ = 1
+    self.trusted_ = x
+
+  def clear_trusted(self):
+    if self.has_trusted_:
+      self.has_trusted_ = 0
+      self.trusted_ = 0
+
+  def has_trusted(self): return self.has_trusted_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -7414,6 +7561,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_size()): self.set_size(x.size())
     if (x.has_max()): self.set_max(x.max())
     for i in xrange(x.reserve_size()): self.add_reserve().CopyFrom(x.reserve(i))
+    if (x.has_trusted()): self.set_trusted(x.trusted())
 
   def Equals(self, x):
     if x is self: return 1
@@ -7428,6 +7576,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if len(self.reserve_) != len(x.reserve_): return 0
     for e1, e2 in zip(self.reserve_, x.reserve_):
       if e1 != e2: return 0
+    if self.has_trusted_ != x.has_trusted_: return 0
+    if self.has_trusted_ and self.trusted_ != x.trusted_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -7446,6 +7596,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_): n += 1 + self.lengthVarInt64(self.max_)
     n += 1 * len(self.reserve_)
     for i in xrange(len(self.reserve_)): n += self.lengthString(self.reserve_[i].ByteSize())
+    if (self.has_trusted_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -7456,6 +7607,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_): n += 1 + self.lengthVarInt64(self.max_)
     n += 1 * len(self.reserve_)
     for i in xrange(len(self.reserve_)): n += self.lengthString(self.reserve_[i].ByteSizePartial())
+    if (self.has_trusted_): n += 2
     return n
 
   def Clear(self):
@@ -7464,6 +7616,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_size()
     self.clear_max()
     self.clear_reserve()
+    self.clear_trusted()
 
   def OutputUnchecked(self, out):
     if (self.has_model_key_):
@@ -7484,6 +7637,9 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.reserve_[i].ByteSize())
       self.reserve_[i].OutputUnchecked(out)
+    if (self.has_trusted_):
+      out.putVarInt32(48)
+      out.putBoolean(self.trusted_)
 
   def OutputPartial(self, out):
     if (self.has_model_key_):
@@ -7504,6 +7660,9 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.reserve_[i].ByteSizePartial())
       self.reserve_[i].OutputPartial(out)
+    if (self.has_trusted_):
+      out.putVarInt32(48)
+      out.putBoolean(self.trusted_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -7532,6 +7691,9 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_reserve().TryMerge(tmp)
         continue
+      if tt == 48:
+        self.set_trusted(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -7558,6 +7720,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     return res
 
 
@@ -7569,6 +7732,7 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
   ksize = 2
   kmax = 3
   kreserve = 5
+  ktrusted = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -7577,7 +7741,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     3: "max",
     4: "header",
     5: "reserve",
-  }, 5)
+    6: "trusted",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -7586,7 +7751,8 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

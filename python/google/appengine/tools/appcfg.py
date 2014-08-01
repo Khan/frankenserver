@@ -71,7 +71,6 @@ from google.appengine.api import queueinfo
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_index
-from google.appengine.tools import appcfg_java
 from google.appengine.tools import appengine_rpc
 
 try:
@@ -80,6 +79,15 @@ try:
   from google.appengine.tools import appengine_rpc_httplib2
 except ImportError:
   appengine_rpc_httplib2 = None
+if sys.version_info[:2] >= (2, 7):
+
+
+
+  from google.appengine.tools import appcfg_java
+else:
+  appcfg_java = None
+
+from google.appengine.tools import augment_mimetypes
 from google.appengine.tools import bulkloader
 from google.appengine.tools import sdk_update_checker
 
@@ -122,7 +130,8 @@ DAY = 24*3600
 SUNDAY = 6
 
 SUPPORTED_RUNTIMES = (
-    'dart', 'go', 'php', 'python', 'python27', 'java', 'java7', 'vm', 'custom')
+    'contrib-dart', 'dart', 'go', 'php', 'python', 'python27', 'java', 'java7',
+    'vm', 'custom')
 
 
 
@@ -166,6 +175,9 @@ APP_YAML_FILENAME = 'app.yaml'
 GO_APP_BUILDER = os.path.join('goroot', 'bin', 'go-app-builder')
 if sys.platform.startswith('win'):
   GO_APP_BUILDER += '.exe'
+
+
+augment_mimetypes.init()
 
 
 class Error(Exception):
@@ -232,6 +244,14 @@ def _PrintErrorAndExit(stream, msg, exit_code=2):
   """
   stream.write(msg)
   sys.exit(exit_code)
+
+
+def JavaSupported():
+  """True if Java is supported by this SDK."""
+
+
+  tools_java_dir = os.path.join(os.path.dirname(appcfg_java.__file__), 'java')
+  return os.path.isdir(tools_java_dir)
 
 
 @contextlib.contextmanager
@@ -2490,9 +2510,12 @@ class AppVersionUpload(object):
 
 
         if file_length > max_size:
+          extra_msg = (' Consider --enable_jar_splitting.'
+                       if JavaSupported() and path.endswith('jar')
+                       else '')
           logging.error('Ignoring file \'%s\': Too long '
-                        '(max %d bytes, file is %d bytes)',
-                        path, max_size, file_length)
+                        '(max %d bytes, file is %d bytes).%s',
+                        path, max_size, file_length, extra_msg)
         else:
           logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
@@ -2759,8 +2782,6 @@ class AppCfgApp(object):
       OptionsParser will exit the program when there is a parse failure, it
       is nice to subclass OptionsParser and catch the error before exiting.
     read_url_contents: A function to read the contents of a URL.
-    override_java_supported: If not None, forces the code to assume that Java
-      support is (True) or is not (False) present.
   """
 
   def __init__(self, argv, parser_class=optparse.OptionParser,
@@ -2777,8 +2798,7 @@ class AppCfgApp(object):
                wrap_server_error_message=True,
                oauth_client_id=APPCFG_CLIENT_ID,
                oauth_client_secret=APPCFG_CLIENT_NOTSOSECRET,
-               oauth_scopes=APPCFG_SCOPES,
-               override_java_supported=None):
+               oauth_scopes=APPCFG_SCOPES):
     """Initializer.  Parses the cmdline and selects the Action to use.
 
     Initializes all of the attributes described in the class docstring.
@@ -2815,8 +2835,6 @@ class AppCfgApp(object):
       oauth_scopes: The scope or set of scopes to be accessed by the OAuth2
           token retrieved. Defaults to APPCFG_SCOPES. Can be a string or
           iterable of strings, representing the scope(s) to request.
-      override_java_supported: If not None, forces the code to assume that Java
-        support is (True) or is not (False) present.
     """
     self.parser_class = parser_class
     self.argv = argv
@@ -2832,7 +2850,6 @@ class AppCfgApp(object):
     self.oauth_client_id = oauth_client_id
     self.oauth_client_secret = oauth_client_secret
     self.oauth_scopes = oauth_scopes
-    self.override_java_supported = override_java_supported
 
     self.read_url_contents = _ReadUrlContents
 
@@ -2978,13 +2995,6 @@ class AppCfgApp(object):
       print >>self.error_fh, 'Could not start serving the given version.'
       return 1
     return 0
-
-  def _JavaSupported(self):
-    """True if this SDK supports uploading Java apps."""
-    if self.override_java_supported is not None:
-      return self.override_java_supported
-    tools_java_dir = os.path.join(os.path.dirname(appcfg_java.__file__), 'java')
-    return os.path.isdir(tools_java_dir)
 
   def _GetActionDescriptions(self):
     """Returns a formatted string containing the short_descs for all actions."""
@@ -3332,7 +3342,7 @@ class AppCfgApp(object):
       self.parser.error('Error parsing %s.yaml: %s.' % (
           os.path.join(basepath, basename), e))
     if not appyaml:
-      if self._JavaSupported():
+      if JavaSupported():
         if appcfg_java.IsWarFileWithoutYaml(basepath):
           java_app_update = appcfg_java.JavaAppUpdate(basepath, self.options)
           appyaml_string = java_app_update.GenerateAppYamlString([])
@@ -3626,17 +3636,19 @@ class AppCfgApp(object):
     paths = self.file_iterator(basepath, appyaml.skip_files, appyaml.runtime)
     openfunc = lambda path: self.opener(os.path.join(basepath, path), 'rb')
 
-    gopath = os.environ.get('GOPATH')
-    if appyaml.GetEffectiveRuntime() == 'go' and gopath:
-
-
-
-
-
-
+    if appyaml.GetEffectiveRuntime() == 'go':
 
       sdk_base = os.path.normpath(os.path.join(
           google.appengine.__file__, '..', '..', '..'))
+
+      gopath = os.environ.get('GOPATH')
+      if not gopath:
+        gopath = os.path.join(sdk_base, 'gopath')
+
+
+
+
+
       goroot = os.path.join(sdk_base, 'goroot')
       if not os.path.exists(goroot):
 
@@ -3730,11 +3742,9 @@ class AppCfgApp(object):
       self.UpdateUsingSpecificFiles()
       return
 
-    if (self._JavaSupported() and
-        appcfg_java.IsWarFileWithoutYaml(self.basepath)):
+    if JavaSupported() and appcfg_java.IsWarFileWithoutYaml(self.basepath):
       java_app_update = appcfg_java.JavaAppUpdate(self.basepath, self.options)
-      self.options.compile_jsps = True
-
+      self.options.compile_jsps = not java_app_update.app_engine_web_xml.vm
 
 
 
@@ -3890,7 +3900,7 @@ class AppCfgApp(object):
     parser.add_option('--no_usage_reporting', action='store_false',
                       dest='usage_reporting', default=True,
                       help='Disable usage reporting.')
-    if self._JavaSupported():
+    if JavaSupported():
       appcfg_java.AddUpdateOptions(parser)
 
   def VacuumIndexes(self):
@@ -4061,8 +4071,7 @@ class AppCfgApp(object):
       self.backend = self.args[0]
     elif len(self.args) > 1:
       self.parser.error('Expected an optional <backend> argument.')
-    if (self._JavaSupported() and
-        appcfg_java.IsWarFileWithoutYaml(self.basepath)):
+    if JavaSupported() and appcfg_java.IsWarFileWithoutYaml(self.basepath):
       java_app_update = appcfg_java.JavaAppUpdate(self.basepath, self.options)
       self.options.compile_jsps = True
       sdk_root = os.path.dirname(appcfg_java.__file__)
@@ -4253,6 +4262,15 @@ class AppCfgApp(object):
     """
     parser.add_option('-I', '--instance', type='string', dest='instance',
                       help='Instance to lock/unlock.')
+
+  def PrepareVmRuntimeAction(self):
+    """Prepare the application for vm runtimes and return state."""
+    if not self.options.app_id:
+      self.parser.error('Expected an --application argument')
+    rpcserver = self._GetRpcServer()
+    response = rpcserver.Send('/api/vms/prepare',
+                              app_id=self.options.app_id)
+    print >> self.out_fh, response
 
   def _ParseAndValidateModuleYamls(self, yaml_paths):
     """Validates given yaml paths and returns the parsed yaml objects.
@@ -5315,6 +5333,15 @@ for debugging."""),
           uses_basepath=False,
           long_desc="""
 The 'lock' command relocks a debugged vm runtime application."""),
+
+      'prepare_vm_runtime': Action(
+          function='PrepareVmRuntimeAction',
+          usage='%prog [options] prepare_vm_runtime -A app_id',
+          short_desc='Prepare an application for the VM runtime.',
+          hidden=True,
+          uses_basepath=False,
+          long_desc="""
+The 'prepare_vm_runtime' prepares an application for the VM runtime."""),
   }
 
 

@@ -16,7 +16,9 @@
 #
 """Manages a VM Runtime process running inside of a docker container."""
 
+import logging
 import os
+import socket
 
 import google
 
@@ -37,11 +39,38 @@ class InvalidEnvVariableError(Error):
   """Raised if an environment variable name or value cannot be supported."""
 
 
+def _GetPortToPublish(port):
+  """Checks if given port is available.
+
+  Useful for publishing debug ports when it's more convenient to bind to
+  the same address on each container restart.
+
+  Args:
+    port: int, Port to check.
+
+  Returns:
+    given port if it is available, None if it is already taken (then any
+        random available port will be selected by Dockerd).
+  """
+  sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  try:
+    sock.bind(('', port))
+    sock.close()
+    return port
+  except socket.error:
+    logging.warning('Requested debug port %d is already in use. '
+                    'Will use another available port.', port)
+  return None
+
+
 class VMRuntimeProxy(instance.RuntimeProxy):
   """Manages a VM Runtime process running inside of a docker container."""
 
+  DEFAULT_DEBUG_PORT = 5005
+
   def __init__(self, docker_client, runtime_config_getter,
-               module_configuration, default_port=8080, port_bindings=None):
+               module_configuration, default_port=8080, port_bindings=None,
+               additional_environment=None):
     """Initializer for VMRuntimeProxy.
 
     Args:
@@ -54,7 +83,9 @@ class VMRuntimeProxy(instance.RuntimeProxy):
           runtime.
       default_port: int, main port inside of the container that instance is
           listening on.
-      port_bindings: dict, additional ports for debugging.
+      port_bindings: dict, Additional port bindings from the container.
+      additional_environment: doct, Additional environment variables to pass
+          to the container.
     """
     super(VMRuntimeProxy, self).__init__()
 
@@ -63,6 +94,7 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     self._docker_client = docker_client
     self._default_port = default_port
     self._port_bindings = port_bindings
+    self._additional_environment = additional_environment
     self._container = None
     self._proxy = None
 
@@ -98,6 +130,9 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     # TODO: Check if container is still up and running
     return False
 
+  def _escape_domain(self, application_external_name):
+    return application_external_name.replace(':', '.')
+
   def start(self, dockerfile_dir=None):
     runtime_config = self._runtime_config_getter()
 
@@ -114,10 +149,14 @@ class VMRuntimeProxy(instance.RuntimeProxy):
 
     image_name = _DOCKER_IMAGE_NAME_FORMAT.format(
         # Escape domain if it is present.
-        display=self._module_configuration.application_external_name.replace(
-            ':', '.'),
+        display=self._escape_domain(
+            self._module_configuration.application_external_name),
         module=self._module_configuration.module_name,
         version=self._module_configuration.major_version)
+
+    port_bindings = self._port_bindings if self._port_bindings else {}
+    port_bindings.setdefault(self._default_port, None)
+    debug_port = None
 
     environment = {
         'API_HOST': api_host,
@@ -132,6 +171,8 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         'MODULE_YAML_PATH': os.path.basename(
             self._module_configuration.config_path)
     }
+    if self._additional_environment:
+      environment.update(self._additional_environment)
 
     # Handle user defined environment variables
     if self._module_configuration.env_variables:
@@ -141,10 +182,23 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         raise InvalidEnvVariableError(
             'Environment variables [%s] are reserved for App Engine use' %
             ', '.join(ev))
+
       environment.update(self._module_configuration.env_variables)
 
-    port_bindings = self._port_bindings if self._port_bindings else {}
-    port_bindings.setdefault(self._default_port, None)
+      # Publish debug port if running in Debug mode.
+      if self._module_configuration.env_variables.get('DBG_ENABLE'):
+        debug_port = int(self._module_configuration.env_variables.get(
+            'DBG_PORT', self.DEFAULT_DEBUG_PORT))
+        environment['DBG_PORT'] = debug_port
+        port_bindings[debug_port] = _GetPortToPublish(debug_port)
+
+    external_logs_path = os.path.join(
+        '/var/log/app_engine',
+        self._escape_domain(
+            self._module_configuration.application_external_name),
+        self._module_configuration.module_name,
+        self._module_configuration.major_version,
+        runtime_config.instance_id)
     self._container = containers.Container(
         self._docker_client,
         containers.ContainerOptions(
@@ -156,11 +210,20 @@ class VMRuntimeProxy(instance.RuntimeProxy):
             port_bindings=port_bindings,
             environment=environment,
             volumes={
-                '/var/log/app_engine/app': {'bind': '/var/log/app_engine/app'}
+                external_logs_path: {'bind': '/var/log/app_engine'}
             }
         ))
 
     self._container.Start()
+
+    # Print the debug information before connecting to the container
+    # as debugging might break the runtime during initialization, and
+    # connecting the debugger is required to start processing requests.
+    if debug_port:
+      logging.info('To debug module {module} attach to {host}:{port}'.format(
+          module=self._module_configuration.module_name,
+          host=self.ContainerHost(),
+          port=self.PortBinding(debug_port)))
 
     self._proxy = http_proxy.HttpProxy(
         host=self._container.host, port=self._container.port,
@@ -185,3 +248,11 @@ class VMRuntimeProxy(instance.RuntimeProxy):
           the container.
     """
     return self._container.PortBinding(port)
+
+  def ContainerHost(self):
+    """Get the host IP address of the container.
+
+    Returns:
+      IP address on the host system for accessing the container.
+    """
+    return self._container.host

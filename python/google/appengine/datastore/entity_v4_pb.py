@@ -204,7 +204,7 @@ class PartitionId(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.PartitionId'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KI2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkExoKZGF0YXNldF9pZCADKAIwCTgBFBMaCW5hbWVzcGFjZSAEKAIwCTgBFHN6CUNvbnN0YW50c4sBkgERTUFYX0RJTUVOU0lPTl9UQUeYAWSMAXS6AYIICiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8SF2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0IlgKC1BhcnRpdGlvbklkEhIKCmRhdGFzZXRfaWQYAyABKAkSEQoJbmFtZXNwYWNlGAQgASgJIiIKCUNvbnN0YW50cxIVChFNQVhfRElNRU5TSU9OX1RBRxBkIrgBCgNLZXkSOgoMcGFydGl0aW9uX2lkGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSPgoMcGF0aF9lbGVtZW50GAIgAygLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5LlBhdGhFbGVtZW50GjUKC1BhdGhFbGVtZW50EgwKBGtpbmQYASACKAkSCgoCaWQYAiABKAMSDAoEbmFtZRgDIAEoCSL3AgoFVmFsdWUSFQoNYm9vbGVhbl92YWx1ZRgBIAEoCBIVCg1pbnRlZ2VyX3ZhbHVlGAIgASgDEhQKDGRvdWJsZV92YWx1ZRgDIAEoARIkChx0aW1lc3RhbXBfbWljcm9zZWNvbmRzX3ZhbHVlGAQgASgDEi8KCWtleV92YWx1ZRgFIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCg5ibG9iX2tleV92YWx1ZRgQIAEoCRIUCgxzdHJpbmdfdmFsdWUYESABKAkSEgoKYmxvYl92YWx1ZRgSIAEoDBI1CgxlbnRpdHlfdmFsdWUYBiABKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSMgoKbGlzdF92YWx1ZRgHIAMoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlEg8KB21lYW5pbmcYDiABKAUSFQoHaW5kZXhlZBgPIAEoCDoEdHJ1ZSKiAQoIUHJvcGVydHkSDAoEbmFtZRgBIAIoCRIfChBkZXByZWNhdGVkX211bHRpGAIgASgIOgVmYWxzZRI4ChBkZXByZWNhdGVkX3ZhbHVlGAMgAygLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUSLQoFdmFsdWUYBCABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZSJoCgZFbnRpdHkSKQoDa2V5GAEgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EjMKCHByb3BlcnR5GAIgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlCIwofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZSAB"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KI2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkExoKZGF0YXNldF9pZCADKAIwCTgBFBMaCW5hbWVzcGFjZSAEKAIwCTgBFHN6CUNvbnN0YW50c4sBkgERTUFYX0RJTUVOU0lPTl9UQUeYAWSMAXS6Ae8ICiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8SF2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0IlgKC1BhcnRpdGlvbklkEhIKCmRhdGFzZXRfaWQYAyABKAkSEQoJbmFtZXNwYWNlGAQgASgJIiIKCUNvbnN0YW50cxIVChFNQVhfRElNRU5TSU9OX1RBRxBkIrgBCgNLZXkSOgoMcGFydGl0aW9uX2lkGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSPgoMcGF0aF9lbGVtZW50GAIgAygLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5LlBhdGhFbGVtZW50GjUKC1BhdGhFbGVtZW50EgwKBGtpbmQYASACKAkSCgoCaWQYAiABKAMSDAoEbmFtZRgDIAEoCSIvCghHZW9Qb2ludBIQCghsYXRpdHVkZRgBIAIoARIRCglsb25naXR1ZGUYAiACKAEiswMKBVZhbHVlEhUKDWJvb2xlYW5fdmFsdWUYASABKAgSFQoNaW50ZWdlcl92YWx1ZRgCIAEoAxIUCgxkb3VibGVfdmFsdWUYAyABKAESJAocdGltZXN0YW1wX21pY3Jvc2Vjb25kc192YWx1ZRgEIAEoAxIvCglrZXlfdmFsdWUYBSABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFgoOYmxvYl9rZXlfdmFsdWUYECABKAkSFAoMc3RyaW5nX3ZhbHVlGBEgASgJEhIKCmJsb2JfdmFsdWUYEiABKAwSNQoMZW50aXR5X3ZhbHVlGAYgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjoKD2dlb19wb2ludF92YWx1ZRgIIAEoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50EjIKCmxpc3RfdmFsdWUYByADKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIPCgdtZWFuaW5nGA4gASgFEhUKB2luZGV4ZWQYDyABKAg6BHRydWUiogEKCFByb3BlcnR5EgwKBG5hbWUYASACKAkSHwoQZGVwcmVjYXRlZF9tdWx0aRgCIAEoCDoFZmFsc2USOAoQZGVwcmVjYXRlZF92YWx1ZRgDIAMoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlEi0KBXZhbHVlGAQgASgLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiaAoGRW50aXR5EikKA2tleRgBIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIzCghwcm9wZXJ0eRgCIAMoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5QiMKH2NvbS5nb29nbGUuYXBwaG9zdGluZy5kYXRhc3RvcmUgAQ=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -607,6 +607,174 @@ class Key(ProtocolBuffer.ProtocolMessage):
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
 
+class GeoPoint(ProtocolBuffer.ProtocolMessage):
+  has_latitude_ = 0
+  latitude_ = 0.0
+  has_longitude_ = 0
+  longitude_ = 0.0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def latitude(self): return self.latitude_
+
+  def set_latitude(self, x):
+    self.has_latitude_ = 1
+    self.latitude_ = x
+
+  def clear_latitude(self):
+    if self.has_latitude_:
+      self.has_latitude_ = 0
+      self.latitude_ = 0.0
+
+  def has_latitude(self): return self.has_latitude_
+
+  def longitude(self): return self.longitude_
+
+  def set_longitude(self, x):
+    self.has_longitude_ = 1
+    self.longitude_ = x
+
+  def clear_longitude(self):
+    if self.has_longitude_:
+      self.has_longitude_ = 0
+      self.longitude_ = 0.0
+
+  def has_longitude(self): return self.has_longitude_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_latitude()): self.set_latitude(x.latitude())
+    if (x.has_longitude()): self.set_longitude(x.longitude())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.GeoPoint', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.GeoPoint')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.GeoPoint')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.GeoPoint', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.GeoPoint', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.GeoPoint', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_latitude_ != x.has_latitude_: return 0
+    if self.has_latitude_ and self.latitude_ != x.latitude_: return 0
+    if self.has_longitude_ != x.has_longitude_: return 0
+    if self.has_longitude_ and self.longitude_ != x.longitude_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_latitude_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: latitude not set.')
+    if (not self.has_longitude_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: longitude not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 18
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_latitude_):
+      n += 9
+    if (self.has_longitude_):
+      n += 9
+    return n
+
+  def Clear(self):
+    self.clear_latitude()
+    self.clear_longitude()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(9)
+    out.putDouble(self.latitude_)
+    out.putVarInt32(17)
+    out.putDouble(self.longitude_)
+
+  def OutputPartial(self, out):
+    if (self.has_latitude_):
+      out.putVarInt32(9)
+      out.putDouble(self.latitude_)
+    if (self.has_longitude_):
+      out.putVarInt32(17)
+      out.putDouble(self.longitude_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 9:
+        self.set_latitude(d.getDouble())
+        continue
+      if tt == 17:
+        self.set_longitude(d.getDouble())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_latitude_: res+=prefix+("latitude: %s\n" % self.DebugFormat(self.latitude_))
+    if self.has_longitude_: res+=prefix+("longitude: %s\n" % self.DebugFormat(self.longitude_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  klatitude = 1
+  klongitude = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "latitude",
+    2: "longitude",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.DOUBLE,
+    2: ProtocolBuffer.Encoder.DOUBLE,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.GeoPoint'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KIGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50ExoIbGF0aXR1ZGUgASgBMAE4AhQTGglsb25naXR1ZGUgAigBMAE4AhTCASNhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5QYXJ0aXRpb25JZA=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
 class Value(ProtocolBuffer.ProtocolMessage):
   has_boolean_value_ = 0
   boolean_value_ = 0
@@ -626,6 +794,8 @@ class Value(ProtocolBuffer.ProtocolMessage):
   blob_value_ = ""
   has_entity_value_ = 0
   entity_value_ = None
+  has_geo_point_value_ = 0
+  geo_point_value_ = None
   has_meaning_ = 0
   meaning_ = 0
   has_indexed_ = 0
@@ -765,6 +935,25 @@ class Value(ProtocolBuffer.ProtocolMessage):
 
   def has_entity_value(self): return self.has_entity_value_
 
+  def geo_point_value(self):
+    if self.geo_point_value_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.geo_point_value_ is None: self.geo_point_value_ = GeoPoint()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.geo_point_value_
+
+  def mutable_geo_point_value(self): self.has_geo_point_value_ = 1; return self.geo_point_value()
+
+  def clear_geo_point_value(self):
+
+    if self.has_geo_point_value_:
+      self.has_geo_point_value_ = 0;
+      if self.geo_point_value_ is not None: self.geo_point_value_.Clear()
+
+  def has_geo_point_value(self): return self.has_geo_point_value_
+
   def list_value_size(self): return len(self.list_value_)
   def list_value_list(self): return self.list_value_
 
@@ -819,6 +1008,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (x.has_string_value()): self.set_string_value(x.string_value())
     if (x.has_blob_value()): self.set_blob_value(x.blob_value())
     if (x.has_entity_value()): self.mutable_entity_value().MergeFrom(x.entity_value())
+    if (x.has_geo_point_value()): self.mutable_geo_point_value().MergeFrom(x.geo_point_value())
     for i in xrange(x.list_value_size()): self.add_list_value().CopyFrom(x.list_value(i))
     if (x.has_meaning()): self.set_meaning(x.meaning())
     if (x.has_indexed()): self.set_indexed(x.indexed())
@@ -870,6 +1060,8 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if self.has_blob_value_ and self.blob_value_ != x.blob_value_: return 0
     if self.has_entity_value_ != x.has_entity_value_: return 0
     if self.has_entity_value_ and self.entity_value_ != x.entity_value_: return 0
+    if self.has_geo_point_value_ != x.has_geo_point_value_: return 0
+    if self.has_geo_point_value_ and self.geo_point_value_ != x.geo_point_value_: return 0
     if len(self.list_value_) != len(x.list_value_): return 0
     for e1, e2 in zip(self.list_value_, x.list_value_):
       if e1 != e2: return 0
@@ -883,6 +1075,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     initialized = 1
     if (self.has_key_value_ and not self.key_value_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_entity_value_ and not self.entity_value_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_geo_point_value_ and not self.geo_point_value_.IsInitialized(debug_strs)): initialized = 0
     for p in self.list_value_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
@@ -898,6 +1091,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_): n += 2 + self.lengthString(len(self.string_value_))
     if (self.has_blob_value_): n += 2 + self.lengthString(len(self.blob_value_))
     if (self.has_entity_value_): n += 1 + self.lengthString(self.entity_value_.ByteSize())
+    if (self.has_geo_point_value_): n += 1 + self.lengthString(self.geo_point_value_.ByteSize())
     n += 1 * len(self.list_value_)
     for i in xrange(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSize())
     if (self.has_meaning_): n += 1 + self.lengthVarInt64(self.meaning_)
@@ -915,6 +1109,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     if (self.has_string_value_): n += 2 + self.lengthString(len(self.string_value_))
     if (self.has_blob_value_): n += 2 + self.lengthString(len(self.blob_value_))
     if (self.has_entity_value_): n += 1 + self.lengthString(self.entity_value_.ByteSizePartial())
+    if (self.has_geo_point_value_): n += 1 + self.lengthString(self.geo_point_value_.ByteSizePartial())
     n += 1 * len(self.list_value_)
     for i in xrange(len(self.list_value_)): n += self.lengthString(self.list_value_[i].ByteSizePartial())
     if (self.has_meaning_): n += 1 + self.lengthVarInt64(self.meaning_)
@@ -931,6 +1126,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     self.clear_string_value()
     self.clear_blob_value()
     self.clear_entity_value()
+    self.clear_geo_point_value()
     self.clear_list_value()
     self.clear_meaning()
     self.clear_indexed()
@@ -960,6 +1156,10 @@ class Value(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(58)
       out.putVarInt32(self.list_value_[i].ByteSize())
       self.list_value_[i].OutputUnchecked(out)
+    if (self.has_geo_point_value_):
+      out.putVarInt32(66)
+      out.putVarInt32(self.geo_point_value_.ByteSize())
+      self.geo_point_value_.OutputUnchecked(out)
     if (self.has_meaning_):
       out.putVarInt32(112)
       out.putVarInt32(self.meaning_)
@@ -1001,6 +1201,10 @@ class Value(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(58)
       out.putVarInt32(self.list_value_[i].ByteSizePartial())
       self.list_value_[i].OutputPartial(out)
+    if (self.has_geo_point_value_):
+      out.putVarInt32(66)
+      out.putVarInt32(self.geo_point_value_.ByteSizePartial())
+      self.geo_point_value_.OutputPartial(out)
     if (self.has_meaning_):
       out.putVarInt32(112)
       out.putVarInt32(self.meaning_)
@@ -1050,6 +1254,12 @@ class Value(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_list_value().TryMerge(tmp)
         continue
+      if tt == 66:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_geo_point_value().TryMerge(tmp)
+        continue
       if tt == 112:
         self.set_meaning(d.getVarInt32())
         continue
@@ -1088,6 +1298,10 @@ class Value(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"entity_value <\n"
       res+=self.entity_value_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_geo_point_value_:
+      res+=prefix+"geo_point_value <\n"
+      res+=self.geo_point_value_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     cnt=0
     for e in self.list_value_:
       elm=""
@@ -1113,6 +1327,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
   kstring_value = 17
   kblob_value = 18
   kentity_value = 6
+  kgeo_point_value = 8
   klist_value = 7
   kmeaning = 14
   kindexed = 15
@@ -1126,6 +1341,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     5: "key_value",
     6: "entity_value",
     7: "list_value",
+    8: "geo_point_value",
     14: "meaning",
     15: "indexed",
     16: "blob_key_value",
@@ -1142,6 +1358,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.STRING,
     7: ProtocolBuffer.Encoder.STRING,
+    8: ProtocolBuffer.Encoder.STRING,
     14: ProtocolBuffer.Encoder.NUMERIC,
     15: ProtocolBuffer.Encoder.NUMERIC,
     16: ProtocolBuffer.Encoder.STRING,
@@ -1154,7 +1371,7 @@ class Value(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Value'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlExoNYm9vbGVhbl92YWx1ZSABKAAwCDgBFBMaDWludGVnZXJfdmFsdWUgAigAMAM4ARQTGgxkb3VibGVfdmFsdWUgAygBMAE4ARQTGhx0aW1lc3RhbXBfbWljcm9zZWNvbmRzX3ZhbHVlIAQoADADOAEUExoJa2V5X3ZhbHVlIAUoAjALOAFKG2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleaMBqgEFY3R5cGWyAQZwcm90bzKkARQTGg5ibG9iX2tleV92YWx1ZSAQKAIwCTgBFBMaDHN0cmluZ192YWx1ZSARKAIwCTgBFBMaCmJsb2JfdmFsdWUgEigCMAk4ARQTGgxlbnRpdHlfdmFsdWUgBigCMAs4AUoeYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaCmxpc3RfdmFsdWUgBygCMAs4A0odYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWWjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoHbWVhbmluZyAOKAAwBTgBFBMaB2luZGV4ZWQgDygAMAg4AUIEdHJ1ZaMBqgEHZGVmYXVsdLIBBHRydWWkARTCASNhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5QYXJ0aXRpb25JZA=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WiRhcHBob3N0aW5nL2RhdGFzdG9yZS9lbnRpdHlfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlExoNYm9vbGVhbl92YWx1ZSABKAAwCDgBFBMaDWludGVnZXJfdmFsdWUgAigAMAM4ARQTGgxkb3VibGVfdmFsdWUgAygBMAE4ARQTGhx0aW1lc3RhbXBfbWljcm9zZWNvbmRzX3ZhbHVlIAQoADADOAEUExoJa2V5X3ZhbHVlIAUoAjALOAFKG2FwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleaMBqgEFY3R5cGWyAQZwcm90bzKkARQTGg5ibG9iX2tleV92YWx1ZSAQKAIwCTgBFBMaDHN0cmluZ192YWx1ZSARKAIwCTgBFBMaCmJsb2JfdmFsdWUgEigCMAk4ARQTGgxlbnRpdHlfdmFsdWUgBigCMAs4AUoeYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaD2dlb19wb2ludF92YWx1ZSAIKAIwCzgBSiBhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludKMBqgEFY3R5cGWyAQZwcm90bzKkARQTGgpsaXN0X3ZhbHVlIAcoAjALOANKHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaB21lYW5pbmcgDigAMAU4ARQTGgdpbmRleGVkIA8oADAIOAFCBHRydWWjAaoBB2RlZmF1bHSyAQR0cnVlpAEUwgEjYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQ="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -1629,4 +1846,4 @@ class Entity(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['PartitionId','Key_PathElement','Key','Value','Property','Entity']
+__all__ = ['PartitionId','Key_PathElement','Key','GeoPoint','Value','Property','Entity']

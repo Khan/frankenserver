@@ -114,7 +114,7 @@ class AppYamlTranslator(object):
     self.api_version = api_version
 
   def GetRuntime(self):
-    return 'custom' if self.app_engine_web_xml.vm else 'java7'
+    return 'java7'
 
   def GetYaml(self):
     """Returns full yaml text."""
@@ -250,11 +250,11 @@ class AppYamlTranslator(object):
 
   def TranslateVmSettings(self):
     """Translates VM settings in appengine-web.xml to yaml."""
-    if (not self.app_engine_web_xml.vm or
-        not self.app_engine_web_xml.vm_settings):
+    if not self.app_engine_web_xml.vm:
       return []
 
-    settings = self.app_engine_web_xml.vm_settings
+    settings = self.app_engine_web_xml.vm_settings or {}
+    settings['has_docker_image'] = 'True'
     statements = ['vm_settings:']
     for name in sorted(settings):
       statements.append(

@@ -1015,6 +1015,8 @@ class BaseCursor(object):
       self.__cursor_properties = set(order.property() for order in orders)
       self.__cursor_properties.add('__key__')
       self.__cursor_properties = frozenset(self.__cursor_properties)
+
+    self.__first_sort_order = orders[0].direction()
     self.__index_list = index_list
 
   def _PopulateResultMetadata(self, query_result, compile,
@@ -1099,6 +1101,8 @@ class BaseCursor(object):
           'Cursor does not match query: missing values for %r' %
           remaining_properties)
 
+
+
     return (cursor_entity, position.start_inclusive())
 
   def _EncodeCompiledCursor(self, last_result, compiled_cursor):
@@ -1122,6 +1126,7 @@ class BaseCursor(object):
           indexvalue.set_property(prop.name())
           indexvalue.mutable_value().CopyFrom(prop.value())
       position.set_start_inclusive(False)
+      _SetBeforeAscending(position, self.__first_sort_order)
 
 
 class ListCursor(BaseCursor):
@@ -2945,6 +2950,7 @@ class DatastoreStub(object):
 
   @_NeedsIndexes
   def _Dynamic_RunQuery(self, query, query_result):
+    self.__UpgradeCursors(query)
     cursor = self._datastore.GetQueryCursor(query, self._trusted, self._app_id)
 
     if query.has_count():
@@ -2968,6 +2974,53 @@ class DatastoreStub(object):
       compiled_query.mutable_primaryscan().set_index_name(query.Encode())
     self.__UpdateQueryHistory(query)
 
+  def __UpgradeCursors(self, query):
+    """Upgrades compiled cursors in place.
+
+    If the cursor position does not specify before_ascending, populate it.
+    If before_ascending is already populated, use it and the sort direction
+    from the query to set an appropriate value for start_inclusive.
+
+    Args:
+      query: datastore_pb.Query
+    """
+    first_sort_direction = None
+    if query.order_list():
+      first_sort_direction = query.order(0).direction()
+
+    for compiled_cursor in [query.compiled_cursor(),
+                            query.end_compiled_cursor()]:
+      self.__UpgradeCursor(compiled_cursor, first_sort_direction)
+
+  def __UpgradeCursor(self, compiled_cursor, first_sort_direction):
+    """Upgrades a compiled cursor in place.
+
+    If the cursor position does not specify before_ascending, populate it.
+    If before_ascending is already populated, use it and the provided direction
+    to set an appropriate value for start_inclusive.
+
+    Args:
+      compiled_cursor: datastore_pb.CompiledCursor
+      first_sort_direction: first sort direction from the query or None
+    """
+
+
+    if not self.__IsPlannable(compiled_cursor):
+      return
+    elif compiled_cursor.position().has_before_ascending():
+      _SetStartInclusive(compiled_cursor.position(), first_sort_direction)
+    elif compiled_cursor.position().has_start_inclusive():
+      _SetBeforeAscending(compiled_cursor.position(), first_sort_direction)
+
+  def __IsPlannable(self, compiled_cursor):
+    """Returns True if compiled_cursor is plannable.
+
+    Args:
+      compiled_cursor: datastore_pb.CompiledCursor
+    """
+    position = compiled_cursor.position()
+    return position.has_key() or position.indexvalue_list()
+
   def __UpdateQueryHistory(self, query):
 
     clone = datastore_pb.Query()
@@ -2983,7 +3036,6 @@ class DatastoreStub(object):
       if clone.app() == self._app_id:
         self.__query_ci_history.add(
             datastore_index.CompositeIndexForQuery(clone))
-
 
   def _Dynamic_Next(self, next_request, query_result):
     app = next_request.cursor().app()
@@ -4279,3 +4331,29 @@ def _CopyAndSetMultipleToFalse(prop):
   prop_copy.MergeFrom(prop)
   prop_copy.set_multiple(False)
   return prop_copy
+
+
+def _SetStartInclusive(position, first_direction):
+  """Sets the start_inclusive field in position.
+
+  Args:
+    position: datastore_pb.Position
+    first_direction: the first sort order from the query
+      (a datastore_pb.Query_Order) or None
+  """
+  position.set_start_inclusive(
+      position.before_ascending()
+      != (first_direction == datastore_pb.Query_Order.DESCENDING))
+
+
+def _SetBeforeAscending(position, first_direction):
+  """Sets the before_ascending field in position.
+
+  Args:
+    position: datastore_pb.Position
+    first_direction: the first sort order from the query
+      (a datastore_pb.Query_Order) or None
+  """
+  position.set_before_ascending(
+      position.start_inclusive()
+      != (first_direction == datastore_pb.Query_Order.DESCENDING))

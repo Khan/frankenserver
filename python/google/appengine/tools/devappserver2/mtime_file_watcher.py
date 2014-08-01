@@ -81,7 +81,7 @@ class MtimeFileWatcher(object):
     num_files = 0
     for dirname, dirnames, filenames in os.walk(self._directory,
                                                 followlinks=True):
-      watcher_common.remove_ignored_dirs(dirnames)
+      watcher_common.skip_ignored_dirs(dirnames)
       filenames = [f for f in filenames if not watcher_common.ignore_file(f)]
       for filename in filenames + dirnames:
         if num_files == 10000:

@@ -52,7 +52,7 @@ class TestInotifyFileWatcher(unittest.TestCase):
 
   def _create_directory(self, relative_path):
     realpath = os.path.realpath(os.path.join(self._directory, relative_path))
-    os.mkdir(realpath)
+    os.makedirs(realpath)
     return realpath
 
   def _create_directory_tree(self, path, num_directories):
@@ -276,6 +276,68 @@ class TestInotifyFileWatcher(unittest.TestCase):
         set([path]),
         self._watcher._get_changed_paths())
 
+  def test_internal_symlinks_relative(self):
+    dir_a_b = self._create_directory('a/b')
+    dir_p = self._create_directory('p')
+    os.symlink('../../p', os.path.join(dir_a_b, 'p'))
+    self._create_directory('p/q/r')
+    self._watcher.start()
+    shutil.rmtree(dir_p)
+    self._watcher._get_changed_paths()
+    # TODO: validate the value returned from _get_changed_paths once
+    # a solution is designed.
+
+  def test_internal_symlinks_absolute(self):
+    dir_a_b = self._create_directory('a/b')
+    dir_p = self._create_directory('p')
+    os.symlink(dir_p, os.path.join(dir_a_b, 'p'))
+    self._create_directory('p/q/r')
+    self._watcher.start()
+    shutil.rmtree(dir_p)
+    self._watcher._get_changed_paths()
+    # TODO: validate the value returned from _get_changed_paths once
+    # a solution is designed.
+
+  @unittest.skip('b/14583335')
+  def test_multiple_symlinks_same_directory(self):
+    # Create a file inside the junk directory (the important point is it's
+    # outside the watched directory).
+    junk_file = os.path.join(self._junk_directory, 'file')
+    with open(junk_file, 'w'):
+      pass
+
+    # Add a symlink from the watched directory to the junk directory. This
+    # causes the file inside the junk directory to be watched.
+    symlink_junkdir_1 = os.path.join(self._directory, 'junk1')
+    os.symlink(self._junk_directory, symlink_junkdir_1)
+    watched_junk_file = os.path.join(symlink_junkdir_1, 'file')
+
+    self._watcher.start()
+
+    # Make sure changes to the file are reported via the symlinked directory.
+    with open(junk_file, 'w') as f:
+      f.write('change1')
+    self.assertEqual(
+        set([watched_junk_file]),
+        self._watcher._get_changed_paths())
+
+    # Temporarily create a second symlink to the junk directory. We don't
+    # care about changed paths are reported, we just need to make sure the
+    # inotify internals are updated both when the second symlink is added and
+    # when it is removed.
+    symlink_junkdir_2 = os.path.join(self._directory, 'junk2')
+    os.symlink(self._junk_directory, symlink_junkdir_2)
+    self._watcher._get_changed_paths()
+    os.unlink(symlink_junkdir_2)
+    self._watcher._get_changed_paths()
+
+    # And make sure changes to the file are still reported.
+    with open(junk_file, 'w') as f:
+      f.write('change2')
+    self.assertEqual(
+        set([watched_junk_file]),
+        self._watcher._get_changed_paths())
+
 
 @unittest.skipUnless(sys.platform.startswith('linux'), 'requires linux')
 class TestInotifyFileWatcherMultipleDirectories(unittest.TestCase):
@@ -316,6 +378,30 @@ class TestInotifyFileWatcherMultipleDirectories(unittest.TestCase):
     self.assertEqual(
         set([path1, path3]),
         self._watcher._get_changed_paths())
+
+
+class TestBitStr(unittest.TestCase):
+  _MASK_NAMES = {
+      0x1: 'one',
+      0x2: 'two',
+      0x8: 'eight',
+  }
+
+  def testSingleBit(self):
+    self.assertEquals(
+        'one (0x1)',
+        inotify_file_watcher._bit_str(0x1, self._MASK_NAMES))
+
+  def testMultipleBits(self):
+    self.assertEquals(
+        'one|two|eight (0xb)',
+        inotify_file_watcher._bit_str(0x1 | 0x2 | 0x8, self._MASK_NAMES))
+
+  def testExtraBits(self):
+    self.assertEquals(
+        'one|two|(0x4)|eight|(0x10) (0x1f)',
+        inotify_file_watcher._bit_str(0x1 | 0x2 | 0x4 | 0x8 | 0x10,
+                                      self._MASK_NAMES))
 
 if __name__ == '__main__':
   unittest.main()
