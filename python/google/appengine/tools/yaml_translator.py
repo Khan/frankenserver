@@ -262,6 +262,21 @@ class AppYamlTranslator(object):
               self.SanitizeForYaml(name), self.SanitizeForYaml(settings[name])))
     return statements
 
+  def TranslateVmHealthCheck(self):
+    """Translates <vm-health-check> in appengine-web.xml to yaml."""
+    vm_health_check = self.app_engine_web_xml.vm_health_check
+    if not vm_health_check:
+      return []
+
+    statements = ['vm_health_check:']
+    for attr in ('enable_health_check', 'check_interval_sec', 'timeout_sec',
+                 'unhealthy_threshold', 'healthy_threshold',
+                 'restart_threshold', 'host'):
+      value = getattr(vm_health_check, attr, None)
+      if value is not None:
+        statements.append('  %s: %s' % (attr, value))
+    return statements
+
   def TranslateInboundServices(self):
     services = self.app_engine_web_xml.inbound_services
     if not services:

@@ -1299,12 +1299,19 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
       self._ReleaseConnection(conn)
 
-  def _GetQueryCursor(self, query, filters, orders, index_list):
+  def _GetQueryCursor(self, query, filters, orders, index_list,
+                      filter_predicate=None):
     """Returns a query cursor for the provided query.
 
     Args:
-      conn: The SQLite connection.
-      query: A datastore_pb.Query protobuf.
+      query: The datastore_pb.Query to run.
+      filters: A list of filters that override the ones found on query.
+      orders: A list of orders that override the ones found on query.
+      index_list: A list of indexes used by the query.
+      filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
+
     Returns:
       A QueryCursor object.
     """
@@ -1335,10 +1342,17 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
               conn.execute(sql_stmt, params))
         else:
           db_cursor = _DedupingEntityGenerator(conn.execute(sql_stmt, params))
-        dsquery = datastore_stub_util._MakeQuery(query, filters, orders)
+        dsquery = datastore_stub_util._MakeQuery(query, filters, orders,
+                                                 filter_predicate)
+
+        filtered_entities = [r for r in db_cursor]
+
+
+        if filter_predicate:
+          filtered_entities = filter(filter_predicate, filtered_entities)
+
         cursor = datastore_stub_util.ListCursor(
-            query, dsquery, orders, index_list,
-            [r for r in db_cursor])
+            query, dsquery, orders, index_list, filtered_entities)
       finally:
         self._ReleaseConnection(conn)
     return cursor

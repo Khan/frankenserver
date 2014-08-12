@@ -23,10 +23,10 @@ DocumentMatcher provides an approximation of the Search API's query matching.
 from google.appengine.datastore import document_pb
 
 from google.appengine._internal.antlr3 import tree
+from google.appengine.api.search import geo_util
 from google.appengine.api.search import query_parser
 from google.appengine.api.search import QueryParser
 from google.appengine.api.search import search_util
-from google.appengine.api.search.stub import geo_util
 from google.appengine.api.search.stub import simple_tokenizer
 from google.appengine.api.search.stub import tokens
 

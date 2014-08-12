@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
-
 """Tool for deploying apps to an app server.
 
 Currently, the application only uploads new appversions. To do this, it first
@@ -3624,7 +3620,8 @@ class AppCfgApp(object):
                       'ignoring --no_precompilation')
       self.options.precompilation = True
 
-    if appyaml.runtime.startswith('java'):
+    if (appyaml.runtime.startswith('java') or
+        appyaml.GetEffectiveRuntime() == 'dart'):
       self.options.precompilation = False
 
     if self.options.precompilation:

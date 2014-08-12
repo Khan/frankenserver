@@ -29,11 +29,11 @@ In this module:
     static files.
 """
 
+from google.appengine.api import appinfo
 from google.appengine.tools import handler
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
 
 API_ENDPOINT_REGEX = '/_ah/spi/*'
-MAX_HANDLERS = 100
 
 
 def GenerateYamlHandlersList(app_engine_web_xml, web_xml, static_files):
@@ -47,7 +47,7 @@ def GenerateYamlHandlersList(app_engine_web_xml, web_xml, static_files):
   handler_length = len(dynamic_handler_generator.GenerateOrderedHandlerList())
   if static_files:
     handler_length += len(static_handler_generator.GenerateOrderedHandlerList())
-  if handler_length > MAX_HANDLERS:
+  if handler_length > appinfo.MAX_URL_MAPS:
 
 
 
@@ -88,6 +88,14 @@ def GenerateYamlHandlersListForDevAppServer(
     A list of strings that together make up the lines of the generated app.yaml
     file.
   """
+
+
+
+
+
+
+
+  appinfo.MAX_URL_MAPS = 10000
   static_handler_generator = StaticHandlerGeneratorForDevAppServer(
       app_engine_web_xml, web_xml, static_urls)
   dynamic_handler_generator = DynamicHandlerGenerator(

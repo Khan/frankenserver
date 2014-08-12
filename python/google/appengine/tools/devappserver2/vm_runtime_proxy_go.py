@@ -30,7 +30,7 @@ from google.appengine.tools.devappserver2 import vm_runtime_proxy
 
 DEBUG_PORT = 5858
 VM_SERVICE_PORT = 8181
-DEFAULT_DOCKER_FILE = """FROM google/golang
+DEFAULT_DOCKER_FILE = """FROM google/golang:1.2.2
 ADD . /app
 RUN /bin/bash /app/_ah/build.sh
 
@@ -112,94 +112,10 @@ class GoVMRuntimeProxy(instance.RuntimeProxy):
       application_dir = os.path.abspath(
           self._module_configuration.application_root)
 
-      # - copy the application to a new temporary directory (follow symlinks)
-      # - copy used parts of $GOPATH to the temporary directory
-      # - copy or create a Dockerfile in the temporary directory
-      # - build & deploy the docker container
-      with TempDir('go_deployment_dir') as temp_dir:
-        dst_deployment_dir = temp_dir
-        dst_application_dir = temp_dir
-        try:
-          _copytree(application_dir, dst_application_dir,
-                    self._module_configuration.skip_files)
-        except shutil.Error as e:
-          logging.error('Error copying tree: %s', e)
-          for src, unused_dst, unused_error in e.args[0]:
-            if os.path.islink(src):
-              linkto = os.readlink(src)
-              if not os.path.exists(linkto):
-                logging.error('Dangling symlink in Go project. '
-                              'Path %s links to %s', src, os.readlink(src))
-          raise
-        except OSError as e:
-          logging.error('Failed to copy dir: %s', e.strerror)
-          raise
-
-        extras = go_application.get_app_extras_for_vm(
-            self._module_configuration)
-        for dest, src in extras:
-          try:
-            dest = os.path.join(dst_deployment_dir, dest)
-            dirname = os.path.dirname(dest)
-            if not os.path.exists(dirname):
-              os.makedirs(dirname)
-            shutil.copy(src, dest)
-          except OSError as e:
-            logging.error('Failed to copy %s to %s', src, dest)
-            raise
-
-        # Make the _ah subdirectory for the app engine tools.
-        ah_dir = os.path.join(dst_deployment_dir, '_ah')
-        try:
-          os.mkdir(ah_dir)
-        except OSError as e:
-          logging.error('Failed to create %s: %s', ah_dir, e.strerror)
-          raise
-
-        # Copy gab.
-        try:
-          gab_dest = os.path.join(ah_dir, 'gab')
-          shutil.copy(_GO_APP_BUILDER, gab_dest)
-        except OSError as e:
-          logging.error('Failed to copy %s to %s', _GO_APP_BUILDER, gab_dest)
-          raise
-
-        # Write build script.
-        nobuild_files = '^' + str(self._module_configuration.nobuild_files)
-        gab_args = [
-            '/app/_ah/gab',
-            '-app_base', '/app',
-            '-arch', '6',
-            '-dynamic',
-            '-goroot', '/goroot',
-            '-nobuild_files', nobuild_files,
-            '-unsafe',
-            '-binary_name', '_ah_exe',
-            '-work_dir', '/tmp/work',
-            '-vm',
-        ]
-        gab_args.extend(
-            go_application.list_go_files(self._module_configuration))
-        gab_args.extend([x[0] for x in extras])
-        dst_build = os.path.join(ah_dir, 'build.sh')
-        with open(dst_build, 'wb') as fd:
-          fd.write('#!/bin/bash\n')
-          fd.write('set -e\n')
-          fd.write('mkdir -p /tmp/work\n')
-          fd.write('chmod a+x /app/_ah/gab\n')
-          # Without this line, Windows errors "text file busy".
-          fd.write('shasum /app/_ah/gab\n')
-          fd.write(' '.join(gab_args) + '\n')
-          fd.write('mv /tmp/work/_ah_exe /app/_ah/exe\n')
-          fd.write('rm -rf /tmp/work\n')
-          fd.write('echo Done.\n')
-        os.chmod(dst_build, 0777)
-
-        # Write default Dockerfile if none found.
-        dst_dockerfile = os.path.join(dst_application_dir, 'Dockerfile')
-        if not os.path.exists(dst_dockerfile):
-          with open(dst_dockerfile, 'w') as fd:
-            fd.write(DEFAULT_DOCKER_FILE)
+      with TempDir('go_deployment_dir') as dst_deployment_dir:
+        build_go_docker_image_source(
+            application_dir, dst_deployment_dir,
+            _GO_APP_BUILDER, self._module_configuration)
 
         self._vm_runtime_proxy.start(dockerfile_dir=dst_deployment_dir)
 
@@ -213,6 +129,18 @@ class GoVMRuntimeProxy(instance.RuntimeProxy):
 
   def quit(self):
     self._vm_runtime_proxy.quit()
+
+
+def _write_dockerfile(dst_dir):
+  """Writes Dockerfile to named directory if one does not exist.
+
+  Args:
+    dst_dir: string name of destination directory.
+  """
+  dst_dockerfile = os.path.join(dst_dir, 'Dockerfile')
+  if not os.path.exists(dst_dockerfile):
+    with open(dst_dockerfile, 'w') as fd:
+      fd.write(DEFAULT_DOCKER_FILE)
 
 
 class TempDir(object):
@@ -255,3 +183,104 @@ def _copytree(src, dst, skip_files, symlinks=False):
       shutil.copytree(s, d, symlinks, ignore=ignored_files)
     else:
       shutil.copy2(s, d)
+
+
+def build_go_docker_image_source(
+    application_dir, dst_deployment_dir, go_app_builder, module_configuration):
+  """Builds the Docker image source in preparation for building.
+
+  Steps:
+    copy the application to dst_deployment_dir (follow symlinks)
+    copy used parts of $GOPATH to dst_deployment_dir
+    copy or create a Dockerfile in dst_deployment_dir
+
+  Args:
+    application_dir: string pathname of application directory.
+    dst_deployment_dir: string pathname of temporary deployment directory.
+    go_app_builder: string pathname of docker-gab executable.
+    module_configuration: An application_configuration.ModuleConfiguration
+        instance respresenting the configuration of the module that owns the
+        runtime.
+  """
+  try:
+    _copytree(application_dir, dst_deployment_dir,
+              module_configuration.skip_files)
+  except shutil.Error as e:
+    logging.error('Error copying tree: %s', e)
+    for src, unused_dst, unused_error in e.args[0]:
+      if os.path.islink(src):
+        linkto = os.readlink(src)
+        if not os.path.exists(linkto):
+          logging.error('Dangling symlink in Go project. '
+                        'Path %s links to %s', src, os.readlink(src))
+    raise
+  except OSError as e:
+    logging.error('Failed to copy dir: %s', e.strerror)
+    raise
+
+  extras = go_application.get_app_extras_for_vm(module_configuration)
+  for dest, src in extras:
+    try:
+      dest = os.path.join(dst_deployment_dir, dest)
+      dirname = os.path.dirname(dest)
+      if not os.path.exists(dirname):
+        os.makedirs(dirname)
+      shutil.copy(src, dest)
+    except OSError as e:
+      logging.error('Failed to copy %s to %s', src, dest)
+      raise
+
+  # Make the _ah subdirectory for the app engine tools.
+  ah_dir = os.path.join(dst_deployment_dir, '_ah')
+  try:
+    os.mkdir(ah_dir)
+  except OSError as e:
+    logging.error('Failed to create %s: %s', ah_dir, e.strerror)
+    raise
+
+  # Copy gab.
+  try:
+    gab_dest = os.path.join(ah_dir, 'gab')
+    shutil.copy(go_app_builder, gab_dest)
+  except OSError as e:
+    logging.error('Failed to copy %s to %s', go_app_builder, gab_dest)
+    raise
+
+  # Write build script.
+  nobuild_files = '^' + str(module_configuration.nobuild_files)
+  gab_args = [
+      '/app/_ah/gab',
+      '-app_base', '/app',
+      '-arch', '6',
+      '-dynamic',
+      '-goroot', '/goroot',
+      '-nobuild_files', nobuild_files,
+      '-unsafe',
+      '-binary_name', '_ah_exe',
+      '-work_dir', '/tmp/work',
+      '-vm',
+  ]
+  gab_args.extend(go_application.list_go_files(module_configuration))
+  gab_args.extend([x[0] for x in extras])
+  dst_build = os.path.join(ah_dir, 'build.sh')
+  lines = [
+      '#!/bin/bash',
+      'set -e',
+      'mkdir -p /tmp/work',
+      'chmod a+x /app/_ah/gab',
+      # Without this line, Windows errors "text file busy".
+      'shasum /app/_ah/gab',
+      ' '.join(gab_args),
+      'mv /tmp/work/_ah_exe /app/_ah/exe',
+      'rm -rf /tmp/work',
+      'echo Done.',
+  ]
+  with open(dst_build, 'wb') as fd:
+    fd.write('\n'.join(lines) + '\n')
+  os.chmod(dst_build, 0777)
+
+  # TODO: Remove this when classic Go SDK is gone.
+  # Write default Dockerfile if none found.
+  _write_dockerfile(dst_deployment_dir)
+  # Also write the default Dockerfile if not found in the app dir.
+  _write_dockerfile(application_dir)

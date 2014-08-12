@@ -541,7 +541,7 @@ def create_command_line_parser():
       '--smtp_allow_tls',
       action=boolean_action.BooleanAction,
       const=True,
-      default=False,
+      default=True,
       help='Allow TLS to be used when the SMTP server announces TLS support '
       '(ignored if --smtp_host is not set)')
 

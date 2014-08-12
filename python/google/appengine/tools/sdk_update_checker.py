@@ -70,23 +70,19 @@ class NagFile(validation.Validated):
     return yaml_object.BuildSingleObject(NagFile, nag_file)
 
 
-def GetVersionObject(isfile=os.path.isfile, open_fn=open):
+def GetVersionObject():
   """Gets the version of the SDK by parsing the VERSION file.
-
-  Args:
-    isfile: used for testing.
-    open_fn: Used for testing.
 
   Returns:
     A Yaml object or None if the VERSION file does not exist.
   """
   version_filename = os.path.join(os.path.dirname(google.appengine.__file__),
                                   VERSION_FILE)
-  if not isfile(version_filename):
+  try:
+    version_fh = open(version_filename)
+  except IOError:
     logging.error('Could not find version file at %s', version_filename)
     return None
-
-  version_fh = open_fn(version_filename, 'r')
   try:
     version = yaml.safe_load(version_fh)
   finally:
@@ -133,26 +129,17 @@ class SDKUpdateChecker(object):
 
   def __init__(self,
                rpcserver,
-               configs,
-               isdir=os.path.isdir,
-               isfile=os.path.isfile,
-               open_fn=open):
+               configs):
     """Create a new SDKUpdateChecker.
 
     Args:
       rpcserver: The AbstractRpcServer to use.
       configs: A list of yaml objects or a single yaml object that specify the
           configuration of this application.
-      isdir: Replacement for os.path.isdir (for testing).
-      isfile: Replacement for os.path.isfile (for testing).
-      open_fn: Replacement for the open builtin (for testing).
     """
     if not isinstance(configs, list):
       configs = [configs]
     self.rpcserver = rpcserver
-    self.isdir = isdir
-    self.isfile = isfile
-    self.open = open_fn
     self.runtimes = set(config.runtime for config in configs)
     self.runtime_to_api_version = {}
     for config in configs:
@@ -181,7 +168,7 @@ class SDKUpdateChecker(object):
     Returns:
       A Yaml object or None if the file does not exist.
     """
-    return GetVersionObject(isfile=self.isfile, open_fn=self.open)
+    return GetVersionObject()
 
   def CheckSupportedVersion(self):
     """Determines if the app's api_version is supported by the SDK.
@@ -326,14 +313,15 @@ class SDKUpdateChecker(object):
       A NagFile if the file was present else None.
     """
     nag_filename = SDKUpdateChecker.MakeNagFilename()
-    if self.isfile(nag_filename):
-      fh = self.open(nag_filename, 'r')
-      try:
-        nag = NagFile.Load(fh)
-      finally:
-        fh.close()
-      return nag
-    return None
+    try:
+      fh = open(nag_filename)
+    except IOError:
+      return None
+    try:
+      nag = NagFile.Load(fh)
+    finally:
+      fh.close()
+    return nag
 
   def _WriteNagFile(self, nag):
     """Writes the NagFile to the user's nag file.
@@ -346,7 +334,7 @@ class SDKUpdateChecker(object):
     """
     nagfilename = SDKUpdateChecker.MakeNagFilename()
     try:
-      fh = self.open(nagfilename, 'w')
+      fh = open(nagfilename, 'w')
       try:
         fh.write(nag.ToYAML())
       finally:

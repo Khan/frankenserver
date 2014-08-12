@@ -18,6 +18,7 @@
 
 
 
+
 """Descriptors essentially contain exactly the information found in a .proto
 file, in types that make this information accessible in Python.
 """
@@ -212,13 +213,21 @@ class Descriptor(_NestedDescriptorBase):
     options: (descriptor_pb2.MessageOptions) Protocol message options or None
       to use default message options.
 
+    oneofs: (list of OneofDescriptor) The list of descriptors for oneof fields
+      in this message.
+    oneofs_by_name: (dict str -> OneofDescriptor) Same objects as in |oneofs|,
+      but indexed by "name" attribute.
+
     file: (FileDescriptor) Reference to file descriptor.
   """
 
+
+
+
   def __init__(self, name, full_name, filename, containing_type, fields,
                nested_types, enum_types, extensions, options=None,
-               is_extendable=True, extension_ranges=None, file=None,
-               serialized_start=None, serialized_end=None):
+               is_extendable=True, extension_ranges=None, oneofs=None,
+               file=None, serialized_start=None, serialized_end=None):
     """Arguments to __init__() are as described in the description
     of Descriptor fields above.
 
@@ -259,6 +268,10 @@ class Descriptor(_NestedDescriptorBase):
     self.extensions_by_name = dict((f.name, f) for f in extensions)
     self.is_extendable = is_extendable
     self.extension_ranges = extension_ranges
+    self.oneofs = oneofs if oneofs is not None else []
+    self.oneofs_by_name = dict((o.name, o) for o in self.oneofs)
+    for oneof in self.oneofs:
+      oneof.containing_type = self
 
   def EnumValueName(self, enum, value):
     """Returns the string name of an enum value.
@@ -344,6 +357,9 @@ class FieldDescriptor(DescriptorBase):
 
     options: (descriptor_pb2.FieldOptions) Protocol message field options or
       None to use default field options.
+
+    containing_oneof: (OneofDescriptor) If the field is a member of a oneof
+      union, contains its descriptor. Otherwise, None.
   """
 
 
@@ -425,7 +441,7 @@ class FieldDescriptor(DescriptorBase):
   def __init__(self, name, full_name, index, number, type, cpp_type, label,
                default_value, message_type, enum_type, containing_type,
                is_extension, extension_scope, options=None,
-               has_default_value=True):
+               has_default_value=True, containing_oneof=None):
     """The arguments are as described in the description of FieldDescriptor
     attributes above.
 
@@ -448,6 +464,7 @@ class FieldDescriptor(DescriptorBase):
     self.enum_type = enum_type
     self.is_extension = is_extension
     self.extension_scope = extension_scope
+    self.containing_oneof = containing_oneof
     if api_implementation.Type() == 'cpp':
       if is_extension:
         if api_implementation.Version() == 2:
@@ -564,6 +581,29 @@ class EnumValueDescriptor(DescriptorBase):
     self.index = index
     self.number = number
     self.type = type
+
+
+class OneofDescriptor(object):
+  """Descriptor for a oneof field.
+
+    name: (str) Name of the oneof field.
+    full_name: (str) Full name of the oneof field, including package name.
+    index: (int) 0-based index giving the order of the oneof field inside
+      its containing type.
+    containing_type: (Descriptor) Descriptor of the protocol message
+      type that contains this field.  Set by the Descriptor constructor
+      if we're passed into one.
+    fields: (list of FieldDescriptor) The list of field descriptors this
+      oneof can contain.
+  """
+
+  def __init__(self, name, full_name, index, containing_type, fields):
+    """Arguments are as described in the attribute description above."""
+    self.name = name
+    self.full_name = full_name
+    self.index = index
+    self.containing_type = containing_type
+    self.fields = fields
 
 
 class ServiceDescriptor(_NestedDescriptorBase):

@@ -139,7 +139,7 @@ class JavaAppUpdate(object):
 
       self.options.no_symlinks = True
 
-    java_home, exec_suffix = _JavaHomeAndSuffix()
+    java_home, exec_suffix = JavaHomeAndSuffix()
     self.java_command = os.path.join(java_home, 'bin', 'java' + exec_suffix)
     self.javac_command = os.path.join(java_home, 'bin', 'javac' + exec_suffix)
 
@@ -568,7 +568,7 @@ def _FilesMatching(root, predicate=lambda f: True):
   return matches
 
 
-def _JavaHomeAndSuffix():
+def JavaHomeAndSuffix():
   """Find the directory that the JDK is installed in.
 
   The JDK install directory is expected to have a bin directory that contains

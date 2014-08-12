@@ -29,6 +29,7 @@ from google.appengine.tools.docker import containers
 
 
 _DOCKER_IMAGE_NAME_FORMAT = '{display}.{module}.{version}'
+_DOCKER_CONTAINER_NAME_FORMAT = 'google.appengine.{image_name}.{minor_version}'
 
 
 class Error(Exception):
@@ -37,6 +38,10 @@ class Error(Exception):
 
 class InvalidEnvVariableError(Error):
   """Raised if an environment variable name or value cannot be supported."""
+
+
+class VersionError(Error):
+  """Raised if no version is specified in application configuration file."""
 
 
 def _GetPortToPublish(port):
@@ -136,6 +141,11 @@ class VMRuntimeProxy(instance.RuntimeProxy):
   def start(self, dockerfile_dir=None):
     runtime_config = self._runtime_config_getter()
 
+    if not self._module_configuration.major_version:
+      logging.error('Version needs to be specified in your application '
+                    'configuration file.')
+      raise VersionError()
+
     if not dockerfile_dir:
       dockerfile_dir = self._module_configuration.application_root
 
@@ -199,6 +209,9 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         self._module_configuration.module_name,
         self._module_configuration.major_version,
         runtime_config.instance_id)
+    container_name = _DOCKER_CONTAINER_NAME_FORMAT.format(
+        image_name=image_name,
+        minor_version=self._module_configuration.minor_version)
     self._container = containers.Container(
         self._docker_client,
         containers.ContainerOptions(
@@ -211,7 +224,8 @@ class VMRuntimeProxy(instance.RuntimeProxy):
             environment=environment,
             volumes={
                 external_logs_path: {'bind': '/var/log/app_engine'}
-            }
+            },
+            name=container_name
         ))
 
     self._container.Start()

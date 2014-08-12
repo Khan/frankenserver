@@ -530,7 +530,7 @@ def test_setup_stubs(
     mail_smtp_password='',
     mail_enable_sendmail=False,
     mail_show_mail_body=False,
-    mail_allow_tls=False,
+    mail_allow_tls=True,
     matcher_prospective_search_path='/dev/null',
     search_index_path=None,
     taskqueue_auto_run_tasks=False,

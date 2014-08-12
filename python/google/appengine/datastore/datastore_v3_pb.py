@@ -6046,6 +6046,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.key_ = []
+    self.composite_index_ = []
     self.snapshot_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
@@ -6104,6 +6105,22 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_transaction(self): return self.has_transaction_
 
+  def composite_index_size(self): return len(self.composite_index_)
+  def composite_index_list(self): return self.composite_index_
+
+  def composite_index(self, i):
+    return self.composite_index_[i]
+
+  def mutable_composite_index(self, i):
+    return self.composite_index_[i]
+
+  def add_composite_index(self):
+    x = CompositeIndex()
+    self.composite_index_.append(x)
+    return x
+
+  def clear_composite_index(self):
+    self.composite_index_ = []
   def trusted(self): return self.trusted_
 
   def set_trusted(self, x):
@@ -6165,6 +6182,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
+    for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_trusted()): self.set_trusted(x.trusted())
     if (x.has_force()): self.set_force(x.force())
     if (x.has_mark_changes()): self.set_mark_changes(x.mark_changes())
@@ -6179,6 +6197,9 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
+    if len(self.composite_index_) != len(x.composite_index_): return 0
+    for e1, e2 in zip(self.composite_index_, x.composite_index_):
+      if e1 != e2: return 0
     if self.has_trusted_ != x.has_trusted_: return 0
     if self.has_trusted_ and self.trusted_ != x.trusted_: return 0
     if self.has_force_ != x.has_force_: return 0
@@ -6196,6 +6217,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     for p in self.key_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
+    for p in self.composite_index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     for p in self.snapshot_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
@@ -6206,6 +6229,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
+    n += 1 * len(self.composite_index_)
+    for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
     if (self.has_mark_changes_): n += 2
@@ -6219,6 +6244,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSizePartial())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
+    n += 1 * len(self.composite_index_)
+    for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSizePartial())
     if (self.has_trusted_): n += 2
     if (self.has_force_): n += 2
     if (self.has_mark_changes_): n += 2
@@ -6230,6 +6257,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_header()
     self.clear_key()
     self.clear_transaction()
+    self.clear_composite_index()
     self.clear_trusted()
     self.clear_force()
     self.clear_mark_changes()
@@ -6261,6 +6289,10 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(82)
       out.putVarInt32(self.header_.ByteSize())
       self.header_.OutputUnchecked(out)
+    for i in xrange(len(self.composite_index_)):
+      out.putVarInt32(90)
+      out.putVarInt32(self.composite_index_[i].ByteSize())
+      self.composite_index_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_trusted_):
@@ -6288,6 +6320,10 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(82)
       out.putVarInt32(self.header_.ByteSizePartial())
       self.header_.OutputPartial(out)
+    for i in xrange(len(self.composite_index_)):
+      out.putVarInt32(90)
+      out.putVarInt32(self.composite_index_[i].ByteSizePartial())
+      self.composite_index_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6325,6 +6361,12 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_header().TryMerge(tmp)
         continue
+      if tt == 90:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_composite_index().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6349,6 +6391,14 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    cnt=0
+    for e in self.composite_index_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("composite_index%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     if self.has_trusted_: res+=prefix+("trusted: %s\n" % self.DebugFormatBool(self.trusted_))
     if self.has_force_: res+=prefix+("force: %s\n" % self.DebugFormatBool(self.force_))
     if self.has_mark_changes_: res+=prefix+("mark_changes: %s\n" % self.DebugFormatBool(self.mark_changes_))
@@ -6369,6 +6419,7 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   kheader = 10
   kkey = 6
   ktransaction = 5
+  kcomposite_index = 11
   ktrusted = 4
   kforce = 7
   kmark_changes = 8
@@ -6383,7 +6434,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     8: "mark_changes",
     9: "snapshot",
     10: "header",
-  }, 10)
+    11: "composite_index",
+  }, 11)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6394,7 +6446,8 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     8: ProtocolBuffer.Encoder.NUMERIC,
     9: ProtocolBuffer.Encoder.STRING,
     10: ProtocolBuffer.Encoder.STRING,
-  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
+    11: ProtocolBuffer.Encoder.STRING,
+  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

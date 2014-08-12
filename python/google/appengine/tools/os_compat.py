@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
 """OS cross-platform compatibility tweaks.
 
 This module will, on import, change some parts of the running evironment so

@@ -3,6 +3,22 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.9
+
+All
+==============================
+- TLS is now supported and enabled by default in the dev_appserver.
+    https://code.google.com/p/googleappengine/issues/detail?id=497
+- Fixed an issue with the Datastore Admin failing to load due to a
+  DeadlineExceededError when retrieving kinds.
+    https://code.google.com/p/googleappengine/issues/detail?id=11145
+
+PHP
+=============================
+- Fixed an issue where form fields submitted with Google Cloud Storage upload
+  may not get encoded correctly.
+    https://code.google.com/p/googleappengine/issues/detail?id=9534
+
 Version 1.9.8
 
 All

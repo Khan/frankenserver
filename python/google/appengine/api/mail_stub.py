@@ -66,7 +66,7 @@ class MailServiceStub(apiproxy_stub.APIProxyStub):
                enable_sendmail=False,
                show_mail_body=False,
                service_name='mail',
-               allow_tls=False):
+               allow_tls=True):
     """Constructor.
 
     Args:

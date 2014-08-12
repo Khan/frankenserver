@@ -5950,6 +5950,7 @@ namespace google\appengine_datastore_v3 {
   class DeleteRequest extends \google\net\ProtocolMessage {
     private $key = array();
     private $snapshot = array();
+    private $composite_index = array();
     public function getTrusted() {
       if (!isset($this->trusted)) {
         return false;
@@ -6107,6 +6108,37 @@ namespace google\appengine_datastore_v3 {
     public function hasHeader() {
       return isset($this->header);
     }
+    public function getCompositeIndexSize() {
+      return sizeof($this->composite_index);
+    }
+    public function getCompositeIndexList() {
+      return $this->composite_index;
+    }
+    public function mutableCompositeIndex($idx) {
+      if (!isset($this->composite_index[$idx])) {
+        $val = new \storage_onestore_v3\CompositeIndex();
+        $this->composite_index[$idx] = $val;
+        return $val;
+      }
+      return $this->composite_index[$idx];
+    }
+    public function getCompositeIndex($idx) {
+      if (isset($this->composite_index[$idx])) {
+        return $this->composite_index[$idx];
+      }
+      if ($idx >= end(array_keys($this->composite_index))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \storage_onestore_v3\CompositeIndex();
+    }
+    public function addCompositeIndex() {
+      $val = new \storage_onestore_v3\CompositeIndex();
+      $this->composite_index[] = $val;
+      return $val;
+    }
+    public function clearCompositeIndex() {
+      $this->composite_index = array();
+    }
     public function clear() {
       $this->clearTrusted();
       $this->clearTransaction();
@@ -6115,6 +6147,7 @@ namespace google\appengine_datastore_v3 {
       $this->clearMarkChanges();
       $this->clearSnapshot();
       $this->clearHeader();
+      $this->clearCompositeIndex();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -6144,6 +6177,11 @@ namespace google\appengine_datastore_v3 {
       if (isset($this->header)) {
         $res += 1;
         $res += $this->lengthString($this->header->byteSizePartial());
+      }
+      $this->checkProtoArray($this->composite_index);
+      $res += 1 * sizeof($this->composite_index);
+      foreach ($this->composite_index as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
       }
       return $res;
     }
@@ -6181,6 +6219,12 @@ namespace google\appengine_datastore_v3 {
         $out->putVarInt32(82);
         $out->putVarInt32($this->header->byteSizePartial());
         $this->header->outputPartial($out);
+      }
+      $this->checkProtoArray($this->composite_index);
+      foreach ($this->composite_index as $value) {
+        $out->putVarInt32(90);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
       }
     }
     public function tryMerge($d) {
@@ -6220,6 +6264,12 @@ namespace google\appengine_datastore_v3 {
             $d->skip($length);
             $this->mutableHeader()->tryMerge($tmp);
             break;
+          case 90:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addCompositeIndex()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -6237,6 +6287,9 @@ namespace google\appengine_datastore_v3 {
         if (!$value->isInitialized()) return 'snapshot';
       }
       if (isset($this->header) && (!$this->header->isInitialized())) return 'header';
+      foreach ($this->composite_index as $value) {
+        if (!$value->isInitialized()) return 'composite_index';
+      }
       return null;
     }
     public function mergeFrom($x) {
@@ -6262,6 +6315,9 @@ namespace google\appengine_datastore_v3 {
       if ($x->hasHeader()) {
         $this->mutableHeader()->mergeFrom($x->getHeader());
       }
+      foreach ($x->getCompositeIndexList() as $v) {
+        $this->addCompositeIndex()->copyFrom($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -6283,6 +6339,10 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->header) !== isset($x->header)) return false;
       if (isset($this->header) && !$this->header->equals($x->header)) return false;
+      if (sizeof($this->composite_index) !== sizeof($x->composite_index)) return false;
+      foreach (array_map(null, $this->composite_index, $x->composite_index) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -6307,6 +6367,9 @@ namespace google\appengine_datastore_v3 {
       }
       if (isset($this->header)) {
         $res .= $prefix . "header <\n" . $this->header->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      foreach ($this->composite_index as $value) {
+        $res .= $prefix . "composite_index <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

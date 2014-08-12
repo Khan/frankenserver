@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
 """Pure-Python application server for testing applications locally.
 
 Given a port and the paths to a valid application directory (with an 'app.yaml'

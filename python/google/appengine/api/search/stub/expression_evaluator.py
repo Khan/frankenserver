@@ -46,15 +46,15 @@ provides an approximation to the API for local testing with dev_appserver.
 
 import logging
 
+from google.appengine.datastore import document_pb
 
 from google.appengine.api.search import expression_parser
 from google.appengine.api.search import ExpressionParser
+from google.appengine.api.search import geo_util
 from google.appengine.api.search import query_parser
 from google.appengine.api.search import search_util
-from google.appengine.api.search.stub import geo_util
 from google.appengine.api.search.stub import simple_tokenizer
 from google.appengine.api.search.stub import tokens
-from google.appengine.datastore import document_pb
 
 
 

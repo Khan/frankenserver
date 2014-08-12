@@ -55,12 +55,14 @@ __all__ = ['Batch',
           ]
 
 import base64
-import pickle
 import collections
+import pickle
 
 from google.appengine.datastore import entity_pb
+
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
+from google.appengine.api.search import geo_util
 from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_rpc
@@ -885,6 +887,48 @@ class _DedupingFilter(_IgnoreFilter):
       self._keys.add(value)
       return True
     return False
+
+
+class _BoundingCircleFilter(_SinglePropertyFilter):
+  """An immutable bounding circle filter for geo locations.
+
+  An immutable filter predicate that constrains a geo location property to a
+  bounding circle region. The filter is inclusive at the border. The property
+  has to be of type V3 PointValue. V4 GeoPoints converts to this type.
+  """
+
+
+
+
+
+
+  def __init__(self, property_name, latitude, longitude, radius_meters):
+    self._property_name = property_name
+    self._lat_lng = geo_util.LatLng(latitude, longitude)
+    self._radius_meters = radius_meters
+
+  @classmethod
+  def _from_v4_pb(cls, bounding_circle_v4_pb):
+    return _BoundingCircleFilter(bounding_circle_v4_pb.property().name(),
+                                 bounding_circle_v4_pb.center().latitude(),
+                                 bounding_circle_v4_pb.center().longitude(),
+                                 bounding_circle_v4_pb.radius_meters())
+
+  def _get_prop_name(self):
+    return self._property_name
+
+  def _apply_to_value(self, value):
+
+
+    if value[0] != entity_pb.PropertyValue.kPointValueGroup:
+      return False
+
+    _, latitude, longitude = value
+
+    lat_lng = geo_util.LatLng(latitude, longitude)
+
+
+    return self._lat_lng - lat_lng <= self._radius_meters
 
 
 class Order(_PropertyComponent):

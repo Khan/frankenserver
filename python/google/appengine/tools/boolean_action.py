@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
-
 """Provides a flexible way of configuring Boolean flags using argparse.
 
 This action behaves like the "store_const" action but allows the flag to accept

@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
-
 """Provides thread-pool-like functionality for workers accessing App Engine.
 
 The pool adapts to slow or timing out requests by reducing the number of

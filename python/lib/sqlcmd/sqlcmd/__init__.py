@@ -74,7 +74,7 @@ from grizzled.log import WrappingLogFormatter
 from grizzled.misc import str2bool
 from grizzled import history
 
-from enum import Enum
+from deprecated_enum import Enum
 
 from sqlcmd.config import SQLCmdConfig
 from sqlcmd.exception import *

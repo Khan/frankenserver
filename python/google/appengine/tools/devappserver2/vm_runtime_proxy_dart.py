@@ -32,7 +32,6 @@ DEBUG_PORT = 5858
 VM_SERVICE_PORT = 8181
 DEV_MODE = 'dev'
 DEPLOY_MODE = 'deploy'
-DEFAULT_DOCKER_FILE = 'FROM google/appengine-dart'
 
 
 class DartVMRuntimeProxy(instance.RuntimeProxy):
@@ -141,13 +140,7 @@ class DartVMRuntimeProxy(instance.RuntimeProxy):
                               ' links to ' + os.readlink(src))
           raise
 
-        dst_dockerfile = os.path.join(dst_application_dir, 'Dockerfile')
         dst_build_dir = os.path.join(dst_application_dir, 'build')
-
-        # Write default Dockerfile if none found.
-        if not os.path.exists(dst_dockerfile):
-          with open(dst_dockerfile, 'w') as fd:
-            fd.write(DEFAULT_DOCKER_FILE)
 
         if self._is_deployment_mode:
           # Run 'pub build' to generate assets from web/ directory if necessary.

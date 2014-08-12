@@ -1153,9 +1153,55 @@ namespace google\appengine\datastore\v4 {
     public function hasPropertyFilter() {
       return isset($this->property_filter);
     }
+    public function getBoundingCircleFilter() {
+      if (!isset($this->bounding_circle_filter)) {
+        return new \google\appengine\datastore\v4\BoundingCircleFilter();
+      }
+      return $this->bounding_circle_filter;
+    }
+    public function mutableBoundingCircleFilter() {
+      if (!isset($this->bounding_circle_filter)) {
+        $res = new \google\appengine\datastore\v4\BoundingCircleFilter();
+        $this->bounding_circle_filter = $res;
+        return $res;
+      }
+      return $this->bounding_circle_filter;
+    }
+    public function clearBoundingCircleFilter() {
+      if (isset($this->bounding_circle_filter)) {
+        unset($this->bounding_circle_filter);
+      }
+    }
+    public function hasBoundingCircleFilter() {
+      return isset($this->bounding_circle_filter);
+    }
+    public function getBoundingBoxFilter() {
+      if (!isset($this->bounding_box_filter)) {
+        return new \google\appengine\datastore\v4\BoundingBoxFilter();
+      }
+      return $this->bounding_box_filter;
+    }
+    public function mutableBoundingBoxFilter() {
+      if (!isset($this->bounding_box_filter)) {
+        $res = new \google\appengine\datastore\v4\BoundingBoxFilter();
+        $this->bounding_box_filter = $res;
+        return $res;
+      }
+      return $this->bounding_box_filter;
+    }
+    public function clearBoundingBoxFilter() {
+      if (isset($this->bounding_box_filter)) {
+        unset($this->bounding_box_filter);
+      }
+    }
+    public function hasBoundingBoxFilter() {
+      return isset($this->bounding_box_filter);
+    }
     public function clear() {
       $this->clearCompositeFilter();
       $this->clearPropertyFilter();
+      $this->clearBoundingCircleFilter();
+      $this->clearBoundingBoxFilter();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1166,6 +1212,14 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->property_filter)) {
         $res += 1;
         $res += $this->lengthString($this->property_filter->byteSizePartial());
+      }
+      if (isset($this->bounding_circle_filter)) {
+        $res += 1;
+        $res += $this->lengthString($this->bounding_circle_filter->byteSizePartial());
+      }
+      if (isset($this->bounding_box_filter)) {
+        $res += 1;
+        $res += $this->lengthString($this->bounding_box_filter->byteSizePartial());
       }
       return $res;
     }
@@ -1179,6 +1233,16 @@ namespace google\appengine\datastore\v4 {
         $out->putVarInt32(18);
         $out->putVarInt32($this->property_filter->byteSizePartial());
         $this->property_filter->outputPartial($out);
+      }
+      if (isset($this->bounding_circle_filter)) {
+        $out->putVarInt32(26);
+        $out->putVarInt32($this->bounding_circle_filter->byteSizePartial());
+        $this->bounding_circle_filter->outputPartial($out);
+      }
+      if (isset($this->bounding_box_filter)) {
+        $out->putVarInt32(34);
+        $out->putVarInt32($this->bounding_box_filter->byteSizePartial());
+        $this->bounding_box_filter->outputPartial($out);
       }
     }
     public function tryMerge($d) {
@@ -1197,6 +1261,18 @@ namespace google\appengine\datastore\v4 {
             $d->skip($length);
             $this->mutablePropertyFilter()->tryMerge($tmp);
             break;
+          case 26:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableBoundingCircleFilter()->tryMerge($tmp);
+            break;
+          case 34:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableBoundingBoxFilter()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -1208,6 +1284,8 @@ namespace google\appengine\datastore\v4 {
     public function checkInitialized() {
       if (isset($this->composite_filter) && (!$this->composite_filter->isInitialized())) return 'composite_filter';
       if (isset($this->property_filter) && (!$this->property_filter->isInitialized())) return 'property_filter';
+      if (isset($this->bounding_circle_filter) && (!$this->bounding_circle_filter->isInitialized())) return 'bounding_circle_filter';
+      if (isset($this->bounding_box_filter) && (!$this->bounding_box_filter->isInitialized())) return 'bounding_box_filter';
       return null;
     }
     public function mergeFrom($x) {
@@ -1218,6 +1296,12 @@ namespace google\appengine\datastore\v4 {
       if ($x->hasPropertyFilter()) {
         $this->mutablePropertyFilter()->mergeFrom($x->getPropertyFilter());
       }
+      if ($x->hasBoundingCircleFilter()) {
+        $this->mutableBoundingCircleFilter()->mergeFrom($x->getBoundingCircleFilter());
+      }
+      if ($x->hasBoundingBoxFilter()) {
+        $this->mutableBoundingBoxFilter()->mergeFrom($x->getBoundingBoxFilter());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1225,6 +1309,10 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->composite_filter) && !$this->composite_filter->equals($x->composite_filter)) return false;
       if (isset($this->property_filter) !== isset($x->property_filter)) return false;
       if (isset($this->property_filter) && !$this->property_filter->equals($x->property_filter)) return false;
+      if (isset($this->bounding_circle_filter) !== isset($x->bounding_circle_filter)) return false;
+      if (isset($this->bounding_circle_filter) && !$this->bounding_circle_filter->equals($x->bounding_circle_filter)) return false;
+      if (isset($this->bounding_box_filter) !== isset($x->bounding_box_filter)) return false;
+      if (isset($this->bounding_box_filter) && !$this->bounding_box_filter->equals($x->bounding_box_filter)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1234,6 +1322,12 @@ namespace google\appengine\datastore\v4 {
       }
       if (isset($this->property_filter)) {
         $res .= $prefix . "property_filter <\n" . $this->property_filter->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->bounding_circle_filter)) {
+        $res .= $prefix . "bounding_circle_filter <\n" . $this->bounding_circle_filter->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->bounding_box_filter)) {
+        $res .= $prefix . "bounding_box_filter <\n" . $this->bounding_box_filter->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }
@@ -1558,6 +1652,354 @@ namespace google\appengine\datastore\v4 {
       }
       if (isset($this->value)) {
         $res .= $prefix . "value <\n" . $this->value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace google\appengine\datastore\v4 {
+  class BoundingCircleFilter extends \google\net\ProtocolMessage {
+    public function getProperty() {
+      if (!isset($this->property)) {
+        return new \google\appengine\datastore\v4\PropertyReference();
+      }
+      return $this->property;
+    }
+    public function mutableProperty() {
+      if (!isset($this->property)) {
+        $res = new \google\appengine\datastore\v4\PropertyReference();
+        $this->property = $res;
+        return $res;
+      }
+      return $this->property;
+    }
+    public function clearProperty() {
+      if (isset($this->property)) {
+        unset($this->property);
+      }
+    }
+    public function hasProperty() {
+      return isset($this->property);
+    }
+    public function getCenter() {
+      if (!isset($this->center)) {
+        return new \google\appengine\datastore\v4\GeoPoint();
+      }
+      return $this->center;
+    }
+    public function mutableCenter() {
+      if (!isset($this->center)) {
+        $res = new \google\appengine\datastore\v4\GeoPoint();
+        $this->center = $res;
+        return $res;
+      }
+      return $this->center;
+    }
+    public function clearCenter() {
+      if (isset($this->center)) {
+        unset($this->center);
+      }
+    }
+    public function hasCenter() {
+      return isset($this->center);
+    }
+    public function getRadiusMeters() {
+      if (!isset($this->radius_meters)) {
+        return 0.0;
+      }
+      return $this->radius_meters;
+    }
+    public function setRadiusMeters($val) {
+      $this->radius_meters = $val;
+      return $this;
+    }
+    public function clearRadiusMeters() {
+      unset($this->radius_meters);
+      return $this;
+    }
+    public function hasRadiusMeters() {
+      return isset($this->radius_meters);
+    }
+    public function clear() {
+      $this->clearProperty();
+      $this->clearCenter();
+      $this->clearRadiusMeters();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->property)) {
+        $res += 1;
+        $res += $this->lengthString($this->property->byteSizePartial());
+      }
+      if (isset($this->center)) {
+        $res += 1;
+        $res += $this->lengthString($this->center->byteSizePartial());
+      }
+      if (isset($this->radius_meters)) {
+        $res += 9;
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->property)) {
+        $out->putVarInt32(10);
+        $out->putVarInt32($this->property->byteSizePartial());
+        $this->property->outputPartial($out);
+      }
+      if (isset($this->center)) {
+        $out->putVarInt32(18);
+        $out->putVarInt32($this->center->byteSizePartial());
+        $this->center->outputPartial($out);
+      }
+      if (isset($this->radius_meters)) {
+        $out->putVarInt32(25);
+        $out->putDouble($this->radius_meters);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableProperty()->tryMerge($tmp);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableCenter()->tryMerge($tmp);
+            break;
+          case 25:
+            $this->setRadiusMeters($d->getDouble());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if ((!isset($this->property)) || (!$this->property->isInitialized())) return 'property';
+      if ((!isset($this->center)) || (!$this->center->isInitialized())) return 'center';
+      if (!isset($this->radius_meters)) return 'radius_meters';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasProperty()) {
+        $this->mutableProperty()->mergeFrom($x->getProperty());
+      }
+      if ($x->hasCenter()) {
+        $this->mutableCenter()->mergeFrom($x->getCenter());
+      }
+      if ($x->hasRadiusMeters()) {
+        $this->setRadiusMeters($x->getRadiusMeters());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->property) !== isset($x->property)) return false;
+      if (isset($this->property) && !$this->property->equals($x->property)) return false;
+      if (isset($this->center) !== isset($x->center)) return false;
+      if (isset($this->center) && !$this->center->equals($x->center)) return false;
+      if (isset($this->radius_meters) !== isset($x->radius_meters)) return false;
+      if (isset($this->radius_meters) && $this->radius_meters !== $x->radius_meters) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->property)) {
+        $res .= $prefix . "property <\n" . $this->property->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->center)) {
+        $res .= $prefix . "center <\n" . $this->center->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->radius_meters)) {
+        $res .= $prefix . "radius_meters: " . $this->debugFormatDouble($this->radius_meters) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace google\appengine\datastore\v4 {
+  class BoundingBoxFilter extends \google\net\ProtocolMessage {
+    public function getProperty() {
+      if (!isset($this->property)) {
+        return new \google\appengine\datastore\v4\PropertyReference();
+      }
+      return $this->property;
+    }
+    public function mutableProperty() {
+      if (!isset($this->property)) {
+        $res = new \google\appengine\datastore\v4\PropertyReference();
+        $this->property = $res;
+        return $res;
+      }
+      return $this->property;
+    }
+    public function clearProperty() {
+      if (isset($this->property)) {
+        unset($this->property);
+      }
+    }
+    public function hasProperty() {
+      return isset($this->property);
+    }
+    public function getSouthwest() {
+      if (!isset($this->southwest)) {
+        return new \google\appengine\datastore\v4\GeoPoint();
+      }
+      return $this->southwest;
+    }
+    public function mutableSouthwest() {
+      if (!isset($this->southwest)) {
+        $res = new \google\appengine\datastore\v4\GeoPoint();
+        $this->southwest = $res;
+        return $res;
+      }
+      return $this->southwest;
+    }
+    public function clearSouthwest() {
+      if (isset($this->southwest)) {
+        unset($this->southwest);
+      }
+    }
+    public function hasSouthwest() {
+      return isset($this->southwest);
+    }
+    public function getNortheast() {
+      if (!isset($this->northeast)) {
+        return new \google\appengine\datastore\v4\GeoPoint();
+      }
+      return $this->northeast;
+    }
+    public function mutableNortheast() {
+      if (!isset($this->northeast)) {
+        $res = new \google\appengine\datastore\v4\GeoPoint();
+        $this->northeast = $res;
+        return $res;
+      }
+      return $this->northeast;
+    }
+    public function clearNortheast() {
+      if (isset($this->northeast)) {
+        unset($this->northeast);
+      }
+    }
+    public function hasNortheast() {
+      return isset($this->northeast);
+    }
+    public function clear() {
+      $this->clearProperty();
+      $this->clearSouthwest();
+      $this->clearNortheast();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->property)) {
+        $res += 1;
+        $res += $this->lengthString($this->property->byteSizePartial());
+      }
+      if (isset($this->southwest)) {
+        $res += 1;
+        $res += $this->lengthString($this->southwest->byteSizePartial());
+      }
+      if (isset($this->northeast)) {
+        $res += 1;
+        $res += $this->lengthString($this->northeast->byteSizePartial());
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->property)) {
+        $out->putVarInt32(10);
+        $out->putVarInt32($this->property->byteSizePartial());
+        $this->property->outputPartial($out);
+      }
+      if (isset($this->southwest)) {
+        $out->putVarInt32(18);
+        $out->putVarInt32($this->southwest->byteSizePartial());
+        $this->southwest->outputPartial($out);
+      }
+      if (isset($this->northeast)) {
+        $out->putVarInt32(26);
+        $out->putVarInt32($this->northeast->byteSizePartial());
+        $this->northeast->outputPartial($out);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableProperty()->tryMerge($tmp);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableSouthwest()->tryMerge($tmp);
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableNortheast()->tryMerge($tmp);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if ((!isset($this->property)) || (!$this->property->isInitialized())) return 'property';
+      if ((!isset($this->southwest)) || (!$this->southwest->isInitialized())) return 'southwest';
+      if ((!isset($this->northeast)) || (!$this->northeast->isInitialized())) return 'northeast';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasProperty()) {
+        $this->mutableProperty()->mergeFrom($x->getProperty());
+      }
+      if ($x->hasSouthwest()) {
+        $this->mutableSouthwest()->mergeFrom($x->getSouthwest());
+      }
+      if ($x->hasNortheast()) {
+        $this->mutableNortheast()->mergeFrom($x->getNortheast());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->property) !== isset($x->property)) return false;
+      if (isset($this->property) && !$this->property->equals($x->property)) return false;
+      if (isset($this->southwest) !== isset($x->southwest)) return false;
+      if (isset($this->southwest) && !$this->southwest->equals($x->southwest)) return false;
+      if (isset($this->northeast) !== isset($x->northeast)) return false;
+      if (isset($this->northeast) && !$this->northeast->equals($x->northeast)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->property)) {
+        $res .= $prefix . "property <\n" . $this->property->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->southwest)) {
+        $res .= $prefix . "southwest <\n" . $this->southwest->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->northeast)) {
+        $res .= $prefix . "northeast <\n" . $this->northeast->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

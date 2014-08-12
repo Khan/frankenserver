@@ -44,7 +44,7 @@ __docformat__ = 'restructuredtext en'
 # ---------------------------------------------------------------------------
 
 import time
-from enum import Enum
+from deprecated_enum import Enum
 
 # ---------------------------------------------------------------------------
 # Exports

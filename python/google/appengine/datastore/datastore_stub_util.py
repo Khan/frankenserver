@@ -1445,7 +1445,8 @@ class LiveTxn(object):
     return LoadEntity(entity)
 
   @_SynchronizeTxn
-  def GetQueryCursor(self, query, filters, orders, index_list):
+  def GetQueryCursor(self, query, filters, orders, index_list,
+                     filter_predicate=None):
     """Runs the given datastore_pb.Query and returns a QueryCursor for it.
 
     Does not see any modifications in the current txn.
@@ -1455,6 +1456,9 @@ class LiveTxn(object):
       filters: A list of filters that override the ones found on query.
       orders: A list of orders that override the ones found on query.
       index_list: A list of indexes used by the query.
+      filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
 
     Returns:
       A BaseCursor that can be used to fetch query results.
@@ -1462,7 +1466,8 @@ class LiveTxn(object):
     Check(query.has_ancestor(),
           'Query must have an ancestor when performed in a transaction.')
     snapshot = self._GrabSnapshot(query.ancestor())
-    return _ExecuteQuery(snapshot.values(), query, filters, orders, index_list)
+    return _ExecuteQuery(snapshot.values(), query, filters, orders, index_list,
+                         filter_predicate)
 
   @_SynchronizeTxn
   def Put(self, entity, insert, indexes):
@@ -2300,7 +2305,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
 
 
 
-  def GetQueryCursor(self, raw_query, trusted=False, calling_app=None):
+  def GetQueryCursor(self, raw_query, trusted=False, calling_app=None,
+                     filter_predicate=None):
     """Execute a query.
 
     Args:
@@ -2308,6 +2314,9 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       trusted: If the calling app is trusted.
       calling_app: The app requesting the results or None to pull the app from
         the environment.
+      filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
 
     Returns:
       A BaseCursor that can be used to retrieve results.
@@ -2325,11 +2334,15 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     CheckQuery(raw_query, filters, orders, self._MAX_QUERY_COMPONENTS)
     FillUsersInQuery(filters)
 
+    index_list = []
 
-    self._CheckHasIndex(raw_query, trusted, calling_app)
 
 
-    index_list = self.__IndexListForQuery(raw_query)
+    if filter_predicate is None:
+      self._CheckHasIndex(raw_query, trusted, calling_app)
+
+
+      index_list = self.__IndexListForQuery(raw_query)
 
 
     if raw_query.has_transaction():
@@ -2342,11 +2355,13 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     if raw_query.has_ancestor() and raw_query.kind() not in self._pseudo_kinds:
 
       txn = self._BeginTransaction(raw_query.app(), False)
-      return txn.GetQueryCursor(raw_query, filters, orders, index_list)
+      return txn.GetQueryCursor(raw_query, filters, orders, index_list,
+                                filter_predicate)
 
 
     self.Groom()
-    return self._GetQueryCursor(raw_query, filters, orders, index_list)
+    return self._GetQueryCursor(raw_query, filters, orders, index_list,
+                                filter_predicate)
 
   def __IndexListForQuery(self, query):
     """Get the single composite index pb used by the query, if any, as a list.
@@ -2664,7 +2679,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     """Writes the datastore to disk."""
     self.Flush()
 
-  def _GetQueryCursor(self, query, filters, orders, index_list):
+  def _GetQueryCursor(self, query, filters, orders, index_list,
+                      filter_predicate):
     """Runs the given datastore_pb.Query and returns a QueryCursor for it.
 
     This must be implemented by a sub-class. The sub-class does not need to
@@ -2675,6 +2691,9 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       filters: A list of filters that override the ones found on query.
       orders: A list of orders that override the ones found on query.
       index_list: A list of indexes used by the query.
+      filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
 
     Returns:
       A BaseCursor that can be used to fetch query results.
@@ -2949,9 +2968,10 @@ class DatastoreStub(object):
     self._datastore.Touch(req.key_list(), self._trusted, self._app_id)
 
   @_NeedsIndexes
-  def _Dynamic_RunQuery(self, query, query_result):
+  def _Dynamic_RunQuery(self, query, query_result, filter_predicate=None):
     self.__UpgradeCursors(query)
-    cursor = self._datastore.GetQueryCursor(query, self._trusted, self._app_id)
+    cursor = self._datastore.GetQueryCursor(query, self._trusted, self._app_id,
+                                            filter_predicate)
 
     if query.has_count():
       count = query.count()
@@ -3401,6 +3421,12 @@ class StubQueryConverter(object):
       v4_filter: a datastore_v4_pb.Filter
       v3_query: a datastore_pb.Query to populate with filters
     """
+
+    datastore_pbs.check_conversion(not v4_filter.has_bounding_circle_filter(),
+                                   'bounding circle filter not supported')
+    datastore_pbs.check_conversion(not v4_filter.has_bounding_box_filter(),
+                                   'bounding box filter not supported')
+
     if v4_filter.has_property_filter():
       v4_property_filter = v4_filter.property_filter()
       if (v4_property_filter.operator()
@@ -4018,17 +4044,56 @@ def _GuessOrders(filters, orders):
   return orders
 
 
-def _MakeQuery(query, filters, orders):
+def _MakeQuery(query_pb, filters, orders, filter_predicate):
   """Make a datastore_query.Query for the given datastore_pb.Query.
 
-  Overrides filters and orders in query with the specified arguments."""
-  clone = datastore_pb.Query()
-  clone.CopyFrom(query)
-  clone.clear_filter()
-  clone.clear_order()
-  clone.filter_list().extend(filters)
-  clone.order_list().extend(orders)
-  return datastore_query.Query._from_pb(clone)
+  Overrides filters and orders in query with the specified arguments.
+
+  Args:
+    query_pb: a datastore_pb.Query.
+    filters: the filters from query.
+    orders: the orders from query.
+    filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
+
+  Returns:
+    A datastore_query.Query for the datastore_pb.Query."""
+
+
+
+
+
+  clone_pb = datastore_pb.Query()
+  clone_pb.CopyFrom(query_pb)
+  clone_pb.clear_filter()
+  clone_pb.clear_order()
+  clone_pb.filter_list().extend(filters)
+  clone_pb.order_list().extend(orders)
+
+  query = datastore_query.Query._from_pb(clone_pb)
+
+  assert datastore_v4_pb.CompositeFilter._Operator_NAMES.values() == ['AND']
+
+
+
+
+  if filter_predicate is not None:
+    if query.filter_predicate is not None:
+
+
+      filter_predicate = datastore_query.CompositeFilter(
+          datastore_query.CompositeFilter.AND,
+          [filter_predicate, query.filter_predicate])
+
+    return datastore_query.Query(app=query.app,
+                                 namespace=query.namespace,
+                                 ancestor=query.ancestor,
+                                 filter_predicate=filter_predicate,
+                                 group_by=query.group_by,
+                                 order=query.order)
+  else:
+    return query
 
 def _CreateIndexEntities(entity, postfix_props):
   """Creates entities for index values that would appear in prodcution.
@@ -4112,7 +4177,8 @@ def _CreateIndexOnlyQueryResults(results, postfix_props):
   return new_results
 
 
-def _ExecuteQuery(results, query, filters, orders, index_list):
+def _ExecuteQuery(results, query, filters, orders, index_list,
+                  filter_predicate=None):
   """Executes the query on a superset of its results.
 
   Args:
@@ -4121,12 +4187,15 @@ def _ExecuteQuery(results, query, filters, orders, index_list):
     filters: the filters from query.
     orders: the orders from query.
     index_list: the list of indexes used by the query.
+    filter_predicate: an additional filter of type
+          datastore_query.FilterPredicate. This is passed along to implement V4
+          specific filters without changing the entire stub.
 
   Returns:
     A ListCursor over the results of applying query to results.
   """
   orders = _GuessOrders(filters, orders)
-  dsquery = _MakeQuery(query, filters, orders)
+  dsquery = _MakeQuery(query, filters, orders, filter_predicate)
 
   if query.property_name_size():
     results = _CreateIndexOnlyQueryResults(

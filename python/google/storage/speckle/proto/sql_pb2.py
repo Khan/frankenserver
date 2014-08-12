@@ -164,6 +164,8 @@ _EXECREQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=85,
   serialized_end=481,
 )
@@ -199,6 +201,8 @@ _EXECRESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=483,
   serialized_end=581,
 )
@@ -248,6 +252,8 @@ _EXECOPREQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=583,
   serialized_end=689,
 )
@@ -311,6 +317,8 @@ _EXECOPRESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=692,
   serialized_end=929,
 )
@@ -367,6 +375,8 @@ _METADATAREQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=932,
   serialized_end=1102,
 )
@@ -409,6 +419,8 @@ _METADATARESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1105,
   serialized_end=1275,
 )
@@ -458,6 +470,8 @@ _OPENCONNECTIONREQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1278,
   serialized_end=1450,
 )
@@ -500,6 +514,8 @@ _OPENCONNECTIONRESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1453,
   serialized_end=1587,
 )
@@ -535,6 +551,8 @@ _CLOSECONNECTIONREQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1589,
   serialized_end=1654,
 )
@@ -563,6 +581,8 @@ _CLOSECONNECTIONRESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1656,
   serialized_end=1727,
 )

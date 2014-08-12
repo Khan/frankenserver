@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
-
 """Helper CGI for POST uploads.
 
 Utility library contains the main logic behind simulating the blobstore

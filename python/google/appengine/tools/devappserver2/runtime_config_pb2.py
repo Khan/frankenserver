@@ -197,6 +197,8 @@ _CONFIG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=88,
   serialized_end=796,
 )
@@ -232,6 +234,8 @@ _PHPCONFIG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=798,
   serialized_end=863,
 )
@@ -267,6 +271,8 @@ _PYTHONCONFIG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=865,
   serialized_end=925,
 )
@@ -323,6 +329,8 @@ _CLOUDSQL = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=927,
   serialized_end=1043,
 )
@@ -358,6 +366,8 @@ _LIBRARY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1045,
   serialized_end=1085,
 )
@@ -393,6 +403,8 @@ _ENVIRON = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1087,
   serialized_end=1124,
 )
@@ -428,6 +440,8 @@ _VMCONFIG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1126,
   serialized_end=1228,
 )
@@ -477,6 +491,8 @@ _DARTCONFIG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=1230,
   serialized_end=1341,
 )

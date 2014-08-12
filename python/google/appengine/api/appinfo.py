@@ -1384,13 +1384,9 @@ def VmSafeSetRuntime(appyaml, runtime):
       appyaml.vm_settings = VmSettings()
 
 
-    appyaml.vm_settings['has_docker_image'] = True
-
-
-
     if runtime == 'dart' or runtime == 'contrib-dart':
       runtime = 'dart'
-
+      appyaml.vm_settings['has_docker_image'] = True
 
 
     appyaml.vm_settings['vm_runtime'] = runtime

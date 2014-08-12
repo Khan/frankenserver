@@ -2479,8 +2479,7 @@ class Index(object):
     """Index the collection of documents.
 
     If any of the documents are already in the index, then reindex them with
-    their corresponding fresh document. If any of the documents fail to be
-    indexed, then none of the documents will be indexed.
+    their corresponding fresh document.
 
     Args:
       documents: A Document or iterable of Documents to index.
@@ -2569,8 +2568,7 @@ class Index(object):
     """Delete the documents with the corresponding document ids from the index.
 
     If no document exists for the identifier in the list, then that document
-    identifier is ignored. If any document delete fails, then no documents
-    will be deleted.
+    identifier is ignored.
 
     Args:
       document_ids: A single identifier or list of identifiers of documents

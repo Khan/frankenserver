@@ -284,7 +284,7 @@ class IsATest(unittest.TestCase):
     str_list = ["abc", "def"]
     self.assert_(isa_list == str_list)
 
-  def testEquailtyInListInvalid(self):
+  def testEqualityInListInvalid(self):
     """Verify list contents are properly compared."""
     isa_list = [mox.IsA(str),mox.IsA(str)]
     mixed_list = ["abc", 123]

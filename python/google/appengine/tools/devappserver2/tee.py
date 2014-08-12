@@ -42,6 +42,7 @@ class Tee(threading.Thread):
       if not line:
         break
       self.__out.write(line)
+      self.__out.flush()
       self.__deque.append(line)
 
   def get_buf(self):

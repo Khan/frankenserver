@@ -113,6 +113,11 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
 
   _VALID_START_PROCESS_FLAVORS = [START_PROCESS, START_PROCESS_FILE]
 
+  # TODO: Determine if we can always use SIGTERM.
+  # Set this to True to quit with SIGTERM rather than SIGKILL
+
+  quit_with_sigterm = False
+
   def __init__(self, args, runtime_config_getter, module_configuration,
                env=None, start_process_flavor=START_PROCESS):
     """Initializer for HttpRuntimeProxy.
@@ -275,7 +280,11 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     with self._process_lock:
       assert self._process, 'module was not running'
       try:
-        self._process.kill()
+        if HttpRuntimeProxy.quit_with_sigterm:
+          logging.debug('Calling process.terminate on child runtime.')
+          self._process.terminate()
+        else:
+          self._process.kill()
       except OSError:
         pass
       # Mac leaks file descriptors without call to join. Suspect a race

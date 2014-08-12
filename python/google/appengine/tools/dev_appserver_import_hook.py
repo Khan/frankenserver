@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
 """Import hook for dev_appserver.py."""
 
 import dummy_thread

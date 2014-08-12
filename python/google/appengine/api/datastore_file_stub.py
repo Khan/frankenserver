@@ -647,7 +647,8 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     eg_k = datastore_types.ReferenceToKeyValue(entity_group)
     return self.__entities_by_group[eg_k].copy()
 
-  def _GetQueryCursor(self, query, filters, orders, index_list):
+  def _GetQueryCursor(self, query, filters, orders, index_list,
+                      filter_predicate=None):
     app_id = query.app()
     namespace = query.name_space()
 
@@ -677,8 +678,8 @@ class DatastoreFileStub(datastore_stub_util.BaseDatastore,
     finally:
       self.__entities_lock.release()
 
-    return datastore_stub_util._ExecuteQuery(results, query,
-                                             filters, orders, index_list)
+    return datastore_stub_util._ExecuteQuery(results, query, filters, orders,
+                                             index_list, filter_predicate)
 
   def _SetIdCounter(self, id_space, value):
     """Set the ID counter for id_space to value."""

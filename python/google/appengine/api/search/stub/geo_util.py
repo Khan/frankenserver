@@ -14,48 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Utilities to support geo fields on the Python dev server."""
 
-import math
 
-class LatLng(object):
-  """A class representing a Latitude/Longitude pair."""
+import logging
 
-  _EARTH_RADIUS_METERS = 6371010
+from google.appengine.api.search import *
 
-  def __init__(self, latitude, longitude):
-    """Initializer.
-
-    Args:
-      latitude: The latitude in degrees.
-      longitude: The longitude in degrees.
-
-    Raises:
-      TypeError: If a non-numeric latitude or longitude is passed.
-    """
-    self._lat = math.radians(latitude)
-    self._lng = math.radians(longitude)
-
-  @property
-  def latitude(self):
-    """Returns the latitude in degrees."""
-    return math.degrees(self._lat)
-
-  @property
-  def longitude(self):
-    """Returns the longitude in degrees."""
-    return math.degrees(self._lng)
-
-  def __sub__(self, other):
-    """Subtraction.
-
-    Returns the great circle distance between two LatLng objects as computed
-    by the Haversine formula.
-    """
-
-    assert isinstance(other, LatLng)
-    dlat = self._lat - other._lat
-    dlng = self._lng - other._lng
-    a1 = math.sin(dlat / 2)**2
-    a2 = math.cos(self._lat) * math.cos(other._lat) * math.sin(dlng / 2)**2
-    return 2 * self._EARTH_RADIUS_METERS * math.asin(math.sqrt(a1 + a2))
+logging.warning('google.appengine.api.search.stub.geo_util is deprecated; '
+                'please use google.appengine.api.search.geo_util')

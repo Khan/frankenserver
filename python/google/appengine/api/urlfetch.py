@@ -399,7 +399,7 @@ def _get_fetch_result(rpc):
           + url + error_detail)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.INTERNAL_TRANSIENT_ERROR):
-      raise InteralTransientError(
+      raise InternalTransientError(
           'Temporary error in fetching URL: ' + url + ', please re-try')
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.DNS_ERROR):

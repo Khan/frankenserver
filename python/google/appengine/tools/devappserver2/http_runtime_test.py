@@ -129,14 +129,19 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
 
     self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
     http_proxy.HttpProxy.wait_for_connection()
+    self._saved_quit_with_sigterm = (
+        http_runtime.HttpRuntimeProxy.quit_with_sigterm)
 
   def tearDown(self):
     shutil.rmtree(self.tmpdir)
     self.mox.UnsetStubs()
+    http_runtime.HttpRuntimeProxy.quit_with_sigterm = (
+        self._saved_quit_with_sigterm)
 
-  def test_start_and_quit(self):
+  def _test_start_and_quit(self, quit_with_sigterm):
     ## Test start()
     # start()
+    http_runtime.HttpRuntimeProxy.quit_with_sigterm = quit_with_sigterm
     safe_subprocess.start_process(
         ['/runtime'],
         base64.b64encode(self.runtime_config.SerializeToString()),
@@ -153,10 +158,19 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
     self.mox.ResetAll()
 
     ## Test quit()
-    self.process.kill()
+    if quit_with_sigterm:
+      self.process.terminate()
+    else:
+      self.process.kill()
     self.mox.ReplayAll()
     self.proxy.quit()
     self.mox.VerifyAll()
+
+  def test_start_and_quit(self):
+    self._test_start_and_quit(quit_with_sigterm=False)
+
+  def test_start_and_quit_with_sigterm(self):
+    self._test_start_and_quit(quit_with_sigterm=True)
 
   def test_start_bad_port(self):
     safe_subprocess.start_process(

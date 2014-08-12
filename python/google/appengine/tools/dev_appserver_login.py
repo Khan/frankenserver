@@ -14,9 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
 """Helper CGI for logins/logout in the development application server.
 
 This CGI has these parameters:

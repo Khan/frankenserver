@@ -208,6 +208,8 @@ _SQLSERVICECLIENTERROR = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
+  oneofs=[
+  ],
   serialized_start=63,
   serialized_end=1138,
 )

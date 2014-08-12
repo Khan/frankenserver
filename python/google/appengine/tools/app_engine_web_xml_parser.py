@@ -309,7 +309,7 @@ class AppEngineWebXmlParser(object):
             node, 'disabled-rewriter')]
     self.app_engine_web_xml.pagespeed = pagespeed
 
-  def ProcessClassLoaderConfig(self, node):
+  def ProcessClassLoaderConfigNode(self, node):
     for node in xml_parser_utils.GetNodes(node, 'priority-specifier'):
       entry = PrioritySpecifierEntry()
       entry.filename = xml_parser_utils.GetAttribute(node, 'filename')
@@ -353,6 +353,29 @@ class AppEngineWebXmlParser(object):
         return
       self.app_engine_web_xml.auto_id_policy = policy
 
+  def ProcessVmHealthCheckNode(self, node):
+    vm_health_check = VmHealthCheck()
+    for child in node:
+      tag = xml_parser_utils.GetTag(child)
+      if tag == 'enable-health-check':
+        vm_health_check.enable_health_check = (
+            xml_parser_utils.BooleanValue(child.text))
+      elif tag == 'host':
+        vm_health_check.host = child.text
+      elif tag in ('check-interval-sec', 'healthy-threshold',
+                   'restart-threshold', 'timeout-sec', 'unhealthy-threshold'):
+        text = child.text or ''
+        try:
+          value = self._PositiveInt(text)
+          setattr(vm_health_check, tag.replace('-', '_'), value)
+        except ValueError:
+          self.errors.append('value for %s must be a positive integer: "%s"' %
+                             (tag, text))
+      else:
+        self.errors.append(
+            'unrecognized element within <vm-health-check>: <%s>' % tag)
+    self.app_engine_web_xml.vm_health_check = vm_health_check
+
   def CheckScalingConstraints(self):
     """Checks that at most one type of scaling is enabled."""
     scaling_num = sum([x is not None for x in [
@@ -362,6 +385,25 @@ class AppEngineWebXmlParser(object):
         ]])
     if scaling_num > 1:
       self.errors.append('Cannot enable more than one type of scaling')
+
+  @staticmethod
+  def _PositiveInt(text):
+    """Parse the given text as a positive integer.
+
+    Args:
+      text: a string that should contain the decimal representation of a
+        positive integer.
+
+    Returns:
+      An int that is the parsed value.
+
+    Raises:
+      ValueError: if text cannot be parsed as a positive integer.
+    """
+    value = int(text)
+    if value > 0:
+      return value
+    raise ValueError('Not a positive integer: %s' % text)
 
 
 class AppEngineWebXml(ValueMixin):
@@ -380,6 +422,7 @@ class AppEngineWebXml(ValueMixin):
     self.module = None
     self.system_properties = {}
     self.vm_settings = {}
+    self.vm_health_check = None
     self.env_variables = {}
     self.instance_class = None
     self.automatic_scaling = None
@@ -558,3 +601,8 @@ class StaticFileInclude(ValueMixin):
     self.pattern = pattern
     self.expiration = expiration
     self.http_headers = http_headers
+
+
+class VmHealthCheck(ValueMixin):
+  """Instances contain information about VM health check settings."""
+  pass

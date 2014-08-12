@@ -83,6 +83,7 @@ class ModuleConfiguration(object):
           from the yaml or xml file should be used.
     """
     self._config_path = config_path
+    self._forced_app_id = app_id
     root = os.path.dirname(config_path)
     self._is_java = os.path.normpath(config_path).endswith(
         os.sep + 'WEB-INF' + os.sep + 'appengine-web.xml')
@@ -97,8 +98,6 @@ class ModuleConfiguration(object):
 
     self._app_info_external, files_to_check = self._parse_configuration(
         self._config_path)
-    if app_id:
-      self._app_info_external.application = app_id
     self._mtimes = self._get_mtimes(files_to_check)
     self._application = '%s~%s' % (self.partition,
                                    self.application_external_name)
@@ -322,6 +321,8 @@ class ModuleConfiguration(object):
     else:
       with open(configuration_path) as f:
         config, files = appinfo_includes.ParseAndReturnIncludePaths(f)
+    if self._forced_app_id:
+      config.application = self._forced_app_id
     return config, [configuration_path] + files
 
   def _parse_java_configuration(self, app_engine_web_xml_path):

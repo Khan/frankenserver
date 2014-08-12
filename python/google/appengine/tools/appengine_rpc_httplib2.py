@@ -14,10 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-
-
-
 """Library with a variant of appengine_rpc using httplib2.
 
 The httplib2 module offers some of the features in appengine_rpc, with

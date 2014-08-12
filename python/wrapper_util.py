@@ -152,7 +152,7 @@ class Paths(object):
 
 
     self.google_sql_extra_paths = self.oauth_client_extra_paths + [
-        os.path.join(dir_path, 'lib', 'enum'),
+        os.path.join(dir_path, 'lib', 'deprecated_enum'),
         os.path.join(dir_path, 'lib', 'grizzled'),
         os.path.join(dir_path, 'lib', 'oauth2'),
         os.path.join(dir_path, 'lib', 'prettytable'),

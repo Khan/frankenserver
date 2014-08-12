@@ -177,7 +177,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Error'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugHoMgonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIoYBCgxFbnRpdHlSZXN1bHQSLwoGZW50aXR5GAEgAigLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Eg8KB3ZlcnNpb24YAiABKAMiNAoKUmVzdWx0VHlwZRIICgRGVUxMEAESDgoKUFJPSkVDVElPThACEgwKCEtFWV9PTkxZEAMi8QIKBVF1ZXJ5Ej8KCnByb2plY3Rpb24YAiADKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUV4cHJlc3Npb24SNQoEa2luZBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktpbmRFeHByZXNzaW9uEi8KBmZpbHRlchgEIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchI1CgVvcmRlchgFIAMoCzImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXISPAoIZ3JvdXBfYnkYBiADKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRIUCgxzdGFydF9jdXJzb3IYByABKAwSEgoKZW5kX2N1cnNvchgIIAEoDBIRCgZvZmZzZXQYCiABKAU6ATASDQoFbGltaXQYCyABKAUiHgoOS2luZEV4cHJlc3Npb24SDAoEbmFtZRgBIAIoCSIhChFQcm9wZXJ0eVJlZmVyZW5jZRIMCgRuYW1lGAIgAigJItMBChJQcm9wZXJ0eUV4cHJlc3Npb24SPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJdChRhZ2dyZWdhdGlvbl9mdW5jdGlvbhgCIAEoDjI/LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbi5BZ2dyZWdhdGlvbkZ1bmN0aW9uIiAKE0FnZ3JlZ2F0aW9uRnVuY3Rpb24SCQoFRklSU1QQASLJAQoNUHJvcGVydHlPcmRlchI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEk4KCWRpcmVjdGlvbhgCIAEoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXIuRGlyZWN0aW9uOglBU0NFTkRJTkciKgoJRGlyZWN0aW9uEg0KCUFTQ0VORElORxABEg4KCkRFU0NFTkRJTkcQAiKOAQoGRmlsdGVyEkIKEGNvbXBvc2l0ZV9maWx0ZXIYASABKAsyKC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21wb3NpdGVGaWx0ZXISQAoPcHJvcGVydHlfZmlsdGVyGAIgASgLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlGaWx0ZXIinAEKD0NvbXBvc2l0ZUZpbHRlchJDCghvcGVyYXRvchgBIAIoDjIxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlci5PcGVyYXRvchIvCgZmaWx0ZXIYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5GaWx0ZXIiEwoIT3BlcmF0b3ISBwoDQU5EEAEivgIKDlByb3BlcnR5RmlsdGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USQgoIb3BlcmF0b3IYAiACKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlci5PcGVyYXRvchItCgV2YWx1ZRgDIAIoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlInsKCE9wZXJhdG9yEg0KCUxFU1NfVEhBThABEhYKEkxFU1NfVEhBTl9PUl9FUVVBTBACEhAKDEdSRUFURVJfVEhBThADEhkKFUdSRUFURVJfVEhBTl9PUl9FUVVBTBAEEgkKBUVRVUFMEAUSEAoMSEFTX0FOQ0VTVE9SEAsisAEKCEdxbFF1ZXJ5EhQKDHF1ZXJ5X3N0cmluZxgBIAIoCRIcCg1hbGxvd19saXRlcmFsGAIgASgIOgVmYWxzZRI2CghuYW1lX2FyZxgDIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnEjgKCm51bWJlcl9hcmcYBCADKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeUFyZyJaCgtHcWxRdWVyeUFyZxIMCgRuYW1lGAEgASgJEi0KBXZhbHVlGAIgASgLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUSDgoGY3Vyc29yGAMgASgMIpEDChBRdWVyeVJlc3VsdEJhdGNoEkwKEmVudGl0eV9yZXN1bHRfdHlwZRgBIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdC5SZXN1bHRUeXBlEjwKDWVudGl0eV9yZXN1bHQYAiADKAsyJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQSEgoKZW5kX2N1cnNvchgEIAEoDBJPCgxtb3JlX3Jlc3VsdHMYBSACKA4yOS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoLk1vcmVSZXN1bHRzVHlwZRIaCg9za2lwcGVkX3Jlc3VsdHMYBiABKAU6ATASGAoQc25hcHNob3RfdmVyc2lvbhgHIAEoAyJWCg9Nb3JlUmVzdWx0c1R5cGUSEAoMTk9UX0ZJTklTSEVEEAESHAoYTU9SRV9SRVNVTFRTX0FGVEVSX0xJTUlUEAISEwoPTk9fTU9SRV9SRVNVTFRTEAMi8gEKCE11dGF0aW9uEkAKAm9wGAEgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24uT3BlcmF0aW9uOgdVTktOT1dOEikKA2tleRgCIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIvCgZlbnRpdHkYAyABKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkiSAoJT3BlcmF0aW9uEgsKB1VOS05PV04QABIKCgZJTlNFUlQQARIKCgZVUERBVEUQAhIKCgZVUFNFUlQQAxIKCgZERUxFVEUQBCJTCg5NdXRhdGlvblJlc3VsdBIpCgNrZXkYAyABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFgoLbmV3X3ZlcnNpb24YBCABKAM6ATAipAIKEkRlcHJlY2F0ZWRNdXRhdGlvbhIvCgZ1cHNlcnQYASADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGdXBkYXRlGAIgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Ei8KBmluc2VydBgDIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRI3Cg5pbnNlcnRfYXV0b19pZBgEIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIsCgZkZWxldGUYBSADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFAoFZm9yY2UYBiABKAg6BWZhbHNlIusBChhEZXByZWNhdGVkTXV0YXRpb25SZXN1bHQSFQoNaW5kZXhfdXBkYXRlcxgBIAIoBRI4ChJpbnNlcnRfYXV0b19pZF9rZXkYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSFgoOdXBzZXJ0X3ZlcnNpb24YAyADKAMSFgoOdXBkYXRlX3ZlcnNpb24YBCADKAMSFgoOaW5zZXJ0X3ZlcnNpb24YBSADKAMSHgoWaW5zZXJ0X2F1dG9faWRfdmVyc2lvbhgGIAMoAxIWCg5kZWxldGVfdmVyc2lvbhgHIAMoAyK1AQoLUmVhZE9wdGlvbnMSVwoQcmVhZF9jb25zaXN0ZW5jeRgBIAEoDjI0LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zLlJlYWRDb25zaXN0ZW5jeToHREVGQVVMVBITCgt0cmFuc2FjdGlvbhgCIAEoDCI4Cg9SZWFkQ29uc2lzdGVuY3kSCwoHREVGQVVMVBAAEgoKBlNUUk9ORxABEgwKCEVWRU5UVUFMEAIidgoNTG9va3VwUmVxdWVzdBI6CgxyZWFkX29wdGlvbnMYASABKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucxIpCgNrZXkYAyADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkirgEKDkxvb2t1cFJlc3BvbnNlEjQKBWZvdW5kGAEgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0EjYKB21pc3NpbmcYAiADKAsyJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQSLgoIZGVmZXJyZWQYAyADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiqwIKD1J1blF1ZXJ5UmVxdWVzdBI6CgxyZWFkX29wdGlvbnMYASABKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucxI6CgxwYXJ0aXRpb25faWQYAiABKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5QYXJ0aXRpb25JZBItCgVxdWVyeRgDIAEoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5EjQKCWdxbF9xdWVyeRgHIAEoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5Eh0KFW1pbl9zYWZlX3RpbWVfc2Vjb25kcxgEIAEoAxIcChRzdWdnZXN0ZWRfYmF0Y2hfc2l6ZRgFIAEoBSJiChBSdW5RdWVyeVJlc3BvbnNlEjgKBWJhdGNoGAEgAigLMikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaBIUCgxxdWVyeV9oYW5kbGUYAiABKAwiLAoUQ29udGludWVRdWVyeVJlcXVlc3QSFAoMcXVlcnlfaGFuZGxlGAEgAigMIlEKFUNvbnRpbnVlUXVlcnlSZXNwb25zZRI4CgViYXRjaBgBIAIoCzIpLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2giUwoXQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QSGgoLY3Jvc3NfZ3JvdXAYASABKAg6BWZhbHNlEhwKDWNyb3NzX3JlcXVlc3QYAiABKAg6BWZhbHNlIi8KGEJlZ2luVHJhbnNhY3Rpb25SZXNwb25zZRITCgt0cmFuc2FjdGlvbhgBIAIoDCImCg9Sb2xsYmFja1JlcXVlc3QSEwoLdHJhbnNhY3Rpb24YASACKAwiEgoQUm9sbGJhY2tSZXNwb25zZSLAAgoNQ29tbWl0UmVxdWVzdBITCgt0cmFuc2FjdGlvbhgBIAEoDBIzCghtdXRhdGlvbhgFIAMoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uEkgKE2RlcHJlY2F0ZWRfbXV0YXRpb24YAiABKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5EZXByZWNhdGVkTXV0YXRpb24SSAoEbW9kZRgEIAEoDjIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlcXVlc3QuTW9kZToNVFJBTlNBQ1RJT05BTBIfChBpZ25vcmVfcmVhZF9vbmx5GAYgASgIOgVmYWxzZSIwCgRNb2RlEhEKDVRSQU5TQUNUSU9OQUwQARIVChFOT05fVFJBTlNBQ1RJT05BTBACIsABCg5Db21taXRSZXNwb25zZRJACg9tdXRhdGlvbl9yZXN1bHQYAyADKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvblJlc3VsdBJVChpkZXByZWNhdGVkX211dGF0aW9uX3Jlc3VsdBgBIAEoCzIxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvblJlc3VsdBIVCg1pbmRleF91cGRhdGVzGAQgASgFInMKEkFsbG9jYXRlSWRzUmVxdWVzdBIuCghhbGxvY2F0ZRgBIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRItCgdyZXNlcnZlGAIgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IkYKE0FsbG9jYXRlSWRzUmVzcG9uc2USLwoJYWxsb2NhdGVkGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IlgKDFdyaXRlUmVxdWVzdBJIChNkZXByZWNhdGVkX211dGF0aW9uGAEgAigLMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uMqIHChJEYXRhc3RvcmVWNFNlcnZpY2USeQoQQmVnaW5UcmFuc2FjdGlvbhIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJlZ2luVHJhbnNhY3Rpb25SZXF1ZXN0GjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlc3BvbnNlIgASYQoIUm9sbGJhY2sSKC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Sb2xsYmFja1JlcXVlc3QaKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Sb2xsYmFja1Jlc3BvbnNlIgASWwoGQ29tbWl0EiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlc3BvbnNlIgASYQoIUnVuUXVlcnkSKC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SdW5RdWVyeVJlcXVlc3QaKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SdW5RdWVyeVJlc3BvbnNlIgAScAoNQ29udGludWVRdWVyeRItLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbnRpbnVlUXVlcnlSZXF1ZXN0Gi4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlc3BvbnNlIgASWwoGTG9va3VwEiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlc3BvbnNlIgASagoLQWxsb2NhdGVJZHMSKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5BbGxvY2F0ZUlkc1JlcXVlc3QaLC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5BbGxvY2F0ZUlkc1Jlc3BvbnNlIgASWAoDR2V0EiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlc3BvbnNlIgASWQoFV3JpdGUSJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Xcml0ZVJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXNwb25zZSIAQiMKH2NvbS5nb29nbGUuYXBwaG9zdGluZy5kYXRhc3RvcmUgAQ=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugHhNgonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIoYBCgxFbnRpdHlSZXN1bHQSLwoGZW50aXR5GAEgAigLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Eg8KB3ZlcnNpb24YAiABKAMiNAoKUmVzdWx0VHlwZRIICgRGVUxMEAESDgoKUFJPSkVDVElPThACEgwKCEtFWV9PTkxZEAMi8QIKBVF1ZXJ5Ej8KCnByb2plY3Rpb24YAiADKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUV4cHJlc3Npb24SNQoEa2luZBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktpbmRFeHByZXNzaW9uEi8KBmZpbHRlchgEIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchI1CgVvcmRlchgFIAMoCzImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXISPAoIZ3JvdXBfYnkYBiADKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRIUCgxzdGFydF9jdXJzb3IYByABKAwSEgoKZW5kX2N1cnNvchgIIAEoDBIRCgZvZmZzZXQYCiABKAU6ATASDQoFbGltaXQYCyABKAUiHgoOS2luZEV4cHJlc3Npb24SDAoEbmFtZRgBIAIoCSIhChFQcm9wZXJ0eVJlZmVyZW5jZRIMCgRuYW1lGAIgAigJItMBChJQcm9wZXJ0eUV4cHJlc3Npb24SPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJdChRhZ2dyZWdhdGlvbl9mdW5jdGlvbhgCIAEoDjI/LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbi5BZ2dyZWdhdGlvbkZ1bmN0aW9uIiAKE0FnZ3JlZ2F0aW9uRnVuY3Rpb24SCQoFRklSU1QQASLJAQoNUHJvcGVydHlPcmRlchI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEk4KCWRpcmVjdGlvbhgCIAEoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXIuRGlyZWN0aW9uOglBU0NFTkRJTkciKgoJRGlyZWN0aW9uEg0KCUFTQ0VORElORxABEg4KCkRFU0NFTkRJTkcQAiKmAgoGRmlsdGVyEkIKEGNvbXBvc2l0ZV9maWx0ZXIYASABKAsyKC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21wb3NpdGVGaWx0ZXISQAoPcHJvcGVydHlfZmlsdGVyGAIgASgLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlGaWx0ZXISTQoWYm91bmRpbmdfY2lyY2xlX2ZpbHRlchgDIAEoCzItLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyEkcKE2JvdW5kaW5nX2JveF9maWx0ZXIYBCABKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Cb3VuZGluZ0JveEZpbHRlciKcAQoPQ29tcG9zaXRlRmlsdGVyEkMKCG9wZXJhdG9yGAEgAigOMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyLk9wZXJhdG9yEi8KBmZpbHRlchgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlciITCghPcGVyYXRvchIHCgNBTkQQASK+AgoOUHJvcGVydHlGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJCCghvcGVyYXRvchgCIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyLk9wZXJhdG9yEi0KBXZhbHVlGAMgAigLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiewoIT3BlcmF0b3ISDQoJTEVTU19USEFOEAESFgoSTEVTU19USEFOX09SX0VRVUFMEAISEAoMR1JFQVRFUl9USEFOEAMSGQoVR1JFQVRFUl9USEFOX09SX0VRVUFMEAQSCQoFRVFVQUwQBRIQCgxIQVNfQU5DRVNUT1IQCyKeAQoUQm91bmRpbmdDaXJjbGVGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRIxCgZjZW50ZXIYAiACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludBIVCg1yYWRpdXNfbWV0ZXJzGAMgAigBIr0BChFCb3VuZGluZ0JveEZpbHRlchI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEjQKCXNvdXRod2VzdBgCIAIoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50EjQKCW5vcnRoZWFzdBgDIAIoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50IrABCghHcWxRdWVyeRIUCgxxdWVyeV9zdHJpbmcYASACKAkSHAoNYWxsb3dfbGl0ZXJhbBgCIAEoCDoFZmFsc2USNgoIbmFtZV9hcmcYAyADKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeUFyZxI4CgpudW1iZXJfYXJnGAQgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmciWgoLR3FsUXVlcnlBcmcSDAoEbmFtZRgBIAEoCRItCgV2YWx1ZRgCIAEoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlEg4KBmN1cnNvchgDIAEoDCKRAwoQUXVlcnlSZXN1bHRCYXRjaBJMChJlbnRpdHlfcmVzdWx0X3R5cGUYASACKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQuUmVzdWx0VHlwZRI8Cg1lbnRpdHlfcmVzdWx0GAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0EhIKCmVuZF9jdXJzb3IYBCABKAwSTwoMbW9yZV9yZXN1bHRzGAUgAigOMjkuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaC5Nb3JlUmVzdWx0c1R5cGUSGgoPc2tpcHBlZF9yZXN1bHRzGAYgASgFOgEwEhgKEHNuYXBzaG90X3ZlcnNpb24YByABKAMiVgoPTW9yZVJlc3VsdHNUeXBlEhAKDE5PVF9GSU5JU0hFRBABEhwKGE1PUkVfUkVTVUxUU19BRlRFUl9MSU1JVBACEhMKD05PX01PUkVfUkVTVUxUUxADIvIBCghNdXRhdGlvbhJACgJvcBgBIAEoDjIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uLk9wZXJhdGlvbjoHVU5LTk9XThIpCgNrZXkYAiABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSLwoGZW50aXR5GAMgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5IkgKCU9wZXJhdGlvbhILCgdVTktOT1dOEAASCgoGSU5TRVJUEAESCgoGVVBEQVRFEAISCgoGVVBTRVJUEAMSCgoGREVMRVRFEAQiUwoOTXV0YXRpb25SZXN1bHQSKQoDa2V5GAMgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhYKC25ld192ZXJzaW9uGAQgASgDOgEwIqQCChJEZXByZWNhdGVkTXV0YXRpb24SLwoGdXBzZXJ0GAEgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Ei8KBnVwZGF0ZRgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIvCgZpbnNlcnQYAyADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSNwoOaW5zZXJ0X2F1dG9faWQYBCADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLAoGZGVsZXRlGAUgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhQKBWZvcmNlGAYgASgIOgVmYWxzZSLrAQoYRGVwcmVjYXRlZE11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYASACKAUSOAoSaW5zZXJ0X2F1dG9faWRfa2V5GAIgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhYKDnVwc2VydF92ZXJzaW9uGAMgAygDEhYKDnVwZGF0ZV92ZXJzaW9uGAQgAygDEhYKDmluc2VydF92ZXJzaW9uGAUgAygDEh4KFmluc2VydF9hdXRvX2lkX3ZlcnNpb24YBiADKAMSFgoOZGVsZXRlX3ZlcnNpb24YByADKAMitQEKC1JlYWRPcHRpb25zElcKEHJlYWRfY29uc2lzdGVuY3kYASABKA4yNC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucy5SZWFkQ29uc2lzdGVuY3k6B0RFRkFVTFQSEwoLdHJhbnNhY3Rpb24YAiABKAwiOAoPUmVhZENvbnNpc3RlbmN5EgsKB0RFRkFVTFQQABIKCgZTVFJPTkcQARIMCghFVkVOVFVBTBACInYKDUxvb2t1cFJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSKQoDa2V5GAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Iq4BCg5Mb29rdXBSZXNwb25zZRI0CgVmb3VuZBgBIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBI2CgdtaXNzaW5nGAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0Ei4KCGRlZmVycmVkGAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IqsCCg9SdW5RdWVyeVJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSOgoMcGFydGl0aW9uX2lkGAIgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSLQoFcXVlcnkYAyABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeRI0CglncWxfcXVlcnkYByABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeRIdChVtaW5fc2FmZV90aW1lX3NlY29uZHMYBCABKAMSHAoUc3VnZ2VzdGVkX2JhdGNoX3NpemUYBSABKAUiYgoQUnVuUXVlcnlSZXNwb25zZRI4CgViYXRjaBgBIAIoCzIpLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gSFAoMcXVlcnlfaGFuZGxlGAIgASgMIiwKFENvbnRpbnVlUXVlcnlSZXF1ZXN0EhQKDHF1ZXJ5X2hhbmRsZRgBIAIoDCJRChVDb250aW51ZVF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoIlMKF0JlZ2luVHJhbnNhY3Rpb25SZXF1ZXN0EhoKC2Nyb3NzX2dyb3VwGAEgASgIOgVmYWxzZRIcCg1jcm9zc19yZXF1ZXN0GAIgASgIOgVmYWxzZSIvChhCZWdpblRyYW5zYWN0aW9uUmVzcG9uc2USEwoLdHJhbnNhY3Rpb24YASACKAwiJgoPUm9sbGJhY2tSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgAigMIhIKEFJvbGxiYWNrUmVzcG9uc2UiwAIKDUNvbW1pdFJlcXVlc3QSEwoLdHJhbnNhY3Rpb24YASABKAwSMwoIbXV0YXRpb24YBSADKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbhJIChNkZXByZWNhdGVkX211dGF0aW9uGAIgASgLMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uEkgKBG1vZGUYBCABKA4yKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0Lk1vZGU6DVRSQU5TQUNUSU9OQUwSHwoQaWdub3JlX3JlYWRfb25seRgGIAEoCDoFZmFsc2UiMAoETW9kZRIRCg1UUkFOU0FDVElPTkFMEAESFQoRTk9OX1RSQU5TQUNUSU9OQUwQAiLAAQoOQ29tbWl0UmVzcG9uc2USQAoPbXV0YXRpb25fcmVzdWx0GAMgAygLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb25SZXN1bHQSVQoaZGVwcmVjYXRlZF9tdXRhdGlvbl9yZXN1bHQYASABKAsyMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5EZXByZWNhdGVkTXV0YXRpb25SZXN1bHQSFQoNaW5kZXhfdXBkYXRlcxgEIAEoBSJzChJBbGxvY2F0ZUlkc1JlcXVlc3QSLgoIYWxsb2NhdGUYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSLQoHcmVzZXJ2ZRgCIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSJGChNBbGxvY2F0ZUlkc1Jlc3BvbnNlEi8KCWFsbG9jYXRlZBgBIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSJYCgxXcml0ZVJlcXVlc3QSSAoTZGVwcmVjYXRlZF9tdXRhdGlvbhgBIAIoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvbjKiBwoSRGF0YXN0b3JlVjRTZXJ2aWNlEnkKEEJlZ2luVHJhbnNhY3Rpb24SMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVxdWVzdBoxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJlZ2luVHJhbnNhY3Rpb25SZXNwb25zZSIAEmEKCFJvbGxiYWNrEiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUm9sbGJhY2tSZXF1ZXN0GikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUm9sbGJhY2tSZXNwb25zZSIAElsKBkNvbW1pdBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXNwb25zZSIAEmEKCFJ1blF1ZXJ5EiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUnVuUXVlcnlSZXF1ZXN0GikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUnVuUXVlcnlSZXNwb25zZSIAEnAKDUNvbnRpbnVlUXVlcnkSLS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVxdWVzdBouLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbnRpbnVlUXVlcnlSZXNwb25zZSIAElsKBkxvb2t1cBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXNwb25zZSIAEmoKC0FsbG9jYXRlSWRzEisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQWxsb2NhdGVJZHNSZXF1ZXN0GiwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQWxsb2NhdGVJZHNSZXNwb25zZSIAElgKA0dldBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXNwb25zZSIAElkKBVdyaXRlEiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuV3JpdGVSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiAEIjCh9jb20uZ29vZ2xlLmFwcGhvc3RpbmcuZGF0YXN0b3JlIAE="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -1497,6 +1497,10 @@ class Filter(ProtocolBuffer.ProtocolMessage):
   composite_filter_ = None
   has_property_filter_ = 0
   property_filter_ = None
+  has_bounding_circle_filter_ = 0
+  bounding_circle_filter_ = None
+  has_bounding_box_filter_ = 0
+  bounding_box_filter_ = None
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -1540,11 +1544,51 @@ class Filter(ProtocolBuffer.ProtocolMessage):
 
   def has_property_filter(self): return self.has_property_filter_
 
+  def bounding_circle_filter(self):
+    if self.bounding_circle_filter_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.bounding_circle_filter_ is None: self.bounding_circle_filter_ = BoundingCircleFilter()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.bounding_circle_filter_
+
+  def mutable_bounding_circle_filter(self): self.has_bounding_circle_filter_ = 1; return self.bounding_circle_filter()
+
+  def clear_bounding_circle_filter(self):
+
+    if self.has_bounding_circle_filter_:
+      self.has_bounding_circle_filter_ = 0;
+      if self.bounding_circle_filter_ is not None: self.bounding_circle_filter_.Clear()
+
+  def has_bounding_circle_filter(self): return self.has_bounding_circle_filter_
+
+  def bounding_box_filter(self):
+    if self.bounding_box_filter_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.bounding_box_filter_ is None: self.bounding_box_filter_ = BoundingBoxFilter()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.bounding_box_filter_
+
+  def mutable_bounding_box_filter(self): self.has_bounding_box_filter_ = 1; return self.bounding_box_filter()
+
+  def clear_bounding_box_filter(self):
+
+    if self.has_bounding_box_filter_:
+      self.has_bounding_box_filter_ = 0;
+      if self.bounding_box_filter_ is not None: self.bounding_box_filter_.Clear()
+
+  def has_bounding_box_filter(self): return self.has_bounding_box_filter_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_composite_filter()): self.mutable_composite_filter().MergeFrom(x.composite_filter())
     if (x.has_property_filter()): self.mutable_property_filter().MergeFrom(x.property_filter())
+    if (x.has_bounding_circle_filter()): self.mutable_bounding_circle_filter().MergeFrom(x.bounding_circle_filter())
+    if (x.has_bounding_box_filter()): self.mutable_bounding_box_filter().MergeFrom(x.bounding_box_filter())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -1579,29 +1623,41 @@ class Filter(ProtocolBuffer.ProtocolMessage):
     if self.has_composite_filter_ and self.composite_filter_ != x.composite_filter_: return 0
     if self.has_property_filter_ != x.has_property_filter_: return 0
     if self.has_property_filter_ and self.property_filter_ != x.property_filter_: return 0
+    if self.has_bounding_circle_filter_ != x.has_bounding_circle_filter_: return 0
+    if self.has_bounding_circle_filter_ and self.bounding_circle_filter_ != x.bounding_circle_filter_: return 0
+    if self.has_bounding_box_filter_ != x.has_bounding_box_filter_: return 0
+    if self.has_bounding_box_filter_ and self.bounding_box_filter_ != x.bounding_box_filter_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_composite_filter_ and not self.composite_filter_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_property_filter_ and not self.property_filter_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_bounding_circle_filter_ and not self.bounding_circle_filter_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_bounding_box_filter_ and not self.bounding_box_filter_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_composite_filter_): n += 1 + self.lengthString(self.composite_filter_.ByteSize())
     if (self.has_property_filter_): n += 1 + self.lengthString(self.property_filter_.ByteSize())
+    if (self.has_bounding_circle_filter_): n += 1 + self.lengthString(self.bounding_circle_filter_.ByteSize())
+    if (self.has_bounding_box_filter_): n += 1 + self.lengthString(self.bounding_box_filter_.ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_composite_filter_): n += 1 + self.lengthString(self.composite_filter_.ByteSizePartial())
     if (self.has_property_filter_): n += 1 + self.lengthString(self.property_filter_.ByteSizePartial())
+    if (self.has_bounding_circle_filter_): n += 1 + self.lengthString(self.bounding_circle_filter_.ByteSizePartial())
+    if (self.has_bounding_box_filter_): n += 1 + self.lengthString(self.bounding_box_filter_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_composite_filter()
     self.clear_property_filter()
+    self.clear_bounding_circle_filter()
+    self.clear_bounding_box_filter()
 
   def OutputUnchecked(self, out):
     if (self.has_composite_filter_):
@@ -1612,6 +1668,14 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.property_filter_.ByteSize())
       self.property_filter_.OutputUnchecked(out)
+    if (self.has_bounding_circle_filter_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.bounding_circle_filter_.ByteSize())
+      self.bounding_circle_filter_.OutputUnchecked(out)
+    if (self.has_bounding_box_filter_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.bounding_box_filter_.ByteSize())
+      self.bounding_box_filter_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_composite_filter_):
@@ -1622,6 +1686,14 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.property_filter_.ByteSizePartial())
       self.property_filter_.OutputPartial(out)
+    if (self.has_bounding_circle_filter_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.bounding_circle_filter_.ByteSizePartial())
+      self.bounding_circle_filter_.OutputPartial(out)
+    if (self.has_bounding_box_filter_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.bounding_box_filter_.ByteSizePartial())
+      self.bounding_box_filter_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1637,6 +1709,18 @@ class Filter(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_property_filter().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_bounding_circle_filter().TryMerge(tmp)
+        continue
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_bounding_box_filter().TryMerge(tmp)
         continue
 
 
@@ -1654,6 +1738,14 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"property_filter <\n"
       res+=self.property_filter_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_bounding_circle_filter_:
+      res+=prefix+"bounding_circle_filter <\n"
+      res+=self.bounding_circle_filter_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_bounding_box_filter_:
+      res+=prefix+"bounding_box_filter <\n"
+      res+=self.bounding_box_filter_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -1662,25 +1754,31 @@ class Filter(ProtocolBuffer.ProtocolMessage):
 
   kcomposite_filter = 1
   kproperty_filter = 2
+  kbounding_circle_filter = 3
+  kbounding_box_filter = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "composite_filter",
     2: "property_filter",
-  }, 2)
+    3: "bounding_circle_filter",
+    4: "bounding_box_filter",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Filter'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchMaEGNvbXBvc2l0ZV9maWx0ZXIgASgCMAs4AUonYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaD3Byb3BlcnR5X2ZpbHRlciACKAIwCzgBSiZhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlcqMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchMaEGNvbXBvc2l0ZV9maWx0ZXIgASgCMAs4AUonYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaD3Byb3BlcnR5X2ZpbHRlciACKAIwCzgBSiZhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlcqMBqgEFY3R5cGWyAQZwcm90bzKkARQTGhZib3VuZGluZ19jaXJjbGVfZmlsdGVyIAMoAjALOAFKLGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaE2JvdW5kaW5nX2JveF9maWx0ZXIgBCgCMAs4AUopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQm91bmRpbmdCb3hGaWx0ZXKjAaoBBWN0eXBlsgEGcHJvdG8ypAEUwgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2118,6 +2216,446 @@ class PropertyFilter(ProtocolBuffer.ProtocolMessage):
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.PropertyFilter'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoIb3BlcmF0b3IgAigAMAU4AmgAFBMaBXZhbHVlIAMoAjALOAJKHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlowGqAQVjdHlwZbIBBnByb3RvMqQBFHN6CE9wZXJhdG9yiwGSAQlMRVNTX1RIQU6YAQGMAYsBkgESTEVTU19USEFOX09SX0VRVUFMmAECjAGLAZIBDEdSRUFURVJfVEhBTpgBA4wBiwGSARVHUkVBVEVSX1RIQU5fT1JfRVFVQUyYAQSMAYsBkgEFRVFVQUyYAQWMAYsBkgEMSEFTX0FOQ0VTVE9SmAELjAF0wgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+class BoundingCircleFilter(ProtocolBuffer.ProtocolMessage):
+  has_property_ = 0
+  has_center_ = 0
+  has_radius_meters_ = 0
+  radius_meters_ = 0.0
+
+  def __init__(self, contents=None):
+    self.property_ = PropertyReference()
+    self.center_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
+    if contents is not None: self.MergeFromString(contents)
+
+  def property(self): return self.property_
+
+  def mutable_property(self): self.has_property_ = 1; return self.property_
+
+  def clear_property(self):self.has_property_ = 0; self.property_.Clear()
+
+  def has_property(self): return self.has_property_
+
+  def center(self): return self.center_
+
+  def mutable_center(self): self.has_center_ = 1; return self.center_
+
+  def clear_center(self):self.has_center_ = 0; self.center_.Clear()
+
+  def has_center(self): return self.has_center_
+
+  def radius_meters(self): return self.radius_meters_
+
+  def set_radius_meters(self, x):
+    self.has_radius_meters_ = 1
+    self.radius_meters_ = x
+
+  def clear_radius_meters(self):
+    if self.has_radius_meters_:
+      self.has_radius_meters_ = 0
+      self.radius_meters_ = 0.0
+
+  def has_radius_meters(self): return self.has_radius_meters_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_property()): self.mutable_property().MergeFrom(x.property())
+    if (x.has_center()): self.mutable_center().MergeFrom(x.center())
+    if (x.has_radius_meters()): self.set_radius_meters(x.radius_meters())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.BoundingCircleFilter')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.BoundingCircleFilter')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.BoundingCircleFilter', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_property_ != x.has_property_: return 0
+    if self.has_property_ and self.property_ != x.property_: return 0
+    if self.has_center_ != x.has_center_: return 0
+    if self.has_center_ and self.center_ != x.center_: return 0
+    if self.has_radius_meters_ != x.has_radius_meters_: return 0
+    if self.has_radius_meters_ and self.radius_meters_ != x.radius_meters_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_property_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: property not set.')
+    elif not self.property_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_center_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: center not set.')
+    elif not self.center_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_radius_meters_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: radius_meters not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.property_.ByteSize())
+    n += self.lengthString(self.center_.ByteSize())
+    return n + 11
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_property_):
+      n += 1
+      n += self.lengthString(self.property_.ByteSizePartial())
+    if (self.has_center_):
+      n += 1
+      n += self.lengthString(self.center_.ByteSizePartial())
+    if (self.has_radius_meters_):
+      n += 9
+    return n
+
+  def Clear(self):
+    self.clear_property()
+    self.clear_center()
+    self.clear_radius_meters()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.property_.ByteSize())
+    self.property_.OutputUnchecked(out)
+    out.putVarInt32(18)
+    out.putVarInt32(self.center_.ByteSize())
+    self.center_.OutputUnchecked(out)
+    out.putVarInt32(25)
+    out.putDouble(self.radius_meters_)
+
+  def OutputPartial(self, out):
+    if (self.has_property_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.property_.ByteSizePartial())
+      self.property_.OutputPartial(out)
+    if (self.has_center_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.center_.ByteSizePartial())
+      self.center_.OutputPartial(out)
+    if (self.has_radius_meters_):
+      out.putVarInt32(25)
+      out.putDouble(self.radius_meters_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_property().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_center().TryMerge(tmp)
+        continue
+      if tt == 25:
+        self.set_radius_meters(d.getDouble())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_property_:
+      res+=prefix+"property <\n"
+      res+=self.property_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_center_:
+      res+=prefix+"center <\n"
+      res+=self.center_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_radius_meters_: res+=prefix+("radius_meters: %s\n" % self.DebugFormat(self.radius_meters_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kproperty = 1
+  kcenter = 2
+  kradius_meters = 3
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "property",
+    2: "center",
+    3: "radius_meters",
+  }, 3)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.DOUBLE,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.BoundingCircleFilter'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KLGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoGY2VudGVyIAIoAjALOAJKIGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaDXJhZGl1c19tZXRlcnMgAygBMAE4AhTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
+  if _net_proto___parse__python is not None:
+    _net_proto___parse__python.RegisterType(
+        _SERIALIZED_DESCRIPTOR.tostring())
+
+class BoundingBoxFilter(ProtocolBuffer.ProtocolMessage):
+  has_property_ = 0
+  has_southwest_ = 0
+  has_northeast_ = 0
+
+  def __init__(self, contents=None):
+    self.property_ = PropertyReference()
+    self.southwest_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
+    self.northeast_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
+    if contents is not None: self.MergeFromString(contents)
+
+  def property(self): return self.property_
+
+  def mutable_property(self): self.has_property_ = 1; return self.property_
+
+  def clear_property(self):self.has_property_ = 0; self.property_.Clear()
+
+  def has_property(self): return self.has_property_
+
+  def southwest(self): return self.southwest_
+
+  def mutable_southwest(self): self.has_southwest_ = 1; return self.southwest_
+
+  def clear_southwest(self):self.has_southwest_ = 0; self.southwest_.Clear()
+
+  def has_southwest(self): return self.has_southwest_
+
+  def northeast(self): return self.northeast_
+
+  def mutable_northeast(self): self.has_northeast_ = 1; return self.northeast_
+
+  def clear_northeast(self):self.has_northeast_ = 0; self.northeast_.Clear()
+
+  def has_northeast(self): return self.has_northeast_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_property()): self.mutable_property().MergeFrom(x.property())
+    if (x.has_southwest()): self.mutable_southwest().MergeFrom(x.southwest())
+    if (x.has_northeast()): self.mutable_northeast().MergeFrom(x.northeast())
+
+  if _net_proto___parse__python is not None:
+    def _CMergeFromString(self, s):
+      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
+
+  if _net_proto___parse__python is not None:
+    def _CEncode(self):
+      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.BoundingBoxFilter')
+
+  if _net_proto___parse__python is not None:
+    def _CEncodePartial(self):
+      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.BoundingBoxFilter')
+
+  if _net_proto___parse__python is not None:
+    def _CToASCII(self, output_format):
+      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.BoundingBoxFilter', output_format)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCII(self, s):
+      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
+
+
+  if _net_proto___parse__python is not None:
+    def ParseASCIIIgnoreUnknown(self, s):
+      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
+
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_property_ != x.has_property_: return 0
+    if self.has_property_ and self.property_ != x.property_: return 0
+    if self.has_southwest_ != x.has_southwest_: return 0
+    if self.has_southwest_ and self.southwest_ != x.southwest_: return 0
+    if self.has_northeast_ != x.has_northeast_: return 0
+    if self.has_northeast_ and self.northeast_ != x.northeast_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_property_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: property not set.')
+    elif not self.property_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_southwest_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: southwest not set.')
+    elif not self.southwest_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_northeast_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: northeast not set.')
+    elif not self.northeast_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.property_.ByteSize())
+    n += self.lengthString(self.southwest_.ByteSize())
+    n += self.lengthString(self.northeast_.ByteSize())
+    return n + 3
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_property_):
+      n += 1
+      n += self.lengthString(self.property_.ByteSizePartial())
+    if (self.has_southwest_):
+      n += 1
+      n += self.lengthString(self.southwest_.ByteSizePartial())
+    if (self.has_northeast_):
+      n += 1
+      n += self.lengthString(self.northeast_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_property()
+    self.clear_southwest()
+    self.clear_northeast()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.property_.ByteSize())
+    self.property_.OutputUnchecked(out)
+    out.putVarInt32(18)
+    out.putVarInt32(self.southwest_.ByteSize())
+    self.southwest_.OutputUnchecked(out)
+    out.putVarInt32(26)
+    out.putVarInt32(self.northeast_.ByteSize())
+    self.northeast_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_property_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.property_.ByteSizePartial())
+      self.property_.OutputPartial(out)
+    if (self.has_southwest_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.southwest_.ByteSizePartial())
+      self.southwest_.OutputPartial(out)
+    if (self.has_northeast_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.northeast_.ByteSizePartial())
+      self.northeast_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_property().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_southwest().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_northeast().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_property_:
+      res+=prefix+"property <\n"
+      res+=self.property_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_southwest_:
+      res+=prefix+"southwest <\n"
+      res+=self.southwest_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_northeast_:
+      res+=prefix+"northeast <\n"
+      res+=self.northeast_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kproperty = 1
+  ksouthwest = 2
+  knortheast = 3
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "property",
+    2: "southwest",
+    3: "northeast",
+  }, 3)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.BoundingBoxFilter'
+  _SERIALIZED_DESCRIPTOR = array.array('B')
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KKWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQm94RmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoJc291dGh3ZXN0IAIoAjALOAJKIGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaCW5vcnRoZWFzdCADKAIwCzgCSiBhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludKMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -7676,4 +8214,4 @@ class DatastoreV4Service(_server_stub_base_class):
 if _extension_runtime:
   pass
 
-__all__ = ['Error','EntityResult','Query','KindExpression','PropertyReference','PropertyExpression','PropertyOrder','Filter','CompositeFilter','PropertyFilter','GqlQuery','GqlQueryArg','QueryResultBatch','Mutation','MutationResult','DeprecatedMutation','DeprecatedMutationResult','ReadOptions','LookupRequest','LookupResponse','RunQueryRequest','RunQueryResponse','ContinueQueryRequest','ContinueQueryResponse','BeginTransactionRequest','BeginTransactionResponse','RollbackRequest','RollbackResponse','CommitRequest','CommitResponse','AllocateIdsRequest','AllocateIdsResponse','WriteRequest','DatastoreV4Service']
+__all__ = ['Error','EntityResult','Query','KindExpression','PropertyReference','PropertyExpression','PropertyOrder','Filter','CompositeFilter','PropertyFilter','BoundingCircleFilter','BoundingBoxFilter','GqlQuery','GqlQueryArg','QueryResultBatch','Mutation','MutationResult','DeprecatedMutation','DeprecatedMutationResult','ReadOptions','LookupRequest','LookupResponse','RunQueryRequest','RunQueryResponse','ContinueQueryRequest','ContinueQueryResponse','BeginTransactionRequest','BeginTransactionResponse','RollbackRequest','RollbackResponse','CommitRequest','CommitResponse','AllocateIdsRequest','AllocateIdsResponse','WriteRequest','DatastoreV4Service']
