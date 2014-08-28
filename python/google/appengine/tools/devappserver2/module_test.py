@@ -512,6 +512,91 @@ class TestModuleShutdownInstance(unittest.TestCase):
     self.mox.VerifyAll()
 
 
+class TestModuleRuntime(unittest.TestCase):
+  """Tests for module.Module.runtime."""
+
+  def setUp(self):
+    api_server.test_setup_stubs()
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(application_configuration.ModuleConfiguration,
+                             '_parse_configuration')
+    self.mox.StubOutWithMock(os.path, 'getmtime')
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  class ModuleStubRuntime(module.Module):
+
+    def __init__(self, module_configuration):
+      self._module_configuration = module_configuration
+
+  def test_vm_false(self):
+    automatic_scaling = appinfo.AutomaticScaling(min_pending_latency='1.0s',
+                                                 max_pending_latency='2.0s',
+                                                 min_idle_instances=1,
+                                                 max_idle_instances=2)
+    error_handlers = [appinfo.ErrorHandlers(file='error.html')]
+    handlers = [appinfo.URLMap(url=r'/python-(.*)',
+                               script=r'\1.py')]
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='python27',
+        threadsafe=False,
+        automatic_scaling=automatic_scaling,
+        skip_files=r'\*.gif',
+        error_handlers=error_handlers,
+        handlers=handlers,
+        inbound_services=['warmup'],
+        env_variables=appinfo.EnvironmentVariables(),
+        )
+    config_path = '/appdir/app.yaml'
+    application_configuration.ModuleConfiguration._parse_configuration(
+        config_path).AndReturn((info, [config_path]))
+    os.path.getmtime(config_path).AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration(
+        '/appdir/app.yaml')
+    servr = TestModuleRuntime.ModuleStubRuntime(
+        module_configuration=config)
+    self.assertEqual(servr.runtime, 'python27')
+    self.assertEqual(servr.effective_runtime, 'python27')
+    self.mox.VerifyAll()
+
+  def test_vm_true(self):
+    manual_scaling = appinfo.ManualScaling()
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'python27'
+    handlers = [appinfo.URLMap(url=r'/*', script=r'\1.py')]
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+        handlers=handlers,
+        )
+    config_path = '/appdir/app.yaml'
+    application_configuration.ModuleConfiguration._parse_configuration(
+        config_path).AndReturn((info, [config_path]))
+    os.path.getmtime(config_path).AndReturn(10)
+
+    self.mox.ReplayAll()
+
+    module_configuration = application_configuration.ModuleConfiguration(
+        config_path)
+    servr = TestModuleRuntime.ModuleStubRuntime(
+        module_configuration=module_configuration)
+    self.assertEqual(servr.runtime, 'vm')
+    self.assertEqual(servr.effective_runtime, 'python27')
+
+    self.mox.VerifyAll()
+
+
 class TestAutoScalingModuleWarmup(unittest.TestCase):
   """Tests for module.AutoScalingModule._warmup."""
 

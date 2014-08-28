@@ -160,6 +160,9 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
     if filter_pb.has_bounding_circle_filter():
       return (datastore_query._BoundingCircleFilter._from_v4_pb(
           filter_pb.bounding_circle_filter()))
+    elif filter_pb.has_bounding_box_filter():
+      return (datastore_query._BoundingBoxFilter._from_v4_pb(
+          filter_pb.bounding_box_filter()))
     else:
       return None
 

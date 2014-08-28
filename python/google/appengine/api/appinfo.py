@@ -1868,7 +1868,8 @@ class AppInfoExternal(validation.Validated):
       The effective runtime: the value of vm_settings.vm_runtime if runtime is
       "vm", or runtime otherwise.
     """
-    if self.runtime == 'vm' and hasattr(self, 'vm_settings'):
+    if (self.runtime == 'vm' and hasattr(self, 'vm_settings')
+        and self.vm_settings is not None):
       return self.vm_settings.get('vm_runtime')
     return self.runtime
 

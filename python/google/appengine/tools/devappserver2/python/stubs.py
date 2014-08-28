@@ -55,12 +55,13 @@ def fake_urandom(n):
   return ''.join(chr(random.randint(0, 255)) for _ in xrange(n))
 
 
-def fake_access(path, mode):
+def fake_access(path, mode, _os_access=os.access):
   """Fake version of os.access where only reads are supported."""
   if mode & (os.W_OK | os.X_OK):
     return False
-  else:
-    return FakeFile.is_file_accessible(path)
+  elif not FakeFile.is_file_accessible(path):
+    return False
+  return _os_access(path, mode)
 
 
 def fake_open(filename, flags, mode=0777, _os_open=os.open):
@@ -253,20 +254,23 @@ class FakeFile(file):
 class RestrictedPathFunction(object):
   """Enforces restrictions for functions with a path as their first argument."""
 
-  def __init__(self, original_func):
+  def __init__(self, original_func, error_class=OSError):
     """Initializer.
 
     Args:
       original_func: Callable that takes as its first argument the path to a
         file or directory on disk; all subsequent arguments may be variable.
+      error_class: The class of the error to raise when the file is not
+        accessible.
     """
     self._original_func = original_func
     functools.update_wrapper(self, original_func)
+    self._error_class = error_class
 
   def __call__(self, path, *args, **kwargs):
     """Enforces access permissions for the wrapped function."""
     if not FakeFile.is_file_accessible(path):
-      raise OSError(errno.EACCES, 'path not accessible', path)
+      raise self._error_class(errno.EACCES, 'path not accessible', path)
 
     return self._original_func(path, *args, **kwargs)
 

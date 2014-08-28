@@ -3261,6 +3261,23 @@ namespace storage_onestore_v3 {
     public function hasWriteDivisionFamily() {
       return isset($this->write_division_family);
     }
+    public function getDisabledIndex() {
+      if (!isset($this->disabled_index)) {
+        return false;
+      }
+      return $this->disabled_index;
+    }
+    public function setDisabledIndex($val) {
+      $this->disabled_index = $val;
+      return $this;
+    }
+    public function clearDisabledIndex() {
+      unset($this->disabled_index);
+      return $this;
+    }
+    public function hasDisabledIndex() {
+      return isset($this->disabled_index);
+    }
     public function clear() {
       $this->clearAppId();
       $this->clearId();
@@ -3269,6 +3286,7 @@ namespace storage_onestore_v3 {
       $this->clearOnlyUseIfRequired();
       $this->clearReadDivisionFamily();
       $this->clearWriteDivisionFamily();
+      $this->clearDisabledIndex();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3299,6 +3317,9 @@ namespace storage_onestore_v3 {
       if (isset($this->write_division_family)) {
         $res += 1;
         $res += $this->lengthString(strlen($this->write_division_family));
+      }
+      if (isset($this->disabled_index)) {
+        $res += 2;
       }
       return $res;
     }
@@ -3332,6 +3353,10 @@ namespace storage_onestore_v3 {
       if (isset($this->write_division_family)) {
         $out->putVarInt32(66);
         $out->putPrefixedString($this->write_division_family);
+      }
+      if (isset($this->disabled_index)) {
+        $out->putVarInt32(72);
+        $out->putBoolean($this->disabled_index);
       }
     }
     public function tryMerge($d) {
@@ -3367,6 +3392,9 @@ namespace storage_onestore_v3 {
             $length = $d->getVarInt32();
             $this->setWriteDivisionFamily(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
+            break;
+          case 72:
+            $this->setDisabledIndex($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -3406,6 +3434,9 @@ namespace storage_onestore_v3 {
       if ($x->hasWriteDivisionFamily()) {
         $this->setWriteDivisionFamily($x->getWriteDivisionFamily());
       }
+      if ($x->hasDisabledIndex()) {
+        $this->setDisabledIndex($x->getDisabledIndex());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3425,6 +3456,8 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->write_division_family) !== isset($x->write_division_family)) return false;
       if (isset($this->write_division_family) && $this->write_division_family !== $x->write_division_family) return false;
+      if (isset($this->disabled_index) !== isset($x->disabled_index)) return false;
+      if (isset($this->disabled_index) && $this->disabled_index !== $x->disabled_index) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3449,6 +3482,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->write_division_family)) {
         $res .= $prefix . "write_division_family: " . $this->debugFormatString($this->write_division_family) . "\n";
+      }
+      if (isset($this->disabled_index)) {
+        $res .= $prefix . "disabled_index: " . $this->debugFormatBool($this->disabled_index) . "\n";
       }
       return $res;
     }
@@ -4169,9 +4205,27 @@ namespace storage_onestore_v3 {
     public function hasBefore() {
       return isset($this->before);
     }
+    public function getBeforeAscending() {
+      if (!isset($this->before_ascending)) {
+        return false;
+      }
+      return $this->before_ascending;
+    }
+    public function setBeforeAscending($val) {
+      $this->before_ascending = $val;
+      return $this;
+    }
+    public function clearBeforeAscending() {
+      unset($this->before_ascending);
+      return $this;
+    }
+    public function hasBeforeAscending() {
+      return isset($this->before_ascending);
+    }
     public function clear() {
       $this->clearKey();
       $this->clearBefore();
+      $this->clearBeforeAscending();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -4180,6 +4234,9 @@ namespace storage_onestore_v3 {
         $res += $this->lengthString(strlen($this->key));
       }
       if (isset($this->before)) {
+        $res += 2;
+      }
+      if (isset($this->before_ascending)) {
         $res += 2;
       }
       return $res;
@@ -4193,6 +4250,10 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(16);
         $out->putBoolean($this->before);
       }
+      if (isset($this->before_ascending)) {
+        $out->putVarInt32(24);
+        $out->putBoolean($this->before_ascending);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -4205,6 +4266,9 @@ namespace storage_onestore_v3 {
             break;
           case 16:
             $this->setBefore($d->getBoolean());
+            break;
+          case 24:
+            $this->setBeforeAscending($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -4225,6 +4289,9 @@ namespace storage_onestore_v3 {
       if ($x->hasBefore()) {
         $this->setBefore($x->getBefore());
       }
+      if ($x->hasBeforeAscending()) {
+        $this->setBeforeAscending($x->getBeforeAscending());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -4232,6 +4299,8 @@ namespace storage_onestore_v3 {
       if (isset($this->key) && $this->key !== $x->key) return false;
       if (isset($this->before) !== isset($x->before)) return false;
       if (isset($this->before) && $this->before !== $x->before) return false;
+      if (isset($this->before_ascending) !== isset($x->before_ascending)) return false;
+      if (isset($this->before_ascending) && $this->before_ascending !== $x->before_ascending) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -4241,6 +4310,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->before)) {
         $res .= $prefix . "before: " . $this->debugFormatBool($this->before) . "\n";
+      }
+      if (isset($this->before_ascending)) {
+        $res .= $prefix . "before_ascending: " . $this->debugFormatBool($this->before_ascending) . "\n";
       }
       return $res;
     }

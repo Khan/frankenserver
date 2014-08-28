@@ -19,7 +19,11 @@
 
 
 
-"""Utilities for interacting with the Python Runtime."""
+"""Runtime Utilities API.
+
+.. deprecated:: 1.8.1
+
+Utilities for interacting with the Python Runtime."""
 
 
 

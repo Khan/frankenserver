@@ -77,8 +77,8 @@ class AppEngineWebXmlParser(object):
 
         raise AppEngineConfigException('\n'.join(self.errors))
       return self.app_engine_web_xml
-    except ElementTree.ParseError:
-      raise AppEngineConfigException('Bad input -- not valid XML')
+    except ElementTree.ParseError as e:
+      raise AppEngineConfigException('Bad input -- not valid XML: %s' % e)
 
   def ProcessChildNode(self, child_node):
     """Processes second-level nodes one by one.

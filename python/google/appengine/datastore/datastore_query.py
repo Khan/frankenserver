@@ -931,6 +931,72 @@ class _BoundingCircleFilter(_SinglePropertyFilter):
     return self._lat_lng - lat_lng <= self._radius_meters
 
 
+class _BoundingBoxFilter(_SinglePropertyFilter):
+  """An immutable bounding box filter for geo locations.
+
+  An immutable filter predicate that constrains a geo location property to a
+  bounding box region. The filter is inclusive at the border. The property
+  has to be of type V3 PointValue. V4 GeoPoints converts to this type.
+  """
+
+
+
+  def __init__(self, property_name, southwest, northeast):
+    """Initializes a _BoundingBoxFilter.
+
+    Args:
+      property_name: the name of the property to filter on.
+      southwest: The south-west corner of the bounding box. The type is
+          datastore_types.GeoPt.
+      northeast: The north-east corner of the bounding box. The type is
+          datastore_types.GeoPt.
+
+    Raises:
+      datastore_errors.BadArgumentError if the south-west coordinate is on top
+      of the north-east coordinate.
+    """
+
+
+    if southwest.lat > northeast.lat:
+      raise datastore_errors.BadArgumentError(
+          'the south-west coordinate is on top of the north-east coordinate')
+
+    self._property_name = property_name
+    self._southwest = southwest
+    self._northeast = northeast
+
+  @classmethod
+  def _from_v4_pb(cls, bounding_box_v4_pb):
+    sw = datastore_types.GeoPt(bounding_box_v4_pb.southwest().latitude(),
+                               bounding_box_v4_pb.southwest().longitude())
+    ne = datastore_types.GeoPt(bounding_box_v4_pb.northeast().latitude(),
+                               bounding_box_v4_pb.northeast().longitude())
+    return _BoundingBoxFilter(bounding_box_v4_pb.property().name(), sw, ne)
+
+  def _get_prop_name(self):
+    return self._property_name
+
+  def _apply_to_value(self, value):
+
+
+    if value[0] != entity_pb.PropertyValue.kPointValueGroup:
+      return False
+
+    _, latitude, longitude = value
+
+
+
+    if not self._southwest.lat <= latitude <= self._northeast.lat:
+      return False
+
+
+    if self._southwest.lon > self._northeast.lon:
+      return (longitude <= self._northeast.lon
+              or longitude >= self._southwest.lon)
+    else:
+      return self._southwest.lon <= longitude <= self._northeast.lon
+
+
 class Order(_PropertyComponent):
   """A base class that represents a sort order on a query.
 

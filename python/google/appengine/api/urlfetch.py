@@ -421,7 +421,11 @@ def _get_fetch_result(rpc):
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.SSL_CERTIFICATE_ERROR):
       raise SSLCertificateError(
-        'Invalid and/or missing SSL certificate for URL: ' + url)
+          'Invalid and/or missing SSL certificate for URL: ' + url)
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.CONNECTION_ERROR):
+      raise DownloadError('Unable to connect to server at URL: ' + url)
+
     raise err
 
   response = rpc.response

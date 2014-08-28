@@ -95,7 +95,7 @@ class HttpProxy:
       with contextlib.closing(connection):
         try:
           connection.connect()
-        except socket.error, httplib.HTTPException:
+        except (socket.error, httplib.HTTPException):
           return False
         else:
           return True

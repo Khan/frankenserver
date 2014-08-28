@@ -18,7 +18,12 @@
 
 
 
-"""Testing utils for writing tests involving Files API."""
+"""Files API.
+
+.. deprecated:: 1.8.1
+   Use Google Cloud Storage Client library instead.
+
+Testing utils for writing tests involving Files API."""
 
 
 __all__ = ['TestFileServiceStub']

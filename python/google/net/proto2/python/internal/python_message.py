@@ -92,7 +92,7 @@ def InitMessage(descriptor, cls):
   _AddPropertiesForExtensions(descriptor, cls)
   _AddStaticMethods(cls)
   _AddMessageMethods(descriptor, cls)
-  _AddPrivateHelperMethods(cls)
+  _AddPrivateHelperMethods(descriptor, cls)
   copyreg.pickle(cls, lambda obj: (cls, (), obj.__getstate__()))
 
 
@@ -170,7 +170,8 @@ def _AddSlots(message_descriptor, dictionary):
                              '_is_present_in_parent',
                              '_listener',
                              '_listener_for_children',
-                             '__weakref__']
+                             '__weakref__',
+                             '_oneofs']
 
 
 def _IsMessageSetExtension(field):
@@ -295,6 +296,10 @@ def _AddInitMethod(message_descriptor, cls):
     self._cached_byte_size = 0
     self._cached_byte_size_dirty = len(kwargs) > 0
     self._fields = {}
+
+
+    self._oneofs = {}
+
 
 
     self._unknown_fields = ()
@@ -444,13 +449,20 @@ def _AddPropertiesForNonRepeatedScalarField(field, cls):
     return self._fields.get(field, default_value)
   getter.__module__ = None
   getter.__doc__ = 'Getter for %s.' % proto_field_name
-  def setter(self, new_value):
+  def field_setter(self, new_value):
 
     self._fields[field] = type_checker.CheckValue(new_value)
 
 
     if not self._cached_byte_size_dirty:
       self._Modified()
+
+  if field.containing_oneof is not None:
+    def setter(self, new_value):
+      field_setter(self, new_value)
+      self._UpdateOneofState(field)
+  else:
+    setter = field_setter
 
   setter.__module__ = None
   setter.__doc__ = 'Setter for %s.' % proto_field_name
@@ -487,7 +499,10 @@ def _AddPropertiesForNonRepeatedCompositeField(field, cls):
     if field_value is None:
 
       field_value = message_type._concrete_class()
-      field_value._SetListener(self._listener_for_children)
+      field_value._SetListener(
+          _OneofListener(self, field)
+          if field.containing_oneof is not None
+          else self._listener_for_children)
 
 
 
@@ -584,6 +599,9 @@ def _AddHasFieldMethod(message_descriptor, cls):
     if field.label != _FieldDescriptor.LABEL_REPEATED:
       singular_fields[field.name] = field
 
+  for field in message_descriptor.oneofs:
+    singular_fields[field.name] = field
+
   def HasField(self, field_name):
     try:
       field = singular_fields[field_name]
@@ -591,11 +609,18 @@ def _AddHasFieldMethod(message_descriptor, cls):
       raise ValueError(
           'Protocol message has no singular "%s" field.' % field_name)
 
-    if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
-      value = self._fields.get(field)
-      return value is not None and value._is_present_in_parent
+    if isinstance(field, descriptor_mod.OneofDescriptor):
+      try:
+        return HasField(self, self._oneofs[field].name)
+      except KeyError:
+        return False
     else:
-      return field in self._fields
+      if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
+        value = self._fields.get(field)
+        return value is not None and value._is_present_in_parent
+      else:
+        return field in self._fields
+
   cls.HasField = HasField
 
 
@@ -605,13 +630,23 @@ def _AddClearFieldMethod(message_descriptor, cls):
     try:
       field = message_descriptor.fields_by_name[field_name]
     except KeyError:
-      raise ValueError('Protocol message has no "%s" field.' % field_name)
+      try:
+        field = message_descriptor.oneofs_by_name[field_name]
+        if field in self._oneofs:
+          field = self._oneofs[field]
+        else:
+          return
+      except KeyError:
+        raise ValueError('Protocol message has no "%s" field.' % field_name)
 
     if field in self._fields:
 
 
 
       del self._fields[field]
+
+      if self._oneofs.get(field.containing_oneof, None) is field:
+        del self._oneofs[field.containing_oneof]
 
 
 
@@ -948,6 +983,24 @@ def _AddMergeFromMethod(cls):
   cls.MergeFrom = MergeFrom
 
 
+def _AddWhichOneofMethod(message_descriptor, cls):
+  def WhichOneof(self, oneof_name):
+    """Returns the name of the currently set field inside a oneof, or None."""
+    try:
+      field = message_descriptor.oneofs_by_name[oneof_name]
+    except KeyError:
+      raise ValueError(
+          'Protocol message has no oneof "%s" field.' % oneof_name)
+
+    nested_field = self._oneofs.get(field, None)
+    if nested_field is not None and self.HasField(nested_field.name):
+      return nested_field.name
+    else:
+      return None
+
+  cls.WhichOneof = WhichOneof
+
+
 def _AddMessageMethods(message_descriptor, cls):
   """Adds implementations of all Message methods to cls."""
   _AddListFieldsMethod(message_descriptor, cls)
@@ -967,9 +1020,9 @@ def _AddMessageMethods(message_descriptor, cls):
   _AddMergeFromStringMethod(message_descriptor, cls)
   _AddIsInitializedMethod(message_descriptor, cls)
   _AddMergeFromMethod(cls)
+  _AddWhichOneofMethod(message_descriptor, cls)
 
-
-def _AddPrivateHelperMethods(cls):
+def _AddPrivateHelperMethods(message_descriptor, cls):
   """Adds implementation of private helper methods to cls."""
 
   def Modified(self):
@@ -987,8 +1040,20 @@ def _AddPrivateHelperMethods(cls):
       self._is_present_in_parent = True
       self._listener.Modified()
 
+  def _UpdateOneofState(self, field):
+    """Sets field as the active field in its containing oneof.
+
+    Will also delete currently active field in the oneof, if it is different
+    from the argument. Does not mark the message as modified.
+    """
+    other_field = self._oneofs.setdefault(field.containing_oneof, field)
+    if other_field is not field:
+      del self._fields[other_field]
+      self._oneofs[field.containing_oneof] = field
+
   cls._Modified = Modified
   cls.SetInParent = Modified
+  cls._UpdateOneofState = _UpdateOneofState
 
 
 class _Listener(object):
@@ -1034,6 +1099,27 @@ class _Listener(object):
 
 
 
+      pass
+
+
+class _OneofListener(_Listener):
+  """Special listener implementation for setting composite oneof fields."""
+
+  def __init__(self, parent_message, field):
+    """Args:
+      parent_message: The message whose _Modified() method we should call when
+        we receive Modified() messages.
+      field: The descriptor of the field being set in the parent message.
+    """
+    super(_OneofListener, self).__init__(parent_message)
+    self._field = field
+
+  def Modified(self):
+    """Also updates the state of the containing oneof in the parent message."""
+    try:
+      self._parent_message_weakref._UpdateOneofState(self._field)
+      super(_OneofListener, self).Modified()
+    except ReferenceError:
       pass
 
 

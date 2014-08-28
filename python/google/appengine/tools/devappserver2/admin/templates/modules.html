@@ -15,6 +15,7 @@
         <th>Latency (ms)</th>
         <th>QPS</th>
         <th>Total Requests</th>
+        <th>Runtime</th>
       </tr>
     </thead>
     <tbody>
@@ -24,6 +25,12 @@
           <a href="//{{ module.balanced_address }}" target="_blank">
             {{ module.name }}</a>
         </th>
+        <td>
+          {% if module.runtime == "vm" %}
+            vm:
+          {% endif %}
+          {{ module.effective_runtime }}
+        </td>
       </tr>
       {% for instance in module.instances|sort(attribute='instance_id') %}
       <tr class="instance">

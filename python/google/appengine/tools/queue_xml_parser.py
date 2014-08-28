@@ -84,8 +84,8 @@ class QueueXmlParser(object):
 
       return self.queue_xml
 
-    except ElementTree.ParseError:
-      raise AppEngineConfigException('Bad input -- not valid XML')
+    except ElementTree.ParseError as e:
+      raise AppEngineConfigException('Bad input -- not valid XML: %s' % e)
 
   def ProcessQueueNode(self, node):
     """Processes XML <queue> nodes into Queue objects.

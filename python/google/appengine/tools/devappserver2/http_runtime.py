@@ -116,7 +116,21 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
   # TODO: Determine if we can always use SIGTERM.
   # Set this to True to quit with SIGTERM rather than SIGKILL
 
-  quit_with_sigterm = False
+  _quit_with_sigterm = False
+
+  @classmethod
+  def stop_runtimes_with_sigterm(cls, quit_with_sigterm):
+    """Configures the http_runtime module to kill the runtimes with SIGTERM.
+
+    Args:
+      quit_with_sigterm: True to enable stopping runtimes with SIGTERM.
+
+    Returns:
+      The previous value.
+    """
+    previous_quit_with_sigterm = cls._quit_with_sigterm
+    cls._quit_with_sigterm = quit_with_sigterm
+    return previous_quit_with_sigterm
 
   def __init__(self, args, runtime_config_getter, module_configuration,
                env=None, start_process_flavor=START_PROCESS):
@@ -280,7 +294,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     with self._process_lock:
       assert self._process, 'module was not running'
       try:
-        if HttpRuntimeProxy.quit_with_sigterm:
+        if HttpRuntimeProxy._quit_with_sigterm:
           logging.debug('Calling process.terminate on child runtime.')
           self._process.terminate()
         else:

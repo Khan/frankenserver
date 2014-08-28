@@ -20,6 +20,7 @@ from __future__ import with_statement
 import os.path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -341,7 +342,11 @@ class JavaAppUpdate(object):
       os.makedirs(destdir)
     if self._ShouldSplitJar(source):
       self._SplitJar(source, destdir)
-    elif source.endswith('web.xml') or self.options.no_symlinks:
+    elif source.endswith('web.xml'):
+      shutil.copy(source, dest)
+      os.chmod(dest, os.stat(dest).st_mode | stat.S_IWRITE)
+
+    elif self.options.no_symlinks:
       shutil.copy(source, dest)
     else:
       os.symlink(source, dest)

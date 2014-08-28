@@ -521,6 +521,16 @@ class Module(object):
     return self._module_configuration
 
   @property
+  def runtime(self):
+    """Runtime property for this module."""
+    return self._module_configuration.runtime
+
+  @property
+  def effective_runtime(self):
+    """Effective_runtime property for this module."""
+    return self._module_configuration.effective_runtime
+
+  @property
   def supports_interactive_commands(self):
     """True if the module can evaluate arbitrary code and return the result."""
     return self._instance_factory.SUPPORTS_INTERACTIVE_REQUESTS

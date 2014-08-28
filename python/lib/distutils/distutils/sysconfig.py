@@ -394,7 +394,12 @@ _config_vars = None
 def _init_posix():
     """Initialize the module as appropriate for POSIX systems."""
     # _sysconfigdata is generated at build time, see the sysconfig module
-    from _sysconfigdata import build_time_vars
+    # work with both the current GRTE v3 Python 2.7.3, and the upcoming GRTE v4
+    # Python 2.7.6
+    try:
+        from _sysconfigdata import build_time_vars
+    except ImportError:
+        from _sysconfig_data import build_time_vars
     global _config_vars
     _config_vars = {}
     _config_vars.update(build_time_vars)

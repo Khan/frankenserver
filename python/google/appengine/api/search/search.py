@@ -16,8 +16,6 @@
 #
 
 
-
-
 """A Python Search API used by app developers.
 
 Contains methods used to interface with Search API.
@@ -29,8 +27,8 @@ Contains API classes that forward to apiproxy.
 
 
 
-
 import datetime
+import logging
 import re
 import string
 import sys
@@ -65,6 +63,7 @@ __all__ = [
     'GeoField',
     'GeoPoint',
     'get_indexes',
+    'get_indexes_async',
     'GetResponse',
     'Index',
     'InternalError',
@@ -213,6 +212,55 @@ def _ConcatenateErrorMessages(prefix, status):
   if status.error_detail():
     return prefix + ': ' + status.error_detail()
   return prefix
+
+
+class _RpcOperationFuture(object):
+  """Represents the future result a search RPC sent to a backend."""
+
+  def __init__(self, call, request, response, deadline, get_result_hook):
+    """Initializer.
+
+    Args:
+      call: Method name to call, as a string
+      request: The request object
+      response: The response object
+      deadline: Deadline for RPC call in seconds; if None use the default.
+      get_result_hook: Required result hook. Must be a function that takes
+        no arguments. Its return value is returned by get_result().
+    """
+    _ValidateDeadline(deadline)
+    self._get_result_hook = get_result_hook
+    self._rpc = apiproxy_stub_map.UserRPC('search', deadline=deadline)
+    self._rpc.make_call(call, request, response)
+
+  def get_result(self):
+    self._rpc.wait();
+    try:
+      self._rpc.check_success();
+    except apiproxy_errors.ApplicationError, e:
+      raise _ToSearchError(e)
+    return self._get_result_hook()
+
+
+class _SimpleOperationFuture(object):
+  """Adapts a late-binding function to a future."""
+
+  def __init__(self, future, function):
+    self._future = future
+    self._function = function
+
+  def get_result(self):
+    return self._function(self._future.get_result())
+
+
+class _WrappedValueFuture(object):
+  """Adapts an immediately-known result to a future."""
+
+  def __init__(self, result):
+    self._result = result
+
+  def get_result(self):
+    return self._result
 
 
 class OperationResult(object):
@@ -669,6 +717,7 @@ def _ListIndexesResponsePbToGetResponse(response):
       results=[_NewIndexFromPb(index)
                for index in response.index_metadata_list()])
 
+
 @datastore_rpc._positional(7)
 def get_indexes(namespace='', offset=None, limit=20,
                 start_index_name=None, include_start_index=True,
@@ -699,25 +748,25 @@ def get_indexes(namespace='', offset=None, limit=20,
     ValueError: If any of the parameters have invalid values (e.g., a
       negative deadline).
   """
+  return get_indexes_async(
+      namespace, offset, limit, start_index_name, include_start_index,
+      index_name_prefix, fetch_schema, deadline=deadline, **kwargs).get_result()
+
+
+@datastore_rpc._positional(7)
+def get_indexes_async(namespace='', offset=None, limit=20,
+                      start_index_name=None, include_start_index=True,
+                      index_name_prefix=None, fetch_schema=False, deadline=None,
+                      **kwargs):
+  """Asynchronously returns a list of available indexes.
+
+  Identical to get_indexes() except that it returns a future. Call
+  get_result() on the return value to block on the call and get its result.
+  """
 
   app_id = kwargs.pop('app_id', None)
   if kwargs:
     raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
-
-  response = _GetIndexes(
-      namespace=namespace, offset=offset, limit=limit,
-      start_index_name=start_index_name,
-      include_start_index=include_start_index,
-      index_name_prefix=index_name_prefix,
-      fetch_schema=fetch_schema, deadline=deadline, app_id=app_id)
-  return _ListIndexesResponsePbToGetResponse(response)
-
-
-def _GetIndexes(namespace='', offset=None, limit=20,
-                start_index_name=None, include_start_index=True,
-                index_name_prefix=None, fetch_schema=False, deadline=None,
-                app_id=None):
-  """Returns a ListIndexesResponse."""
 
   request = search_service_pb.ListIndexesRequest()
   params = request.mutable_params()
@@ -752,10 +801,12 @@ def _GetIndexes(namespace='', offset=None, limit=20,
   if app_id:
     request.set_app_id(app_id)
 
-  _MakeSyncSearchServiceCall('ListIndexes', request, response, deadline)
+  def hook():
+    _CheckStatus(response.status())
+    return _ListIndexesResponsePbToGetResponse(response)
+  return _RpcOperationFuture(
+      'ListIndexes', request, response, deadline, hook)
 
-  _CheckStatus(response.status())
-  return response
 
 class Field(object):
   """An abstract base class which represents a field of a document.
@@ -2498,7 +2549,15 @@ class Index(object):
         or number of the documents is larger than
         MAXIMUM_DOCUMENTS_PER_PUT_REQUEST or deadline is a negative number.
     """
+    return self.put_async(documents, deadline=deadline).get_result()
 
+  @datastore_rpc._positional(2)
+  def put_async(self, documents, deadline=None):
+    """Asynchronously indexes the collection of documents.
+
+    Identical to put() except that it returns a future. Call
+    get_result() on the return value to block on the call and get its result.
+    """
     if isinstance(documents, basestring):
       raise TypeError('documents must be a Document or sequence of '
                       'Documents, got %s' % documents.__class__.__name__)
@@ -2508,7 +2567,7 @@ class Index(object):
       docs = [documents]
 
     if not docs:
-      return []
+      return _WrappedValueFuture([])
 
     if len(docs) > MAXIMUM_DOCUMENTS_PER_PUT_REQUEST:
       raise ValueError('too many documents to index')
@@ -2535,19 +2594,20 @@ class Index(object):
       doc_pb = params.add_document()
       _CopyDocumentToProtocolBuffer(document, doc_pb)
 
-    _MakeSyncSearchServiceCall('IndexDocument', request, response, deadline)
+    def hook():
+      results = self._NewPutResultList(response)
 
-    results = self._NewPutResultList(response)
+      if response.status_size() != len(params.document_list()):
+        raise PutError('did not index requested number of documents', results)
 
-    if response.status_size() != len(params.document_list()):
-      raise PutError('did not index requested number of documents', results)
-
-    for status in response.status_list():
-      if status.code() != search_service_pb.SearchServiceError.OK:
-        raise PutError(
-            _ConcatenateErrorMessages(
-                'one or more put document operations failed', status), results)
-    return results
+      for status in response.status_list():
+        if status.code() != search_service_pb.SearchServiceError.OK:
+          raise PutError(
+              _ConcatenateErrorMessages(
+                  'one or more put document operations failed', status), results)
+      return results
+    return _RpcOperationFuture(
+        'IndexDocument', request, response, deadline, hook)
 
   def _NewDeleteResultFromPb(self, status_pb, doc_id):
     """Constructs DeleteResult from RequestStatus pb and doc_id."""
@@ -2584,9 +2644,18 @@ class Index(object):
         identifiers or number of document ids is larger than
         MAXIMUM_DOCUMENTS_PER_PUT_REQUEST or deadline is a negative number.
     """
+    return self.delete_async(document_ids, deadline=deadline).get_result()
+
+  @datastore_rpc._positional(2)
+  def delete_async(self, document_ids, deadline=None):
+    """Asynchronously deletes the documents with the corresponding document ids.
+
+    Identical to delete() except that it returns a future. Call
+    get_result() on the return value to block on the call and get its result.
+    """
     doc_ids = _ConvertToList(document_ids)
     if not doc_ids:
-      return
+      return _WrappedValueFuture([])
 
     if len(doc_ids) > MAXIMUM_DOCUMENTS_PER_PUT_REQUEST:
       raise ValueError('too many documents to delete')
@@ -2599,21 +2668,22 @@ class Index(object):
       _CheckDocumentId(document_id)
       params.add_doc_id(document_id)
 
-    _MakeSyncSearchServiceCall('DeleteDocument', request, response,
-                               deadline)
+    def hook():
+      results = self._NewDeleteResultList(doc_ids, response)
 
-    results = self._NewDeleteResultList(doc_ids, response)
-
-    if response.status_size() != len(doc_ids):
-      raise DeleteError(
-          'did not delete requested number of documents', results)
-
-    for status in response.status_list():
-      if status.code() != search_service_pb.SearchServiceError.OK:
+      if response.status_size() != len(doc_ids):
         raise DeleteError(
-            _ConcatenateErrorMessages(
-                'one or more delete document operations failed', status),
-            results)
+            'did not delete requested number of documents', results)
+
+      for status in response.status_list():
+        if status.code() != search_service_pb.SearchServiceError.OK:
+          raise DeleteError(
+              _ConcatenateErrorMessages(
+                  'one or more delete document operations failed', status),
+              results)
+      return results
+    return _RpcOperationFuture(
+        'DeleteDocument', request, response, deadline, hook)
 
   def delete_schema(self):
     """Deprecated in 1.7.4. Delete the schema from the index.
@@ -2636,18 +2706,20 @@ class Index(object):
     params = request.mutable_params()
     _CopyMetadataToProtocolBuffer(self, params.add_index_spec())
 
-    _MakeSyncSearchServiceCall('DeleteSchema', request, response, None)
+    def hook():
 
-    results = self._NewDeleteResultList([self.name], response)
+      results = self._NewDeleteResultList([self.name], response)
 
-    if response.status_size() != 1:
-      raise DeleteError('did not delete exactly one schema', results)
+      if response.status_size() != 1:
+        raise DeleteError('did not delete exactly one schema', results)
 
-    status = response.status_list()[0]
-    if status.code() != search_service_pb.SearchServiceError.OK:
-      raise DeleteError(
-          _ConcatenateErrorMessages('delete schema operation failed', status),
-          results)
+      status = response.status_list()[0]
+      if status.code() != search_service_pb.SearchServiceError.OK:
+        raise DeleteError(
+            _ConcatenateErrorMessages('delete schema operation failed', status),
+            results)
+    return _RpcOperationFuture(
+        'DeleteSchema', request, response, None, hook).get_result()
 
   def _NewScoredDocumentFromPb(self, doc_pb, sort_scores, expressions, cursor):
     """Constructs a Document from a document_pb.Document protocol buffer."""
@@ -2704,10 +2776,21 @@ class Index(object):
       ValueError: If any of the parameters have invalid values (e.g., a
         negative deadline).
     """
-    response = self.get_range(start_id=doc_id, limit=1, deadline=deadline)
-    if response.results and response.results[0].doc_id == doc_id:
-      return response.results[0]
-    return None
+    return self.get_async(doc_id, deadline=deadline).get_result()
+
+  @datastore_rpc._positional(2)
+  def get_async(self, doc_id, deadline=None):
+    """Asynchronously retrieve a document by document ID.
+
+    Identical to get() except that it returns a future. Call
+    get_result() on the return value to block on the call and get its result.
+    """
+    future = self.get_range_async(start_id=doc_id, limit=1, deadline=deadline)
+    def hook(response):
+      if response.results and response.results[0].doc_id == doc_id:
+        return response.results[0]
+      return None
+    return _SimpleOperationFuture(future, hook)
 
   @datastore_rpc._positional(2)
   def search(self, query, deadline=None, **kwargs):
@@ -2754,6 +2837,9 @@ class Index(object):
       results = index.search(
           Query('subject:first good', options=QueryOptions(cursor=cursor)))
 
+    See http://developers.google.com/appengine/docs/python/search/query_strings
+    for more information about query syntax.
+
     Args:
       query: The Query to match against documents in the index.
 
@@ -2770,10 +2856,28 @@ class Index(object):
       ValueError: If any of the parameters have invalid values (e.g., a
         negative deadline).
     """
+    return self.search_async(query, deadline=deadline, **kwargs).get_result()
 
+  @datastore_rpc._positional(2)
+  def search_async(self, query, deadline=None, **kwargs):
+    """Asynchronously searches the index for documents matching the query.
 
+    Identical to search() except that it returns a future. Call
+    get_result() on the return value to block on the call and get its result.
+    """
+    if isinstance(query, basestring):
+      query = Query(query_string=query)
+    request = self._NewSearchRequest(query, deadline, **kwargs)
+    response = search_service_pb.SearchResponse()
+    def hook():
+      _CheckStatus(response.status())
+      cursor = None
+      if query.options:
+        cursor = query.options.cursor
+      return self._NewSearchResults(response, cursor)
+    return _RpcOperationFuture('Search', request, response, deadline, hook)
 
-
+  def _NewSearchRequest(self, query, deadline, **kwargs):
 
     app_id = kwargs.pop('app_id', None)
     if kwargs:
@@ -2788,16 +2892,7 @@ class Index(object):
       query = Query(query_string=query)
     _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
     _CopyQueryObjectToProtocolBuffer(query, params)
-
-    response = search_service_pb.SearchResponse()
-
-    _MakeSyncSearchServiceCall('Search', request, response, deadline)
-
-    _CheckStatus(response.status())
-    cursor = None
-    if query.options:
-      cursor = query.options.cursor
-    return self._NewSearchResults(response, cursor)
+    return request
 
   def _NewGetResponse(self, response):
     """Returns a GetResponse from the list_documents response pb."""
@@ -2806,31 +2901,6 @@ class Index(object):
       documents.append(_NewDocumentFromPb(doc_proto))
 
     return GetResponse(results=documents)
-
-  def _GetRange(self, start_id=None, include_start_object=True,
-                limit=100, ids_only=False, deadline=None, app_id=None):
-    """Get a range of objects in the index, in id order in a response."""
-    request = search_service_pb.ListDocumentsRequest()
-    if app_id:
-      request.set_app_id(app_id)
-
-    params = request.mutable_params()
-    _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
-
-    if start_id:
-      params.set_start_doc_id(start_id)
-    params.set_include_start_doc(include_start_object)
-
-    params.set_limit(_CheckInteger(
-        limit, 'limit', zero_ok=False,
-        upper_bound=MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH))
-    params.set_keys_only(ids_only)
-
-    response = search_service_pb.ListDocumentsResponse()
-    _MakeSyncSearchServiceCall('ListDocuments', request, response, deadline)
-
-    _CheckStatus(response.status())
-    return response
 
   @datastore_rpc._positional(5)
   def get_range(self, start_id=None, include_start_object=True,
@@ -2859,14 +2929,44 @@ class Index(object):
       ValueError: If any of the parameters have invalid values (e.g., a
         negative deadline).
     """
+    return self.get_range_async(
+        start_id, include_start_object, limit, ids_only, deadline=deadline,
+        **kwargs).get_result()
+
+  @datastore_rpc._positional(5)
+  def get_range_async(self, start_id=None, include_start_object=True,
+                      limit=100, ids_only=False, deadline=None, **kwargs):
+    """Asynchronously gets a range of Documents in the index, in id order.
+
+    Identical to get_range() except that it returns a future. Call
+    get_result() on the return value to block on the call and get its result.
+    """
 
     app_id = kwargs.pop('app_id', None)
     if kwargs:
       raise TypeError('Invalid arguments: %s' % ', '.join(kwargs))
-    response = self._GetRange(
-        start_id=start_id, include_start_object=include_start_object,
-        limit=limit, ids_only=ids_only, deadline=deadline, app_id=app_id)
-    return self._NewGetResponse(response)
+    request = search_service_pb.ListDocumentsRequest()
+    if app_id:
+      request.set_app_id(app_id)
+
+    params = request.mutable_params()
+    _CopyMetadataToProtocolBuffer(self, params.mutable_index_spec())
+
+    if start_id:
+      params.set_start_doc_id(start_id)
+    params.set_include_start_doc(include_start_object)
+
+    params.set_limit(_CheckInteger(
+        limit, 'limit', zero_ok=False,
+        upper_bound=MAXIMUM_DOCUMENTS_RETURNED_PER_SEARCH))
+    params.set_keys_only(ids_only)
+
+    response = search_service_pb.ListDocumentsResponse()
+    def hook():
+      _CheckStatus(response.status())
+      return self._NewGetResponse(response)
+    return _RpcOperationFuture(
+        'ListDocuments', request, response, deadline, hook)
 
 
 _CURSOR_TYPE_PB_MAP = {
@@ -2949,7 +3049,7 @@ def _NewIndexFromPb(index_metadata_pb):
 
 
 def _MakeSyncSearchServiceCall(call, request, response, deadline):
-  """Make a synchronous call to search service.
+  """Deprecated: Make a synchronous call to search service.
 
   If the deadline is not None, waits only until the deadline expires.
 
@@ -2965,21 +3065,27 @@ def _MakeSyncSearchServiceCall(call, request, response, deadline):
     TypeError: if the deadline is not a number and is not None.
     ValueError: If the deadline is less than zero.
   """
+  _ValidateDeadline(deadline)
+  logging.warning("_MakeSyncSearchServiceCall is deprecated; please use API.")
   try:
     if deadline is None:
       apiproxy_stub_map.MakeSyncCall('search', call, request, response)
     else:
 
 
-      if (not isinstance(deadline, (int, long, float))
-          or isinstance(deadline, (bool,))):
-        raise TypeError('deadline argument should be int/long/float (%r)'
-                        % (deadline,))
-      if deadline <= 0:
-        raise ValueError('deadline argument must be > 0 (%s)' % (deadline,))
       rpc = apiproxy_stub_map.UserRPC('search', deadline=deadline)
       rpc.make_call(call, request, response)
       rpc.wait()
       rpc.check_success()
   except apiproxy_errors.ApplicationError, e:
     raise _ToSearchError(e)
+
+def _ValidateDeadline(deadline):
+  if deadline is None:
+    return
+  if (not isinstance(deadline, (int, long, float))
+      or isinstance(deadline, (bool,))):
+    raise TypeError('deadline argument should be int/long/float (%r)'
+                    % (deadline,))
+  if deadline <= 0:
+    raise ValueError('deadline argument must be > 0 (%s)' % (deadline,))

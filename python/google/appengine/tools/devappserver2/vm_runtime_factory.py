@@ -22,6 +22,7 @@ import google
 import docker
 import requests
 
+from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import vm_runtime_proxy
 from google.appengine.tools.devappserver2 import vm_runtime_proxy_dart
@@ -38,6 +39,15 @@ class DockerDaemonConnectionError(Error):
 
 class VMRuntimeInstanceFactory(instance.InstanceFactory):
   """A factory that creates new VM runtime Instances."""
+
+  START_URL_MAP = appinfo.URLMap(
+      url='/_ah/start',
+      script='/dev/null',
+      login='admin')
+  WARMUP_URL_MAP = appinfo.URLMap(
+      url='/_ah/warmup',
+      script='/dev/null',
+      login='admin')
 
   RUNTIME_SPECIFIC_PROXY = {
       'dart': vm_runtime_proxy_dart.DartVMRuntimeProxy,

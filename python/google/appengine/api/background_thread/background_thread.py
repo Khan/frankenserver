@@ -16,7 +16,12 @@
 #
 
 
-"""An API for creating background threads.
+"""Background Threads API.
+
+.. deprecated:: 1.9.1
+   Use Modules library instead.
+
+An API for creating background threads.
 
 Background threads created using this API do not inherit the context of their
 creator and do not need to end before the creator request completes.

@@ -18,7 +18,11 @@
 
 
 
-"""Runtime API module."""
+"""Runtime Utilities API.
+
+.. deprecated:: 1.8.1
+
+"""
 
 
 from runtime import *

@@ -109,7 +109,7 @@ class PHPRuntime(object):
     # PHP environment. Put the user script in REAL_SCRIPT_FILENAME.
     user_environ['REAL_SCRIPT_FILENAME'] = os.path.normpath(
         os.path.join(self.config.application_root,
-                     environ[http_runtime_constants.SCRIPT_HEADER]))
+                     environ[http_runtime_constants.SCRIPT_HEADER].lstrip('/')))
     user_environ['SCRIPT_FILENAME'] = SETUP_PHP_PATH
     user_environ['REMOTE_REQUEST_ID'] = environ[
         http_runtime_constants.REQUEST_ID_ENVIRON]

@@ -414,7 +414,7 @@ class Container(object):
   def Stop(self):
     """Stops a running container, removes it and underlying image if needed."""
     if self._id:
-      self._docker_client.stop(self.id)
+      self._docker_client.kill(self.id)
       self._docker_client.remove_container(self.id, v=False,
                                            link=False)
       self._id = None

@@ -18,7 +18,12 @@
 
 
 
-"""Blobstore-specific Files API calls."""
+"""Files API.
+
+.. deprecated:: 1.8.1
+   Use Google Cloud Storage Client library instead.
+
+Blobstore-specific Files API calls."""
 
 from __future__ import with_statement
 

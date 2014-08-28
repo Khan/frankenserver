@@ -65,6 +65,31 @@ _THIRD_PARTY_LIBRARY_FORMAT_STRING = (
 # Store all the modules removed from sys.modules so they don't get cleaned up.
 _removed_modules = []
 
+_open_hooks = []
+
+
+def add_open_hook(install_open_hook):
+  """Hook the open chain to allow files to be opened from FS-like containers.
+
+  In order to allow files to be opened from FS-like containers such as zip
+  files, provide a sandbox compatible way to hook into the open chain. To
+  correctly work with our sandbox, these hooks must be called before FakeFile.
+  Due to code flow, the easiest way to allow that is for code to provide an
+  install function that the sandbox calls at the appropriate time.
+
+  Hook functions are expected to only handle paths that cannot be handled by
+  the standard filesystem open and are expected to forward all other paths
+  to the next hook. Hook functions are responsible for saving the next hook
+  function by getting the value of __builtin__.open when the install function
+  is called (very key point here, make sure to evaluate __builtin__.open when
+  your install function is called and not at import time).
+
+  Args:
+    install_open_hook: a method of no parameters that will install an open
+      hook.
+  """
+  _open_hooks.append(install_open_hook)
+
 
 def _make_request_id_aware_start_new_thread(base_start_new_thread):
   """Returns a replacement for start_new_thread that inherits request id.
@@ -140,6 +165,15 @@ def enable_sandbox(config):
   __builtin__.file = stubs.FakeFile
   __builtin__.open = stubs.FakeFile
   types.FileType = stubs.FakeFile
+  if _open_hooks:
+    for install_open_hook in _open_hooks:
+      install_open_hook()
+    # Assume installed open hooks don't enforce the sandbox path restrictions
+    # and install a final hook to do that (the goal of hooks is to allow
+    # alternate open techniques, not to circumvent the sandbox). It does mean
+    # that open requests that make it to FakeFile have their path checked
+    # twice but that doesn't break anything.
+    __builtin__.open = stubs.RestrictedPathFunction(__builtin__.open, IOError)
   sys.platform = 'linux3'
   enabled_library_regexes = [
       NAME_TO_CMODULE_WHITELIST_REGEX[lib.name] for lib in config.libraries

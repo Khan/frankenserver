@@ -18,7 +18,12 @@
 
 
 
-"""Lightweight record format.
+"""Files API.
+
+.. deprecated:: 1.8.1
+   Use Google Cloud Storage Client library instead.
+
+Lightweight record format.
 
 This format implements log file format from leveldb:
 http://leveldb.googlecode.com/svn/trunk/doc/log_format.txt

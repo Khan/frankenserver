@@ -17,7 +17,10 @@
 
 
 
-"""DEPRECATED: Backends API.
+"""Backends API.
+
+.. deprecated:: 1.9.1
+   Use Modules library instead.
 
 This API provides utility methods for working with backends.
 """

@@ -3139,6 +3139,9 @@ class AppCfgApp(object):
                       dest='auth_local_webserver', default=True,
                       help='Do not run a local web server to handle redirects '
                       'during OAuth authorization.')
+    parser.add_option('--called_by_gcloud',
+                      action='store_true', default=False,
+                      help=optparse.SUPPRESS_HELP)
     return parser
 
   def _MakeSpecificParser(self, action):
@@ -3614,14 +3617,31 @@ class AppCfgApp(object):
       paths to absolute paths, its stderr is raised.
     """
 
-    if (not self.options.precompilation and
-        appyaml.GetEffectiveRuntime() == 'go'):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    runtime = appyaml.GetEffectiveRuntime()
+    if appyaml.vm and (self.options.called_by_gcloud or runtime != 'go'):
+      self.options.precompilation = False
+    elif runtime == 'dart':
+      self.options.precompilation = False
+    elif runtime == 'go' and not self.options.precompilation:
       logging.warning('Precompilation is required for Go apps; '
                       'ignoring --no_precompilation')
       self.options.precompilation = True
-
-    if (appyaml.runtime.startswith('java') or
-        appyaml.GetEffectiveRuntime() == 'dart'):
+    elif (runtime.startswith('java') and
+          appinfo.JAVA_PRECOMPILED not in (appyaml.derived_file_type or [])):
       self.options.precompilation = False
 
     if self.options.precompilation:

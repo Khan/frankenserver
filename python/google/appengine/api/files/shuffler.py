@@ -18,7 +18,12 @@
 
 
 
-"""Files API Shuffler interface"""
+"""Files API.
+
+.. deprecated:: 1.8.1
+   Use Google Cloud Storage Client library instead.
+
+Files API Shuffler interface"""
 
 
 import logging

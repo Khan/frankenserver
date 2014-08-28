@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-"""Stores application configuration taken from e.g. app.yaml, queues.yaml."""
+"""Stores application configuration taken from e.g. app.yaml, index.yaml."""
 
 # TODO: Support more than just app.yaml.
 
@@ -32,6 +32,7 @@ from google.appengine.api import appinfo
 from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
+from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import yaml_translator
 from google.appengine.tools.devappserver2 import errors
 
@@ -118,6 +119,8 @@ class ModuleConfiguration(object):
           self._config_path)
     self._minor_version_id = ''.join(random.choice(string.digits) for _ in
                                      range(18))
+
+    self._translate_configuration_files()
 
   @property
   def application_root(self):
@@ -354,6 +357,27 @@ class ModuleConfiguration(object):
         app_engine_web_xml_str, web_xml_str, has_jsps, self.application_root)
     config = appinfo.LoadSingleAppInfo(app_yaml_str)
     return config, [app_engine_web_xml_path, web_xml_path]
+
+  def _translate_configuration_files(self):
+    """Writes YAML equivalents of certain XML configuration files."""
+    # For the most part we translate files in memory rather than writing out
+    # translations. But since the task queue stub (taskqueue_stub.py)
+    # reads queue.yaml directly rather than being configured with it, we need
+    # to write a translation for the stub to find.
+    # This means that we won't detect a change to the queue.xml, but we don't
+    # currently have logic to react to changes to queue.yaml either.
+    web_inf = os.path.join(self._application_root, 'WEB-INF')
+    queue_xml_file = os.path.join(web_inf, 'queue.xml')
+    if os.path.exists(queue_xml_file):
+      appengine_generated = os.path.join(web_inf, 'appengine-generated')
+      if not os.path.exists(appengine_generated):
+        os.mkdir(appengine_generated)
+      queue_yaml_file = os.path.join(appengine_generated, 'queue.yaml')
+      with open(queue_xml_file) as f:
+        queue_xml = f.read()
+      queue_yaml = queue_xml_parser.GetQueueYaml(None, queue_xml)
+      with open(queue_yaml_file, 'w') as f:
+        f.write(queue_yaml)
 
 
 class BackendsConfiguration(object):

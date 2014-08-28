@@ -3,6 +3,18 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.10
+
+Python
+==============================
+- Asynchronous calls are now supported in the Search API.
+
+PHP
+==============================
+- Fixed an issue that causes script routing errors in the dev_appserver when
+  the url regular expression uses subgroups that include a leading slash.
+    https://code.google.com/p/googleappengine/issues/detail?id=11134
+
 Version 1.9.9
 
 All
