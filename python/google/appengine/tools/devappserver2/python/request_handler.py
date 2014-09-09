@@ -165,7 +165,10 @@ class RequestHandler(object):
     user_environ = self.get_user_environ(environ)
     script = environ.pop(http_runtime_constants.SCRIPT_HEADER)
     body = environ['wsgi.input'].read(int(environ.get('CONTENT_LENGTH', 0)))
-    url = 'http://%s:%s%s?%s' % (user_environ['SERVER_NAME'],
+    server_name = user_environ['SERVER_NAME']
+    if ':' in user_environ['SERVER_NAME']:
+      server_name = '[' + server_name + ']'
+    url = 'http://%s:%s%s?%s' % (server_name,
                                  user_environ['SERVER_PORT'],
                                  urllib.quote(environ['PATH_INFO']),
                                  environ['QUERY_STRING'])
