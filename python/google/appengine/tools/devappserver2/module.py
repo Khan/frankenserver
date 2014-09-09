@@ -712,7 +712,7 @@ class Module(object):
     else:
       environ['SERVER_PORT'] = str(self.balanced_port)
     if 'HTTP_HOST' in environ:
-      environ['SERVER_NAME'] = environ['HTTP_HOST'].split(':', 1)[0]
+      environ['SERVER_NAME'] = environ['HTTP_HOST'].rsplit(':', 1)[0]
     environ['DEFAULT_VERSION_HOSTNAME'] = '%s:%s' % (
         environ['SERVER_NAME'], self._default_version_port)
 
