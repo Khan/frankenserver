@@ -375,8 +375,8 @@ def setup_stubs(
     from google.appengine.api.images import images_stub
   except ImportError:
 
-    logging.warning('Could not initialize images API; you are likely missing '
-                    'the Python "PIL" module.')
+#    logging.warning('Could not initialize images API; you are likely missing '
+#                    'the Python "PIL" module.')
     # We register a stub which throws a NotImplementedError for most RPCs.
     from google.appengine.api.images import images_not_implemented_stub
     apiproxy_stub_map.apiproxy.RegisterStub(
