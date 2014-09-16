@@ -83,10 +83,11 @@ class FSEventsFileWatcher(object):
       if watcher_common.ignore_file(os.path.basename(path)):
         continue
 
-      path_dir = [os.path.basename(os.path.dirname(path))]
-      watcher_common.skip_ignored_dirs(path_dir)
-      if not path_dir:
-        continue
+      path_components = os.path.dirname(path).split(os.sep)
+      num_components = len(path_components)
+      watcher_common.skip_ignored_dirs(path_components)
+      if len(path_components) < num_components:
+        continue     # a parent dir said it should be skipped
 
       logging.warning("Reloading instances due to change in %s", path)
       changes.add(path)
