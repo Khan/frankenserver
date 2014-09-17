@@ -47,6 +47,11 @@ class _MultipleFileWatcher(object):
     for watcher in self._file_watchers:
       watcher.start()
 
+  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
+    """All re's in skip_files_re are taken to be relative to its base-dir."""
+    for watcher in self._file_watchers:
+      watcher.set_skip_files_re(skip_files_re, skip_files_base_dir)
+
   def quit(self):
     for watcher in self._file_watchers:
       watcher.quit()
