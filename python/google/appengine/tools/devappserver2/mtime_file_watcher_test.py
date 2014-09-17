@@ -19,6 +19,7 @@
 import logging
 import os
 import os.path
+import re
 import shutil
 import tempfile
 import time
@@ -197,6 +198,26 @@ class TestMtimeFileWatcher(unittest.TestCase):
 
     for i in range(11):
       os.symlink(self._directory, os.path.join(self._directory, 'test%d' % i))
+    self.assertTrue(self._watcher._has_changed_paths())
+
+  def test_skip_files(self):
+    self._create_directory('a')
+    self._create_directory('a/b')
+    self._create_directory('a/b/c')
+    self._watcher.set_skip_files_re(re.compile(r'^(foo|a/bar|a/b)$'),
+                                    self._directory)
+    self._watcher.start()
+    self._create_file('foo')
+    self._create_file('a/bar')
+    self._create_file('a/b/baz')
+    self._create_file('a/b/c/qux')
+    self.assertFalse(self._watcher._has_changed_paths())
+
+    self._create_file('foobar')
+    self.assertTrue(self._watcher._has_changed_paths())
+
+    self.assertFalse(self._watcher._has_changed_paths())   # should reset
+    self._create_file('a/barabella')
     self.assertTrue(self._watcher._has_changed_paths())
 
 

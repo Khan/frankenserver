@@ -36,12 +36,41 @@ _IGNORED_FILE_SUFFIXES = (
 )
 
 
-def ignore_file(filename):
-  """Report whether a file should not be watched."""
-  filename = os.path.basename(filename)
-  return (
-      filename.startswith(_IGNORED_PREFIX) or
-      any(filename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES))
+def ignore_file(pathname, skip_files_re=None):
+  """Report whether a file should not be watched.
+
+  If skip_files_re is not None, then we say to ignore the path if
+  pathname matches skip_files_re, in addition to looking at the
+  _IGNORED_* variables above.  In that case, pathname must be relative
+  to the same directory that the skip-files-re is constructed relative
+  to.  (In practice, this will be the application-root directory.)
+  """
+  filename = os.path.basename(pathname)
+
+  # Regardless of what skip_files_re may say, never ignore .yaml files:
+  # we always need to restart if one of our configuration files changes.
+  if filename.endswith('.yaml'):
+    return False
+
+  return (filename.startswith(_IGNORED_PREFIX) or
+          filename.endswith(_IGNORED_FILE_SUFFIXES) or
+          (skip_files_re and skip_files_re.match(pathname)))
+
+
+def ignore_dir(dirpath, skip_files_re=None):
+
+  """Report whether a directory should not be watched.
+
+  If skip_files_re is not None, then we say to ignore the directory if
+  dirpath matches skip_files_re, in addition to looking at the
+  _IGNORED_* variables above.  In that case, dirpath must be relative
+  to the same directory that the skip-files-re is constructed relative
+  to.  (In practice, this will be the application-root directory.)
+  """
+
+  dirname = os.path.basename(dirpath)
+  return (dirname.startswith(_IGNORED_PREFIX) or
+          skip_files_re and skip_files_re.match(dirpath))
 
 
 def _remove_pred(lst, pred):
@@ -54,13 +83,38 @@ def _remove_pred(lst, pred):
       del lst[idx]
 
 
-def skip_ignored_dirs(dirs):
-  """Skip directories that should not be watched."""
+def skip_ignored_dirs(dirs, dirpath, skip_files_re=None):
 
-  _remove_pred(dirs, lambda d: d.startswith(_IGNORED_PREFIX))
+  """Skip directories that should not be watched.
+
+  If skip_files_re is not None, then we say to ignore directories in
+  dirs that match skip_files_re, in addition to looking at the
+  _IGNORED_* variables above.  In that case, dirpath must be set to
+  the parent of all of the directories in dirs, and must be relative
+  to the same directory that the skip-files-re is constructed relative
+  to.  (In practice, this will be the application-root directory.)
+
+  (We separate dirs and dirpath into separate variables because this
+  is used in an os.walk() context.)
+
+  Args:
+     dirs: the directories to be removed.  These should be single
+       directories, not paths (that is, they should not have a /).
+     dirpath: the parent-path of all the dirs in 'dirs'.  For
+       instance, if we wanted to test a/b/c and a/b/d, then
+       dirpath would be 'a/b' (and dirs would be ['c', 'd']).
+       dirpath must be relative to the same directory that holds
+       the skip-files data, if skip_files_re is not None.
+     skip_files_re: a regular expression to match against every
+       input dirpath/dir.  If it matches, we skip that dir.
+  """
+
+  _remove_pred(dirs, lambda d: ignore_dir(os.path.join(dirpath, d),
+                                          skip_files_re))
 
 
 def skip_local_symlinks(roots, dirpath, directories):
+
   """Skip symlinks that link to another watched directory.
 
   Our algorithm gets confused when the same directory is watched multiple times

@@ -32,6 +32,7 @@ class MtimeFileWatcher(object):
 
   def __init__(self, directory):
     self._directory = directory
+    self._skip_files_re = None
     self._quit_event = threading.Event()
     self._filename_to_mtime = None
     self._has_changes = False
@@ -42,6 +43,13 @@ class MtimeFileWatcher(object):
   def start(self):
     """Start watching a directory for changes."""
     self._watcher_thread.start()
+
+  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
+    """All re's in skip_files_re are taken to be relative to its base-dir."""
+    # If skip_files_re concerns itself with a different directory-tree
+    # than we do, ignore it.  Otherwise, store it.
+    if self._directory == skip_files_base_dir:
+      self._skip_files_re = skip_files_re
 
   def quit(self):
     """Stop watching a directory for changes."""
@@ -93,8 +101,12 @@ class MtimeFileWatcher(object):
     num_files = 0
     for dirname, dirnames, filenames in os.walk(self._directory,
                                                 followlinks=True):
-      watcher_common.skip_ignored_dirs(dirnames)
-      filenames = [f for f in filenames if not watcher_common.ignore_file(f)]
+      relative_dirpath = os.path.relpath(dirname, self._directory)
+      watcher_common.skip_ignored_dirs(dirnames, relative_dirpath,
+                                       self._skip_files_re)
+      filenames = [f for f in filenames
+                   if not watcher_common.ignore_file(
+                       os.path.join(relative_dirpath, f), self._skip_files_re)]
       for filename in filenames + dirnames:
         if num_files == 10000:
           warnings.warn(
