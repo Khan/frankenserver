@@ -53,6 +53,12 @@ def ignore_file(filename, *args):
       return True
 
   filename = os.path.basename(filename)
+
+  # Regardless of what skip_files_re may say, never ignore .yaml files:
+  # we always need to restart if one of our configuration files changes.
+  if filename.endswith('.yaml'):
+    return False
+
   return (
       filename.startswith(_IGNORED_PREFIX) or
       any(filename.endswith(suffix) for suffix in _IGNORED_FILE_SUFFIXES))
