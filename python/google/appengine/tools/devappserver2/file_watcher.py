@@ -21,9 +21,9 @@ import logging
 import sys
 import types
 
-from google.appengine.tools.devappserver2 import fsevents_file_watcher
 from google.appengine.tools.devappserver2 import inotify_file_watcher
 from google.appengine.tools.devappserver2 import mtime_file_watcher
+from google.appengine.tools.devappserver2 import win32_file_watcher, fsevents_file_watcher
 
 
 class _MultipleFileWatcher(object):
@@ -158,5 +158,7 @@ def get_file_watcher(directories, use_mtime_file_watcher):
     return _create_linux_watcher(directories)
   elif sys.platform.startswith('darwin'):
     return _create_mac_watcher(directories)
+  elif sys.platform.startswith('win'):
+    return _create_watcher(directories, win32_file_watcher.Win32FileWatcher)
   else:
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
