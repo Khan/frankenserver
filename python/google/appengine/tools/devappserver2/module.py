@@ -354,6 +354,11 @@ class Module(object):
     config_changes = self._module_configuration.check_for_updates()
     has_file_changes = self._watcher.has_changes()
 
+    if application_configuration.SKIP_FILES_CHANGED in config_changes:
+      self._watcher.set_skip_files_re(
+        self._module_configuration.skip_files,
+        self._module_configuration.application_root)
+
     if application_configuration.HANDLERS_CHANGED in config_changes:
       handlers = self._create_url_handlers()
       with self._handler_lock:
@@ -469,6 +474,9 @@ class Module(object):
           [self._module_configuration.application_root] +
           self._instance_factory.get_restart_directories(),
           self._use_mtime_file_watcher)
+      self._watcher.set_skip_files_re(
+        self._module_configuration.skip_files,
+        self._module_configuration.application_root)
     else:
       self._watcher = None
     self._handler_lock = threading.Lock()

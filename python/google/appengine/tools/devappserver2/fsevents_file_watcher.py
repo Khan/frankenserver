@@ -54,6 +54,7 @@ class FSEventsFileWatcher(object):
           added, renamed, deleted or changed.
     """
     self._directories = [os.path.abspath(d) for d in directories]
+    self._skip_files_re = {}   # map from _directory to skip-re for that dir
     self._has_changes = None
     self._quit_event = threading.Event()
     self._event_watcher_thread = threading.Thread(target=self._watch_changes)
@@ -67,6 +68,7 @@ class FSEventsFileWatcher(object):
     for absolute_path, flag in zip(event_paths, event_flags):
       directory = next(
         d for d in self._directories if absolute_path.startswith(d))
+      skip_files_re = self._skip_files_re.get(directory)
       path = os.path.relpath(absolute_path, directory)
 
       if not flag & (FSEvents.kFSEventStreamEventFlagItemCreated |
@@ -79,14 +81,22 @@ class FSEventsFileWatcher(object):
                       FSEvents.kFSEventStreamEventFlagItemXattrMod):
         continue
 
-      if watcher_common.ignore_file(os.path.basename(path)):
+      if watcher_common.ignore_file(path, skip_files_re):
         continue
 
-      path_components = os.path.dirname(path).split(os.sep)
-      num_components = len(path_components)
-      watcher_common.skip_ignored_dirs(path_components)
-      if len(path_components) < num_components:
-        continue     # a parent dir said it should be skipped
+      # We also want to ignore a path if we should ignore any directory
+      # that the path is in.
+      def _recursive_ignore_dir(dirname):
+        assert not os.path.isabs(dirname)  # or the while will never terminate
+        (dir_dirpath, dir_base) = os.path.split(dirname)
+        while dir_base:
+          if watcher_common.ignore_dir(dir_dirpath, dir_base, skip_files_re):
+            return True
+          (dir_dirpath, dir_base) = os.path.split(dir_dirpath)
+        return False
+
+      if _recursive_ignore_dir(os.path.dirname(path)):
+        continue
 
       logging.warning("Reloading instances due to change in %s", path)
 
@@ -127,6 +137,10 @@ class FSEventsFileWatcher(object):
     """Start watching the directory for changes."""
     self._has_changes = False
     self._event_watcher_thread.start()
+
+  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
+    """All re's in skip_files_re are taken to be relative to its base-dir."""
+    self._skip_files_re[skip_files_base_dir] = skip_files_re
 
   def quit(self):
     """Stop watching the directory for changes."""
