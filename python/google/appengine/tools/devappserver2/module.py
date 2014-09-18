@@ -1070,7 +1070,10 @@ class Module(object):
 
     url = urlparse.urlsplit(relative_url)
     if port != 80:
-      host = '%s:%s' % (self.host, port)
+      if ":" in self.host:
+        host = '[%s]:%s' % (self.host, port)
+      else:
+        host = '%s:%s' % (self.host, port)
     else:
       host = self.host
     environ = {constants.FAKE_IS_ADMIN_HEADER: '1',
