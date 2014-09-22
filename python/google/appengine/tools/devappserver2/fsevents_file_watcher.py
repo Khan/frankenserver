@@ -89,11 +89,10 @@ class FSEventsFileWatcher(object):
       # that the path is in.
       def _recursive_ignore_dir(dirname):
         assert not os.path.isabs(dirname)  # or the while will never terminate
-        (dir_dirpath, dir_base) = os.path.split(dirname)
-        while dir_base:
-          if watcher_common.ignore_dir(dir_dirpath, dir_base, skip_files_re):
+        while dirname:
+          if watcher_common.ignore_dir(dirname, skip_files_re):
             return True
-          (dir_dirpath, dir_base) = os.path.split(dir_dirpath)
+          dirname = os.path.dirname(dirname)
         return False
 
       if _recursive_ignore_dir(os.path.dirname(path)):
