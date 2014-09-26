@@ -17,19 +17,20 @@
 """Serves content for "script" handlers using the Java runtime."""
 
 
-import google
 import os
 import os.path
 import sys
 import threading
+
+import google
 
 from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import java_application
 
-
 # TODO: figure out what's needed to react to file changes
+
 
 class JavaRuntimeInstanceFactory(instance.InstanceFactory):
   """A factory that creates new Java runtime Instances."""
@@ -54,7 +55,7 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
           and returns the runtime_config_pb2.RuntimeConfig containing the
           configuration for the runtime.
       module_configuration: An application_configuration.ModuleConfiguration
-          instance respresenting the configuration of the module that owns the
+          instance representing the configuration of the module that owns the
           runtime.
     """
     super(JavaRuntimeInstanceFactory, self).__init__(request_data, 1)
@@ -90,15 +91,20 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     jdk_overrides_jar = os.path.join(java_lib_dir, 'override',
                                      'appengine-dev-jdk-overrides.jar')
     assert os.path.isfile(jdk_overrides_jar), jdk_overrides_jar
-    return [
+
+    args = [
         java_bin,
         '-cp', class_path,
         '-Dappengine.sdk.root=' + java_dir,
         '-Xbootclasspath/p:' + jdk_overrides_jar,
-    ] + (['-XstartOnFirstThread'] if sys.platform == 'darwin' else []) + [
-        'com.google.appengine.tools.development.'
-            'devappserver2.StandaloneInstance'
     ]
+    if sys.platform == 'darwin':
+      args.append('-XstartOnFirstThread')
+    args.extend(self._runtime_config_getter().java_config.jvm_args)
+    args.append(
+        'com.google.appengine.tools.development.devappserver2.'
+        'StandaloneInstance')
+    return args
 
   def get_restart_directories(self):
     """Returns a list of directories where changes trigger a restart.
@@ -142,6 +148,9 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
       return runtime_config
 
     env = self._java_application.get_environment()
+    runtime_config = instance_config_getter()
+    for env_entry in runtime_config.environ:
+      env[env_entry.key] = env_entry.value
 
     with self._application_lock:
       proxy = http_runtime.HttpRuntimeProxy(

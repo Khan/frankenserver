@@ -84,8 +84,12 @@ def ParseAndReturnIncludePaths(appinfo_file, open_fn=open):
 
 
   if not appyaml.handlers:
-    raise appinfo_errors.MissingURLMapping(
-        'No URLMap entries found in application configuration')
+
+    if appyaml.vm:
+      appyaml.handlers = [appinfo.URLMap(url='.*', script='PLACEHOLDER')]
+    else:
+      raise appinfo_errors.MissingURLMapping(
+          'No URLMap entries found in application configuration')
   if len(appyaml.handlers) > appinfo.MAX_URL_MAPS:
     raise appinfo_errors.TooManyURLMappings(
         'Found more than %d URLMap entries in application configuration' %

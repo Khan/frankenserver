@@ -24,6 +24,8 @@ This module is internal and should not be used by client applications.
 """
 
 
+from __future__ import with_statement
+
 
 
 
@@ -2174,6 +2176,8 @@ class BaseIndexManager(object):
     return None
 
   def CreateIndex(self, index, trusted=False, calling_app=None):
+
+
     calling_app = datastore_types.ResolveAppId(calling_app)
     CheckAppId(trusted, calling_app, index.app_id())
     Check(index.id() == 0, 'New index id must be 0.')
@@ -2843,6 +2847,32 @@ class EntityGroupPseudoKind(object):
         datastore_pb.Error.BAD_REQUEST, 'queries not supported on ' + self.name)
 
 
+class _CachedIndexDefinitions(object):
+  """Records definitions read from index configuration files for later reuse.
+
+  If the names and modification times of the configuration files are unchanged,
+  then the index configurations previously parsed out of those files can be
+  reused.
+
+  Attributes:
+    file_names: a list of the names of the configuration files. This will have
+      one element when the configuration is based on an index.yaml but may have
+      more than one if it is based on datastore-indexes.xml and
+      datastore-indexes-auto.xml.
+    last_modifieds: a list of floats that are the modification times of the
+      files in file_names.
+    index_protos: a list of entity_pb.CompositeIndex objects corresponding to
+      the index definitions read from file_names.
+  """
+
+  def __init__(self, file_names, last_modifieds, index_protos):
+
+    assert len(file_names) <= 1
+    self.file_names = file_names
+    self.last_modifieds = last_modifieds
+    self.index_protos = index_protos
+
+
 class DatastoreStub(object):
   """A stub that maps datastore service calls on to a BaseDatastore.
 
@@ -2868,7 +2898,7 @@ class DatastoreStub(object):
 
 
 
-    self._cached_yaml = (None, None, None)
+    self._cached_index_definitions = _CachedIndexDefinitions([], [], None)
 
     if self._require_indexes or root_path is None:
 
@@ -3175,34 +3205,39 @@ class DatastoreStub(object):
 
     if not self._root_path:
       return
-    index_yaml_file = os.path.join(self._root_path, 'index.yaml')
-    if (self._cached_yaml[0] == index_yaml_file and
-        os.path.exists(index_yaml_file) and
-        os.path.getmtime(index_yaml_file) == self._cached_yaml[1]):
-      requested_indexes = self._cached_yaml[2]
+    file_names = [os.path.join(self._root_path, 'index.yaml')]
+    file_mtimes = [os.path.getmtime(f) for f in file_names if os.path.exists(f)]
+    if (self._cached_index_definitions.file_names == file_names and
+        all(os.path.exists(f) for f in file_names) and
+        self._cached_index_definitions.last_modifieds == file_mtimes):
+      requested_indexes = self._cached_index_definitions.index_protos
     else:
-      try:
-        index_yaml_mtime = os.path.getmtime(index_yaml_file)
-        fh = _open(index_yaml_file, 'r')
-      except (OSError, IOError):
-        index_yaml_data = None
-      else:
+      file_mtimes = []
+      index_texts = []
+      for file_name in file_names:
         try:
-          index_yaml_data = fh.read()
-        finally:
-          fh.close()
+          file_mtimes.append(os.path.getmtime(file_name))
+          with _open(file_name, 'r') as fh:
+            index_texts.append(fh.read())
+        except (OSError, IOError):
+          pass
 
       requested_indexes = []
-      if index_yaml_data is not None:
+      if len(index_texts) == len(file_names):
+        all_ok = True
+        for index_text in index_texts:
 
-        index_defs = datastore_index.ParseIndexDefinitions(index_yaml_data)
-        if index_defs is not None and index_defs.indexes is not None:
+          index_defs = datastore_index.ParseIndexDefinitions(index_text)
+          if index_defs is None or index_defs.indexes is None:
+            all_ok = False
+          else:
 
-          requested_indexes = datastore_index.IndexDefinitionsToProtos(
-              self._app_id,
-              index_defs.indexes)
-          self._cached_yaml = (index_yaml_file, index_yaml_mtime,
-                               requested_indexes)
+            requested_indexes.extend(
+                datastore_index.IndexDefinitionsToProtos(
+                    self._app_id, index_defs.indexes))
+        if all_ok:
+          self._cached_index_definitions = _CachedIndexDefinitions(
+              file_names, file_mtimes, requested_indexes)
 
 
     existing_indexes = self._datastore.GetIndexes(
@@ -3856,6 +3891,10 @@ class StubServiceConverter(object):
     if v4_batch.has_end_cursor():
       self._query_converter.v4_to_v3_compiled_cursor(
           v4_batch.end_cursor(), v3_result.mutable_compiled_cursor())
+    if v4_batch.has_skipped_cursor():
+      self._query_converter.v4_to_v3_compiled_cursor(
+          v4_batch.skipped_cursor(),
+          v3_result.mutable_skipped_results_compiled_cursor())
 
 
     if v4_batch.entity_result_type() == datastore_v4_pb.EntityResult.PROJECTION:
@@ -3869,6 +3908,10 @@ class StubServiceConverter(object):
     for v4_entity in v4_batch.entity_result_list():
       v3_entity = v3_result.add_result()
       self._entity_converter.v4_to_v3_entity(v4_entity.entity(), v3_entity)
+      if v4_entity.has_cursor():
+        cursor = v3_result.add_result_compiled_cursor()
+        self._query_converter.v4_to_v3_compiled_cursor(v4_entity.cursor(),
+                                                       cursor)
       if v4_batch.entity_result_type() != datastore_v4_pb.EntityResult.FULL:
 
 
@@ -3895,6 +3938,10 @@ class StubServiceConverter(object):
       v4_batch.set_end_cursor(
           self._query_converter.v3_to_v4_compiled_cursor(
               v3_result.compiled_cursor()))
+    if v3_result.has_skipped_results_compiled_cursor():
+      v4_batch.set_skipped_cursor(
+          self._query_converter.v3_to_v4_compiled_cursor(
+              v3_result.skipped_results_compiled_cursor()))
 
 
     if v3_result.keys_only():
@@ -3907,10 +3954,15 @@ class StubServiceConverter(object):
 
     if v3_result.has_skipped_results():
       v4_batch.set_skipped_results(v3_result.skipped_results())
-    for v3_entity in v3_result.result_list():
+    for v3_entity, v3_cursor in itertools.izip_longest(
+        v3_result.result_list(),
+        v3_result.result_compiled_cursor_list()):
       v4_entity_result = datastore_v4_pb.EntityResult()
       self._entity_converter.v3_to_v4_entity(v3_entity,
                                              v4_entity_result.mutable_entity())
+      if v3_cursor is not None:
+        v4_entity_result.set_cursor(
+            self._query_converter.v3_to_v4_compiled_cursor(v3_cursor))
       v4_batch.entity_result_list().append(v4_entity_result)
 
 

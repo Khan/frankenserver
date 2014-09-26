@@ -126,9 +126,27 @@ namespace google\appengine\datastore\v4 {
     public function hasVersion() {
       return isset($this->version);
     }
+    public function getCursor() {
+      if (!isset($this->cursor)) {
+        return '';
+      }
+      return $this->cursor;
+    }
+    public function setCursor($val) {
+      $this->cursor = $val;
+      return $this;
+    }
+    public function clearCursor() {
+      unset($this->cursor);
+      return $this;
+    }
+    public function hasCursor() {
+      return isset($this->cursor);
+    }
     public function clear() {
       $this->clearEntity();
       $this->clearVersion();
+      $this->clearCursor();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -139,6 +157,10 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->version)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->version);
+      }
+      if (isset($this->cursor)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->cursor));
       }
       return $res;
     }
@@ -151,6 +173,10 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->version)) {
         $out->putVarInt32(16);
         $out->putVarInt64($this->version);
+      }
+      if (isset($this->cursor)) {
+        $out->putVarInt32(26);
+        $out->putPrefixedString($this->cursor);
       }
     }
     public function tryMerge($d) {
@@ -165,6 +191,11 @@ namespace google\appengine\datastore\v4 {
             break;
           case 16:
             $this->setVersion($d->getVarInt64());
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $this->setCursor(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -186,6 +217,9 @@ namespace google\appengine\datastore\v4 {
       if ($x->hasVersion()) {
         $this->setVersion($x->getVersion());
       }
+      if ($x->hasCursor()) {
+        $this->setCursor($x->getCursor());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -193,6 +227,8 @@ namespace google\appengine\datastore\v4 {
       if (isset($this->entity) && !$this->entity->equals($x->entity)) return false;
       if (isset($this->version) !== isset($x->version)) return false;
       if (isset($this->version) && !$this->integerEquals($this->version, $x->version)) return false;
+      if (isset($this->cursor) !== isset($x->cursor)) return false;
+      if (isset($this->cursor) && $this->cursor !== $x->cursor) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -202,6 +238,9 @@ namespace google\appengine\datastore\v4 {
       }
       if (isset($this->version)) {
         $res .= $prefix . "version: " . $this->debugFormatInt64($this->version) . "\n";
+      }
+      if (isset($this->cursor)) {
+        $res .= $prefix . "cursor: " . $this->debugFormatString($this->cursor) . "\n";
       }
       return $res;
     }
@@ -2466,6 +2505,23 @@ namespace google\appengine\datastore\v4 {
     public function clearEntityResult() {
       $this->entity_result = array();
     }
+    public function getSkippedCursor() {
+      if (!isset($this->skipped_cursor)) {
+        return '';
+      }
+      return $this->skipped_cursor;
+    }
+    public function setSkippedCursor($val) {
+      $this->skipped_cursor = $val;
+      return $this;
+    }
+    public function clearSkippedCursor() {
+      unset($this->skipped_cursor);
+      return $this;
+    }
+    public function hasSkippedCursor() {
+      return isset($this->skipped_cursor);
+    }
     public function getEndCursor() {
       if (!isset($this->end_cursor)) {
         return '';
@@ -2541,6 +2597,7 @@ namespace google\appengine\datastore\v4 {
     public function clear() {
       $this->clearEntityResultType();
       $this->clearEntityResult();
+      $this->clearSkippedCursor();
       $this->clearEndCursor();
       $this->clearMoreResults();
       $this->clearSkippedResults();
@@ -2556,6 +2613,10 @@ namespace google\appengine\datastore\v4 {
       $res += 1 * sizeof($this->entity_result);
       foreach ($this->entity_result as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->skipped_cursor)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->skipped_cursor));
       }
       if (isset($this->end_cursor)) {
         $res += 1;
@@ -2586,6 +2647,10 @@ namespace google\appengine\datastore\v4 {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->skipped_cursor)) {
+        $out->putVarInt32(26);
+        $out->putPrefixedString($this->skipped_cursor);
+      }
       if (isset($this->end_cursor)) {
         $out->putVarInt32(34);
         $out->putPrefixedString($this->end_cursor);
@@ -2615,6 +2680,11 @@ namespace google\appengine\datastore\v4 {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->addEntityResult()->tryMerge($tmp);
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $this->setSkippedCursor(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
             break;
           case 34:
             $length = $d->getVarInt32();
@@ -2654,6 +2724,9 @@ namespace google\appengine\datastore\v4 {
       foreach ($x->getEntityResultList() as $v) {
         $this->addEntityResult()->copyFrom($v);
       }
+      if ($x->hasSkippedCursor()) {
+        $this->setSkippedCursor($x->getSkippedCursor());
+      }
       if ($x->hasEndCursor()) {
         $this->setEndCursor($x->getEndCursor());
       }
@@ -2675,6 +2748,8 @@ namespace google\appengine\datastore\v4 {
       foreach (array_map(null, $this->entity_result, $x->entity_result) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->skipped_cursor) !== isset($x->skipped_cursor)) return false;
+      if (isset($this->skipped_cursor) && $this->skipped_cursor !== $x->skipped_cursor) return false;
       if (isset($this->end_cursor) !== isset($x->end_cursor)) return false;
       if (isset($this->end_cursor) && $this->end_cursor !== $x->end_cursor) return false;
       if (isset($this->more_results) !== isset($x->more_results)) return false;
@@ -2692,6 +2767,9 @@ namespace google\appengine\datastore\v4 {
       }
       foreach ($this->entity_result as $value) {
         $res .= $prefix . "entity_result <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->skipped_cursor)) {
+        $res .= $prefix . "skipped_cursor: " . $this->debugFormatString($this->skipped_cursor) . "\n";
       }
       if (isset($this->end_cursor)) {
         $res .= $prefix . "end_cursor: " . $this->debugFormatString($this->end_cursor) . "\n";

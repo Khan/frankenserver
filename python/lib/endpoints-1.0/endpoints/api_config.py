@@ -1345,8 +1345,6 @@ def method(request_message=message_types.VoidMessage,
   _CheckListType(audiences, basestring, 'audiences')
   _CheckListType(allowed_client_ids, basestring, 'allowed_client_ids')
   _CheckEnum(auth_level, AUTH_LEVEL, 'auth_level')
-  if allowed_client_ids is not None and len(allowed_client_ids) > 5:
-    raise ValueError('allowed_client_ids must have 5 or fewer entries.')
   return apiserving_method_decorator
 
 

@@ -3,6 +3,20 @@ All rights reserved.
 
 App Engine SDK - Release Notes
 
+Version 1.9.12
+==============================
+
+Version 1.9.11
+
+Python
+==============================
+- Fixed an issue with the Search API not returning results in the proper date
+  order.
+
+PHP
+==============================
+- PHP has now been updated to 5.4.32.
+
 Version 1.9.10
 
 Python

@@ -1780,8 +1780,8 @@ class _SubQueryIteratorState(object):
                                 (self.orders, other.orders))
     lhs = self.entity._orig_pb
     rhs = other.entity._orig_pb
-    lhs_filter = self.dsquery._filter_predicate
-    rhs_filter = other.dsquery._filter_predicate
+    lhs_filter = self.dsquery.filter_predicate
+    rhs_filter = other.dsquery.filter_predicate
     names = self.orders._get_prop_names()
     # TODO: In some future version, there won't be a need to add the
     # filters' names.

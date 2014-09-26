@@ -231,6 +231,8 @@ class _BaseIndex(object):
   BUILDING, SERVING, DELETING, ERROR = range(4)
 
 
+
+
   ASCENDING = datastore_query.PropertyOrder.ASCENDING
   DESCENDING = datastore_query.PropertyOrder.DESCENDING
 

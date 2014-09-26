@@ -2369,12 +2369,17 @@ class AppVersionUpload(object):
                        else EndpointsState.PENDING)
     return updated_state != EndpointsState.PENDING, updated_state
 
-  def Rollback(self):
+  def Rollback(self, force_rollback=False):
     """Rolls back the transaction if one is in progress."""
     if not self.in_transaction:
       return
-    StatusUpdate('Rolling back the update.', self.error_fh)
-    self.logging_context.Send('/api/appversion/rollback')
+    msg = 'Rolling back the update.'
+    if self.config.vm and not force_rollback:
+      msg += ('  This can sometimes take a while since a VM version is being '
+              'rolled back.')
+    StatusUpdate(msg, self.error_fh)
+    self.logging_context.Send('/api/appversion/rollback',
+                              force_rollback='1' if force_rollback else '0')
     self.in_transaction = False
     self.files = {}
 
@@ -4398,9 +4403,17 @@ class AppCfgApp(object):
 
   def Rollback(self):
     """Does a rollback of an existing transaction for this app version."""
-    if self.args:
-      self.parser.error('Expected a single <directory> or <file> argument.')
     self._Rollback()
+
+  def _RollbackOptions(self, parser):
+    """Adds rollback-specific options to parser.
+
+    Args:
+      parser: An instance of OptionsParser.
+    """
+    parser.add_option('--force_rollback', action='store_true',
+                      dest='force_rollback', default=False,
+                      help='Force rollback.')
 
   def _Rollback(self, backend=None):
     """Does a rollback of an existing transaction.
@@ -4427,7 +4440,15 @@ class AppCfgApp(object):
                                   backend=backend)
 
     appversion.in_transaction = True
-    appversion.Rollback()
+
+
+
+
+    force_rollback = False
+    if hasattr(self.options, 'force_rollback'):
+      force_rollback = self.options.force_rollback
+
+    appversion.Rollback(force_rollback)
 
   def SetDefaultVersion(self):
     """Sets the default version."""
@@ -5182,6 +5203,7 @@ option to delete them."""),
       'rollback': Action(
           function='Rollback',
           usage='%prog [options] rollback <directory> | <file>',
+          options=_RollbackOptions,
           short_desc='Rollback an in-progress update.',
           long_desc="""
 The 'update' command requires a server-side transaction.

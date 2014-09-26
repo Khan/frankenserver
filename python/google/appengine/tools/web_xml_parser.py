@@ -187,10 +187,11 @@ class WebXmlParser(object):
     if constraint is not None:
       role_name = xml_parser_utils.GetChildNodeText(
           constraint, 'role-name').lower()
-      if role_name not in ('none', '*', 'admin'):
-        self.errors.append('Bad value for <role-name> (%s), must be none, '
-                           '*, or admin' % role_name)
-      security_constraint.required_role = role_name
+      if role_name:
+        if role_name not in ('none', '*', 'admin'):
+          self.errors.append('Bad value for <role-name> (%s), must be none, '
+                             '*, or admin' % role_name)
+        security_constraint.required_role = role_name
 
     user_constraint = xml_parser_utils.GetChild(node, 'user-data-constraint')
     if user_constraint is not None:

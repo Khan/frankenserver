@@ -60,40 +60,39 @@ final class CloudStorageUrlStatClient extends CloudStorageClient {
     }
 
     if (isset($prefix)) {
-      while (!isset($mode)) {
-        $results = $this->makeRequest($prefix);
-        if (false === $results) {
-          return false;
-        }
-        // If there are no results then we're done
-        if (empty($results)) {
-          return false;
-        }
-        // If there is an entry in $results that contains the object_name
-        // exactly then we have a matching file - If there is an entry that
-        // contains object_name_$folder$ or object_name/ then we have a
-        // 'directory'
-        $object_name_folder = $prefix . parent::FOLDER_SUFFIX;
-        $object_name_delimiter = $prefix . parent::DELIMITER;
-        foreach ($results as $result) {
-          if ($result['name'] === $prefix) {
-            $mode = parent::S_IFREG;
-            $mtime = $result['mtime'];
-            $size = $result['size'];
-            break;
-          } else if ($result['name'] === $object_name_folder ||
-                     strncmp($result['name'],
-                             $object_name_delimiter,
-                             strlen($object_name_delimiter)) == 0) {
-            $mode = parent::S_IFDIR;
-            break;
+      $result = $this->headObject($prefix);
+      if ($result !== false) {
+        $mode = parent::S_IFREG;
+        $mtime = $result['mtime'];
+        $size = $result['size'];
+      } else {
+        // Object doesn't exisit, check and see if it's a directory.
+        do {
+          $results = $this->listBucket($prefix);
+          if (false === $results) {
+            return false;
           }
-        }
+          // If there are no results then we're done
+          if (empty($results)) {
+            return false;
+          }
+          // If there is an entry that contains object_name_$folder$ or
+          // object_name/ then we have a 'directory'.
+          $object_name_folder = $prefix . parent::FOLDER_SUFFIX;
+          $object_name_delimiter = $prefix . parent::DELIMITER;
+          foreach ($results as $result) {
+            if ($result['name'] === $object_name_folder ||
+                $result['name'] === $object_name_delimiter) {
+              $mode = parent::S_IFDIR;
+              break;
+            }
+          }
+        } while (!isset($mode) && isset($this->next_marker));
       }
     } else {
       // We are now just checking that the bucket exists, as there was no
       // object prefix supplied
-      $results = $this->makeRequest();
+      $results = $this->listBucket();
       if ($results !== false) {
         $mode = parent::S_IFDIR;
       } else {
@@ -127,12 +126,50 @@ final class CloudStorageUrlStatClient extends CloudStorageClient {
   }
 
   /**
+   * Perform a HEAD request on an object to get size & mtime info.
+   */
+  private function headObject($object_name) {
+    $headers = $this->getOAuthTokenHeader(parent::READ_SCOPE);
+    if ($headers === false) {
+      if (!$this->quiet) {
+        trigger_error("Unable to acquire OAuth token.", E_USER_WARNING);
+      }
+      return false;
+    }
+
+    $url = $this->createObjectUrl($this->bucket_name, $object_name);
+    $http_response = $this->makeHttpRequest($url, "HEAD", $headers);
+    if ($http_response === false) {
+      if (!$this->quiet) {
+        trigger_error('Unable to connect to the Cloud Storage Service.',
+                      E_USER_WARNING);
+      }
+      return false;
+    }
+
+    $status_code = $http_response['status_code'];
+    if (HttpResponse::OK !== $status_code) {
+      if (!$this->quiet && HttpResponse::NOT_FOUND !== $status_code) {
+        trigger_error($this->getErrorMessage($http_response['status_code'],
+                                             $http_response['body']),
+                      E_USER_WARNING);
+      }
+      return false;
+    }
+
+    $headers = $http_response['headers'];
+    return ['size' => $this->getHeaderValue('x-goog-stored-content-length',
+                                            $headers),
+            'mtime' => $this->getHeaderValue('Last-Modified', $headers)];
+  }
+
+  /**
    * Perform a GET request on a bucket, with the optional $object_prefix. This
    * is similar to how CloudStorgeDirectoryClient works, except that it is
    * targeting a specific file rather than trying to enumerate of the files in
    * a given bucket with a common prefix.
    */
-  private function makeRequest($object_prefix = null) {
+  private function listBucket($object_prefix = null) {
     $headers = $this->getOAuthTokenHeader(parent::READ_SCOPE);
     if ($headers === false) {
       if (!$this->quiet) {

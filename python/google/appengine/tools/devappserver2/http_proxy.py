@@ -90,6 +90,10 @@ class HttpProxy:
       HostNotReachable: if host:port can't be reached after given number of
         retries.
     """
+    # If there was a prior error, we don't need to wait for a connection.
+    if self._prior_error:
+      return
+
     def ping():
       connection = httplib.HTTPConnection(self._host, self._port)
       with contextlib.closing(connection):

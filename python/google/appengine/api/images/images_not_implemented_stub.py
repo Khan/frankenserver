@@ -20,17 +20,16 @@
 
 """A NotImplemented Images API stub for when the PIL library is not found."""
 
-
 from google.appengine.api import apiproxy_stub
 from google.appengine.api.images import images_blob_stub
 
-_SERVICE_NAME = "images"
+_SERVICE_NAME = 'images'
 
 
 class ImagesNotImplementedServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API which raises a NotImplementedError."""
 
-  def __init__(self, host_prefix=""):
+  def __init__(self, host_prefix=''):
     super(ImagesNotImplementedServiceStub, self).__init__(_SERVICE_NAME)
     self._blob_stub = images_blob_stub.ImagesBlobStub(host_prefix)
 
@@ -46,12 +45,12 @@ class ImagesNotImplementedServiceStub(apiproxy_stub.APIProxyStub):
           API call.
     """
     if service == _SERVICE_NAME:
-      if call == "GetUrlBase":
+      if call == 'GetUrlBase':
         self._blob_stub.GetUrlBase(request, response)
         return
-      elif call == "DeleteUrlBase":
+      elif call == 'DeleteUrlBase':
         self._blob_stub.DeleteUrlBase(request, response)
         return
-    raise NotImplementedError("Unable to find the Python PIL library.  Please "
-                              "view the SDK documentation for details about "
-                              "installing PIL on your system.")
+    raise NotImplementedError('Unable to find the Python PIL library.  Please '
+                              'view the SDK documentation for details about '
+                              'installing PIL on your system.')

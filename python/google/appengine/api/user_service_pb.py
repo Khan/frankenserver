@@ -622,6 +622,8 @@ class CreateLogoutURLResponse(ProtocolBuffer.ProtocolMessage):
 class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   has_scope_ = 0
   scope_ = ""
+  has_request_writer_permission_ = 0
+  request_writer_permission_ = 0
 
   def __init__(self, contents=None):
     self.scopes_ = []
@@ -655,11 +657,25 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
   def clear_scopes(self):
     self.scopes_ = []
 
+  def request_writer_permission(self): return self.request_writer_permission_
+
+  def set_request_writer_permission(self, x):
+    self.has_request_writer_permission_ = 1
+    self.request_writer_permission_ = x
+
+  def clear_request_writer_permission(self):
+    if self.has_request_writer_permission_:
+      self.has_request_writer_permission_ = 0
+      self.request_writer_permission_ = 0
+
+  def has_request_writer_permission(self): return self.has_request_writer_permission_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_scope()): self.set_scope(x.scope())
     for i in xrange(x.scopes_size()): self.add_scopes(x.scopes(i))
+    if (x.has_request_writer_permission()): self.set_request_writer_permission(x.request_writer_permission())
 
   def Equals(self, x):
     if x is self: return 1
@@ -668,6 +684,8 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if len(self.scopes_) != len(x.scopes_): return 0
     for e1, e2 in zip(self.scopes_, x.scopes_):
       if e1 != e2: return 0
+    if self.has_request_writer_permission_ != x.has_request_writer_permission_: return 0
+    if self.has_request_writer_permission_ and self.request_writer_permission_ != x.request_writer_permission_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -679,6 +697,7 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_scope_): n += 1 + self.lengthString(len(self.scope_))
     n += 1 * len(self.scopes_)
     for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    if (self.has_request_writer_permission_): n += 2
     return n
 
   def ByteSizePartial(self):
@@ -686,11 +705,13 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_scope_): n += 1 + self.lengthString(len(self.scope_))
     n += 1 * len(self.scopes_)
     for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    if (self.has_request_writer_permission_): n += 2
     return n
 
   def Clear(self):
     self.clear_scope()
     self.clear_scopes()
+    self.clear_request_writer_permission()
 
   def OutputUnchecked(self, out):
     if (self.has_scope_):
@@ -699,6 +720,9 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.scopes_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.scopes_[i])
+    if (self.has_request_writer_permission_):
+      out.putVarInt32(24)
+      out.putBoolean(self.request_writer_permission_)
 
   def OutputPartial(self, out):
     if (self.has_scope_):
@@ -707,6 +731,9 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.scopes_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.scopes_[i])
+    if (self.has_request_writer_permission_):
+      out.putVarInt32(24)
+      out.putBoolean(self.request_writer_permission_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -716,6 +743,9 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.add_scopes(d.getPrefixedString())
+        continue
+      if tt == 24:
+        self.set_request_writer_permission(d.getBoolean())
         continue
 
 
@@ -732,6 +762,7 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("scopes%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if self.has_request_writer_permission_: res+=prefix+("request_writer_permission: %s\n" % self.DebugFormatBool(self.request_writer_permission_))
     return res
 
 
@@ -740,18 +771,21 @@ class GetOAuthUserRequest(ProtocolBuffer.ProtocolMessage):
 
   kscope = 1
   kscopes = 2
+  krequest_writer_permission = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "scope",
     2: "scopes",
-  }, 2)
+    3: "request_writer_permission",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.NUMERIC,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -770,6 +804,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   is_admin_ = 0
   has_client_id_ = 0
   client_id_ = ""
+  has_is_project_writer_ = 0
+  is_project_writer_ = 0
 
   def __init__(self, contents=None):
     self.scopes_ = []
@@ -868,6 +904,19 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   def clear_scopes(self):
     self.scopes_ = []
 
+  def is_project_writer(self): return self.is_project_writer_
+
+  def set_is_project_writer(self, x):
+    self.has_is_project_writer_ = 1
+    self.is_project_writer_ = x
+
+  def clear_is_project_writer(self):
+    if self.has_is_project_writer_:
+      self.has_is_project_writer_ = 0
+      self.is_project_writer_ = 0
+
+  def has_is_project_writer(self): return self.has_is_project_writer_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -878,6 +927,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (x.has_is_admin()): self.set_is_admin(x.is_admin())
     if (x.has_client_id()): self.set_client_id(x.client_id())
     for i in xrange(x.scopes_size()): self.add_scopes(x.scopes(i))
+    if (x.has_is_project_writer()): self.set_is_project_writer(x.is_project_writer())
 
   def Equals(self, x):
     if x is self: return 1
@@ -896,6 +946,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if len(self.scopes_) != len(x.scopes_): return 0
     for e1, e2 in zip(self.scopes_, x.scopes_):
       if e1 != e2: return 0
+    if self.has_is_project_writer_ != x.has_is_project_writer_: return 0
+    if self.has_is_project_writer_ and self.is_project_writer_ != x.is_project_writer_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -924,6 +976,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
     n += 1 * len(self.scopes_)
     for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    if (self.has_is_project_writer_): n += 2
     return n + 3
 
   def ByteSizePartial(self):
@@ -942,6 +995,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
     n += 1 * len(self.scopes_)
     for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
+    if (self.has_is_project_writer_): n += 2
     return n
 
   def Clear(self):
@@ -952,6 +1006,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_is_admin()
     self.clear_client_id()
     self.clear_scopes()
+    self.clear_is_project_writer()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -972,6 +1027,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.scopes_)):
       out.putVarInt32(58)
       out.putPrefixedString(self.scopes_[i])
+    if (self.has_is_project_writer_):
+      out.putVarInt32(64)
+      out.putBoolean(self.is_project_writer_)
 
   def OutputPartial(self, out):
     if (self.has_email_):
@@ -995,6 +1053,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.scopes_)):
       out.putVarInt32(58)
       out.putPrefixedString(self.scopes_[i])
+    if (self.has_is_project_writer_):
+      out.putVarInt32(64)
+      out.putBoolean(self.is_project_writer_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1020,6 +1081,9 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
       if tt == 58:
         self.add_scopes(d.getPrefixedString())
         continue
+      if tt == 64:
+        self.set_is_project_writer(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1040,6 +1104,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("scopes%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if self.has_is_project_writer_: res+=prefix+("is_project_writer: %s\n" % self.DebugFormatBool(self.is_project_writer_))
     return res
 
 
@@ -1053,6 +1118,7 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
   kis_admin = 5
   kclient_id = 6
   kscopes = 7
+  kis_project_writer = 8
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1063,7 +1129,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     5: "is_admin",
     6: "client_id",
     7: "scopes",
-  }, 7)
+    8: "is_project_writer",
+  }, 8)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1074,7 +1141,8 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     5: ProtocolBuffer.Encoder.NUMERIC,
     6: ProtocolBuffer.Encoder.STRING,
     7: ProtocolBuffer.Encoder.STRING,
-  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
+    8: ProtocolBuffer.Encoder.NUMERIC,
+  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

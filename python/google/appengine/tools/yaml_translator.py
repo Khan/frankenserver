@@ -236,8 +236,7 @@ class AppYamlTranslator(object):
     return statements
 
   def TranslateEnvVariables(self):
-    if (not self.app_engine_web_xml.vm or
-        not self.app_engine_web_xml.env_variables):
+    if not self.app_engine_web_xml.env_variables:
       return []
 
     variables = self.app_engine_web_xml.env_variables

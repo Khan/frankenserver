@@ -486,6 +486,23 @@ class TestInstance(unittest.TestCase):
     self.assertFalse(inst.wait(1))
     self.mox.VerifyAll()
 
+  def test_health(self):
+    inst = instance.Instance(self.request_data, 'name', self.proxy,
+                             max_concurrent_requests=5)
+    self.mox.StubOutWithMock(inst._condition, 'notify_all')
+    self.proxy.start()
+
+    self.proxy.quit()
+    inst._condition.notify_all()
+
+    self.mox.ReplayAll()
+    inst.start()
+    self.assertTrue(inst.can_accept_requests)
+    inst.set_health(False)
+    self.assertFalse(inst.can_accept_requests)
+    inst.set_health(True)
+    self.assertTrue(inst.can_accept_requests)
+
   def test_quit(self):
     inst = instance.Instance(self.request_data, 'name', self.proxy,
                              max_concurrent_requests=5)

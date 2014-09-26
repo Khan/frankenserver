@@ -50,6 +50,16 @@ def _java_temporarily_supported():
   application_configuration.java_supported = old_java_supported
 
 
+_DEFAULT_HEALTH_CHECK = appinfo.VmHealthCheck(
+    enable_health_check=True,
+    check_interval_sec=5,
+    timeout_sec=4,
+    unhealthy_threshold=2,
+    healthy_threshold=2,
+    restart_threshold=60,
+    host='127.0.0.1')
+
+
 class TestModuleConfiguration(unittest.TestCase):
   """Tests for application_configuration.ModuleConfiguration."""
 
@@ -115,11 +125,15 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(['warmup'], config.inbound_services)
     self.assertEqual(env_variables, config.env_variables)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
+    self.assertEqual(_DEFAULT_HEALTH_CHECK, config.vm_health_check)
 
   def test_vm_app_yaml_configuration(self):
     manual_scaling = appinfo.ManualScaling()
     vm_settings = appinfo.VmSettings()
     vm_settings['vm_runtime'] = 'myawesomeruntime'
+    vm_settings['forwarded_ports'] = '49111:49111,5002:49112,8000'
+    health_check = appinfo.VmHealthCheck()
+    health_check.enable_health_check = False
     info = appinfo.AppInfoExternal(
         application='app',
         module='module1',
@@ -128,7 +142,9 @@ class TestModuleConfiguration(unittest.TestCase):
         vm_settings=vm_settings,
         threadsafe=False,
         manual_scaling=manual_scaling,
+        vm_health_check=health_check
     )
+
     appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
         (info, []))
     os.path.getmtime('/appdir/app.yaml').AndReturn(10)
@@ -147,9 +163,44 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
     self.assertEqual('vm', config.runtime)
     self.assertEqual(vm_settings['vm_runtime'], config.effective_runtime)
+    self.assertItemsEqual(
+        {49111: 49111, 5002: 49112, 8000: 8000},
+        config.forwarded_ports)
     self.assertFalse(config.threadsafe)
     self.assertEqual(manual_scaling, config.manual_scaling)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
+    self.assertEqual(info.vm_health_check, config.vm_health_check)
+
+  def test_set_health_check_defaults(self):
+    # Pass nothing in.
+    self.assertEqual(
+        _DEFAULT_HEALTH_CHECK,
+        application_configuration._set_health_check_defaults(None))
+
+    # Pass in an empty object.
+    self.assertEqual(
+        _DEFAULT_HEALTH_CHECK,
+        application_configuration._set_health_check_defaults(
+            appinfo.VmHealthCheck()))
+
+    # Override some.
+    health_check = appinfo.VmHealthCheck(restart_threshold=7,
+                                         healthy_threshold=4)
+    defaults_set = application_configuration._set_health_check_defaults(
+        health_check)
+
+    self.assertEqual(defaults_set.enable_health_check,
+                     _DEFAULT_HEALTH_CHECK.enable_health_check)
+    self.assertEqual(defaults_set.check_interval_sec,
+                     _DEFAULT_HEALTH_CHECK.check_interval_sec)
+    self.assertEqual(defaults_set.timeout_sec,
+                     _DEFAULT_HEALTH_CHECK.timeout_sec)
+    self.assertEqual(defaults_set.unhealthy_threshold,
+                     _DEFAULT_HEALTH_CHECK.unhealthy_threshold)
+    self.assertEqual(defaults_set.healthy_threshold, 4)
+    self.assertEqual(defaults_set.restart_threshold, 7)
+    self.assertEqual(defaults_set.host,
+                     _DEFAULT_HEALTH_CHECK.host)
 
   def test_override_app_id(self):
     info = appinfo.AppInfoExternal(

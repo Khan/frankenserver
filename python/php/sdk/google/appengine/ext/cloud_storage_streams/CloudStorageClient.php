@@ -323,14 +323,16 @@ abstract class CloudStorageClient {
    * @visibleForTesting
    */
   public static function createObjectUrl($bucket, $object = null) {
-    // Strip leading "/" for $object
-    if (isset($object) && $object[0] == "/") {
-      $object_name = substr($object, 1);
-    } else {
-      $object_name = "";
+    if (!isset($object)) {
+      $object = "";
     }
 
-    $gs_filename = CloudStorageTools::getFilename($bucket, $object_name);
+    // Strip leading "/" for $object.
+    if (StringUtil::startsWith($object, "/")) {
+      $object = substr($object, 1);
+    }
+
+    $gs_filename = CloudStorageTools::getFilename($bucket, $object);
     return CloudStorageTools::getPublicUrl($gs_filename, true);
   }
 

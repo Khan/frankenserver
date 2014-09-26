@@ -33,6 +33,8 @@ Versions 1.9 and 1.10 of docker remote API are supported.
 
 from collections import namedtuple
 
+import itertools
+import json
 import logging
 import re
 import threading
@@ -43,8 +45,11 @@ import docker
 import requests
 
 
-_SUCCESSFUL_BUILD_PATTERN = re.compile(
-    r'{"stream":"Successfully built ([a-zA-Z0-9]{12})\\n"}')
+_SUCCESSFUL_BUILD_PATTERN = re.compile(r'Successfully built ([a-zA-Z0-9]{12})')
+
+_ERROR_LOG_TMPL = 'Build Error: {error}.'
+_ERROR_LOG_DETAILED_TMPL = _ERROR_LOG_TMPL + ' Detail: {detail}'
+_STREAM = 'stream'
 
 
 class ImageOptions(namedtuple('ImageOptionsT',
@@ -219,23 +224,47 @@ class Image(BaseImage):
         quiet=False, fileobj=None, nocache=self._image_opts.nocache,
         rm=self._image_opts.rm)
 
-    log_lines = [x.strip() for x in build_res]
+    log_lines = [json.loads(x.strip()) for x in build_res]
+
     if not log_lines:
       logging.error('Error building docker image %s [with no output]', self.tag)
       raise ImageError
 
-    m = _SUCCESSFUL_BUILD_PATTERN.match(log_lines[-1])
+    def _FormatBuildLog(lines):
+      if not lines:
+        return ''
+      return ('Full Image Build Log:\n%s' %
+              ''.join(l.get(_STREAM) for l in lines))
 
-    if m:  # The build was successful.
-      self._id = m.group(1)
-      for line in log_lines:
-        logging.debug(line)
-      logging.info('Image %s built, id = %s', self.tag, self.id)
-    else:
-      logging.error('Error building docker image %s', self.tag)
-      for line in log_lines:
-        logging.error(line)
-      raise ImageError
+    success_message = log_lines[-1].get(_STREAM)
+    if success_message:
+      m = _SUCCESSFUL_BUILD_PATTERN.match(success_message)
+      if m:
+        # The build was successful.
+        self._id = m.group(1)
+        logging.info('Image %s built, id = %s', self.tag, self.id)
+        logging.debug(_FormatBuildLog(log_lines))
+        return
+
+    logging.error('Error building docker image %s', self.tag)
+
+    # Last log line usually contains error details if not a success message.
+    err_line = log_lines[-1]
+    error = err_line.get('error')
+    error_detail = err_line.get('errorDetail')
+    if error_detail:
+      error_detail = error_detail.get('message')
+
+    stop = len(log_lines)
+    if error or error_detail:
+      el = (_ERROR_LOG_TMPL if error == error_detail
+            else _ERROR_LOG_DETAILED_TMPL).format(error=error,
+                                                  detail=error_detail)
+      logging.error(el)
+      stop -= 1
+
+    logging.error(_FormatBuildLog(itertools.islice(log_lines, stop)))
+    raise ImageError
 
   def Remove(self):
     """Calls "docker rmi"."""

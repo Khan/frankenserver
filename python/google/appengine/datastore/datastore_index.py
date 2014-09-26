@@ -46,6 +46,11 @@ indexes:
     direction: asc
   - name: owner
     direction: asc
+
+- kind: Mountain
+  properties:
+  - name: location
+    mode: geospatial
 """
 
 
@@ -56,7 +61,14 @@ indexes:
 
 
 
+
+import google
+import yaml
+
+import copy
 import itertools
+
+from google.appengine.datastore import entity_pb
 
 from google.appengine.api import appinfo
 from google.appengine.api import datastore_types
@@ -64,7 +76,6 @@ from google.appengine.api import validation
 from google.appengine.api import yaml_errors
 from google.appengine.api import yaml_object
 from google.appengine.datastore import datastore_pb
-from google.appengine.datastore import entity_pb
 
 
 class Property(validation.Validated):
@@ -76,6 +87,8 @@ class Property(validation.Validated):
   Attributes:
     name: Name of attribute to sort by.
     direction: Direction of sort.
+    mode: How the property is indexed. Either 'geospatial'
+        or None (unspecified).
   """
 
   ATTRIBUTES = {
@@ -83,7 +96,55 @@ class Property(validation.Validated):
       'direction': validation.Options(('asc', ('ascending',)),
                                       ('desc', ('descending',)),
                                       default='asc'),
+      'mode': validation.Optional(['geospatial']),
       }
+
+  def __init__(self, **attributes):
+
+    object.__setattr__(self, '_is_set', set([]))
+    super(Property, self).__init__(**attributes)
+
+  def __setattr__(self, key, value):
+    self._is_set.add(key)
+    super(Property, self).__setattr__(key, value)
+
+  def IsAscending(self):
+    return self.direction != 'desc'
+
+  def CheckInitialized(self):
+    if 'direction' in self._is_set and self.mode == 'geospatial':
+      raise validation.ValidationError('Direction on a geospatial-mode '
+                                       'property is not allowed.')
+
+
+def _PropertyPresenter(dumper, prop):
+  """A PyYaml presenter for Property.
+
+  It differs from the default by not outputting 'mode: null' and direction when
+  mode is specified. This is done in order to ensure backwards compatibility.
+
+  Args:
+    dumper: the Dumper object provided by PyYaml.
+    prop: the Property object to serialize.
+
+  Returns:
+    A PyYaml object mapping.
+  """
+
+
+  prop_copy = copy.copy(prop)
+
+  del prop_copy._is_set
+
+
+  if prop.mode is not None:
+    del prop_copy.direction
+  else:
+    del prop_copy.mode
+
+  return dumper.represent_object(prop_copy)
+
+yaml.add_representer(Property, _PropertyPresenter)
 
 
 class Index(validation.Validated):
@@ -181,10 +242,12 @@ def IndexToKey(index):
     is a tuple of (name, direction) pairs, direction being ASCENDING
     or DESCENDING (the enums).
   """
+
+
   props = []
   if index.properties is not None:
     for prop in index.properties:
-      if prop.direction == 'asc':
+      if prop.IsAscending():
         direction = ASCENDING
       else:
         direction = DESCENDING
@@ -210,13 +273,6 @@ INEQUALITY_OPERATORS = set((datastore_pb.Query_Filter.LESS_THAN,
 EXISTS_OPERATORS = set((datastore_pb.Query_Filter.EXISTS,
                         ))
 
-
-_DIRECTION_MAP = {
-    'asc':        entity_pb.Index_Property.ASCENDING,
-    'ascending':  entity_pb.Index_Property.ASCENDING,
-    'desc':       entity_pb.Index_Property.DESCENDING,
-    'descending': entity_pb.Index_Property.DESCENDING,
-    }
 
 def Normalize(filters, orders, exists):
   """ Normalizes filter and order query components.
@@ -724,17 +780,19 @@ def IndexYamlForQuery(kind, ancestor, props):
   Returns:
     A string with the YAML for the composite index needed by the query.
   """
-  yaml = []
-  yaml.append('- kind: %s' % kind)
+
+
+  serialized_yaml = []
+  serialized_yaml.append('- kind: %s' % kind)
   if ancestor:
-    yaml.append('  ancestor: yes')
+    serialized_yaml.append('  ancestor: yes')
   if props:
-    yaml.append('  properties:')
+    serialized_yaml.append('  properties:')
     for name, direction in props:
-      yaml.append('  - name: %s' % name)
+      serialized_yaml.append('  - name: %s' % name)
       if direction == DESCENDING:
-        yaml.append('    direction: desc')
-  return '\n'.join(yaml)
+        serialized_yaml.append('    direction: desc')
+  return '\n'.join(serialized_yaml)
 
 
 def IndexXmlForQuery(kind, ancestor, props):
@@ -754,14 +812,16 @@ def IndexXmlForQuery(kind, ancestor, props):
   Returns:
     A string with the XML for the composite index needed by the query.
   """
-  xml = []
-  xml.append('<datastore-index kind="%s" ancestor="%s">'
-             % (kind, 'true' if ancestor else 'false'))
+
+
+  serialized_xml = []
+  serialized_xml.append('<datastore-index kind="%s" ancestor="%s">'
+                        % (kind, 'true' if ancestor else 'false'))
   for name, direction in props:
-    xml.append('  <property name="%s" direction="%s" />'
-               % (name, 'asc' if direction == ASCENDING else 'desc'))
-  xml.append('</datastore-index>')
-  return '\n'.join(xml)
+    serialized_xml.append('  <property name="%s" direction="%s" />'
+                          % (name, 'asc' if direction == ASCENDING else 'desc'))
+  serialized_xml.append('</datastore-index>')
+  return '\n'.join(serialized_xml)
 
 
 def IndexDefinitionToProto(app_id, index_definition):
@@ -789,7 +849,13 @@ def IndexDefinitionToProto(app_id, index_definition):
     for prop in index_definition.properties:
       prop_proto = definition_proto.add_property()
       prop_proto.set_name(prop.name)
-      prop_proto.set_direction(_DIRECTION_MAP[prop.direction])
+
+      if prop.mode == 'geospatial':
+        prop_proto.set_mode(entity_pb.Index_Property.GEOSPATIAL)
+      elif prop.IsAscending():
+        prop_proto.set_direction(entity_pb.Index_Property.ASCENDING)
+      else:
+        prop_proto.set_direction(entity_pb.Index_Property.DESCENDING)
 
   return proto
 
@@ -822,8 +888,14 @@ def ProtoToIndexDefinition(proto):
   proto_index = proto.definition()
   for prop_proto in proto_index.property_list():
     prop_definition = Property(name=prop_proto.name())
-    if prop_proto.direction() == entity_pb.Index_Property.DESCENDING:
-      prop_definition.direction = 'descending'
+
+    if prop_proto.mode() == entity_pb.Index_Property.GEOSPATIAL:
+      prop_definition.mode = 'geospatial'
+    elif prop_proto.direction() == entity_pb.Index_Property.DESCENDING:
+      prop_definition.direction = 'desc'
+    elif prop_proto.direction() == entity_pb.Index_Property.ASCENDING:
+      prop_definition.direction = 'asc'
+
     properties.append(prop_definition)
 
   index = Index(kind=proto_index.entity_type(), properties=properties)

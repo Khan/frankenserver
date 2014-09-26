@@ -364,7 +364,7 @@ final class CloudStorageStreamWrapper {
     if (!isset($allowed_buckets)) {
       $allowed_buckets = explode(',', GAE_INCLUDE_GS_BUCKETS);
       $allowed_buckets = array_map('trim', $allowed_buckets);
-      $allowed_bukcets = array_filter($allowed_buckets);
+      $allowed_buckets = array_filter($allowed_buckets);
     }
 
     return $allowed_buckets;

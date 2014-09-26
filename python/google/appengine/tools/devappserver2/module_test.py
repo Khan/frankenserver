@@ -17,6 +17,7 @@
 """Tests for google.apphosting.tools.devappserver2.module."""
 
 
+import functools
 import httplib
 import logging
 import os
@@ -34,8 +35,10 @@ from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import constants
 from google.appengine.tools.devappserver2 import dispatcher
+from google.appengine.tools.devappserver2 import health_check_service
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import module
+from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import start_response_utils
 from google.appengine.tools.devappserver2 import wsgi_server
 
@@ -56,7 +59,8 @@ class ModuleConfigurationStub(object):
                normalized_libraries=None,
                env_variables=None,
                manual_scaling=None,
-               basic_scaling=None):
+               basic_scaling=None,
+               vm_health_check=None):
     self.application_root = application_root
     self.application = application
     self.module_name = module_name
@@ -73,6 +77,7 @@ class ModuleConfigurationStub(object):
     self.env_variables = env_variables or []
     self.version_id = '%s:%s.%s' % (module_name, version, '12345')
     self.is_backend = False
+    self.vm_health_check = vm_health_check
 
   def check_for_updates(self):
     return set()
@@ -95,6 +100,7 @@ class ModuleFacade(module.Module):
         runtime_stderr_loglevel=1,
         php_config=None,
         python_config=None,
+        java_config=None,
         cloud_sql_config=None,
         vm_config=None,
         default_version_port=8080,
@@ -136,6 +142,7 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         runtime_stderr_loglevel=1,
         php_config=None,
         python_config=None,
+        java_config=None,
         cloud_sql_config=None,
         unused_vm_config=None,
         default_version_port=8080,
@@ -162,10 +169,13 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
 
 class ManualScalingModuleFacade(module.ManualScalingModule):
   def __init__(self,
-               module_configuration=ModuleConfigurationStub(),
+               module_configuration=None,
                balanced_port=0,
                instance_factory=None,
-               ready=True):
+               ready=True,
+               vm_config=None):
+    if module_configuration is None:
+      module_configuration = ModuleConfigurationStub()
     super(ManualScalingModuleFacade, self).__init__(
         module_configuration,
         host='fakehost',
@@ -176,8 +186,9 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         runtime_stderr_loglevel=1,
         php_config=None,
         python_config=None,
+        java_config=None,
         cloud_sql_config=None,
-        vm_config=None,
+        vm_config=vm_config,
         default_version_port=8080,
         port_registry=dispatcher.PortRegistry(),
         request_data=None,
@@ -217,6 +228,7 @@ class BasicScalingModuleFacade(module.BasicScalingModule):
         runtime_stderr_loglevel=1,
         php_config=None,
         python_config=None,
+        java_config=None,
         cloud_sql_config=None,
         vm_config=None,
         default_version_port=8080,
@@ -1435,6 +1447,31 @@ class TestManualScalingModuleAddInstance(unittest.TestCase):
     self.assertIn(inst, servr._instances)
     self.assertEqual((servr, inst), servr._port_registry.get(12345))
 
+  def test_add_with_health_checks(self):
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+    servr.vm_config = runtime_config_pb2.VMConfig(docker_daemon_url='unused')
+    servr.module_configuration.runtime = 'vm'
+    servr.module_configuration.vm_health_check = appinfo.VmHealthCheck(
+        enable_health_check=True)
+
+    inst = self.mox.CreateMock(instance.Instance)
+    self.mox.StubOutWithMock(module._THREAD_POOL, 'submit')
+    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'start')
+    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'port')
+    self.mox.StubOutWithMock(health_check_service.HealthChecker, 'start')
+    wsgi_server.WsgiServer.port = 12345
+    self.factory.new_instance(0, expect_ready_request=True).AndReturn(inst)
+    wsgi_server.WsgiServer.start()
+    health_check_service.HealthChecker.start()
+    module._THREAD_POOL.submit(servr._start_instance,
+                               mox.IsA(wsgi_server.WsgiServer), inst)
+
+    self.mox.ReplayAll()
+    servr._add_instance()
+    self.mox.VerifyAll()
+    self.assertIn(inst, servr._instances)
+    self.assertEqual((servr, inst), servr._port_registry.get(12345))
+
   def test_add_while_stopped(self):
     servr = ManualScalingModuleFacade(instance_factory=self.factory)
     servr._suspended = True
@@ -1453,6 +1490,112 @@ class TestManualScalingModuleAddInstance(unittest.TestCase):
 
     self.assertIn(inst, servr._instances)
     self.assertEqual((servr, inst), servr._port_registry.get(12345))
+
+  def test_add_health_checks(self):
+    inst = self.mox.CreateMock(instance.Instance)
+    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
+    config = appinfo.VmHealthCheck()
+    self.mox.StubOutWithMock(health_check_service.HealthChecker, 'start')
+    health_check_service.HealthChecker.start()
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+
+    self.mox.ReplayAll()
+    servr._add_health_checks(inst, wsgi_servr, config)
+    self.mox.VerifyAll()
+
+  def test_do_health_check_last_successful(self):
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
+    wsgi_servr.port = 3
+    inst = self.mox.CreateMock(instance.Instance)
+    start_response = start_response_utils.CapturingStartResponse()
+    self.mox.StubOutWithMock(module.ManualScalingModule, '_handle_request')
+    servr._handle_request(
+        mox.And(
+            mox.ContainsKeyValue('PATH_INFO', '/_ah/health'),
+            mox.ContainsKeyValue('QUERY_STRING', 'IsLastSuccessful=yes')),
+        start_response, inst=inst, request_type=instance.NORMAL_REQUEST)
+    self.mox.ReplayAll()
+    servr._do_health_check(wsgi_servr, inst, start_response, True)
+    self.mox.VerifyAll()
+
+  def test_do_health_check_last_unsuccessful(self):
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
+    wsgi_servr.port = 3
+    inst = self.mox.CreateMock(instance.Instance)
+    start_response = start_response_utils.CapturingStartResponse()
+    self.mox.StubOutWithMock(module.ManualScalingModule, '_handle_request')
+    servr._handle_request(
+        mox.And(
+            mox.ContainsKeyValue('PATH_INFO', '/_ah/health'),
+            mox.ContainsKeyValue('QUERY_STRING', 'IsLastSuccessful=no')),
+        start_response, inst=inst, request_type=instance.NORMAL_REQUEST)
+    self.mox.ReplayAll()
+    servr._do_health_check(wsgi_servr, inst, start_response, False)
+    self.mox.VerifyAll()
+
+  def test_restart_instance(self):
+    inst = self.mox.CreateMock(instance.Instance)
+    new_inst = self.mox.CreateMock(instance.Instance)
+    inst.instance_id = 0
+    new_inst.instance_id = 0
+
+    self.mox.StubOutWithMock(inst, 'quit')
+    self.mox.StubOutWithMock(new_inst, 'start')
+    self.mox.StubOutWithMock(
+        self.factory, 'new_instance')
+    self.mox.StubOutWithMock(module.ManualScalingModule, '_add_health_checks')
+
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+    servr.module_configuration.runtime = 'vm'
+    servr.module_configuration.vm_health_check = appinfo.VmHealthCheck(
+        enable_health_check=True)
+    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
+    self.mox.StubOutWithMock(wsgi_servr, 'set_app')
+    wsgi_servr.port = 3
+    servr._wsgi_servers = [wsgi_servr]
+    servr._instances = [inst]
+
+    inst.quit(force=True)
+    wsgi_servr.set_app(mox.IsA(functools.partial))
+    self.factory.new_instance(0).AndReturn(new_inst)
+    module.ManualScalingModule._add_health_checks(
+        new_inst, wsgi_servr, mox.IsA(appinfo.VmHealthCheck))
+    new_inst.start()
+
+    self.mox.ReplayAll()
+    servr._restart_instance(inst)
+    self.mox.VerifyAll()
+
+  def test_restart_instance_no_health_checks(self):
+    inst = self.mox.CreateMock(instance.Instance)
+    new_inst = self.mox.CreateMock(instance.Instance)
+    inst.instance_id = 0
+    new_inst.instance_id = 0
+
+    self.mox.StubOutWithMock(inst, 'quit')
+    self.mox.StubOutWithMock(new_inst, 'start')
+    self.mox.StubOutWithMock(
+        self.factory, 'new_instance')
+
+    servr = ManualScalingModuleFacade(instance_factory=self.factory)
+    servr.module_configuration.vm_health_check = appinfo.VmHealthCheck(
+        enable_health_check=False)
+    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
+    self.mox.StubOutWithMock(wsgi_servr, 'set_app')
+    wsgi_servr.port = 3
+    servr._wsgi_servers = [wsgi_servr]
+    servr._instances = [inst]
+
+    inst.quit(force=True)
+    wsgi_servr.set_app(mox.IsA(functools.partial))
+    self.factory.new_instance(0).AndReturn(new_inst)
+    new_inst.start()
+
+    self.mox.ReplayAll()
+    servr._restart_instance(inst)
+    self.mox.VerifyAll()
 
 
 class TestManualScalingInstancePoolHandleScriptRequest(unittest.TestCase):
@@ -2358,6 +2501,7 @@ class TestInteractiveCommandModule(unittest.TestCase):
         runtime_stderr_loglevel=1,
         php_config=None,
         python_config=None,
+        java_config=None,
         cloud_sql_config=None,
         vm_config=None,
         default_version_port=8080,

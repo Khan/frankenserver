@@ -25,16 +25,12 @@
 
 
 
-
 import logging
 
 from google.appengine.api import datastore
 
 
-
-
-
-BLOB_SERVING_URL_KIND = "__BlobServingUrl__"
+BLOB_SERVING_URL_KIND = '__BlobServingUrl__'
 
 
 class ImagesBlobStub(object):
@@ -44,38 +40,36 @@ class ImagesBlobStub(object):
     """Stub implementation of blob-related parts of the images API.
 
     Args:
-      host_prefix: the URL prefix (protocol://host:port) to preprend to
-        image urls on a call to GetUrlBase.
+      host_prefix: string - The URL prefix (protocol://host:port) to prepend to
+        image URLs on a call to GetUrlBase.
     """
     self._host_prefix = host_prefix
 
   def GetUrlBase(self, request, response):
-    """Trivial implementation of ImagesService::GetUrlBase.
+    """Trivial implementation of an API call.
 
     Args:
-      request: ImagesGetUrlBaseRequest, contains a blobkey to an image
-      response: ImagesGetUrlBaseResponse, contains a url to serve the image
+      request: ImagesGetUrlBaseRequest - Contains a blobkey to an image.
+      response: ImagesGetUrlBaseResponse - Contains a URL to serve the image.
     """
     if request.create_secure_url():
-      logging.info("Secure URLs will not be created using the development "
-                   "application server.")
+      logging.info('Secure URLs will not be created using the development '
+                   'application server.')
 
-    entity_info = datastore.Entity(BLOB_SERVING_URL_KIND,
-                                   name=request.blob_key(),
-                                   namespace="")
-    entity_info["blob_key"] = request.blob_key()
+    entity_info = datastore.Entity(
+        BLOB_SERVING_URL_KIND, name=request.blob_key(), namespace='')
+    entity_info['blob_key'] = request.blob_key()
     datastore.Put(entity_info)
 
-    response.set_url("%s/_ah/img/%s" % (self._host_prefix, request.blob_key()))
+    response.set_url('%s/_ah/img/%s' % (self._host_prefix, request.blob_key()))
 
-  def DeleteUrlBase(self, request, response):
-    """Trivial implementation of ImagesService::DeleteUrlBase.
+  def DeleteUrlBase(self, request, unused_response):
+    """Trivial implementation of an API call.
 
     Args:
-      request: ImagesDeleteUrlBaseRequest, contains a blobkey to an image.
-      response: ImagesDeleteUrlBaseResonse - currently unused.
+      request: ImagesDeleteUrlBaseRequest - Contains a blobkey to an image.
+      unused_response: ImagesDeleteUrlBaseResponse - Unused.
     """
-    key = datastore.Key.from_path(BLOB_SERVING_URL_KIND,
-                                  request.blob_key(),
-                                  namespace="")
+    key = datastore.Key.from_path(
+        BLOB_SERVING_URL_KIND, request.blob_key(), namespace='')
     datastore.Delete(key)

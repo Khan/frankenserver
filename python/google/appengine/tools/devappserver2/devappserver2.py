@@ -417,6 +417,14 @@ def create_command_line_parser():
       help='the arguments made available to the script specified in '
       '--python_startup_script.')
 
+  # Java
+  java_group = parser.add_argument_group('Java')
+  java_group.add_argument(
+      '--jvm_flag', action='append',
+      help='additional arguments to pass to the java command when launching '
+      'an instance of the app. May be specified more than once. Example: '
+      '--jvm_flag=-Xmx1024m --jvm_flag=-Xms256m')
+
   # Blobstore
   blobstore_group = parser.add_argument_group('Blobstore API')
   blobstore_group.add_argument(
@@ -751,6 +759,7 @@ class DevelopmentServer(object):
         _LOG_LEVEL_TO_RUNTIME_CONSTANT[options.log_level],
         self._create_php_config(options),
         self._create_python_config(options),
+        self._create_java_config(options),
         self._create_cloud_sql_config(options),
         self._create_vm_config(options),
         self._create_module_to_setting(options.max_module_instances,
@@ -887,6 +896,13 @@ class DevelopmentServer(object):
       if options.python_startup_args:
         python_config.startup_args = options.python_startup_args
     return python_config
+
+  @staticmethod
+  def _create_java_config(options):
+    java_config = runtime_config_pb2.JavaConfig()
+    if options.jvm_flag:
+      java_config.jvm_args.extend(options.jvm_flag)
+    return java_config
 
   @staticmethod
   def _create_cloud_sql_config(options):

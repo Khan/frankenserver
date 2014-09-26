@@ -2030,31 +2030,31 @@ class SigningService(_server_stub_base_class):
     See BaseRpcServer in rpcserver.py for details.
     """
     rpcserver._GetHandlerDecorator(
-        getattr(self.SignForApp, 'im_func' if str is bytes else '__func__'),
+        getattr(self.SignForApp, '__func__'),
         SignForAppRequest,
         SignForAppResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.GetPublicCertificatesForApp, 'im_func' if str is bytes else '__func__'),
+        getattr(self.GetPublicCertificatesForApp, '__func__'),
         GetPublicCertificateForAppRequest,
         GetPublicCertificateForAppResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.GetServiceAccountName, 'im_func' if str is bytes else '__func__'),
+        getattr(self.GetServiceAccountName, '__func__'),
         GetServiceAccountNameRequest,
         GetServiceAccountNameResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.GetAccessToken, 'im_func' if str is bytes else '__func__'),
+        getattr(self.GetAccessToken, '__func__'),
         GetAccessTokenRequest,
         GetAccessTokenResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.GetDefaultGcsBucketName, 'im_func' if str is bytes else '__func__'),
+        getattr(self.GetDefaultGcsBucketName, '__func__'),
         GetDefaultGcsBucketNameRequest,
         GetDefaultGcsBucketNameResponse,
         None,

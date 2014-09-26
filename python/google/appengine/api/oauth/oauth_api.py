@@ -202,7 +202,8 @@ def _maybe_call_get_oauth_user(scope):
   else:
     scope_str = str(sorted(scope))
   if ('OAUTH_ERROR_CODE' not in os.environ or
-      os.environ.get('OAUTH_LAST_SCOPE', None) != scope_str):
+      os.environ.get('OAUTH_LAST_SCOPE', None) != scope_str or
+      os.environ.get('TESTONLY_OAUTH_SKIP_CACHE')):
     req = user_service_pb.GetOAuthUserRequest()
     if scope:
       if isinstance(scope, basestring):

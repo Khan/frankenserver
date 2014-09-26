@@ -50,6 +50,7 @@ from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
 from google.appengine.tools.devappserver2 import gcs_server
 from google.appengine.tools.devappserver2 import go_runtime
+from google.appengine.tools.devappserver2 import health_check_service
 from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
 try:
@@ -313,6 +314,9 @@ class Module(object):
     if (self._python_config and
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
+    if (self._java_config and
+        self._module_configuration.runtime.startswith('java')):
+      runtime_config.java_config.CopyFrom(self._java_config)
 
     if self._vm_config:
       runtime_config.vm_config.CopyFrom(self._vm_config)
@@ -379,6 +383,7 @@ class Module(object):
                runtime_stderr_loglevel,
                php_config,
                python_config,
+               java_config,
                cloud_sql_config,
                vm_config,
                default_version_port,
@@ -408,8 +413,9 @@ class Module(object):
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
-          Python runtime-specific configuration. If None then defaults are
-          used.
+          Python runtime-specific configuration. If None then defaults are used.
+      java_config: A runtime_config_pb2.JavaConfig instance containing
+          Java runtime-specific configuration. If None then defaults are used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
@@ -445,6 +451,7 @@ class Module(object):
     self._balanced_port = balanced_port
     self._php_config = php_config
     self._python_config = python_config
+    self._java_config = java_config
     self._cloud_sql_config = cloud_sql_config
     self._vm_config = vm_config
     self._request_data = request_data
@@ -903,6 +910,7 @@ class Module(object):
                                       self._runtime_stderr_loglevel,
                                       self._php_config,
                                       self._python_config,
+                                      self._java_config,
                                       self._cloud_sql_config,
                                       self._vm_config,
                                       self._default_version_port,
@@ -1007,6 +1015,7 @@ class AutoScalingModule(Module):
                runtime_stderr_loglevel,
                php_config,
                python_config,
+               java_config,
                cloud_sql_config,
                unused_vm_config,
                default_version_port,
@@ -1037,8 +1046,9 @@ class AutoScalingModule(Module):
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
-          Python runtime-specific configuration. If None then defaults are
-          used.
+          Python runtime-specific configuration. If None then defaults are used.
+      java_config: A runtime_config_pb2.JavaConfig instance containing
+          Java runtime-specific configuration. If None then defaults are used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
@@ -1073,6 +1083,7 @@ class AutoScalingModule(Module):
                                             runtime_stderr_loglevel,
                                             php_config,
                                             python_config,
+                                            java_config,
                                             cloud_sql_config,
                                             # VM runtimes does not support
                                             # autoscaling.
@@ -1450,6 +1461,7 @@ class ManualScalingModule(Module):
                runtime_stderr_loglevel,
                php_config,
                python_config,
+               java_config,
                cloud_sql_config,
                vm_config,
                default_version_port,
@@ -1481,8 +1493,9 @@ class ManualScalingModule(Module):
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
-          Python runtime-specific configuration. If None then defaults are
-          used.
+          Python runtime-specific configuration. If None then defaults are used.
+      java_config: A runtime_config_pb2.JavaConfig instance containing
+          Java runtime-specific configuration. If None then defaults are used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
@@ -1517,6 +1530,7 @@ class ManualScalingModule(Module):
                                               runtime_stderr_loglevel,
                                               php_config,
                                               python_config,
+                                              java_config,
                                               cloud_sql_config,
                                               vm_config,
                                               default_version_port,
@@ -1715,6 +1729,12 @@ class ManualScalingModule(Module):
         (self._host, 0), functools.partial(self._handle_request, inst=inst))
     wsgi_servr.start()
     self._port_registry.add(wsgi_servr.port, self, inst)
+
+    health_check_config = self.module_configuration.vm_health_check
+    if (self.module_configuration.runtime == 'vm' and
+        health_check_config.enable_health_check):
+      self._add_health_checks(inst, wsgi_servr, health_check_config)
+
     with self._condition:
       if self._quit_event.is_set():
         return
@@ -1723,6 +1743,15 @@ class ManualScalingModule(Module):
       suspended = self._suspended
     if not suspended:
       self._async_start_instance(wsgi_servr, inst)
+
+  def _add_health_checks(self, inst, wsgi_servr, config):
+    do_health_check = functools.partial(
+        self._do_health_check, wsgi_servr, inst)
+    restart_instance = functools.partial(
+        self._restart_instance, inst)
+    health_checker = health_check_service.HealthChecker(
+        inst, config, do_health_check, restart_instance)
+    health_checker.start()
 
   def _async_start_instance(self, wsgi_servr, inst):
     return _THREAD_POOL.submit(self._start_instance, wsgi_servr, inst)
@@ -1750,6 +1779,20 @@ class ManualScalingModule(Module):
         self._condition.notify(self.max_instance_concurrent_requests)
     except Exception, e:  # pylint: disable=broad-except
       logging.exception('Internal error while handling start request: %s', e)
+
+  def _do_health_check(self, wsgi_servr, inst, start_response,
+                       is_last_successful):
+    is_last_successful = 'yes' if is_last_successful else 'no'
+    url = '/_ah/health?%s' % urllib.urlencode(
+        [('IsLastSuccessful', is_last_successful)])
+    environ = self.build_request_environ(
+        'GET', url, [], '', '', wsgi_servr.port,
+        fake_login=True)
+    return self._handle_request(
+        environ,
+        start_response,
+        inst=inst,
+        request_type=instance.NORMAL_REQUEST)
 
   def _choose_instance(self, timeout_time):
     """Returns an Instance to handle a request or None if all are busy."""
@@ -1898,11 +1941,40 @@ class ManualScalingModule(Module):
         self._async_start_instance(wsgi_servr, inst)
         for wsgi_servr, inst in zip(wsgi_servers, instances_to_start)]
     logging.info('Waiting for instances to restart')
+
+    health_check_config = self.module_configuration.vm_health_check
+    for (inst, wsgi_servr) in zip(instances_to_start, wsgi_servers):
+      if (self.module_configuration.runtime == 'vm'
+          and health_check_config.enable_health_check):
+        self._add_health_checks(inst, wsgi_servr, health_check_config)
+
     _, not_done = futures.wait(start_futures, timeout=_SHUTDOWN_TIMEOUT)
     if not_done:
       logging.warning('All instances may not have restarted')
     else:
       logging.info('Instances restarted')
+
+  def _restart_instance(self, inst):
+    """Restarts the specified instance."""
+    with self._instances_change_lock:
+      # Quit the old instance.
+      inst.quit(force=True)
+      # Create the new instance.
+      new_instance = self._instance_factory.new_instance(inst.instance_id)
+      wsgi_servr = self._wsgi_servers[inst.instance_id]
+      wsgi_servr.set_app(
+          functools.partial(self._handle_request, inst=new_instance))
+      self._port_registry.add(wsgi_servr.port, self, new_instance)
+      # Start the new instance.
+      self._start_instance(wsgi_servr, new_instance)
+    health_check_config = self.module_configuration.vm_health_check
+    if (self.module_configuration.runtime == 'vm'
+        and health_check_config.enable_health_check):
+      self._add_health_checks(new_instance, wsgi_servr, health_check_config)
+      # Replace it in the module registry.
+    with self._instances_change_lock:
+      with self._condition:
+        self._instances[new_instance.instance_id] = new_instance
 
   def get_instance(self, instance_id):
     """Returns the instance with the provided instance ID."""
@@ -1972,6 +2044,7 @@ class BasicScalingModule(Module):
                runtime_stderr_loglevel,
                php_config,
                python_config,
+               java_config,
                cloud_sql_config,
                vm_config,
                default_version_port,
@@ -2003,8 +2076,9 @@ class BasicScalingModule(Module):
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
-          Python runtime-specific configuration. If None then defaults are
-          used.
+          Python runtime-specific configuration. If None then defaults are used.
+      java_config: A runtime_config_pb2.JavaConfig instance containing
+          Java runtime-specific configuration. If None then defaults are used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
@@ -2039,6 +2113,7 @@ class BasicScalingModule(Module):
                                              runtime_stderr_loglevel,
                                              php_config,
                                              python_config,
+                                             java_config,
                                              cloud_sql_config,
                                              vm_config,
                                              default_version_port,
@@ -2404,6 +2479,7 @@ class InteractiveCommandModule(Module):
                runtime_stderr_loglevel,
                php_config,
                python_config,
+               java_config,
                cloud_sql_config,
                vm_config,
                default_version_port,
@@ -2434,8 +2510,9 @@ class InteractiveCommandModule(Module):
       php_config: A runtime_config_pb2.PhpConfig instances containing PHP
           runtime-specific configuration. If None then defaults are used.
       python_config: A runtime_config_pb2.PythonConfig instance containing
-          Python runtime-specific configuration. If None then defaults are
-          used.
+          Python runtime-specific configuration. If None then defaults are used.
+      java_config: A runtime_config_pb2.JavaConfig instance containing
+          Java runtime-specific configuration. If None then defaults are used.
       cloud_sql_config: A runtime_config_pb2.CloudSQL instance containing the
           required configuration for local Google Cloud SQL development. If None
           then Cloud SQL will not be available.
@@ -2467,6 +2544,7 @@ class InteractiveCommandModule(Module):
         runtime_stderr_loglevel,
         php_config,
         python_config,
+        java_config,
         cloud_sql_config,
         vm_config,
         default_version_port,
