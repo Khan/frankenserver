@@ -51,4 +51,14 @@ command to set up the mirror was:
 git svn clone --stdlayout --ignore-paths="^trunk/java" http://googleappengine.googlecode.com/svn/ frankenserver
 ```
 
-and the command to bring in upstream changes is `git svn fetch`.
+and here is how Khan Academy developers can pull in upstream changes:
+
+1. Clone or copy the frankenserver repo into a location outside of webapp. *The git-svn steps do not work from within a subrepo.*
+2. `git checkout -b <version>`
+3. `git svn fetch`
+4. `git svn rebase`, fixing any conflicts that arose
+5. `git push -u origin <version>`
+6. From the frankenserver subrepo in webapp, `git pull && git checkout <version>`
+7. Dogfood the new version for a little while to make sure it's working correctly
+8. From the frankenserver subrepo in webapp, `git checkout master && git merge <version> && git push`
+9. From the webapp repo, commit and push the substate change
