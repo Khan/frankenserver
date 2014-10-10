@@ -59,6 +59,6 @@ and here is how Khan Academy developers can pull in upstream changes:
 4. `git svn rebase`, fixing any conflicts that arose
 5. `git push -u origin <version>`
 6. From the frankenserver subrepo in webapp, `git pull && git checkout <version>`
-7. Dogfood the new version for a little while to make sure it's working correctly
+7. Run `make allcheck` and dogfood the new version for a little while to make sure it's working correctly
 8. From the frankenserver subrepo in webapp, `git checkout master && git merge <version> && git push`
 9. From the webapp repo, commit and push the substate change
