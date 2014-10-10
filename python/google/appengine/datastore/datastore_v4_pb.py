@@ -177,7 +177,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Error'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugHhNgonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIoYBCgxFbnRpdHlSZXN1bHQSLwoGZW50aXR5GAEgAigLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Eg8KB3ZlcnNpb24YAiABKAMiNAoKUmVzdWx0VHlwZRIICgRGVUxMEAESDgoKUFJPSkVDVElPThACEgwKCEtFWV9PTkxZEAMi8QIKBVF1ZXJ5Ej8KCnByb2plY3Rpb24YAiADKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUV4cHJlc3Npb24SNQoEa2luZBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktpbmRFeHByZXNzaW9uEi8KBmZpbHRlchgEIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchI1CgVvcmRlchgFIAMoCzImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXISPAoIZ3JvdXBfYnkYBiADKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRIUCgxzdGFydF9jdXJzb3IYByABKAwSEgoKZW5kX2N1cnNvchgIIAEoDBIRCgZvZmZzZXQYCiABKAU6ATASDQoFbGltaXQYCyABKAUiHgoOS2luZEV4cHJlc3Npb24SDAoEbmFtZRgBIAIoCSIhChFQcm9wZXJ0eVJlZmVyZW5jZRIMCgRuYW1lGAIgAigJItMBChJQcm9wZXJ0eUV4cHJlc3Npb24SPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJdChRhZ2dyZWdhdGlvbl9mdW5jdGlvbhgCIAEoDjI/LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbi5BZ2dyZWdhdGlvbkZ1bmN0aW9uIiAKE0FnZ3JlZ2F0aW9uRnVuY3Rpb24SCQoFRklSU1QQASLJAQoNUHJvcGVydHlPcmRlchI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEk4KCWRpcmVjdGlvbhgCIAEoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5T3JkZXIuRGlyZWN0aW9uOglBU0NFTkRJTkciKgoJRGlyZWN0aW9uEg0KCUFTQ0VORElORxABEg4KCkRFU0NFTkRJTkcQAiKmAgoGRmlsdGVyEkIKEGNvbXBvc2l0ZV9maWx0ZXIYASABKAsyKC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21wb3NpdGVGaWx0ZXISQAoPcHJvcGVydHlfZmlsdGVyGAIgASgLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlGaWx0ZXISTQoWYm91bmRpbmdfY2lyY2xlX2ZpbHRlchgDIAEoCzItLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyEkcKE2JvdW5kaW5nX2JveF9maWx0ZXIYBCABKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Cb3VuZGluZ0JveEZpbHRlciKcAQoPQ29tcG9zaXRlRmlsdGVyEkMKCG9wZXJhdG9yGAEgAigOMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyLk9wZXJhdG9yEi8KBmZpbHRlchgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlciITCghPcGVyYXRvchIHCgNBTkQQASK+AgoOUHJvcGVydHlGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJCCghvcGVyYXRvchgCIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyLk9wZXJhdG9yEi0KBXZhbHVlGAMgAigLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiewoIT3BlcmF0b3ISDQoJTEVTU19USEFOEAESFgoSTEVTU19USEFOX09SX0VRVUFMEAISEAoMR1JFQVRFUl9USEFOEAMSGQoVR1JFQVRFUl9USEFOX09SX0VRVUFMEAQSCQoFRVFVQUwQBRIQCgxIQVNfQU5DRVNUT1IQCyKeAQoUQm91bmRpbmdDaXJjbGVGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRIxCgZjZW50ZXIYAiACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludBIVCg1yYWRpdXNfbWV0ZXJzGAMgAigBIr0BChFCb3VuZGluZ0JveEZpbHRlchI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEjQKCXNvdXRod2VzdBgCIAIoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50EjQKCW5vcnRoZWFzdBgDIAIoCzIhLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50IrABCghHcWxRdWVyeRIUCgxxdWVyeV9zdHJpbmcYASACKAkSHAoNYWxsb3dfbGl0ZXJhbBgCIAEoCDoFZmFsc2USNgoIbmFtZV9hcmcYAyADKAsyJC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeUFyZxI4CgpudW1iZXJfYXJnGAQgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmciWgoLR3FsUXVlcnlBcmcSDAoEbmFtZRgBIAEoCRItCgV2YWx1ZRgCIAEoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlEg4KBmN1cnNvchgDIAEoDCKRAwoQUXVlcnlSZXN1bHRCYXRjaBJMChJlbnRpdHlfcmVzdWx0X3R5cGUYASACKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQuUmVzdWx0VHlwZRI8Cg1lbnRpdHlfcmVzdWx0GAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0EhIKCmVuZF9jdXJzb3IYBCABKAwSTwoMbW9yZV9yZXN1bHRzGAUgAigOMjkuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaC5Nb3JlUmVzdWx0c1R5cGUSGgoPc2tpcHBlZF9yZXN1bHRzGAYgASgFOgEwEhgKEHNuYXBzaG90X3ZlcnNpb24YByABKAMiVgoPTW9yZVJlc3VsdHNUeXBlEhAKDE5PVF9GSU5JU0hFRBABEhwKGE1PUkVfUkVTVUxUU19BRlRFUl9MSU1JVBACEhMKD05PX01PUkVfUkVTVUxUUxADIvIBCghNdXRhdGlvbhJACgJvcBgBIAEoDjIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uLk9wZXJhdGlvbjoHVU5LTk9XThIpCgNrZXkYAiABKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSLwoGZW50aXR5GAMgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5IkgKCU9wZXJhdGlvbhILCgdVTktOT1dOEAASCgoGSU5TRVJUEAESCgoGVVBEQVRFEAISCgoGVVBTRVJUEAMSCgoGREVMRVRFEAQiUwoOTXV0YXRpb25SZXN1bHQSKQoDa2V5GAMgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhYKC25ld192ZXJzaW9uGAQgASgDOgEwIqQCChJEZXByZWNhdGVkTXV0YXRpb24SLwoGdXBzZXJ0GAEgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Ei8KBnVwZGF0ZRgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIvCgZpbnNlcnQYAyADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSNwoOaW5zZXJ0X2F1dG9faWQYBCADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLAoGZGVsZXRlGAUgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhQKBWZvcmNlGAYgASgIOgVmYWxzZSLrAQoYRGVwcmVjYXRlZE11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYASACKAUSOAoSaW5zZXJ0X2F1dG9faWRfa2V5GAIgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5EhYKDnVwc2VydF92ZXJzaW9uGAMgAygDEhYKDnVwZGF0ZV92ZXJzaW9uGAQgAygDEhYKDmluc2VydF92ZXJzaW9uGAUgAygDEh4KFmluc2VydF9hdXRvX2lkX3ZlcnNpb24YBiADKAMSFgoOZGVsZXRlX3ZlcnNpb24YByADKAMitQEKC1JlYWRPcHRpb25zElcKEHJlYWRfY29uc2lzdGVuY3kYASABKA4yNC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5SZWFkT3B0aW9ucy5SZWFkQ29uc2lzdGVuY3k6B0RFRkFVTFQSEwoLdHJhbnNhY3Rpb24YAiABKAwiOAoPUmVhZENvbnNpc3RlbmN5EgsKB0RFRkFVTFQQABIKCgZTVFJPTkcQARIMCghFVkVOVFVBTBACInYKDUxvb2t1cFJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSKQoDa2V5GAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Iq4BCg5Mb29rdXBSZXNwb25zZRI0CgVmb3VuZBgBIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBI2CgdtaXNzaW5nGAIgAygLMiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0Ei4KCGRlZmVycmVkGAMgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5IqsCCg9SdW5RdWVyeVJlcXVlc3QSOgoMcmVhZF9vcHRpb25zGAEgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMSOgoMcGFydGl0aW9uX2lkGAIgASgLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUGFydGl0aW9uSWQSLQoFcXVlcnkYAyABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeRI0CglncWxfcXVlcnkYByABKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HcWxRdWVyeRIdChVtaW5fc2FmZV90aW1lX3NlY29uZHMYBCABKAMSHAoUc3VnZ2VzdGVkX2JhdGNoX3NpemUYBSABKAUiYgoQUnVuUXVlcnlSZXNwb25zZRI4CgViYXRjaBgBIAIoCzIpLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gSFAoMcXVlcnlfaGFuZGxlGAIgASgMIiwKFENvbnRpbnVlUXVlcnlSZXF1ZXN0EhQKDHF1ZXJ5X2hhbmRsZRgBIAIoDCJRChVDb250aW51ZVF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoIlMKF0JlZ2luVHJhbnNhY3Rpb25SZXF1ZXN0EhoKC2Nyb3NzX2dyb3VwGAEgASgIOgVmYWxzZRIcCg1jcm9zc19yZXF1ZXN0GAIgASgIOgVmYWxzZSIvChhCZWdpblRyYW5zYWN0aW9uUmVzcG9uc2USEwoLdHJhbnNhY3Rpb24YASACKAwiJgoPUm9sbGJhY2tSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgAigMIhIKEFJvbGxiYWNrUmVzcG9uc2UiwAIKDUNvbW1pdFJlcXVlc3QSEwoLdHJhbnNhY3Rpb24YASABKAwSMwoIbXV0YXRpb24YBSADKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbhJIChNkZXByZWNhdGVkX211dGF0aW9uGAIgASgLMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uEkgKBG1vZGUYBCABKA4yKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0Lk1vZGU6DVRSQU5TQUNUSU9OQUwSHwoQaWdub3JlX3JlYWRfb25seRgGIAEoCDoFZmFsc2UiMAoETW9kZRIRCg1UUkFOU0FDVElPTkFMEAESFQoRTk9OX1RSQU5TQUNUSU9OQUwQAiLAAQoOQ29tbWl0UmVzcG9uc2USQAoPbXV0YXRpb25fcmVzdWx0GAMgAygLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb25SZXN1bHQSVQoaZGVwcmVjYXRlZF9tdXRhdGlvbl9yZXN1bHQYASABKAsyMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5EZXByZWNhdGVkTXV0YXRpb25SZXN1bHQSFQoNaW5kZXhfdXBkYXRlcxgEIAEoBSJzChJBbGxvY2F0ZUlkc1JlcXVlc3QSLgoIYWxsb2NhdGUYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkSLQoHcmVzZXJ2ZRgCIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSJGChNBbGxvY2F0ZUlkc1Jlc3BvbnNlEi8KCWFsbG9jYXRlZBgBIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSJYCgxXcml0ZVJlcXVlc3QSSAoTZGVwcmVjYXRlZF9tdXRhdGlvbhgBIAIoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvbjKiBwoSRGF0YXN0b3JlVjRTZXJ2aWNlEnkKEEJlZ2luVHJhbnNhY3Rpb24SMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVxdWVzdBoxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJlZ2luVHJhbnNhY3Rpb25SZXNwb25zZSIAEmEKCFJvbGxiYWNrEiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUm9sbGJhY2tSZXF1ZXN0GikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUm9sbGJhY2tSZXNwb25zZSIAElsKBkNvbW1pdBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXNwb25zZSIAEmEKCFJ1blF1ZXJ5EiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUnVuUXVlcnlSZXF1ZXN0GikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUnVuUXVlcnlSZXNwb25zZSIAEnAKDUNvbnRpbnVlUXVlcnkSLS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVxdWVzdBouLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbnRpbnVlUXVlcnlSZXNwb25zZSIAElsKBkxvb2t1cBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXNwb25zZSIAEmoKC0FsbG9jYXRlSWRzEisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQWxsb2NhdGVJZHNSZXF1ZXN0GiwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQWxsb2NhdGVJZHNSZXNwb25zZSIAElgKA0dldBImLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkxvb2t1cFJlcXVlc3QaJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXNwb25zZSIAElkKBVdyaXRlEiUuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuV3JpdGVSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiAEIjCh9jb20uZ29vZ2xlLmFwcGhvc3RpbmcuZGF0YXN0b3JlIAE="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugGJNwonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIpYBCgxFbnRpdHlSZXN1bHQSLwoGZW50aXR5GAEgAigLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Eg8KB3ZlcnNpb24YAiABKAMSDgoGY3Vyc29yGAMgASgMIjQKClJlc3VsdFR5cGUSCAoERlVMTBABEg4KClBST0pFQ1RJT04QAhIMCghLRVlfT05MWRADIvECCgVRdWVyeRI/Cgpwcm9qZWN0aW9uGAIgAygLMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlFeHByZXNzaW9uEjUKBGtpbmQYAyADKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LaW5kRXhwcmVzc2lvbhIvCgZmaWx0ZXIYBCABKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5GaWx0ZXISNQoFb3JkZXIYBSADKAsyJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eU9yZGVyEjwKCGdyb3VwX2J5GAYgAygLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USFAoMc3RhcnRfY3Vyc29yGAcgASgMEhIKCmVuZF9jdXJzb3IYCCABKAwSEQoGb2Zmc2V0GAogASgFOgEwEg0KBWxpbWl0GAsgASgFIh4KDktpbmRFeHByZXNzaW9uEgwKBG5hbWUYASACKAkiIQoRUHJvcGVydHlSZWZlcmVuY2USDAoEbmFtZRgCIAIoCSLTAQoSUHJvcGVydHlFeHByZXNzaW9uEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USXQoUYWdncmVnYXRpb25fZnVuY3Rpb24YAiABKA4yPy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUV4cHJlc3Npb24uQWdncmVnYXRpb25GdW5jdGlvbiIgChNBZ2dyZWdhdGlvbkZ1bmN0aW9uEgkKBUZJUlNUEAEiyQEKDVByb3BlcnR5T3JkZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJOCglkaXJlY3Rpb24YAiABKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eU9yZGVyLkRpcmVjdGlvbjoJQVNDRU5ESU5HIioKCURpcmVjdGlvbhINCglBU0NFTkRJTkcQARIOCgpERVNDRU5ESU5HEAIipgIKBkZpbHRlchJCChBjb21wb3NpdGVfZmlsdGVyGAEgASgLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyEkAKD3Byb3BlcnR5X2ZpbHRlchgCIAEoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyEk0KFmJvdW5kaW5nX2NpcmNsZV9maWx0ZXIYAyABKAsyLS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Cb3VuZGluZ0NpcmNsZUZpbHRlchJHChNib3VuZGluZ19ib3hfZmlsdGVyGAQgASgLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQm91bmRpbmdCb3hGaWx0ZXIinAEKD0NvbXBvc2l0ZUZpbHRlchJDCghvcGVyYXRvchgBIAIoDjIxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlci5PcGVyYXRvchIvCgZmaWx0ZXIYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5GaWx0ZXIiEwoIT3BlcmF0b3ISBwoDQU5EEAEivgIKDlByb3BlcnR5RmlsdGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USQgoIb3BlcmF0b3IYAiACKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlci5PcGVyYXRvchItCgV2YWx1ZRgDIAIoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlInsKCE9wZXJhdG9yEg0KCUxFU1NfVEhBThABEhYKEkxFU1NfVEhBTl9PUl9FUVVBTBACEhAKDEdSRUFURVJfVEhBThADEhkKFUdSRUFURVJfVEhBTl9PUl9FUVVBTBAEEgkKBUVRVUFMEAUSEAoMSEFTX0FOQ0VTVE9SEAsingEKFEJvdW5kaW5nQ2lyY2xlRmlsdGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USMQoGY2VudGVyGAIgAigLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR2VvUG9pbnQSFQoNcmFkaXVzX21ldGVycxgDIAIoASK9AQoRQm91bmRpbmdCb3hGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRI0Cglzb3V0aHdlc3QYAiACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludBI0Cglub3J0aGVhc3QYAyACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludCKwAQoIR3FsUXVlcnkSFAoMcXVlcnlfc3RyaW5nGAEgAigJEhwKDWFsbG93X2xpdGVyYWwYAiABKAg6BWZhbHNlEjYKCG5hbWVfYXJnGAMgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmcSOAoKbnVtYmVyX2FyZxgEIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnIloKC0dxbFF1ZXJ5QXJnEgwKBG5hbWUYASABKAkSLQoFdmFsdWUYAiABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIOCgZjdXJzb3IYAyABKAwiqQMKEFF1ZXJ5UmVzdWx0QmF0Y2gSTAoSZW50aXR5X3Jlc3VsdF90eXBlGAEgAigOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0LlJlc3VsdFR5cGUSPAoNZW50aXR5X3Jlc3VsdBgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIWCg5za2lwcGVkX2N1cnNvchgDIAEoDBISCgplbmRfY3Vyc29yGAQgASgMEk8KDG1vcmVfcmVzdWx0cxgFIAIoDjI5LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2guTW9yZVJlc3VsdHNUeXBlEhoKD3NraXBwZWRfcmVzdWx0cxgGIAEoBToBMBIYChBzbmFwc2hvdF92ZXJzaW9uGAcgASgDIlYKD01vcmVSZXN1bHRzVHlwZRIQCgxOT1RfRklOSVNIRUQQARIcChhNT1JFX1JFU1VMVFNfQUZURVJfTElNSVQQAhITCg9OT19NT1JFX1JFU1VMVFMQAyLyAQoITXV0YXRpb24SQAoCb3AYASABKA4yKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbi5PcGVyYXRpb246B1VOS05PV04SKQoDa2V5GAIgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei8KBmVudGl0eRgDIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eSJICglPcGVyYXRpb24SCwoHVU5LTk9XThAAEgoKBklOU0VSVBABEgoKBlVQREFURRACEgoKBlVQU0VSVBADEgoKBkRFTEVURRAEIlMKDk11dGF0aW9uUmVzdWx0EikKA2tleRgDIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCgtuZXdfdmVyc2lvbhgEIAEoAzoBMCKkAgoSRGVwcmVjYXRlZE11dGF0aW9uEi8KBnVwc2VydBgBIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIvCgZ1cGRhdGUYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGaW5zZXJ0GAMgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjcKDmluc2VydF9hdXRvX2lkGAQgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EiwKBmRlbGV0ZRgFIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIUCgVmb3JjZRgGIAEoCDoFZmFsc2Ui6wEKGERlcHJlY2F0ZWRNdXRhdGlvblJlc3VsdBIVCg1pbmRleF91cGRhdGVzGAEgAigFEjgKEmluc2VydF9hdXRvX2lkX2tleRgCIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCg51cHNlcnRfdmVyc2lvbhgDIAMoAxIWCg51cGRhdGVfdmVyc2lvbhgEIAMoAxIWCg5pbnNlcnRfdmVyc2lvbhgFIAMoAxIeChZpbnNlcnRfYXV0b19pZF92ZXJzaW9uGAYgAygDEhYKDmRlbGV0ZV92ZXJzaW9uGAcgAygDIrUBCgtSZWFkT3B0aW9ucxJXChByZWFkX2NvbnNpc3RlbmN5GAEgASgOMjQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMuUmVhZENvbnNpc3RlbmN5OgdERUZBVUxUEhMKC3RyYW5zYWN0aW9uGAIgASgMIjgKD1JlYWRDb25zaXN0ZW5jeRILCgdERUZBVUxUEAASCgoGU1RST05HEAESDAoIRVZFTlRVQUwQAiJ2Cg1Mb29rdXBSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEikKA2tleRgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKuAQoOTG9va3VwUmVzcG9uc2USNAoFZm91bmQYASADKAsyJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQSNgoHbWlzc2luZxgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIuCghkZWZlcnJlZBgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKrAgoPUnVuUXVlcnlSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEjoKDHBhcnRpdGlvbl9pZBgCIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkEi0KBXF1ZXJ5GAMgASgLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnkSNAoJZ3FsX3F1ZXJ5GAcgASgLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnkSHQoVbWluX3NhZmVfdGltZV9zZWNvbmRzGAQgASgDEhwKFHN1Z2dlc3RlZF9iYXRjaF9zaXplGAUgASgFImIKEFJ1blF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoEhQKDHF1ZXJ5X2hhbmRsZRgCIAEoDCIsChRDb250aW51ZVF1ZXJ5UmVxdWVzdBIUCgxxdWVyeV9oYW5kbGUYASACKAwiUQoVQ29udGludWVRdWVyeVJlc3BvbnNlEjgKBWJhdGNoGAEgAigLMikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaCJTChdCZWdpblRyYW5zYWN0aW9uUmVxdWVzdBIaCgtjcm9zc19ncm91cBgBIAEoCDoFZmFsc2USHAoNY3Jvc3NfcmVxdWVzdBgCIAEoCDoFZmFsc2UiLwoYQmVnaW5UcmFuc2FjdGlvblJlc3BvbnNlEhMKC3RyYW5zYWN0aW9uGAEgAigMIiYKD1JvbGxiYWNrUmVxdWVzdBITCgt0cmFuc2FjdGlvbhgBIAIoDCISChBSb2xsYmFja1Jlc3BvbnNlIsACCg1Db21taXRSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgASgMEjMKCG11dGF0aW9uGAUgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24SSAoTZGVwcmVjYXRlZF9tdXRhdGlvbhgCIAEoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvbhJICgRtb2RlGAQgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdC5Nb2RlOg1UUkFOU0FDVElPTkFMEh8KEGlnbm9yZV9yZWFkX29ubHkYBiABKAg6BWZhbHNlIjAKBE1vZGUSEQoNVFJBTlNBQ1RJT05BTBABEhUKEU5PTl9UUkFOU0FDVElPTkFMEAIiwAEKDkNvbW1pdFJlc3BvbnNlEkAKD211dGF0aW9uX3Jlc3VsdBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uUmVzdWx0ElUKGmRlcHJlY2F0ZWRfbXV0YXRpb25fcmVzdWx0GAEgASgLMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYBCABKAUicwoSQWxsb2NhdGVJZHNSZXF1ZXN0Ei4KCGFsbG9jYXRlGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei0KB3Jlc2VydmUYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiRgoTQWxsb2NhdGVJZHNSZXNwb25zZRIvCglhbGxvY2F0ZWQYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiWAoMV3JpdGVSZXF1ZXN0EkgKE2RlcHJlY2F0ZWRfbXV0YXRpb24YASACKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5EZXByZWNhdGVkTXV0YXRpb24yogcKEkRhdGFzdG9yZVY0U2VydmljZRJ5ChBCZWdpblRyYW5zYWN0aW9uEjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QaMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVzcG9uc2UiABJhCghSb2xsYmFjaxIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVzcG9uc2UiABJbCgZDb21taXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiABJhCghSdW5RdWVyeRIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVzcG9uc2UiABJwCg1Db250aW51ZVF1ZXJ5Ei0uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlcXVlc3QaLi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVzcG9uc2UiABJbCgZMb29rdXASJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJqCgtBbGxvY2F0ZUlkcxIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVxdWVzdBosLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVzcG9uc2UiABJYCgNHZXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJZCgVXcml0ZRIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LldyaXRlUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlc3BvbnNlIgBCIwofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZSAB"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -201,6 +201,8 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
   has_entity_ = 0
   has_version_ = 0
   version_ = 0
+  has_cursor_ = 0
+  cursor_ = ""
 
   def __init__(self, contents=None):
     self.entity_ = google.appengine.datastore.entity_v4_pb.Entity()
@@ -227,11 +229,25 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
 
   def has_version(self): return self.has_version_
 
+  def cursor(self): return self.cursor_
+
+  def set_cursor(self, x):
+    self.has_cursor_ = 1
+    self.cursor_ = x
+
+  def clear_cursor(self):
+    if self.has_cursor_:
+      self.has_cursor_ = 0
+      self.cursor_ = ""
+
+  def has_cursor(self): return self.has_cursor_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_entity()): self.mutable_entity().MergeFrom(x.entity())
     if (x.has_version()): self.set_version(x.version())
+    if (x.has_cursor()): self.set_cursor(x.cursor())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -266,6 +282,8 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     if self.has_entity_ and self.entity_ != x.entity_: return 0
     if self.has_version_ != x.has_version_: return 0
     if self.has_version_ and self.version_ != x.version_: return 0
+    if self.has_cursor_ != x.has_cursor_: return 0
+    if self.has_cursor_ and self.cursor_ != x.cursor_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -281,6 +299,7 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += self.lengthString(self.entity_.ByteSize())
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     return n + 1
 
   def ByteSizePartial(self):
@@ -289,11 +308,13 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
       n += 1
       n += self.lengthString(self.entity_.ByteSizePartial())
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     return n
 
   def Clear(self):
     self.clear_entity()
     self.clear_version()
+    self.clear_cursor()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -302,6 +323,9 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(16)
       out.putVarInt64(self.version_)
+    if (self.has_cursor_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.cursor_)
 
   def OutputPartial(self, out):
     if (self.has_entity_):
@@ -311,6 +335,9 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_):
       out.putVarInt32(16)
       out.putVarInt64(self.version_)
+    if (self.has_cursor_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.cursor_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -323,6 +350,9 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 16:
         self.set_version(d.getVarInt64())
+        continue
+      if tt == 26:
+        self.set_cursor(d.getPrefixedString())
         continue
 
 
@@ -337,6 +367,7 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
       res+=self.entity_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
+    if self.has_cursor_: res+=prefix+("cursor: %s\n" % self.DebugFormatString(self.cursor_))
     return res
 
 
@@ -345,25 +376,28 @@ class EntityResult(ProtocolBuffer.ProtocolMessage):
 
   kentity = 1
   kversion = 2
+  kcursor = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "entity",
     2: "version",
-  }, 2)
+    3: "cursor",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.EntityResult'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBMaBmVudGl0eSABKAIwCzgCSh5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoHdmVyc2lvbiACKAAwAzgBFHN6ClJlc3VsdFR5cGWLAZIBBEZVTEyYAQGMAYsBkgEKUFJPSkVDVElPTpgBAowBiwGSAQhLRVlfT05MWZgBA4wBdMIBHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9y"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBMaBmVudGl0eSABKAIwCzgCSh5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHmjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoHdmVyc2lvbiACKAAwAzgBFBMaBmN1cnNvciADKAIwCTgBFHN6ClJlc3VsdFR5cGWLAZIBBEZVTEyYAQGMAYsBkgEKUFJPSkVDVElPTpgBAowBiwGSAQhLRVlfT05MWZgBA4wBdMIBHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9y"))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -3163,6 +3197,8 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
 
   has_entity_result_type_ = 0
   entity_result_type_ = 0
+  has_skipped_cursor_ = 0
+  skipped_cursor_ = ""
   has_end_cursor_ = 0
   end_cursor_ = ""
   has_more_results_ = 0
@@ -3205,6 +3241,19 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
 
   def clear_entity_result(self):
     self.entity_result_ = []
+  def skipped_cursor(self): return self.skipped_cursor_
+
+  def set_skipped_cursor(self, x):
+    self.has_skipped_cursor_ = 1
+    self.skipped_cursor_ = x
+
+  def clear_skipped_cursor(self):
+    if self.has_skipped_cursor_:
+      self.has_skipped_cursor_ = 0
+      self.skipped_cursor_ = ""
+
+  def has_skipped_cursor(self): return self.has_skipped_cursor_
+
   def end_cursor(self): return self.end_cursor_
 
   def set_end_cursor(self, x):
@@ -3262,6 +3311,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_entity_result_type()): self.set_entity_result_type(x.entity_result_type())
     for i in xrange(x.entity_result_size()): self.add_entity_result().CopyFrom(x.entity_result(i))
+    if (x.has_skipped_cursor()): self.set_skipped_cursor(x.skipped_cursor())
     if (x.has_end_cursor()): self.set_end_cursor(x.end_cursor())
     if (x.has_more_results()): self.set_more_results(x.more_results())
     if (x.has_skipped_results()): self.set_skipped_results(x.skipped_results())
@@ -3301,6 +3351,8 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
     if len(self.entity_result_) != len(x.entity_result_): return 0
     for e1, e2 in zip(self.entity_result_, x.entity_result_):
       if e1 != e2: return 0
+    if self.has_skipped_cursor_ != x.has_skipped_cursor_: return 0
+    if self.has_skipped_cursor_ and self.skipped_cursor_ != x.skipped_cursor_: return 0
     if self.has_end_cursor_ != x.has_end_cursor_: return 0
     if self.has_end_cursor_ and self.end_cursor_ != x.end_cursor_: return 0
     if self.has_more_results_ != x.has_more_results_: return 0
@@ -3330,6 +3382,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.entity_result_type_)
     n += 1 * len(self.entity_result_)
     for i in xrange(len(self.entity_result_)): n += self.lengthString(self.entity_result_[i].ByteSize())
+    if (self.has_skipped_cursor_): n += 1 + self.lengthString(len(self.skipped_cursor_))
     if (self.has_end_cursor_): n += 1 + self.lengthString(len(self.end_cursor_))
     n += self.lengthVarInt64(self.more_results_)
     if (self.has_skipped_results_): n += 1 + self.lengthVarInt64(self.skipped_results_)
@@ -3343,6 +3396,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
       n += self.lengthVarInt64(self.entity_result_type_)
     n += 1 * len(self.entity_result_)
     for i in xrange(len(self.entity_result_)): n += self.lengthString(self.entity_result_[i].ByteSizePartial())
+    if (self.has_skipped_cursor_): n += 1 + self.lengthString(len(self.skipped_cursor_))
     if (self.has_end_cursor_): n += 1 + self.lengthString(len(self.end_cursor_))
     if (self.has_more_results_):
       n += 1
@@ -3354,6 +3408,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
   def Clear(self):
     self.clear_entity_result_type()
     self.clear_entity_result()
+    self.clear_skipped_cursor()
     self.clear_end_cursor()
     self.clear_more_results()
     self.clear_skipped_results()
@@ -3366,6 +3421,9 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.entity_result_[i].ByteSize())
       self.entity_result_[i].OutputUnchecked(out)
+    if (self.has_skipped_cursor_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.skipped_cursor_)
     if (self.has_end_cursor_):
       out.putVarInt32(34)
       out.putPrefixedString(self.end_cursor_)
@@ -3386,6 +3444,9 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.entity_result_[i].ByteSizePartial())
       self.entity_result_[i].OutputPartial(out)
+    if (self.has_skipped_cursor_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.skipped_cursor_)
     if (self.has_end_cursor_):
       out.putVarInt32(34)
       out.putPrefixedString(self.end_cursor_)
@@ -3410,6 +3471,9 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_entity_result().TryMerge(tmp)
+        continue
+      if tt == 26:
+        self.set_skipped_cursor(d.getPrefixedString())
         continue
       if tt == 34:
         self.set_end_cursor(d.getPrefixedString())
@@ -3440,6 +3504,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_skipped_cursor_: res+=prefix+("skipped_cursor: %s\n" % self.DebugFormatString(self.skipped_cursor_))
     if self.has_end_cursor_: res+=prefix+("end_cursor: %s\n" % self.DebugFormatString(self.end_cursor_))
     if self.has_more_results_: res+=prefix+("more_results: %s\n" % self.DebugFormatInt32(self.more_results_))
     if self.has_skipped_results_: res+=prefix+("skipped_results: %s\n" % self.DebugFormatInt32(self.skipped_results_))
@@ -3452,6 +3517,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
 
   kentity_result_type = 1
   kentity_result = 2
+  kskipped_cursor = 3
   kend_cursor = 4
   kmore_results = 5
   kskipped_results = 6
@@ -3461,6 +3527,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
     0: "ErrorCode",
     1: "entity_result_type",
     2: "entity_result",
+    3: "skipped_cursor",
     4: "end_cursor",
     5: "more_results",
     6: "skipped_results",
@@ -3471,6 +3538,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.NUMERIC,
     6: ProtocolBuffer.Encoder.NUMERIC,
@@ -3482,7 +3550,7 @@ class QueryResultBatch(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.QueryResultBatch'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KKGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gTGhJlbnRpdHlfcmVzdWx0X3R5cGUgASgAMAU4AhQTGg1lbnRpdHlfcmVzdWx0IAIoAjALOANKJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdKMBqgEFY3R5cGWyAQZwcm90bzKkARQTGgplbmRfY3Vyc29yIAQoAjAJOAEUExoMbW9yZV9yZXN1bHRzIAUoADAFOAJoABQTGg9za2lwcGVkX3Jlc3VsdHMgBigAMAU4AUIBMKMBqgEHZGVmYXVsdLIBATCkARQTGhBzbmFwc2hvdF92ZXJzaW9uIAcoADADOAEUc3oPTW9yZVJlc3VsdHNUeXBliwGSAQxOT1RfRklOSVNIRUSYAQGMAYsBkgEYTU9SRV9SRVNVTFRTX0FGVEVSX0xJTUlUmAECjAGLAZIBD05PX01PUkVfUkVTVUxUU5gBA4wBdMIBHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9y"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KKGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2gTGhJlbnRpdHlfcmVzdWx0X3R5cGUgASgAMAU4AhQTGg1lbnRpdHlfcmVzdWx0IAIoAjALOANKJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdKMBqgEFY3R5cGWyAQZwcm90bzKkARQTGg5za2lwcGVkX2N1cnNvciADKAIwCTgBFBMaCmVuZF9jdXJzb3IgBCgCMAk4ARQTGgxtb3JlX3Jlc3VsdHMgBSgAMAU4AmgAFBMaD3NraXBwZWRfcmVzdWx0cyAGKAAwBTgBQgEwowGqAQdkZWZhdWx0sgEBMKQBFBMaEHNuYXBzaG90X3ZlcnNpb24gBygAMAM4ARRzeg9Nb3JlUmVzdWx0c1R5cGWLAZIBDE5PVF9GSU5JU0hFRJgBAYwBiwGSARhNT1JFX1JFU1VMVFNfQUZURVJfTElNSVSYAQKMAYsBkgEPTk9fTU9SRV9SRVNVTFRTmAEDjAF0wgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -8157,55 +8225,55 @@ class DatastoreV4Service(_server_stub_base_class):
     See BaseRpcServer in rpcserver.py for details.
     """
     rpcserver._GetHandlerDecorator(
-        getattr(self.BeginTransaction, 'im_func' if str is bytes else '__func__'),
+        getattr(self.BeginTransaction, '__func__'),
         BeginTransactionRequest,
         BeginTransactionResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.Rollback, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Rollback, '__func__'),
         RollbackRequest,
         RollbackResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.Commit, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Commit, '__func__'),
         CommitRequest,
         CommitResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.RunQuery, 'im_func' if str is bytes else '__func__'),
+        getattr(self.RunQuery, '__func__'),
         RunQueryRequest,
         RunQueryResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.ContinueQuery, 'im_func' if str is bytes else '__func__'),
+        getattr(self.ContinueQuery, '__func__'),
         ContinueQueryRequest,
         ContinueQueryResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.Lookup, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Lookup, '__func__'),
         LookupRequest,
         LookupResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.AllocateIds, 'im_func' if str is bytes else '__func__'),
+        getattr(self.AllocateIds, '__func__'),
         AllocateIdsRequest,
         AllocateIdsResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.Get, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Get, '__func__'),
         LookupRequest,
         LookupResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.Write, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Write, '__func__'),
         WriteRequest,
         CommitResponse,
         None,

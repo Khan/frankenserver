@@ -658,7 +658,9 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
 
   def _UnknownIndex(self, status, index_spec):
     status.set_code(search_service_pb.SearchServiceError.OK)
-    status.set_error_detail('no index for %r' % index_spec)
+    status.set_error_detail(
+        "Index '%s' in namespace '%s' does not exist" %
+        (index_spec.name(), index_spec.namespace()))
 
   def _GetNamespace(self, namespace):
     """Get namespace name.
@@ -678,12 +680,9 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     namespace = self._GetNamespace(index_spec.namespace())
 
     index = self.__indexes.setdefault(namespace, {}).get(index_spec.name())
-    if index is None:
-      if create:
-        index = SimpleIndex(index_spec)
-        self.__indexes[namespace][index_spec.name()] = index
-      else:
-        return None
+    if index is None and create:
+      index = SimpleIndex(index_spec)
+      self.__indexes[namespace][index_spec.name()] = index
     return index
 
   def _Dynamic_IndexDocument(self, request, response):
@@ -816,9 +815,10 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       response: An search_service_pb.ListDocumentsResponse.
     """
     params = request.params()
-    index = self._GetIndex(params.index_spec(), create=True)
+    index = self._GetIndex(params.index_spec())
     if index is None:
-      self._UnknownIndex(response.mutable_status(), params.index_spec())
+      response.mutable_status().set_code(
+          search_service_pb.SearchServiceError.OK)
       return
 
     num_docs = 0
@@ -962,7 +962,6 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       self._RandomSearchResponse(request, response)
       return
 
-    index = None
     index = self._GetIndex(request.params().index_spec())
     if index is None:
       self._UnknownIndex(response.mutable_status(),

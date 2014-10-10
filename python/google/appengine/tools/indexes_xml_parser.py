@@ -26,7 +26,6 @@ Index: describes a single index specified in datastore-indexes.xml
 from collections import OrderedDict
 from xml.etree import ElementTree
 
-from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
 
 MISSING_KIND = '<datastore-index> node has missing attribute "kind".'
@@ -36,13 +35,8 @@ NAME_MISSING = ('<datastore-index> node with kind "%s" needs to have a name'
                 ' attribute specified for its <property> node')
 
 
-def GetIndexYaml(unused_application, indexes_xml_str):
-  return _MakeIndexesListIntoYaml(
-      IndexesXmlParser().ProcessXml(indexes_xml_str))
-
-
-def _MakeIndexesListIntoYaml(indexes_list):
-  """Converts list of yaml statements about datastore indexes into a string."""
+def MakeIndexesListIntoYaml(indexes_list):
+  """Converts a list of parsed <datastore-index> clauses into YAML."""
   statements = ['indexes:']
   for index in indexes_list:
     statements += index.ToYaml()
@@ -68,7 +62,7 @@ class IndexesXmlParser(object):
       self.indexes = []
       self.errors = []
       xml_root = ElementTree.fromstring(xml_str)
-      if xml_parser_utils.GetTag(xml_root) != 'datastore-indexes':
+      if xml_root.tag != 'datastore-indexes':
         raise AppEngineConfigException('Root tag must be <datastore-indexes>')
 
       for child in xml_root.getchildren():
@@ -78,8 +72,8 @@ class IndexesXmlParser(object):
         raise AppEngineConfigException('\n'.join(self.errors))
 
       return self.indexes
-    except ElementTree.ParseError:
-      raise AppEngineConfigException('Bad input -- not valid XML')
+    except ElementTree.ParseError as e:
+      raise AppEngineConfigException('Bad input -- not valid XML: %s' % e)
 
   def ProcessIndexNode(self, node):
     """Processes XML <datastore-index> nodes into Index objects.
@@ -94,31 +88,54 @@ class IndexesXmlParser(object):
     Args:
       node: <datastore-index> XML node in datastore-indexes.xml.
     """
-    tag = xml_parser_utils.GetTag(node)
-    if tag != 'datastore-index':
-      self.errors.append('Unrecognized node: <%s>' % tag)
+    if node.tag != 'datastore-index':
+      self.errors.append('Unrecognized node: <%s>' % node.tag)
       return
 
     index = Index()
-    index.kind = xml_parser_utils.GetAttribute(node, 'kind')
+    index.kind = node.attrib.get('kind', '')
     if not index.kind:
       self.errors.append(MISSING_KIND)
-    index.ancestor = xml_parser_utils.BooleanValue(
-        xml_parser_utils.GetAttribute(node, 'ancestor'))
+    ancestor = node.attrib.get('ancestor', 'false')
+    index.ancestor = self._BooleanAttribute(ancestor)
+    if index.ancestor is None:
+      self.errors.append(
+          'Value for ancestor should be true or false, not "%s"' % ancestor)
     index.properties = OrderedDict()
-    for property_node in xml_parser_utils.GetNodes(node, 'property'):
-      name = xml_parser_utils.GetAttribute(property_node, 'name')
+    property_nodes = [n for n in node.getchildren() if n.tag == 'property']
+    for property_node in property_nodes:
+      name = property_node.attrib.get('name', '')
       if not name:
         self.errors.append(NAME_MISSING % index.kind)
         continue
 
-      direction = (xml_parser_utils.GetAttribute(property_node, 'direction')
-                   or 'asc')
+      direction = property_node.attrib.get('direction', 'asc')
       if direction not in ('asc', 'desc'):
         self.errors.append(BAD_DIRECTION % direction)
         continue
       index.properties[name] = direction
     self.indexes.append(index)
+
+  @staticmethod
+  def _BooleanAttribute(value):
+    """Parse the given attribute value as a Boolean value.
+
+    This follows the specification here:
+    http://www.w3.org/TR/2012/REC-xmlschema11-2-20120405/datatypes.html#boolean
+
+    Args:
+      value: the value to parse.
+
+    Returns:
+      True if the value parses as true, False if it parses as false, None if it
+      parses as neither.
+    """
+    if value in ['true', '1']:
+      return True
+    elif value in ['false', '0']:
+      return False
+    else:
+      return None
 
 
 class Index(object):

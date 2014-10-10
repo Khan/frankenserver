@@ -289,6 +289,17 @@ def _DefaultValueConstructorForField(field):
   return MakeScalarDefault
 
 
+def _ReraiseTypeErrorWithFieldName(message_name, field_name):
+  """Re-raise the currently-handled TypeError with the field name added."""
+  exc = sys.exc_info()[1]
+  if len(exc.args) == 1 and type(exc) is TypeError:
+
+    exc = TypeError('%s for field %s.%s' % (str(exc), message_name, field_name))
+
+
+  raise type(exc), exc, sys.exc_info()[2]
+
+
 def _AddInitMethod(message_descriptor, cls):
   """Adds an __init__ method to cls."""
   fields = message_descriptor.fields
@@ -321,10 +332,16 @@ def _AddInitMethod(message_descriptor, cls):
         self._fields[field] = copy
       elif field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
         copy = field._default_constructor(self)
-        copy.MergeFrom(field_value)
+        try:
+          copy.MergeFrom(field_value)
+        except TypeError:
+          _ReraiseTypeErrorWithFieldName(message_descriptor.name, field_name)
         self._fields[field] = copy
       else:
-        setattr(self, field_name, field_value)
+        try:
+          setattr(self, field_name, field_value)
+        except TypeError:
+          _ReraiseTypeErrorWithFieldName(message_descriptor.name, field_name)
 
   init.__module__ = None
   init.__doc__ = None

@@ -1579,14 +1579,15 @@ def _CopySortExpressionToProtocolBuffer(sort_expression, pb):
   pb.set_sort_expression(sort_expression.expression.encode('utf-8'))
   if sort_expression.direction == SortExpression.ASCENDING:
     pb.set_sort_descending(False)
-  if isinstance(sort_expression.default_value, basestring):
-    pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
-  elif (isinstance(sort_expression.default_value, datetime.datetime) or
-        isinstance(sort_expression.default_value, datetime.date)):
-    pb.set_default_value_numeric(
-        search_util.EpochTime(sort_expression.default_value))
-  else:
-    pb.set_default_value_numeric(sort_expression.default_value)
+  if sort_expression.default_value is not None:
+    if isinstance(sort_expression.default_value, basestring):
+      pb.set_default_value_text(sort_expression.default_value.encode('utf-8'))
+    elif (isinstance(sort_expression.default_value, datetime.datetime) or
+          isinstance(sort_expression.default_value, datetime.date)):
+      pb.set_default_value_text(str(
+          search_util.EpochTime(sort_expression.default_value)))
+    else:
+      pb.set_default_value_numeric(sort_expression.default_value)
   return pb
 
 
@@ -1657,7 +1658,7 @@ class SortExpression(object):
 
   _DIRECTIONS = frozenset([ASCENDING, DESCENDING])
 
-  def __init__(self, expression, direction=DESCENDING, default_value=''):
+  def __init__(self, expression, direction=DESCENDING, default_value=None):
     """Initializer.
 
     Args:
@@ -1689,13 +1690,14 @@ class SortExpression(object):
       raise TypeError('expression must be a SortExpression, got None')
     _CheckExpression(self._expression)
     self._default_value = default_value
-    if isinstance(self.default_value, basestring):
-      self._default_value = _ConvertToUnicode(default_value)
-      _CheckText(self._default_value, 'default_value')
-    elif not isinstance(self._default_value,
-                        (int, long, float, datetime.date, datetime.datetime)):
-      raise TypeError('default_value must be text, numeric or datetime, got %s'
-                      % self._default_value.__class__.__name__)
+    if self._default_value is not None:
+      if isinstance(self.default_value, basestring):
+        self._default_value = _ConvertToUnicode(default_value)
+        _CheckText(self._default_value, 'default_value')
+      elif not isinstance(self._default_value,
+                          (int, long, float, datetime.date, datetime.datetime)):
+        raise TypeError('default_value must be text, numeric or datetime, got '
+                        '%s' % self._default_value.__class__.__name__)
 
   @property
   def expression(self):
@@ -2816,7 +2818,7 @@ class Index(object):
     The following code fragment shows how to use a results cursor
 
       cursor = results.cursor
-      for result in response:
+      for result in results:
          # process result
 
       results = index.search(

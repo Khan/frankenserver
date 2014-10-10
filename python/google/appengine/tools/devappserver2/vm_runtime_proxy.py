@@ -29,7 +29,7 @@ from google.appengine.tools.docker import containers
 
 
 _DOCKER_IMAGE_NAME_FORMAT = '{display}.{module}.{version}'
-_DOCKER_CONTAINER_NAME_FORMAT = 'google.appengine.{image_name}.{minor_version}'
+_DOCKER_CONTAINER_NAME_FORMAT = 'google.appengine.{image_name}.{instance_id}'
 
 
 class Error(Exception):
@@ -42,6 +42,10 @@ class InvalidEnvVariableError(Error):
 
 class VersionError(Error):
   """Raised if no version is specified in application configuration file."""
+
+
+class InvalidForwardedPortError(Error):
+  """Raised if the forwarded port is already used (for example by debugger)."""
 
 
 def _GetPortToPublish(port):
@@ -202,6 +206,16 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         environment['DBG_PORT'] = debug_port
         port_bindings[debug_port] = _GetPortToPublish(debug_port)
 
+    # Publish forwarded ports
+    # NOTE: fowarded ports are mapped as host_port => container_port,
+    # port_bindings are mapped the other way around.
+    for h, c in self._module_configuration.forwarded_ports.iteritems():
+      if c in port_bindings:
+        raise InvalidForwardedPortError(
+            'Port {port} is already used by debugger or runtime specific '
+            'VM Service. Please use a different forwarded_port.'.format(port=c))
+      port_bindings[c] = h
+
     external_logs_path = os.path.join(
         '/var/log/app_engine',
         self._escape_domain(
@@ -211,7 +225,7 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         runtime_config.instance_id)
     container_name = _DOCKER_CONTAINER_NAME_FORMAT.format(
         image_name=image_name,
-        minor_version=self._module_configuration.minor_version)
+        instance_id=runtime_config.instance_id)
     self._container = containers.Container(
         self._docker_client,
         containers.ContainerOptions(
@@ -245,7 +259,16 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         instance_logs_getter=self._get_instance_logs,
         error_handler_file=application_configuration.get_app_error_file(
             self._module_configuration))
-    self._proxy.wait_for_connection()
+
+    # If forwarded ports are used we do not really have to serve on 8080.
+    # We'll log /_ah/start request fail, but with health-checks disabled
+    # we should ignore that and continue working (accepting requests on
+    # our forwarded ports outside of dev server control).
+    health_check = self._module_configuration.vm_health_check
+    health_check_enabled = health_check and health_check.enable_health_check
+
+    if health_check_enabled or not self._module_configuration.forwarded_ports:
+      self._proxy.wait_for_connection()
 
   def quit(self):
     """Kills running container and removes it."""

@@ -537,9 +537,27 @@ namespace google\appengine {
     public function clearScopes() {
       $this->scopes = array();
     }
+    public function getRequestWriterPermission() {
+      if (!isset($this->request_writer_permission)) {
+        return false;
+      }
+      return $this->request_writer_permission;
+    }
+    public function setRequestWriterPermission($val) {
+      $this->request_writer_permission = $val;
+      return $this;
+    }
+    public function clearRequestWriterPermission() {
+      unset($this->request_writer_permission);
+      return $this;
+    }
+    public function hasRequestWriterPermission() {
+      return isset($this->request_writer_permission);
+    }
     public function clear() {
       $this->clearScope();
       $this->clearScopes();
+      $this->clearRequestWriterPermission();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -552,6 +570,9 @@ namespace google\appengine {
       foreach ($this->scopes as $value) {
         $res += $this->lengthString(strlen($value));
       }
+      if (isset($this->request_writer_permission)) {
+        $res += 2;
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -563,6 +584,10 @@ namespace google\appengine {
       foreach ($this->scopes as $value) {
         $out->putVarInt32(18);
         $out->putPrefixedString($value);
+      }
+      if (isset($this->request_writer_permission)) {
+        $out->putVarInt32(24);
+        $out->putBoolean($this->request_writer_permission);
       }
     }
     public function tryMerge($d) {
@@ -578,6 +603,9 @@ namespace google\appengine {
             $length = $d->getVarInt32();
             $this->addScopes(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
+            break;
+          case 24:
+            $this->setRequestWriterPermission($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -598,6 +626,9 @@ namespace google\appengine {
       foreach ($x->getScopesList() as $v) {
         $this->addScopes($v);
       }
+      if ($x->hasRequestWriterPermission()) {
+        $this->setRequestWriterPermission($x->getRequestWriterPermission());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -607,6 +638,8 @@ namespace google\appengine {
       foreach (array_map(null, $this->scopes, $x->scopes) as $v) {
         if ($v[0] !== $v[1]) return false;
       }
+      if (isset($this->request_writer_permission) !== isset($x->request_writer_permission)) return false;
+      if (isset($this->request_writer_permission) && $this->request_writer_permission !== $x->request_writer_permission) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -616,6 +649,9 @@ namespace google\appengine {
       }
       foreach ($this->scopes as $value) {
         $res .= $prefix . "scopes: " . $this->debugFormatString($value) . "\n";
+      }
+      if (isset($this->request_writer_permission)) {
+        $res .= $prefix . "request_writer_permission: " . $this->debugFormatBool($this->request_writer_permission) . "\n";
       }
       return $res;
     }
@@ -746,6 +782,23 @@ namespace google\appengine {
     public function clearScopes() {
       $this->scopes = array();
     }
+    public function getIsProjectWriter() {
+      if (!isset($this->is_project_writer)) {
+        return false;
+      }
+      return $this->is_project_writer;
+    }
+    public function setIsProjectWriter($val) {
+      $this->is_project_writer = $val;
+      return $this;
+    }
+    public function clearIsProjectWriter() {
+      unset($this->is_project_writer);
+      return $this;
+    }
+    public function hasIsProjectWriter() {
+      return isset($this->is_project_writer);
+    }
     public function clear() {
       $this->clearEmail();
       $this->clearUserId();
@@ -754,6 +807,7 @@ namespace google\appengine {
       $this->clearIsAdmin();
       $this->clearClientId();
       $this->clearScopes();
+      $this->clearIsProjectWriter();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -784,6 +838,9 @@ namespace google\appengine {
       $res += 1 * sizeof($this->scopes);
       foreach ($this->scopes as $value) {
         $res += $this->lengthString(strlen($value));
+      }
+      if (isset($this->is_project_writer)) {
+        $res += 2;
       }
       return $res;
     }
@@ -816,6 +873,10 @@ namespace google\appengine {
       foreach ($this->scopes as $value) {
         $out->putVarInt32(58);
         $out->putPrefixedString($value);
+      }
+      if (isset($this->is_project_writer)) {
+        $out->putVarInt32(64);
+        $out->putBoolean($this->is_project_writer);
       }
     }
     public function tryMerge($d) {
@@ -855,6 +916,9 @@ namespace google\appengine {
             $this->addScopes(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
+          case 64:
+            $this->setIsProjectWriter($d->getBoolean());
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -892,6 +956,9 @@ namespace google\appengine {
       foreach ($x->getScopesList() as $v) {
         $this->addScopes($v);
       }
+      if ($x->hasIsProjectWriter()) {
+        $this->setIsProjectWriter($x->getIsProjectWriter());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -911,6 +978,8 @@ namespace google\appengine {
       foreach (array_map(null, $this->scopes, $x->scopes) as $v) {
         if ($v[0] !== $v[1]) return false;
       }
+      if (isset($this->is_project_writer) !== isset($x->is_project_writer)) return false;
+      if (isset($this->is_project_writer) && $this->is_project_writer !== $x->is_project_writer) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -935,6 +1004,9 @@ namespace google\appengine {
       }
       foreach ($this->scopes as $value) {
         $res .= $prefix . "scopes: " . $this->debugFormatString($value) . "\n";
+      }
+      if (isset($this->is_project_writer)) {
+        $res .= $prefix . "is_project_writer: " . $this->debugFormatBool($this->is_project_writer) . "\n";
       }
       return $res;
     }

@@ -32,6 +32,7 @@ from google.appengine.api import appinfo
 from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
+from google.appengine.client.services import port_manager
 from google.appengine.tools import queue_xml_parser
 from google.appengine.tools import yaml_translator
 from google.appengine.tools.devappserver2 import errors
@@ -45,6 +46,17 @@ INBOUND_SERVICES_CHANGED = 4
 ENV_VARIABLES_CHANGED = 5
 ERROR_HANDLERS_CHANGED = 6
 NOBUILD_FILES_CHANGED = 7
+
+
+_HEALTH_CHECK_DEFAULTS = {
+    'enable_health_check': True,
+    'check_interval_sec': 5,
+    'timeout_sec': 4,
+    'unhealthy_threshold': 2,
+    'healthy_threshold': 2,
+    'restart_threshold': 60,
+    'host': '127.0.0.1'
+}
 
 
 def java_supported():
@@ -106,7 +118,21 @@ class ModuleConfiguration(object):
     self._minor_version_id = ''.join(random.choice(string.digits) for _ in
                                      range(18))
 
+    self._forwarded_ports = {}
+    if self.runtime == 'vm':
+      vm_settings = self._app_info_external.vm_settings
+      if vm_settings:
+        ports = vm_settings.get('forwarded_ports')
+        if ports:
+          logging.debug('setting forwarded ports %s', ports)
+          pm = port_manager.PortManager()
+          pm.Add(ports, 'forwarded')
+          self._forwarded_ports = pm.GetAllMappedPorts()
+
     self._translate_configuration_files()
+
+    self._vm_health_check = _set_health_check_defaults(
+        self._app_info_external.vm_health_check)
 
   @property
   def application_root(self):
@@ -162,6 +188,11 @@ class ModuleConfiguration(object):
     return self._app_info_external.GetEffectiveRuntime()
 
   @property
+  def forwarded_ports(self):
+    """A dictionary with forwarding rules as host_port => container_port."""
+    return self._forwarded_ports
+
+  @property
   def threadsafe(self):
     return self._threadsafe
 
@@ -212,6 +243,10 @@ class ModuleConfiguration(object):
   @property
   def config_path(self):
     return self._config_path
+
+  @property
+  def vm_health_check(self):
+    return self._vm_health_check
 
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
@@ -346,6 +381,26 @@ class ModuleConfiguration(object):
         f.write(queue_yaml)
 
 
+def _set_health_check_defaults(vm_health_check):
+  """Sets default values for any missing attributes in VmHealthCheck.
+
+  These defaults need to be kept up to date with the production values in
+  vm_health_check.cc
+
+  Args:
+    vm_health_check: An instance of appinfo.VmHealthCheck or None.
+
+  Returns:
+    An instance of appinfo.VmHealthCheck
+  """
+  if not vm_health_check:
+    vm_health_check = appinfo.VmHealthCheck()
+  for k, v in _HEALTH_CHECK_DEFAULTS.iteritems():
+    if getattr(vm_health_check, k) is None:
+      setattr(vm_health_check, k, v)
+  return vm_health_check
+
+
 class BackendsConfiguration(object):
   """Stores configuration information for a backends.yaml file."""
 
@@ -369,9 +424,9 @@ class BackendsConfiguration(object):
     self._backends_name_to_backend_entry = {}
     for backend in backend_info_external.backends or []:
       self._backends_name_to_backend_entry[backend.name] = backend
-    self._changes = dict(
-        (backend_name, set())
-        for backend_name in self._backends_name_to_backend_entry)
+      self._changes = dict(
+          (backend_name, set())
+          for backend_name in self._backends_name_to_backend_entry)
 
   @staticmethod
   def _parse_configuration(configuration_path):
@@ -486,6 +541,10 @@ class BackendConfiguration(object):
     return self._module_configuration.effective_runtime
 
   @property
+  def forwarded_ports(self):
+    return self._module_configuration.forwarded_ports
+
+  @property
   def threadsafe(self):
     return self._module_configuration.threadsafe
 
@@ -541,6 +600,10 @@ class BackendConfiguration(object):
   @property
   def config_path(self):
     return self._module_configuration.config_path
+
+  @property
+  def vm_health_check(self):
+    return self._module_configuration.vm_health_check
 
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.

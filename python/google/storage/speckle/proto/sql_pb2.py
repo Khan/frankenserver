@@ -1004,31 +1004,31 @@ class SqlService(_server_stub_base_class):
     See BaseRpcServer in rpcserver.py for details.
     """
     rpcserver._GetHandlerDecorator(
-        getattr(self.Exec, 'im_func' if str is bytes else '__func__'),
+        getattr(self.Exec, '__func__'),
         ExecRequest,
         ExecResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.ExecOp, 'im_func' if str is bytes else '__func__'),
+        getattr(self.ExecOp, '__func__'),
         ExecOpRequest,
         ExecOpResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.GetMetadata, 'im_func' if str is bytes else '__func__'),
+        getattr(self.GetMetadata, '__func__'),
         MetadataRequest,
         MetadataResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.OpenConnection, 'im_func' if str is bytes else '__func__'),
+        getattr(self.OpenConnection, '__func__'),
         OpenConnectionRequest,
         OpenConnectionResponse,
         None,
         'INTEGRITY')
     rpcserver._GetHandlerDecorator(
-        getattr(self.CloseConnection, 'im_func' if str is bytes else '__func__'),
+        getattr(self.CloseConnection, '__func__'),
         CloseConnectionRequest,
         CloseConnectionResponse,
         None,

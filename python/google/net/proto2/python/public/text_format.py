@@ -97,15 +97,17 @@ def PrintMessage(message, out, indent=0, as_utf8=False, as_one_line=False,
       for element in value:
         PrintField(field, element, out, indent, as_utf8, as_one_line,
                    pointy_brackets=pointy_brackets,
+                   use_index_order=use_index_order,
                    float_format=float_format)
     else:
       PrintField(field, value, out, indent, as_utf8, as_one_line,
                  pointy_brackets=pointy_brackets,
+                 use_index_order=use_index_order,
                  float_format=float_format)
 
 
 def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
-               pointy_brackets=False, float_format=None):
+               pointy_brackets=False, use_index_order=False, float_format=None):
   """Print a single field name/value pair.  For repeated fields, the value
   should be a single element."""
 
@@ -133,6 +135,7 @@ def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
 
   PrintFieldValue(field, value, out, indent, as_utf8, as_one_line,
                   pointy_brackets=pointy_brackets,
+                  use_index_order=use_index_order,
                   float_format=float_format)
   if as_one_line:
     out.write(' ')
@@ -142,6 +145,7 @@ def PrintField(field, value, out, indent=0, as_utf8=False, as_one_line=False,
 
 def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
                     as_one_line=False, pointy_brackets=False,
+                    use_index_order=False,
                     float_format=None):
   """Print a single field value (not including name).  For repeated fields,
   the value should be a single element."""
@@ -158,12 +162,14 @@ def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
       out.write(' %s ' % openb)
       PrintMessage(value, out, indent, as_utf8, as_one_line,
                    pointy_brackets=pointy_brackets,
+                   use_index_order=use_index_order,
                    float_format=float_format)
       out.write(closeb)
     else:
       out.write(' %s\n' % openb)
       PrintMessage(value, out, indent + 2, as_utf8, as_one_line,
                    pointy_brackets=pointy_brackets,
+                   use_index_order=use_index_order,
                    float_format=float_format)
       out.write(' ' * indent + closeb)
   elif field.cpp_type == descriptor.FieldDescriptor.CPPTYPE_ENUM:

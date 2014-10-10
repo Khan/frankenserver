@@ -554,6 +554,9 @@ class HttpProxyTest(wsgi_test_utils.WSGITestCase):
         error_handler_file=None,
         prior_error=error)
 
+    # Expect that wait_for_connection does not hang.
+    self.proxy.wait_for_connection()
+
     expected_headers = {
         'Content-Type': 'text/plain',
         'Content-Length': str(len(error)),

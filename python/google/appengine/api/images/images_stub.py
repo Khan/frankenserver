@@ -25,12 +25,13 @@
 
 
 
-
 import datetime
 import logging
 import re
-import time
 import StringIO
+import time
+
+
 
 try:
   import json as simplejson
@@ -64,35 +65,45 @@ from google.appengine.runtime import apiproxy_errors
 
 
 
-
-
-GS_INFO_KIND = "__GsFileInfo__"
-
 BLOB_SERVING_URL_KIND = images_blob_stub.BLOB_SERVING_URL_KIND
+BMP = 'BMP'
+GIF = 'GIF'
+GS_INFO_KIND = '__GsFileInfo__'
+ICO = 'ICO'
+JPEG = 'JPEG'
+MAX_REQUEST_SIZE = 32 << 20  # 32MB
+PNG = 'PNG'
+RGB = 'RGB'
+RGBA = 'RGBA'
+TIFF = 'TIFF'
+WEBP = 'WEBP'
 
-MAX_REQUEST_SIZE = 32 << 20
+FORMAT_LIST = [BMP, GIF, ICO, JPEG, PNG, TIFF, WEBP]
+EXIF_TIME_REGEX = re.compile(r'^([0-9]{4}):([0-9]{1,2}):([0-9]{1,2})'
+                             ' ([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2}))?')
 
 
+# Orientation tag id in EXIF.
 _EXIF_ORIENTATION_TAG = 274
 
-
+# DateTimeOriginal tag in EXIF.
 _EXIF_DATETIMEORIGINAL_TAG = 36867
 
-
+# Subset of EXIF tags. The stub is only able to extract these fields.
 _EXIF_TAGS = {
-    256: "ImageWidth",
-    257: "ImageLength",
-    271: "Make",
-    272: "Model",
-    _EXIF_ORIENTATION_TAG: "Orientation",
-    305: "Software",
-    306: "DateTime",
-    34855: "ISOSpeedRatings",
-    _EXIF_DATETIMEORIGINAL_TAG: "DateTimeOriginal",
-    36868: "DateTimeDigitized",
-    37383: "MeteringMode",
-    37385: "Flash",
-    41987: "WhiteBalance"}
+    256: 'ImageWidth',
+    257: 'ImageLength',
+    271: 'Make',
+    272: 'Model',
+    _EXIF_ORIENTATION_TAG: 'Orientation',
+    305: 'Software',
+    306: 'DateTime',
+    34855: 'ISOSpeedRatings',
+    _EXIF_DATETIMEORIGINAL_TAG: 'DateTimeOriginal',
+    36868: 'DateTimeDigitized',
+    37383: 'MeteringMode',
+    37385: 'Flash',
+    41987: 'WhiteBalance'}
 
 
 def _ArgbToRgbaTuple(argb):
@@ -140,7 +151,7 @@ def _BackendPremultiplication(color):
 class ImagesServiceStub(apiproxy_stub.APIProxyStub):
   """Stub version of images API to be used with the dev_appserver."""
 
-  def __init__(self, service_name="images", host_prefix=""):
+  def __init__(self, service_name='images', host_prefix=''):
     """Preloads PIL to load all modules in the unhardened environment.
 
     Args:
@@ -148,8 +159,8 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       host_prefix: the URL prefix (protocol://host:port) to preprend to
         image urls on a call to GetUrlBase.
     """
-    super(ImagesServiceStub, self).__init__(service_name,
-                                            max_request_size=MAX_REQUEST_SIZE)
+    super(ImagesServiceStub, self).__init__(
+        service_name, max_request_size=MAX_REQUEST_SIZE)
     self._blob_stub = images_blob_stub.ImagesBlobStub(host_prefix)
     Image.init()
 
@@ -160,30 +171,30 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     http://www.pythonware.com/library/pil/handbook/index.htm
 
     Args:
-      request: ImagesCompositeRequest, contains image request info.
-      response: ImagesCompositeResponse, contains transformed image.
+      request: ImagesCompositeRequest - Contains image request info.
+      response: ImagesCompositeResponse - Contains transformed image.
+
+    Raises:
+      ApplicationError: Bad data was provided, likely data about the dimensions.
     """
+    if (not request.canvas().width() or not request.canvas().height() or
+        not request.image_size() or not request.options_size()):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+    if (request.canvas().width() > 4000 or
+        request.canvas().height() > 4000 or
+        request.options_size() > images.MAX_COMPOSITES_PER_REQUEST):
+      raise apiproxy_errors.ApplicationError(
+          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
+
     width = request.canvas().width()
     height = request.canvas().height()
     color = _ArgbToRgbaTuple(request.canvas().color())
 
 
     color = _BackendPremultiplication(color)
-    canvas = Image.new("RGBA", (width, height), color)
+    canvas = Image.new(RGBA, (width, height), color)
     sources = []
-    if (not request.canvas().width() or request.canvas().width() > 4000 or
-        not request.canvas().height() or request.canvas().height() > 4000):
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
-    if not request.image_size():
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
-    if not request.options_size():
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
-    if request.options_size() > images.MAX_COMPOSITES_PER_REQUEST:
-      raise apiproxy_errors.ApplicationError(
-          images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
     for image in request.image_list():
       sources.append(self._OpenImageData(image))
 
@@ -203,32 +214,35 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       y_anchor = (options.anchor() / 3) * 0.5
       x_offset = int(options.x_offset() + x_anchor * (width - source.size[0]))
       y_offset = int(options.y_offset() + y_anchor * (height - source.size[1]))
-      if source.mode == "RGBA":
+      if source.mode == RGBA:
         canvas.paste(source, (x_offset, y_offset), source)
       else:
         alpha = options.opacity() * 255
-        mask = Image.new("L", source.size, alpha)
+        mask = Image.new('L', source.size, alpha)
         canvas.paste(source, (x_offset, y_offset), mask)
     response_value = self._EncodeImage(canvas, request.canvas().output())
     response.mutable_image().set_content(response_value)
 
   def _Dynamic_Histogram(self, request, response):
-    """Trivial implementation of ImagesService::Histogram.
+    """Trivial implementation of an API.
 
     Based off documentation of the PIL library at
     http://www.pythonware.com/library/pil/handbook/index.htm
 
     Args:
-      request: ImagesHistogramRequest, contains the image.
-      response: ImagesHistogramResponse, contains histogram of the image.
+      request: ImagesHistogramRequest - Contains the image.
+      response: ImagesHistogramResponse - Contains histogram of the image.
+
+    Raises:
+      ApplicationError: Image was of an unsupported format.
     """
     image = self._OpenImageData(request.image())
 
     img_format = image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF", "WEBP"):
+    if img_format not in FORMAT_LIST:
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.NOT_IMAGE)
-    image = image.convert("RGBA")
+    image = image.convert(RGBA)
     red = [0] * 256
     green = [0] * 256
     blue = [0] * 256
@@ -272,19 +286,17 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         original_image, input_settings.parse_metadata())
     if input_settings.parse_metadata():
       logging.info(
-          "Once the application is deployed, a more powerful metadata "
-          "extraction will be performed which might return many more fields.")
+          'Once the application is deployed, a more powerful metadata '
+          'extraction will be performed which might return many more fields.')
 
-    new_image = self._ProcessTransforms(original_image,
-                                        request.transform_list(),
-                                        correct_orientation)
+    new_image = self._ProcessTransforms(
+        original_image, request.transform_list(), correct_orientation)
 
     substitution_rgb = None
     if input_settings.has_transparent_substitution_rgb():
       substitution_rgb = input_settings.transparent_substitution_rgb()
-    response_value = self._EncodeImage(new_image,
-                                       request.output(),
-                                       substitution_rgb)
+    response_value = self._EncodeImage(
+        new_image, request.output(), substitution_rgb)
     response.mutable_image().set_content(response_value)
     response.set_source_metadata(source_metadata)
 
@@ -304,17 +316,16 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         format does not support transparency.
 
     Returns:
-      str with encoded image information in given encoding format.
+      str - Encoded image information in given encoding format.  Default is PNG.
     """
     image_string = StringIO.StringIO()
+    image_encoding = PNG
 
-    image_encoding = "PNG"
+    if output_encoding.mime_type() == images_service_pb.OutputSettings.WEBP:
+      image_encoding = WEBP
 
-    if (output_encoding.mime_type() == images_service_pb.OutputSettings.WEBP):
-      image_encoding = "WEBP"
-
-    if (output_encoding.mime_type() == images_service_pb.OutputSettings.JPEG):
-      image_encoding = "JPEG"
+    if output_encoding.mime_type() == images_service_pb.OutputSettings.JPEG:
+      image_encoding = JPEG
 
 
 
@@ -328,11 +339,11 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         blue = substitution_rgb & 0xFF
         green = (substitution_rgb >> 8) & 0xFF
         red = (substitution_rgb >> 16) & 0xFF
-        background = Image.new("RGB", image.size, (red, green, blue))
+        background = Image.new(RGB, image.size, (red, green, blue))
         background.paste(image, mask=image.split()[3])
         image = background
       else:
-        image = image.convert("RGB")
+        image = image.convert(RGB)
 
     image.save(image_string, image_encoding)
     return image_string.getvalue()
@@ -348,7 +359,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       Image containing the image data passed in or reference by blob-key.
 
     Raises:
-      ApplicationError if both content and blob-key are provided.
+      ApplicationError: Both content and blob-key are provided.
       NOTE: 'content' must always be set because it is a required field,
       however, it must be the empty string when a blob-key is provided.
     """
@@ -363,7 +374,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
 
     img_format = image.format
-    if img_format not in ("BMP", "GIF", "ICO", "JPEG", "PNG", "TIFF", "WEBP"):
+    if img_format not in FORMAT_LIST:
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.NOT_IMAGE)
     return image
@@ -372,11 +383,10 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     """Opens an image provided as a string.
 
     Args:
-      image: image data to be opened
+      image: Image data to be opened.
 
     Raises:
-      apiproxy_errors.ApplicationError if the image cannot be opened or if it
-      is an unsupported format.
+      ApplicationError: Image could not be opened or was an unsupported format.
 
     Returns:
       Image containing the image data passed in.
@@ -402,17 +412,17 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     except datastore_errors.Error:
 
 
-      logging.exception("Blob with key %r does not exist", blob_key)
+      logging.exception('Blob with key %r does not exist', blob_key)
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.UNSPECIFIED_ERROR)
 
-    blobstore_storage = apiproxy_stub_map.apiproxy.GetStub("blobstore")
+    blobstore_storage = apiproxy_stub_map.apiproxy.GetStub('blobstore')
 
 
     try:
       blob_file = blobstore_storage.storage.OpenBlob(blob_key)
     except IOError:
-      logging.exception("Could not get file for blob_key %r", blob_key)
+      logging.exception('Could not get file for blob_key %r', blob_key)
 
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_IMAGE_DATA)
@@ -420,7 +430,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     try:
       return Image.open(blob_file)
     except IOError:
-      logging.exception("Could not open image %r for blob_key %r",
+      logging.exception('Could not open image %r for blob_key %r',
                         blob_file, blob_key)
 
       raise apiproxy_errors.ApplicationError(
@@ -430,16 +440,16 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     """Check an argument for the Crop transform.
 
     Args:
-      arg: float, argument to Crop transform to check.
+      arg: float - Argument to Crop transform to check.
 
     Raises:
-      apiproxy_errors.ApplicationError on problem with argument.
+      ApplicationError: There was a problem with the provided argument.
     """
     if not isinstance(arg, float):
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
 
-    if not (0 <= arg <= 1.0):
+    if 0 > arg or arg > 1.0:
       raise apiproxy_errors.ApplicationError(
           images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
 
@@ -468,37 +478,36 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         or req_height is 0.
 
     Returns:
-      tuple (width, height) which are both ints of the new ratio.
+      tuple (width, height) ints of the new dimensions.
     """
 
 
     width_ratio = float(req_width) / current_width
     height_ratio = float(req_height) / current_height
 
-    if allow_stretch:
+    height = req_height
+    width = req_width
+    if allow_stretch or crop_to_fit:
 
       if not req_width or not req_height:
         raise apiproxy_errors.ApplicationError(
             images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
-      return req_width, req_height
-    elif crop_to_fit:
-
-      if not req_width or not req_height:
-        raise apiproxy_errors.ApplicationError(
-            images_service_pb.ImagesServiceError.BAD_TRANSFORM_DATA)
-      if width_ratio > height_ratio:
-        return req_width, int(width_ratio * current_height)
-      else:
-        return int(height_ratio * current_width), req_height
+      if not allow_stretch:
+        if width_ratio > height_ratio:
+          height = int(width_ratio * current_height)
+        else:
+          width = int(height_ratio * current_width)
     else:
 
 
-      if req_width == 0 or (width_ratio > height_ratio and req_height != 0):
 
-        return int(height_ratio * current_width), req_height
+      if not req_width or (width_ratio > height_ratio and req_height):
+
+        width = int(height_ratio * current_width)
       else:
 
-        return req_width, int(width_ratio * current_height)
+        height = int(width_ratio * current_height)
+    return width, height
 
   def _Resize(self, image, transform):
     """Use PIL to resize the given image with the given transform.
@@ -511,7 +520,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       PIL.Image.Image with transforms performed on it.
 
     Raises:
-      BadRequestError if the resize data given is bad.
+      ApplicationError: The resize data given was bad.
     """
     width = 0
     height = 0
@@ -532,12 +541,9 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
     allow_stretch = transform.allow_stretch()
 
     current_width, current_height = image.size
-    new_width, new_height = self._CalculateNewDimensions(current_width,
-                                                         current_height,
-                                                         width,
-                                                         height,
-                                                         crop_to_fit,
-                                                         allow_stretch)
+    new_width, new_height = self._CalculateNewDimensions(
+        current_width, current_height, width, height, crop_to_fit,
+        allow_stretch)
     new_image = image.resize((new_width, new_height), Image.ANTIALIAS)
     if crop_to_fit and (new_width > width or new_height > height):
 
@@ -560,7 +566,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       PIL.Image.Image with transforms performed on it.
 
     Raises:
-      BadRequestError if the rotate data given is bad.
+      ApplicationError: Given data for the rotate was bad.
     """
     degrees = transform.rotate()
     if degrees < 0 or degrees % 90 != 0:
@@ -618,14 +624,16 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
 
   @staticmethod
   def _GetExifFromImage(image):
-    if hasattr(image, "_getexif"):
+    if hasattr(image, '_getexif'):
 
 
 
 
 
       try:
+
         from PIL import TiffImagePlugin
+
         return image._getexif()
       except ImportError:
         # We have not managed to get this to work in the SDK with Python
@@ -647,27 +655,26 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       parse_metadata: bool, True if metadata parsing has been requested. If
         False the result will contain image dimensions.
     Returns:
-      str, JSON encoded values with various metadata fields.
+      str - JSON encoded values with various metadata fields.
     """
 
     def ExifTimeToUnixtime(exif_time):
       """Convert time in EXIF to unix time.
 
       Args:
-        exif_time: str, the time from the EXIF block formated by EXIF standard.
-          E.g., "2011:02:20 10:23:12", seconds are optional.
+        exif_time: str - Time from the EXIF block formated by EXIF standard.
+            Seconds are optional.  (Example: '2011:02:20 10:23:12')
 
       Returns:
         Integer, the time in unix fromat: seconds since the epoch.
       """
-      regexp = re.compile(r"^([0-9]{4}):([0-9]{1,2}):([0-9]{1,2})"
-                          " ([0-9]{1,2}):([0-9]{1,2})(?::([0-9]{1,2}))?")
-      match = regexp.match(exif_time)
-      if match is None: return None
+      match = EXIF_TIME_REGEX.match(exif_time)
+      if not match:
+        return None
       try:
         date = datetime.datetime(*map(int, filter(None, match.groups())))
       except ValueError:
-        logging.info("Invalid date in EXIF: %s", exif_time)
+        logging.info('Invalid date in EXIF: %s', exif_time)
         return None
       return int(time.mktime(date.timetuple()))
 
@@ -684,9 +691,9 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         metadata_dict[_EXIF_DATETIMEORIGINAL_TAG] = date_ms
       else:
         del metadata_dict[_EXIF_DATETIMEORIGINAL_TAG]
-    metadata = dict([(_EXIF_TAGS[k], v)
-                for k, v in metadata_dict.iteritems()
-                if k in _EXIF_TAGS])
+    metadata = dict(
+        [(_EXIF_TAGS[k], v) for k, v in metadata_dict.iteritems()
+         if k in _EXIF_TAGS])
     return simplejson.dumps(metadata)
 
   def _CorrectOrientation(self, image, orientation):
@@ -737,8 +744,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       PIL.Image.Image with transforms performed on it.
 
     Raises:
-      BadRequestError if we are passed more than one of the same type of
-      transform.
+      ApplicationError: More than one of the same type of transform was present.
     """
     new_image = image
     if len(transforms) > images.MAX_TRANSFORMS_PER_REQUEST:
@@ -803,10 +809,10 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
       elif transform.has_autolevels():
 
 
-        logging.info("I'm Feeling Lucky autolevels will be visible once this "
-                     "application is deployed.")
+        logging.info('I\'m Feeling Lucky autolevels will be visible once this '
+                     'application is deployed.')
       else:
-        logging.warn("Found no transformations found to perform.")
+        logging.warn('Found no transformations found to perform.')
 
       if correct_orientation:
 

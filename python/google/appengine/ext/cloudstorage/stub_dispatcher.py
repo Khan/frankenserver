@@ -261,7 +261,7 @@ def _handle_get(gcs_stub, filename, param_dict, headers):
 
 
     start, end = _Range(headers).value
-    st_size = result.headers['content-length']
+    st_size = result.headers['x-goog-stored-content-length']
     if end is not None:
       result.status_code = httplib.PARTIAL_CONTENT
       end = min(end, st_size - 1)
@@ -347,7 +347,8 @@ def _handle_head(gcs_stub, filename):
   http_time = common.posix_time_to_http(filestat.st_ctime)
 
   response_headers = {
-      'content-length': filestat.st_size,
+      'x-goog-stored-content-length': filestat.st_size,
+      'content-length': 0,
       'content-type': filestat.content_type,
       'etag': filestat.etag,
       'last-modified': http_time

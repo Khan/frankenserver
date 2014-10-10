@@ -17,6 +17,7 @@
 """Appcfg logic specific to Java apps."""
 from __future__ import with_statement
 
+import collections
 import os.path
 import re
 import shutil
@@ -110,25 +111,17 @@ class JavaAppUpdate(object):
 
   _JSP_REGEX = re.compile('.*\\.jspx?')
 
-  class _XmlParser(object):
-
-
-
-    def __init__(self, xml_name, yaml_name, xml_to_yaml_function):
-      self.xml_name = xml_name
-      self.yaml_name = yaml_name
-      self.xml_to_yaml_function = xml_to_yaml_function
+  _xml_parser = collections.namedtuple(
+      '_xml_parser', ['xml_name', 'yaml_name', 'xml_to_yaml_function'])
 
   _XML_PARSERS = [
-      _XmlParser('backends.xml', 'backends.yaml',
-                 backends_xml_parser.GetBackendsYaml),
-      _XmlParser('cron.xml', 'cron.yaml', cron_xml_parser.GetCronYaml),
-      _XmlParser('datastore-indexes.xml', 'index.yaml',
-                 indexes_xml_parser.GetIndexYaml),
-      _XmlParser('dispatch.xml', 'dispatch.yaml',
-                 dispatch_xml_parser.GetDispatchYaml),
-      _XmlParser('dos.xml', 'dos.yaml', dos_xml_parser.GetDosYaml),
-      _XmlParser('queue.xml', 'queue.yaml', queue_xml_parser.GetQueueYaml),
+      _xml_parser('backends.xml', 'backends.yaml',
+                  backends_xml_parser.GetBackendsYaml),
+      _xml_parser('cron.xml', 'cron.yaml', cron_xml_parser.GetCronYaml),
+      _xml_parser('dispatch.xml', 'dispatch.yaml',
+                  dispatch_xml_parser.GetDispatchYaml),
+      _xml_parser('dos.xml', 'dos.yaml', dos_xml_parser.GetDosYaml),
+      _xml_parser('queue.xml', 'queue.yaml', queue_xml_parser.GetQueueYaml),
   ]
 
   _XML_VALIDATOR_CLASS = 'com.google.appengine.tools.admin.XmlValidator'
@@ -274,6 +267,27 @@ class JavaAppUpdate(object):
         yaml_file = os.path.join(appengine_generated, parser.yaml_name)
         with open(yaml_file, 'w') as yaml:
           yaml.write(yaml_string)
+
+
+
+
+
+
+    indexes = []
+    for xml_name in (
+        'datastore-indexes.xml',
+        os.path.join('appengine-generated', 'datastore-indexes-auto.xml')):
+      xml_name = os.path.join(self.basepath, 'WEB-INF', xml_name)
+      if os.path.exists(xml_name):
+        with open(xml_name) as xml_file:
+          xml_string = xml_file.read()
+        parser = indexes_xml_parser.IndexesXmlParser()
+        indexes += parser.ProcessXml(xml_string)
+    if indexes:
+      yaml_string = indexes_xml_parser.MakeIndexesListIntoYaml(indexes)
+      yaml_file = os.path.join(appengine_generated, 'index.yaml')
+      with open(yaml_file, 'w') as yaml:
+        yaml.write(yaml_string)
 
     return stage_dir
 

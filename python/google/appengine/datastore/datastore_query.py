@@ -907,6 +907,10 @@ class _BoundingCircleFilter(_SinglePropertyFilter):
     self._lat_lng = geo_util.LatLng(latitude, longitude)
     self._radius_meters = radius_meters
 
+    if not radius_meters >= 0:
+      raise datastore_errors.BadArgumentError(
+          'invalid radius: %r' % radius_meters)
+
   @classmethod
   def _from_v4_pb(cls, bounding_circle_v4_pb):
     return _BoundingCircleFilter(bounding_circle_v4_pb.property().name(),
@@ -918,6 +922,7 @@ class _BoundingCircleFilter(_SinglePropertyFilter):
     return self._property_name
 
   def _apply_to_value(self, value):
+
 
 
     if value[0] != entity_pb.PropertyValue.kPointValueGroup:
@@ -977,6 +982,7 @@ class _BoundingBoxFilter(_SinglePropertyFilter):
     return self._property_name
 
   def _apply_to_value(self, value):
+
 
 
     if value[0] != entity_pb.PropertyValue.kPointValueGroup:
@@ -1924,7 +1930,7 @@ class Query(_BaseQuery):
                                                        FilterPredicate):
       raise datastore_errors.BadArgumentError(
           'filter_predicate should be datastore_query.FilterPredicate (%r)' %
-          (ancestor,))
+          (filter_predicate,))
 
 
     if isinstance(order, CompositeOrder):
@@ -2240,6 +2246,34 @@ class _AugmentedQuery(_BaseQuery):
     self._max_filtered_count = max_filtered_count
     self._in_memory_filter = in_memory_filter
     self._in_memory_results = in_memory_results
+
+  @property
+  def app(self):
+    return self._query._key_filter.app
+
+  @property
+  def namespace(self):
+    return self._query._key_filter.namespace
+
+  @property
+  def kind(self):
+    return self._query._key_filter.kind
+
+  @property
+  def ancestor(self):
+    return self._query._key_filter.ancestor
+
+  @property
+  def filter_predicate(self):
+    return self._query._filter_predicate
+
+  @property
+  def order(self):
+    return self._query._order
+
+  @property
+  def group_by(self):
+    return self._query._group_by
 
   def run_async(self, conn, query_options=None):
     if not isinstance(conn, datastore_rpc.BaseConnection):
