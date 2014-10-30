@@ -623,6 +623,12 @@ def create_command_line_parser():
       'flag is more useful for diagnosing problems in dev_appserver.py rather '
       'than in application code)')
   misc_group.add_argument(
+      '--dev_appserver_log_setup_script', default=None,
+      help='path to a Python script that will be run to set up logging for '
+      'the development server. The default log set up is always run, and this '
+      'script will simply run afterwards (so clear out any log handlers if '
+      'necessary).')
+  misc_group.add_argument(
       '--skip_sdk_update_check',
       action=boolean_action.BooleanAction,
       const=True,
@@ -717,6 +723,14 @@ class DevelopmentServer(object):
     """
     logging.getLogger().setLevel(
         _LOG_LEVEL_TO_PYTHON_CONSTANT[options.dev_appserver_log_level])
+
+    if options.dev_appserver_log_setup_script:
+      try:
+        execfile(options.dev_appserver_log_setup_script, {}, {})
+      except Exception as e:
+        logging.exception("Error executing log setup script at %r.",
+                          options.dev_appserver_log_setup_script)
+
 
     configuration = application_configuration.ApplicationConfiguration(
         options.config_paths, options.app_id)
