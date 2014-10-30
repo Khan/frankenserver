@@ -792,6 +792,12 @@ def create_command_line_parser(configuration=None):
       'flag is more useful for diagnosing problems in dev_appserver.py rather '
       'than in application code)')
   misc_group.add_argument(
+      '--dev_appserver_log_setup_script', default=None,
+      help='path to a Python script that will be run to set up logging for '
+      'the development server. The default log set up is always run, and this '
+      'script will simply run afterwards (so clear out any log handlers if '
+      'necessary).')
+  misc_group.add_argument(
       '--skip_sdk_update_check',
       action=boolean_action.BooleanAction,
       const=True,
