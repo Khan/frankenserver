@@ -159,6 +159,14 @@ class DevelopmentServer(object):
         constants.LOG_LEVEL_TO_PYTHON_CONSTANT[options.dev_appserver_log_level])
 
     parsed_env_variables = dict(options.env_variables or [])
+
+    if options.dev_appserver_log_setup_script:
+      try:
+        execfile(options.dev_appserver_log_setup_script, {}, {})
+      except Exception as e:
+        logging.exception("Error executing log setup script at %r.",
+                          options.dev_appserver_log_setup_script)
+
     configuration = application_configuration.ApplicationConfiguration(
         config_paths=options.config_paths,
         app_id=options.app_id,
