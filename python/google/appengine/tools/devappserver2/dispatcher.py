@@ -18,6 +18,7 @@
 
 import collections
 import logging
+import re
 import socket
 import sys
 import threading
@@ -728,8 +729,18 @@ class Dispatcher(request_info.Dispatcher):
       return self._get_module_with_soft_routing(module_name, None), None
 
     else:
-      if ':' in hostname:
-        port = int(hostname.split(':', 1)[1])
+      def get_port(hostname):
+        # This will first check to see if hostname is an IPv6 address, then it
+        # will fall back on the old-school method of looking for a colon
+        # followed by numbers at the end.
+        PORT_RE = re.compile(
+          r"^\[[0-9a-fA-F:]+\]:(?P<port>[0-9]+)|.*:(?P<port2>[0-9]+)$")
+        matched = PORT_RE.match(hostname)
+        return matched and int(matched.group("port") or matched.group("port2"))
+
+      _port = get_port(hostname)
+      if _port is not None:
+        port = _port
       else:
         port = 80
       try:
