@@ -384,7 +384,7 @@ class FancyProxyHandler(urllib2.ProxyHandler):
 class FancyHTTPSHandler(urllib2.HTTPSHandler):
   """An HTTPSHandler that works with CONNECT-enabled proxies."""
 
-  def do_open(self, http_class, req):
+  def do_open(self, http_class, req, **http_conn_args):
     proxy_authorization = None
     for header in req.headers:
       if header.lower() == "proxy-authorization":
@@ -401,7 +401,8 @@ class FancyHTTPSHandler(urllib2.HTTPSHandler):
                                   req._cert_file,
                                   req._ca_certs,
                                   proxy_authorization),
-          req)
+          req,
+          **http_conn_args )
     except urllib2.URLError, url_error:
       try:
         import ssl
