@@ -34,6 +34,15 @@ _IGNORED_FILE_SUFFIXES = (
     # Vim
     '.swp',
     '.swo',
+    # Vim's crazy permissions-probing swap files
+    # These take the form 4913 + 123n for n = 0, 1, 2...
+    # More info:
+    # https://groups.google.com/d/msg/vim_dev/sppdpElxY44/-5xZcvPRqbQJ
+    # or search vim's fileio.c for "4913" (line 3704 at the time of writing)
+    '4913',
+    '5036',
+    '5159',
+    '5282',
 )
 
 
