@@ -1,0 +1,44 @@
+# Before adding an entry here that affects everyone, consider if it's perhaps
+# more appropriate to add it to only your own personal hgignore file for the
+# repo. See the following link to learn how to do this:
+# http://mercurial.selenic.com/wiki/TipsAndTricks#Ignore_files_in_local_working_copy_only
+
+syntax: glob
+
+### VC directories (needed since this file is both .hgignore and .gitignore)
+.git
+.hg
+
+### Generated files
+genfiles
+*.pyc
+.bundle
+# Created by third_party/codemod.py when doing refactors
+.codemod.bookmark
+# Created by arc liberate
+.phutil_module_cache
+
+### Manually created files
+secrets.py
+secrets_dev.py
+datastore/*
+# Contains an OAuth2 token for communicating with BigQuery in development.
+bigquery_token
+
+### OS/Editor-created files
+*.DS_Store
+.*.swp
+.*.un~
+.tags
+.tags_sorted_by_file
+.tm_properties
+*.rej
+.idea
+TAGS
+
+### Unknown (may no longer be needed)
+*.espressostorage
+*.pem
+.project
+.pydevproject
+.settings/org.eclipse.core.resources.prefs
