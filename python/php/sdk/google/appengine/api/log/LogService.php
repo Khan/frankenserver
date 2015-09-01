@@ -19,12 +19,15 @@
 
 namespace google\appengine\api\log;
 
+use google\appengine\base\VoidProto;
+use google\appengine\FlushRequest;
 use google\appengine\LogReadRequest;
 use google\appengine\LogReadResponse;
 use google\appengine\LogServiceError\ErrorCode;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\util\StringUtil;
+use google\appengine\UserAppLogGroup;
 
 /**
  * The LogService allows an application to query for request and application
@@ -77,6 +80,22 @@ final class LogService {
       LOG_INFO => self::LEVEL_INFO,
       LOG_DEBUG => self::LEVEL_DEBUG);
 
+  // A UserAppLogGroup object that holds the currently buffered logs.
+  private static $app_log_group = null;
+
+  // Maximum number of log entries to buffer before they are automaticallly
+  // flushed upon adding the next log entry.
+  private static $auto_flush_entries = 100;
+
+  // Maximum size of logs to buffer before they are automaticallly flushed
+  // upon adding the next log entry.
+  private static $auto_flush_bytes = 524288;
+
+  // Maximum amount of time in seconds before the buffered logs are
+  // automatically flushed upon adding the next log entry.
+  private static $flush_time_limit = 60;
+
+  private static $last_flush_time;
 
   // Validation patterns copied from google/appengine/api/logservice/logservice.py
   private static $MAJOR_VERSION_ID_REGEX =
@@ -347,6 +366,132 @@ final class LogService {
   }
 
   /**
+   * Add an app log at a particular Google App Engine severity level.
+   *
+   * @param integer $severity The Google App Engine severity level for the log.
+   * @param string $message The message to log.
+   */
+  public static function log($severity, $message) {
+    if (!is_int($severity)) {
+      throw new \InvalidArgumentException(
+        'Parameter $severity must be integer but was ' .
+        self::typeOrClass($severity));
+    }
+
+    if ($severity < self::LEVEL_DEBUG || $severity > self::LEVEL_CRITICAL) {
+      throw new \InvalidArgumentException(
+        'Invalid severity level ' . $severity);
+    }
+
+    if (!is_string($message)) {
+      throw new \InvalidArgumentException(
+        'Parameter $message must be string but was ' .
+        self::typeOrClass($message));
+    }
+
+    if (!isset(self::$app_log_group)) {
+      self::$app_log_group = new UserAppLogGroup();
+    }
+
+    $app_log_line = self::$app_log_group->addLogLine();
+    $app_log_line->setTimestampUsec(intval(microtime(true) * 1e6));
+    $app_log_line->setLevel($severity);
+    $app_log_line->setMessage($message);
+
+    if (function_exists('_gae_stderr_log')) {
+      _gae_stderr_log($severity, $message);
+    }
+
+    self::flushIfNeeded();
+  }
+
+  /**
+   * Write all buffered log messages to the log storage. Logs may not be
+   * immediately available to read.
+   */
+  public static function flush() {
+    if (isset(self::$app_log_group)) {
+      $req = new FlushRequest();
+      $req->setLogs(self::$app_log_group->serializeToString());
+      $resp = new VoidProto();
+      ApiProxy::makeSyncCall('logservice', 'Flush', $req, $resp);
+      self::$app_log_group->clear();
+      self::$last_flush_time = microtime(true);
+    }
+  }
+
+  /**
+   * Set the maximum number of log entries to buffer before they are
+   * automaticallly flushed upon adding the next log entry.
+   *
+   * @param integer $entries Number of log entries to buffer.
+   */
+  public static function setAutoFlushEntries($entries) {
+    if (!is_int($entries)) {
+      throw new \InvalidArgumentException(
+          'Entries must be an integer but was ' . self::typeOrClass($entries));
+    }
+    self::$auto_flush_entries = $entries;
+  }
+
+  /**
+   * Sets the maximum size of logs to buffer before they are automaticallly
+   * flushed upon adding the next log entry.
+   *
+   * @param integer $bytes Size of logs to buffer in bytes.
+   */
+  public static function setAutoFlushBytes($bytes) {
+    if (!is_int($bytes)) {
+      throw new \InvalidArgumentException(
+          'Bytes must be an integer but was ' . self::typeOrClass($bytes));
+    }
+    self::$auto_flush_bytes = $bytes;
+  }
+
+  /**
+   * Sets the maximum amount of time in seconds before the buffered logs are
+   * automatically flushed upon adding the next log entry.
+   *
+   * @param integer $seconds Time in seconds. Use zero or negative value to
+   * disable the time limit.
+   */
+  public static function setLogFlushTimeLimit($seconds) {
+    if (!is_int($seconds)) {
+      throw new \InvalidArgumentException(
+          'Seconds must be an integer but was ' . self::typeOrClass($seconds));
+    }
+    self::$flush_time_limit = $seconds;
+  }
+
+  private static function shouldFlushBasedOnEntries() {
+    return self::$app_log_group->getLogLineSize() > self::$auto_flush_entries;
+  }
+
+  private static function shouldFlushBasedOnSize() {
+    return self::$app_log_group->byteSizePartial() > self::$auto_flush_bytes;
+  }
+
+  private static function shouldFlushBasedOnTime() {
+    return self::$flush_time_limit > 0 && isset(self::$last_flush_time) &&
+        self::$last_flush_time + self::$flush_time_limit < microtime(true);
+  }
+
+  private static function flushIfNeeded() {
+    $should_flush = false;
+    if (self::shouldFlushBasedOnEntries()) {
+      $should_flush = true;
+    } else if (self::shouldFlushBasedOnSize()) {
+      $should_flush = true;
+    } else if (self::shouldFlushBasedOnTime()) {
+      $should_flush = true;
+    }
+
+    if ($should_flush) {
+      self::flush();
+    }
+  }
+
+  /**
    * Translates a PHP <syslog>syslog<syslog> priority level into a Google App
    * Engine severity level. Useful when filtering logs by minimum severity
    * level given the syslog level.
@@ -382,16 +527,6 @@ final class LogService {
     return (double) $datetime->getTimeStamp() * 1e6;
   }
 
-  /**
-   * The GAE PECL extension calls this directly instead of the built-in syslog.
-   */
-  private static function syslog($priority, $message) {
-    $log_level = self::getAppEngineLogLevel($priority);
-    self::log($log_level, $message);
-    if (function_exists('_gae_syslog')) {
-      _gae_syslog($log_level, $message);
-    }
-  }
 }
 
 /**

@@ -17,13 +17,14 @@
 """Monitors a directory tree for changes."""
 
 
+
 import logging
 import sys
 import types
 
 from google.appengine.tools.devappserver2 import inotify_file_watcher
 from google.appengine.tools.devappserver2 import mtime_file_watcher
-from google.appengine.tools.devappserver2 import win32_file_watcher, fsevents_file_watcher
+from google.appengine.tools.devappserver2 import win32_file_watcher
 
 
 class _MultipleFileWatcher(object):
@@ -46,20 +47,27 @@ class _MultipleFileWatcher(object):
     for watcher in self._file_watchers:
       watcher.start()
 
-  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
-    """All re's in skip_files_re are taken to be relative to its base-dir."""
-    for watcher in self._file_watchers:
-      watcher.set_skip_files_re(skip_files_re, skip_files_base_dir)
-
   def quit(self):
     for watcher in self._file_watchers:
       watcher.quit()
 
-  def has_changes(self):
-    # .has_changes() returns True if there has been any changes since the
-    # last call to .has_changes() so it must be called for every FileWatcher
-    # to prevent spurious change notifications on subsequent calls.
-    return any([watcher.has_changes() for watcher in self._file_watchers])
+  def changes(self, timeout_ms=0):
+    """Returns the paths changed in the watched directories since the last call.
+
+    start() must be called before this method.
+
+    Args:
+      timeout_ms: the maximum number of mulliseconds you allow this function to
+                  wait for a filesystem change.
+
+    Returns:
+       An iterable of changed directories/files.
+    """
+
+    # Splits the allocated time between the watchers.
+    timeout_ms /= len(self._file_watchers)
+    return set.union(
+        *[watcher.changes(timeout_ms) for watcher in self._file_watchers])
 
 
 def _create_watcher(directories, watcher_class):
@@ -116,32 +124,6 @@ def _create_linux_watcher(directories):
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
 
 
-def _create_mac_watcher(directories):
-  """Create a watcher for Mac OS X.
-
-  While we prefer FSEventsFileWatcher for Mac OS X, the user may not have the
-  Python wrapper for the FSEvents framework installed. Try to create a
-  FSEventsFileWatcher but fall back on MTimeFileWatcher if the required Python
-  package is not available.
-
-  Args:
-    directories: A list representing the paths of the directories to monitor.
-
-  Returns:
-    A FSEventsFileWatcher if the required Python package is available and an
-    MTimeFileWatcher if not.
-  """
-  if fsevents_file_watcher.FSEventsFileWatcher.is_available():
-    return _create_watcher(directories,
-                           fsevents_file_watcher.FSEventsFileWatcher)
-  else:
-    logging.warning('Could not create FSEventsFileWatcher; falling back to '
-                    'the slower MTimeFileWatcher. To fix this, run '
-                    '"pip install -r requirements.txt" from your '
-                    'frankenserver directory.')
-    return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
-
-
 def get_file_watcher(directories, use_mtime_file_watcher):
   """Returns an instance that monitors a hierarchy of directories.
 
@@ -153,7 +135,7 @@ def get_file_watcher(directories, use_mtime_file_watcher):
 
   Returns:
     A FileWatcher appropriate for the current platform. start() must be called
-    before has_changes().
+    before changes().
   """
   assert not isinstance(directories, types.StringTypes), 'expected list got str'
 
@@ -161,9 +143,18 @@ def get_file_watcher(directories, use_mtime_file_watcher):
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
   elif sys.platform.startswith('linux'):
     return _create_linux_watcher(directories)
-  elif sys.platform.startswith('darwin'):
-    return _create_mac_watcher(directories)
   elif sys.platform.startswith('win'):
     return _create_watcher(directories, win32_file_watcher.Win32FileWatcher)
   else:
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
+
+  # NOTE: The Darwin-specific watcher implementation (found in the deleted file
+  # fsevents_file_watcher.py) was incorrect - the Mac OS X FSEvents
+  # implementation does not detect changes in symlinked files or directories. It
+  # also does not provide file-level change precision before Mac OS 10.7.
+  #
+  # It is still possible to provide an efficient implementation by watching all
+  # symlinked directories and using mtime checking for symlinked files. On any
+  # change in a directory, it would have to be rescanned to see if a new
+  # symlinked file or directory was added. It also might be possible to use
+  # kevents instead of the Carbon API to detect files changes.

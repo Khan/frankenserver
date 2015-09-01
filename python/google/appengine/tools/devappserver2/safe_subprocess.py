@@ -94,7 +94,7 @@ def start_process_file(args, input_string, env, cwd, stdin=None, stdout=None,
   the value of input_string and the second file is returned to the caller.
 
   Args:
-    args: A string or sequence of strings containing the program arguments.
+    args: A list of strings containing the program arguments.
     input_string: A string to pass to stdin of the subprocess.
     env: A dict containing environment variables for the subprocess.
     cwd: A string containing the directory to switch to before executing the
@@ -133,4 +133,3 @@ def start_process_file(args, input_string, env, cwd, stdin=None, stdout=None,
 
   p.child_out = child_out
   return p
-

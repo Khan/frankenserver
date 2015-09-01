@@ -29,6 +29,7 @@
 
 
 
+
 import base64
 import bisect
 import copy
@@ -56,6 +57,7 @@ from google.appengine.api.search import search_service_pb
 from google.appengine.api.search import search_util
 from google.appengine.api.search.stub import document_matcher
 from google.appengine.api.search.stub import expression_evaluator
+from google.appengine.api.search.stub import simple_facet
 from google.appengine.api.search.stub import simple_tokenizer
 from google.appengine.api.search.stub import tokens
 from google.appengine.runtime import apiproxy_errors
@@ -360,6 +362,10 @@ class RamInvertedIndex(object):
     """Returns the schema for the index."""
     return self._schema
 
+  def DeleteSchema(self):
+    """Deletes the schema for the index."""
+    self._schema = FieldTypesDict()
+
   def __repr__(self):
     return search_util.Repr(self, [('_inverted_index', self._inverted_index),
                                    ('_schema', self._schema),
@@ -613,6 +619,10 @@ class SimpleIndex(object):
     """Returns the schema for the index."""
     return self._inverted_index.GetSchema()
 
+  def DeleteSchema(self):
+    """Deletes the schema for the index."""
+    self._inverted_index.DeleteSchema()
+
   def __repr__(self):
     return search_util.Repr(self, [('_index_spec', self._index_spec),
                                    ('_documents', self._documents),
@@ -780,6 +790,21 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         self._AddSchemaInformation(index, metadata)
       self._AddStorageInformation(index, metadata)
 
+  def _Dynamic_DeleteSchema(self, request, response):
+    """A local implementation of SearchService.DeleteSchema RPC.
+
+    Args:
+      request: A search_service_pb.DeleteSchemaRequest.
+      response: An search_service_pb.DeleteSchemaResponse.
+    """
+
+    params = request.params()
+    for index_spec in params.index_spec_list():
+      index = self._GetIndex(index_spec)
+      if index is not None:
+        index.DeleteSchema()
+      response.add_status().set_code(search_service_pb.SearchServiceError.OK)
+
   def _AddSchemaInformation(self, index, metadata_pb):
     schema = index.GetSchema()
     for name in schema:
@@ -945,7 +970,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
         if (isinstance(expression, float) or
             isinstance(expression, long) or
             isinstance(expression, int)):
-          expr.mutable_value().set_string_value(str(expression))
+          expr.mutable_value().set_string_value(repr(float(expression)))
           expr.mutable_value().set_type(document_pb.FieldValue.NUMBER)
         else:
           expr.mutable_value().set_string_value(expression)
@@ -984,8 +1009,10 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
       self._InvalidRequest(response.mutable_status(), e)
       response.set_matched_count(0)
       return
-    response.set_matched_count(len(results))
 
+    facet_analyzer = simple_facet.SimpleFacet(params)
+    results = facet_analyzer.RefineResults(results)
+    response.set_matched_count(len(results))
     offset = 0
     if params.has_cursor():
       try:
@@ -1026,6 +1053,7 @@ class SearchServiceStub(apiproxy_stub.APIProxyStub):
     self._FillSearchResponse(results, result_range, params.cursor_type(),
                              _ScoreRequested(params), response, field_names,
                              params.keys_only())
+    facet_analyzer.FillFacetResponse(results, response)
 
     response.mutable_status().set_code(search_service_pb.SearchServiceError.OK)
 

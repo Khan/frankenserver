@@ -35,6 +35,7 @@ namespace google\appengine\URLFetchServiceError {
     const TOO_MANY_REDIRECTS = 10;
     const MALFORMED_REPLY = 11;
     const CONNECTION_ERROR = 12;
+    const PAYLOAD_TOO_LARGE = 13;
   }
 }
 namespace google\appengine {

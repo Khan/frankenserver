@@ -42,8 +42,8 @@ import google.appengine.datastore.snapshot_pb
 class InternalHeader(ProtocolBuffer.ProtocolMessage):
   has_requesting_app_id_ = 0
   requesting_app_id_ = ""
-  has_requesting_project_id_ = 0
-  requesting_project_id_ = ""
+  has_requesting_project_number_ = 0
+  requesting_project_number_ = ""
   has_requesting_version_id_ = 0
   requesting_version_id_ = ""
   has_api_settings_ = 0
@@ -65,18 +65,18 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
 
   def has_requesting_app_id(self): return self.has_requesting_app_id_
 
-  def requesting_project_id(self): return self.requesting_project_id_
+  def requesting_project_number(self): return self.requesting_project_number_
 
-  def set_requesting_project_id(self, x):
-    self.has_requesting_project_id_ = 1
-    self.requesting_project_id_ = x
+  def set_requesting_project_number(self, x):
+    self.has_requesting_project_number_ = 1
+    self.requesting_project_number_ = x
 
-  def clear_requesting_project_id(self):
-    if self.has_requesting_project_id_:
-      self.has_requesting_project_id_ = 0
-      self.requesting_project_id_ = ""
+  def clear_requesting_project_number(self):
+    if self.has_requesting_project_number_:
+      self.has_requesting_project_number_ = 0
+      self.requesting_project_number_ = ""
 
-  def has_requesting_project_id(self): return self.has_requesting_project_id_
+  def has_requesting_project_number(self): return self.has_requesting_project_number_
 
   def requesting_version_id(self): return self.requesting_version_id_
 
@@ -108,7 +108,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_requesting_app_id()): self.set_requesting_app_id(x.requesting_app_id())
-    if (x.has_requesting_project_id()): self.set_requesting_project_id(x.requesting_project_id())
+    if (x.has_requesting_project_number()): self.set_requesting_project_number(x.requesting_project_number())
     if (x.has_requesting_version_id()): self.set_requesting_version_id(x.requesting_version_id())
     if (x.has_api_settings()): self.set_api_settings(x.api_settings())
 
@@ -116,8 +116,8 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     if x is self: return 1
     if self.has_requesting_app_id_ != x.has_requesting_app_id_: return 0
     if self.has_requesting_app_id_ and self.requesting_app_id_ != x.requesting_app_id_: return 0
-    if self.has_requesting_project_id_ != x.has_requesting_project_id_: return 0
-    if self.has_requesting_project_id_ and self.requesting_project_id_ != x.requesting_project_id_: return 0
+    if self.has_requesting_project_number_ != x.has_requesting_project_number_: return 0
+    if self.has_requesting_project_number_ and self.requesting_project_number_ != x.requesting_project_number_: return 0
     if self.has_requesting_version_id_ != x.has_requesting_version_id_: return 0
     if self.has_requesting_version_id_ and self.requesting_version_id_ != x.requesting_version_id_: return 0
     if self.has_api_settings_ != x.has_api_settings_: return 0
@@ -131,7 +131,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
-    if (self.has_requesting_project_id_): n += 1 + self.lengthString(len(self.requesting_project_id_))
+    if (self.has_requesting_project_number_): n += 1 + self.lengthString(len(self.requesting_project_number_))
     if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
     if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
@@ -139,14 +139,14 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def ByteSizePartial(self):
     n = 0
     if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
-    if (self.has_requesting_project_id_): n += 1 + self.lengthString(len(self.requesting_project_id_))
+    if (self.has_requesting_project_number_): n += 1 + self.lengthString(len(self.requesting_project_number_))
     if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
     if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
     return n
 
   def Clear(self):
     self.clear_requesting_app_id()
-    self.clear_requesting_project_id()
+    self.clear_requesting_project_number()
     self.clear_requesting_version_id()
     self.clear_api_settings()
 
@@ -157,9 +157,9 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     if (self.has_api_settings_):
       out.putVarInt32(26)
       out.putPrefixedString(self.api_settings_)
-    if (self.has_requesting_project_id_):
+    if (self.has_requesting_project_number_):
       out.putVarInt32(34)
-      out.putPrefixedString(self.requesting_project_id_)
+      out.putPrefixedString(self.requesting_project_number_)
     if (self.has_requesting_version_id_):
       out.putVarInt32(42)
       out.putPrefixedString(self.requesting_version_id_)
@@ -171,9 +171,9 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     if (self.has_api_settings_):
       out.putVarInt32(26)
       out.putPrefixedString(self.api_settings_)
-    if (self.has_requesting_project_id_):
+    if (self.has_requesting_project_number_):
       out.putVarInt32(34)
-      out.putPrefixedString(self.requesting_project_id_)
+      out.putPrefixedString(self.requesting_project_number_)
     if (self.has_requesting_version_id_):
       out.putVarInt32(42)
       out.putPrefixedString(self.requesting_version_id_)
@@ -188,7 +188,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
         self.set_api_settings(d.getPrefixedString())
         continue
       if tt == 34:
-        self.set_requesting_project_id(d.getPrefixedString())
+        self.set_requesting_project_number(d.getPrefixedString())
         continue
       if tt == 42:
         self.set_requesting_version_id(d.getPrefixedString())
@@ -202,7 +202,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_requesting_app_id_: res+=prefix+("requesting_app_id: %s\n" % self.DebugFormatString(self.requesting_app_id_))
-    if self.has_requesting_project_id_: res+=prefix+("requesting_project_id: %s\n" % self.DebugFormatString(self.requesting_project_id_))
+    if self.has_requesting_project_number_: res+=prefix+("requesting_project_number: %s\n" % self.DebugFormatString(self.requesting_project_number_))
     if self.has_requesting_version_id_: res+=prefix+("requesting_version_id: %s\n" % self.DebugFormatString(self.requesting_version_id_))
     if self.has_api_settings_: res+=prefix+("api_settings: %s\n" % self.DebugFormatString(self.api_settings_))
     return res
@@ -212,7 +212,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   krequesting_app_id = 2
-  krequesting_project_id = 4
+  krequesting_project_number = 4
   krequesting_version_id = 5
   kapi_settings = 3
 
@@ -220,7 +220,7 @@ class InternalHeader(ProtocolBuffer.ProtocolMessage):
     0: "ErrorCode",
     2: "requesting_app_id",
     3: "api_settings",
-    4: "requesting_project_id",
+    4: "requesting_project_number",
     5: "requesting_version_id",
   }, 5)
 
@@ -467,6 +467,7 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
   EQUAL        =    5
   IN           =    6
   EXISTS       =    7
+  CONTAINED_IN_REGION =    8
 
   _Operator_NAMES = {
     1: "LESS_THAN",
@@ -476,6 +477,7 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
     5: "EQUAL",
     6: "IN",
     7: "EXISTS",
+    8: "CONTAINED_IN_REGION",
   }
 
   def Operator_Name(cls, x): return cls._Operator_NAMES.get(x, "")
@@ -483,9 +485,12 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
 
   has_op_ = 0
   op_ = 0
+  has_geo_region_ = 0
+  geo_region_ = None
 
   def __init__(self, contents=None):
     self.property_ = []
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def op(self): return self.op_
@@ -517,11 +522,31 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
 
   def clear_property(self):
     self.property_ = []
+  def geo_region(self):
+    if self.geo_region_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.geo_region_ is None: self.geo_region_ = GeoRegion()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.geo_region_
+
+  def mutable_geo_region(self): self.has_geo_region_ = 1; return self.geo_region()
+
+  def clear_geo_region(self):
+
+    if self.has_geo_region_:
+      self.has_geo_region_ = 0;
+      if self.geo_region_ is not None: self.geo_region_.Clear()
+
+  def has_geo_region(self): return self.has_geo_region_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_op()): self.set_op(x.op())
     for i in xrange(x.property_size()): self.add_property().CopyFrom(x.property(i))
+    if (x.has_geo_region()): self.mutable_geo_region().MergeFrom(x.geo_region())
 
   def Equals(self, x):
     if x is self: return 1
@@ -530,6 +555,8 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
     if len(self.property_) != len(x.property_): return 0
     for e1, e2 in zip(self.property_, x.property_):
       if e1 != e2: return 0
+    if self.has_geo_region_ != x.has_geo_region_: return 0
+    if self.has_geo_region_ and self.geo_region_ != x.geo_region_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -540,6 +567,7 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
         debug_strs.append('Required field: op not set.')
     for p in self.property_:
       if not p.IsInitialized(debug_strs): initialized=0
+    if (self.has_geo_region_ and not self.geo_region_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -547,6 +575,7 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.op_)
     n += 1 * len(self.property_)
     for i in xrange(len(self.property_)): n += self.lengthString(self.property_[i].ByteSize())
+    if (self.has_geo_region_): n += 2 + self.lengthString(self.geo_region_.ByteSize())
     return n + 1
 
   def ByteSizePartial(self):
@@ -556,11 +585,13 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
       n += self.lengthVarInt64(self.op_)
     n += 1 * len(self.property_)
     for i in xrange(len(self.property_)): n += self.lengthString(self.property_[i].ByteSizePartial())
+    if (self.has_geo_region_): n += 2 + self.lengthString(self.geo_region_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_op()
     self.clear_property()
+    self.clear_geo_region()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(48)
@@ -569,6 +600,10 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(114)
       out.putVarInt32(self.property_[i].ByteSize())
       self.property_[i].OutputUnchecked(out)
+    if (self.has_geo_region_):
+      out.putVarInt32(322)
+      out.putVarInt32(self.geo_region_.ByteSize())
+      self.geo_region_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_op_):
@@ -578,6 +613,10 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(114)
       out.putVarInt32(self.property_[i].ByteSizePartial())
       self.property_[i].OutputPartial(out)
+    if (self.has_geo_region_):
+      out.putVarInt32(322)
+      out.putVarInt32(self.geo_region_.ByteSizePartial())
+      self.geo_region_.OutputPartial(out)
 
   def TryMerge(self, d):
     while 1:
@@ -591,6 +630,12 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_property().TryMerge(tmp)
+        continue
+      if tt == 322:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_geo_region().TryMerge(tmp)
         continue
 
 
@@ -609,6 +654,10 @@ class Query_Filter(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_geo_region_:
+      res+=prefix+"geo_region <\n"
+      res+=self.geo_region_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 class Query_Order(ProtocolBuffer.ProtocolMessage):
@@ -793,7 +842,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   has_min_safe_time_seconds_ = 0
   min_safe_time_seconds_ = 0
   has_persist_offset_ = 0
-  persist_offset_ = 0
+  persist_offset_ = 1
 
   def __init__(self, contents=None):
     self.filter_ = []
@@ -1197,7 +1246,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   def clear_persist_offset(self):
     if self.has_persist_offset_:
       self.has_persist_offset_ = 0
-      self.persist_offset_ = 0
+      self.persist_offset_ = 1
 
   def has_persist_offset(self): return self.has_persist_offset_
 
@@ -1803,6 +1852,7 @@ class Query(ProtocolBuffer.ProtocolMessage):
   kFilterGroup = 4
   kFilterop = 6
   kFilterproperty = 14
+  kFiltergeo_region = 40
   ksearch_query = 8
   kOrderGroup = 9
   kOrderproperty = 10
@@ -1860,7 +1910,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     36: "safe_replica_name",
     37: "persist_offset",
     39: "header",
-  }, 39)
+    40: "geo_region",
+  }, 40)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1895,12 +1946,596 @@ class Query(ProtocolBuffer.ProtocolMessage):
     36: ProtocolBuffer.Encoder.STRING,
     37: ProtocolBuffer.Encoder.NUMERIC,
     39: ProtocolBuffer.Encoder.STRING,
-  }, 39, ProtocolBuffer.Encoder.MAX_TYPE)
+    40: ProtocolBuffer.Encoder.STRING,
+  }, 40, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Query'
+class RegionPoint(ProtocolBuffer.ProtocolMessage):
+  has_latitude_ = 0
+  latitude_ = 0.0
+  has_longitude_ = 0
+  longitude_ = 0.0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def latitude(self): return self.latitude_
+
+  def set_latitude(self, x):
+    self.has_latitude_ = 1
+    self.latitude_ = x
+
+  def clear_latitude(self):
+    if self.has_latitude_:
+      self.has_latitude_ = 0
+      self.latitude_ = 0.0
+
+  def has_latitude(self): return self.has_latitude_
+
+  def longitude(self): return self.longitude_
+
+  def set_longitude(self, x):
+    self.has_longitude_ = 1
+    self.longitude_ = x
+
+  def clear_longitude(self):
+    if self.has_longitude_:
+      self.has_longitude_ = 0
+      self.longitude_ = 0.0
+
+  def has_longitude(self): return self.has_longitude_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_latitude()): self.set_latitude(x.latitude())
+    if (x.has_longitude()): self.set_longitude(x.longitude())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_latitude_ != x.has_latitude_: return 0
+    if self.has_latitude_ and self.latitude_ != x.latitude_: return 0
+    if self.has_longitude_ != x.has_longitude_: return 0
+    if self.has_longitude_ and self.longitude_ != x.longitude_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_latitude_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: latitude not set.')
+    if (not self.has_longitude_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: longitude not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n + 18
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_latitude_):
+      n += 9
+    if (self.has_longitude_):
+      n += 9
+    return n
+
+  def Clear(self):
+    self.clear_latitude()
+    self.clear_longitude()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(9)
+    out.putDouble(self.latitude_)
+    out.putVarInt32(17)
+    out.putDouble(self.longitude_)
+
+  def OutputPartial(self, out):
+    if (self.has_latitude_):
+      out.putVarInt32(9)
+      out.putDouble(self.latitude_)
+    if (self.has_longitude_):
+      out.putVarInt32(17)
+      out.putDouble(self.longitude_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 9:
+        self.set_latitude(d.getDouble())
+        continue
+      if tt == 17:
+        self.set_longitude(d.getDouble())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_latitude_: res+=prefix+("latitude: %s\n" % self.DebugFormat(self.latitude_))
+    if self.has_longitude_: res+=prefix+("longitude: %s\n" % self.DebugFormat(self.longitude_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  klatitude = 1
+  klongitude = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "latitude",
+    2: "longitude",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.DOUBLE,
+    2: ProtocolBuffer.Encoder.DOUBLE,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.RegionPoint'
+class CircleRegion(ProtocolBuffer.ProtocolMessage):
+  has_center_ = 0
+  has_radius_meters_ = 0
+  radius_meters_ = 0.0
+
+  def __init__(self, contents=None):
+    self.center_ = RegionPoint()
+    if contents is not None: self.MergeFromString(contents)
+
+  def center(self): return self.center_
+
+  def mutable_center(self): self.has_center_ = 1; return self.center_
+
+  def clear_center(self):self.has_center_ = 0; self.center_.Clear()
+
+  def has_center(self): return self.has_center_
+
+  def radius_meters(self): return self.radius_meters_
+
+  def set_radius_meters(self, x):
+    self.has_radius_meters_ = 1
+    self.radius_meters_ = x
+
+  def clear_radius_meters(self):
+    if self.has_radius_meters_:
+      self.has_radius_meters_ = 0
+      self.radius_meters_ = 0.0
+
+  def has_radius_meters(self): return self.has_radius_meters_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_center()): self.mutable_center().MergeFrom(x.center())
+    if (x.has_radius_meters()): self.set_radius_meters(x.radius_meters())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_center_ != x.has_center_: return 0
+    if self.has_center_ and self.center_ != x.center_: return 0
+    if self.has_radius_meters_ != x.has_radius_meters_: return 0
+    if self.has_radius_meters_ and self.radius_meters_ != x.radius_meters_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_center_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: center not set.')
+    elif not self.center_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_radius_meters_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: radius_meters not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.center_.ByteSize())
+    return n + 10
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_center_):
+      n += 1
+      n += self.lengthString(self.center_.ByteSizePartial())
+    if (self.has_radius_meters_):
+      n += 9
+    return n
+
+  def Clear(self):
+    self.clear_center()
+    self.clear_radius_meters()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.center_.ByteSize())
+    self.center_.OutputUnchecked(out)
+    out.putVarInt32(17)
+    out.putDouble(self.radius_meters_)
+
+  def OutputPartial(self, out):
+    if (self.has_center_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.center_.ByteSizePartial())
+      self.center_.OutputPartial(out)
+    if (self.has_radius_meters_):
+      out.putVarInt32(17)
+      out.putDouble(self.radius_meters_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_center().TryMerge(tmp)
+        continue
+      if tt == 17:
+        self.set_radius_meters(d.getDouble())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_center_:
+      res+=prefix+"center <\n"
+      res+=self.center_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_radius_meters_: res+=prefix+("radius_meters: %s\n" % self.DebugFormat(self.radius_meters_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kcenter = 1
+  kradius_meters = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "center",
+    2: "radius_meters",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.DOUBLE,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CircleRegion'
+class RectangleRegion(ProtocolBuffer.ProtocolMessage):
+  has_southwest_ = 0
+  has_northeast_ = 0
+
+  def __init__(self, contents=None):
+    self.southwest_ = RegionPoint()
+    self.northeast_ = RegionPoint()
+    if contents is not None: self.MergeFromString(contents)
+
+  def southwest(self): return self.southwest_
+
+  def mutable_southwest(self): self.has_southwest_ = 1; return self.southwest_
+
+  def clear_southwest(self):self.has_southwest_ = 0; self.southwest_.Clear()
+
+  def has_southwest(self): return self.has_southwest_
+
+  def northeast(self): return self.northeast_
+
+  def mutable_northeast(self): self.has_northeast_ = 1; return self.northeast_
+
+  def clear_northeast(self):self.has_northeast_ = 0; self.northeast_.Clear()
+
+  def has_northeast(self): return self.has_northeast_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_southwest()): self.mutable_southwest().MergeFrom(x.southwest())
+    if (x.has_northeast()): self.mutable_northeast().MergeFrom(x.northeast())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_southwest_ != x.has_southwest_: return 0
+    if self.has_southwest_ and self.southwest_ != x.southwest_: return 0
+    if self.has_northeast_ != x.has_northeast_: return 0
+    if self.has_northeast_ and self.northeast_ != x.northeast_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_southwest_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: southwest not set.')
+    elif not self.southwest_.IsInitialized(debug_strs): initialized = 0
+    if (not self.has_northeast_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: northeast not set.')
+    elif not self.northeast_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.southwest_.ByteSize())
+    n += self.lengthString(self.northeast_.ByteSize())
+    return n + 2
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_southwest_):
+      n += 1
+      n += self.lengthString(self.southwest_.ByteSizePartial())
+    if (self.has_northeast_):
+      n += 1
+      n += self.lengthString(self.northeast_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_southwest()
+    self.clear_northeast()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.southwest_.ByteSize())
+    self.southwest_.OutputUnchecked(out)
+    out.putVarInt32(18)
+    out.putVarInt32(self.northeast_.ByteSize())
+    self.northeast_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_southwest_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.southwest_.ByteSizePartial())
+      self.southwest_.OutputPartial(out)
+    if (self.has_northeast_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.northeast_.ByteSizePartial())
+      self.northeast_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_southwest().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_northeast().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_southwest_:
+      res+=prefix+"southwest <\n"
+      res+=self.southwest_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_northeast_:
+      res+=prefix+"northeast <\n"
+      res+=self.northeast_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  ksouthwest = 1
+  knortheast = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "southwest",
+    2: "northeast",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.RectangleRegion'
+class GeoRegion(ProtocolBuffer.ProtocolMessage):
+  has_circle_ = 0
+  circle_ = None
+  has_rectangle_ = 0
+  rectangle_ = None
+
+  def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
+    if contents is not None: self.MergeFromString(contents)
+
+  def circle(self):
+    if self.circle_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.circle_ is None: self.circle_ = CircleRegion()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.circle_
+
+  def mutable_circle(self): self.has_circle_ = 1; return self.circle()
+
+  def clear_circle(self):
+
+    if self.has_circle_:
+      self.has_circle_ = 0;
+      if self.circle_ is not None: self.circle_.Clear()
+
+  def has_circle(self): return self.has_circle_
+
+  def rectangle(self):
+    if self.rectangle_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.rectangle_ is None: self.rectangle_ = RectangleRegion()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.rectangle_
+
+  def mutable_rectangle(self): self.has_rectangle_ = 1; return self.rectangle()
+
+  def clear_rectangle(self):
+
+    if self.has_rectangle_:
+      self.has_rectangle_ = 0;
+      if self.rectangle_ is not None: self.rectangle_.Clear()
+
+  def has_rectangle(self): return self.has_rectangle_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_circle()): self.mutable_circle().MergeFrom(x.circle())
+    if (x.has_rectangle()): self.mutable_rectangle().MergeFrom(x.rectangle())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_circle_ != x.has_circle_: return 0
+    if self.has_circle_ and self.circle_ != x.circle_: return 0
+    if self.has_rectangle_ != x.has_rectangle_: return 0
+    if self.has_rectangle_ and self.rectangle_ != x.rectangle_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (self.has_circle_ and not self.circle_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_rectangle_ and not self.rectangle_.IsInitialized(debug_strs)): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_circle_): n += 1 + self.lengthString(self.circle_.ByteSize())
+    if (self.has_rectangle_): n += 1 + self.lengthString(self.rectangle_.ByteSize())
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_circle_): n += 1 + self.lengthString(self.circle_.ByteSizePartial())
+    if (self.has_rectangle_): n += 1 + self.lengthString(self.rectangle_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_circle()
+    self.clear_rectangle()
+
+  def OutputUnchecked(self, out):
+    if (self.has_circle_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.circle_.ByteSize())
+      self.circle_.OutputUnchecked(out)
+    if (self.has_rectangle_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.rectangle_.ByteSize())
+      self.rectangle_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_circle_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.circle_.ByteSizePartial())
+      self.circle_.OutputPartial(out)
+    if (self.has_rectangle_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.rectangle_.ByteSizePartial())
+      self.rectangle_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_circle().TryMerge(tmp)
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_rectangle().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_circle_:
+      res+=prefix+"circle <\n"
+      res+=self.circle_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_rectangle_:
+      res+=prefix+"rectangle <\n"
+      res+=self.rectangle_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kcircle = 1
+  krectangle = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "circle",
+    2: "rectangle",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.GeoRegion'
 class CompiledQuery_PrimaryScan(ProtocolBuffer.ProtocolMessage):
   has_index_name_ = 0
   index_name_ = ""
@@ -3744,6 +4379,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   CAPABILITY_DISABLED =    9
   TRY_ALTERNATE_BACKEND =   10
   SAFE_TIME_TOO_OLD =   11
+  RESOURCE_EXHAUSTED =   12
 
   _ErrorCode_NAMES = {
     1: "BAD_REQUEST",
@@ -3757,6 +4393,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
     9: "CAPABILITY_DISABLED",
     10: "TRY_ALTERNATE_BACKEND",
     11: "SAFE_TIME_TOO_OLD",
+    12: "RESOURCE_EXHAUSTED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -8861,4 +9498,4 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['InternalHeader','Transaction','Query','Query_Filter','Query_Order','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse','CommitResponse_Version']
+__all__ = ['InternalHeader','Transaction','Query','Query_Filter','Query_Order','RegionPoint','CircleRegion','RectangleRegion','GeoRegion','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse','CommitResponse_Version']

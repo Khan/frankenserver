@@ -17,6 +17,7 @@
 """Manage the lifecycle of runtime processes and dispatch requests to them."""
 
 
+
 import collections
 import logging
 import threading
@@ -265,12 +266,19 @@ class Instance(object):
 
     Returns:
       True if the Instance was started or False, if the Instance has already
-      been quit.
+      been quit or the attempt to start it failed.
     """
     with self._condition:
       if self._quit:
         return False
-    self._runtime_proxy.start()
+    try:
+      self._runtime_proxy.start()
+    except Exception as e:  # pylint: disable=broad-except
+      logger = logging.getLogger()
+      if logger.isEnabledFor(logging.DEBUG):
+        logger.exception(e)
+      logger.error(str(e))
+      return False
     with self._condition:
       if self._quit:
         self._runtime_proxy.quit()
@@ -278,6 +286,9 @@ class Instance(object):
       self._last_request_end_time = time.time()
       self._started = True
     logging.debug('Started instance: %s', self)
+    # We are in development mode, here be optimistic for the health of the
+    # instance so it can respond instantly to the first request.
+    self.set_health(True)
     return True
 
   def quit(self, allow_async=False, force=False, expect_shutdown=False):
@@ -440,9 +451,9 @@ class InstanceFactory(object):
     max_concurrent_requests: The maximum number of concurrent requests that
         Instances created by this factory can handle. If the Instances do not
         support concurrent requests then the value should be 1.
-    START_URL_MAP: An apinfo.URLMap that should be used as the default
+    START_URL_MAP: An appinfo.URLMap that should be used as the default
         /_ah/start handler if no user-specified script handler matches.
-    WARMUP_URL_MAP: An apinfo.URLMap that should be used as the default
+    WARMUP_URL_MAP: An appinfo.URLMap that should be used as the default
         /_ah/warmup handler if no user-specified script handler matches.
   """
 

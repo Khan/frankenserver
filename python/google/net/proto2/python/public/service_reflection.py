@@ -28,6 +28,7 @@ compiler at compile-time.
 
 
 
+
 class GeneratedServiceType(type):
 
   """Metaclass for service classes created at runtime from ServiceDescriptors.

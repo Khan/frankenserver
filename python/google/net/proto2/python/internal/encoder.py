@@ -55,6 +55,7 @@ sizer rather than when calling them.  In particular:
 """
 
 
+
 import struct
 import sys
 _PY2 = sys.version_info[0] < 3

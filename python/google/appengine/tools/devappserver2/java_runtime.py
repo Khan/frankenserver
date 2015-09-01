@@ -17,9 +17,12 @@
 """Serves content for "script" handlers using the Java runtime."""
 
 
+
+
 import os
 import os.path
 import sys
+import tempfile
 import threading
 
 import google
@@ -64,6 +67,8 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._application_lock = threading.Lock()
     self._java_application = java_application.JavaApplication(
         self._module_configuration)
+    self._for_jetty9 = (os.environ.get('GAE_LOCAL_VM_RUNTIME') != '0' and
+                        module_configuration.runtime == 'vm')
     self._java_command = self._make_java_command()
 
   def _make_java_command(self):
@@ -79,9 +84,9 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
       java_bin = 'java'
 
     java_dir = os.environ.get('APP_ENGINE_JAVA_PATH', None)
+    tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
     if not java_dir or not os.path.exists(java_dir):
-      tools_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
       java_dir = os.path.join(tools_dir, 'java')
 
     java_lib_dir = os.path.join(java_dir, 'lib')
@@ -92,18 +97,40 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
                                      'appengine-dev-jdk-overrides.jar')
     assert os.path.isfile(jdk_overrides_jar), jdk_overrides_jar
 
-    args = [
-        java_bin,
-        '-cp', class_path,
-        '-Dappengine.sdk.root=' + java_dir,
-        '-Xbootclasspath/p:' + jdk_overrides_jar,
-    ]
-    if sys.platform == 'darwin':
-      args.append('-XstartOnFirstThread')
-    args.extend(self._runtime_config_getter().java_config.jvm_args)
-    args.append(
-        'com.google.appengine.tools.development.devappserver2.'
-        'StandaloneInstance')
+    if self._for_jetty9:
+      jetty_home = os.environ.get('APP_ENGINE_JETTY_HOME', None)
+      jetty_base = os.environ.get('APP_ENGINE_JETTY_BASE', None)
+      appengine_dir = os.path.dirname(tools_dir)
+      if not jetty_home:
+        jetty_home = os.path.join(appengine_dir,
+                                  'javamanagedvm', 'appengine-java-vmruntime')
+      if not jetty_base:
+        jetty_base = os.path.join(appengine_dir, 'jettybasesdk')
+
+      args = [
+          java_bin,
+          ('-Dgcloud.java.application=%s' %
+           self._module_configuration.application_root),
+          '-Djetty.home=%s' % jetty_home,
+          '-Djetty.base=%s' % jetty_base,
+      ]
+      args.extend(self._runtime_config_getter().java_config.jvm_args)
+      args.append('-jar')
+      args.append('%s/start.jar' % jetty_home)
+      args.append('-module=http')
+    else:
+      args = [
+          java_bin,
+          '-cp', class_path,
+          '-Dappengine.sdk.root=' + java_dir,
+          '-Xbootclasspath/p:' + jdk_overrides_jar,
+      ]
+      if sys.platform == 'darwin':
+        args.append('-XstartOnFirstThread')
+      args.extend(self._runtime_config_getter().java_config.jvm_args)
+      args.append(
+          'com.google.appengine.tools.development.devappserver2.'
+          'StandaloneInstance')
     return args
 
   def get_restart_directories(self):
@@ -147,10 +174,20 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
       runtime_config.instance_id = str(instance_id)
       return runtime_config
 
+    def extra_args_getter(port):
+      return 'jetty.port=%s' % port
+
     env = self._java_application.get_environment()
     runtime_config = instance_config_getter()
     for env_entry in runtime_config.environ:
       env[env_entry.key] = env_entry.value
+
+    if self._for_jetty9:
+      start_process_flavor = http_runtime.START_PROCESS_REVERSE_NO_FILE
+      env['APP_ENGINE_LOG_CONFIG_PATTERN'] = (
+          os.path.join(tempfile.mkdtemp(suffix='gae'), 'log.%g'))
+    else:
+      start_process_flavor = http_runtime.START_PROCESS_FILE
 
     with self._application_lock:
       proxy = http_runtime.HttpRuntimeProxy(
@@ -158,7 +195,8 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
           instance_config_getter,
           self._module_configuration,
           env=env,
-          start_process_flavor=http_runtime.START_PROCESS_FILE)
+          start_process_flavor=start_process_flavor,
+          extra_args_getter=extra_args_getter)
 
     return instance.Instance(self.request_data,
                              instance_id,

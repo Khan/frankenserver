@@ -59,6 +59,7 @@ See the ConfigDefaults class below for the full set of options available.
 
 
 
+
 import google
 import hashlib
 import logging
@@ -113,7 +114,6 @@ class ConfigDefaults(object):
   # Note that this an alternate to the normal users.is_current_user_admin
   # check--either one may pass.
   CUSTOM_ENVIRONMENT_AUTHENTICATION = ()
-  _ALLOW_OAUTH = False
 
 
 config = lib_config.register('remoteapi', ConfigDefaults.__dict__)
@@ -310,7 +310,10 @@ class ApiCallHandler(webapp.RequestHandler):
       'remote_datastore': RemoteDatastoreStub('remote_datastore'),
   }
 
-  OAUTH_SCOPE = 'https://www.googleapis.com/auth/appengine.apis'
+  OAUTH_SCOPES = [
+      'https://www.googleapis.com/auth/appengine.apis',
+      'https://www.googleapis.com/auth/cloud-platform',
+  ]
 
   def CheckIsAdmin(self):
     user_is_authorized = False
@@ -325,10 +328,10 @@ class ApiCallHandler(webapp.RequestHandler):
         logging.warning('remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION is '
                         'configured incorrectly.')
 
-    if not user_is_authorized and config._ALLOW_OAUTH:
+    if not user_is_authorized:
       try:
         user_is_authorized = (
-            oauth.is_current_user_admin(_scope=self.OAUTH_SCOPE))
+            oauth.is_current_user_admin(_scope=self.OAUTH_SCOPES))
       except oauth.OAuthRequestError:
 
         pass
@@ -345,21 +348,10 @@ class ApiCallHandler(webapp.RequestHandler):
       return False
     return True
 
-  def CheckConfigIsValid(self):
-
-    if config.CUSTOM_ENVIRONMENT_AUTHENTICATION and config._ALLOW_OAUTH:
-      self.response.set_status(400)
-      self.response.out.write('You cannot enable both OAuth authentication '
-                              '(remoteapi__ALLOW_OAUTH) and '
-                              'custom authentication '
-                              '(remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION).')
-      return False
-    return True
-
 
   def get(self):
     """Handle a GET. Just show an info page."""
-    if not self.CheckConfigIsValid() or not self.CheckIsAdmin():
+    if not self.CheckIsAdmin():
       return
 
     rtok = self.request.get('rtok', '0')
@@ -373,7 +365,7 @@ class ApiCallHandler(webapp.RequestHandler):
 
   def post(self):
     """Handle POST requests by executing the API call."""
-    if not self.CheckConfigIsValid() or not self.CheckIsAdmin():
+    if not self.CheckIsAdmin():
       return
 
 

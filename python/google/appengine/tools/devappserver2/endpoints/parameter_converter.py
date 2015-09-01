@@ -23,6 +23,10 @@ that conversion and some validation.
 
 
 
+
+
+
+
 from google.appengine.tools.devappserver2.endpoints import errors
 
 
@@ -81,6 +85,9 @@ def _check_boolean(parameter_name, value, parameter_config):
   """
   if parameter_config.get('type') != 'boolean':
     return
+
+
+
 
 
   if value.lower() not in ('1', 'true', '0', 'false'):

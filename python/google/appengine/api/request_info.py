@@ -650,6 +650,17 @@ class RequestInfo(object):
     raise NotImplementedError()
 
 
+  def register_request_id(self, environ, request_id):
+    """Registers a simulated HTTP request from the dev_appserver.
+
+    Subclasses are not required to provide an implementation.
+
+    Args:
+      environ: An environ dict for the request as defined in PEP-333.
+      request_id: The string id of the request making the API call.
+    """
+
+
 class _LocalRequestInfo(RequestInfo):
   """Lookup information about a request using environment variables."""
 

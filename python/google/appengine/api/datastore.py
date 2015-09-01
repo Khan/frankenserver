@@ -44,6 +44,7 @@ which needs BadValueError, so it can't be defined in datastore.
 
 
 
+
 import heapq
 import itertools
 import logging
@@ -969,13 +970,18 @@ class Entity(dict):
       propname_xml = saxutils.quoteattr(propname)
 
       values = self[propname]
+      if isinstance(values, list) and not values:
+
+
+
+        continue
       if not isinstance(values, list):
         values = [values]
 
       proptype = datastore_types.PropertyTypeName(values[0])
       proptype_xml = saxutils.quoteattr(proptype)
-
       escaped_values = self._XmlEscapeValues(propname)
+
       open_tag = u'<property name=%s type=%s>' % (propname_xml, proptype_xml)
       close_tag = u'</property>'
       xml_properties += [open_tag + val + close_tag for val in escaped_values]
@@ -1835,6 +1841,8 @@ class Query(dict):
       re.MatchObject (never None) that matches the 'filter'. Group 1 is the
       property name, group 3 is the operator. (Group 2 is unused.)
     """
+    if isinstance(values, list) and not values:
+      raise datastore_errors.BadValueError("Cannot filter on []")
     try:
       match = Query.FILTER_REGEX.match(filter)
       if not match:

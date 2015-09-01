@@ -30,6 +30,7 @@
 
 
 
+
 class Error(Exception):
   """Base datastore AppInfo type."""
 
@@ -40,6 +41,14 @@ class EmptyConfigurationFile(Error):
 
 class MultipleConfigurationFile(Error):
   """Tried to load configuration file with multiple AppInfo objects"""
+
+
+class MultipleProjectNames(Error):
+  """Configuration file had both "application:" and "project:" fields.
+
+  A configuration file can specify the project name using either the old-style
+  "application: name" syntax or the newer "project: name" syntax, but not both.
+  """
 
 
 class UnknownHandlerType(Error):
@@ -169,3 +178,7 @@ class TooManyHttpHeaders(Error):
 
 class TooManyScalingSettingsError(Error):
   """Raised when more than one scaling settings section is present."""
+
+
+class MissingRuntimeError(Error):
+  """Raised when the "runtime" field is omitted for a non-vm."""

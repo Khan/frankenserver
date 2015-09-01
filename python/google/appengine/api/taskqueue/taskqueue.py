@@ -43,6 +43,8 @@ base path. A default queue is also provided for simple usage.
 
 
 
+
+
 __all__ = [
 
     'BadTaskStateError', 'BadTransactionState', 'BadTransactionStateError',
@@ -1815,16 +1817,22 @@ class Queue(object):
     Args:
       task: A Task instance or a list of Task instances that will be added to
         the queue.
-      transactional: If True, adds the task(s) if and only if the enclosing
-        transaction is successfully committed. It is an error for transactional
-        to be True in the absence of an enclosing transaction. If False, adds
-        the task(s) immediately, ignoring any enclosing transaction's success or
-        failure.
+      transactional: If True, transactional Tasks will be added to the queue but
+        cannot be run or leased until after the transaction succeeds.  If the
+        transaction fails then the Tasks will be removed from the queue (and
+        therefore never run).  If False, the added task(s) are available to run
+        immediately; any enclosing transaction's success or failure is ignored.
       rpc: An optional UserRPC object.
 
     Returns:
-      A UserRPC object, call get_result to complete the RPC and obtain the Task
-        or list of tasks that was supplied to this method.
+      A UserRPC object; call get_result to complete the RPC and obtain the Task
+        or list of Tasks that was supplied to this method. Successfully
+        queued Tasks will have a valid queue name and task name after the
+        call; such Task objects are marked as queued and cannot be added
+        again.
+
+      Note: Task objects returned from transactional adds are not
+        notified or updated when the enclosing transaction succeeds or fails.
 
     Raises:
       BadTaskStateError: if the Task(s) has already been added to a queue.
@@ -1891,14 +1899,20 @@ class Queue(object):
     Args:
       task: A Task instance or a list of Task instances that will be added to
         the queue.
-      transactional: If True, adds the task(s) if and only if the enclosing
-        transaction is successfully committed. It is an error for transactional
-        to be True in the absence of an enclosing transaction. If False, adds
-        the task(s) immediately, ignoring any enclosing transaction's success or
-        failure.
+      transactional: If True, transactional Tasks will be added to the queue but
+        cannot be run or leased until after the transaction succeeds.  If the
+        transaction fails then the Tasks will be removed from the queue (and
+        therefore never run).  If False, the added task(s) are available to run
+        immediately; any enclosing transaction's success or failure is ignored.
 
     Returns:
-      The Task or list of tasks that was supplied to this method.
+      The Task or list of tasks that was supplied to this method. Successfully
+        queued Tasks will have a valid queue name and task name after the
+        call; such Task objects are marked as queued and cannot be added
+        again.
+
+      Note: Task objects returned from transactional adds are not
+        notified or updated when the enclosing transaction succeeds or fails.
 
     Raises:
       BadTaskStateError: if the Task(s) has already been added to a queue.

@@ -39,6 +39,7 @@ this file*.
 """
 
 
+
 import sys
 if sys.version_info[0] < 3:
   try:
@@ -46,9 +47,11 @@ if sys.version_info[0] < 3:
   except ImportError:
     from StringIO import StringIO as BytesIO
   import copy_reg as copyreg
+  _basestring = basestring
 else:
   from io import BytesIO
   import copyreg
+  _basestring = str
 import struct
 import weakref
 
@@ -80,7 +83,7 @@ def InitMessage(descriptor, cls):
   if (descriptor.has_options and
       descriptor.GetOptions().message_set_wire_format):
     cls._decoders_by_tag[decoder.MESSAGE_SET_ITEM_TAG] = (
-        decoder.MessageSetItemDecoder(cls._extensions_by_number))
+        decoder.MessageSetItemDecoder(cls._extensions_by_number), None)
 
 
   for field in descriptor.fields:
@@ -204,10 +207,20 @@ def _AttachFieldHelpers(cls, field_descriptor):
 
   def AddDecoder(wiretype, is_packed):
     tag_bytes = encoder.TagBytes(field_descriptor.number, wiretype)
-    cls._decoders_by_tag[tag_bytes] = (
-        type_checkers.TYPE_TO_DECODER[field_descriptor.type](
-            field_descriptor.number, is_repeated, is_packed,
-            field_descriptor, field_descriptor._default_constructor))
+    decode_type = field_descriptor.type
+    if (decode_type == _FieldDescriptor.TYPE_ENUM and
+        type_checkers.SupportsOpenEnums(field_descriptor)):
+      decode_type = _FieldDescriptor.TYPE_INT32
+
+    oneof_descriptor = None
+    if field_descriptor.containing_oneof is not None:
+      oneof_descriptor = field_descriptor
+
+    field_decoder = type_checkers.TYPE_TO_DECODER[decode_type](
+        field_descriptor.number, is_repeated, is_packed,
+        field_descriptor, field_descriptor._default_constructor)
+
+    cls._decoders_by_tag[tag_bytes] = (field_decoder, oneof_descriptor)
 
   AddDecoder(type_checkers.FIELD_TYPE_TO_WIRE_TYPE[field_descriptor.type],
              False)
@@ -279,6 +292,8 @@ def _DefaultValueConstructorForField(field):
     def MakeSubMessageDefault(message):
       result = message_type._concrete_class()
       result._SetListener(message._listener_for_children)
+      if field.containing_oneof:
+        message._UpdateOneofState(field)
       return result
     return MakeSubMessageDefault
 
@@ -302,7 +317,22 @@ def _ReraiseTypeErrorWithFieldName(message_name, field_name):
 
 def _AddInitMethod(message_descriptor, cls):
   """Adds an __init__ method to cls."""
-  fields = message_descriptor.fields
+
+  def _GetIntegerEnumValue(enum_type, value):
+    """Convert a string or integer enum value to an integer.
+
+    If the value is a string, it is converted to the enum value in
+    enum_type with the same name.  If the value is not a string, it's
+    returned as-is.  (No conversion or bounds-checking is done.)
+    """
+    if isinstance(value, _basestring):
+      try:
+        return enum_type.values_by_name[value].number
+      except KeyError:
+        raise ValueError('Enum type %s: unknown label "%s"' % (
+            enum_type.full_name, value))
+    return value
+
   def init(self, **kwargs):
     self._cached_byte_size = 0
     self._cached_byte_size_dirty = len(kwargs) > 0
@@ -326,18 +356,29 @@ def _AddInitMethod(message_descriptor, cls):
         copy = field._default_constructor(self)
         if field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
           for val in field_value:
-            copy.add().MergeFrom(val)
+            if isinstance(val, dict):
+              copy.add(**val)
+            else:
+              copy.add().MergeFrom(val)
         else:
+          if field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM:
+            field_value = [_GetIntegerEnumValue(field.enum_type, val)
+                           for val in field_value]
           copy.extend(field_value)
         self._fields[field] = copy
       elif field.cpp_type == _FieldDescriptor.CPPTYPE_MESSAGE:
         copy = field._default_constructor(self)
+        new_val = field_value
+        if isinstance(field_value, dict):
+          new_val = field.message_type._concrete_class(**field_value)
         try:
-          copy.MergeFrom(field_value)
+          copy.MergeFrom(new_val)
         except TypeError:
           _ReraiseTypeErrorWithFieldName(message_descriptor.name, field_name)
         self._fields[field] = copy
       else:
+        if field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM:
+          field_value = _GetIntegerEnumValue(field.enum_type, field_value)
         try:
           setattr(self, field_name, field_value)
         except TypeError:
@@ -459,6 +500,7 @@ def _AddPropertiesForNonRepeatedScalarField(field, cls):
   type_checker = type_checkers.GetTypeChecker(field)
   default_value = field.default_value
   valid_values = set()
+  is_proto3 = field.containing_type.syntax == "proto3"
 
   def getter(self):
 
@@ -466,15 +508,24 @@ def _AddPropertiesForNonRepeatedScalarField(field, cls):
     return self._fields.get(field, default_value)
   getter.__module__ = None
   getter.__doc__ = 'Getter for %s.' % proto_field_name
+
+  clear_when_set_to_default = is_proto3 and not field.containing_oneof
+
   def field_setter(self, new_value):
 
-    self._fields[field] = type_checker.CheckValue(new_value)
+
+
+    new_value = type_checker.CheckValue(new_value)
+    if clear_when_set_to_default and not new_value:
+      self._fields.pop(field, None)
+    else:
+      self._fields[field] = new_value
 
 
     if not self._cached_byte_size_dirty:
       self._Modified()
 
-  if field.containing_oneof is not None:
+  if field.containing_oneof:
     def setter(self, new_value):
       field_setter(self, new_value)
       self._UpdateOneofState(field)
@@ -607,24 +658,35 @@ def _AddListFieldsMethod(message_descriptor, cls):
 
   cls.ListFields = ListFields
 
+_Proto3HasError = 'Protocol message has no non-repeated submessage field "%s"'
+_Proto2HasError = 'Protocol message has no non-repeated field "%s"'
 
 def _AddHasFieldMethod(message_descriptor, cls):
   """Helper for _AddMessageMethods()."""
 
-  singular_fields = {}
-  for field in message_descriptor.fields:
-    if field.label != _FieldDescriptor.LABEL_REPEATED:
-      singular_fields[field.name] = field
+  is_proto3 = (message_descriptor.syntax == "proto3")
+  error_msg = _Proto3HasError if is_proto3 else _Proto2HasError
 
-  for field in message_descriptor.oneofs:
-    singular_fields[field.name] = field
+  hassable_fields = {}
+  for field in message_descriptor.fields:
+    if field.label == _FieldDescriptor.LABEL_REPEATED:
+      continue
+
+    if (is_proto3 and field.cpp_type != _FieldDescriptor.CPPTYPE_MESSAGE and
+        not field.containing_oneof):
+      continue
+    hassable_fields[field.name] = field
+
+  if not is_proto3:
+
+    for oneof in message_descriptor.oneofs:
+      hassable_fields[oneof.name] = oneof
 
   def HasField(self, field_name):
     try:
-      field = singular_fields[field_name]
+      field = hassable_fields[field_name]
     except KeyError:
-      raise ValueError(
-          'Protocol message has no singular "%s" field.' % field_name)
+      raise ValueError(error_msg % field_name)
 
     if isinstance(field, descriptor_mod.OneofDescriptor):
       try:
@@ -691,6 +753,7 @@ def _AddClearMethod(message_descriptor, cls):
 
     self._fields = {}
     self._unknown_fields = ()
+    self._oneofs = {}
     self._Modified()
   cls.Clear = Clear
 
@@ -853,6 +916,7 @@ def _AddMergeFromStringMethod(message_descriptor, cls):
   local_ReadTag = decoder.ReadTag
   local_SkipField = decoder.SkipField
   decoders_by_tag = cls._decoders_by_tag
+  is_proto3 = message_descriptor.syntax == "proto3"
 
   def InternalParse(self, buffer, pos, end):
     self._Modified()
@@ -860,18 +924,22 @@ def _AddMergeFromStringMethod(message_descriptor, cls):
     unknown_field_list = self._unknown_fields
     while pos != end:
       (tag_bytes, new_pos) = local_ReadTag(buffer, pos)
-      field_decoder = decoders_by_tag.get(tag_bytes)
+      field_decoder, field_desc = decoders_by_tag.get(tag_bytes, (None, None))
       if field_decoder is None:
         value_start_pos = new_pos
         new_pos = local_SkipField(buffer, new_pos, end, tag_bytes)
         if new_pos == -1:
           return pos
-        if not unknown_field_list:
-          unknown_field_list = self._unknown_fields = []
-        unknown_field_list.append((tag_bytes, buffer[value_start_pos:new_pos]))
+        if not is_proto3:
+          if not unknown_field_list:
+            unknown_field_list = self._unknown_fields = []
+          unknown_field_list.append(
+              (tag_bytes, buffer[value_start_pos:new_pos]))
         pos = new_pos
       else:
         pos = field_decoder(buffer, new_pos, end, self, field_dict)
+        if field_desc:
+          self._UpdateOneofState(field_desc)
     return pos
   cls._InternalParse = InternalParse
 
@@ -988,9 +1056,13 @@ def _AddMergeFromMethod(cls):
 
             field_value = field._default_constructor(self)
             fields[field] = field_value
+            if field.containing_oneof:
+              self._UpdateOneofState(field)
           field_value.MergeFrom(value)
       else:
         self._fields[field] = value
+        if field.containing_oneof:
+          self._UpdateOneofState(field)
 
     if msg._unknown_fields:
       if not self._unknown_fields:
@@ -1230,11 +1302,10 @@ class _ExtensionDict(object):
 
 
 
-    type_checker = type_checkers.GetTypeChecker(
-        extension_handle)
+    type_checker = type_checkers.GetTypeChecker(extension_handle)
 
     self._extended_message._fields[extension_handle] = (
-      type_checker.CheckValue(value))
+        type_checker.CheckValue(value))
     self._extended_message._Modified()
 
   def _FindExtensionByName(self, name):

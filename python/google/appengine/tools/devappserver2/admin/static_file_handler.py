@@ -17,6 +17,7 @@
 """A simple handler to serve static assets."""
 
 
+
 import logging
 import mimetypes
 import os

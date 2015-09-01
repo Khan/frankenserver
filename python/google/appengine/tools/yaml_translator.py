@@ -26,57 +26,27 @@ import re
 
 from google.appengine.tools import app_engine_web_xml_parser as aewxp
 from google.appengine.tools import handler_generator
-from google.appengine.tools import web_xml_parser
 from google.appengine.tools.app_engine_web_xml_parser import AppEngineConfigException
 
 
 NO_API_VERSION = 'none'
 
 
-def TranslateXmlToYaml(app_engine_web_xml_str,
-                       web_xml_str,
-                       has_jsps):
-  """Does xml-string to yaml-string translation, given each separate file text.
-
-  Processes each xml string into an object representing the xml,
-  and passes these to the translator.
-
-  Args:
-    app_engine_web_xml_str: text from app_engine_web.xml
-    web_xml_str: text from web.xml
-    has_jsps: true if the app has any *.jsp files
-
-  Returns:
-    The full text of the app.yaml generated from the xml files.
-
-  Raises:
-    AppEngineConfigException: raised in processing stage for illegal XML.
-  """
-  aewx_parser = aewxp.AppEngineWebXmlParser()
-  web_parser = web_xml_parser.WebXmlParser()
-  app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
-  web_xml = web_parser.ProcessXml(web_xml_str, has_jsps)
-  translator = AppYamlTranslator(app_engine_web_xml, web_xml, [], '1.0')
-  return translator.GetYaml()
-
-
-def TranslateXmlToYamlForDevAppServer(app_engine_web_xml_str,
-                                      web_xml_str,
-                                      has_jsps,
+def TranslateXmlToYamlForDevAppServer(app_engine_web_xml,
+                                      web_xml,
                                       war_root):
-  """Does xml-string to yaml-string translation, given each separate file text.
+  """Does parsed-XML to YAML-string translation.
 
-  Processes each xml string into an object representing the xml,
-  and passes these to the translator. This variant is used in the Dev App Server
-  context, where files are served directly from the input war directory, unlike
-  the appcfg case where they are copied or linked into a parallel hierarchy.
-  This means that there is no __static__ directory containing exactly the files
-  that are supposed to be served statically.
+  This method is used in the Dev App Server context, where files are served
+  directly from the input war directory, unlike the appcfg case where they are
+  copied or linked into a parallel hierarchy.  This means that there is no
+  __static__ directory containing exactly the files that are supposed to be
+  served statically.
 
   Args:
-    app_engine_web_xml_str: text from app_engine_web.xml
-    web_xml_str: text from web.xml
-    has_jsps: true if the app has any *.jsp files
+    app_engine_web_xml: parsed AppEngineWebXml object corresponding to the
+      contents of app-engine.web.xml.
+    web_xml: parsed WebXml object corresponding to the contents of web.xml.
     war_root: the path to the root directory of the war hierarchy
 
   Returns:
@@ -85,10 +55,6 @@ def TranslateXmlToYamlForDevAppServer(app_engine_web_xml_str,
   Raises:
     AppEngineConfigException: raised in processing stage for illegal XML.
   """
-  aewx_parser = aewxp.AppEngineWebXmlParser()
-  web_parser = web_xml_parser.WebXmlParser()
-  app_engine_web_xml = aewx_parser.ProcessXml(app_engine_web_xml_str)
-  web_xml = web_parser.ProcessXml(web_xml_str, has_jsps)
   translator = AppYamlTranslatorForDevAppServer(
       app_engine_web_xml, web_xml, war_root)
   return translator.GetYaml()
@@ -129,7 +95,11 @@ class AppYamlTranslator(object):
     stmnt_list += self.TranslateApiConfig()
     stmnt_list += self.TranslatePagespeed()
     stmnt_list += self.TranslateEnvVariables()
+    stmnt_list += self.TranslateBetaSettings()
     stmnt_list += self.TranslateVmSettings()
+    stmnt_list += self.TranslateHealthCheck()
+    stmnt_list += self.TranslateResources()
+    stmnt_list += self.TranslateNetwork()
     stmnt_list += self.TranslateErrorHandlers()
     stmnt_list += self.TranslateApiVersion()
     stmnt_list += self.TranslateHandlers()
@@ -247,6 +217,25 @@ class AppYamlTranslator(object):
               self.SanitizeForYaml(name), self.SanitizeForYaml(value)))
     return statements
 
+  def TranslateBetaSettings(self):
+    """Translates Beta settings in appengine-web.xml to yaml."""
+    if not self.app_engine_web_xml.vm:
+      return []
+
+    settings = self.app_engine_web_xml.beta_settings or {}
+    if 'java_quickstart' in settings:
+
+      del settings['java_quickstart']
+    statements = []
+    if settings:
+      statements = ['beta_settings:']
+      for name in sorted(settings):
+        statements.append(
+            '  %s: %s' % (
+                self.SanitizeForYaml(name),
+                self.SanitizeForYaml(settings[name])))
+    return statements
+
   def TranslateVmSettings(self):
     """Translates VM settings in appengine-web.xml to yaml."""
     if not self.app_engine_web_xml.vm:
@@ -261,19 +250,51 @@ class AppYamlTranslator(object):
               self.SanitizeForYaml(name), self.SanitizeForYaml(settings[name])))
     return statements
 
-  def TranslateVmHealthCheck(self):
-    """Translates <vm-health-check> in appengine-web.xml to yaml."""
-    vm_health_check = self.app_engine_web_xml.vm_health_check
-    if not vm_health_check:
+  def TranslateHealthCheck(self):
+    """Translates <health-check> in appengine-web.xml to yaml."""
+    health_check = self.app_engine_web_xml.health_check
+    if not health_check:
       return []
 
-    statements = ['vm_health_check:']
+    statements = ['health_check:']
     for attr in ('enable_health_check', 'check_interval_sec', 'timeout_sec',
                  'unhealthy_threshold', 'healthy_threshold',
                  'restart_threshold', 'host'):
-      value = getattr(vm_health_check, attr, None)
+      value = getattr(health_check, attr, None)
       if value is not None:
         statements.append('  %s: %s' % (attr, value))
+    return statements
+
+  def TranslateResources(self):
+    """Translates <resources> in appengine-web.xml to yaml."""
+    resources = self.app_engine_web_xml.resources
+    if not resources:
+      return []
+
+    statements = ['resources:']
+    for attr in ('cpu', 'memory_gb', 'disk_size_gb'):
+      value = getattr(resources, attr, None)
+      if value is not None:
+        statements.append('  %s: %s' % (attr, value))
+    return statements
+
+  def TranslateNetwork(self):
+    """Translates <network> in appengine-web.xml to yaml."""
+    network = self.app_engine_web_xml.network
+    if not network:
+      return []
+
+    statements = ['network:']
+    for attr in ('instance_tag', 'name'):
+      value = getattr(network, attr, None)
+      if value is not None:
+        statements.append('  %s: %s' % (attr, value))
+
+    forwarded_ports = getattr(network, 'forwarded_ports', None)
+    if forwarded_ports is not None:
+      statements.append('  forwarded_ports:')
+      for port in forwarded_ports:
+        statements.append('  - ' + port)
     return statements
 
   def TranslateInboundServices(self):

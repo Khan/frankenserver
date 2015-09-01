@@ -17,6 +17,7 @@
 """Tests for google.appengine.tools.devappserver2.http_runtime."""
 
 
+
 import base64
 import os
 import re
@@ -29,6 +30,7 @@ import unittest
 import google
 
 import mox
+import portpicker
 
 from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import http_proxy
@@ -373,6 +375,61 @@ class HttpRuntimeProxyFileFlavorTest(wsgi_test_utils.WSGITestCase):
                         request_type=instance.NORMAL_REQUEST)
     self.mox.VerifyAll()
 
+
+class HttpRuntimeProxyReverseFlavorTest(wsgi_test_utils.WSGITestCase):
+
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.tmpdir = tempfile.mkdtemp()
+    module_configuration = ModuleConfigurationStub(application_root=self.tmpdir)
+    self.runtime_config = runtime_config_pb2.Config()
+    self.runtime_config.app_id = 'app'
+    self.runtime_config.version_id = 'version'
+    self.runtime_config.api_port = 12345
+    self.runtime_config.application_root = self.tmpdir
+    self.runtime_config.datacenter = 'us1'
+    self.runtime_config.instance_id = 'abc3dzac4'
+    self.runtime_config.auth_domain = 'gmail.com'
+    self.runtime_config_getter = lambda: self.runtime_config
+    self.proxy = http_runtime.HttpRuntimeProxy(
+        ['/runtime'], self.runtime_config_getter, module_configuration,
+        env={'foo': 'bar'},
+        start_process_flavor=http_runtime.START_PROCESS_REVERSE)
+    self.mox.StubOutWithMock(self.proxy, '_process_lock')
+    self.process = self.mox.CreateMock(subprocess.Popen)
+    self.process.stdin = self.mox.CreateMockAnything()
+    self.mox.StubOutWithMock(safe_subprocess, 'start_process_file')
+    self.mox.StubOutWithMock(os, 'remove')
+    self.mox.StubOutWithMock(time, 'sleep')
+    self.url_map = appinfo.URLMap(url=r'/(get|post).*',
+                                  script=r'\1.py')
+
+    self.mox.StubOutWithMock(http_proxy.HttpProxy, 'wait_for_connection')
+    self.mox.StubOutWithMock(portpicker, 'PickUnusedPort')
+    http_proxy.HttpProxy.wait_for_connection()
+
+  def tearDown(self):
+    shutil.rmtree(self.tmpdir)
+    self.mox.UnsetStubs()
+
+  def test_basic(self):
+    """Basic functionality test of START_PROCESS_REVERSE flavor."""
+    portpicker.PickUnusedPort().AndReturn(2345)
+    # As the lock is mocked out, this provides a mox expectation.
+    with self.proxy._process_lock:
+      safe_subprocess.start_process_file(
+          args=['/runtime'],
+          input_string=self.runtime_config.SerializeToString(),
+          env={'foo': 'bar',
+               'PORT': '2345'},
+          cwd=self.tmpdir,
+          stderr=subprocess.PIPE).AndReturn(self.process)
+    self.proxy._stderr_tee = FakeTee('')
+
+    self.mox.ReplayAll()
+    self.proxy.start()
+    self.assertEquals(2345, self.proxy._proxy._port)
+    self.mox.VerifyAll()
 
 if __name__ == '__main__':
   unittest.main()

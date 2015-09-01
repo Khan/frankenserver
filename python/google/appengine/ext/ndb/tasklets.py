@@ -70,6 +70,7 @@ from .google_imports import apiproxy_stub_map
 from .google_imports import apiproxy_rpc
 from .google_imports import datastore
 from .google_imports import datastore_errors
+from .google_imports import datastore_pbs
 from .google_imports import datastore_rpc
 from .google_imports import namespace_manager
 
@@ -770,7 +771,6 @@ class SerialQueueFuture(Future):
   """
 
   def __init__(self, info=None):
-    self._full = False
     self._queue = collections.deque()
     self._waiting = collections.deque()
     super(SerialQueueFuture, self).__init__(info=info)
@@ -778,17 +778,15 @@ class SerialQueueFuture(Future):
   # TODO: __repr__
 
   def complete(self):
-    if self._full:
-      raise RuntimeError('SerialQueueFuture cannot complete twice.')
-    self._full = True
     while self._waiting:
       waiter = self._waiting.popleft()
       waiter.set_exception(EOFError('Queue is empty'))
-    if not self._queue:
-      self.set_result(None)
+    # When the writer is complete the future will also complete. If there are
+    # still pending queued futures, these futures are themselves in the pending
+    # list, so they will eventually be executed.
+    self.set_result(None)
 
   def set_exception(self, exc, tb=None):
-    self._full = True
     super(SerialQueueFuture, self).set_exception(exc, tb)
     while self._waiting:
       waiter = self._waiting.popleft()
@@ -809,7 +807,7 @@ class SerialQueueFuture(Future):
   def add_dependent(self, fut):
     if not isinstance(fut, Future):
       raise TypeError('fut must be a Future instance; received %r' % fut)
-    if self._full:
+    if self._done:
       raise RuntimeError('SerialQueueFuture cannot add dependent '
                          'once complete.')
     if self._waiting:
@@ -821,14 +819,9 @@ class SerialQueueFuture(Future):
   def getq(self):
     if self._queue:
       fut = self._queue.popleft()
-      # TODO: Isn't it better to call self.set_result(None) in complete()?
-      if not self._queue and self._full and not self._done:
-        self.set_result(None)
     else:
       fut = Future()
-      if self._full:
-        if not self._done:
-          raise RuntimeError('self._queue should be non-empty.')
+      if self._done:
         err = self.get_exception()
         if err is not None:
           tb = self.get_traceback()
@@ -1056,6 +1049,11 @@ def toplevel(func):
 
 _CONTEXT_KEY = '__CONTEXT__'
 
+_DATASTORE_HOST_ENV = 'DATASTORE_HOST'
+_DATASTORE_APP_ID_ENV = 'DATASTORE_APP_ID'
+_DATASTORE_PROJECT_ID_ENV = 'DATASTORE_PROJECT_ID'
+_DATASTORE_ADDITIONAL_APP_IDS_ENV = 'DATASTORE_ADDITIONAL_APP_IDS'
+_DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV = 'DATASTORE_USE_PROJECT_ID_AS_APP_ID'
 
 def get_context():
   # XXX Docstring
@@ -1070,6 +1068,44 @@ def get_context():
 
 def make_default_context():
   # XXX Docstring
+  datastore_app_id = os.environ.get(_DATASTORE_APP_ID_ENV, None)
+  datastore_project_id = os.environ.get(_DATASTORE_PROJECT_ID_ENV, None)
+  if datastore_app_id or datastore_project_id:
+    # We will create a Cloud Datastore context.
+    app_id_override = bool(os.environ.get(
+        _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV, False))
+    if not datastore_app_id and not app_id_override:
+      raise ValueError('Could not determine app id. To use project id (%s) '
+                       'instead, set %s=true. This will affect the '
+                       'serialized form of entities and should not be used '
+                       'if serialized entities will be shared between '
+                       'code running on App Engine and code running off '
+                       'App Engine. Alternatively, set %s=<app id>.'
+                       % (datastore_project_id,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV,
+                          _DATASTORE_APP_ID_ENV))
+    elif datastore_app_id:
+      if app_id_override:
+        raise ValueError('App id was provided (%s) but %s was set to true. '
+                         'Please unset either %s or %s.' %
+                         (datastore_app_id,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV,
+                          _DATASTORE_APP_ID_ENV,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV))
+      elif datastore_project_id:
+        # Project id and app id provided, make sure they are the same.
+        id_resolver = datastore_pbs.IdResolver([datastore_app_id])
+        if (datastore_project_id !=
+            id_resolver.resolve_project_id(datastore_app_id)):
+          raise ValueError('App id "%s" does not match project id "%s".'
+                           % (datastore_app_id, datastore_project_id))
+
+    datastore_app_id = datastore_project_id or datastore_app_id
+    additional_app_str = os.environ.get(_DATASTORE_ADDITIONAL_APP_IDS_ENV, '')
+    additional_apps = (app.strip() for app in additional_app_str.split(','))
+    host = os.environ.get(_DATASTORE_HOST_ENV, None)
+    return _make_cloud_datastore_context(datastore_app_id,
+                                         additional_apps, host)
   return make_context()
 
 
@@ -1078,6 +1114,62 @@ def make_context(conn=None, config=None):
   # XXX Docstring
   from . import context  # Late import to deal with circular imports.
   return context.Context(conn=conn, config=config)
+
+
+def _make_cloud_datastore_context(app_id, external_app_ids=(), host=None):
+  """Creates a new context to connect to a remote Cloud Datastore instance.
+
+  This should only be used outside of Google App Engine.
+
+  Args:
+    app_id: The application id to connect to. This differs from the project
+      id as it may have an additional prefix, e.g. "s~" or "e~".
+    external_app_ids: A list of apps that may be referenced by data in your
+      application. For example, if you are connected to s~my-app and store keys
+      for s~my-other-app, you should include s~my-other-app in the external_apps
+      list.
+    host: The hostname to provide to the datastore connection. If None, the
+      default is used.
+  Returns:
+    An ndb.Context that can connect to a Remote Cloud Datastore. You can use
+    this context by passing it to ndb.set_context.
+  """
+  from . import model  # Late import to deal with circular imports.
+  # Late import since it might not exist.
+  if not datastore_pbs._CLOUD_DATASTORE_ENABLED:
+    raise datastore_errors.BadArgumentError(
+        datastore_pbs.MISSING_CLOUD_DATASTORE_MESSAGE)
+  import googledatastore
+  try:
+    from google.appengine.datastore import cloud_datastore_v1_remote_stub
+  except ImportError:
+    from google3.apphosting.datastore import cloud_datastore_v1_remote_stub
+
+  current_app_id = os.environ.get('APPLICATION_ID', None)
+  if current_app_id and current_app_id != app_id:
+    # TODO(pcostello): We should support this so users can connect to different
+    # applications.
+    raise ValueError('Cannot create a Cloud Datastore context that connects '
+                     'to an application (%s) that differs from the application '
+                     'already connected to (%s).' % (app_id, current_app_id))
+  os.environ['APPLICATION_ID'] = app_id
+
+  id_resolver = datastore_pbs.IdResolver((app_id,) + tuple(external_app_ids))
+  project_id = id_resolver.resolve_project_id(app_id)
+  datastore = googledatastore.Datastore(project_id, host=host)
+
+  conn = model.make_connection(_api_version=datastore_rpc._CLOUD_DATASTORE_V1,
+                               _id_resolver=id_resolver)
+
+  # If necessary, install the stubs
+  try:
+    stub = cloud_datastore_v1_remote_stub.CloudDatastoreV1RemoteStub(datastore)
+    apiproxy_stub_map.apiproxy.RegisterStub(datastore_rpc._CLOUD_DATASTORE_V1,
+                                            stub)
+  except:
+    pass  # The stub is already installed.
+  # TODO(pcostello): Ensure the current stub is connected to the right project.
+  return make_context(conn=conn)
 
 
 def set_context(new_context):

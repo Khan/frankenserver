@@ -29,6 +29,9 @@ namespace google\appengine\ext\session;
  */
 final class MemcacheContainer {
 
+  /**
+   * The memcache object for storing sessions.
+   */
   private $memcache = null;
 
   /**
@@ -83,7 +86,14 @@ final class MemcacheSessionHandler implements \SessionHandlerInterface {
 
   const SESSION_PREFIX = '_ah_sess_';
 
+  /**
+   * The number of seconds before session objects expire.
+   */
   private $expire = null;
+
+  /**
+   * The memcacheContainer to use for storing and retrieving session data.
+   */
   private $memcacheContainer = null;
 
   /**

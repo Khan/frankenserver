@@ -150,11 +150,29 @@ namespace google\appengine {
     public function hasGsBucketName() {
       return isset($this->gs_bucket_name);
     }
+    public function getUrlExpiryTimeSeconds() {
+      if (!isset($this->url_expiry_time_seconds)) {
+        return 0;
+      }
+      return $this->url_expiry_time_seconds;
+    }
+    public function setUrlExpiryTimeSeconds($val) {
+      $this->url_expiry_time_seconds = $val;
+      return $this;
+    }
+    public function clearUrlExpiryTimeSeconds() {
+      unset($this->url_expiry_time_seconds);
+      return $this;
+    }
+    public function hasUrlExpiryTimeSeconds() {
+      return isset($this->url_expiry_time_seconds);
+    }
     public function clear() {
       $this->clearSuccessPath();
       $this->clearMaxUploadSizeBytes();
       $this->clearMaxUploadSizePerBlobBytes();
       $this->clearGsBucketName();
+      $this->clearUrlExpiryTimeSeconds();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -174,6 +192,10 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->gs_bucket_name));
       }
+      if (isset($this->url_expiry_time_seconds)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->url_expiry_time_seconds);
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -192,6 +214,10 @@ namespace google\appengine {
       if (isset($this->gs_bucket_name)) {
         $out->putVarInt32(34);
         $out->putPrefixedString($this->gs_bucket_name);
+      }
+      if (isset($this->url_expiry_time_seconds)) {
+        $out->putVarInt32(40);
+        $out->putVarInt32($this->url_expiry_time_seconds);
       }
     }
     public function tryMerge($d) {
@@ -213,6 +239,9 @@ namespace google\appengine {
             $length = $d->getVarInt32();
             $this->setGsBucketName(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
+            break;
+          case 40:
+            $this->setUrlExpiryTimeSeconds($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -240,6 +269,9 @@ namespace google\appengine {
       if ($x->hasGsBucketName()) {
         $this->setGsBucketName($x->getGsBucketName());
       }
+      if ($x->hasUrlExpiryTimeSeconds()) {
+        $this->setUrlExpiryTimeSeconds($x->getUrlExpiryTimeSeconds());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -251,6 +283,8 @@ namespace google\appengine {
       if (isset($this->max_upload_size_per_blob_bytes) && !$this->integerEquals($this->max_upload_size_per_blob_bytes, $x->max_upload_size_per_blob_bytes)) return false;
       if (isset($this->gs_bucket_name) !== isset($x->gs_bucket_name)) return false;
       if (isset($this->gs_bucket_name) && $this->gs_bucket_name !== $x->gs_bucket_name) return false;
+      if (isset($this->url_expiry_time_seconds) !== isset($x->url_expiry_time_seconds)) return false;
+      if (isset($this->url_expiry_time_seconds) && !$this->integerEquals($this->url_expiry_time_seconds, $x->url_expiry_time_seconds)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -266,6 +300,9 @@ namespace google\appengine {
       }
       if (isset($this->gs_bucket_name)) {
         $res .= $prefix . "gs_bucket_name: " . $this->debugFormatString($this->gs_bucket_name) . "\n";
+      }
+      if (isset($this->url_expiry_time_seconds)) {
+        $res .= $prefix . "url_expiry_time_seconds: " . $this->debugFormatInt32($this->url_expiry_time_seconds) . "\n";
       }
       return $res;
     }

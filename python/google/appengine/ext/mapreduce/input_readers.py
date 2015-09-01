@@ -31,6 +31,7 @@
 """Defines input readers for MapReduce."""
 
 
+
 __all__ = [
     "AbstractDatastoreInputReader",
     "ALLOW_CHECKPOINT",
@@ -44,6 +45,8 @@ __all__ = [
     "DatastoreInputReader",
     "DatastoreKeyInputReader",
     "FileInputReader",
+    "GoogleCloudStorageInputReader",
+    "GoogleCloudStorageRecordInputReader",
     "RandomStringInputReader",
     "RawDatastoreInputReader",
     "Error",
@@ -96,11 +99,19 @@ from google.appengine.ext.mapreduce import util
 
 try:
 
-  from google.appengine.ext import cloudstorage
+  cloudstorage = None
+  from google.appengine._internal import cloudstorage
   if hasattr(cloudstorage, "_STUB"):
     cloudstorage = None
 except ImportError:
   pass
+
+
+if cloudstorage is None:
+  try:
+    import cloudstorage
+  except ImportError:
+    pass
 
 
 
@@ -116,8 +127,7 @@ COUNTER_IO_READ_MSEC = "io-read-msec"
 
 
 
-
-ALLOW_CHECKPOINT = object()
+ALLOW_CHECKPOINT = util.ALLOW_CHECKPOINT
 
 
 class InputReader(json_util.JsonMixin):
@@ -2487,6 +2497,8 @@ class _GoogleCloudStorageInputReader(InputReader):
       will stop at the first directory instead of matching
       all files under the directory. This allows MR to process bucket with
       hundreds of thousands of files.
+    FAIL_ON_MISSING_INPUT: if specified and True, the MR will fail if any of
+      the input files are missing. Missing files will be skipped otherwise.
   """
 
 
@@ -2494,12 +2506,14 @@ class _GoogleCloudStorageInputReader(InputReader):
   OBJECT_NAMES_PARAM = "objects"
   BUFFER_SIZE_PARAM = "buffer_size"
   DELIMITER_PARAM = "delimiter"
+  FAIL_ON_MISSING_INPUT = "fail_on_missing_input"
 
 
   _ACCOUNT_ID_PARAM = "account_id"
 
 
   _JSON_PICKLE = "pickle"
+  _JSON_FAIL_ON_MISSING_INPUT = "fail_on_missing_input"
   _STRING_MAX_FILES_LISTED = 10
 
 
@@ -2528,6 +2542,13 @@ class _GoogleCloudStorageInputReader(InputReader):
     self._bucket = None
     self._bucket_iter = None
 
+
+
+
+
+
+    self._fail_on_missing_input = None
+
   def _next_file(self):
     """Find next filename.
 
@@ -2554,6 +2575,16 @@ class _GoogleCloudStorageInputReader(InputReader):
       self._bucket_iter = iter(self._bucket)
 
   @classmethod
+  def get_params(cls, mapper_spec, allowed_keys=None, allow_old=True):
+    params = _get_params(mapper_spec, allowed_keys, allow_old)
+
+
+    if (mapper_spec.params.get(cls.BUCKET_NAME_PARAM) is not None and
+        params.get(cls.BUCKET_NAME_PARAM) is None):
+      params[cls.BUCKET_NAME_PARAM] = mapper_spec.params[cls.BUCKET_NAME_PARAM]
+    return params
+
+  @classmethod
   def validate(cls, mapper_spec):
     """Validate mapper specification.
 
@@ -2564,7 +2595,7 @@ class _GoogleCloudStorageInputReader(InputReader):
       BadReaderParamsError: if the specification is invalid for any reason such
         as missing the bucket name or providing an invalid bucket name.
     """
-    reader_spec = _get_params(mapper_spec, allow_old=False)
+    reader_spec = cls.get_params(mapper_spec, allow_old=False)
 
 
     if cls.BUCKET_NAME_PARAM not in reader_spec:
@@ -2614,12 +2645,13 @@ class _GoogleCloudStorageInputReader(InputReader):
     Returns:
       A list of InputReaders. None when no input data can be found.
     """
-    reader_spec = _get_params(mapper_spec, allow_old=False)
+    reader_spec = cls.get_params(mapper_spec, allow_old=False)
     bucket = reader_spec[cls.BUCKET_NAME_PARAM]
     filenames = reader_spec[cls.OBJECT_NAMES_PARAM]
     delimiter = reader_spec.get(cls.DELIMITER_PARAM)
     account_id = reader_spec.get(cls._ACCOUNT_ID_PARAM)
     buffer_size = reader_spec.get(cls.BUFFER_SIZE_PARAM)
+    fail_on_missing_input = reader_spec.get(cls.FAIL_ON_MISSING_INPUT)
 
 
     all_filenames = []
@@ -2637,14 +2669,19 @@ class _GoogleCloudStorageInputReader(InputReader):
     for shard in range(0, mapper_spec.shard_count):
       shard_filenames = all_filenames[shard::mapper_spec.shard_count]
       if shard_filenames:
-        readers.append(cls(
+        reader = cls(
             shard_filenames, buffer_size=buffer_size, _account_id=account_id,
-            delimiter=delimiter))
+            delimiter=delimiter)
+        reader._fail_on_missing_input = fail_on_missing_input
+        readers.append(reader)
     return readers
 
   @classmethod
   def from_json(cls, state):
     obj = pickle.loads(state[cls._JSON_PICKLE])
+
+    obj._fail_on_missing_input = state.get(
+        cls._JSON_FAIL_ON_MISSING_INPUT, False)
     if obj._bucket:
       obj._bucket_iter = iter(obj._bucket)
     return obj
@@ -2653,7 +2690,13 @@ class _GoogleCloudStorageInputReader(InputReader):
     before_iter = self._bucket_iter
     self._bucket_iter = None
     try:
-      return {self._JSON_PICKLE: pickle.dumps(self)}
+      return {
+          self._JSON_PICKLE: pickle.dumps(self),
+
+
+          self._JSON_FAIL_ON_MISSING_INPUT:
+              getattr(self, "_fail_on_missing_input", False)
+      }
     finally:
       self._bucket_itr = before_iter
 
@@ -2691,8 +2734,26 @@ class _GoogleCloudStorageInputReader(InputReader):
 
         return handle
       except cloudstorage.NotFoundError:
+        self._on_missing_input_file(filename)
+
+        if getattr(self, "_fail_on_missing_input", False):
+          raise errors.FailJobError(
+              "File missing in GCS, aborting: %s" % filename)
+
         logging.warning("File %s may have been removed. Skipping file.",
                         filename)
+
+  def _on_missing_input_file(self, filename):
+    """Hook which is called when an input file is missing.
+
+    This implementation is a no-op.  Subclasses can override it to add error
+    handling.  Note that this method should not raise exceptions.  Instead, use
+    the FAIL_ON_MISSING_INPUT param to control that.
+
+    Args:
+      filename: The file that is missing.
+    """
+    pass
 
   def __str__(self):
 
@@ -2713,6 +2774,9 @@ class _GoogleCloudStorageInputReader(InputReader):
           self._index + 1,
           num_files)
     return "CloudStorage [%s, %s]" % (status, names)
+
+
+GoogleCloudStorageInputReader = _GoogleCloudStorageInputReader
 
 
 class _GoogleCloudStorageRecordInputReader(_GoogleCloudStorageInputReader):
@@ -2764,14 +2828,18 @@ class _GoogleCloudStorageRecordInputReader(_GoogleCloudStorageInputReader):
         self._record_reader = None
 
 
+GoogleCloudStorageRecordInputReader = _GoogleCloudStorageRecordInputReader
 
-class _ReducerReader(RecordsReader):
-  """Reader to read KeyValues records files from Files API."""
+
+class _ReducerReader(_GoogleCloudStorageRecordInputReader):
+  """Reader to read KeyValues records from GCS."""
 
   expand_parameters = True
 
-  def __init__(self, filenames, position):
-    super(_ReducerReader, self).__init__(filenames, position)
+  def __init__(self, filenames, index=0, buffer_size=None, _account_id=None,
+               delimiter=None):
+    super(_ReducerReader, self).__init__(filenames, index, buffer_size,
+                                         _account_id, delimiter)
     self.current_key = None
     self.current_values = None
 
@@ -2784,50 +2852,54 @@ class _ReducerReader(RecordsReader):
       if combiner_spec:
         combiner = util.handler_for_name(combiner_spec)
 
-    for binary_record in super(_ReducerReader, self).__iter__():
-      proto = file_service_pb.KeyValues()
-      proto.ParseFromString(binary_record)
+    try:
+      while True:
+        binary_record = super(_ReducerReader, self).next()
+        proto = file_service_pb.KeyValues()
+        proto.ParseFromString(binary_record)
 
-      to_yield = None
-      if self.current_key is not None and self.current_key != proto.key():
-        to_yield = (self.current_key, self.current_values)
-        self.current_key = None
-        self.current_values = None
+        to_yield = None
+        if self.current_key is not None and self.current_key != proto.key():
+          to_yield = (self.current_key, self.current_values)
+          self.current_key = None
+          self.current_values = None
 
-      if self.current_key is None:
-        self.current_key = proto.key()
-        self.current_values = []
+        if self.current_key is None:
+          self.current_key = proto.key()
+          self.current_values = []
 
-      if combiner:
-        combiner_result = combiner(
-            self.current_key, proto.value_list(), self.current_values)
+        if combiner:
+          combiner_result = combiner(
+              self.current_key, proto.value_list(), self.current_values)
 
-        if not util.is_generator(combiner_result):
-          raise errors.BadCombinerOutputError(
-              "Combiner %s should yield values instead of returning them (%s)" %
-              (combiner, combiner_result))
+          if not util.is_generator(combiner_result):
+            raise errors.BadCombinerOutputError(
+                "Combiner %s should yield values instead of returning them "
+                "(%s)" % (combiner, combiner_result))
 
-        self.current_values = []
-        for value in combiner_result:
-          if isinstance(value, operation.Operation):
-            value(ctx)
-          else:
+          self.current_values = []
+          for value in combiner_result:
+            if isinstance(value, operation.Operation):
+              value(ctx)
+            else:
 
-            self.current_values.append(value)
-
-
+              self.current_values.append(value)
 
 
-        if not to_yield:
+
+
+          if not to_yield:
+            yield ALLOW_CHECKPOINT
+        else:
+
+          self.current_values.extend(proto.value_list())
+
+        if to_yield:
+          yield to_yield
+
           yield ALLOW_CHECKPOINT
-      else:
-
-        self.current_values.extend(proto.value_list())
-
-      if to_yield:
-        yield to_yield
-
-        yield ALLOW_CHECKPOINT
+    except StopIteration:
+      pass
 
 
 

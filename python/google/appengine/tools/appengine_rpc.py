@@ -17,12 +17,14 @@
 """Tool for performing authenticated RPCs against App Engine."""
 
 
+
 import google
 
 import cookielib
 import cStringIO
 import fancy_urllib
 import gzip
+import hashlib
 import logging
 import os
 import re
@@ -31,23 +33,6 @@ import sys
 import time
 import urllib
 import urllib2
-
-from google.appengine.tools import dev_appserver_login
-
-_UPLOADING_APP_DOC_URLS = {
-    "go": "https://developers.google.com/appengine/docs/go/tools/"
-        "uploadinganapp#Go_Password-less_login_with_OAuth2",
-    "php": "https://developers.google.com/appengine/docs/php/tools/"
-        "uploadinganapp#PHP_Password-less_login_with_OAuth2",
-    "python": "https://developers.google.com/appengine/docs/python/tools/"
-        "uploadinganapp#Python_Password-less_login_with_OAuth2",
-    "python27": "https://developers.google.com/appengine/docs/python/tools/"
-        "uploadinganapp#Python_Password-less_login_with_OAuth2",
-    "java": "https://developers.google.com/appengine/docs/java/tools/"
-        "uploadinganapp#Passwordless_Login_with_OAuth2",
-    "java7": "https://developers.google.com/appengine/docs/java/tools/"
-        "uploadinganapp#Passwordless_Login_with_OAuth2",
-    }
 
 logger = logging.getLogger('google.appengine.tools.appengine_rpc')
 
@@ -121,15 +106,12 @@ class AbstractRpcServer(object):
   """Provides a common interface for a simple RPC server."""
 
 
-  SUGGEST_OAUTH2 = False
-
-
   RUNTIME = "python"
 
   def __init__(self, host, auth_function, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
                auth_tries=3, account_type=None, debug_data=True, secure=True,
-               ignore_certs=False, rpc_tries=3):
+               ignore_certs=False, rpc_tries=3, options=None):
     """Creates a new HttpRpcServer.
 
     Args:
@@ -153,6 +135,7 @@ class AbstractRpcServer(object):
       ignore_certs: If the certificate mismatches should be ignored.
       rpc_tries: The number of rpc retries upon http server error (i.e.
         Response code >= 500 and < 600) before failing.
+      options: the command line options (ignored in this implementation).
     """
     if secure:
       self.scheme = "https"
@@ -311,22 +294,8 @@ class AbstractRpcServer(object):
         if os.getenv("APPENGINE_RPC_USE_SID", "0") == "1":
           return
       except ClientLoginError, e:
-        if e.reason == "BadAuthentication":
-          if e.info == "InvalidSecondFactor":
-            print >>sys.stderr, ("Use an application-specific password instead "
-                                 "of your regular account password.")
-            print >>sys.stderr, ("See http://www.google.com/"
-                                 "support/accounts/bin/answer.py?answer=185833")
 
 
-
-            if self.SUGGEST_OAUTH2:
-              print >>sys.stderr, ("However, now the recommended way to log in "
-                                   "is using OAuth2. See")
-              print >>sys.stderr, _UPLOADING_APP_DOC_URLS[self.RUNTIME]
-          else:
-            print >>sys.stderr, "Invalid username or password."
-          continue
         if e.reason == "CaptchaRequired":
           print >>sys.stderr, (
               "Please go to\n"
@@ -356,10 +325,29 @@ class AbstractRpcServer(object):
       self._GetAuthCookie(auth_token)
       return
 
+
+  @staticmethod
+  def _CreateDevAppServerCookieData(email, admin):
+    """Creates cookie payload data.
+
+    Args:
+      email: The user's email address.
+      admin: True if the user is an admin; False otherwise.
+
+    Returns:
+      String containing the cookie payload.
+    """
+    if email:
+      user_id_digest = hashlib.md5(email.lower()).digest()
+      user_id = "1" + "".join(["%02d" % ord(x) for x in user_id_digest])[:20]
+    else:
+      user_id = ""
+    return "%s:%s:%s" % (email, bool(admin), user_id)
+
   def _DevAppServerAuthenticate(self):
     """Authenticates the user on the dev_appserver."""
     credentials = self.auth_function()
-    value = dev_appserver_login.CreateCookieData(credentials[0], True)
+    value = self._CreateDevAppServerCookieData(credentials[0], True)
     self.extra_headers["Cookie"] = ('dev_appserver_login="%s"; Path=/;' % value)
 
   def Send(self, request_path, payload="",
@@ -409,6 +397,8 @@ class AbstractRpcServer(object):
           return response
         except urllib2.HTTPError, e:
           logger.debug("Got http error, this is try #%s", tries)
+
+
           if tries > self.rpc_tries:
             raise
           elif e.code == 401:
@@ -608,13 +598,3 @@ To learn more, see https://developers.google.com/appengine/kb/general#rpcssl""")
 
     opener.add_handler(urllib2.HTTPCookieProcessor(self.cookie_jar))
     return opener
-
-
-
-class HttpRpcServerWithOAuth2Suggestion(HttpRpcServer):
-  """An HttpRpcServer variant which suggests using OAuth2 instead of ASP.
-
-  Not all systems which use HttpRpcServer can use OAuth2.
-  """
-
-  SUGGEST_OAUTH2 = True

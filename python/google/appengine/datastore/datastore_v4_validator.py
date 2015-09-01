@@ -38,6 +38,7 @@ This module is internal and should not be used by client applications.
 
 
 
+
 import re
 
 from google.appengine.datastore import datastore_pbs
@@ -642,6 +643,7 @@ class _EntityValidator(object):
                       + bool(value.list_value_list()))
     _assert_condition(num_sub_values <= 1,
                       'Value has multiple <type>_value fields set.')
+    return num_sub_values
 
   def __validate_value_meaning_matches_union(self, value):
     """Validates that a value's meaning matches its value type.
@@ -675,6 +677,9 @@ class _EntityValidator(object):
                         message % (meaning, 'blob_key_value'))
       _assert_condition(not value.has_entity_value(),
                         message % (meaning, 'entity_value'))
+    elif meaning == datastore_pbs.MEANING_EMPTY_LIST:
+      _assert_condition(self.__validate_value_union(value) == 0,
+                        'Empty list cannot have any value fields set.')
     else:
       _assert_condition(False,
                         'Unknown value meaning %d' % meaning)
@@ -882,9 +887,7 @@ class _QueryValidator(object):
       ValidationError: if the filter is invalid
     """
     _assert_condition((filt.has_composite_filter()
-                       + filt.has_property_filter()
-                       + filt.has_bounding_circle_filter()
-                       + filt.has_bounding_box_filter() == 1),
+                       + filt.has_property_filter() == 1),
                       'A filter must have exactly one of its fields set.')
     if filt.has_composite_filter():
       comp_filter = filt.composite_filter()

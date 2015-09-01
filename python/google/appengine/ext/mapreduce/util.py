@@ -28,9 +28,8 @@
 
 
 
-
-
 """Utility functions for use with the mapreduce library."""
+
 
 
 
@@ -47,6 +46,8 @@ __all__ = [
     "try_serialize_handler",
     "try_deserialize_handler",
     "CALLBACK_MR_ID_TASK_HEADER",
+    "strip_prefix_from_items",
+    "ALLOW_CHECKPOINT",
     ]
 
 import inspect
@@ -72,6 +73,12 @@ CALLBACK_MR_ID_TASK_HEADER = "Mapreduce-Id"
 
 
 
+
+
+
+ALLOW_CHECKPOINT = object()
+
+
 _FUTURE_TIME = 2**34
 
 
@@ -88,11 +95,12 @@ def _get_descending_key(gettime=time.time):
   Returns:
     A string with a time descending key.
   """
+
+
   now_descending = int((_FUTURE_TIME - gettime()) * 100)
-  request_id_hash = os.environ.get("REQUEST_ID_HASH")
-  if not request_id_hash:
-    request_id_hash = str(random.getrandbits(32))
-  return "%d%s" % (now_descending, request_id_hash)
+  request_id_hash = os.environ.get("REQUEST_ID_HASH", "")
+  random_bits = random.getrandbits(32)
+  return "%d%s%s" % (now_descending, random_bits, request_id_hash)
 
 
 def _get_task_host():
@@ -121,18 +129,23 @@ def _get_task_host():
 
 
 def _get_task_headers(map_job_id,
-                      mr_id_header_key=_MR_ID_TASK_HEADER):
+                      mr_id_header_key=_MR_ID_TASK_HEADER,
+                      set_host_header=True):
   """Get headers for all mr tasks.
 
   Args:
     map_job_id: map job id.
     mr_id_header_key: the key to set mr id with.
+    set_host_header: If True, the "Host" param will be set to point to the
+                     current version + module.
 
   Returns:
     A dictionary of all headers.
   """
-  return {mr_id_header_key: map_job_id,
-          "Host": _get_task_host()}
+  result = {mr_id_header_key: map_job_id}
+  if set_host_header:
+    result["Host"] = _get_task_host()
+  return result
 
 
 def _enum(**enums):
@@ -188,6 +201,52 @@ def total_seconds(td):
   return secs
 
 
+def _maybe_localize_fq_name(module_name, fq_name):
+  """Localizes fq_name to deal with path difference in python25/27 runtimes.
+
+  Args:
+    module_name: Name of our module, obtained using __name__.
+    fq_name: Fully qualified name to be "localized".
+  Returns:
+    fq_name, potentially with prefix switched to match current module.
+  """
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  PREFIX_LOCALIZATIONS = {
+      "google.appengine._internal.mapreduce": "google.appengine.ext.mapreduce",
+      "google.appengine.ext.mapreduce": "google.appengine._internal.mapreduce",
+  }
+  for local_module_prefix, fq_name_prefix in PREFIX_LOCALIZATIONS.iteritems():
+    if (module_name.startswith(local_module_prefix)
+        and fq_name.startswith(fq_name_prefix)):
+      return fq_name.replace(fq_name_prefix, local_module_prefix, 1)
+  return fq_name
+
+
 def for_name(fq_name, recursive=False):
   """Find class/function/method specified by its fully qualified name.
 
@@ -202,7 +261,8 @@ def for_name(fq_name, recursive=False):
   name doesn't contain '.', the current module will be used.
 
   Args:
-    fq_name: fully qualified name of something to find
+    fq_name: fully qualified name of something to find.
+    recursive: run recursively or not.
 
   Returns:
     class object or None if fq_name is None.
@@ -221,6 +281,8 @@ def for_name(fq_name, recursive=False):
   module_name = __name__
   short_name = fq_name
 
+  fq_name = _maybe_localize_fq_name(module_name, fq_name)
+
   if fq_name.rfind(".") >= 0:
     (module_name, short_name) = (fq_name[:fq_name.rfind(".")],
                                  fq_name[fq_name.rfind(".") + 1:])
@@ -238,7 +300,7 @@ def for_name(fq_name, recursive=False):
       raise
     else:
       raise ImportError("Could not find '%s' on path '%s'" % (
-                        short_name, module_name))
+          short_name, module_name))
   except ImportError:
 
 
@@ -251,7 +313,7 @@ def for_name(fq_name, recursive=False):
         raise KeyError()
     except KeyError:
       raise ImportError("Could not find '%s' on path '%s'" % (
-                        short_name, module_name))
+          short_name, module_name))
     except ImportError:
 
 
@@ -422,3 +484,25 @@ def _obj_to_path(obj):
           "Object %r must be defined on the top level of a module." % obj)
     return "%s.%s" % (obj.__module__, obj.__name__)
   raise TypeError("Unexpected type %s." % type(obj))
+
+
+def strip_prefix_from_items(prefix, items):
+  """Strips out the prefix from each of the items if it is present.
+
+  Args:
+    prefix: the string for that you wish to strip from the beginning of each
+      of the items.
+    items: a list of strings that may or may not contain the prefix you want
+      to strip out.
+
+  Returns:
+    items_no_prefix: a copy of the list of items (same order) without the
+      prefix (if present).
+  """
+  items_no_prefix = []
+  for item in items:
+    if item.startswith(prefix):
+      items_no_prefix.append(item[len(prefix):])
+    else:
+      items_no_prefix.append(item)
+  return items_no_prefix

@@ -1,4 +1,4 @@
-Copyright 2014 Kenneth Reitz
+Copyright 2015 Kenneth Reitz
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -216,6 +216,13 @@ Copyright 2014 Kenneth Reitz
    limitations under the License.
 
 
+
+
+
+******************************************************************************
+Requests includes some vendorized python libraries to ease installation:
+******************************************************************************
+
 Urllib3 copyright and license
 =============================
 
@@ -248,7 +255,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-Charade copyright and license
+Chardet copyright and license
 =============================
 
 ######################## BEGIN LICENSE BLOCK ########################

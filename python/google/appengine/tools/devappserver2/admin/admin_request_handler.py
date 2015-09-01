@@ -17,6 +17,7 @@
 """A base class for all Admin UI request handlers and related utilities."""
 
 
+
 import os.path
 import random
 import string
@@ -122,7 +123,7 @@ class AdminRequestHandler(webapp2.RequestHandler):
     For example, if the request URL is
     "http://foo/bar?animal=cat&color=redirect" then
     _construct_url(['animal'], {'vehicle': 'car'}) will return
-    "http://foo/bar?vehicle=car&color=redirect"
+    "http://foo/bar?color=redirect&vehicle=car"
 
     Args:
       remove: A sequence of query parameters to remove from the query string.

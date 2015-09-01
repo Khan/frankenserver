@@ -189,6 +189,10 @@ final class CloudStorageRenameClient extends CloudStorageClient {
       return false;
     }
 
+    clearstatcache(true, $this->createGcsFilename($this->from_bucket,
+                                                  $this->from_object));
+    clearstatcache(true, $this->createGcsFilename($this->to_bucket,
+                                                  $this->to_object));
     return true;
   }
 }

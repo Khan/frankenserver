@@ -16,8 +16,6 @@
  */
 namespace google\appengine\runtime;
 
-use org\bovigo\vfs\vfsStream;
-
 /**
  * Handle direct file uploads by placing contents in virtual file system.
  *
@@ -28,15 +26,21 @@ use org\bovigo\vfs\vfsStream;
  */
 final class DirectUploadHandler {
   public static function handle() {
-    // Initialize vfsStream wrapper with uploads directory.
-    require_once 'third_party/vfsstream/vendor/autoload.php';
-    vfsStream::setup('uploads');
-
     foreach ($_FILES as &$file) {
-      if ($file['error'] == UPLOAD_ERR_OK && isset($file['contents'])) {
-        // Example: tmp_name = vfs://uploads/1; name = 1.
-        $name = ltrim(parse_url($file['tmp_name'], PHP_URL_PATH), '/');
-        vfsStream::create([$name => $file['contents']]); // Does not copy.
+      // PHP LOL - members of the $_FILES array could be an array if the
+      // mutliple file upload syntax was used.
+      if (isset($file['tmp_name']) && is_array($file['tmp_name'])) {
+        $count = count($file['tmp_name']);
+        for ($i = 0; $i < $count; $i++) {
+          if ($file['error'][$i] == UPLOAD_ERR_OK && isset($file['contents']) &&
+              isset($file['contents'][$i])) {
+            file_put_contents($file['tmp_name'][$i], $file['contents'][$i]);
+          }
+        }
+      } else {
+        if ($file['error'] == UPLOAD_ERR_OK && isset($file['contents'])) {
+          file_put_contents($file['tmp_name'], $file['contents']);
+        }
       }
       unset($file['contents']);
     }

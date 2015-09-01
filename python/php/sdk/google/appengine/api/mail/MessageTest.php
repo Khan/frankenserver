@@ -95,7 +95,7 @@ class MessageTest extends ApiProxyTestBase {
     return $error_message;
   }
 
-  public function testCheckValidEmails() {
+  public function testCheckInvalidEmails() {
     $invalid_email = "invalid.email <script>alert('wello')</script>";
     $converted_invalid_email = htmlspecialchars($invalid_email);
 
@@ -107,6 +107,18 @@ class MessageTest extends ApiProxyTestBase {
     $array_emails = array("test@test.com", $invalid_email);
     $this->assertEquals($this->setupValidEmailTest($array_emails),
                         "Invalid 'to' recipient: " . $converted_invalid_email);
+  }
+
+  public function testCheckValidEmails() {
+    $valid_emails = ["test@test.com"];
+    if (function_exists('mailparse_rfc822_parse_addresses')) {
+      $valid_emails = array_merge($valid_emails, [
+          "<test@test.com>", "Foo <test@test.com>",
+          "Foo Bar <test@test.com>"]);
+    }
+    foreach ($valid_emails as $valid_email) {
+      $this->assertEquals($this->setupValidEmailTest($valid_email), "");
+    }
   }
 
   public function testAddHeaderNonWhitelisted() {

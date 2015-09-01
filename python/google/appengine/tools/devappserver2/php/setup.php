@@ -3,8 +3,22 @@
 // Ensure that the class autoloader is the first include.
 require_once 'google/appengine/runtime/autoloader.php';
 
-function _gae_syslog($priority, $format_string, $message) {
-  // TODO(bquinlan): Use the logs service to persist this message.
+use google\appengine\api\log\LogService;
+
+function _gae_stderr_log($log_level, $message) {
+  static $level_label_map = [
+      LogService::LEVEL_CRITICAL => 'CRITICAL',
+      LogService::LEVEL_ERROR => 'ERROR',
+      LogService::LEVEL_WARNING => 'WARNING',
+      LogService::LEVEL_INFO => 'INFO',
+      LogService::LEVEL_DEBUG => 'DEBUG'];
+  $min_log_level = getenv('STDERR_LOG_LEVEL');
+  if ($min_log_level !== false) {
+    if ($log_level >= $min_log_level) {
+      $message = $level_label_map[$log_level] . ': ' . $message;
+      error_log($message, 4);
+    }
+  }
 }
 
 $unsetEnv = function($var_name) {
@@ -73,25 +87,52 @@ $setup = function() {
 
   $setupApiProxy = function() {
     global $unsetEnv;
-    require_once 'google/appengine/runtime/ApiProxy.php';
-    require_once 'google/appengine/runtime/RemoteApiProxy.php';
-    \google\appengine\runtime\ApiProxy::setApiProxy(
-      new \google\appengine\runtime\RemoteApiProxy(
-        getenv('REMOTE_API_HOST'), getenv('REMOTE_API_PORT'),
-        getenv('REMOTE_REQUEST_ID')));
-    $unsetEnv('REMOTE_API_HOST');
-    $unsetEnv('REMOTE_API_PORT');
-    $unsetEnv('REMOTE_REQUEST_ID');
+    if (!function_exists('make_call')) {
+      require_once 'google/appengine/runtime/ApiProxy.php';
+      require_once 'google/appengine/runtime/RemoteApiProxy.php';
+      \google\appengine\runtime\ApiProxy::setApiProxy(
+        new \google\appengine\runtime\RemoteApiProxy(
+          getenv('REMOTE_API_HOST'), getenv('REMOTE_API_PORT'),
+          getenv('REMOTE_REQUEST_ID')));
+      $unsetEnv('REMOTE_API_HOST');
+      $unsetEnv('REMOTE_API_PORT');
+      $unsetEnv('REMOTE_REQUEST_ID');
+    }
   };
 
   $setupBuiltins = function() {
     require_once 'google/appengine/runtime/Setup.php';
   };
-  $setupGaeExtension();
+
+  $setupAPC = function() {
+    /**
+     * On the development AppServer users may not have APC available, especially
+     * if they built the php-cgi binary themselves. Provide stub functions here
+     * so we don't need to complicate the logic later by checking if the
+     * functions are avaialble.
+     */
+    if (!function_exists('apc_fetch')) {
+      function apc_fetch($key, &$success = null) {
+        if ($success !== null) {
+          $success = false;
+        }
+        return false;
+      }
+
+      function apc_store($name, $value, $ttl = null) {
+        return false;
+      }
+    }
+  };
+
+  if (!extension_loaded('GAE Runtime Module')) {
+    $setupGaeExtension();
+  }
   $configureDefaults();
   $updateScriptFilename();
   $setupApiProxy();
   $setupBuiltins();
+  $setupAPC();
 };
 $setup();
 unset($setup);

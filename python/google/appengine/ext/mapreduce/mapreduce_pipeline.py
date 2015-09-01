@@ -28,11 +28,10 @@
 
 
 
-
-
 """Pipelines for mapreduce library."""
 
 from __future__ import with_statement
+
 
 
 __all__ = [
@@ -48,13 +47,15 @@ import google
 
 from appengine_pipeline.src import pipeline
 from appengine_pipeline.src.pipeline import common as pipeline_common
-from google.appengine.api import files
+from google.appengine.api import app_identity
+from google.appengine.ext.mapreduce import errors
 from google.appengine.ext.mapreduce import input_readers
 from google.appengine.ext.mapreduce import mapper_pipeline
 from google.appengine.ext.mapreduce import model
 from google.appengine.ext.mapreduce import output_writers
 from google.appengine.ext.mapreduce import pipeline_base
 from google.appengine.ext.mapreduce import shuffler
+from google.appengine.ext.mapreduce import util
 
 
 
@@ -65,7 +66,7 @@ MapperPipeline = mapper_pipeline.MapperPipeline
 
 ShufflePipeline = shuffler.ShufflePipeline
 
-CleanupPipeline = mapper_pipeline._CleanupPipeline
+CleanupPipeline = shuffler._GCSCleanupPipeline
 
 
 _ReducerReader = input_readers._ReducerReader
@@ -95,13 +96,17 @@ class MapPipeline(pipeline_base._OutputSlotsMixin,
           input_reader_spec,
           params,
           shards=None):
+    new_params = dict(params or {})
+
+
+    new_params.update({"output_writer": {}})
     yield MapperPipeline(
         job_name + "-map",
         mapper_spec,
         input_reader_spec,
-        output_writer_spec=
-            output_writers.__name__ + ".KeyValueBlobstoreOutputWriter",
-        params=params,
+        output_writer_spec=(output_writers.__name__ +
+                            "._GoogleCloudStorageKeyValueOutputWriter"),
+        params=new_params,
         shards=shards)
 
 
@@ -117,6 +122,7 @@ class ReducePipeline(pipeline_base._OutputSlotsMixin,
     output_writer_spec: specification of output write to use with reduce
       function.
     params: mapper parameters to use as dict.
+    bucket_name: The name of the Google Cloud Storage bucket.
     filenames: list of filenames to reduce.
     combiner_spec: Optional. Specification of a combine function. If not
       supplied, no combine step will take place. The combine function takes a
@@ -136,13 +142,18 @@ class ReducePipeline(pipeline_base._OutputSlotsMixin,
           reducer_spec,
           output_writer_spec,
           params,
+          bucket_name,
           filenames,
           combiner_spec=None,
           shards=None):
+    filenames_only = (
+        util.strip_prefix_from_items("/%s/" % bucket_name, filenames))
     new_params = dict(params or {})
     new_params.update({
-        "files": filenames
-        })
+        "input_reader": {
+            "bucket_name": bucket_name,
+            "objects": filenames_only,
+        }})
     if combiner_spec:
       new_params.update({
           "combiner_spec": combiner_spec,
@@ -165,6 +176,10 @@ class MapreducePipeline(pipeline_base._OutputSlotsMixin,
                         pipeline_base.PipelineBase):
   """Pipeline to execute MapReduce jobs.
 
+  The Shuffle stage uses Google Cloud Storage (GCS). For newly created projects,
+  GCS is activated automatically. To activate GCS follow these instructions:
+  https://cloud.google.com/storage/docs/signup#activate
+
   Args:
     job_name: job name as string.
     mapper_spec: specification of mapper to use.
@@ -184,7 +199,7 @@ class MapreducePipeline(pipeline_base._OutputSlotsMixin,
   Returns:
     result_status: one of model.MapreduceState._RESULTS. Check this to see
       if the job is successful.
-    default: a list of filenames if the mapreduce was sucesssful and
+    default: a list of filenames if the mapreduce was successful and
       was outputting files. An empty list otherwise.
   """
 
@@ -198,18 +213,34 @@ class MapreducePipeline(pipeline_base._OutputSlotsMixin,
           reducer_params=None,
           shards=None,
           combiner_spec=None):
+
+
+    if mapper_params.get("bucket_name") is None:
+      try:
+        mapper_params["bucket_name"] = (
+            app_identity.get_default_gcs_bucket_name())
+      except Exception, e:
+        raise errors.Error("Unable to get the GCS default bucket name. "
+                           "Check to see that GCS is properly activated. "
+                           + str(e))
+    if mapper_params["bucket_name"] is None:
+      raise errors.Error("There is no GCS default bucket name. "
+                         "Check to see that GCS is properly activated.")
+
+
     map_pipeline = yield MapPipeline(job_name,
                                      mapper_spec,
                                      input_reader_spec,
                                      params=mapper_params,
                                      shards=shards)
     shuffler_pipeline = yield ShufflePipeline(
-        job_name, map_pipeline)
+        job_name, mapper_params, map_pipeline)
     reducer_pipeline = yield ReducePipeline(
         job_name,
         reducer_spec,
         output_writer_spec,
         reducer_params,
+        mapper_params["bucket_name"],
         shuffler_pipeline,
         combiner_spec=combiner_spec)
     with pipeline.After(reducer_pipeline):

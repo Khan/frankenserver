@@ -48,6 +48,12 @@ TAG_MESSAGE          = 26
 
 class Item:
 
+
+
+
+
+
+
   def __init__(self, message, message_class=None):
     self.message = message
     self.message_class = message_class
@@ -57,6 +63,7 @@ class Item:
     self.message_class = message_class
 
   def Parse(self, message_class):
+
 
     if self.message_class is not None:
       return 1
@@ -73,6 +80,10 @@ class Item:
       return 0
 
   def MergeFrom(self, other):
+
+
+
+
 
     if self.message_class is not None:
       if other.Parse(self.message_class):
@@ -92,6 +103,7 @@ class Item:
 
   def Copy(self):
 
+
     if self.message_class is None:
       return Item(self.message)
     else:
@@ -100,6 +112,10 @@ class Item:
       return Item(new_message, self.message_class)
 
   def Equals(self, other):
+
+
+
+
 
     if self.message_class is not None:
       if not other.Parse(self.message_class): return 0
@@ -114,12 +130,15 @@ class Item:
 
   def IsInitialized(self, debug_strs=None):
 
+
+
     if self.message_class is None:
       return 1
     else:
       return self.message.IsInitialized(debug_strs)
 
   def ByteSize(self, pb, type_id):
+
 
     message_length = 0
     if self.message_class is None:
@@ -132,6 +151,7 @@ class Item:
 
   def ByteSizePartial(self, pb, type_id):
 
+
     message_length = 0
     if self.message_class is None:
       message_length = len(self.message)
@@ -142,6 +162,7 @@ class Item:
     return pb.lengthString(message_length) + pb.lengthVarInt64(type_id) + 2
 
   def OutputUnchecked(self, out, type_id):
+
 
     out.putVarInt32(TAG_TYPE_ID)
 
@@ -158,6 +179,8 @@ class Item:
 
   def OutputPartial(self, out, type_id):
 
+
+
     out.putVarInt32(TAG_TYPE_ID)
 
 
@@ -172,6 +195,9 @@ class Item:
       self.message.OutputPartial(out)
 
   def Decode(decoder):
+
+
+
 
     type_id = 0
     message = None
@@ -202,7 +228,43 @@ class Item:
 
 class MessageSet(ProtocolBuffer.ProtocolMessage):
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   def __init__(self, contents=None):
+
+
     self.items = dict()
     if contents is not None: self.MergeFromString(contents)
 
@@ -210,6 +272,16 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
 
 
   def get(self, message_class):
+
+
+
+
+
+
+
+
+
+
 
     if message_class.MESSAGE_TYPE_ID not in self.items:
       return message_class()
@@ -220,6 +292,11 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
       return message_class()
 
   def mutable(self, message_class):
+
+
+
+
+
 
     if message_class.MESSAGE_TYPE_ID not in self.items:
       message = message_class()
@@ -232,21 +309,42 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
 
   def has(self, message_class):
 
+
     if message_class.MESSAGE_TYPE_ID not in self.items:
       return 0
     item = self.items[message_class.MESSAGE_TYPE_ID]
     return item.Parse(message_class)
 
   def has_unparsed(self, message_class):
+
+
+
+
+
+
     return message_class.MESSAGE_TYPE_ID in self.items
 
   def GetTypeIds(self):
+
+
+
+
+
+
     return self.items.keys()
 
   def NumMessages(self):
+
+
+
+
+
+
+
     return len(self.items)
 
   def remove(self, message_class):
+
     if message_class.MESSAGE_TYPE_ID in self.items:
       del self.items[message_class.MESSAGE_TYPE_ID]
 
@@ -279,6 +377,11 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, other):
 
+
+
+
+
+
     assert other is not self
 
     for (type_id, item) in other.items.items():
@@ -288,6 +391,7 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
         self.items[type_id] = item.Copy()
 
   def Equals(self, other):
+
     if other is self: return 1
     if len(self.items) != len(other.items): return 0
 
@@ -307,6 +411,8 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
 
+
+
     initialized = 1
     for item in self.items.values():
       if not item.IsInitialized(debug_strs):
@@ -314,33 +420,42 @@ class MessageSet(ProtocolBuffer.ProtocolMessage):
     return initialized
 
   def ByteSize(self):
+
     n = 2 * len(self.items)
     for (type_id, item) in self.items.items():
       n += item.ByteSize(self, type_id)
     return n
 
   def ByteSizePartial(self):
+
+
     n = 2 * len(self.items)
     for (type_id, item) in self.items.items():
       n += item.ByteSizePartial(self, type_id)
     return n
 
   def Clear(self):
+
     self.items = dict()
 
   def OutputUnchecked(self, out):
+
     for (type_id, item) in self.items.items():
       out.putVarInt32(TAG_BEGIN_ITEM_GROUP)
       item.OutputUnchecked(out, type_id)
       out.putVarInt32(TAG_END_ITEM_GROUP)
 
   def OutputPartial(self, out):
+
+
     for (type_id, item) in self.items.items():
       out.putVarInt32(TAG_BEGIN_ITEM_GROUP)
       item.OutputPartial(out, type_id)
       out.putVarInt32(TAG_END_ITEM_GROUP)
 
   def TryMerge(self, decoder):
+
+
     while decoder.avail() > 0:
       tag = decoder.getVarInt32()
       if tag == TAG_BEGIN_ITEM_GROUP:

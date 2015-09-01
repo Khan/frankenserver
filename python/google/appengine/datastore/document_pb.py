@@ -31,8 +31,6 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
-from google.appengine.datastore.acl_pb import *
-import google.appengine.datastore.acl_pb
 class FieldValue_Geo(ProtocolBuffer.ProtocolMessage):
   has_lat_ = 0
   lat_ = 0.0
@@ -669,11 +667,253 @@ class FieldTypes(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.FieldTypes'
-class IndexMetadata(ProtocolBuffer.ProtocolMessage):
-  has_is_over_field_number_threshold_ = 0
-  is_over_field_number_threshold_ = 0
+class IndexShardSettings(ProtocolBuffer.ProtocolMessage):
+  has_num_shards_ = 0
+  num_shards_ = 1
+  has_local_replica_ = 0
+  local_replica_ = ""
 
   def __init__(self, contents=None):
+    self.prev_num_shards_ = []
+    self.prev_num_shards_search_false_ = []
+    if contents is not None: self.MergeFromString(contents)
+
+  def prev_num_shards_size(self): return len(self.prev_num_shards_)
+  def prev_num_shards_list(self): return self.prev_num_shards_
+
+  def prev_num_shards(self, i):
+    return self.prev_num_shards_[i]
+
+  def set_prev_num_shards(self, i, x):
+    self.prev_num_shards_[i] = x
+
+  def add_prev_num_shards(self, x):
+    self.prev_num_shards_.append(x)
+
+  def clear_prev_num_shards(self):
+    self.prev_num_shards_ = []
+
+  def num_shards(self): return self.num_shards_
+
+  def set_num_shards(self, x):
+    self.has_num_shards_ = 1
+    self.num_shards_ = x
+
+  def clear_num_shards(self):
+    if self.has_num_shards_:
+      self.has_num_shards_ = 0
+      self.num_shards_ = 1
+
+  def has_num_shards(self): return self.has_num_shards_
+
+  def prev_num_shards_search_false_size(self): return len(self.prev_num_shards_search_false_)
+  def prev_num_shards_search_false_list(self): return self.prev_num_shards_search_false_
+
+  def prev_num_shards_search_false(self, i):
+    return self.prev_num_shards_search_false_[i]
+
+  def set_prev_num_shards_search_false(self, i, x):
+    self.prev_num_shards_search_false_[i] = x
+
+  def add_prev_num_shards_search_false(self, x):
+    self.prev_num_shards_search_false_.append(x)
+
+  def clear_prev_num_shards_search_false(self):
+    self.prev_num_shards_search_false_ = []
+
+  def local_replica(self): return self.local_replica_
+
+  def set_local_replica(self, x):
+    self.has_local_replica_ = 1
+    self.local_replica_ = x
+
+  def clear_local_replica(self):
+    if self.has_local_replica_:
+      self.has_local_replica_ = 0
+      self.local_replica_ = ""
+
+  def has_local_replica(self): return self.has_local_replica_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    for i in xrange(x.prev_num_shards_size()): self.add_prev_num_shards(x.prev_num_shards(i))
+    if (x.has_num_shards()): self.set_num_shards(x.num_shards())
+    for i in xrange(x.prev_num_shards_search_false_size()): self.add_prev_num_shards_search_false(x.prev_num_shards_search_false(i))
+    if (x.has_local_replica()): self.set_local_replica(x.local_replica())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if len(self.prev_num_shards_) != len(x.prev_num_shards_): return 0
+    for e1, e2 in zip(self.prev_num_shards_, x.prev_num_shards_):
+      if e1 != e2: return 0
+    if self.has_num_shards_ != x.has_num_shards_: return 0
+    if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
+    if len(self.prev_num_shards_search_false_) != len(x.prev_num_shards_search_false_): return 0
+    for e1, e2 in zip(self.prev_num_shards_search_false_, x.prev_num_shards_search_false_):
+      if e1 != e2: return 0
+    if self.has_local_replica_ != x.has_local_replica_: return 0
+    if self.has_local_replica_ and self.local_replica_ != x.local_replica_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_num_shards_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: num_shards not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += 1 * len(self.prev_num_shards_)
+    for i in xrange(len(self.prev_num_shards_)): n += self.lengthVarInt64(self.prev_num_shards_[i])
+    n += self.lengthVarInt64(self.num_shards_)
+    n += 1 * len(self.prev_num_shards_search_false_)
+    for i in xrange(len(self.prev_num_shards_search_false_)): n += self.lengthVarInt64(self.prev_num_shards_search_false_[i])
+    if (self.has_local_replica_): n += 1 + self.lengthString(len(self.local_replica_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    n += 1 * len(self.prev_num_shards_)
+    for i in xrange(len(self.prev_num_shards_)): n += self.lengthVarInt64(self.prev_num_shards_[i])
+    if (self.has_num_shards_):
+      n += 1
+      n += self.lengthVarInt64(self.num_shards_)
+    n += 1 * len(self.prev_num_shards_search_false_)
+    for i in xrange(len(self.prev_num_shards_search_false_)): n += self.lengthVarInt64(self.prev_num_shards_search_false_[i])
+    if (self.has_local_replica_): n += 1 + self.lengthString(len(self.local_replica_))
+    return n
+
+  def Clear(self):
+    self.clear_prev_num_shards()
+    self.clear_num_shards()
+    self.clear_prev_num_shards_search_false()
+    self.clear_local_replica()
+
+  def OutputUnchecked(self, out):
+    for i in xrange(len(self.prev_num_shards_)):
+      out.putVarInt32(8)
+      out.putVarInt32(self.prev_num_shards_[i])
+    out.putVarInt32(16)
+    out.putVarInt32(self.num_shards_)
+    for i in xrange(len(self.prev_num_shards_search_false_)):
+      out.putVarInt32(24)
+      out.putVarInt32(self.prev_num_shards_search_false_[i])
+    if (self.has_local_replica_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.local_replica_)
+
+  def OutputPartial(self, out):
+    for i in xrange(len(self.prev_num_shards_)):
+      out.putVarInt32(8)
+      out.putVarInt32(self.prev_num_shards_[i])
+    if (self.has_num_shards_):
+      out.putVarInt32(16)
+      out.putVarInt32(self.num_shards_)
+    for i in xrange(len(self.prev_num_shards_search_false_)):
+      out.putVarInt32(24)
+      out.putVarInt32(self.prev_num_shards_search_false_[i])
+    if (self.has_local_replica_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.local_replica_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 8:
+        self.add_prev_num_shards(d.getVarInt32())
+        continue
+      if tt == 16:
+        self.set_num_shards(d.getVarInt32())
+        continue
+      if tt == 24:
+        self.add_prev_num_shards_search_false(d.getVarInt32())
+        continue
+      if tt == 34:
+        self.set_local_replica(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    cnt=0
+    for e in self.prev_num_shards_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("prev_num_shards%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
+    if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
+    cnt=0
+    for e in self.prev_num_shards_search_false_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("prev_num_shards_search_false%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
+    if self.has_local_replica_: res+=prefix+("local_replica: %s\n" % self.DebugFormatString(self.local_replica_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kprev_num_shards = 1
+  knum_shards = 2
+  kprev_num_shards_search_false = 3
+  klocal_replica = 4
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "prev_num_shards",
+    2: "num_shards",
+    3: "prev_num_shards_search_false",
+    4: "local_replica",
+  }, 4)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.NUMERIC,
+    2: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.IndexShardSettings'
+class IndexMetadata(ProtocolBuffer.ProtocolMessage):
+
+
+  ACTIVE       =    0
+  SOFT_DELETED =    1
+  PURGING      =    2
+
+  _IndexState_NAMES = {
+    0: "ACTIVE",
+    1: "SOFT_DELETED",
+    2: "PURGING",
+  }
+
+  def IndexState_Name(cls, x): return cls._IndexState_NAMES.get(x, "")
+  IndexState_Name = classmethod(IndexState_Name)
+
+  has_is_over_field_number_threshold_ = 0
+  is_over_field_number_threshold_ = 0
+  has_index_shard_settings_ = 0
+  index_shard_settings_ = None
+  has_index_state_ = 0
+  index_state_ = 0
+  has_index_delete_time_ = 0
+  index_delete_time_ = 0
+
+  def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def is_over_field_number_threshold(self): return self.is_over_field_number_threshold_
@@ -689,49 +929,145 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_is_over_field_number_threshold(self): return self.has_is_over_field_number_threshold_
 
+  def index_shard_settings(self):
+    if self.index_shard_settings_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.index_shard_settings_ is None: self.index_shard_settings_ = IndexShardSettings()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.index_shard_settings_
+
+  def mutable_index_shard_settings(self): self.has_index_shard_settings_ = 1; return self.index_shard_settings()
+
+  def clear_index_shard_settings(self):
+
+    if self.has_index_shard_settings_:
+      self.has_index_shard_settings_ = 0;
+      if self.index_shard_settings_ is not None: self.index_shard_settings_.Clear()
+
+  def has_index_shard_settings(self): return self.has_index_shard_settings_
+
+  def index_state(self): return self.index_state_
+
+  def set_index_state(self, x):
+    self.has_index_state_ = 1
+    self.index_state_ = x
+
+  def clear_index_state(self):
+    if self.has_index_state_:
+      self.has_index_state_ = 0
+      self.index_state_ = 0
+
+  def has_index_state(self): return self.has_index_state_
+
+  def index_delete_time(self): return self.index_delete_time_
+
+  def set_index_delete_time(self, x):
+    self.has_index_delete_time_ = 1
+    self.index_delete_time_ = x
+
+  def clear_index_delete_time(self):
+    if self.has_index_delete_time_:
+      self.has_index_delete_time_ = 0
+      self.index_delete_time_ = 0
+
+  def has_index_delete_time(self): return self.has_index_delete_time_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_is_over_field_number_threshold()): self.set_is_over_field_number_threshold(x.is_over_field_number_threshold())
+    if (x.has_index_shard_settings()): self.mutable_index_shard_settings().MergeFrom(x.index_shard_settings())
+    if (x.has_index_state()): self.set_index_state(x.index_state())
+    if (x.has_index_delete_time()): self.set_index_delete_time(x.index_delete_time())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_is_over_field_number_threshold_ != x.has_is_over_field_number_threshold_: return 0
     if self.has_is_over_field_number_threshold_ and self.is_over_field_number_threshold_ != x.is_over_field_number_threshold_: return 0
+    if self.has_index_shard_settings_ != x.has_index_shard_settings_: return 0
+    if self.has_index_shard_settings_ and self.index_shard_settings_ != x.index_shard_settings_: return 0
+    if self.has_index_state_ != x.has_index_state_: return 0
+    if self.has_index_state_ and self.index_state_ != x.index_state_: return 0
+    if self.has_index_delete_time_ != x.has_index_delete_time_: return 0
+    if self.has_index_delete_time_ and self.index_delete_time_ != x.index_delete_time_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
+    if (self.has_index_shard_settings_ and not self.index_shard_settings_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_is_over_field_number_threshold_): n += 2
+    if (self.has_index_shard_settings_): n += 1 + self.lengthString(self.index_shard_settings_.ByteSize())
+    if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
+    if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_is_over_field_number_threshold_): n += 2
+    if (self.has_index_shard_settings_): n += 1 + self.lengthString(self.index_shard_settings_.ByteSizePartial())
+    if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
+    if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     return n
 
   def Clear(self):
     self.clear_is_over_field_number_threshold()
+    self.clear_index_shard_settings()
+    self.clear_index_state()
+    self.clear_index_delete_time()
 
   def OutputUnchecked(self, out):
     if (self.has_is_over_field_number_threshold_):
       out.putVarInt32(8)
       out.putBoolean(self.is_over_field_number_threshold_)
+    if (self.has_index_shard_settings_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.index_shard_settings_.ByteSize())
+      self.index_shard_settings_.OutputUnchecked(out)
+    if (self.has_index_state_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.index_state_)
+    if (self.has_index_delete_time_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.index_delete_time_)
 
   def OutputPartial(self, out):
     if (self.has_is_over_field_number_threshold_):
       out.putVarInt32(8)
       out.putBoolean(self.is_over_field_number_threshold_)
+    if (self.has_index_shard_settings_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.index_shard_settings_.ByteSizePartial())
+      self.index_shard_settings_.OutputPartial(out)
+    if (self.has_index_state_):
+      out.putVarInt32(24)
+      out.putVarInt32(self.index_state_)
+    if (self.has_index_delete_time_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.index_delete_time_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 8:
         self.set_is_over_field_number_threshold(d.getBoolean())
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_index_shard_settings().TryMerge(tmp)
+        continue
+      if tt == 24:
+        self.set_index_state(d.getVarInt32())
+        continue
+      if tt == 32:
+        self.set_index_delete_time(d.getVarInt64())
         continue
 
 
@@ -742,6 +1078,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_is_over_field_number_threshold_: res+=prefix+("is_over_field_number_threshold: %s\n" % self.DebugFormatBool(self.is_over_field_number_threshold_))
+    if self.has_index_shard_settings_:
+      res+=prefix+"index_shard_settings <\n"
+      res+=self.index_shard_settings_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_index_state_: res+=prefix+("index_state: %s\n" % self.DebugFormatInt32(self.index_state_))
+    if self.has_index_delete_time_: res+=prefix+("index_delete_time: %s\n" % self.DebugFormatInt64(self.index_delete_time_))
     return res
 
 
@@ -749,16 +1091,25 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kis_over_field_number_threshold = 1
+  kindex_shard_settings = 2
+  kindex_state = 3
+  kindex_delete_time = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "is_over_field_number_threshold",
-  }, 1)
+    2: "index_shard_settings",
+    3: "index_state",
+    4: "index_delete_time",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1052,6 +1403,8 @@ class Facet(ProtocolBuffer.ProtocolMessage):
 class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
   has_version_ = 0
   version_ = 0
+  has_committed_st_version_ = 0
+  committed_st_version_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -1069,15 +1422,31 @@ class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_version(self): return self.has_version_
 
+  def committed_st_version(self): return self.committed_st_version_
+
+  def set_committed_st_version(self, x):
+    self.has_committed_st_version_ = 1
+    self.committed_st_version_ = x
+
+  def clear_committed_st_version(self):
+    if self.has_committed_st_version_:
+      self.has_committed_st_version_ = 0
+      self.committed_st_version_ = 0
+
+  def has_committed_st_version(self): return self.has_committed_st_version_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_version()): self.set_version(x.version())
+    if (x.has_committed_st_version()): self.set_committed_st_version(x.committed_st_version())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_version_ != x.has_version_: return 0
     if self.has_version_ and self.version_ != x.version_: return 0
+    if self.has_committed_st_version_ != x.has_committed_st_version_: return 0
+    if self.has_committed_st_version_ and self.committed_st_version_ != x.committed_st_version_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1087,31 +1456,43 @@ class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_committed_st_version_): n += 1 + self.lengthVarInt64(self.committed_st_version_)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_version_): n += 1 + self.lengthVarInt64(self.version_)
+    if (self.has_committed_st_version_): n += 1 + self.lengthVarInt64(self.committed_st_version_)
     return n
 
   def Clear(self):
     self.clear_version()
+    self.clear_committed_st_version()
 
   def OutputUnchecked(self, out):
     if (self.has_version_):
       out.putVarInt32(8)
       out.putVarInt64(self.version_)
+    if (self.has_committed_st_version_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.committed_st_version_)
 
   def OutputPartial(self, out):
     if (self.has_version_):
       out.putVarInt32(8)
       out.putVarInt64(self.version_)
+    if (self.has_committed_st_version_):
+      out.putVarInt32(16)
+      out.putVarInt64(self.committed_st_version_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 8:
         self.set_version(d.getVarInt64())
+        continue
+      if tt == 16:
+        self.set_committed_st_version(d.getVarInt64())
         continue
 
 
@@ -1122,6 +1503,7 @@ class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_version_: res+=prefix+("version: %s\n" % self.DebugFormatInt64(self.version_))
+    if self.has_committed_st_version_: res+=prefix+("committed_st_version: %s\n" % self.DebugFormatInt64(self.committed_st_version_))
     return res
 
 
@@ -1129,16 +1511,19 @@ class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kversion = 1
+  kcommitted_st_version = 2
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "version",
-  }, 1)
+    2: "committed_st_version",
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    2: ProtocolBuffer.Encoder.NUMERIC,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1164,13 +1549,10 @@ class Document(ProtocolBuffer.ProtocolMessage):
   order_id_ = 0
   has_storage_ = 0
   storage_ = 0
-  has_acl_ = 0
-  acl_ = None
 
   def __init__(self, contents=None):
     self.field_ = []
     self.facet_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def id(self): return self.id_
@@ -1241,25 +1623,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def has_storage(self): return self.has_storage_
 
-  def acl(self):
-    if self.acl_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.acl_ is None: self.acl_ = AccessControlList()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.acl_
-
-  def mutable_acl(self): self.has_acl_ = 1; return self.acl()
-
-  def clear_acl(self):
-
-    if self.has_acl_:
-      self.has_acl_ = 0;
-      if self.acl_ is not None: self.acl_.Clear()
-
-  def has_acl(self): return self.has_acl_
-
   def facet_size(self): return len(self.facet_)
   def facet_list(self): return self.facet_
 
@@ -1284,7 +1647,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_order_id()): self.set_order_id(x.order_id())
     if (x.has_storage()): self.set_storage(x.storage())
-    if (x.has_acl()): self.mutable_acl().MergeFrom(x.acl())
     for i in xrange(x.facet_size()): self.add_facet().CopyFrom(x.facet(i))
 
   def Equals(self, x):
@@ -1300,8 +1662,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if self.has_order_id_ and self.order_id_ != x.order_id_: return 0
     if self.has_storage_ != x.has_storage_: return 0
     if self.has_storage_ and self.storage_ != x.storage_: return 0
-    if self.has_acl_ != x.has_acl_: return 0
-    if self.has_acl_ and self.acl_ != x.acl_: return 0
     if len(self.facet_) != len(x.facet_): return 0
     for e1, e2 in zip(self.facet_, x.facet_):
       if e1 != e2: return 0
@@ -1311,7 +1671,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     initialized = 1
     for p in self.field_:
       if not p.IsInitialized(debug_strs): initialized=0
-    if (self.has_acl_ and not self.acl_.IsInitialized(debug_strs)): initialized = 0
     for p in self.facet_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
@@ -1324,7 +1683,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
-    if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSize())
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSize())
     return n
@@ -1337,7 +1695,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
-    if (self.has_acl_): n += 1 + self.lengthString(self.acl_.ByteSizePartial())
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSizePartial())
     return n
@@ -1348,7 +1705,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.clear_field()
     self.clear_order_id()
     self.clear_storage()
-    self.clear_acl()
     self.clear_facet()
 
   def OutputUnchecked(self, out):
@@ -1368,10 +1724,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
-    if (self.has_acl_):
-      out.putVarInt32(50)
-      out.putVarInt32(self.acl_.ByteSize())
-      self.acl_.OutputUnchecked(out)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSize())
@@ -1394,10 +1746,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
-    if (self.has_acl_):
-      out.putVarInt32(50)
-      out.putVarInt32(self.acl_.ByteSizePartial())
-      self.acl_.OutputPartial(out)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSizePartial())
@@ -1423,12 +1771,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 40:
         self.set_storage(d.getVarInt32())
-        continue
-      if tt == 50:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_acl().TryMerge(tmp)
         continue
       if tt == 66:
         length = d.getVarInt32()
@@ -1456,10 +1798,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
       cnt+=1
     if self.has_order_id_: res+=prefix+("order_id: %s\n" % self.DebugFormatInt32(self.order_id_))
     if self.has_storage_: res+=prefix+("storage: %s\n" % self.DebugFormatInt32(self.storage_))
-    if self.has_acl_:
-      res+=prefix+"acl <\n"
-      res+=self.acl_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     cnt=0
     for e in self.facet_:
       elm=""
@@ -1479,7 +1817,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
   kfield = 3
   korder_id = 4
   kstorage = 5
-  kacl = 6
   kfacet = 8
 
   _TEXT = _BuildTagLookupTable({
@@ -1489,7 +1826,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: "field",
     4: "order_id",
     5: "storage",
-    6: "acl",
     8: "facet",
   }, 8)
 
@@ -1500,7 +1836,6 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-    6: ProtocolBuffer.Encoder.STRING,
     8: ProtocolBuffer.Encoder.STRING,
   }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
@@ -1511,4 +1846,4 @@ class Document(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','IndexMetadata','FacetValue','Facet','DocumentMetadata','Document']
+__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','IndexShardSettings','IndexMetadata','FacetValue','Facet','DocumentMetadata','Document']

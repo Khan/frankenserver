@@ -134,6 +134,7 @@ available to an app, it is clamped.
 
 
 
+
 from google.appengine.api import appinfo
 from google.appengine.api import validation
 from google.appengine.api import yaml_builder
@@ -154,8 +155,8 @@ MODULE_ID_RE_STRING = r'(?!-)[a-z\d\-]{1,63}'
 
 
 MODULE_VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,100}'
-_VERSION_REGEX = r'^(?:(?:(%s):)?)(%s)$' % (MODULE_ID_RE_STRING,
-                                            MODULE_VERSION_RE_STRING)
+_VERSION_REGEX = r'^(?:(?:(%s)\.)?)(%s)$' % (MODULE_VERSION_RE_STRING,
+                                            MODULE_ID_RE_STRING)
 
 QUEUE = 'queue'
 

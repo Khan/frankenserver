@@ -101,6 +101,9 @@ self.setup_env().
 
 
 
+
+
+
 import os
 import unittest
 
@@ -142,7 +145,10 @@ try:
   from google.appengine.datastore import datastore_sqlite_stub
 except ImportError:
   datastore_sqlite_stub = None
+from google.appengine.datastore import cloud_datastore_v1_stub
+from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import datastore_stub_util
+from google.appengine.datastore import datastore_v4_stub
 from google.appengine.ext.cloudstorage import common as gcs_common
 from google.appengine.ext.cloudstorage import stub_dispatcher as gcs_dispatcher
 
@@ -509,6 +515,8 @@ class Testbed(object):
     """
     if not enable:
       self._disable_stub(DATASTORE_SERVICE_NAME)
+      self._disable_stub(datastore_v4_stub.SERVICE_NAME)
+      self._disable_stub(cloud_datastore_v1_stub.SERVICE_NAME)
       return
     if use_sqlite:
       if datastore_sqlite_stub is None:
@@ -530,6 +538,12 @@ class Testbed(object):
           **stub_kw_args)
     self._register_stub(DATASTORE_SERVICE_NAME, stub,
                         self._deactivate_datastore_v3_stub)
+    v4_stub = datastore_v4_stub.DatastoreV4Stub(os.environ['APPLICATION_ID'])
+    self._register_stub(datastore_v4_stub.SERVICE_NAME, v4_stub)
+    if datastore_pbs._CLOUD_DATASTORE_ENABLED:
+      cloud_stub = cloud_datastore_v1_stub.CloudDatastoreV1Stub(
+          os.environ['APPLICATION_ID'])
+      self._register_stub(cloud_datastore_v1_stub.SERVICE_NAME, cloud_stub)
 
   def _deactivate_datastore_v3_stub(self, stub):
     stub.Write()

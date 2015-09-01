@@ -17,6 +17,7 @@
 """Constants used for communicating with the Python devappserver2 runtime."""
 
 
+
 SERVER_SOFTWARE = 'Development/2.0'
 
 # Internal AppEngine prefix for Headers (Environment variables)
@@ -28,9 +29,24 @@ APPENGINE_ENVIRON_PREFIX = 'HTTP_X_APPENGINE_'
 APPENGINE_DEV_HEADER_PREFIX = APPENGINE_HEADER_PREFIX + 'Dev-'
 APPENGINE_DEV_ENVIRON_PREFIX = APPENGINE_ENVIRON_PREFIX + 'DEV_'
 
+# These values are present in the VM runtime in production.
+_VM_ENVIRONS_TO_PROPAGATE = {
+    'API_HOST',
+    'API_PORT',
+    'GAE_LONG_APP_ID',
+    'GAE_PARTITION',
+    'GAE_MODULE_NAME',
+    'GAE_MODULE_VERSION',
+    'GAE_MINOR_VERSION',
+    'GAE_MINOR_VERSION',
+    'GAE_SERVER_PORT',
+    'MODULE_YAML_PATH',
+    'SERVER_SOFTWARE'
+}
+
 # These values are passed as part of UPRequest proto in Prod.
 # Propagation rule: Cut the prefix.
-ENVIRONS_TO_PROPAGATE = set([
+ENVIRONS_TO_PROPAGATE = {
     'BACKEND_ID',
     'DEFAULT_VERSION_HOSTNAME',
     'USER_ID',
@@ -44,7 +60,7 @@ ENVIRONS_TO_PROPAGATE = set([
     'SERVER_NAME',
     'SERVER_PORT',
     'SERVER_PROTOCOL',
-    ])
+}.union(_VM_ENVIRONS_TO_PROPAGATE)
 
 REQUEST_ID_HEADER = APPENGINE_DEV_HEADER_PREFIX + 'Request-Id'
 REQUEST_ID_ENVIRON = APPENGINE_DEV_ENVIRON_PREFIX + 'REQUEST_ID'

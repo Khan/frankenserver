@@ -23,6 +23,7 @@
 from __future__ import with_statement
 
 
+
 import datetime
 import logging
 import os
@@ -274,24 +275,34 @@ class Recorder(object):
       query_string = '?' + query_string
     return query_string
 
-  def record_custom_event(self, label, data=None):
+  def record_custom_event(self, label, data=None, start=None, end=None):
     """Record a custom event.
 
     Args:
       label: A string to use as event label; a 'custom.' prefix will be added.
       data: Optional value to record.  This can be anything; the value
         will be formatted using format_value() before it is recorded.
+      start: time.time() of the start of the time range, default now. Supply
+        start when you want a range intead of a 0ms duration event.
+      end: time.time() of the end of the time range, default now. Supply end
+        when the range was in the past or when you want the range to match other
+        monitoring/analytics. Supplying end without start is an error.
     """
-
     pre_now = time.time()
     sreq = format_value(data)
     now = time.time()
-    delta = int(1000 * (now - self.start_timestamp))
+    if end and not start:
+      raise ValueError('Please specify a start time along with the end time.')
+    start = start or pre_now
+    end = end or pre_now
+    delta = int(1000 * (start - self.start_timestamp))
+    duration = int(1000 * (end - start))
     trace = datamodel_pb.IndividualRpcStatsProto()
     self.get_call_stack(trace)
     trace.set_service_call_name('custom.' + label)
     trace.set_request_data_summary(sreq)
     trace.set_start_offset_milliseconds(delta)
+    trace.set_duration_milliseconds(duration)
     with self._lock:
       self.traces.append(trace)
       self.overhead += (now - pre_now)

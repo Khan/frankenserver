@@ -103,6 +103,11 @@ accept several optional keyword arguments:
 - repeated=<bool>: indicates that this property can have multiple
   values in the same entity.
 
+- write_empty_list<bool>: For repeated value properties, controls
+  whether properties with no elements (the empty list) is
+  written to Datastore. If true, written, if false, then nothing
+  is written to Datastore.
+
 - required=<bool>: indicates that this property must be given a value
 
 - default=<value>: a default value if no explicit value is given
@@ -626,14 +631,23 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
   See the base class docstring for more info about the signatures.
   """
 
-  def __init__(self, default_model=None):
+  def __init__(self, default_model=None, id_resolver=None):
     """Constructor.
 
     Args:
       default_model: If an implementation for the kind cannot be found, use
         this model class.  If none is specified, an exception will be thrown
         (default).
+      id_resolver: A datastore_pbs.IdResolver that can resolve
+        application ids. This is only necessary when running on the Cloud
+        Datastore v1 API.
     """
+    # TODO(pcostello): Remove this once AbstractAdapter's constructor makes
+    # it into production.
+    try:
+      super(ModelAdapter, self).__init__(id_resolver)
+    except:
+      pass
     self.default_model = default_model
     self.want_pbs = 0
 
@@ -684,15 +698,17 @@ class ModelAdapter(datastore_rpc.AbstractAdapter):
     return index_state
 
 
-def make_connection(config=None, default_model=None):
+def make_connection(config=None, default_model=None,
+                    _api_version=datastore_rpc._DATASTORE_V3,
+                    _id_resolver=None):
   """Create a new Connection object with the right adapter.
 
   Optionally you can pass in a datastore_rpc.Configuration object.
   """
   return datastore_rpc.Connection(
-      adapter=ModelAdapter(default_model),
-      config=config)
-
+      adapter=ModelAdapter(default_model, id_resolver=_id_resolver),
+      config=config,
+      _api_version=_api_version)
 
 class ModelAttribute(object):
   """A Base class signifying the presence of a _fix_up() method."""
@@ -715,7 +731,7 @@ class _BaseValue(_NotEqualMixin):
 
   def __init__(self, b_val):
     """Constructor.  Argument is the base value to be wrapped."""
-    assert b_val is not None
+    assert b_val is not None, "Cannot wrap None"
     assert not isinstance(b_val, list), repr(b_val)
     self.b_val = b_val
 
@@ -851,17 +867,19 @@ class Property(ModelAttribute):
   _choices = None
   _validator = None
   _verbose_name = None
+  _write_empty_list = False
 
   __creation_counter_global = 0
 
   _attributes = ['_name', '_indexed', '_repeated', '_required', '_default',
-                 '_choices', '_validator', '_verbose_name']
+                 '_choices', '_validator', '_verbose_name',
+                 '_write_empty_list']
   _positional = 1  # Only name is a positional argument.
 
   @utils.positional(1 + _positional)  # Add 1 for self.
   def __init__(self, name=None, indexed=None, repeated=None,
                required=None, default=None, choices=None, validator=None,
-               verbose_name=None):
+               verbose_name=None, write_empty_list=None):
     """Constructor.  For arguments see the module docstring."""
     if name is not None:
       if isinstance(name, unicode):
@@ -882,6 +900,8 @@ class Property(ModelAttribute):
       self._default = default
     if verbose_name is not None:
       self._verbose_name = verbose_name
+    if write_empty_list is not None:
+      self._write_empty_list = write_empty_list
     if self._repeated and (self._required or self._default is not None):
       raise ValueError('repeated is incompatible with required or default')
     if choices is not None:
@@ -1383,28 +1403,40 @@ class Property(ModelAttribute):
         the model instance, or None if the instance is not a projection.
     """
     values = self._get_base_value_unwrapped_as_list(entity)
-    for val in values:
-      name = prefix + self._name
-      if projection and name not in projection:
-        continue
-      if self._indexed:
-        p = pb.add_property()
-      else:
-        p = pb.add_raw_property()
+    name = prefix + self._name
+    if projection and name not in projection:
+      return
+
+    if self._indexed:
+      create_prop = lambda: pb.add_property()
+    else :
+      create_prop = lambda: pb.add_raw_property()
+
+    if self._repeated and not values and self._write_empty_list:
+      # We want to write the empty list
+      p = create_prop();
       p.set_name(name)
-      p.set_multiple(self._repeated or parent_repeated)
-      v = p.mutable_value()
-      if val is not None:
-        self._db_set_value(v, p, val)
-        if projection:
-          # Projected properties have the INDEX_VALUE meaning and only contain
-          # the original property's name and value.
-          new_p = entity_pb.Property()
-          new_p.set_name(p.name())
-          new_p.set_meaning(entity_pb.Property.INDEX_VALUE)
-          new_p.set_multiple(False)
-          new_p.mutable_value().CopyFrom(v)
-          p.CopyFrom(new_p)
+      p.set_multiple(False)
+      p.set_meaning(entity_pb.Property.EMPTY_LIST)
+      p.mutable_value()
+    else:
+      # We write a list, or a single property
+      for val in values:
+        p = create_prop();
+        p.set_name(name)
+        p.set_multiple(self._repeated or parent_repeated)
+        v = p.mutable_value()
+        if val is not None:
+          self._db_set_value(v, p, val)
+          if projection:
+            # Projected properties have the INDEX_VALUE meaning and only contain
+            # the original property's name and value.
+            new_p = entity_pb.Property()
+            new_p.set_name(p.name())
+            new_p.set_meaning(entity_pb.Property.INDEX_VALUE)
+            new_p.set_multiple(False)
+            new_p.mutable_value().CopyFrom(v)
+            p.CopyFrom(new_p)
 
   def _deserialize(self, entity, p, unused_depth=1):
     """Internal helper to deserialize this property from a protocol buffer.
@@ -1417,16 +1449,30 @@ class Property(ModelAttribute):
       depth: Optional nesting depth, default 1 (unused here, but used
         by some subclasses that override this method).
     """
-    v = p.value()
-    val = self._db_get_value(v, p)
+    if p.meaning() == entity_pb.Property.EMPTY_LIST:
+      self._store_value(entity, [])
+      return
+
+    val = self._db_get_value(p.value(), p)
     if val is not None:
       val = _BaseValue(val)
+
+    # TODO: replace the remainder of the function with the following commented
+    # out code once its feasible to make breaking changes such as not calling
+    # _store_value().
+
+    # if self._repeated:
+    #   entity._values.setdefault(self._name, []).append(val)
+    # else:
+    #   entity._values[self._name] = val
+
     if self._repeated:
       if self._has_value(entity):
         value = self._retrieve_value(entity)
         assert isinstance(value, list), repr(value)
         value.append(val)
       else:
+        # We promote single values to lists if we are a list property
         value = [val]
     else:
       value = val
@@ -1706,16 +1752,19 @@ class TextProperty(BlobProperty):
     if isinstance(value, str):
       # Decode from UTF-8 -- if this fails, we can't write it.
       try:
-        value = unicode(value, 'utf-8')
+        length = len(value)
+        value = value.decode('utf-8')
       except UnicodeError:
         raise datastore_errors.BadValueError('Expected valid UTF-8, got %r' %
                                              (value,))
-    elif not isinstance(value, unicode):
+    elif isinstance(value, unicode):
+      length = len(value.encode('utf-8'))
+    else:
       raise datastore_errors.BadValueError('Expected string, got %r' %
                                            (value,))
-    if self._indexed and len(value) > _MAX_STRING_LENGTH:
+    if self._indexed and length > _MAX_STRING_LENGTH:
       raise datastore_errors.BadValueError(
-        'Indexed value %s must be at most %d characters' %
+        'Indexed value %s must be at most %d bytes' %
         (self._name, _MAX_STRING_LENGTH))
 
   def _to_base_type(self, value):
@@ -2349,7 +2398,12 @@ class StructuredProperty(_StructuredGetForDictMixin):
         raise RuntimeError('Cannot deserialize StructuredProperty %s; value '
                            'retrieved not a %s instance %r' %
                            (self._name, cls.__name__, subentity))
-      prop = subentity._get_property_for(p, depth=depth)
+      # _GenericProperty tries to keep compressed values as unindexed, but
+      # won't override a set argument. We need to force it at this level.
+      # TODO(pcostello): Remove this hack by passing indexed to _deserialize.
+      # This cannot happen until we version the API.
+      indexed = p.meaning_uri() != _MEANING_URI_COMPRESSED
+      prop = subentity._get_property_for(p, depth=depth, indexed=indexed)
       if prop is None:
         # Special case: kill subentity after all.
         self._store_value(entity, None)
@@ -2563,12 +2617,13 @@ class GenericProperty(Property):
       return zlib.decompress(value.z_val)
 
   def _validate(self, value):
-    if (isinstance(value, basestring) and
-        self._indexed and
-        len(value) > _MAX_STRING_LENGTH):
-      raise datastore_errors.BadValueError(
-        'Indexed value %s must be at most %d bytes' %
-        (self._name, _MAX_STRING_LENGTH))
+    if self._indexed:
+      if isinstance(value, unicode):
+        value = value.encode('utf-8')
+      if isinstance(value, basestring) and len(value) > _MAX_STRING_LENGTH:
+        raise datastore_errors.BadValueError(
+          'Indexed value %s must be at most %d bytes' %
+          (self._name, _MAX_STRING_LENGTH))
 
   def _db_get_value(self, v, p):
     # This is awkward but there seems to be no faster way to inspect
@@ -2644,7 +2699,7 @@ class GenericProperty(Property):
     elif isinstance(value, (int, long)):
       if not (-_MAX_LONG <= value < _MAX_LONG):
         raise TypeError('Property %s can only accept 64-bit integers; '
-                        'received %s' % value)
+                        'received %s' % (self._name, value))
       v.set_int64value(value)
     elif isinstance(value, float):
       v.set_doublevalue(value)
@@ -3125,15 +3180,14 @@ class Model(_NotEqualMixin):
     if key is not None and (set_key or key.id() or key.parent()):
       ent._key = key
 
-    indexed_properties = pb.property_list()
-    unindexed_properties = pb.raw_property_list()
     projection = []
-    for plist in [indexed_properties, unindexed_properties]:
+    for indexed, plist in ((True, pb.property_list()),
+                           (False, pb.raw_property_list())):
       for p in plist:
         if p.meaning() == entity_pb.Property.INDEX_VALUE:
           projection.append(p.name())
-        prop = ent._get_property_for(p, plist is indexed_properties)
-        prop._deserialize(ent, p)
+        ent._get_property_for(p, indexed)._deserialize(ent, p)
+
 
     ent._set_projection(projection)
     return ent
@@ -3157,8 +3211,7 @@ class Model(_NotEqualMixin):
 
   def _get_property_for(self, p, indexed=True, depth=0):
     """Internal helper to get the Property for a protobuf-level property."""
-    name = p.name()
-    parts = name.split('.')
+    parts = p.name().split('.')
     if len(parts) <= depth:
       # Apparently there's an unstructured value here.
       # Assume it is a None written for a missing value.
@@ -3269,7 +3322,7 @@ class Model(_NotEqualMixin):
 
   def _prepare_for_put(self):
     if self._properties:
-      for prop in self._properties.itervalues():
+      for _, prop in sorted(self._properties.iteritems()):
         prop._prepare_for_put(self)
 
   @classmethod
@@ -3622,6 +3675,9 @@ class Expando(Model):
   # properties default to unindexed.
   _default_indexed = True
 
+  # Set this to True to write [] to datastore instead of no property
+  _write_empty_list_for_dynamic_properties = None
+
   def _set_attributes(self, kwds):
     for name, value in kwds.iteritems():
       setattr(self, name, value)
@@ -3650,10 +3706,11 @@ class Expando(Model):
     elif isinstance(value, dict):
       prop = StructuredProperty(Expando, name)
     else:
-      repeated = isinstance(value, list)
-      indexed = self._default_indexed
       # TODO: What if it's a list of Model instances?
-      prop = GenericProperty(name, repeated=repeated, indexed=indexed)
+      prop = GenericProperty(
+          name, repeated=isinstance(value, list),
+          indexed=self._default_indexed,
+          write_empty_list=self._write_empty_list_for_dynamic_properties)
     prop._code_name = name
     self._properties[name] = prop
     prop._set_value(self, value)

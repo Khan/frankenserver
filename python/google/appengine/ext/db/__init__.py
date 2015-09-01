@@ -87,6 +87,9 @@ preconfigured to return all matching comments:
 
 
 
+
+
+
 import copy
 import datetime
 import logging
@@ -1005,10 +1008,14 @@ class Model(object):
 
   def __set_property(self, entity, name, datastore_value):
     if datastore_value == []:
+      prop = self.properties().get(name)
+      if prop and isinstance(prop, ListProperty) and prop._write_empty_list:
+        entity[name] = datastore_value
+      else:
 
 
 
-      entity.pop(name, None)
+        entity.pop(name, None)
     else:
       entity[name] = datastore_value
 
@@ -1849,9 +1856,6 @@ class Expando(Model):
 
 
         not hasattr(getattr(type(self), key, None), '__set__')):
-      if value == []:
-        raise ValueError('Cannot store empty list to dynamic property %s' %
-                         key)
       if type(value) not in _ALLOWED_EXPANDO_PROPERTY_TYPES:
         raise TypeError("Expando cannot accept values of type '%s'." %
                         type(value).__name__)
@@ -2811,7 +2815,7 @@ class UnindexedProperty(Property):
 
 
 class TextProperty(UnindexedProperty):
-  """A string that can be longer than 500 bytes."""
+  """A string that can be longer than 1500 bytes."""
 
   data_type = Text
 
@@ -2847,11 +2851,11 @@ class StringProperty(Property):
       raise BadValueError('Property %s is not multi-line' % self.name)
     if value is not None and len(value) > self.MAX_LENGTH:
       raise BadValueError(
-          'Property %s is %d characters long; it must be %d or less.'
+          'Property %s is %d bytes long; it must be %d or less.'
           % (self.name, len(value), self.MAX_LENGTH))
     return value
 
-  MAX_LENGTH = 500
+  MAX_LENGTH = 1500
   data_type = basestring
 
 
@@ -2935,13 +2939,13 @@ class PostalAddressProperty(_CoercingProperty):
 
 
 class BlobProperty(UnindexedProperty):
-  """A byte string that can be longer than 500 bytes."""
+  """A byte string that can be longer than 1500 bytes."""
 
   data_type = Blob
 
 
 class ByteStringProperty(Property):
-  """A short (<=500 bytes) byte string.
+  """A short (<=1500 bytes) byte string.
 
   This type should be used for short binary values that need to be indexed. If
   you do not require indexing (regardless of length), use BlobProperty instead.
@@ -2972,7 +2976,7 @@ class ByteStringProperty(Property):
           % (self.name, len(value), self.MAX_LENGTH))
     return value
 
-  MAX_LENGTH = 500
+  MAX_LENGTH = 1500
   data_type = ByteString
 
 
@@ -3415,13 +3419,19 @@ class ListProperty(Property):
   non-list data type, and all items must conform to this type.
   """
 
-  def __init__(self, item_type, verbose_name=None, default=None, **kwds):
+  _write_empty_list = False
+
+  def __init__(
+      self, item_type, verbose_name=None, default=None,
+      write_empty_list=None, **kwds):
     """Construct ListProperty.
 
     Args:
       item_type: Type for the list items; must be one of the allowed property
         types.
       verbose_name: Optional verbose name.
+      write_empty_list: Optional whether to write empty list properties or no
+        property
       default: Optional default value; if omitted, an empty list is used.
       **kwds: Optional additional keyword arguments, passed to base class.
 
@@ -3443,6 +3453,8 @@ class ListProperty(Property):
     if default is None:
       default = []
     self.item_type = item_type
+    if write_empty_list is not None:
+      self._write_empty_list = write_empty_list
     super(ListProperty, self).__init__(verbose_name,
                                        default=default,
                                        **kwds)
@@ -3581,7 +3593,8 @@ class StringListProperty(ListProperty):
   A shorthand for the most common type of ListProperty.
   """
 
-  def __init__(self, verbose_name=None, default=None, **kwds):
+  def __init__(self, verbose_name=None, default=None, write_empty_list=None,
+               **kwds):
     """Construct StringListProperty.
 
     Args:
@@ -3592,6 +3605,7 @@ class StringListProperty(ListProperty):
     super(StringListProperty, self).__init__(basestring,
                                              verbose_name=verbose_name,
                                              default=default,
+                                             write_empty_list=write_empty_list,
                                              **kwds)
 
 

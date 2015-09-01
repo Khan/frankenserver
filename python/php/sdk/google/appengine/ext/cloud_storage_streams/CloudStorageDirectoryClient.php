@@ -31,18 +31,30 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
   // Maximum number of keys to return per call
   const MAX_KEYS = 1000;
 
-  // Next marker is used when the previous call returned a trucated set of
-  // results. It will resume listing after the last result returned from the
-  // previous set.
+  /**
+   * Next marker is used when the previous call returned a trucated set of
+   * results. It will resume listing after the last result returned from the
+   * previous set.
+   */
   private $next_marker = null;
 
-  // A string that can be used to limit the number of objects that are returned
-  // in a GET Bucket request. Can be used in conjunction with a delimiter.
+  /**
+   * A string that can be used to limit the number of objects that are returned
+   * in a GET Bucket request. Can be used in conjunction with a delimiter.
+   */
   private $prefix = null;
 
-  // The current list of files we're enumerating through
+  /**
+   * The current list of files we're enumerating through.
+   */
   private $current_file_list = null;
 
+  /**
+   * Class constructor.
+   * @param string $bucket_name The name of the bucket.
+   * @param string $object_name The name of the object.
+   * @param mixed $context The stream context for this operation.
+   */
   public function __construct($bucket_name, $object_name, $context) {
     // $object_name should end with a trailing slash.
     if (!StringUtil::endsWith($object_name, parent::DELIMITER)) {
@@ -110,6 +122,9 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
     return true;
   }
 
+  /**
+   * Close the directory handle.
+   */
   public function close() {
   }
 
@@ -212,6 +227,11 @@ final class CloudStorageDirectoryClient extends CloudStorageClient {
     }
   }
 
+  /**
+   * Retrieve more directory entries from Cloud Storage.
+   *
+   * @access private
+   */
   private function fillFileBuffer() {
     $headers = $this->getOAuthTokenHeader(parent::READ_SCOPE);
     if ($headers === false) {

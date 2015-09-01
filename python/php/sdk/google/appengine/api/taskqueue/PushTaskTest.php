@@ -28,17 +28,6 @@ use google\appengine\TaskQueueBulkAddRequest;
 use google\appengine\TaskQueueBulkAddResponse;
 use google\appengine\TaskQueueServiceError\ErrorCode;
 
-$mockTime = 12345.6;
-
-// This mocks out PHP's microtime() function.
-function microtime($get_as_float = false) {
-  if (!$get_as_float) {
-    die('microtime called with get_as_float=false');
-  }
-  global $mockTime;
-  return $mockTime;
-}
-
 class PushTaskTest extends ApiProxyTestBase {
 
   /**
@@ -47,6 +36,8 @@ class PushTaskTest extends ApiProxyTestBase {
   public function setUp() {
     parent::setUp();
     $this->_SERVER = $_SERVER;
+    // Mock out any microtime() calls.
+    MockMicrotime::reset();
   }
 
   public function tearDown() {
@@ -60,8 +51,9 @@ class PushTaskTest extends ApiProxyTestBase {
     $task->setQueueName('default');
     $task->setTaskName('');
     $task->setUrl('/someUrl');
-    global $mockTime;
-    $task->setEtaUsec($mockTime * 1e6);
+    $time = 12345.6;
+    MockMicrotime::expect($time);
+    $task->setEtaUsec($time * 1e6);
     $task->setMethod(RequestMethod::POST);
     return $req;
   }

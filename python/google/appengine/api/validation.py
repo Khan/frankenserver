@@ -45,6 +45,7 @@ builder.  See yaml_object.py.
 
 
 
+
 import re
 
 import google
@@ -761,7 +762,7 @@ class Options(Validator):
       elif isinstance(option, (list, tuple)):
 
         if len(option) != 2:
-          raise AttributeDefinitionError("Alias is defined as a list of tuple "
+          raise AttributeDefinitionError("Alias is defined as a list or tuple "
                                          "with two items.  The first is the "
                                          "original option, while the second "
                                          "is a list or tuple of str aliases.\n"

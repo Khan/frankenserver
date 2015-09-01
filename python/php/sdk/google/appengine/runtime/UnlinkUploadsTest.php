@@ -22,27 +22,36 @@ class UnlinkUploadsTest extends \PHPUnit_Framework_TestCase {
   protected $files;
 
   protected function setUp() {
-    require_once 'third_party/vfsstream/vendor/autoload.php';
-    vfsStream::setup('uploads');
+    vfsStream::setup('root');
 
-    vfsStream::create([
+    vfsStream::create(['uploads' => [
       'upload 0 contents',
       'upload 1 contents',
       'upload 2 contents',
-    ]);
+      'upload 3 contents',
+      'upload 4 contents',
+    ]]);
 
     $this->files = [
-      ['tmp_name' => vfsStream::url('uploads/0')],
-      ['tmp_name' => vfsStream::url('uploads/1')],
+      ['tmp_name' => vfsStream::url('root/uploads/0')],
+      ['tmp_name' => vfsStream::url('root/uploads/1')],
       // Will not be listed in uploaded files and thus should be ignored.
-      ['tmp_name' => vfsStream::url('uploads/2')],
+      ['tmp_name' => vfsStream::url('root/uploads/2')],
       [], //Ignored if 'tmp_name' is empty.
+      // Mulitplie files uploaded as an array
+      ['tmp_name' => [
+          vfsStream::url('root/uploads/3'),
+          vfsStream::url('root/uploads/4'),
+        ],
+      ],
     ];
 
     is_uploaded_file('', [
       $this->files[0]['tmp_name'],
       $this->files[1]['tmp_name'],
       // Not listing file[2].
+      $this->files[4]['tmp_name'][0],
+      $this->files[4]['tmp_name'][1],
     ]);
 
     $this->assertFilesExist();
@@ -52,6 +61,8 @@ class UnlinkUploadsTest extends \PHPUnit_Framework_TestCase {
     $this->assertTrue(file_exists($this->files[0]['tmp_name']));
     $this->assertTrue(file_exists($this->files[1]['tmp_name']));
     $this->assertTrue(file_exists($this->files[2]['tmp_name']));
+    $this->assertTrue(file_exists($this->files[4]['tmp_name'][0]));
+    $this->assertTrue(file_exists($this->files[4]['tmp_name'][1]));
   }
 
   /**
@@ -63,6 +74,8 @@ class UnlinkUploadsTest extends \PHPUnit_Framework_TestCase {
     $this->assertFalse(file_exists($this->files[0]['tmp_name']));
     $this->assertFalse(file_exists($this->files[1]['tmp_name']));
     $this->assertTrue(file_exists($this->files[2]['tmp_name'])); // Ignored.
+    $this->assertFalse(file_exists($this->files[4]['tmp_name'][0]));
+    $this->assertFalse(file_exists($this->files[4]['tmp_name'][1]));
   }
 
   /**

@@ -1,0 +1,12 @@
+Index: requests/packages/__init__.py
+===================================================================
+--- requests.orig/packages/__init__.py
++++ requests/packages/__init__.py
+@@ -104,4 +104,6 @@
+         return module
+ 
+ 
+-sys.meta_path.append(VendorAlias(["urllib3", "chardet"]))
++# This import magic is not required within google3, and may break
++# usage of this library. See http://b/19681403 for background.
++#sys.meta_path.append(VendorAlias(["urllib3", "chardet"]))

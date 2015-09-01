@@ -33,6 +33,8 @@ else:
 
 from google.appengine.api.api_base_pb import *
 import google.appengine.api.api_base_pb
+from google.appengine.api.source_pb import *
+import google.appengine.api.source_pb
 class LogServiceError(ProtocolBuffer.ProtocolMessage):
 
 
@@ -120,8 +122,11 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
   level_ = 0
   has_message_ = 0
   message_ = ""
+  has_source_location_ = 0
+  source_location_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def timestamp_usec(self): return self.timestamp_usec_
@@ -163,12 +168,32 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
 
   def has_message(self): return self.has_message_
 
+  def source_location(self):
+    if self.source_location_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.source_location_ is None: self.source_location_ = SourceLocation()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.source_location_
+
+  def mutable_source_location(self): self.has_source_location_ = 1; return self.source_location()
+
+  def clear_source_location(self):
+
+    if self.has_source_location_:
+      self.has_source_location_ = 0;
+      if self.source_location_ is not None: self.source_location_.Clear()
+
+  def has_source_location(self): return self.has_source_location_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_timestamp_usec()): self.set_timestamp_usec(x.timestamp_usec())
     if (x.has_level()): self.set_level(x.level())
     if (x.has_message()): self.set_message(x.message())
+    if (x.has_source_location()): self.mutable_source_location().MergeFrom(x.source_location())
 
   def Equals(self, x):
     if x is self: return 1
@@ -178,6 +203,8 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     if self.has_level_ and self.level_ != x.level_: return 0
     if self.has_message_ != x.has_message_: return 0
     if self.has_message_ and self.message_ != x.message_: return 0
+    if self.has_source_location_ != x.has_source_location_: return 0
+    if self.has_source_location_ and self.source_location_ != x.source_location_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -194,6 +221,7 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: message not set.')
+    if (self.has_source_location_ and not self.source_location_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -201,6 +229,7 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.timestamp_usec_)
     n += self.lengthVarInt64(self.level_)
     n += self.lengthString(len(self.message_))
+    if (self.has_source_location_): n += 1 + self.lengthString(self.source_location_.ByteSize())
     return n + 3
 
   def ByteSizePartial(self):
@@ -214,12 +243,14 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     if (self.has_message_):
       n += 1
       n += self.lengthString(len(self.message_))
+    if (self.has_source_location_): n += 1 + self.lengthString(self.source_location_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_timestamp_usec()
     self.clear_level()
     self.clear_message()
+    self.clear_source_location()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -228,6 +259,10 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     out.putVarInt64(self.level_)
     out.putVarInt32(26)
     out.putPrefixedString(self.message_)
+    if (self.has_source_location_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.source_location_.ByteSize())
+      self.source_location_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_timestamp_usec_):
@@ -239,6 +274,10 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     if (self.has_message_):
       out.putVarInt32(26)
       out.putPrefixedString(self.message_)
+    if (self.has_source_location_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.source_location_.ByteSizePartial())
+      self.source_location_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -252,6 +291,12 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
       if tt == 26:
         self.set_message(d.getPrefixedString())
         continue
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_source_location().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -263,6 +308,10 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
     if self.has_timestamp_usec_: res+=prefix+("timestamp_usec: %s\n" % self.DebugFormatInt64(self.timestamp_usec_))
     if self.has_level_: res+=prefix+("level: %s\n" % self.DebugFormatInt64(self.level_))
     if self.has_message_: res+=prefix+("message: %s\n" % self.DebugFormatString(self.message_))
+    if self.has_source_location_:
+      res+=prefix+"source_location <\n"
+      res+=self.source_location_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -272,20 +321,23 @@ class UserAppLogLine(ProtocolBuffer.ProtocolMessage):
   ktimestamp_usec = 1
   klevel = 2
   kmessage = 3
+  ksource_location = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "timestamp_usec",
     2: "level",
     3: "message",
-  }, 3)
+    4: "source_location",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -702,8 +754,11 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
   level_ = 0
   has_log_message_ = 0
   log_message_ = ""
+  has_source_location_ = 0
+  source_location_ = None
 
   def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
   def time(self): return self.time_
@@ -745,12 +800,32 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
 
   def has_log_message(self): return self.has_log_message_
 
+  def source_location(self):
+    if self.source_location_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.source_location_ is None: self.source_location_ = SourceLocation()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.source_location_
+
+  def mutable_source_location(self): self.has_source_location_ = 1; return self.source_location()
+
+  def clear_source_location(self):
+
+    if self.has_source_location_:
+      self.has_source_location_ = 0;
+      if self.source_location_ is not None: self.source_location_.Clear()
+
+  def has_source_location(self): return self.has_source_location_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_time()): self.set_time(x.time())
     if (x.has_level()): self.set_level(x.level())
     if (x.has_log_message()): self.set_log_message(x.log_message())
+    if (x.has_source_location()): self.mutable_source_location().MergeFrom(x.source_location())
 
   def Equals(self, x):
     if x is self: return 1
@@ -760,6 +835,8 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     if self.has_level_ and self.level_ != x.level_: return 0
     if self.has_log_message_ != x.has_log_message_: return 0
     if self.has_log_message_ and self.log_message_ != x.log_message_: return 0
+    if self.has_source_location_ != x.has_source_location_: return 0
+    if self.has_source_location_ and self.source_location_ != x.source_location_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -776,6 +853,7 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: log_message not set.')
+    if (self.has_source_location_ and not self.source_location_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
@@ -783,6 +861,7 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     n += self.lengthVarInt64(self.time_)
     n += self.lengthVarInt64(self.level_)
     n += self.lengthString(len(self.log_message_))
+    if (self.has_source_location_): n += 1 + self.lengthString(self.source_location_.ByteSize())
     return n + 3
 
   def ByteSizePartial(self):
@@ -796,12 +875,14 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     if (self.has_log_message_):
       n += 1
       n += self.lengthString(len(self.log_message_))
+    if (self.has_source_location_): n += 1 + self.lengthString(self.source_location_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_time()
     self.clear_level()
     self.clear_log_message()
+    self.clear_source_location()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -810,6 +891,10 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     out.putVarInt32(self.level_)
     out.putVarInt32(26)
     out.putPrefixedString(self.log_message_)
+    if (self.has_source_location_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.source_location_.ByteSize())
+      self.source_location_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_time_):
@@ -821,6 +906,10 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     if (self.has_log_message_):
       out.putVarInt32(26)
       out.putPrefixedString(self.log_message_)
+    if (self.has_source_location_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.source_location_.ByteSizePartial())
+      self.source_location_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -834,6 +923,12 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
       if tt == 26:
         self.set_log_message(d.getPrefixedString())
         continue
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_source_location().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -845,6 +940,10 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
     if self.has_time_: res+=prefix+("time: %s\n" % self.DebugFormatInt64(self.time_))
     if self.has_level_: res+=prefix+("level: %s\n" % self.DebugFormatInt32(self.level_))
     if self.has_log_message_: res+=prefix+("log_message: %s\n" % self.DebugFormatString(self.log_message_))
+    if self.has_source_location_:
+      res+=prefix+"source_location <\n"
+      res+=self.source_location_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
     return res
 
 
@@ -854,20 +953,23 @@ class LogLine(ProtocolBuffer.ProtocolMessage):
   ktime = 1
   klevel = 2
   klog_message = 3
+  ksource_location = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "time",
     2: "level",
     3: "log_message",
-  }, 3)
+    4: "source_location",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.NUMERIC,
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

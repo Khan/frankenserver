@@ -18,7 +18,12 @@
 
 
 
+
+
+
+
 import cStringIO
+import gzip
 import json
 import unittest
 
@@ -49,6 +54,27 @@ class RequestTest(unittest.TestCase):
     self.assertEqual({'test': 'body'}, request.body_json)
     self.assertEqual([('CONTENT-TYPE', 'application/json')],
                      request.headers.items())
+    self.assertEqual(None, request.request_id)
+
+  def test_parse_gzipped_body(self):
+    def gzip_encode(content):
+      out = cStringIO.StringIO()
+      with gzip.GzipFile(fileobj=out, mode='w') as f:
+        f.write(content)
+      return out.getvalue()
+
+    uncompressed = '{"test": "body"}'
+    compressed = gzip_encode(uncompressed)
+    request = test_utils.build_request('/_ah/api/foo?bar=baz', compressed,
+                                       [('Content-encoding', 'gzip')])
+    self.assertEqual('foo', request.path)
+    self.assertEqual('bar=baz', request.query)
+    self.assertEqual({'bar': ['baz']}, request.parameters)
+    self.assertEqual(uncompressed, request.body)
+    self.assertEqual({'test': 'body'}, request.body_json)
+    self.assertItemsEqual([('CONTENT-TYPE', 'application/json'),
+                           ('CONTENT-ENCODING', 'gzip')],
+                          request.headers.items())
     self.assertEqual(None, request.request_id)
 
   def test_parse_empty_values(self):

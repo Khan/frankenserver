@@ -24,12 +24,23 @@ import google
 
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import http_proxy
+from google.appengine.tools.devappserver2 import http_runtime_constants
 from google.appengine.tools.devappserver2 import instance
+from google.appengine.tools.devappserver2 import log_manager
 from google.appengine.tools.docker import containers
 
 
+_APP_ENGINE_PREFIX = 'google.appengine'
+
+# Number of seconds after a container start before we check if there is
+# any old containers and images to cleanup.
+_CLEANUP_DELAY_SEC = 10.0
+
 _DOCKER_IMAGE_NAME_FORMAT = '{display}.{module}.{version}'
-_DOCKER_CONTAINER_NAME_FORMAT = 'google.appengine.{image_name}.{instance_id}'
+
+# This is the number of containers the cleanup process will leave on docker for
+# investigation purposes.
+_CONTAINERS_TO_KEEP = 10
 
 
 class Error(Exception):
@@ -72,13 +83,32 @@ def _GetPortToPublish(port):
   return None
 
 
+def _ContainerName(image_name, instance_id, timestamp=None):
+  """Generates a container name.
+
+  Args:
+    image_name: the base image name.
+    instance_id: the instance # of the module.
+    timestamp: the timestamp as a string you want to generate the name from.
+               If None, it will be the now in the UTC timezone in ISO 8601.
+
+  Returns:
+    the generated container name.
+  """
+  return containers.CleanableContainerName(_APP_ENGINE_PREFIX,
+                                           base_name='%s.%s' % (image_name,
+                                                                instance_id),
+                                           timestamp=timestamp)
+
+
 class VMRuntimeProxy(instance.RuntimeProxy):
   """Manages a VM Runtime process running inside of a docker container."""
 
   DEFAULT_DEBUG_PORT = 5005
 
   def __init__(self, docker_client, runtime_config_getter,
-               module_configuration, default_port=8080, port_bindings=None,
+               module_configuration,
+               default_port=8080, port_bindings=None,
                additional_environment=None):
     """Initializer for VMRuntimeProxy.
 
@@ -104,6 +134,9 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     self._default_port = default_port
     self._port_bindings = port_bindings
     self._additional_environment = additional_environment
+    self._log_manager = log_manager.get(
+        self._docker_client,
+        enable_logging=self._runtime_config_getter().vm_config.enable_logs)
     self._container = None
     self._proxy = None
 
@@ -131,24 +164,30 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     return self._proxy.handle(environ, start_response, url_map, match,
                               request_id, request_type)
 
-  def _get_instance_logs(self):
-    # TODO: Handle docker container's logs
-    return ''
-
   def _instance_died_unexpectedly(self):
     # TODO: Check if container is still up and running
     return False
 
+  def get_instance_logs(self):
+    # TODO: Handle docker container's logs
+    return ''
+
   def _escape_domain(self, application_external_name):
     return application_external_name.replace(':', '.')
 
-  def start(self, dockerfile_dir=None):
+  def start(self, dockerfile_dir=None, request_id_header_name=None):
     runtime_config = self._runtime_config_getter()
 
     if not self._module_configuration.major_version:
       logging.error('Version needs to be specified in your application '
                     'configuration file.')
       raise VersionError()
+
+    self._log_manager.add(
+        self._escape_domain(
+            self._module_configuration.application_external_name),
+        self._module_configuration.module_name,
+        self._module_configuration.major_version, runtime_config.instance_id)
 
     if not dockerfile_dir:
       dockerfile_dir = self._module_configuration.application_root
@@ -183,7 +222,8 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         'GAE_MODULE_INSTANCE': runtime_config.instance_id,
         'GAE_SERVER_PORT': runtime_config.server_port,
         'MODULE_YAML_PATH': os.path.basename(
-            self._module_configuration.config_path)
+            self._module_configuration.config_path),
+        'SERVER_SOFTWARE': http_runtime_constants.SERVER_SOFTWARE
     }
     if self._additional_environment:
       environment.update(self._additional_environment)
@@ -223,7 +263,8 @@ class VMRuntimeProxy(instance.RuntimeProxy):
         self._module_configuration.module_name,
         self._module_configuration.major_version,
         runtime_config.instance_id)
-    container_name = _DOCKER_CONTAINER_NAME_FORMAT.format(
+    internal_logs_path = '/var/log/app_engine'
+    container_name = _ContainerName(
         image_name=image_name,
         instance_id=runtime_config.instance_id)
     self._container = containers.Container(
@@ -237,12 +278,16 @@ class VMRuntimeProxy(instance.RuntimeProxy):
             port_bindings=port_bindings,
             environment=environment,
             volumes={
-                external_logs_path: {'bind': '/var/log/app_engine'}
+                external_logs_path: {'bind': internal_logs_path}
             },
             name=container_name
         ))
 
     self._container.Start()
+    # As we add stuff, asynchronously check later for a cleanup.
+    containers.StartDelayedCleanup(
+        self._docker_client, _APP_ENGINE_PREFIX, _CLEANUP_DELAY_SEC,
+        _CONTAINERS_TO_KEEP)
 
     # Print the debug information before connecting to the container
     # as debugging might break the runtime during initialization, and
@@ -256,15 +301,16 @@ class VMRuntimeProxy(instance.RuntimeProxy):
     self._proxy = http_proxy.HttpProxy(
         host=self._container.host, port=self._container.port,
         instance_died_unexpectedly=self._instance_died_unexpectedly,
-        instance_logs_getter=self._get_instance_logs,
+        instance_logs_getter=self.get_instance_logs,
         error_handler_file=application_configuration.get_app_error_file(
-            self._module_configuration))
+            self._module_configuration),
+        request_id_header_name=request_id_header_name)
 
     # If forwarded ports are used we do not really have to serve on 8080.
     # We'll log /_ah/start request fail, but with health-checks disabled
     # we should ignore that and continue working (accepting requests on
     # our forwarded ports outside of dev server control).
-    health_check = self._module_configuration.vm_health_check
+    health_check = self._module_configuration.health_check
     health_check_enabled = health_check and health_check.enable_health_check
 
     if health_check_enabled or not self._module_configuration.forwarded_ports:

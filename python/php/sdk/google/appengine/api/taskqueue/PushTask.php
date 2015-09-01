@@ -96,8 +96,16 @@ final class PushTask {
    *   <li>'delay_seconds': float The minimum time to wait before executing the
    *   task. Default: zero.</li>
    *   <li>'header': string Additional headers to be sent when the task
-   *   executes.</li>
+   *   executes. <b>Note</b>: The 'Content-Type' header cannot be specified.
+   *   </li>
    * </ul>
+   * @throws InvalidArgumentException if
+   * <ul>
+   *   <li>A supplied argument is not the correct type.</li>
+   *   <li>Any of the specified options are invalid.</li>
+   *   <li>The header 'content-type' is specified.</li>
+   *   <li>Any supplied headers are not of the format 'key:value'.</li>
+   * <il>
    */
   public function __construct($url_path, $query_data = [], $options = []) {
     if (!is_string($url_path)) {

@@ -31,11 +31,10 @@ def reject_old_python_versions(minimum_version):
     sys.stderr.write('Very old versions of Python are not supported. Please '
                      'use version %s.\n' % minimum_version_string)
     sys.exit(1)
-  version_tuple = tuple(sys.version_info[:2])
-  if version_tuple < minimum_version:
-    sys.stderr.write('Error: Python %d.%d is not supported. Please use '
-                     'version %s.\n' % (version_tuple[0], version_tuple[1],
-                                        minimum_version_string))
+  if sys.version_info < minimum_version:
+    sys.stderr.write(
+        'Error: Python %d.%d is not supported. Please use version %s.\n' % (
+            sys.version_info[0], sys.version_info[1], minimum_version_string))
     sys.exit(1)
 
 
@@ -118,8 +117,6 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'ipaddr'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'protorpc-1.0'),
-        os.path.join(dir_path, 'lib', 'PyAMF'),
-        os.path.join(dir_path, 'lib', 'markupsafe'),
         os.path.join(dir_path, 'lib', 'webob_0_9'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.2'),
         os.path.join(dir_path, 'lib', 'yaml', 'lib'),
@@ -129,6 +126,13 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'pyasn1'),
         os.path.join(dir_path, 'lib', 'pyasn1_modules'),
     ]
+
+    if sys.version_info >= (2, 6):
+      self.v1_extra_paths.extend([
+          os.path.join(dir_path, 'lib', 'httplib2'),
+          os.path.join(dir_path, 'lib', 'oauth2client'),
+          os.path.join(dir_path, 'lib', 'six'),
+      ])
 
     self.api_server_extra_paths = [
         os.path.join(dir_path, 'lib', 'argparse'),
@@ -145,10 +149,21 @@ class Paths(object):
 
 
     self.oauth_client_extra_paths = [
-        os.path.join(dir_path, 'lib', 'google-api-python-client'),
         os.path.join(dir_path, 'lib', 'httplib2'),
         os.path.join(dir_path, 'lib', 'python-gflags'),
     ]
+
+    if sys.version_info >= (2, 6):
+      self.oauth_client_extra_paths.extend([
+          os.path.join(dir_path, 'lib', 'apiclient'),
+          os.path.join(dir_path, 'lib', 'oauth2client'),
+          os.path.join(dir_path, 'lib', 'six'),
+          os.path.join(dir_path, 'lib', 'uritemplate'),
+      ])
+    else:
+      self.oauth_client_extra_paths.append(
+          os.path.join(dir_path, 'lib', 'google-api-python-client')
+      )
 
 
     self.google_sql_extra_paths = self.oauth_client_extra_paths + [
@@ -173,6 +188,9 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'rsa'),
         os.path.join(dir_path, 'lib', 'pyasn1'),
         os.path.join(dir_path, 'lib', 'pyasn1_modules'),
+        os.path.join(dir_path, 'lib', 'httplib2'),
+        os.path.join(dir_path, 'lib', 'oauth2client'),
+        os.path.join(dir_path, 'lib', 'six'),
     ]
 
 
@@ -206,6 +224,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'six'),
         os.path.join(dir_path, 'lib', 'websocket'),
         os.path.join(dir_path, 'lib', 'docker'),
+        os.path.join(dir_path, 'lib', 'portpicker'),
         os.path.join(dir_path, 'lib', 'jinja2-2.6'),
         os.path.join(dir_path, 'lib', 'webob-1.2.3'),
         os.path.join(dir_path, 'lib', 'webapp2-2.5.1'),
@@ -238,7 +257,6 @@ class Paths(object):
         'endpointscfg.py': self.v1_extra_paths + self.endpointscfg_extra_paths,
         'gen_protorpc.py': self.v1_extra_paths,
         'google_sql.py': self.v1_extra_paths + self.google_sql_extra_paths,
-        'old_dev_appserver.py': self.v1_extra_paths,
         'php_cli.py': devappserver2_paths,
         'remote_api_shell.py': self.v1_extra_paths,
         'vmboot.py': self.v1_extra_paths,
@@ -247,7 +265,6 @@ class Paths(object):
     }
 
     self._wrapper_name_to_real_name = {
-        'old_dev_appserver.py': 'dev_appserver_main.py',
         'dev_appserver.py': 'devappserver2.py',
         '_php_runtime.py': 'runtime.py',
         '_python_runtime.py': 'runtime.py',

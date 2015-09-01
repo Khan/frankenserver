@@ -134,6 +134,8 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
   max_upload_size_per_blob_bytes_ = 0
   has_gs_bucket_name_ = 0
   gs_bucket_name_ = ""
+  has_url_expiry_time_seconds_ = 0
+  url_expiry_time_seconds_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -190,6 +192,19 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_gs_bucket_name(self): return self.has_gs_bucket_name_
 
+  def url_expiry_time_seconds(self): return self.url_expiry_time_seconds_
+
+  def set_url_expiry_time_seconds(self, x):
+    self.has_url_expiry_time_seconds_ = 1
+    self.url_expiry_time_seconds_ = x
+
+  def clear_url_expiry_time_seconds(self):
+    if self.has_url_expiry_time_seconds_:
+      self.has_url_expiry_time_seconds_ = 0
+      self.url_expiry_time_seconds_ = 0
+
+  def has_url_expiry_time_seconds(self): return self.has_url_expiry_time_seconds_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -197,6 +212,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_max_upload_size_bytes()): self.set_max_upload_size_bytes(x.max_upload_size_bytes())
     if (x.has_max_upload_size_per_blob_bytes()): self.set_max_upload_size_per_blob_bytes(x.max_upload_size_per_blob_bytes())
     if (x.has_gs_bucket_name()): self.set_gs_bucket_name(x.gs_bucket_name())
+    if (x.has_url_expiry_time_seconds()): self.set_url_expiry_time_seconds(x.url_expiry_time_seconds())
 
   def Equals(self, x):
     if x is self: return 1
@@ -208,6 +224,8 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_max_upload_size_per_blob_bytes_ and self.max_upload_size_per_blob_bytes_ != x.max_upload_size_per_blob_bytes_: return 0
     if self.has_gs_bucket_name_ != x.has_gs_bucket_name_: return 0
     if self.has_gs_bucket_name_ and self.gs_bucket_name_ != x.gs_bucket_name_: return 0
+    if self.has_url_expiry_time_seconds_ != x.has_url_expiry_time_seconds_: return 0
+    if self.has_url_expiry_time_seconds_ and self.url_expiry_time_seconds_ != x.url_expiry_time_seconds_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -224,6 +242,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_upload_size_bytes_): n += 1 + self.lengthVarInt64(self.max_upload_size_bytes_)
     if (self.has_max_upload_size_per_blob_bytes_): n += 1 + self.lengthVarInt64(self.max_upload_size_per_blob_bytes_)
     if (self.has_gs_bucket_name_): n += 1 + self.lengthString(len(self.gs_bucket_name_))
+    if (self.has_url_expiry_time_seconds_): n += 1 + self.lengthVarInt64(self.url_expiry_time_seconds_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -234,6 +253,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_upload_size_bytes_): n += 1 + self.lengthVarInt64(self.max_upload_size_bytes_)
     if (self.has_max_upload_size_per_blob_bytes_): n += 1 + self.lengthVarInt64(self.max_upload_size_per_blob_bytes_)
     if (self.has_gs_bucket_name_): n += 1 + self.lengthString(len(self.gs_bucket_name_))
+    if (self.has_url_expiry_time_seconds_): n += 1 + self.lengthVarInt64(self.url_expiry_time_seconds_)
     return n
 
   def Clear(self):
@@ -241,6 +261,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_max_upload_size_bytes()
     self.clear_max_upload_size_per_blob_bytes()
     self.clear_gs_bucket_name()
+    self.clear_url_expiry_time_seconds()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -254,6 +275,9 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_gs_bucket_name_):
       out.putVarInt32(34)
       out.putPrefixedString(self.gs_bucket_name_)
+    if (self.has_url_expiry_time_seconds_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.url_expiry_time_seconds_)
 
   def OutputPartial(self, out):
     if (self.has_success_path_):
@@ -268,6 +292,9 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_gs_bucket_name_):
       out.putVarInt32(34)
       out.putPrefixedString(self.gs_bucket_name_)
+    if (self.has_url_expiry_time_seconds_):
+      out.putVarInt32(40)
+      out.putVarInt32(self.url_expiry_time_seconds_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -284,6 +311,9 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.set_gs_bucket_name(d.getPrefixedString())
         continue
+      if tt == 40:
+        self.set_url_expiry_time_seconds(d.getVarInt32())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -296,6 +326,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_max_upload_size_bytes_: res+=prefix+("max_upload_size_bytes: %s\n" % self.DebugFormatInt64(self.max_upload_size_bytes_))
     if self.has_max_upload_size_per_blob_bytes_: res+=prefix+("max_upload_size_per_blob_bytes: %s\n" % self.DebugFormatInt64(self.max_upload_size_per_blob_bytes_))
     if self.has_gs_bucket_name_: res+=prefix+("gs_bucket_name: %s\n" % self.DebugFormatString(self.gs_bucket_name_))
+    if self.has_url_expiry_time_seconds_: res+=prefix+("url_expiry_time_seconds: %s\n" % self.DebugFormatInt32(self.url_expiry_time_seconds_))
     return res
 
 
@@ -306,6 +337,7 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
   kmax_upload_size_bytes = 2
   kmax_upload_size_per_blob_bytes = 3
   kgs_bucket_name = 4
+  kurl_expiry_time_seconds = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -313,7 +345,8 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     2: "max_upload_size_bytes",
     3: "max_upload_size_per_blob_bytes",
     4: "gs_bucket_name",
-  }, 4)
+    5: "url_expiry_time_seconds",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -321,7 +354,8 @@ class CreateUploadURLRequest(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

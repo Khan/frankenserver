@@ -61,10 +61,9 @@ abstract class ProtocolMessage {
     $this->outputPartial($enc);
     $res = $enc->toString();
 
-    # TODO: for debugging of the proto implementation, should be removed
-    # once the implementation is stable. Performance hit seems to be less
-    # than 10%.
-    if ($this->byteSizePartial() !== strlen($res)) {
+    # Continue to be a little paranoid about the correctness of the protocol
+    # buffer implementation.
+    if (mt_rand(0, 99) === 0 && $this->byteSizePartial() !== strlen($res)) {
       throw new ProtocolBufferEncodeError(
         "Internal bug: Encoded size doesn't match predicted");
     }
@@ -105,7 +104,7 @@ abstract class ProtocolMessage {
   /**
    * Like parseFromString, fills the message with a protocol buffer parsed from
    * the given input string.
-   * 
+   *
    * @param string $s The string containing a serialized protocol buffer.
    *
    * @throws ProtocolBufferDecodeError If the result message is not correctly

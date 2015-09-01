@@ -17,6 +17,7 @@
 """Tests for devappserver2.update_checker."""
 
 
+
 import unittest
 
 import google

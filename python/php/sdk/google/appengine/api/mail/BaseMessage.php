@@ -259,16 +259,21 @@ abstract class BaseMessage {
   }
 
   /**
-   * Checks that an email is valid.
+   * Checks that an email is valid using the mailparse extension if available.
    *
    * @param string $email The email to be validated.
    * @return bool True if valid, false otherwise.
    */
   protected function checkValidEmail($email) {
-    if (filter_var($email, FILTER_VALIDATE_EMAIL) !== false) {
-      return true;
+    if (function_exists('mailparse_rfc822_parse_addresses')) {
+      $parsed = mailparse_rfc822_parse_addresses($email);
+      if (count($parsed) > 0 && array_key_exists('address', $parsed[0])) {
+        $email = $parsed[0]['address'];
+      } else {
+        return false;
+      }
     }
-    return false;
+    return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
   }
 
   /**

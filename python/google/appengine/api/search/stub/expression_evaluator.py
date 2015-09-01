@@ -45,6 +45,7 @@ provides an approximation to the API for local testing with dev_appserver.
 
 
 import logging
+import math
 
 from google.appengine.datastore import document_pb
 
@@ -94,14 +95,14 @@ class ExpressionEvaluator(object):
     self._case_preserving_tokenizer = simple_tokenizer.SimpleTokenizer(
         preserve_case=True)
     self._function_table = {
-        ExpressionParser.ABS: self._Unsupported('abs'),
+        ExpressionParser.ABS: self._Abs,
         ExpressionParser.COUNT: self._Count,
         ExpressionParser.DISTANCE: self._Distance,
         ExpressionParser.GEOPOINT: self._Geopoint,
-        ExpressionParser.LOG: self._Unsupported('log'),
+        ExpressionParser.LOG: self._Log,
         ExpressionParser.MAX: self._Max,
         ExpressionParser.MIN: self._Min,
-        ExpressionParser.POW: self._Unsupported('pow'),
+        ExpressionParser.POW: self._Pow,
         ExpressionParser.SNIPPET: self._Snippet,
         ExpressionParser.SWITCH: self._Unsupported('switch'),
         }
@@ -151,6 +152,23 @@ class ExpressionEvaluator(object):
       raise _ExpressionError('Max cannot be converted to a text type')
     return max(self._Eval(
         node, document_pb.FieldValue.NUMBER) for node in nodes)
+
+  def _Abs(self, return_type, node):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Abs cannot be converted to a text type')
+    return abs(self._Eval(node, document_pb.FieldValue.NUMBER))
+
+  def _Log(self, return_type, node):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Log cannot be converted to a text type')
+    return math.log(self._Eval(node, document_pb.FieldValue.NUMBER))
+
+  def _Pow(self, return_type, *nodes):
+    if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:
+      raise _ExpressionError('Pow cannot be converted to a text type')
+    lhs, rhs = nodes
+    return pow(self._Eval(lhs, document_pb.FieldValue.NUMBER),
+               self._Eval(rhs, document_pb.FieldValue.NUMBER))
 
   def _Distance(self, return_type, *nodes):
     if return_type == search_util.EXPRESSION_RETURN_TYPE_TEXT:

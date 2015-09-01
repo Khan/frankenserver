@@ -31,6 +31,7 @@
 
 
 
+
 from google.appengine.datastore import entity_pb
 
 from google.appengine.api import api_base_pb
@@ -122,121 +123,13 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
       raise apiproxy_errors.ApplicationError(
           datastore_v4_pb.Error.BAD_REQUEST, str(e))
 
-  def _GetQueryCompositeFilter(self, filters, operator):
-    """Wraps the filters in a datastore_query.CompositeFilter if length > 1."""
-
-    if not filters:
-      return None
-    elif len(filters) == 1:
-      return filters[0]
-    else:
-      return datastore_query.CompositeFilter(operator, filters)
-
-  def _GetV4PbCompositeFilter(self, filter_pbs, operator_pb):
-    """Wraps the filters in a datastore_v4_pb.CompositeFilter if length > 1."""
-    if not filter_pbs:
-      return None
-    elif len(filter_pbs) == 1:
-      return filter_pbs[0]
-    else:
-      res_filter_pb = datastore_v4_pb.Filter()
-      composite_filter_pb = res_filter_pb.mutable_composite_filter()
-      composite_filter_pb.set_operator(operator_pb)
-      composite_filter_pb.filter_list().extend(filter_pbs)
-      return res_filter_pb
-
-  def _GetFilterPbList(self, filter_pb):
-    if filter_pb.has_composite_filter():
-      composite_filter = filter_pb.composite_filter()
-      assert composite_filter.operator() == datastore_v4_pb.CompositeFilter.AND
-
-      return composite_filter.filter_list()
-    else:
-      return [filter_pb]
-
-  def _ConvertGeospatialFilterOrNone(self, filter_pb):
-    """Converts geo-spatial filters to filter predicates."""
-
-    if filter_pb.has_bounding_circle_filter():
-      return (datastore_query._BoundingCircleFilter._from_v4_pb(
-          filter_pb.bounding_circle_filter()))
-    elif filter_pb.has_bounding_box_filter():
-      return (datastore_query._BoundingBoxFilter._from_v4_pb(
-          filter_pb.bounding_box_filter()))
-    else:
-      return None
-
-  def _SplitGeospatialFilters(self, req):
-    """Extracts, converts and removes geo-filters from a request.
-
-    Args:
-      req: a datastore_v4_pb.RunQueryRequest
-
-    Returns:
-      a pair (new_req, filter_predicate) where new_req is req with unsupported
-      filters removed and filter_predicate is a datastore_query.FilterPredicate
-      with the unsupported filters. filter_predicate is None if no unsupported
-      filters were removed.
-    """
-
-    assert datastore_v4_pb.CompositeFilter._Operator_NAMES.values() == ['AND']
-
-
-
-    filter_predicate = None
-    new_req = datastore_v4_pb.RunQueryRequest()
-    new_req.CopyFrom(req)
-
-    query = new_req.mutable_query()
-
-
-    sub_filter_pbs = []
-    sub_filter_predicates = []
-
-    for filter_pb in self._GetFilterPbList(req.query().filter()):
-      sub_filter_predicate = self._ConvertGeospatialFilterOrNone(filter_pb)
-
-      if sub_filter_predicate is None:
-        sub_filter_pbs.append(filter_pb)
-      else:
-        sub_filter_predicates.append(sub_filter_predicate)
-
-    op_pb = datastore_v4_pb.CompositeFilter.AND
-    op = datastore_query.CompositeFilter.AND
-
-    filter_pb = self._GetV4PbCompositeFilter(sub_filter_pbs, op_pb)
-    filter_predicate = self._GetQueryCompositeFilter(sub_filter_predicates, op)
-
-
-
-    if filter_pb is None:
-      query.clear_filter()
-    else:
-      query.mutable_filter().CopyFrom(filter_pb)
-
-    return (new_req, filter_predicate)
-
   def _Dynamic_RunQuery(self, req, resp):
     try:
       self.__normalize_v4_run_query_request(req)
       self.__service_validator.validate_run_query_req(req)
-
-      v3_stub = apiproxy_stub_map.apiproxy.GetStub(V3_SERVICE_NAME)
-
-      new_req, filter_predicate = self._SplitGeospatialFilters(req)
-
-
-
-
-      if (issubclass(v3_stub.__class__, datastore_stub_util.BaseDatastore)
-          and filter_predicate is not None):
-        v3_req = self.__service_converter.v4_run_query_req_to_v3_query(new_req)
-        v3_resp = datastore_pb.QueryResult()
-        v3_stub._Dynamic_RunQuery(v3_req, v3_resp, filter_predicate)
-      else:
-        v3_req = self.__service_converter.v4_run_query_req_to_v3_query(req)
-        v3_resp = datastore_pb.QueryResult()
-        self.__make_v3_call('RunQuery', v3_req, v3_resp)
+      v3_req = self.__service_converter.v4_run_query_req_to_v3_query(req)
+      v3_resp = datastore_pb.QueryResult()
+      self.__make_v3_call('RunQuery', v3_req, v3_resp)
     except datastore_pbs.InvalidConversionError, e:
       raise apiproxy_errors.ApplicationError(
           datastore_v4_pb.Error.BAD_REQUEST, str(e))
@@ -245,6 +138,12 @@ class DatastoreV4Stub(apiproxy_stub.APIProxyStub):
           datastore_v4_pb.Error.BAD_REQUEST, str(e))
     try:
       v4_resp = self.__service_converter.v3_to_v4_run_query_resp(v3_resp)
+      if req.query().projection_list():
+        if req.query().projection_list() == ['__key__']:
+          result_type = datastore_v4_pb.EntityResult.KEY_ONLY
+        else:
+          result_type = datastore_v4_pb.EntityResult.PROJECTION
+        v4_resp.mutable_batch().set_entity_result_type(result_type)
     except datastore_pbs.InvalidConversionError, e:
       raise apiproxy_errors.ApplicationError(
           datastore_v4_pb.Error.INTERNAL_ERROR, str(e))

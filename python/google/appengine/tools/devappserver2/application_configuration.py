@@ -19,6 +19,8 @@
 # TODO: Support more than just app.yaml.
 
 
+
+import datetime
 import errno
 import logging
 import os
@@ -33,7 +35,11 @@ from google.appengine.api import appinfo_includes
 from google.appengine.api import backendinfo
 from google.appengine.api import dispatchinfo
 from google.appengine.client.services import port_manager
+from google.appengine.tools import app_engine_web_xml_parser
+from google.appengine.tools import java_quickstart
 from google.appengine.tools import queue_xml_parser
+from google.appengine.tools import web_xml_parser
+from google.appengine.tools import xml_parser_utils
 from google.appengine.tools import yaml_translator
 from google.appengine.tools.devappserver2 import errors
 
@@ -46,6 +52,10 @@ INBOUND_SERVICES_CHANGED = 4
 ENV_VARIABLES_CHANGED = 5
 ERROR_HANDLERS_CHANGED = 6
 NOBUILD_FILES_CHANGED = 7
+
+
+
+
 
 
 _HEALTH_CHECK_DEFAULTS = {
@@ -68,9 +78,23 @@ def java_supported():
 class ModuleConfiguration(object):
   """Stores module configuration information.
 
-  Configuration options are guaranteed to be constant for the lifetime
-  of the instance.
+  Most configuration options are mutable and may change any time
+  check_for_updates is called. Client code must be able to cope with these
+  changes.
+
+  Other properties are immutable (see _IMMUTABLE_PROPERTIES) and are guaranteed
+  to be constant for the lifetime of the instance.
   """
+
+  _IMMUTABLE_PROPERTIES = [
+      ('application', 'application'),
+      ('version', 'major_version'),
+      ('runtime', 'runtime'),
+      ('threadsafe', 'threadsafe'),
+      ('module', 'module_name'),
+      ('basic_scaling', 'basic_scaling'),
+      ('manual_scaling', 'manual_scaling'),
+      ('automatic_scaling', 'automatic_scaling')]
 
   def __init__(self, config_path, app_id=None):
     """Initializer for ModuleConfiguration.
@@ -120,19 +144,40 @@ class ModuleConfiguration(object):
 
     self._forwarded_ports = {}
     if self.runtime == 'vm':
+      # Java uses an api_version of 1.0 where everyone else uses just 1.
+      # That doesn't matter much elsewhere, but it does pain us with VMs
+      # because they recognize api_version 1 not 1.0.
+      # TODO: sort out this situation better, probably by changing
+      # Java to use 1 like everyone else.
+      if self._api_version == '1.0':
+        self._api_version = '1'
       vm_settings = self._app_info_external.vm_settings
+      ports = None
       if vm_settings:
         ports = vm_settings.get('forwarded_ports')
-        if ports:
-          logging.debug('setting forwarded ports %s', ports)
-          pm = port_manager.PortManager()
-          pm.Add(ports, 'forwarded')
-          self._forwarded_ports = pm.GetAllMappedPorts()
+      if not ports:
+        if (self._app_info_external.network and
+            self._app_info_external.network.forwarded_ports):
+          # Depending on the YAML formatting, these may be strings or ints.
+          # Force them to be strings.
+          ports = ','.join(
+              str(p) for p in self._app_info_external.network.forwarded_ports)
+      if ports:
+        logging.debug('setting forwarded ports %s', ports)
+        pm = port_manager.PortManager()
+        pm.Add(ports, 'forwarded')
+        self._forwarded_ports = pm.GetAllMappedPorts()['tcp']
 
     self._translate_configuration_files()
 
-    self._vm_health_check = _set_health_check_defaults(
-        self._app_info_external.vm_health_check)
+    # vm_health_check is deprecated but it still needs to be taken into account
+    # if it is populated.
+    if self._app_info_external.health_check is not None:
+      health_check = self._app_info_external.health_check
+    else:
+      health_check = self._app_info_external.vm_health_check
+
+    self._health_check = _set_health_check_defaults(health_check)
 
   @property
   def application_root(self):
@@ -245,8 +290,8 @@ class ModuleConfiguration(object):
     return self._config_path
 
   @property
-  def vm_health_check(self):
-    return self._vm_health_check
+  def health_check(self):
+    return self._health_check
 
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
@@ -271,6 +316,26 @@ class ModuleConfiguration(object):
     self._last_failure_message = None
 
     self._mtimes = self._get_mtimes(files_to_check)
+
+    for app_info_attribute, self_attribute in self._IMMUTABLE_PROPERTIES:
+      app_info_value = getattr(app_info_external, app_info_attribute)
+      self_value = getattr(self, self_attribute)
+      if (app_info_value == self_value or
+          app_info_value == getattr(self._app_info_external,
+                                    app_info_attribute)):
+        # Only generate a warning if the value is both different from the
+        # immutable value *and* different from the last loaded value.
+        continue
+
+      if isinstance(app_info_value, types.StringTypes):
+        logging.warning('Restart the development module to see updates to "%s" '
+                        '["%s" => "%s"]',
+                        app_info_attribute,
+                        self_value,
+                        app_info_value)
+      else:
+        logging.warning('Restart the development module to see updates to "%s"',
+                        app_info_attribute)
 
     changes = set()
     if (app_info_external.GetNormalizedLibraries() !=
@@ -327,6 +392,11 @@ class ModuleConfiguration(object):
         config, files = appinfo_includes.ParseAndReturnIncludePaths(f)
     if self._forced_app_id:
       config.application = self._forced_app_id
+
+    if config.runtime == 'vm' and not config.version:
+      config.version = generate_version_id()
+      logging.info('No version specified. Generated version id: %s',
+                   config.version)
     return config, [configuration_path] + files
 
   def _parse_java_configuration(self, app_engine_web_xml_path):
@@ -345,17 +415,34 @@ class ModuleConfiguration(object):
     """
     with open(app_engine_web_xml_path) as f:
       app_engine_web_xml_str = f.read()
+    app_engine_web_xml = (
+        app_engine_web_xml_parser.AppEngineWebXmlParser().ProcessXml(
+            app_engine_web_xml_str))
+
+    quickstart = xml_parser_utils.BooleanValue(
+        app_engine_web_xml.beta_settings.get('java_quickstart', 'false'))
+
     web_inf_dir = os.path.dirname(app_engine_web_xml_path)
-    web_xml_path = os.path.join(web_inf_dir, 'web.xml')
-    with open(web_xml_path) as f:
-      web_xml_str = f.read()
+    if quickstart:
+      app_dir = os.path.dirname(web_inf_dir)
+      web_xml_str, web_xml_path = java_quickstart.quickstart_generator(app_dir)
+      webdefault_xml_str = java_quickstart.get_webdefault_xml()
+      web_xml_str = java_quickstart.remove_mappings(
+          web_xml_str, webdefault_xml_str)
+    else:
+      web_xml_path = os.path.join(web_inf_dir, 'web.xml')
+      with open(web_xml_path) as f:
+        web_xml_str = f.read()
+
     has_jsps = False
     for _, _, filenames in os.walk(self.application_root):
       if any(f.endswith('.jsp') for f in filenames):
         has_jsps = True
         break
+
+    web_xml = web_xml_parser.WebXmlParser().ProcessXml(web_xml_str, has_jsps)
     app_yaml_str = yaml_translator.TranslateXmlToYamlForDevAppServer(
-        app_engine_web_xml_str, web_xml_str, has_jsps, self.application_root)
+        app_engine_web_xml, web_xml, self.application_root)
     config = appinfo.LoadSingleAppInfo(app_yaml_str)
     return config, [app_engine_web_xml_path, web_xml_path]
 
@@ -381,24 +468,24 @@ class ModuleConfiguration(object):
         f.write(queue_yaml)
 
 
-def _set_health_check_defaults(vm_health_check):
-  """Sets default values for any missing attributes in VmHealthCheck.
+def _set_health_check_defaults(health_check):
+  """Sets default values for any missing attributes in HealthCheck.
 
   These defaults need to be kept up to date with the production values in
-  vm_health_check.cc
+  health_check.cc
 
   Args:
-    vm_health_check: An instance of appinfo.VmHealthCheck or None.
+    health_check: An instance of appinfo.HealthCheck or None.
 
   Returns:
-    An instance of appinfo.VmHealthCheck
+    An instance of appinfo.HealthCheck
   """
-  if not vm_health_check:
-    vm_health_check = appinfo.VmHealthCheck()
+  if not health_check:
+    health_check = appinfo.HealthCheck()
   for k, v in _HEALTH_CHECK_DEFAULTS.iteritems():
-    if getattr(vm_health_check, k) is None:
-      setattr(vm_health_check, k, v)
-  return vm_health_check
+    if getattr(health_check, k) is None:
+      setattr(health_check, k, v)
+  return health_check
 
 
 class BackendsConfiguration(object):
@@ -602,8 +689,8 @@ class BackendConfiguration(object):
     return self._module_configuration.config_path
 
   @property
-  def vm_health_check(self):
-    return self._module_configuration.vm_health_check
+  def health_check(self):
+    return self._module_configuration.health_check
 
   def check_for_updates(self):
     """Return any configuration changes since the last check_for_updates call.
@@ -679,6 +766,8 @@ class ApplicationConfiguration(object):
           or to directories containing them.
       app_id: A string that is the application id, or None if the application id
           from the yaml or xml file should be used.
+    Raises:
+      InvalidAppConfigError: On invalid configuration.
     """
     self.modules = []
     self.dispatch = None
@@ -768,6 +857,9 @@ class ApplicationConfiguration(object):
     Args:
       dir_path: a string that is the path to a directory.
 
+    Raises:
+      AppConfigNotFoundError: If the application configuration is not found.
+
     Returns:
       A list of strings that are file paths.
     """
@@ -825,3 +917,15 @@ def get_app_error_file(module_configuration):
       return os.path.join(module_configuration.application_root,
                           error_handler.file)
   return None
+
+
+def generate_version_id(datetime_getter=datetime.datetime.now):
+  """Generates a version id based off the current time.
+
+  Args:
+    datetime_getter: A function that returns a datetime.datetime instance.
+
+  Returns:
+    A version string based.
+  """
+  return datetime_getter().isoformat().lower().translate(None, ':-')[:15]

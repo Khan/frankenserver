@@ -17,6 +17,7 @@
 """Stub implementations of restricted functions."""
 
 
+
 import errno
 import functools
 import inspect

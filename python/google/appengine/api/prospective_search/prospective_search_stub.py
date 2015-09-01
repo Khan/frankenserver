@@ -26,6 +26,7 @@
 
 
 
+
 import base64
 import bisect
 
@@ -58,7 +59,10 @@ def ValidateTopic(topic):
 
 
 def ValidateQuery(query):
-  query_parser.Parse(unicode(query, 'utf-8'))
+  parser_return = query_parser.Parse(unicode(query, 'utf-8'))
+  if parser_return.tree and parser_return.tree.getType() is QueryParser.EMPTY:
+    raise query_parser.QueryException('Empty query.')
+
 
 def RaiseBadRequest(message):
   raise apiproxy_errors.ApplicationError(error_pb.Error.BAD_REQUEST, message)

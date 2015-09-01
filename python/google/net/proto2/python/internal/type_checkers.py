@@ -34,6 +34,7 @@ TYPE_TO_DESERIALIZE_METHOD: A dictionary with field types and deserialization
 """
 
 
+
 import sys
 if sys.version < '2.6': bytes = str
 from google.net.proto2.python.internal import api_implementation
@@ -44,6 +45,8 @@ from google.net.proto2.python.public import descriptor
 
 _FieldDescriptor = descriptor.FieldDescriptor
 
+def SupportsOpenEnums(field_descriptor):
+  return field_descriptor.containing_type.syntax == "proto3"
 
 def GetTypeChecker(field):
   """Returns a type checker for a message field of the specified types.
@@ -59,7 +62,11 @@ def GetTypeChecker(field):
       field.type == _FieldDescriptor.TYPE_STRING):
     return UnicodeValueChecker()
   if field.cpp_type == _FieldDescriptor.CPPTYPE_ENUM:
-    return EnumValueChecker(field.enum_type)
+    if SupportsOpenEnums(field):
+
+      return _VALUE_CHECKERS[_FieldDescriptor.CPPTYPE_INT32]
+    else:
+      return EnumValueChecker(field.enum_type)
   return _VALUE_CHECKERS[field.cpp_type]
 
 
@@ -140,13 +147,12 @@ class UnicodeValueChecker(object):
       raise TypeError(message)
 
 
-
     if isinstance(proposed_value, bytes):
       try:
-        proposed_value = proposed_value.decode('ascii')
+        proposed_value = proposed_value.decode('utf-8')
       except UnicodeDecodeError:
-        raise ValueError('%.1024r has type bytes, but isn\'t in 7-bit ASCII '
-                         'encoding. Non-ASCII strings must be converted to '
+        raise ValueError('%.1024r has type bytes, but isn\'t valid UTF-8 '
+                         'encoding. Non-UTF-8 strings must be converted to '
                          'unicode objects before being added.' %
                          (proposed_value))
     return proposed_value

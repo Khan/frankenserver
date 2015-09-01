@@ -30,8 +30,14 @@ use google\appengine\GetHostnameResponse;
 use google\appengine\ModulesServiceError\ErrorCode;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\testing\ApiProxyTestBase;
+use google\appengine\util\StringUtil;
 
 class SplOverrideTest extends ApiProxyTestBase {
+
+  public static function setUpBeforeClass() {
+    VirtualFileSystem::getInstance()->initialize();
+  }
+
   // See api\modules\ModulesServiceTest::testGetHostname().
   public function testGetHostName() {
     $req = new GetHostnameRequest();
@@ -62,4 +68,30 @@ class SplOverrideTest extends ApiProxyTestBase {
     // Should fail since is_uploaded_file(__FILE__) will result in false.
     $this->assertFalse(SplOverride::move_uploaded_file(__FILE__, '/dev/null'));
   }
+
+  public function testSysGetTempDir() {
+    $this->assertEquals('vfs://root/temp', SplOverride::sys_get_temp_dir());
+  }
+
+  // Data provider for testTempnam().
+  public function tempnamProvider() {
+    return [
+      ['vfs://root/temp', 'foo', 'vfs://root/temp/foo'],
+      ['foo', 'bar', 'vfs://root/temp/foo/bar'],
+      ['foo/bar', 'baz', 'vfs://root/temp/foo/bar/baz'],
+    ];
+  }
+
+  /**
+   * @dataProvider tempnamProvider
+   */
+  public function testTempnam($dir, $prefix, $expected_path_prefix) {
+    $filename = SplOverride::tempnam($dir, $prefix);
+    $this->assertTrue(StringUtil::startsWith($filename, $expected_path_prefix));
+    $this->assertTrue(strlen($filename) > strlen($expected_path_prefix));
+    $this->assertTrue(file_exists($filename));
+    $this->assertEquals(0600, fileperms($filename) & 0x0FFF);
+    $this->assertEquals(0, filesize($filename));
+  }
+
 }

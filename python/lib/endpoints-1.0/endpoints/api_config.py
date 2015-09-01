@@ -44,6 +44,9 @@ the API is returned.
 
 
 
+
+
+
 try:
   import json
 except ImportError:
@@ -1876,16 +1879,15 @@ class ApiConfigGenerator(object):
 
     return descriptor
 
-  def __method_descriptor(self, service, service_name, method_info,
-                          protorpc_method_name, protorpc_method_info):
+  def __method_descriptor(self, service, method_info,
+                          rosy_method, protorpc_method_info):
     """Describes a method.
 
     Args:
       service: endpoints.Service, Implementation of the API as a service.
-      service_name: string, Name of the service.
       method_info: _MethodInfo, Configuration for the method.
-      protorpc_method_name: string, Name of the method as given in the
-        ProtoRPC implementation.
+      rosy_method: string, ProtoRPC method name prefixed with the
+        name of the service.
       protorpc_method_info: protorpc.remote._RemoteMethodInfo, ProtoRPC
         description of the method.
 
@@ -1901,7 +1903,7 @@ class ApiConfigGenerator(object):
 
     descriptor['path'] = method_info.get_path(service.api_info)
     descriptor['httpMethod'] = method_info.http_method
-    descriptor['rosyMethod'] = '%s.%s' % (service_name, protorpc_method_name)
+    descriptor['rosyMethod'] = rosy_method
     descriptor['request'] = self.__request_message_descriptor(
         request_kind, request_message_type,
         method_info.method_id(service.api_info),
@@ -1955,7 +1957,8 @@ class ApiConfigGenerator(object):
     for service in services:
       protorpc_methods = service.all_remote_methods()
       for protorpc_method_name in protorpc_methods.iterkeys():
-        method_id = self.__id_from_name[protorpc_method_name]
+        rosy_method = '%s.%s' % (service.__name__, protorpc_method_name)
+        method_id = self.__id_from_name[rosy_method]
 
         request_response = {}
 
@@ -1971,7 +1974,6 @@ class ApiConfigGenerator(object):
               '$ref': response_schema_id
               }
 
-        rosy_method = '%s.%s' % (service.__name__, protorpc_method_name)
         methods_desc[rosy_method] = request_response
 
     descriptor = {
@@ -2104,10 +2106,10 @@ class ApiConfigGenerator(object):
         if method_info is None:
           continue
         method_id = method_info.method_id(service.api_info)
-        self.__id_from_name[protorpc_meth_name] = method_id
+        rosy_method = '%s.%s' % (service.__name__, protorpc_meth_name)
+        self.__id_from_name[rosy_method] = method_id
         method_map[method_id] = self.__method_descriptor(
-            service, service.__name__, method_info,
-            protorpc_meth_name, protorpc_meth_info)
+            service, method_info, rosy_method, protorpc_meth_info)
 
 
         if method_id in method_collision_tracker:

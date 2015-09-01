@@ -26,6 +26,7 @@ from __future__ import with_statement
 
 
 
+
 import httplib
 import re
 import threading
@@ -137,7 +138,7 @@ def _handle_post(gcs_stub, filename, headers):
   token = gcs_stub.post_start_creation(filename, headers)
   response_headers = {
       'location': 'https://storage.googleapis.com/%s?%s' % (
-          filename,
+          urllib.quote(filename),
           urllib.urlencode({'upload_id': token})),
       'content-type': content_type.value,
       'content-length': 0

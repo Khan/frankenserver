@@ -28,7 +28,9 @@
 
 
 
+
 import os
+import time
 
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import memcache
@@ -70,6 +72,26 @@ _PARTITION_SEPARATOR = '~'
 _DOMAIN_SEPARATOR = ':'
 _MEMCACHE_KEY_PREFIX = '_ah_app_identity_'
 _MEMCACHE_NAMESPACE = '_ah_'
+
+
+
+_TOKEN_EXPIRY_SAFETY_MARGIN = 300
+_MAX_TOKEN_CACHE_SIZE = 100
+
+
+_MAX_RANDOM_EXPIRY_DELTA = 60
+
+
+
+
+_access_token_cache = {}
+
+
+
+
+
+_random_cache_expiry_delta = (
+    hash(time.time()) % (_MAX_RANDOM_EXPIRY_DELTA * 1000) / 1000.0)
 
 
 class Error(Exception):
@@ -323,10 +345,7 @@ def make_get_default_gcs_bucket_name_call(rpc):
     except apiproxy_errors.ApplicationError, err:
       raise _to_app_identity_error(err)
 
-    if response.has_default_gcs_bucket_name():
-      return response.default_gcs_bucket_name()
-    else:
-      return None
+    return response.default_gcs_bucket_name() or None
 
 
   rpc.make_call(_GET_DEFAULT_GCS_BUCKET_NAME_METHOD_NAME, request,
@@ -537,7 +556,7 @@ def get_access_token(scopes, service_account_id=None):
   Each application has an associated Google account. This function returns
   OAuth2 access token corresponding to the running app. Access tokens are safe
   to cache and reuse until their expiry time as returned. This method will
-  do that using memcache.
+  do that using both an in-process cache and memcache.
 
   Args:
     scopes: The requested API scope string, or a list of strings.
@@ -548,16 +567,42 @@ def get_access_token(scopes, service_account_id=None):
 
 
 
-  memcache_key = _MEMCACHE_KEY_PREFIX + str(scopes)
+  cache_key = _MEMCACHE_KEY_PREFIX + str(scopes)
   if service_account_id:
-    memcache_key += ',%s' % service_account_id
-  memcache_value = memcache.get(memcache_key, namespace=_MEMCACHE_NAMESPACE)
+    cache_key += ',%s' % service_account_id
+
+
+  cached = _access_token_cache.get(cache_key)
+  if cached is not None:
+    access_token, expires_at = cached
+    safe_expiry = (expires_at - _TOKEN_EXPIRY_SAFETY_MARGIN -
+                   _random_cache_expiry_delta)
+    if time.time() < safe_expiry:
+      return access_token, expires_at
+
+
+  memcache_value = memcache.get(cache_key, namespace=_MEMCACHE_NAMESPACE)
   if memcache_value:
     access_token, expires_at = memcache_value
   else:
     access_token, expires_at = get_access_token_uncached(
         scopes, service_account_id=service_account_id)
 
-    memcache.add(memcache_key, (access_token, expires_at), expires_at - 300,
+
+
+
+    memcache_expiry = expires_at - _TOKEN_EXPIRY_SAFETY_MARGIN
+    memcache_expiry -= _MAX_RANDOM_EXPIRY_DELTA
+    memcache_expiry -= 10
+    memcache.add(cache_key, (access_token, expires_at),
+                 memcache_expiry,
                  namespace=_MEMCACHE_NAMESPACE)
+
+
+  if len(_access_token_cache) >= _MAX_TOKEN_CACHE_SIZE:
+
+
+    _access_token_cache.clear()
+  _access_token_cache[cache_key] = (access_token, expires_at)
+
   return access_token, expires_at

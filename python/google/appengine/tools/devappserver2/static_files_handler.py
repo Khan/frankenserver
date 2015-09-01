@@ -17,6 +17,7 @@
 """Serves static content for "static_dir" and "static_files" handlers."""
 
 
+
 import base64
 import errno
 import httplib

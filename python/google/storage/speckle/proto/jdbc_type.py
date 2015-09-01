@@ -29,6 +29,7 @@ If you update this, update jdbc_type.py also.
 
 
 
+
 BIT = -7
 TINYINT = -6
 SMALLINT = 5

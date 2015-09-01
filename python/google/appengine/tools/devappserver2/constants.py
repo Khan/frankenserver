@@ -17,6 +17,7 @@
 """Constants used by the devappserver2."""
 
 
+
 # These statuses must not include a response body (RFC 2616).
 NO_BODY_RESPONSE_STATUSES = frozenset([100, 101, 204, 304])
 
@@ -28,6 +29,9 @@ NON_PUBLIC_CACHE_CONTROLS = frozenset(['private', 'no-cache', 'no-store'])
 # All of these headers will be stripped from the request.
 # See:
 # https://developers.google.com/appengine/docs/python/runtime#Request_Headers
+
+
+
 
 IGNORED_REQUEST_HEADERS = frozenset([
     'accept-encoding',
@@ -45,6 +49,9 @@ IGNORED_REQUEST_HEADERS = frozenset([
 # See: https://developers.google.com/appengine/docs/python/runtime#Responses
 # Note: Content-Length is set by a subsequent rewriter or removed.
 # Note: Server and Date are then set by devappserver2.
+
+
+
 
 _COMMON_IGNORED_RESPONSE_HEADERS = frozenset([
     'connection',

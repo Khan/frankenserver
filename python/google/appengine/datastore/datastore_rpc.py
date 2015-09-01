@@ -22,11 +22,8 @@
 
 This is designed to be the lowest-level API to be used by all Python
 datastore client libraries.
-
-A refactoring is in progress to rebuild datastore.py on top of this,
-while remaining nearly 100% backwards compatible.  A new (not intended
-to be compatible) library to replace db.py is also under development.
 """
+
 
 
 
@@ -54,6 +51,7 @@ import collections
 import copy
 import functools
 import logging
+import os
 
 
 from google.appengine.datastore import entity_pb
@@ -70,8 +68,11 @@ from google.appengine.api.app_identity import app_identity
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import datastore_v4_pb
-from google.appengine.datastore import entity_v4_pb
 from google.appengine.runtime import apiproxy_errors
+
+_CLOUD_DATASTORE_ENABLED = datastore_pbs._CLOUD_DATASTORE_ENABLED
+if _CLOUD_DATASTORE_ENABLED:
+  from google.appengine.datastore.datastore_pbs import googledatastore
 
 
 
@@ -82,6 +83,7 @@ _MAX_ID_BATCH_SIZE = 1000 * 1000 * 1000
 
 _DATASTORE_V3 = 'datastore_v3'
 _DATASTORE_V4 = 'datastore_v4'
+_CLOUD_DATASTORE_V1 = 'cloud_datastore_v1'
 
 
 
@@ -143,25 +145,48 @@ class AbstractAdapter(object):
   These methods may raise datastore_errors.Error for bad inputs.
   """
 
+  _entity_converter = datastore_pbs.get_entity_converter()
+  _query_converter = datastore_pbs._QueryConverter(_entity_converter)
+
+  def __init__(self, id_resolver=None):
+    if id_resolver:
+      self._entity_converter = datastore_pbs.get_entity_converter(
+          id_resolver)
+      self._query_converter = datastore_pbs._QueryConverter(
+          self._entity_converter)
+
+  def get_entity_converter(self):
+    return self._entity_converter
+
+  def get_query_converter(self):
+    return self._query_converter
+
   def pb_to_key(self, pb):
     """Turn an entity_pb.Reference into a user-level key."""
     raise NotImplementedError
 
-  def pb_v4_to_key(self, pb):
-    """Turn an entity_v4_pb.Key into a user-level key."""
+  def pb_v1_to_key(self, pb):
+    """Turn an googledatastore.Key into a user-level key."""
     v3_ref = entity_pb.Reference()
-    datastore_pbs.get_entity_converter().v4_to_v3_reference(pb, v3_ref)
+    self._entity_converter.v1_to_v3_reference(pb, v3_ref)
     return self.pb_to_key(v3_ref)
 
   def pb_to_entity(self, pb):
     """Turn an entity_pb.EntityProto into a user-level entity."""
     raise NotImplementedError
 
-  def pb_v4_to_entity(self, pb):
-    """Turn an entity_v4_pb.Entity into a user-level entity."""
+  def pb_v1_to_entity(self, pb, is_projection):
+    """Turn an googledatastore.Entity into a user-level entity."""
     v3_entity = entity_pb.EntityProto()
-    datastore_pbs.get_entity_converter().v4_to_v3_entity(pb, v3_entity)
+    self._entity_converter.v1_to_v3_entity(pb, v3_entity, is_projection)
     return self.pb_to_entity(v3_entity)
+
+  def pb_v1_to_query_result(self, pb, query_options):
+    """Turn an googledatastore.Entity into a user-level query result."""
+    if query_options.keys_only:
+      return self.pb_v1_to_key(pb.key)
+    else:
+      return self.pb_v1_to_entity(pb, bool(query_options.projection))
 
   def pb_to_index(self, pb):
     """Turn an entity_pb.CompositeIndex into a user-level Index
@@ -179,23 +204,23 @@ class AbstractAdapter(object):
     """Turn a user-level key into an entity_pb.Reference."""
     raise NotImplementedError
 
-  def key_to_pb_v4(self, key):
-    """Turn a user-level key into an entity_v4_pb.Key."""
+  def key_to_pb_v1(self, key):
+    """Turn a user-level key into an googledatastore.Key."""
     v3_ref = self.key_to_pb(key)
-    v4_key = entity_v4_pb.Key()
-    datastore_pbs.get_entity_converter().v3_to_v4_key(v3_ref, v4_key)
-    return v4_key
+    v1_key = googledatastore.Key()
+    self._entity_converter.v3_to_v1_key(v3_ref, v1_key)
+    return v1_key
 
   def entity_to_pb(self, entity):
     """Turn a user-level entity into an entity_pb.EntityProto."""
     raise NotImplementedError
 
-  def entity_to_pb_v4(self, entity):
-    """Turn a user-level entity into an entity_v4_pb.Key."""
+  def entity_to_pb_v1(self, entity):
+    """Turn a user-level entity into an googledatastore.Key."""
     v3_entity = self.entity_to_pb(entity)
-    v4_entity = entity_v4_pb.Entity()
-    datastore_pbs.get_entity_converter().v3_to_v4_entity(v3_entity, v4_entity)
-    return v4_entity
+    v1_entity = googledatastore.Entity()
+    self._entity_converter.v3_to_v1_entity(v3_entity, v1_entity)
+    return v1_entity
 
   def new_key_pb(self):
     """Create a new, empty entity_pb.Reference."""
@@ -212,6 +237,9 @@ class IdentityAdapter(AbstractAdapter):
   This is used as the default when a Connection is created without
   specifying an adapter; that's primarily for testing.
   """
+
+  def __init__(self, id_resolver=None):
+    super(IdentityAdapter, self).__init__(id_resolver)
 
   def pb_to_key(self, pb):
     return pb
@@ -710,7 +738,7 @@ class Configuration(BaseConfiguration):
 
   @ConfigOption
   def max_allocate_ids_keys(value):
-    """The maximum number of keys in a v4 AllocateIds rpc."""
+    """The maximum number of keys in a v1 AllocateIds rpc."""
     if not (isinstance(value, (int, long)) and value > 0):
       raise datastore_errors.BadArgumentError(
           'max_allocate_ids_keys should be a positive integer')
@@ -749,23 +777,28 @@ class Configuration(BaseConfiguration):
     return value
 
 
-class _StubRpc(object):
-  """A stub RPC implementation.
 
-  Returns a hard-coded result provided at construction time.
-  """
+_NOOP_SERVICE = 'cloud_datastore_noop'
 
-  def __init__(self, result):
-    self.__result = result
 
-  def wait(self):
-    pass
+class _NoopRPC(apiproxy_rpc.RPC):
+  """An RPC implementation that does not modify the response object."""
 
-  def check_success(self):
-    pass
+  def __init__(self):
+    super(_NoopRPC, self).__init__()
 
-  def get_result(self):
-    return self.__result
+  def _WaitImpl(self):
+    return True
+
+  def _MakeCallImpl(self):
+    self._state = apiproxy_rpc.RPC.FINISHING
+
+
+class _NoopRPCStub(object):
+  """An RPC stub which always creates a NoopRPC."""
+
+  def CreateRPC(self):
+    return _NoopRPC()
 
 
 class MultiRpc(object):
@@ -1013,7 +1046,8 @@ class BaseConnection(object):
   MASTER_SLAVE_DATASTORE = 1
   HIGH_REPLICATION_DATASTORE = 2
 
-  __SUPPORTED_VERSIONS = frozenset((_DATASTORE_V3, _DATASTORE_V4))
+  __SUPPORTED_VERSIONS = frozenset((_DATASTORE_V3,
+                                    _CLOUD_DATASTORE_V1))
 
   @_positional(1)
   def __init__(self, adapter=None, config=None, _api_version=_DATASTORE_V3):
@@ -1043,6 +1077,13 @@ class BaseConnection(object):
     if _api_version not in self.__SUPPORTED_VERSIONS:
       raise datastore_errors.BadArgumentError(
           'unsupported API version (%s)' % (_api_version,))
+    if _api_version == _CLOUD_DATASTORE_V1:
+      if not _CLOUD_DATASTORE_ENABLED:
+        raise datastore_errors.BadArgumentError(
+            datastore_pbs.MISSING_CLOUD_DATASTORE_MESSAGE)
+
+      apiproxy_stub_map.apiproxy.ReplaceStub(_NOOP_SERVICE, _NoopRPCStub())
+
     self._api_version = _api_version
 
     self.__pending_rpcs = set()
@@ -1058,7 +1099,6 @@ class BaseConnection(object):
   def config(self):
     """The default configuration used by this connection."""
     return self.__config
-
 
 
 
@@ -1244,8 +1284,8 @@ class BaseConnection(object):
 
 
       if read_policy == Configuration.EVENTUAL_CONSISTENCY:
-        request.mutable_read_options().set_read_consistency(
-            datastore_v4_pb.ReadOptions.EVENTUAL)
+        request.read_options.read_consistency = (
+            googledatastore.ReadOptions.EVENTUAL)
         return False
       else:
         return None
@@ -1356,29 +1396,34 @@ class BaseConnection(object):
   def _extract_entity_group(self, value):
     """Internal helper: extracts the entity group from a key or entity.
 
-    Supports both v3 and v4 protobufs.
+    Supports both v3 and v1 protobufs.
 
     Args:
       value: an entity_pb.{Reference, EntityProto} or
-          entity_v4_pb.{Key, Entity}.
+          googledatastore.{Key, Entity}.
 
     Returns:
       A tuple consisting of:
         - kind
         - name, id, or ('new', unique id)
     """
-    if (isinstance(value, entity_v4_pb.Entity)
-        or isinstance(value, entity_pb.EntityProto)):
+    if _CLOUD_DATASTORE_ENABLED and isinstance(value, googledatastore.Entity):
+      value = value.key
+    if isinstance(value, entity_pb.EntityProto):
       value = value.key()
-    if isinstance(value, entity_v4_pb.Key):
-      elem = value.path_element(0)
-      kind = elem.kind()
+    if _CLOUD_DATASTORE_ENABLED and isinstance(value, googledatastore.Key):
+      elem = value.path[0]
+      elem_id = elem.id
+      elem_name = elem.name
+      kind = elem.kind
     else:
       elem = value.path().element(0)
       kind = elem.type()
+      elem_id = elem.id()
+      elem_name = elem.name()
 
 
-    return (kind, elem.id() or elem.name() or ('new', id(elem)))
+    return (kind, elem_id or elem_name or ('new', id(elem)))
 
   def _map_and_group(self, values, map_fn, group_fn):
     """Internal helper: map values to keys and group by key. Here key is any
@@ -1477,7 +1522,11 @@ class BaseConnection(object):
       for indexed_pb in indexed_pbs:
         (pb, index) = indexed_pb
 
-        incr_size = pb.lengthString(pb.ByteSize()) + 1
+
+
+
+
+        incr_size = pb.ByteSize() + 5
 
 
 
@@ -1496,9 +1545,9 @@ class BaseConnection(object):
 
   def __force(self, req):
     """Configure a request to force mutations."""
-    if isinstance(req, datastore_v4_pb.CommitRequest):
-      req.mutable_deprecated_mutation().set_force(True)
-    else:
+    if isinstance(req, (datastore_pb.PutRequest,
+                        datastore_pb.TouchRequest,
+                        datastore_pb.DeleteRequest)):
       req.set_force(True)
 
   def get(self, keys):
@@ -1530,12 +1579,13 @@ class BaseConnection(object):
 
     def make_get_call(base_req, pbs, extra_hook=None):
       req = copy.deepcopy(base_req)
-      req.key_list().extend(pbs)
-      if self._api_version == _DATASTORE_V4:
+      if self._api_version == _CLOUD_DATASTORE_V1:
         method = 'Lookup'
-        resp = datastore_v4_pb.LookupResponse()
+        req.keys.extend(pbs)
+        resp = googledatastore.LookupResponse()
       else:
         method = 'Get'
+        req.key_list().extend(pbs)
         resp = datastore_pb.GetResponse()
 
 
@@ -1550,9 +1600,9 @@ class BaseConnection(object):
                                  user_data=user_data,
                                  service_name=self._api_version)
 
-    if self._api_version == _DATASTORE_V4:
-      base_req = datastore_v4_pb.LookupRequest()
-      key_to_pb = self.__adapter.key_to_pb_v4
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      base_req = googledatastore.LookupRequest()
+      key_to_pb = self.__adapter.key_to_pb_v1
     else:
       base_req = datastore_pb.GetRequest()
       base_req.set_allow_deferred(True)
@@ -1622,26 +1672,39 @@ class BaseConnection(object):
 
 
 
-      if self._api_version == _DATASTORE_V4:
+      deferred_req = copy.deepcopy(rpc.request)
+      if self._api_version == _CLOUD_DATASTORE_V1:
         method = 'Lookup'
-        deferred_resp = datastore_v4_pb.LookupResponse()
+        deferred_resp = googledatastore.LookupResponse()
+        while current_get_response.deferred:
+          deferred_req.ClearField('keys')
+          deferred_req.keys.extend(current_get_response.deferred)
+          deferred_resp.Clear()
+          deferred_rpc = self._make_rpc_call(config, method,
+                                             deferred_req, deferred_resp,
+                                             service_name=self._api_version)
+          deferred_rpc.get_result()
+          current_get_response = deferred_rpc.response
+
+
+          self.__add_get_response_entities_to_dict(current_get_response,
+                                                   result_dict)
       else:
         method = 'Get'
         deferred_resp = datastore_pb.GetResponse()
-      deferred_req = copy.deepcopy(rpc.request)
-      while current_get_response.deferred_list():
-        deferred_req.clear_key()
-        deferred_req.key_list().extend(current_get_response.deferred_list())
-        deferred_resp.Clear()
-        deferred_rpc = self._make_rpc_call(config, method,
-                                           deferred_req, deferred_resp,
-                                           service_name=self._api_version)
-        deferred_rpc.get_result()
-        current_get_response = deferred_rpc.response
+        while current_get_response.deferred_list():
+          deferred_req.clear_key()
+          deferred_req.key_list().extend(current_get_response.deferred_list())
+          deferred_resp.Clear()
+          deferred_rpc = self._make_rpc_call(config, method,
+                                             deferred_req, deferred_resp,
+                                             service_name=self._api_version)
+          deferred_rpc.get_result()
+          current_get_response = deferred_rpc.response
 
 
-        self.__add_get_response_entities_to_dict(current_get_response,
-                                                 result_dict)
+          self.__add_get_response_entities_to_dict(current_get_response,
+                                                   result_dict)
 
 
 
@@ -1664,14 +1727,15 @@ class BaseConnection(object):
 
     Args:
       get_response: A datastore_pb.GetResponse or
-          datastore_v4_pb.LookupResponse.
+          googledatastore.LookupResponse.
       result_dict: The dict to add results to.
     """
-    if isinstance(get_response, datastore_v4_pb.LookupResponse):
-      for result in get_response.found_list():
-        v4_key = result.entity().key()
-        entity = self.__adapter.pb_v4_to_entity(result.entity())
-        result_dict[datastore_types.ReferenceToKeyValue(v4_key)] = entity
+    if (_CLOUD_DATASTORE_ENABLED
+        and isinstance(get_response, googledatastore.LookupResponse)):
+      for result in get_response.found:
+        v1_key = result.entity.key
+        entity = self.__adapter.pb_v1_to_entity(result.entity, False)
+        result_dict[datastore_types.ReferenceToKeyValue(v1_key)] = entity
     else:
       for entity_result in get_response.entity_list():
 
@@ -1755,15 +1819,12 @@ class BaseConnection(object):
 
     def make_put_call(base_req, pbs, user_data=None):
       req = copy.deepcopy(base_req)
-      if self._api_version == _DATASTORE_V4:
-        deprecated_mutation = req.mutable_deprecated_mutation()
+      if self._api_version == _CLOUD_DATASTORE_V1:
         for entity in pbs:
-          if datastore_pbs.is_complete_v4_key(entity.key()):
-            deprecated_mutation.upsert_list().append(entity)
-          else:
-            deprecated_mutation.insert_auto_id_list().append(entity)
+          mutation = req.mutations.add()
+          mutation.upsert.CopyFrom(entity)
         method = 'Commit'
-        resp = datastore_v4_pb.CommitResponse()
+        resp = googledatastore.CommitResponse()
       else:
         req.entity_list().extend(pbs)
         method = 'Put'
@@ -1775,10 +1836,10 @@ class BaseConnection(object):
                                  service_name=self._api_version)
 
 
-    if self._api_version == _DATASTORE_V4:
-      base_req = datastore_v4_pb.CommitRequest()
-      base_req.set_mode(datastore_v4_pb.CommitRequest.NON_TRANSACTIONAL)
-      entity_to_pb = self.__adapter.entity_to_pb_v4
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      base_req = googledatastore.CommitRequest()
+      base_req.mode = googledatastore.CommitRequest.NON_TRANSACTIONAL
+      entity_to_pb = self.__adapter.entity_to_pb_v1
     else:
       base_req = datastore_pb.PutRequest()
       entity_to_pb = self.__adapter.entity_to_pb
@@ -1793,7 +1854,9 @@ class BaseConnection(object):
 
     max_count = (Configuration.max_put_entities(config, self.__config) or
                  self.MAX_PUT_ENTITIES)
-    if not base_req.has_transaction():
+    if ((self._api_version == _CLOUD_DATASTORE_V1 and
+         not base_req.transaction) or
+        not base_req.has_transaction()):
       max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
@@ -1818,17 +1881,17 @@ class BaseConnection(object):
     self.check_rpc_success(rpc)
     entities_from_request, extra_hook = rpc.user_data
 
-    if isinstance(rpc.response, datastore_v4_pb.CommitResponse):
+    if (_CLOUD_DATASTORE_ENABLED
+        and isinstance(rpc.response, googledatastore.CommitResponse)):
       keys = []
       i = 0
       for entity in entities_from_request:
-        if datastore_pbs.is_complete_v4_key(entity.key()):
-          keys.append(entity.key())
+        if datastore_pbs.is_complete_v1_key(entity.key):
+          keys.append(entity.key)
         else:
-          keys.append(
-              rpc.response.deprecated_mutation_result().insert_auto_id_key(i))
+          keys.append(rpc.response.mutation_results[i].key)
           i += 1
-      keys = [self.__adapter.pb_v4_to_key(key) for key in keys]
+      keys = [self.__adapter.pb_v1_to_key(key) for key in keys]
     else:
       keys = [self.__adapter.pb_to_key(key) for key in rpc.response.key_list()]
 
@@ -1864,10 +1927,12 @@ class BaseConnection(object):
 
     def make_delete_call(base_req, pbs, user_data=None):
       req = copy.deepcopy(base_req)
-      if self._api_version == _DATASTORE_V4:
-        req.mutable_deprecated_mutation().delete_list().extend(pbs)
+      if self._api_version == _CLOUD_DATASTORE_V1:
+        for pb in pbs:
+          mutation = req.mutations.add()
+          mutation.delete.CopyFrom(pb)
         method = 'Commit'
-        resp = datastore_v4_pb.CommitResponse()
+        resp = googledatastore.CommitResponse()
       else:
         req.key_list().extend(pbs)
         method = 'Delete'
@@ -1878,10 +1943,10 @@ class BaseConnection(object):
                                  service_name=self._api_version)
 
 
-    if self._api_version == _DATASTORE_V4:
-      base_req = datastore_v4_pb.CommitRequest()
-      base_req.set_mode(datastore_v4_pb.CommitRequest.NON_TRANSACTIONAL)
-      key_to_pb = self.__adapter.key_to_pb_v4
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      base_req = googledatastore.CommitRequest()
+      base_req.mode = googledatastore.CommitRequest.NON_TRANSACTIONAL
+      key_to_pb = self.__adapter.key_to_pb_v1
     else:
       base_req = datastore_pb.DeleteRequest()
       key_to_pb = self.__adapter.key_to_pb
@@ -1896,7 +1961,9 @@ class BaseConnection(object):
 
     max_count = (Configuration.max_delete_keys(config, self.__config) or
                  self.MAX_DELETE_KEYS)
-    if not base_req.has_transaction():
+    if ((self._api_version == _CLOUD_DATASTORE_V1 and
+         not base_req.transaction) or
+        not base_req.has_transaction()):
       max_egs_per_rpc = self.__get_max_entity_groups_per_rpc(config)
     else:
       max_egs_per_rpc = None
@@ -1952,14 +2019,11 @@ class BaseConnection(object):
     """
     if not isinstance(app, basestring) or not app:
       raise datastore_errors.BadArgumentError(
-        'begin_transaction requires an application id argument (%r)' %
-        (app,))
+          'begin_transaction requires an application id argument (%r)' % (app,))
 
-    if self._api_version == _DATASTORE_V4:
-      req = datastore_v4_pb.BeginTransactionRequest()
-      if TransactionOptions.xg(config, self.config):
-        req.set_cross_group(True)
-      resp = datastore_v4_pb.BeginTransactionResponse()
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      req = googledatastore.BeginTransactionRequest()
+      resp = googledatastore.BeginTransactionResponse()
     else:
       req = datastore_pb.BeginTransactionRequest()
       req.set_app(app)
@@ -1974,8 +2038,8 @@ class BaseConnection(object):
   def __begin_transaction_hook(self, rpc):
     """Internal method used as get_result_hook for BeginTransaction."""
     self.check_rpc_success(rpc)
-    if isinstance(rpc.response, datastore_v4_pb.BeginTransactionResponse):
-      return rpc.response.transaction()
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      return rpc.response.transaction
     else:
       return rpc.response
 
@@ -2265,20 +2329,20 @@ class TransactionalConnection(BaseConnection):
       app = datastore_types.ResolveAppId(TransactionOptions.app(self.config))
       self.__transaction_rpc = self.async_begin_transaction(None, app)
     else:
-      if self._api_version == _DATASTORE_V4:
+      if self._api_version == _CLOUD_DATASTORE_V1:
         txn_class = str
       else:
         txn_class = datastore_pb.Transaction
       if not isinstance(transaction, txn_class):
         raise datastore_errors.BadArgumentError(
-          'Invalid transaction (%r)' % (transaction,))
+            'Invalid transaction (%r)' % transaction)
       self.__transaction = transaction
       self.__transaction_rpc = None
     self.__finished = False
 
 
-    self.__pending_v4_upserts = {}
-    self.__pending_v4_deletes = {}
+    self.__pending_v1_upserts = {}
+    self.__pending_v1_deletes = {}
 
   @property
   def finished(self):
@@ -2303,15 +2367,30 @@ class TransactionalConnection(BaseConnection):
 
     Returns:
       An object representing a transaction or None.
+
+    Raises:
+      ValueError: if called with a non-Cloud Datastore request when using
+          Cloud Datastore.
     """
     if self.__finished:
       raise datastore_errors.BadRequestError(
           'Cannot start a new operation in a finished transaction.')
     transaction = self.transaction
-    if self._api_version == _DATASTORE_V4:
-      request.mutable_read_options().set_transaction(transaction)
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      if isinstance(request, (googledatastore.CommitRequest,
+                              googledatastore.RollbackRequest)):
+        request.transaction = transaction
+      elif isinstance(request, (googledatastore.LookupRequest,
+                                googledatastore.RunQueryRequest)):
+        request.read_options.transaction = transaction
+      else:
 
-      request.mutable_read_options().clear_read_consistency()
+
+
+
+        raise ValueError('Cannot use Cloud Datastore V1 transactions with %s.' %
+                         type(request))
+      request.read_options.transaction = transaction
     else:
       request.mutable_transaction().CopyFrom(transaction)
     return transaction
@@ -2332,7 +2411,7 @@ class TransactionalConnection(BaseConnection):
     """
     if self.__finished:
       raise datastore_errors.BadRequestError(
-        'The transaction is already finished.')
+          'The transaction is already finished.')
 
 
     self.wait_for_all_pending_rpcs()
@@ -2360,72 +2439,72 @@ class TransactionalConnection(BaseConnection):
     NOTE: If any of the entities has an incomplete key, this will
     *not* patch up those entities with the complete key.
     """
-    if self._api_version != _DATASTORE_V4:
+    if self._api_version != _CLOUD_DATASTORE_V1:
 
       return super(TransactionalConnection, self).async_put(
           config, entities, extra_hook)
 
-    v4_entities = [self.adapter.entity_to_pb_v4(entity)
+    v1_entities = [self.adapter.entity_to_pb_v1(entity)
                    for entity in entities]
 
 
-    v4_req = datastore_v4_pb.AllocateIdsRequest()
-    for v4_entity in v4_entities:
-      if not datastore_pbs.is_complete_v4_key(v4_entity.key()):
-        v4_req.allocate_list().append(v4_entity.key())
+    v1_req = googledatastore.AllocateIdsRequest()
+    for v1_entity in v1_entities:
+      if not datastore_pbs.is_complete_v1_key(v1_entity.key):
+        v1_req.keys.add().CopyFrom(v1_entity.key)
 
-    user_data = v4_entities, extra_hook
+    user_data = v1_entities, extra_hook
 
-    if not v4_req.allocate_list():
+    service_name = _CLOUD_DATASTORE_V1
+    if not v1_req.keys:
 
-      return _StubRpc(self.__v4_build_put_result([], user_data))
+      service_name = _NOOP_SERVICE
+    return self._make_rpc_call(config, 'AllocateIds', v1_req,
+                               googledatastore.AllocateIdsResponse(),
+                               get_result_hook=self.__v1_put_allocate_ids_hook,
+                               user_data=user_data,
+                               service_name=service_name)
 
-    return self._make_rpc_call(config, 'AllocateIds', v4_req,
-                              datastore_v4_pb.AllocateIdsResponse(),
-                              get_result_hook=self.__v4_put_allocate_ids_hook,
-                              user_data=user_data,
-                              service_name=_DATASTORE_V4)
-
-  def __v4_put_allocate_ids_hook(self, rpc):
+  def __v1_put_allocate_ids_hook(self, rpc):
     """Internal method used as get_result_hook for AllocateIds call."""
     self.check_rpc_success(rpc)
-    v4_resp = rpc.response
-    return self.__v4_build_put_result(list(v4_resp.allocated_list()),
+    v1_resp = rpc.response
+    return self.__v1_build_put_result(list(v1_resp.keys),
                                       rpc.user_data)
 
-  def __v4_build_put_result(self, v4_allocated_keys, user_data):
+  def __v1_build_put_result(self, v1_allocated_keys, user_data):
     """Internal method that builds the result of a put operation.
 
-    Converts the results from a v4 AllocateIds operation to a list of user-level
+    Converts the results from a v1 AllocateIds operation to a list of user-level
     key objects.
 
     Args:
-      v4_allocated_keys: a list of datastore_v4_pb.Keys that have been allocated
+      v1_allocated_keys: a list of googledatastore.Keys that have been allocated
       user_data: a tuple consisting of:
-        - a list of datastore_v4_pb.Entity objects
+        - a list of googledatastore.Entity objects
         - an optional extra_hook
     """
-    v4_entities, extra_hook = user_data
+    v1_entities, extra_hook = user_data
     keys = []
     idx = 0
-    for v4_entity in v4_entities:
+    for v1_entity in v1_entities:
 
 
 
 
 
 
-      v4_entity = copy.deepcopy(v4_entity)
-      if not datastore_pbs.is_complete_v4_key(v4_entity.key()):
-        v4_entity.key().CopyFrom(v4_allocated_keys[idx])
+      v1_entity = copy.deepcopy(v1_entity)
+      if not datastore_pbs.is_complete_v1_key(v1_entity.key):
+        v1_entity.key.CopyFrom(v1_allocated_keys[idx])
         idx += 1
-      hashable_key = datastore_types.ReferenceToKeyValue(v4_entity.key())
+      hashable_key = datastore_types.ReferenceToKeyValue(v1_entity.key)
 
-      self.__pending_v4_deletes.pop(hashable_key, None)
+      self.__pending_v1_deletes.pop(hashable_key, None)
 
 
-      self.__pending_v4_upserts[hashable_key] = v4_entity
-      keys.append(self.adapter.pb_v4_to_key(copy.deepcopy(v4_entity.key())))
+      self.__pending_v1_upserts[hashable_key] = v1_entity
+      keys.append(self.adapter.pb_v1_to_key(copy.deepcopy(v1_entity.key)))
 
 
     if extra_hook:
@@ -2446,26 +2525,32 @@ class TransactionalConnection(BaseConnection):
     Returns:
       A MultiRpc object.
     """
-    if self._api_version != _DATASTORE_V4:
+    if self._api_version != _CLOUD_DATASTORE_V1:
 
       return super(TransactionalConnection, self).async_delete(config,
                                                                keys,
                                                                extra_hook)
 
-    v4_keys = [self.__adapter.key_to_pb_v4(key) for key in keys]
+    v1_keys = [self.__adapter.key_to_pb_v1(key) for key in keys]
 
-    for key in v4_keys:
+    for key in v1_keys:
       hashable_key = datastore_types.ReferenceToKeyValue(key)
 
-      self.__pending_v4_upserts.pop(hashable_key, None)
+      self.__pending_v1_upserts.pop(hashable_key, None)
 
 
-      self.__pending_v4_deletes[hashable_key] = key
+      self.__pending_v1_deletes[hashable_key] = key
 
 
-    return _StubRpc(self.__v4_delete_hook(extra_hook))
 
-  def __v4_delete_hook(self, extra_hook):
+    return self._make_rpc_call(config, 'Commit', None,
+                               googledatastore.CommitResponse(),
+                               get_result_hook=self.__v1_delete_hook,
+                               user_data=extra_hook,
+                               service_name=_NOOP_SERVICE)
+
+  def __v1_delete_hook(self, rpc):
+    extra_hook = rpc.user_data
     if extra_hook:
       extra_hook(None)
 
@@ -2500,24 +2585,25 @@ class TransactionalConnection(BaseConnection):
     if transaction is None:
       return None
 
-    if self._api_version == _DATASTORE_V4:
-      req = datastore_v4_pb.CommitRequest()
-      req.set_transaction(transaction)
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      req = googledatastore.CommitRequest()
+      req.transaction = transaction
       if Configuration.force_writes(config, self.__config):
         self.__force(req)
 
 
-      deprecated_mutation = req.mutable_deprecated_mutation()
-      deprecated_mutation.upsert_list().extend(
-          self.__pending_v4_upserts.itervalues())
-      deprecated_mutation.delete_list().extend(
-          self.__pending_v4_deletes.itervalues())
+      for entity in self.__pending_v1_upserts.itervalues():
+        mutation = req.mutations.add()
+        mutation.upsert.CopyFrom(entity)
+      for key in self.__pending_v1_deletes.itervalues():
+        mutation = req.mutations.add()
+        mutation.delete.CopyFrom(key)
 
 
-      self.__pending_v4_upserts.clear()
-      self.__pending_v4_deletes.clear()
+      self.__pending_v1_upserts.clear()
+      self.__pending_v1_deletes.clear()
 
-      resp = datastore_v4_pb.CommitResponse()
+      resp = googledatastore.CommitResponse()
     else:
       req = transaction
       resp = datastore_pb.CommitResponse()
@@ -2561,10 +2647,10 @@ class TransactionalConnection(BaseConnection):
     if transaction is None:
       return None
 
-    if self._api_version == _DATASTORE_V4:
-      req = datastore_v4_pb.RollbackRequest()
-      req.set_transaction(transaction)
-      resp = datastore_v4_pb.RollbackResponse()
+    if self._api_version == _CLOUD_DATASTORE_V1:
+      req = googledatastore.RollbackRequest()
+      req.transaction = transaction
+      resp = googledatastore.RollbackResponse()
     else:
       req = transaction
       resp = api_base_pb.VoidProto()
@@ -2576,6 +2662,7 @@ class TransactionalConnection(BaseConnection):
   def __rollback_hook(self, rpc):
     """Internal method used as get_result_hook for Rollback."""
     self.check_rpc_success(rpc)
+
 
 
 

@@ -19,8 +19,10 @@
 """Provides utility methods used by modules in the FTS API stub."""
 
 
+
 import datetime
 import re
+import unicodedata
 
 from google.appengine.datastore import document_pb
 
@@ -60,7 +62,9 @@ def GetFieldInDocument(document, field_name, return_type=None):
   if return_type is not None:
 
     field_list = [f for f in document.field_list() if f.name() == field_name]
-    field_types_dict = dict((f.value().type(), f) for f in field_list)
+    field_types_dict = {}
+    for f in field_list:
+      field_types_dict.setdefault(f.value().type(), f)
     if return_type == EXPRESSION_RETURN_TYPE_TEXT:
       if document_pb.FieldValue.HTML in field_types_dict:
         return field_types_dict[document_pb.FieldValue.HTML]
@@ -170,3 +174,12 @@ def TreeRepr(tree, depth=0):
     children = '\n' + '\n'.join([TreeRepr(child, depth=depth+1)
                                  for child in tree.children if child])
   return depth * '  ' + _NodeRepr(tree) + children
+
+
+def RemoveAccentsNfkd(text):
+  if not isinstance(text, (str, unicode)):
+    return text
+  if isinstance(text, str):
+    text = text.decode('utf-8')
+  return u''.join([c for c in unicodedata.normalize('NFKD', text)
+                   if not unicodedata.combining(c)])

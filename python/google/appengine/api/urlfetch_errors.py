@@ -31,8 +31,10 @@ developers.
 
 
 
+
 class Error(Exception):
   """Base URL fetcher error type."""
+
 
 class DownloadError(Error):
   """Raised when we could not fetch the URL for any reason.
@@ -42,6 +44,7 @@ class DownloadError(Error):
   in the return value of fetch, and no exception is raised.
   """
 
+
 class MalformedReplyError(DownloadError):
   """Raised when the target server returns an invalid HTTP response.
 
@@ -49,15 +52,19 @@ class MalformedReplyError(DownloadError):
      incomplete headers, or have content missing.
   """
 
+
 class TooManyRedirectsError(DownloadError):
   """Raised when follow_redirects input parameter was set to true and the
      redirect limit was hit."""
 
+
 class InternalTransientError(Error):
   """Raised when an internal transient error occurs."""
 
+
 class ConnectionClosedError(DownloadError):
   """Raised when the target server prematurely closes the connection."""
+
 
 class InvalidURLError(Error):
   """Raised when the URL given is empty or invalid.
@@ -68,8 +75,14 @@ class InvalidURLError(Error):
   and https respectively are allowed.
   """
 
+
+class PayloadTooLargeError(InvalidURLError):
+  """Raised when the request payload exceeds the limit."""
+
+
 class DNSLookupFailedError(DownloadError):
   """Raised when the DNS lookup for a URL failed."""
+
 
 class DeadlineExceededError(DownloadError):
   """Raised when we could not fetch the URL because the deadline was exceeded.
@@ -78,13 +91,16 @@ class DeadlineExceededError(DownloadError):
   default, if the client does not supply a 'deadline' parameter.
   """
 
+
 class ResponseTooLargeError(Error):
   """Raised when the response was too large and was truncated."""
   def __init__(self, response):
     self.response = response
 
+
 class InvalidMethodError(Error):
   """Raised when an invalid value for 'method' is provided"""
+
 
 class SSLCertificateError(Error):
   """Raised when an invalid server certificate is presented."""

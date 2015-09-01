@@ -240,6 +240,8 @@ SERVICE_PB_MAP = {
                         search_service_pb.ListIndexesResponse),
         'Search': (search_service_pb.SearchRequest,
                    search_service_pb.SearchResponse),
+        'DeleteSchema': (search_service_pb.DeleteSchemaRequest,
+                         search_service_pb.DeleteSchemaResponse),
     },
     'modules': {
         'GetModules': (modules_service_pb.GetModulesRequest,

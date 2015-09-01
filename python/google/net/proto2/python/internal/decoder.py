@@ -69,6 +69,7 @@ we repeatedly read a tag, look up the corresponding decoder, and invoke it.
 """
 
 
+
 import struct
 import sys
 _PY2 = sys.version_info[0] < 3
@@ -606,9 +607,6 @@ def MessageDecoder(field_number, is_repeated, is_packed, key, new_default):
       if value is None:
         value = field_dict.setdefault(key, new_default(message))
       while 1:
-        value = field_dict.get(key)
-        if value is None:
-          value = field_dict.setdefault(key, new_default(message))
 
         (size, pos) = local_DecodeVarint(buffer, pos)
         new_pos = pos + size

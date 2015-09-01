@@ -29,6 +29,7 @@ supply no parameters.
 """
 
 
+
 import cgi
 import Cookie
 import hashlib
@@ -206,6 +207,9 @@ def _render_login_template(login_url, continue_url, email, admin):
     login_message = 'Logged in'
   else:
     login_message = 'Not logged in'
+
+
+
 
     email = 'test\x40example.com'
   admin_checked = 'checked' if admin else ''

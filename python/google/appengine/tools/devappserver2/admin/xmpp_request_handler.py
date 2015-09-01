@@ -17,6 +17,7 @@
 """A handler that allows the user to send XMPP messages to their application."""
 
 
+
 import cStringIO
 import random
 import string

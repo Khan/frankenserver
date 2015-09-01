@@ -30,6 +30,12 @@ from google.appengine.cron import groctimespecification
 from google.appengine.tools import xml_parser_utils
 from google.appengine.tools.app_engine_config_exception import AppEngineConfigException
 
+_RETRY_PARAMETER_TAGS = ('job-retry-limit',
+                         'job-age-limit',
+                         'min-backoff-seconds',
+                         'max-backoff-seconds',
+                         'max-doublings')
+
 
 def GetCronYaml(unused_application, cron_xml_str):
   return _MakeCronListIntoYaml(CronXmlParser().ProcessXml(cron_xml_str))
@@ -41,6 +47,24 @@ def _MakeCronListIntoYaml(cron_list):
   for cron in cron_list:
     statements += cron.ToYaml()
   return '\n'.join(statements) + '\n'
+
+
+def _ProcessRetryParametersNode(node, cron):
+  """Converts <retry-parameters> in node to cron.retry_parameters."""
+
+  retry_parameters_node = xml_parser_utils.GetChild(node, 'retry-parameters')
+  if retry_parameters_node is None:
+    cron.retry_parameters = None
+    return
+
+  retry_parameters = _RetryParameters()
+  cron.retry_parameters = retry_parameters
+  for tag in _RETRY_PARAMETER_TAGS:
+    if xml_parser_utils.GetChild(retry_parameters_node, tag) is not None:
+      setattr(
+          retry_parameters,
+          tag.replace('-', '_'),
+          xml_parser_utils.GetChildNodeText(retry_parameters_node, tag))
 
 
 class CronXmlParser(object):
@@ -100,6 +124,7 @@ class CronXmlParser(object):
     cron.target = xml_parser_utils.GetChildNodeText(node, 'target')
     cron.description = xml_parser_utils.GetChildNodeText(node, 'description')
     cron.schedule = xml_parser_utils.GetChildNodeText(node, 'schedule')
+    _ProcessRetryParametersNode(node, cron)
 
     validation_error = self._ValidateCronEntry(cron)
     if validation_error:
@@ -122,6 +147,24 @@ class CronXmlParser(object):
               % (cron.schedule, cron.url))
 
 
+class _RetryParameters(object):
+  """Object that contains retry xml tags converted to object attributes."""
+
+  def GetYamlStatementsList(self):
+    """Converts retry parameter fields to a YAML statement list."""
+
+    tag_statements = []
+    field_names = (tag.replace('-', '_') for tag in _RETRY_PARAMETER_TAGS)
+    for field in field_names:
+      field_value = getattr(self, field, None)
+      if field_value:
+        tag_statements.append('    %s: %s' % (field, field_value))
+
+    if not tag_statements:
+      return ['  retry_parameters: {}']
+    return ['  retry_parameters:'] + tag_statements
+
+
 class Cron(object):
   """Instances contain information about individual cron entries."""
   TZ_GMT = 'UTC'
@@ -135,6 +178,9 @@ class Cron(object):
       field = getattr(self, optional)
       if field:
         statements.append('  %s: %s' % (optional, self._SanitizeForYaml(field)))
+    retry_parameters = getattr(self, 'retry_parameters', None)
+    if retry_parameters:
+      statements += retry_parameters.GetYamlStatementsList()
     return statements
 
   def _SanitizeForYaml(self, field):

@@ -39,6 +39,7 @@ when it begins and releases it when it commits or rolls back.
 
 
 
+
 import array
 import itertools
 import logging
@@ -687,6 +688,7 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
 
   def Close(self):
     """Closes the SQLite connection and releases the files."""
+    datastore_stub_util.BaseDatastore.Close(self)
     conn = self._GetConnection()
     conn.close()
 
@@ -1316,11 +1318,17 @@ class DatastoreSqliteStub(datastore_stub_util.BaseDatastore,
       A QueryCursor object.
     """
     if query.has_kind() and query.kind() in self._pseudo_kinds:
+
+      datastore_stub_util.NormalizeCursors(query,
+                                           datastore_pb.Query_Order.ASCENDING)
       cursor = self._pseudo_kinds[query.kind()].Query(query, filters, orders)
       datastore_stub_util.Check(cursor,
                                 'Could not create query for pseudo-kind')
     else:
       orders = datastore_stub_util._GuessOrders(filters, orders)
+
+
+      datastore_stub_util.NormalizeCursors(query, orders[0].direction())
       filter_info = self.__GenerateFilterInfo(filters, query)
       order_info = self.__GenerateOrderInfo(orders)
 

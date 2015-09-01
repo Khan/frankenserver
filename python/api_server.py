@@ -20,8 +20,10 @@
 """Convenience wrapper for starting an appengine tool."""
 
 
+
 import os
 import sys
+import time
 
 sys_path = sys.path
 try:
@@ -33,6 +35,11 @@ finally:
   sys.path = sys_path
 
 wrapper_util.reject_old_python_versions((2, 5))
+if sys.version_info < (2, 6):
+  sys.stderr.write(
+      'WARNING: In an upcoming release the SDK will no longer support Python'
+      ' 2.5. Users should upgrade to Python 2.6 or higher.\n')
+  time.sleep(1)
 
 
 

@@ -18,6 +18,25 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import array
 import httplib
 import re
@@ -51,27 +70,47 @@ class ProtocolMessage:
 
 
 
+
+
+
+
+
+
+
+
+
+
   def __init__(self, contents=None):
+
+
     raise NotImplementedError
 
   def Clear(self):
+
+
     raise NotImplementedError
 
   def IsInitialized(self, debug_strs=None):
+
     raise NotImplementedError
 
   def Encode(self):
+
     try:
       return self._CEncode()
-    except NotImplementedError:
+    except (NotImplementedError, AttributeError):
       e = Encoder()
       self.Output(e)
       return e.buffer().tostring()
 
   def SerializeToString(self):
+
     return self.Encode()
 
   def SerializePartialToString(self):
+
+
+
     try:
       return self._CEncodePartial()
     except (NotImplementedError, AttributeError):
@@ -80,29 +119,47 @@ class ProtocolMessage:
       return e.buffer().tostring()
 
   def _CEncode(self):
+
+
+
+
+
+
+
     raise NotImplementedError
 
   def _CEncodePartial(self):
+
     raise NotImplementedError
 
   def ParseFromString(self, s):
+
+
+
     self.Clear()
     self.MergeFromString(s)
 
   def ParsePartialFromString(self, s):
+
+
     self.Clear()
     self.MergePartialFromString(s)
 
   def MergeFromString(self, s):
+
+
+
     self.MergePartialFromString(s)
     dbg = []
     if not self.IsInitialized(dbg):
       raise ProtocolBufferDecodeError, '\n\t'.join(dbg)
 
   def MergePartialFromString(self, s):
+
+
     try:
       self._CMergeFromString(s)
-    except NotImplementedError:
+    except (NotImplementedError, AttributeError):
 
 
       a = array.array('B')
@@ -111,16 +168,44 @@ class ProtocolMessage:
       self.TryMerge(d)
 
   def _CMergeFromString(self, s):
+
+
+
+
+
+
+
+
+
     raise NotImplementedError
 
   def __getstate__(self):
+
+
     return self.Encode()
 
   def __setstate__(self, contents_):
+
+
     self.__init__(contents=contents_)
 
   def sendCommand(self, server, url, response, follow_redirects=1,
                   secure=0, keyfile=None, certfile=None):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     data = self.Encode()
     if secure:
       if keyfile and certfile:
@@ -152,20 +237,45 @@ class ProtocolMessage:
 
   def sendSecureCommand(self, server, keyfile, certfile, url, response,
                         follow_redirects=1):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     return self.sendCommand(server, url, response,
                             follow_redirects=follow_redirects,
                             secure=1, keyfile=keyfile, certfile=certfile)
 
   def __str__(self, prefix="", printElemNumber=0):
+
     raise NotImplementedError
 
   def ToASCII(self):
+
     return self._CToASCII(ProtocolMessage._SYMBOLIC_FULL_ASCII)
 
   def ToCompactASCII(self):
+
+
+
+
     return self._CToASCII(ProtocolMessage._NUMERIC_ASCII)
 
   def ToShortASCII(self):
+
+
+
+
     return self._CToASCII(ProtocolMessage._SYMBOLIC_SHORT_ASCII)
 
 
@@ -175,18 +285,36 @@ class ProtocolMessage:
   _SYMBOLIC_FULL_ASCII = 2
 
   def _CToASCII(self, output_format):
+
+
+
+
+
     raise NotImplementedError
 
   def ParseASCII(self, ascii_string):
+
+
+
+
     raise NotImplementedError
 
   def ParseASCIIIgnoreUnknown(self, ascii_string):
+
+
+
+
     raise NotImplementedError
 
   def Equals(self, other):
+
+
+
+
     raise NotImplementedError
 
   def __eq__(self, other):
+
 
 
 
@@ -202,6 +330,7 @@ class ProtocolMessage:
 
 
 
+
     if other.__class__ is self.__class__:
       return not self.Equals(other)
     return NotImplemented
@@ -211,6 +340,7 @@ class ProtocolMessage:
 
 
   def Output(self, e):
+
     dbg = []
     if not self.IsInitialized(dbg):
       raise ProtocolBufferEncodeError, '\n\t'.join(dbg)
@@ -218,17 +348,22 @@ class ProtocolMessage:
     return
 
   def OutputUnchecked(self, e):
+
     raise NotImplementedError
 
   def OutputPartial(self, e):
+
+
     raise NotImplementedError
 
   def Parse(self, d):
+
     self.Clear()
     self.Merge(d)
     return
 
   def Merge(self, d):
+
     self.TryMerge(d)
     dbg = []
     if not self.IsInitialized(dbg):
@@ -236,14 +371,17 @@ class ProtocolMessage:
     return
 
   def TryMerge(self, d):
+
     raise NotImplementedError
 
   def CopyFrom(self, pb):
+
     if (pb == self): return
     self.Clear()
     self.MergeFrom(pb)
 
   def MergeFrom(self, pb):
+
     raise NotImplementedError
 
 
@@ -680,15 +818,29 @@ class ExtensionIdentifier(object):
 
 class ExtendableProtocolMessage(ProtocolMessage):
   def HasExtension(self, extension):
+
     self._VerifyExtensionIdentifier(extension)
     return extension in self._extension_fields
 
   def ClearExtension(self, extension):
+
+
     self._VerifyExtensionIdentifier(extension)
     if extension in self._extension_fields:
       del self._extension_fields[extension]
 
   def GetExtension(self, extension, index=None):
+
+
+
+
+
+
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if extension in self._extension_fields:
       result = self._extension_fields[extension]
@@ -704,6 +856,22 @@ class ExtendableProtocolMessage(ProtocolMessage):
     return result
 
   def SetExtension(self, extension, *args):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if extension.composite_cls:
       raise TypeError(
@@ -726,6 +894,23 @@ class ExtendableProtocolMessage(ProtocolMessage):
       self._extension_fields[extension] = value
 
   def MutableExtension(self, extension, index=None):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if extension.composite_cls is None:
       raise TypeError(
@@ -745,6 +930,11 @@ class ExtendableProtocolMessage(ProtocolMessage):
       return result
 
   def ExtensionList(self, extension):
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if not extension.is_repeated:
       raise TypeError(
@@ -757,6 +947,11 @@ class ExtendableProtocolMessage(ProtocolMessage):
     return result
 
   def ExtensionSize(self, extension):
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if not extension.is_repeated:
       raise TypeError(
@@ -767,6 +962,27 @@ class ExtendableProtocolMessage(ProtocolMessage):
     return 0
 
   def AddExtension(self, extension, value=None):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     self._VerifyExtensionIdentifier(extension)
     if not extension.is_repeated:
       raise TypeError(
@@ -833,6 +1049,31 @@ class ExtendableProtocolMessage(ProtocolMessage):
 
   def _OutputExtensionFields(self, out, partial, extensions, start_index,
                              end_field_number):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def OutputSingleField(ext, value):
       out.putVarInt32(ext.wire_tag)
       if ext.field_type == TYPE_GROUP:

@@ -47,6 +47,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
   TOO_MANY_REDIRECTS =   10
   MALFORMED_REPLY =   11
   CONNECTION_ERROR =   12
+  PAYLOAD_TOO_LARGE =   13
 
   _ErrorCode_NAMES = {
     0: "OK",
@@ -62,6 +63,7 @@ class URLFetchServiceError(ProtocolBuffer.ProtocolMessage):
     10: "TOO_MANY_REDIRECTS",
     11: "MALFORMED_REPLY",
     12: "CONNECTION_ERROR",
+    13: "PAYLOAD_TOO_LARGE",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")

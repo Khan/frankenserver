@@ -103,6 +103,7 @@ def ParseAndSimplify(query):
   node = Parse(query).tree
   try:
     node = SimplifyNode(node)
+    ValidateNode(node)
   except QueryTreeException, e:
     msg = "%s in query '%s'" % (e.message, query)
     raise QueryException(msg)
@@ -164,21 +165,36 @@ def SequenceToConjunction(node):
 def Simplify(parser_return):
   """Simplifies the output of the parser."""
   if parser_return.tree:
-    return SimplifyNode(parser_return.tree)
+    node = SimplifyNode(parser_return.tree)
+    ValidateNode(node)
+    return node
   return parser_return
 
 
-def SimplifyNode(tree, restriction=None):
-  if tree.getType() == QueryLexer.VALUE:
-    return tree
-  elif tree.getType() == QueryParser.SEQUENCE and tree.getChildCount() == 1:
-    return SimplifyNode(tree.children[0], restriction)
-  elif tree.getType() == QueryParser.CONJUNCTION and tree.getChildCount() == 1:
-    return SimplifyNode(tree.children[0], restriction)
-  elif tree.getType() == QueryParser.DISJUNCTION and tree.getChildCount() == 1:
-    return SimplifyNode(tree.children[0], restriction)
-  elif tree.getType() == QueryLexer.HAS or tree.getType() == QueryLexer.EQ:
-    lhs = tree.getChild(0);
+QUERY_FUNCTION_NAMES = frozenset(["distance", "geopoint"])
+
+
+def ValidateNode(node):
+  for i in range(node.getChildCount()):
+    ValidateNode(node.getChild(i))
+  if node.getType() == QueryLexer.FUNCTION:
+    name = node.getChild(0)
+    if name.getText() not in QUERY_FUNCTION_NAMES:
+      raise QueryTreeException("unknown function '%s'" % name.getText(),
+                               name.getCharPositionInLine())
+
+
+def SimplifyNode(node, restriction=None):
+  if node.getType() == QueryLexer.VALUE:
+    return node
+  elif node.getType() == QueryParser.SEQUENCE and node.getChildCount() == 1:
+    return SimplifyNode(node.children[0], restriction)
+  elif node.getType() == QueryParser.CONJUNCTION and node.getChildCount() == 1:
+    return SimplifyNode(node.children[0], restriction)
+  elif node.getType() == QueryParser.DISJUNCTION and node.getChildCount() == 1:
+    return SimplifyNode(node.children[0], restriction)
+  elif node.getType() == QueryLexer.HAS or node.getType() == QueryLexer.EQ:
+    lhs = node.getChild(0);
     if lhs.getType() == QueryLexer.VALUE:
       myField = lhs.getChild(1).getText()
       if restriction is None:
@@ -189,7 +205,7 @@ def SimplifyNode(tree, restriction=None):
           raise QueryTreeException(
               "Restriction on %s and %s" % (otherField, myField),
               lhs.getChild(1).getCharPositionInLine());
-    rhs = tree.getChild(1);
+    rhs = node.getChild(1);
     flattened = SimplifyNode(rhs, restriction);
     if (flattened.getType() == QueryLexer.HAS or
         flattened.getType() == QueryLexer.EQ or
@@ -198,16 +214,16 @@ def SimplifyNode(tree, restriction=None):
         flattened.getType() == QueryLexer.SEQUENCE):
       return flattened;
     if flattened != rhs:
-      tree.setChild(1, flattened);
+      node.setChild(1, flattened);
     if restriction != lhs:
-      tree.setChild(0, restriction);
-    return tree;
-  for i in range(tree.getChildCount()):
-    original = tree.getChild(i);
-    flattened = SimplifyNode(tree.getChild(i), restriction);
+      node.setChild(0, restriction);
+    return node;
+  for i in range(node.getChildCount()):
+    original = node.getChild(i);
+    flattened = SimplifyNode(node.getChild(i), restriction);
     if original != flattened:
-      tree.setChild(i, flattened)
-  return tree;
+      node.setChild(i, flattened)
+  return node;
 
 def CreateQueryNode(text, type):
   token = tree.CommonTreeAdaptor().createToken(tokenType=type, text=text)

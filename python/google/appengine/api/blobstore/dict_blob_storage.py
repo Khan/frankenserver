@@ -33,6 +33,7 @@ blobs directly to a directory stored in memory.
 
 
 
+
 import StringIO
 
 from google.appengine.api import blobstore

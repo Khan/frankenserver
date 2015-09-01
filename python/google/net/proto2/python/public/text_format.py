@@ -21,6 +21,7 @@
 """Contains routines for printing protocol messages in text format."""
 
 
+
 import cStringIO
 import re
 
@@ -202,24 +203,6 @@ def PrintFieldValue(field, value, out, indent=0, as_utf8=False,
     out.write(str(value))
 
 
-def _ParseOrMerge(lines, message, allow_multiple_scalars):
-  """Converts an ASCII representation of a protocol message into a message.
-
-  Args:
-    lines: Lines of a message's ASCII representation.
-    message: A protocol buffer message to merge into.
-    allow_multiple_scalars: Determines if repeated values for a non-repeated
-      field are permitted, e.g., the string "foo: 1 foo: 2" for a
-      required/optional field named "foo".
-
-  Raises:
-    ParseError: On ASCII parsing problems.
-  """
-  tokenizer = _Tokenizer(lines)
-  while not tokenizer.AtEnd():
-    _MergeField(tokenizer, message, allow_multiple_scalars)
-
-
 def Parse(text, message):
   """Parses an ASCII representation of a protocol message into a message.
 
@@ -290,6 +273,24 @@ def MergeLines(lines, message):
   return message
 
 
+def _ParseOrMerge(lines, message, allow_multiple_scalars):
+  """Converts an ASCII representation of a protocol message into a message.
+
+  Args:
+    lines: Lines of a message's ASCII representation.
+    message: A protocol buffer message to merge into.
+    allow_multiple_scalars: Determines if repeated values for a non-repeated
+      field are permitted, e.g., the string "foo: 1 foo: 2" for a
+      required/optional field named "foo".
+
+  Raises:
+    ParseError: On ASCII parsing problems.
+  """
+  tokenizer = _Tokenizer(lines)
+  while not tokenizer.AtEnd():
+    _MergeField(tokenizer, message, allow_multiple_scalars)
+
+
 def _MergeField(tokenizer, message, allow_multiple_scalars):
   """Merges a single protocol message field into a message.
 
@@ -304,6 +305,11 @@ def _MergeField(tokenizer, message, allow_multiple_scalars):
     ParseError: In case of ASCII parsing problems.
   """
   message_descriptor = message.DESCRIPTOR
+  if (hasattr(message_descriptor, 'syntax') and
+      message_descriptor.syntax == 'proto3'):
+
+
+    allow_multiple_scalars = True
   if tokenizer.TryConsume('['):
     name = [tokenizer.ConsumeIdentifier()]
     while tokenizer.TryConsume('.'):
@@ -681,13 +687,16 @@ class _Tokenizer(object):
     String literals (whether bytes or text) can come in multiple adjacent
     tokens which are automatically concatenated, like in C or Python.  This
     method only consumes one token.
+
+    Raises:
+      ParseError: When the wrong format data is found.
     """
     text = self.token
     if len(text) < 1 or text[0] not in ('\'', '"'):
-      raise self._ParseError('Expected string.')
+      raise self._ParseError('Expected string but found: %r' % (text,))
 
     if len(text) < 2 or text[-1] != text[0]:
-      raise self._ParseError('String missing ending quote.')
+      raise self._ParseError('String missing ending quote: %r' % (text,))
 
     try:
       result = text_encoding.CUnescape(text[1:-1])

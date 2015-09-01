@@ -38,8 +38,14 @@ Extensions to be considered:
 """
 
 
+
 import calendar
 import datetime
+
+
+
+
+
 
 try:
   import pytz
@@ -136,18 +142,21 @@ def _GetTimezone(timezone_string):
     timezone_string: a string representing a timezone, or None
 
   Returns:
-    a pytz timezone object, or None if the input timezone_string is None
+    a pytz timezone object, or None
 
   Raises:
-    ValueError: if timezone_string is not None and the pytz module could not be
+    ValueError: if timezone_string is specified, but pytz module could not be
         loaded
   """
-  if timezone_string:
-    if pytz is None:
+  if pytz is None:
+    if timezone_string:
       raise ValueError('need pytz in order to specify a timezone')
+    return None
+
+  if timezone_string:
     return pytz.timezone(timezone_string)
   else:
-    return None
+    return pytz.utc
 
 
 def _ToTimeZone(t, tzinfo):
@@ -156,14 +165,14 @@ def _ToTimeZone(t, tzinfo):
   Arguments:
     t: a datetime object.  It may be in any pytz time zone, or it may be
         timezone-naive (interpreted as UTC).
-    tzinfo: a pytz timezone object, or None (interpreted as UTC).
+    tzinfo: a pytz timezone object, or None.
 
   Returns:
     a datetime object in the time zone 'tzinfo'
   """
   if pytz is None:
 
-    return t.replace(tzinfo=tzinfo)
+    return t.replace(tzinfo=None)
   elif tzinfo:
 
     if not t.tzinfo:
@@ -233,15 +242,14 @@ class IntervalTimeSpecification(TimeSpecification):
                                  ' divide evenly into 24 hours')
 
 
-      self.start_time = datetime.time(0, 0).replace(tzinfo=self.timezone)
-      self.end_time = datetime.time(23, 59).replace(tzinfo=self.timezone)
+      self.start_time = datetime.time(0, 0)
+      self.end_time = datetime.time(23, 59)
     elif start_time_string:
       if not end_time_string:
         raise ValueError(
             'end_time_string must be specified if start_time_string is')
-      self.start_time = (
-          _GetTime(start_time_string).replace(tzinfo=self.timezone))
-      self.end_time = _GetTime(end_time_string).replace(tzinfo=self.timezone)
+      self.start_time = _GetTime(start_time_string)
+      self.end_time = _GetTime(end_time_string)
     else:
       if end_time_string:
         raise ValueError(
@@ -262,13 +270,16 @@ class IntervalTimeSpecification(TimeSpecification):
     """
     if self.start_time is None:
 
-      return start + datetime.timedelta(seconds=self.seconds)
+
+
+      result = start + datetime.timedelta(seconds=self.seconds)
+      return result - datetime.timedelta(seconds=result.second)
 
 
     t = _ToTimeZone(start, self.timezone)
 
 
-    start_time = self._GetPreviousDateTime(t, self.start_time)
+    start_time = self._GetPreviousDateTime(t, self.start_time, self.timezone)
 
 
 
@@ -282,7 +293,7 @@ class IntervalTimeSpecification(TimeSpecification):
 
 
 
-    next_start_time = self._GetNextDateTime(t, self.start_time)
+    next_start_time = self._GetNextDateTime(t, self.start_time, self.timezone)
     if (self._TimeIsInRange(t) and
         self._TimeIsInRange(interval_time) and
         interval_time < next_start_time):
@@ -304,53 +315,59 @@ class IntervalTimeSpecification(TimeSpecification):
     """
 
 
-    previous_start_time = self._GetPreviousDateTime(t, self.start_time)
-    previous_end_time = self._GetPreviousDateTime(t, self.end_time)
+    previous_start_time = self._GetPreviousDateTime(
+        t, self.start_time, self.timezone)
+    previous_end_time = self._GetPreviousDateTime(
+        t, self.end_time, self.timezone)
     if previous_start_time > previous_end_time:
       return True
     else:
       return t == previous_end_time
 
   @staticmethod
-  def _GetPreviousDateTime(t, target_time):
+  def _GetPreviousDateTime(t, target_time, tzinfo):
     """Returns the latest datetime <= 't' that has the time target_time.
 
     Arguments:
-      t: a datetime.datetime object, in self.timezone
-      target_time: a datetime.time object, in self.timezone
+      t: a datetime.datetime object, in any timezone
+      target_time: a datetime.time object, in any timezone
+      tzinfo: a pytz timezone object, or None
 
     Returns:
-      a datetime.datetime object, in self.timezone
+      a datetime.datetime object, in the timezone 'tzinfo'
     """
 
     date = t.date()
     while True:
-      result = IntervalTimeSpecification._CombineDateAndTime(date, target_time)
+      result = IntervalTimeSpecification._CombineDateAndTime(
+          date, target_time, tzinfo)
       if result <= t:
         return result
       date -= datetime.timedelta(days=1)
 
   @staticmethod
-  def _GetNextDateTime(t, target_time):
+  def _GetNextDateTime(t, target_time, tzinfo):
     """Returns the earliest datetime > 't' that has the time target_time.
 
     Arguments:
-      t: a datetime.datetime object, in self.timezone
-      target_time: a time object, in self.timezone
+      t: a datetime.datetime object, in any timezone
+      target_time: a datetime.time object, in any timezone
+      tzinfo: a pytz timezone object, or None
 
     Returns:
-      a datetime.datetime object, in self.timezone
+      a datetime.datetime object, in the timezone 'tzinfo'
     """
 
     date = t.date()
     while True:
-      result = IntervalTimeSpecification._CombineDateAndTime(date, target_time)
+      result = IntervalTimeSpecification._CombineDateAndTime(
+          date, target_time, tzinfo)
       if result > t:
         return result
       date += datetime.timedelta(days=1)
 
   @staticmethod
-  def _CombineDateAndTime(date, time):
+  def _CombineDateAndTime(date, time, tzinfo):
     """Creates a datetime object from date and time objects.
 
     This is similar to the datetime.combine method, but its timezone
@@ -359,33 +376,34 @@ class IntervalTimeSpecification(TimeSpecification):
     Arguments:
       date: a datetime.date object, in any timezone
       time: a datetime.time object, in any timezone
+      tzinfo: a pytz timezone object, or None
 
     Returns:
-      a datetime.datetime object, in the timezone of the input 'time'
+      a datetime.datetime object, in the timezone 'tzinfo'
     """
-    if time.tzinfo:
-      naive_result = datetime.datetime(
-          date.year, date.month, date.day, time.hour, time.minute, time.second)
-      try:
-        return time.tzinfo.localize(naive_result, is_dst=None)
-      except AmbiguousTimeError:
+    naive_result = datetime.datetime(
+        date.year, date.month, date.day, time.hour, time.minute, time.second)
+    if tzinfo is None:
+      return naive_result
+
+    try:
+      return tzinfo.localize(naive_result, is_dst=None)
+    except AmbiguousTimeError:
 
 
-        return min(time.tzinfo.localize(naive_result, is_dst=True),
-                   time.tzinfo.localize(naive_result, is_dst=False))
-      except NonExistentTimeError:
+      return min(tzinfo.localize(naive_result, is_dst=True),
+                 tzinfo.localize(naive_result, is_dst=False))
+    except NonExistentTimeError:
 
 
 
 
-        while True:
-          naive_result += datetime.timedelta(minutes=1)
-          try:
-            return time.tzinfo.localize(naive_result, is_dst=None)
-          except NonExistentTimeError:
-            pass
-    else:
-      return datetime.datetime.combine(date, time)
+      while True:
+        naive_result += datetime.timedelta(minutes=1)
+        try:
+          return tzinfo.localize(naive_result, is_dst=None)
+        except NonExistentTimeError:
+          pass
 
 
 class SpecificTimeSpecification(TimeSpecification):
@@ -557,10 +575,6 @@ class SpecificTimeSpecification(TimeSpecification):
           == (start_time.year, start_time.month)):
 
         day_matches = [x for x in day_matches if x >= start_time.day]
-
-        while (day_matches and day_matches[0] == start_time.day
-               and start_time.time() >= self.time):
-          day_matches.pop(0)
       while day_matches:
 
         out = candidate_month.replace(day=day_matches[0], hour=self.time.hour,
@@ -572,31 +586,26 @@ class SpecificTimeSpecification(TimeSpecification):
 
 
 
-
-
-
-
-
           try:
             out = self.timezone.localize(out, is_dst=None)
           except AmbiguousTimeError:
 
-            out = self.timezone.localize(out)
+
+
+
+            start_utc = _ToTimeZone(start, pytz.utc)
+            dst_doubled_time_first_match_utc = _ToTimeZone(
+                self.timezone.localize(out, is_dst=True), pytz.utc)
+            if start_utc < dst_doubled_time_first_match_utc:
+              out = self.timezone.localize(out, is_dst=True)
+            else:
+              out = self.timezone.localize(out, is_dst=False)
           except NonExistentTimeError:
+            day_matches.pop(0)
+            continue
 
 
-
-
-
-
-            for _ in range(24):
-
-
-              out += datetime.timedelta(minutes=60)
-              try:
-                out = self.timezone.localize(out)
-              except NonExistentTimeError:
-
-                continue
-              break
-        return _ToTimeZone(out, start.tzinfo)
+        if start < _ToTimeZone(out, start.tzinfo):
+          return _ToTimeZone(out, start.tzinfo)
+        else:
+          day_matches.pop(0)

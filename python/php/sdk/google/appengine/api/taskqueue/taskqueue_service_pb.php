@@ -1192,6 +1192,28 @@ namespace google\appengine {
     public function hasTag() {
       return isset($this->tag);
     }
+    public function getCronRetryParameters() {
+      if (!isset($this->cron_retry_parameters)) {
+        return new \google\appengine\TaskQueueRetryParameters();
+      }
+      return $this->cron_retry_parameters;
+    }
+    public function mutableCronRetryParameters() {
+      if (!isset($this->cron_retry_parameters)) {
+        $res = new \google\appengine\TaskQueueRetryParameters();
+        $this->cron_retry_parameters = $res;
+        return $res;
+      }
+      return $this->cron_retry_parameters;
+    }
+    public function clearCronRetryParameters() {
+      if (isset($this->cron_retry_parameters)) {
+        unset($this->cron_retry_parameters);
+      }
+    }
+    public function hasCronRetryParameters() {
+      return isset($this->cron_retry_parameters);
+    }
     public function clear() {
       $this->clearQueueName();
       $this->clearTaskName();
@@ -1208,6 +1230,7 @@ namespace google\appengine {
       $this->clearRetryParameters();
       $this->clearMode();
       $this->clearTag();
+      $this->clearCronRetryParameters();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1271,6 +1294,10 @@ namespace google\appengine {
       if (isset($this->tag)) {
         $res += 2;
         $res += $this->lengthString(strlen($this->tag));
+      }
+      if (isset($this->cron_retry_parameters)) {
+        $res += 2;
+        $res += $this->lengthString($this->cron_retry_parameters->byteSizePartial());
       }
       return $res;
     }
@@ -1340,6 +1367,11 @@ namespace google\appengine {
       if (isset($this->tag)) {
         $out->putVarInt32(154);
         $out->putPrefixedString($this->tag);
+      }
+      if (isset($this->cron_retry_parameters)) {
+        $out->putVarInt32(162);
+        $out->putVarInt32($this->cron_retry_parameters->byteSizePartial());
+        $this->cron_retry_parameters->outputPartial($out);
       }
     }
     public function tryMerge($d) {
@@ -1414,6 +1446,12 @@ namespace google\appengine {
             $this->setTag(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
+          case 162:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableCronRetryParameters()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -1433,6 +1471,7 @@ namespace google\appengine {
       if (isset($this->crontimetable) && (!$this->crontimetable->isInitialized())) return 'crontimetable';
       if (isset($this->payload) && (!$this->payload->isInitialized())) return 'payload';
       if (isset($this->retry_parameters) && (!$this->retry_parameters->isInitialized())) return 'retry_parameters';
+      if (isset($this->cron_retry_parameters) && (!$this->cron_retry_parameters->isInitialized())) return 'cron_retry_parameters';
       return null;
     }
     public function mergeFrom($x) {
@@ -1482,6 +1521,9 @@ namespace google\appengine {
       if ($x->hasTag()) {
         $this->setTag($x->getTag());
       }
+      if ($x->hasCronRetryParameters()) {
+        $this->mutableCronRetryParameters()->mergeFrom($x->getCronRetryParameters());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1517,6 +1559,8 @@ namespace google\appengine {
       if (isset($this->mode) && $this->mode !== $x->mode) return false;
       if (isset($this->tag) !== isset($x->tag)) return false;
       if (isset($this->tag) && $this->tag !== $x->tag) return false;
+      if (isset($this->cron_retry_parameters) !== isset($x->cron_retry_parameters)) return false;
+      if (isset($this->cron_retry_parameters) && !$this->cron_retry_parameters->equals($x->cron_retry_parameters)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1565,6 +1609,9 @@ namespace google\appengine {
       }
       if (isset($this->tag)) {
         $res .= $prefix . "tag: " . $this->debugFormatString($this->tag) . "\n";
+      }
+      if (isset($this->cron_retry_parameters)) {
+        $res .= $prefix . "cron_retry_parameters <\n" . $this->cron_retry_parameters->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

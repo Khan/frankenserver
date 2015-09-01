@@ -105,6 +105,7 @@ from __future__ import with_statement
 
 __author__ = 'rafek@google.com (Rafe Kaplan)'
 
+import functools
 import logging
 import sys
 import threading
@@ -381,6 +382,7 @@ def method(request_type=message_types.VoidMessage,
         or is the Message class itself.
     """
 
+    @functools.wraps(method)
     def invoke_remote_method(service_instance, request):
       """Function used to replace original method.
 
@@ -424,7 +426,6 @@ def method(request_type=message_types.VoidMessage,
                                            response_type)
 
     invoke_remote_method.remote = remote_method_info
-    invoke_remote_method.__name__ = method.__name__
     return invoke_remote_method
 
   return remote_method_wrapper

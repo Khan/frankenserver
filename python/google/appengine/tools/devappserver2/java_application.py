@@ -17,6 +17,8 @@
 """An abstraction around the source and classfiles for a Java application."""
 
 
+
+
 import os
 import os.path
 import google
@@ -43,7 +45,7 @@ class JavaApplication(object):
                'PWD': self._module_configuration.application_root,
                'TZ': 'UTC',
                'APPLICATION_ID': self._module_configuration.application}
-    for var in ('PATH', 'SYSTEMROOT', 'USER'):
+    for var in ('PATH', 'SYSTEMROOT', 'USER', 'GAE_LOCAL_VM_RUNTIME'):
       if var in os.environ:
         environ[var] = os.environ[var]
     return environ

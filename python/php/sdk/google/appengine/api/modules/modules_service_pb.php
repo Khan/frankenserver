@@ -1419,7 +1419,6 @@ namespace google\appengine {
       };
     }
     public function checkInitialized() {
-      if (!isset($this->hostname)) return 'hostname';
       return null;
     }
     public function mergeFrom($x) {

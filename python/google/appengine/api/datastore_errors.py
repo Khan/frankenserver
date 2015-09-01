@@ -32,6 +32,7 @@
 
 
 
+
 class Error(Exception):
   """Base datastore error type.
   """

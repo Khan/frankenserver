@@ -59,6 +59,11 @@ final class CloudStorageUrlStatClient extends CloudStorageClient {
       $prefix = substr($prefix, 0, strlen($prefix) - 1);
     }
 
+    if (ini_get("google_app_engine.enable_gcs_stat_cache") &&
+        $this->tryGetFromStatCache($stat_result)) {
+      return $stat_result;
+    }
+
     if (isset($prefix)) {
       $result = $this->headObject($prefix);
       if ($result !== false) {
@@ -122,7 +127,9 @@ final class CloudStorageUrlStatClient extends CloudStorageClient {
     if (isset($size)) {
       $stat_args["size"] = intval($size);
     }
-    return $this->createStatArray($stat_args);
+    $stat_result = $this->createStatArray($stat_args);
+    $this->addToStatCache($stat_result);
+    return $stat_result;
   }
 
   /**

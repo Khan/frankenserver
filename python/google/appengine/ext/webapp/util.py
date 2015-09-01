@@ -28,13 +28,16 @@
 
 
 
+
 __all__ = ['login_required',
            'run_wsgi_app',
            'add_wsgi_middleware',
            'run_bare_wsgi_app',
            ]
 
+import logging
 import os
+import string
 import sys
 import wsgiref.util
 
@@ -122,14 +125,54 @@ def run_bare_wsgi_app(application):
     if hasattr(result, 'close'):
       result.close()
 
+_LOW_RANGE = ''.join(chr(i) for i in range(0, 32))
+_HIGH_RANGE = ''.join(chr(i) for i in range(128, 256))
+
+
+
+
+_FORBIDDEN_HEADER_NAME_CHARACTERS = _LOW_RANGE + _HIGH_RANGE + ' :'
+
+
+_FORBIDDEN_HEADER_VALUE_CHARACTERS = _LOW_RANGE + _HIGH_RANGE
+
+_EMPTY_TRANSLATION_TABLE = (None if sys.version_info >= (2, 6) else
+                            string.maketrans('', ''))
+
 
 def _start_response(status, headers, exc_info=None):
-  """A start_response() callable as specified by PEP 333"""
+  """A start_response() callable as specified by PEP 333."""
   if exc_info is not None:
 
     raise exc_info[0], exc_info[1], exc_info[2]
   print "Status: %s" % status
   for name, val in headers:
+
+    try:
+      if isinstance(name, unicode):
+        name = name.encode('ascii')
+    except UnicodeEncodeError:
+      logging.warn('Stripped header "%s": invalid character.', name)
+      continue
+
+    try:
+      if isinstance(val, unicode):
+        val = val.encode('ascii')
+    except UnicodeEncodeError:
+      logging.warn('Stripped header "%s": invalid character in value "%s".',
+                   name, val)
+      continue
+
+    if name != name.translate(_EMPTY_TRANSLATION_TABLE,
+                              _FORBIDDEN_HEADER_NAME_CHARACTERS):
+      logging.warn('Stripped header "%s": invalid character.', name)
+      continue
+
+    if val != val.translate(_EMPTY_TRANSLATION_TABLE,
+                            _FORBIDDEN_HEADER_VALUE_CHARACTERS):
+      logging.warn('Stripped header "%s": invalid character in value "%s".',
+                   name, val)
+      continue
     print "%s: %s" % (name, val)
   print
   return sys.stdout.write

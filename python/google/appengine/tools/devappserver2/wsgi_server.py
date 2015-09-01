@@ -17,6 +17,7 @@
 """A WSGI server implementation using a shared thread pool."""
 
 
+
 import collections
 import errno
 import httplib
@@ -32,6 +33,7 @@ from cherrypy import wsgiserver
 
 from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import http_runtime_constants
+from google.appengine.tools.devappserver2 import shutdown
 from google.appengine.tools.devappserver2 import thread_executor
 
 
@@ -53,6 +55,7 @@ _SECONDS_TO_MILLISECONDS = 1000
 # increasing it (on my circa 2010 desktop, it takes about 1/2 second per 1024
 # tries) but it would probably be better to either figure out a better
 # algorithm or make it possible for code to work with inconsistent ports.
+
 
 _PORT_0_RETRIES = 2048
 
@@ -108,7 +111,8 @@ class SelectThread(object):
     # snapshotted by the select thread without needing to copy.
     self._file_descriptors = frozenset()
     self._file_descriptor_to_callback = {}
-    self._select_thread = threading.Thread(target=self._loop_forever)
+    self._select_thread = threading.Thread(
+        target=self._loop_forever, name='WSGI select')
     self._select_thread.daemon = True
 
   def start(self):
@@ -136,7 +140,9 @@ class SelectThread(object):
       self._file_descriptor_to_callback = new_file_descriptor_to_callback
 
   def _loop_forever(self):
-    while True:
+    while shutdown and not shutdown.shutting_down():
+      # Check shutdown as it may be gc-ed during shutdown. See
+      # http://stackoverflow.com/questions/17084260/imported-modules-become-none-when-running-a-function
       self._select()
 
   def _select(self):
@@ -270,6 +276,7 @@ class _SingleAddressWsgiServer(wsgiserver.CherryPyWSGIServer):
 
 
 class WsgiServer(object):
+
   def __init__(self, host, app):
     """Constructs a WsgiServer.
 

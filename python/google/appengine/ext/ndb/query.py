@@ -936,6 +936,10 @@ class Query(object):
       rpc = dsquery.run_async(conn, options)
       while rpc is not None:
         batch = yield rpc
+        if (batch.skipped_results and
+            datastore_query.FetchOptions.offset(options)):
+          offset = options.offset - batch.skipped_results
+          options = datastore_query.FetchOptions(offset=offset, config=options)
         rpc = batch.next_batch_async(options)
         for i, result in enumerate(batch.results):
           queue.putq((batch, i, result))
@@ -1293,6 +1297,8 @@ class Query(object):
     total = 0
     while rpc is not None:
       batch = yield rpc
+      options = QueryOptions(offset=options.offset - batch.skipped_results,
+                             config=options)
       rpc = batch.next_batch_async(options)
       total += batch.skipped_results
     raise tasklets.Return(total)
@@ -1594,12 +1600,16 @@ class QueryIterator(object):
   options.
   """
 
-  # When produce_cursors is set, _lookahead collects (batch, index)
-  # pairs passed to _extended_callback(), and (_batch, _index)
-  # contain the info pertaining to the current item.
-  _lookahead = None
-  _batch = None
-  _index = None
+  # Information from the current result.
+  _cursor_before = _cursor_after = (
+      datastore_errors.BadArgumentError('There is no cursor currently'))
+
+  # Information from the current batch.
+  _index_list = None
+  # More results is true if the current batch has more results. A query result
+  # may be made of multiple batches from multiple queries, so this field may
+  # be false even if there are more results.
+  _more_results = None
 
   # Indicate the loop is exhausted.
   _exhausted = False
@@ -1622,17 +1632,30 @@ class QueryIterator(object):
   def _extended_callback(self, batch, index, ent):
     if self._exhausted:
       raise RuntimeError('QueryIterator is already exhausted')
-    # TODO: Make _lookup a deque.
-    if self._lookahead is None:
-      self._lookahead = []
-    self._lookahead.append((batch, index))
-    return ent
 
-  def _consume_item(self):
-    if self._lookahead:
-      self._batch, self._index = self._lookahead.pop(0)
-    else:
-      self._batch = self._index = None
+    # If the batch is None we cannot get any extra information.
+    # This is the case for _MultiQuery.
+    if batch is None:
+      return (ent, None, None, None)
+
+    if self._index_list is None:
+      self._index_list = getattr(batch, 'index_list', None)
+
+    # more_results is True if we are mid-batch or at the end of a batch and
+    # the batch reports that there are more batches.
+    more_results = index + 1 < len(batch.results) or batch.more_results
+
+    before_cursor = None
+    after_cursor = None
+    try:
+      before_cursor = batch.cursor(index)
+    except BaseException, e:
+      before_cursor = e
+    try:
+      after_cursor = batch.cursor(index + 1)
+    except BaseException, e:
+      after_cursor = e
+    return (ent, before_cursor, after_cursor, more_results)
 
   def cursor_before(self):
     """Return the cursor before the current item.
@@ -1644,14 +1667,11 @@ class QueryIterator(object):
     Before next() has returned there is no cursor.  Once the loop is
     exhausted, this returns the cursor after the last item.
     """
-    if self._batch is None:
-      raise datastore_errors.BadArgumentError('There is no cursor currently')
-    # TODO: if cursor_after() was called for the previous item
-    # reuse that result instead of computing it from scratch.
-    # (Some cursor() calls make a datastore roundtrip.)
-    # TODO: reimplement the cursor() call to use NDB async I/O;
-    # perhaps even add async versions of cursor_before/after.
-    return self._batch.cursor(self._index + self._exhausted)
+    if self._exhausted:
+      return self.cursor_after()
+    if isinstance(self._cursor_before, BaseException):
+      raise self._cursor_before
+    return self._cursor_before
 
   def cursor_after(self):
     """Return the cursor after the current item.
@@ -1663,9 +1683,9 @@ class QueryIterator(object):
     Before next() has returned there is no cursor.    Once the loop is
     exhausted, this returns the cursor after the last item.
     """
-    if self._batch is None:
-      raise datastore_errors.BadArgumentError('There is no cursor currently')
-    return self._batch.cursor(self._index + 1)  # TODO: inline this as async.
+    if isinstance(self._cursor_after, BaseException):
+      raise self._cursor_after
+    return self._cursor_after
 
   def index_list(self):
     """Return the list of indexes used for this query.
@@ -1698,7 +1718,7 @@ class QueryIterator(object):
     # multi-query by merging all the index lists from each subquery.
     # Return None if the batch has no attribute index_list.
     # This also applies when the batch itself is None.
-    return getattr(self._batch, 'index_list', None)
+    return self._index_list
 
   def __iter__(self):
     """Iterator protocol: get the iterator for this iterator, i.e. self."""
@@ -1707,16 +1727,17 @@ class QueryIterator(object):
   def probably_has_next(self):
     """Return whether a next item is (probably) available.
 
-    This is not quite the same as has_next(), because when
+     This is not quite the same as has_next(), because when
     produce_cursors is set, some shortcuts are possible.  However, in
     some cases (e.g. when the query has a post_filter) we can get a
     false positive (returns True but next() will raise StopIteration).
-    There are no false negatives, if Batch.more_results doesn't lie.
-    """
-    if self._lookahead:
+    There are no false negatives."""
+    # Due to the fact that _MultiQuery batches incorrectly report more_results,
+    # _more_results may be False even if there are more results. Likewise due
+    # to post filtering, _more_results may be True even if next() would throw
+    # an exception.
+    if self._more_results:
       return True
-    if self._batch is not None:
-      return self._batch.more_results
     return self.has_next()
 
   def has_next(self):
@@ -1747,8 +1768,10 @@ class QueryIterator(object):
       self._fut = self._iter.getq()
     try:
       try:
-        ent = self._fut.get_result()
-        self._consume_item()
+        (ent,
+         self._cursor_before,
+         self._cursor_after,
+         self._more_results) = self._fut.get_result()
         return ent
       except EOFError:
         self._exhausted = True

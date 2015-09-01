@@ -25,6 +25,7 @@ __author__ = ['rafek@google.com (Rafe Kaplan)',
 
 import cgi
 import datetime
+import functools
 import inspect
 import os
 import re
@@ -41,6 +42,7 @@ __all__ = ['AcceptItem',
            'positional',
            'PROTORPC_PROJECT_URL',
            'TimeZoneOffset',
+           'total_seconds',
 ]
 
 
@@ -158,6 +160,7 @@ def positional(max_positional_args):
       has no arguments with default values.
   """
   def positional_decorator(wrapped):
+    @functools.wraps(wrapped)
     def positional_wrapper(*args, **kwargs):
       if len(args) > max_positional_args:
         plural_s = ''
@@ -393,6 +396,13 @@ def get_package_for_module(module):
     return unicode(module.__name__)
 
 
+def total_seconds(offset):
+  """Backport of offset.total_seconds() from python 2.7+."""
+  seconds = offset.days * 24 * 60 * 60 + offset.seconds
+  microseconds = seconds * 10**6 + offset.microseconds
+  return microseconds / (10**6 * 1.0)
+
+
 class TimeZoneOffset(datetime.tzinfo):
   """Time zone information as encoded/decoded for DateTimeFields."""
 
@@ -405,8 +415,14 @@ class TimeZoneOffset(datetime.tzinfo):
     """
     super(TimeZoneOffset, self).__init__()
     if isinstance(offset, datetime.timedelta):
-      offset = offset.total_seconds()
+      offset = total_seconds(offset) / 60
     self.__offset = offset
+
+  def __copy__(self):
+    return self.__class__(self.__offset)
+
+  def __deepcopy__(self, unused_memo):
+    return self.__class__(self.__offset)
 
   def utcoffset(self, dt):
     """Get the a timedelta with the time zone's offset from UTC.

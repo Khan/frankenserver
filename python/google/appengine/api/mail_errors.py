@@ -21,6 +21,7 @@
 """Exceptions raised my mail API."""
 
 
+
 class Error(Exception):
   """Base Mail error type."""
 

@@ -48,12 +48,23 @@ final class UnlinkUploads {
       if ((connection_status() & CONNECTION_TIMEOUT) == CONNECTION_TIMEOUT) {
         break;
       }
-
-      // When files are moved using move_uploaded_file() they are removed from
-      // is_uploaded_file() so this should avoid needless unlink() calls.
-      if (isset($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
-        unlink($file['tmp_name']);
+      if (isset($file['tmp_name'])) {
+        if (is_array($file['tmp_name'])) {
+          foreach($file['tmp_name'] as $name) {
+            self::checkAndUnlinkFile($name);
+          }
+        } else {
+          self::checkAndUnlinkFile($file['tmp_name']);
+        }
       }
+    }
+  }
+
+  private static function checkAndUnlinkFile($file_name) {
+    // When files are moved using move_uploaded_file() they are removed from
+    // is_uploaded_file() so this should avoid needless unlink() calls.
+    if (isset($file_name) && is_uploaded_file($file_name)) {
+      unlink($file_name);
     }
   }
 

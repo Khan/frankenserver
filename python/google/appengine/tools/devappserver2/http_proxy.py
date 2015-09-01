@@ -23,28 +23,21 @@ only. Static files are handled separately.
 import contextlib
 import httplib
 import logging
-import socket
 import urllib
 import wsgiref.headers
 
 from google.appengine.tools.devappserver2 import http_runtime_constants
+from google.appengine.tools.devappserver2 import http_utils
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import login
 from google.appengine.tools.devappserver2 import util
 
 
-class Error(Exception):
-  """Base class for errors in this module."""
-
-
-class HostNotReachable(Error):
-  """Raised if host can't be reached at given port."""
-
-
 class HttpProxy:
   """Forwards HTTP requests to an application instance."""
   def __init__(self, host, port, instance_died_unexpectedly,
-               instance_logs_getter, error_handler_file, prior_error=None):
+               instance_logs_getter, error_handler_file, prior_error=None,
+               request_id_header_name=None):
     """Initializer for HttpProxy.
 
     Args:
@@ -61,6 +54,8 @@ class HttpProxy:
           instance). In case prior_error is not None handle will always return
           corresponding error message without even trying to connect to the
           instance.
+      request_id_header_name: Optional string name used to pass request ID to
+          API server.  Defaults to http_runtime_constants.REQUEST_ID_HEADER.
     """
     self._host = host
     self._port = port
@@ -68,6 +63,9 @@ class HttpProxy:
     self._instance_logs_getter = instance_logs_getter
     self._error_handler_file = error_handler_file
     self._prior_error = prior_error
+    self.request_id_header_name = request_id_header_name
+    if self.request_id_header_name is None:
+      self.request_id_header_name = http_runtime_constants.REQUEST_ID_HEADER
 
   def _respond_with_error(self, message, start_response):
     instance_logs = self._instance_logs_getter()
@@ -87,29 +85,14 @@ class HttpProxy:
       retries: int, Number of connection retries.
 
     Raises:
-      HostNotReachable: if host:port can't be reached after given number of
-        retries.
+      http_utils.HostNotReachable: if host:port can't be reached after given
+          number of retries.
     """
     # If there was a prior error, we don't need to wait for a connection.
     if self._prior_error:
       return
 
-    def ping():
-      connection = httplib.HTTPConnection(self._host, self._port)
-      with contextlib.closing(connection):
-        try:
-          connection.connect()
-        except (socket.error, httplib.HTTPException):
-          return False
-        else:
-          return True
-
-    while not ping() and retries > 0:
-      retries -= 1
-    if not retries:
-      raise HostNotReachable(
-          'Cannot connect to the instance on {host}:{port}'.format(
-              host=self._host, port=self._port))
+    http_utils.wait_for_connection(self._host, self._port, retries)
 
   def handle(self, environ, start_response, url_map, match, request_id,
              request_type):
@@ -158,7 +141,7 @@ class HttpProxy:
       headers['CONTENT-LENGTH'] = environ['CONTENT_LENGTH']
       data = environ['wsgi.input'].read(int(environ['CONTENT_LENGTH']))
     else:
-      data = ''
+      data = None
 
     cookies = environ.get('HTTP_COOKIE')
     user_email, admin, user_id = login.get_user_info(cookies)
@@ -167,7 +150,7 @@ class HttpProxy:
     else:
       nickname = ''
       organization = ''
-    headers[http_runtime_constants.REQUEST_ID_HEADER] = request_id
+    headers[self.request_id_header_name] = request_id
     headers[http_runtime_constants.APPENGINE_HEADER_PREFIX + 'User-Id'] = (
         user_id)
     headers[http_runtime_constants.APPENGINE_HEADER_PREFIX + 'User-Email'] = (

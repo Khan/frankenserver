@@ -33,6 +33,7 @@ Methods defined in this module:
 
 
 
+
 import httplib
 import os
 import StringIO
@@ -359,6 +360,8 @@ def _get_fetch_result(rpc):
   Raises:
     InvalidURLError: if the url was invalid.
     DownloadError: if there was a problem fetching the url.
+    PayloadTooLargeError: if the request and its payload was larger than the
+      allowed limit.
     ResponseTooLargeError: if the response was either truncated (and
       allow_truncated=False was passed to make_fetch_call()), or if it
       was too big for us to download.
@@ -384,6 +387,11 @@ def _get_fetch_result(rpc):
         urlfetch_service_pb.URLFetchServiceError.INVALID_URL):
       raise InvalidURLError(
           'Invalid request URL: ' + url + error_detail)
+    if (err.application_error ==
+        urlfetch_service_pb.URLFetchServiceError.PAYLOAD_TOO_LARGE):
+
+      raise PayloadTooLargeError(
+          'Request exceeds 10 MiB limit for URL: ' + url)
     if (err.application_error ==
         urlfetch_service_pb.URLFetchServiceError.CLOSED):
       raise ConnectionClosedError(

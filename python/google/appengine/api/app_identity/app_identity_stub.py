@@ -34,7 +34,10 @@ constant values instead of app-specific values:
 
 
 
+
 import binascii
+import logging
+import sys
 import time
 
 try:
@@ -170,19 +173,38 @@ class AppIdentityServiceStub(apiproxy_stub.APIProxyStub):
     service_account_id = request.service_account_id()
     if service_account_id:
       token += '.%d' % service_account_id
-    if request.has_service_account_name():
+    if request.service_account_name():
       token += '.%s' % request.service_account_name()
     response.set_access_token('InvalidToken:%s:%s' % (token, time.time() % 100))
 
     response.set_expiration_time(int(time.time()) + 1800)
 
   @staticmethod
-  def Create(email_address=None, private_key_path=None):
+  def Create(email_address=None, private_key_path=None, oauth_url=None):
     if email_address:
       from google.appengine.api.app_identity import app_identity_keybased_stub
 
+      logging.debug('Using the KeyBasedAppIdentityServiceStub.')
       return app_identity_keybased_stub.KeyBasedAppIdentityServiceStub(
           email_address=email_address,
-          private_key_path=private_key_path)
+          private_key_path=private_key_path,
+          oauth_url=oauth_url)
+    elif sys.version_info >= (2, 6):
+      from oauth2client import client
+      from google.appengine.api.app_identity import app_identity_defaultcredentialsbased_stub as ai_stub
+      try:
+        dc = ai_stub.DefaultCredentialsBasedAppIdentityServiceStub()
+        logging.debug('Successfully loaded Application Default Credentials.')
+        return dc
+      except client.ApplicationDefaultCredentialsError, error:
+        if not str(error).startswith('The Application Default Credentials '
+                                     'are not available.'):
+          logging.warning('An exception has been encountered when attempting '
+                          'to use Application Default Credentials: %s'
+                          '. Falling back on dummy AppIdentityServiceStub.',
+                          str(error))
+        return AppIdentityServiceStub()
     else:
+      logging.debug('Running under Python 2.5 uses dummy '
+                    'AppIdentityServiceStub.')
       return AppIdentityServiceStub()

@@ -17,6 +17,7 @@
 """Helper functions to quit the development server."""
 
 
+
 import logging
 import os
 import signal
@@ -60,3 +61,8 @@ def install_signal_handlers():
   """Installs a signal handler for SIGTERM and SIGINT to do orderly shutdown."""
   signal.signal(signal.SIGTERM, _async_terminate)
   signal.signal(signal.SIGINT, _async_terminate)
+
+
+def shutting_down():
+  """Returns True when we are shutting down."""
+  return _shutting_down

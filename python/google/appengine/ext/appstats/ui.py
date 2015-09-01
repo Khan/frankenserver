@@ -32,6 +32,7 @@ The templates are written to work with either Django 0.96 or Django
 """
 
 
+
 import cgi
 import cStringIO
 import email.Utils

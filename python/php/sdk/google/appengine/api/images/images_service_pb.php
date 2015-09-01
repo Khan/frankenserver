@@ -207,7 +207,7 @@ namespace google\appengine {
     }
     public function getCropLeftX() {
       if (!isset($this->crop_left_x)) {
-        return 0;
+        return 0.0;
       }
       return $this->crop_left_x;
     }
@@ -224,7 +224,7 @@ namespace google\appengine {
     }
     public function getCropTopY() {
       if (!isset($this->crop_top_y)) {
-        return 0;
+        return 0.0;
       }
       return $this->crop_top_y;
     }

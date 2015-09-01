@@ -17,6 +17,7 @@
 """Tests for google.appengine.tools.devappserver2.static_files_handler."""
 
 
+
 import errno
 import os.path
 import unittest

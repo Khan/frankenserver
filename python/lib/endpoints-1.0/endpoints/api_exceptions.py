@@ -18,6 +18,8 @@
 
 
 
+
+
 import httplib
 
 from protorpc import remote
@@ -36,14 +38,14 @@ class BadRequestException(ServiceException):
   http_status = httplib.BAD_REQUEST
 
 
+class UnauthorizedException(ServiceException):
+  """Unauthorized exception that is mapped to a 401 response."""
+  http_status = httplib.UNAUTHORIZED
+
+
 class ForbiddenException(ServiceException):
   """Forbidden exception that is mapped to a 403 response."""
   http_status = httplib.FORBIDDEN
-
-
-class InternalServerErrorException(ServiceException):
-  """Internal server exception that is mapped to a 500 response."""
-  http_status = httplib.INTERNAL_SERVER_ERROR
 
 
 class NotFoundException(ServiceException):
@@ -51,6 +53,26 @@ class NotFoundException(ServiceException):
   http_status = httplib.NOT_FOUND
 
 
-class UnauthorizedException(ServiceException):
-  """Unauthorized exception that is mapped to a 401 response."""
-  http_status = httplib.UNAUTHORIZED
+class ConflictException(ServiceException):
+  """Conflict exception that is mapped to a 409 response."""
+  http_status = httplib.CONFLICT
+
+
+class GoneException(ServiceException):
+  """Resource Gone exception that is mapped to a 410 response."""
+  http_status = httplib.GONE
+
+
+class PreconditionFailedException(ServiceException):
+  """Precondition Failed exception that is mapped to a 412 response."""
+  http_status = httplib.PRECONDITION_FAILED
+
+
+class RequestEntityTooLargeException(ServiceException):
+  """Request entity too large exception that is mapped to a 413 response."""
+  http_status = httplib.REQUEST_ENTITY_TOO_LARGE
+
+
+class InternalServerErrorException(ServiceException):
+  """Internal server exception that is mapped to a 500 response."""
+  http_status = httplib.INTERNAL_SERVER_ERROR

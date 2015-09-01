@@ -677,10 +677,28 @@ namespace storage_onestore_v3\PropertyValue {
     public function hasNameSpace() {
       return isset($this->name_space);
     }
+    public function getDatabase() {
+      if (!isset($this->database)) {
+        return '';
+      }
+      return $this->database;
+    }
+    public function setDatabase($val) {
+      $this->database = $val;
+      return $this;
+    }
+    public function clearDatabase() {
+      unset($this->database);
+      return $this;
+    }
+    public function hasDatabase() {
+      return isset($this->database);
+    }
     public function clear() {
       $this->clearApp();
       $this->clearPathElement();
       $this->clearNameSpace();
+      $this->clearDatabase();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -696,6 +714,10 @@ namespace storage_onestore_v3\PropertyValue {
       if (isset($this->name_space)) {
         $res += 2;
         $res += $this->lengthString(strlen($this->name_space));
+      }
+      if (isset($this->database)) {
+        $res += 2;
+        $res += $this->lengthString(strlen($this->database));
       }
       return $res;
     }
@@ -714,6 +736,10 @@ namespace storage_onestore_v3\PropertyValue {
         $out->putVarInt32(162);
         $out->putPrefixedString($this->name_space);
       }
+      if (isset($this->database)) {
+        $out->putVarInt32(186);
+        $out->putPrefixedString($this->database);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -731,6 +757,11 @@ namespace storage_onestore_v3\PropertyValue {
           case 162:
             $length = $d->getVarInt32();
             $this->setNameSpace(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 186:
+            $length = $d->getVarInt32();
+            $this->setDatabase(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -759,6 +790,9 @@ namespace storage_onestore_v3\PropertyValue {
       if ($x->hasNameSpace()) {
         $this->setNameSpace($x->getNameSpace());
       }
+      if ($x->hasDatabase()) {
+        $this->setDatabase($x->getDatabase());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -770,6 +804,8 @@ namespace storage_onestore_v3\PropertyValue {
       }
       if (isset($this->name_space) !== isset($x->name_space)) return false;
       if (isset($this->name_space) && $this->name_space !== $x->name_space) return false;
+      if (isset($this->database) !== isset($x->database)) return false;
+      if (isset($this->database) && $this->database !== $x->database) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -782,6 +818,9 @@ namespace storage_onestore_v3\PropertyValue {
       }
       if (isset($this->name_space)) {
         $res .= $prefix . "name_space: " . $this->debugFormatString($this->name_space) . "\n";
+      }
+      if (isset($this->database)) {
+        $res .= $prefix . "database: " . $this->debugFormatString($this->database) . "\n";
       }
       return $res;
     }
@@ -1131,6 +1170,7 @@ namespace storage_onestore_v3\Property {
     const BLOBKEY = 17;
     const ENTITY_PROTO = 19;
     const INDEX_VALUE = 18;
+    const EMPTY_LIST = 24;
   }
 }
 namespace storage_onestore_v3 {
@@ -1225,22 +1265,39 @@ namespace storage_onestore_v3 {
     public function hasValue() {
       return isset($this->value);
     }
-    public function getEmbedded() {
-      if (!isset($this->embedded)) {
+    public function getStashed() {
+      if (!isset($this->stashed)) {
+        return -1;
+      }
+      return $this->stashed;
+    }
+    public function setStashed($val) {
+      $this->stashed = $val;
+      return $this;
+    }
+    public function clearStashed() {
+      unset($this->stashed);
+      return $this;
+    }
+    public function hasStashed() {
+      return isset($this->stashed);
+    }
+    public function getComputed() {
+      if (!isset($this->computed)) {
         return false;
       }
-      return $this->embedded;
+      return $this->computed;
     }
-    public function setEmbedded($val) {
-      $this->embedded = $val;
+    public function setComputed($val) {
+      $this->computed = $val;
       return $this;
     }
-    public function clearEmbedded() {
-      unset($this->embedded);
+    public function clearComputed() {
+      unset($this->computed);
       return $this;
     }
-    public function hasEmbedded() {
-      return isset($this->embedded);
+    public function hasComputed() {
+      return isset($this->computed);
     }
     public function clear() {
       $this->clearMeaning();
@@ -1248,7 +1305,8 @@ namespace storage_onestore_v3 {
       $this->clearName();
       $this->clearMultiple();
       $this->clearValue();
-      $this->clearEmbedded();
+      $this->clearStashed();
+      $this->clearComputed();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1271,7 +1329,11 @@ namespace storage_onestore_v3 {
         $res += 1;
         $res += $this->lengthString($this->value->byteSizePartial());
       }
-      if (isset($this->embedded)) {
+      if (isset($this->stashed)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->stashed);
+      }
+      if (isset($this->computed)) {
         $res += 2;
       }
       return $res;
@@ -1298,9 +1360,13 @@ namespace storage_onestore_v3 {
         $out->putVarInt32($this->value->byteSizePartial());
         $this->value->outputPartial($out);
       }
-      if (isset($this->embedded)) {
+      if (isset($this->stashed)) {
         $out->putVarInt32(48);
-        $out->putBoolean($this->embedded);
+        $out->putVarInt32($this->stashed);
+      }
+      if (isset($this->computed)) {
+        $out->putVarInt32(56);
+        $out->putBoolean($this->computed);
       }
     }
     public function tryMerge($d) {
@@ -1330,7 +1396,10 @@ namespace storage_onestore_v3 {
             $this->mutableValue()->tryMerge($tmp);
             break;
           case 48:
-            $this->setEmbedded($d->getBoolean());
+            $this->setStashed($d->getVarInt32());
+            break;
+          case 56:
+            $this->setComputed($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -1363,8 +1432,11 @@ namespace storage_onestore_v3 {
       if ($x->hasValue()) {
         $this->mutableValue()->mergeFrom($x->getValue());
       }
-      if ($x->hasEmbedded()) {
-        $this->setEmbedded($x->getEmbedded());
+      if ($x->hasStashed()) {
+        $this->setStashed($x->getStashed());
+      }
+      if ($x->hasComputed()) {
+        $this->setComputed($x->getComputed());
       }
     }
     public function equals($x) {
@@ -1379,8 +1451,10 @@ namespace storage_onestore_v3 {
       if (isset($this->multiple) && $this->multiple !== $x->multiple) return false;
       if (isset($this->value) !== isset($x->value)) return false;
       if (isset($this->value) && !$this->value->equals($x->value)) return false;
-      if (isset($this->embedded) !== isset($x->embedded)) return false;
-      if (isset($this->embedded) && $this->embedded !== $x->embedded) return false;
+      if (isset($this->stashed) !== isset($x->stashed)) return false;
+      if (isset($this->stashed) && !$this->integerEquals($this->stashed, $x->stashed)) return false;
+      if (isset($this->computed) !== isset($x->computed)) return false;
+      if (isset($this->computed) && $this->computed !== $x->computed) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1400,8 +1474,11 @@ namespace storage_onestore_v3 {
       if (isset($this->value)) {
         $res .= $prefix . "value <\n" . $this->value->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
-      if (isset($this->embedded)) {
-        $res .= $prefix . "embedded: " . $this->debugFormatBool($this->embedded) . "\n";
+      if (isset($this->stashed)) {
+        $res .= $prefix . "stashed: " . $this->debugFormatInt32($this->stashed) . "\n";
+      }
+      if (isset($this->computed)) {
+        $res .= $prefix . "computed: " . $this->debugFormatBool($this->computed) . "\n";
       }
       return $res;
     }
@@ -1722,10 +1799,28 @@ namespace storage_onestore_v3 {
     public function hasNameSpace() {
       return isset($this->name_space);
     }
+    public function getDatabase() {
+      if (!isset($this->database)) {
+        return '';
+      }
+      return $this->database;
+    }
+    public function setDatabase($val) {
+      $this->database = $val;
+      return $this;
+    }
+    public function clearDatabase() {
+      unset($this->database);
+      return $this;
+    }
+    public function hasDatabase() {
+      return isset($this->database);
+    }
     public function clear() {
       $this->clearApp();
       $this->clearPath();
       $this->clearNameSpace();
+      $this->clearDatabase();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1740,6 +1835,10 @@ namespace storage_onestore_v3 {
       if (isset($this->name_space)) {
         $res += 2;
         $res += $this->lengthString(strlen($this->name_space));
+      }
+      if (isset($this->database)) {
+        $res += 2;
+        $res += $this->lengthString(strlen($this->database));
       }
       return $res;
     }
@@ -1756,6 +1855,10 @@ namespace storage_onestore_v3 {
       if (isset($this->name_space)) {
         $out->putVarInt32(162);
         $out->putPrefixedString($this->name_space);
+      }
+      if (isset($this->database)) {
+        $out->putVarInt32(186);
+        $out->putPrefixedString($this->database);
       }
     }
     public function tryMerge($d) {
@@ -1776,6 +1879,11 @@ namespace storage_onestore_v3 {
           case 162:
             $length = $d->getVarInt32();
             $this->setNameSpace(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 186:
+            $length = $d->getVarInt32();
+            $this->setDatabase(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -1802,6 +1910,9 @@ namespace storage_onestore_v3 {
       if ($x->hasNameSpace()) {
         $this->setNameSpace($x->getNameSpace());
       }
+      if ($x->hasDatabase()) {
+        $this->setDatabase($x->getDatabase());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1811,6 +1922,8 @@ namespace storage_onestore_v3 {
       if (isset($this->path) && !$this->path->equals($x->path)) return false;
       if (isset($this->name_space) !== isset($x->name_space)) return false;
       if (isset($this->name_space) && $this->name_space !== $x->name_space) return false;
+      if (isset($this->database) !== isset($x->database)) return false;
+      if (isset($this->database) && $this->database !== $x->database) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1823,6 +1936,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->name_space)) {
         $res .= $prefix . "name_space: " . $this->debugFormatString($this->name_space) . "\n";
+      }
+      if (isset($this->database)) {
+        $res .= $prefix . "database: " . $this->debugFormatString($this->database) . "\n";
       }
       return $res;
     }
@@ -2527,6 +2643,126 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->owner)) {
         $res .= $prefix . "owner <\n" . $this->owner->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace storage_onestore_v3 {
+  class EntityMetadata extends \google\net\ProtocolMessage {
+    public function getCreatedVersion() {
+      if (!isset($this->created_version)) {
+        return "0";
+      }
+      return $this->created_version;
+    }
+    public function setCreatedVersion($val) {
+      if (is_double($val)) {
+        $this->created_version = sprintf('%0.0F', $val);
+      } else {
+        $this->created_version = $val;
+      }
+      return $this;
+    }
+    public function clearCreatedVersion() {
+      unset($this->created_version);
+      return $this;
+    }
+    public function hasCreatedVersion() {
+      return isset($this->created_version);
+    }
+    public function getUpdatedVersion() {
+      if (!isset($this->updated_version)) {
+        return "0";
+      }
+      return $this->updated_version;
+    }
+    public function setUpdatedVersion($val) {
+      if (is_double($val)) {
+        $this->updated_version = sprintf('%0.0F', $val);
+      } else {
+        $this->updated_version = $val;
+      }
+      return $this;
+    }
+    public function clearUpdatedVersion() {
+      unset($this->updated_version);
+      return $this;
+    }
+    public function hasUpdatedVersion() {
+      return isset($this->updated_version);
+    }
+    public function clear() {
+      $this->clearCreatedVersion();
+      $this->clearUpdatedVersion();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->created_version)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->created_version);
+      }
+      if (isset($this->updated_version)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->updated_version);
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->created_version)) {
+        $out->putVarInt32(8);
+        $out->putVarInt64($this->created_version);
+      }
+      if (isset($this->updated_version)) {
+        $out->putVarInt32(16);
+        $out->putVarInt64($this->updated_version);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 8:
+            $this->setCreatedVersion($d->getVarInt64());
+            break;
+          case 16:
+            $this->setUpdatedVersion($d->getVarInt64());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasCreatedVersion()) {
+        $this->setCreatedVersion($x->getCreatedVersion());
+      }
+      if ($x->hasUpdatedVersion()) {
+        $this->setUpdatedVersion($x->getUpdatedVersion());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->created_version) !== isset($x->created_version)) return false;
+      if (isset($this->created_version) && !$this->integerEquals($this->created_version, $x->created_version)) return false;
+      if (isset($this->updated_version) !== isset($x->updated_version)) return false;
+      if (isset($this->updated_version) && !$this->integerEquals($this->updated_version, $x->updated_version)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->created_version)) {
+        $res .= $prefix . "created_version: " . $this->debugFormatInt64($this->created_version) . "\n";
+      }
+      if (isset($this->updated_version)) {
+        $res .= $prefix . "updated_version: " . $this->debugFormatInt64($this->updated_version) . "\n";
       }
       return $res;
     }
@@ -3456,7 +3692,6 @@ namespace storage_onestore_v3 {
 }
 namespace storage_onestore_v3 {
   class SearchIndexEntry extends \google\net\ProtocolMessage {
-    private $division_family = array();
     public function getIndexId() {
       if (!isset($this->index_id)) {
         return "0";
@@ -3478,25 +3713,22 @@ namespace storage_onestore_v3 {
     public function hasIndexId() {
       return isset($this->index_id);
     }
-    public function getDivisionFamilySize() {
-      return sizeof($this->division_family);
+    public function getWriteDivisionFamily() {
+      if (!isset($this->write_division_family)) {
+        return '';
+      }
+      return $this->write_division_family;
     }
-    public function getDivisionFamilyList() {
-      return $this->division_family;
-    }
-    public function getDivisionFamily($idx) {
-      return $this->division_family[$idx];
-    }
-    public function setDivisionFamily($idx, $val) {
-      $this->division_family[$idx] = $val;
+    public function setWriteDivisionFamily($val) {
+      $this->write_division_family = $val;
       return $this;
     }
-    public function addDivisionFamily($val) {
-      $this->division_family[] = $val;
+    public function clearWriteDivisionFamily() {
+      unset($this->write_division_family);
       return $this;
     }
-    public function clearDivisionFamily() {
-      $this->division_family = array();
+    public function hasWriteDivisionFamily() {
+      return isset($this->write_division_family);
     }
     public function getFingerprint1999() {
       if (!isset($this->fingerprint_1999)) {
@@ -3542,7 +3774,7 @@ namespace storage_onestore_v3 {
     }
     public function clear() {
       $this->clearIndexId();
-      $this->clearDivisionFamily();
+      $this->clearWriteDivisionFamily();
       $this->clearFingerprint1999();
       $this->clearFingerprint2011();
     }
@@ -3552,10 +3784,9 @@ namespace storage_onestore_v3 {
         $res += 1;
         $res += $this->lengthVarInt64($this->index_id);
       }
-      $this->checkProtoArray($this->division_family);
-      $res += 1 * sizeof($this->division_family);
-      foreach ($this->division_family as $value) {
-        $res += $this->lengthString(strlen($value));
+      if (isset($this->write_division_family)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->write_division_family));
       }
       if (isset($this->fingerprint_1999)) {
         $res += 9;
@@ -3570,10 +3801,9 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(8);
         $out->putVarInt64($this->index_id);
       }
-      $this->checkProtoArray($this->division_family);
-      foreach ($this->division_family as $value) {
+      if (isset($this->write_division_family)) {
         $out->putVarInt32(18);
-        $out->putPrefixedString($value);
+        $out->putPrefixedString($this->write_division_family);
       }
       if (isset($this->fingerprint_1999)) {
         $out->putVarInt32(25);
@@ -3593,7 +3823,7 @@ namespace storage_onestore_v3 {
             break;
           case 18:
             $length = $d->getVarInt32();
-            $this->addDivisionFamily(substr($d->buffer(), $d->pos(), $length));
+            $this->setWriteDivisionFamily(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 25:
@@ -3612,6 +3842,7 @@ namespace storage_onestore_v3 {
     }
     public function checkInitialized() {
       if (!isset($this->index_id)) return 'index_id';
+      if (!isset($this->write_division_family)) return 'write_division_family';
       return null;
     }
     public function mergeFrom($x) {
@@ -3619,8 +3850,8 @@ namespace storage_onestore_v3 {
       if ($x->hasIndexId()) {
         $this->setIndexId($x->getIndexId());
       }
-      foreach ($x->getDivisionFamilyList() as $v) {
-        $this->addDivisionFamily($v);
+      if ($x->hasWriteDivisionFamily()) {
+        $this->setWriteDivisionFamily($x->getWriteDivisionFamily());
       }
       if ($x->hasFingerprint1999()) {
         $this->setFingerprint1999($x->getFingerprint1999());
@@ -3633,10 +3864,8 @@ namespace storage_onestore_v3 {
       if ($x === $this) { return true; }
       if (isset($this->index_id) !== isset($x->index_id)) return false;
       if (isset($this->index_id) && !$this->integerEquals($this->index_id, $x->index_id)) return false;
-      if (sizeof($this->division_family) !== sizeof($x->division_family)) return false;
-      foreach (array_map(null, $this->division_family, $x->division_family) as $v) {
-        if ($v[0] !== $v[1]) return false;
-      }
+      if (isset($this->write_division_family) !== isset($x->write_division_family)) return false;
+      if (isset($this->write_division_family) && $this->write_division_family !== $x->write_division_family) return false;
       if (isset($this->fingerprint_1999) !== isset($x->fingerprint_1999)) return false;
       if (isset($this->fingerprint_1999) && !$this->integerEquals($this->fingerprint_1999, $x->fingerprint_1999)) return false;
       if (isset($this->fingerprint_2011) !== isset($x->fingerprint_2011)) return false;
@@ -3648,141 +3877,14 @@ namespace storage_onestore_v3 {
       if (isset($this->index_id)) {
         $res .= $prefix . "index_id: " . $this->debugFormatInt64($this->index_id) . "\n";
       }
-      foreach ($this->division_family as $value) {
-        $res .= $prefix . "division_family: " . $this->debugFormatString($value) . "\n";
+      if (isset($this->write_division_family)) {
+        $res .= $prefix . "write_division_family: " . $this->debugFormatString($this->write_division_family) . "\n";
       }
       if (isset($this->fingerprint_1999)) {
         $res .= $prefix . "fingerprint_1999: " . $this->debugFormatFixed64($this->fingerprint_1999) . "\n";
       }
       if (isset($this->fingerprint_2011)) {
         $res .= $prefix . "fingerprint_2011: " . $this->debugFormatFixed64($this->fingerprint_2011) . "\n";
-      }
-      return $res;
-    }
-  }
-}
-namespace storage_onestore_v3 {
-  class SearchIndexExternalId extends \google\net\ProtocolMessage {
-    public function getIndexId() {
-      if (!isset($this->index_id)) {
-        return "0";
-      }
-      return $this->index_id;
-    }
-    public function setIndexId($val) {
-      if (is_double($val)) {
-        $this->index_id = sprintf('%0.0F', $val);
-      } else {
-        $this->index_id = $val;
-      }
-      return $this;
-    }
-    public function clearIndexId() {
-      unset($this->index_id);
-      return $this;
-    }
-    public function hasIndexId() {
-      return isset($this->index_id);
-    }
-    public function getPrimaryKey() {
-      if (!isset($this->primary_key)) {
-        return new \storage_onestore_v3\Reference();
-      }
-      return $this->primary_key;
-    }
-    public function mutablePrimaryKey() {
-      if (!isset($this->primary_key)) {
-        $res = new \storage_onestore_v3\Reference();
-        $this->primary_key = $res;
-        return $res;
-      }
-      return $this->primary_key;
-    }
-    public function clearPrimaryKey() {
-      if (isset($this->primary_key)) {
-        unset($this->primary_key);
-      }
-    }
-    public function hasPrimaryKey() {
-      return isset($this->primary_key);
-    }
-    public function clear() {
-      $this->clearIndexId();
-      $this->clearPrimaryKey();
-    }
-    public function byteSizePartial() {
-      $res = 0;
-      if (isset($this->index_id)) {
-        $res += 1;
-        $res += $this->lengthVarInt64($this->index_id);
-      }
-      if (isset($this->primary_key)) {
-        $res += 1;
-        $res += $this->lengthString($this->primary_key->byteSizePartial());
-      }
-      return $res;
-    }
-    public function outputPartial($out) {
-      if (isset($this->index_id)) {
-        $out->putVarInt32(8);
-        $out->putVarInt64($this->index_id);
-      }
-      if (isset($this->primary_key)) {
-        $out->putVarInt32(18);
-        $out->putVarInt32($this->primary_key->byteSizePartial());
-        $this->primary_key->outputPartial($out);
-      }
-    }
-    public function tryMerge($d) {
-      while($d->avail() > 0) {
-        $tt = $d->getVarInt32();
-        switch ($tt) {
-          case 8:
-            $this->setIndexId($d->getVarInt64());
-            break;
-          case 18:
-            $length = $d->getVarInt32();
-            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
-            $d->skip($length);
-            $this->mutablePrimaryKey()->tryMerge($tmp);
-            break;
-          case 0:
-            throw new \google\net\ProtocolBufferDecodeError();
-            break;
-          default:
-            $d->skipData($tt);
-        }
-      };
-    }
-    public function checkInitialized() {
-      if (!isset($this->index_id)) return 'index_id';
-      if ((!isset($this->primary_key)) || (!$this->primary_key->isInitialized())) return 'primary_key';
-      return null;
-    }
-    public function mergeFrom($x) {
-      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
-      if ($x->hasIndexId()) {
-        $this->setIndexId($x->getIndexId());
-      }
-      if ($x->hasPrimaryKey()) {
-        $this->mutablePrimaryKey()->mergeFrom($x->getPrimaryKey());
-      }
-    }
-    public function equals($x) {
-      if ($x === $this) { return true; }
-      if (isset($this->index_id) !== isset($x->index_id)) return false;
-      if (isset($this->index_id) && !$this->integerEquals($this->index_id, $x->index_id)) return false;
-      if (isset($this->primary_key) !== isset($x->primary_key)) return false;
-      if (isset($this->primary_key) && !$this->primary_key->equals($x->primary_key)) return false;
-      return true;
-    }
-    public function shortDebugString($prefix = "") {
-      $res = '';
-      if (isset($this->index_id)) {
-        $res .= $prefix . "index_id: " . $this->debugFormatInt64($this->index_id) . "\n";
-      }
-      if (isset($this->primary_key)) {
-        $res .= $prefix . "primary_key <\n" . $this->primary_key->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }

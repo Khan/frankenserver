@@ -17,6 +17,7 @@
 /**
  */
 
+
 namespace google\appengine\api\app_identity;
 
 use google\appengine\AppIdentityServiceError\ErrorCode;
@@ -52,6 +53,8 @@ final class AppIdentityService {
   const PARTITION_SEPARATOR = "~";
   const DOMAIN_SEPARATOR = ":";
   const MEMCACHE_KEY_PREFIX = '_ah_app_identity_';
+  const EXPIRY_SAFETY_MARGIN_SECS = 300;  // To avoid any clock skew issues
+  const EXPIRY_SHORT_MARGIN_SECS = 60;
 
   /**
    * Signs arbitrary byte array using per app private key.
@@ -143,7 +146,7 @@ final class AppIdentityService {
 
   /**
    * Gets an OAuth2 access token for the application's service account from
-   * memcache or generates and caches one by calling
+   * the cache or generates and caches one by calling
    * getAccessTokenUncached($scopes)
    *
    * Each application has an associated Google account. This function returns
@@ -163,27 +166,25 @@ final class AppIdentityService {
    * 'expiration_time' - The expiration time for the access token.
    */
   public static function getAccessToken($scopes) {
-    $memcache_key = self::MEMCACHE_KEY_PREFIX . self::DOMAIN_SEPARATOR;
+    $cache_key = self::MEMCACHE_KEY_PREFIX . self::DOMAIN_SEPARATOR;
     if (is_string($scopes)) {
-       $memcache_key .= $scopes;
+       $cache_key .= $scopes;
     } else if (is_array($scopes)) {
-      $memcache_key .= implode(self::DOMAIN_SEPARATOR, $scopes);
+      $cache_key .= implode(self::DOMAIN_SEPARATOR, $scopes);
     } else {
       throw new \InvalidArgumentException(
           'Invalid scope ' . htmlspecialchars($scopes));
     }
 
-    $memcache = new \Memcache();
-    $result = $memcache->get($memcache_key);
+    $result = self::getTokenFromCache($cache_key);
 
     if ($result === false) {
       $result = self::getAccessTokenUncached($scopes);
 
-      // Cache in memcache allowing for 5 minute clock skew.
-      $memcache->set($memcache_key,
-                     $result,
-                     null,
-                     $result['expiration_time'] - 300);
+      // Cache the token.
+      self::putTokenInCache($cache_key,
+                            $result,
+                            $result['expiration_time']);
     }
     return $result;
   }
@@ -191,7 +192,7 @@ final class AppIdentityService {
   /**
    * Get an OAuth2 access token for the applications service account without
    * caching the result. Usually getAccessToken($scopes) should be used instead
-   * which calls this method and caches the result in memcache.
+   * which calls this method and caches the result.
    *
    * @param array $scopes The scopes to acquire the access token for.
    * Can be either a single string or an array of strings.
@@ -262,6 +263,95 @@ final class AppIdentityService {
   }
 
   /**
+   * Add an access token to the cache.
+   *
+   * @param string $name The name of the token to add to the cache.
+   * @param mixed $value An assoicative array containing the token and the
+   * expiration time.
+   * @param int $expiry_secs The unix time since epoch when the value should
+   * expire.
+   *
+   * @access private
+   */
+  private static function putTokenInCache($name, $value, $expiry_secs) {
+    $expiry_time_from_epoch = $expiry_secs - self::EXPIRY_SAFETY_MARGIN_SECS -
+        self::EXPIRY_SHORT_MARGIN_SECS;
+    $memcache = new \Memcache();
+    $memcache->set($name, $value, null, $expiry_time_from_epoch);
+    // Record the expiry time in the object being cached, so we can check it
+    // when read from APC.
+    self::putTokenInApc($name, $value, $expiry_secs);
+  }
+
+  /**
+   * Put an access token into the in process cache.
+   * @param string $name The name of the token to add to the cache.
+   * @param mixed $value An assoicative array containing the token and the
+   * expiration time.
+   * @param int $expiry_secs The unix time since epoch when the value should
+   * expire.
+   *
+   * @access private
+   */
+  private static function putTokenInApc($name, $value, $expiry_secs) {
+    $expiry_time_from_epoch = $expiry_secs - self::EXPIRY_SAFETY_MARGIN_SECS -
+        self::EXPIRY_SHORT_MARGIN_SECS;
+    $cache_ttl = self::getTTLForToken($expiry_time_from_epoch);
+    $value['eviction_time_epoch'] = $cache_ttl['eviction_time_epoch'];
+    apc_store($name, $value, $cache_ttl['apc_ttl_in_seconds']);
+  }
+
+  /**
+   * Retrieve an access token from the cache.
+   *
+   * @param $name String name of the token to retrieve.
+   *
+   * @return mixed The value of the token if it is stored in the cache,
+   * otherise false.
+   *
+   * @access private
+   */
+  private static function getTokenFromCache($name) {
+    $success = false;
+    $result = apc_fetch($name, $success);
+    if ($success && time() < $result['eviction_time_epoch']) {
+      unset($result['eviction_time_epoch']);
+      return $result;
+    }
+    $memcache = new \Memcache();
+    $result = $memcache->get($name);
+    // If there was a result in memcache but not in apc we can add using a
+    // short timeout.
+    if ($result !== false) {
+      self::putTokenInApc($name, $result, $result['expiration_time']);
+    }
+    return $result;
+  }
+
+  /**
+   * Calcualte the TTL for a cache token in APC. Will add some jitter to the
+   * cache time so that all tokens do not expire simultaneuosly, and will
+   * convert from unix time to number of seconds.
+   *
+   * @param int $cache_time The unix time that the token will expire.
+   * @returns mixed An associate array with the following keys:
+   * - 'eviction_time_epoch': Seconds from epoch that this item expires.
+   * - 'apc_ttl_in_seconds': Seconds from now when this item expires.
+   *
+   * @access private
+   */
+  private static function getTTLForToken($cache_time) {
+    // Add some jitter from the $cache_time so that all clones for an app
+    // do not expire the key at the same time.
+    $cache_time += rand(0, self::EXPIRY_SHORT_MARGIN_SECS);
+    // APC expects a TTL in seconds, $cache_time is seconds since epoch().
+    return [
+      'eviction_time_epoch' => $cache_time,
+      'apc_ttl_in_seconds' => $cache_time - time(),
+    ];
+  }
+
+  /**
    * Converts an application error to the service specific exception.
    *
    * @param ApplicationError $application_error The application error
@@ -273,17 +363,14 @@ final class AppIdentityService {
   private static function applicationErrorToException($application_error) {
     switch ($application_error->getApplicationError()) {
       case ErrorCode::UNKNOWN_SCOPE:
-        return new \InvalidArgumentException(
-          'An unknown scope was supplied.');
+        return new \InvalidArgumentException('An unknown scope was supplied.');
       case ErrorCode::BLOB_TOO_LARGE:
-        return new \InvalidArgumentException(
-          'The supplied blob was too long.');
+        return new \InvalidArgumentException('The supplied blob was too long.');
       case ErrorCode::DEADLINE_EXCEEDED:
         return new AppIdentityException(
           'The deadline for the call was exceeded.');
       case ErrorCode::NOT_A_VALID_APP:
-        return new AppIdentityException(
-          'The application is not valid.');
+        return new AppIdentityException('The application is not valid.');
       case ErrorCode::UNKNOWN_ERROR:
         return new AppIdentityException(
           'There was an unknown error using the AppIdentity service.');

@@ -58,7 +58,7 @@ class _HealthCheckState(object):
       self.consecutive_healthy_responses = 0
       self.consecutive_unhealthy_responses += 1
 
-  def __repr__(self):
+  def __str__(self):
     """Outputs the state in a readable way for logging."""
     tmpl = '{number} consecutive {state} responses.'
     if self.consecutive_healthy_responses:
@@ -67,13 +67,13 @@ class _HealthCheckState(object):
     else:
       number = self.consecutive_unhealthy_responses
       state = 'UNHEALTHY'
-    return tmpl.format(numer=number, state=state)
+    return tmpl.format(number=number, state=state)
 
 
 class HealthChecker(object):
   """A class to perform health checks for an instance.
 
-  This class uses the settings specified in appinfo.VmHealthCheck and the
+  This class uses the settings specified in appinfo.HealthCheck and the
   callback specified to check the health of the specified instance. When
   appropriate, this class changes the state of the specified instance so it is
   placed into or taken out of load balancing. This class will also use another
@@ -85,7 +85,7 @@ class HealthChecker(object):
 
     Args:
       instance: An instance.Instance object.
-      config: An appinfo.VmHealthCheck object.
+      config: An appinfo.HealthCheck object.
       send_request: A function to call that makes the health check request.
       restart: A function to call that restarts the instance.
     """
@@ -96,9 +96,10 @@ class HealthChecker(object):
 
   def start(self):
     """Starts the health checks."""
+    self._instance.set_health(False)
     logging.info('Health checks starting for instance %s.',
                  self._instance.instance_id)
-    loop = threading.Thread(target=self._loop)
+    loop = threading.Thread(target=self._loop, name='Health Check')
     loop.daemon = True
     loop.start()
 
@@ -108,13 +109,12 @@ class HealthChecker(object):
   def _loop(self):
     """Performs health checks and updates state over time."""
     state = _HealthCheckState()
-    self._instance.set_health(False)
     self._running = True
     while self._should_continue():
       logging.debug('Performing health check for instance %s.',
                     self._instance.instance_id)
       self._do_health_check(state)
-      logging.debug('Health check state for instance: %s: %r',
+      logging.debug('Health check state for instance: %s: %s',
                     self._instance.instance_id, state)
       time.sleep(self._config.check_interval_sec)
 
@@ -152,14 +152,14 @@ class HealthChecker(object):
     start_response = start_response_utils.CapturingStartResponse()
     try:
       response = self._send_request(start_response, is_last_successful)
-    except request_info.Error, e:
-      logging.warning('Health check failure for instance %s. Exception: %s',
-                      self._instance.instance_id, e)
+    except request_info.Error:
+      logging.warning('Health check for instance {instance} is not '
+                      'ready yet.'.format(instance=self._instance.instance_id))
       return False
     logging.debug('Health check response %s and status %s for instance %s.',
                   response, start_response.status, self._instance.instance_id)
 
-    return response == ['ok'] and start_response.status == '200 OK'
+    return start_response.status.split()[0] == '200'
 
   def _restart_instance(self):
     """Restarts the running instance, and stops the current health checker."""

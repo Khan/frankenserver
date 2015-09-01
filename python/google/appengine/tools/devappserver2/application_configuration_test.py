@@ -17,8 +17,10 @@
 """Tests for google.apphosting.tools.devappserver2.application_configuration."""
 
 
+
 import collections
 from contextlib import contextmanager
+import datetime
 import io
 import os.path
 import shutil
@@ -50,7 +52,7 @@ def _java_temporarily_supported():
   application_configuration.java_supported = old_java_supported
 
 
-_DEFAULT_HEALTH_CHECK = appinfo.VmHealthCheck(
+_DEFAULT_HEALTH_CHECK = appinfo.HealthCheck(
     enable_health_check=True,
     check_interval_sec=5,
     timeout_sec=4,
@@ -125,14 +127,14 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(['warmup'], config.inbound_services)
     self.assertEqual(env_variables, config.env_variables)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
-    self.assertEqual(_DEFAULT_HEALTH_CHECK, config.vm_health_check)
+    self.assertEqual(_DEFAULT_HEALTH_CHECK, config.health_check)
 
   def test_vm_app_yaml_configuration(self):
     manual_scaling = appinfo.ManualScaling()
     vm_settings = appinfo.VmSettings()
     vm_settings['vm_runtime'] = 'myawesomeruntime'
     vm_settings['forwarded_ports'] = '49111:49111,5002:49112,8000'
-    health_check = appinfo.VmHealthCheck()
+    health_check = appinfo.HealthCheck()
     health_check.enable_health_check = False
     info = appinfo.AppInfoExternal(
         application='app',
@@ -142,7 +144,7 @@ class TestModuleConfiguration(unittest.TestCase):
         vm_settings=vm_settings,
         threadsafe=False,
         manual_scaling=manual_scaling,
-        vm_health_check=health_check
+        health_check=health_check
     )
 
     appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
@@ -169,7 +171,104 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertFalse(config.threadsafe)
     self.assertEqual(manual_scaling, config.manual_scaling)
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
-    self.assertEqual(info.vm_health_check, config.vm_health_check)
+    self.assertEqual(info.health_check, config.health_check)
+
+  def test_vm_app_yaml_configuration_network(self):
+    manual_scaling = appinfo.ManualScaling()
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    network = appinfo.Network()
+    network.forwarded_ports = ['49111:49111', '5002:49112', 8000]
+    health_check = appinfo.HealthCheck()
+    health_check.enable_health_check = False
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+        health_check=health_check,
+        network=network
+    )
+
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+
+    self.mox.VerifyAll()
+    self.assertEqual(os.path.realpath('/appdir'), config.application_root)
+    self.assertEqual(os.path.realpath('/appdir/app.yaml'), config.config_path)
+    self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('dev', config.partition)
+    self.assertEqual('module1', config.module_name)
+    self.assertEqual('1', config.major_version)
+    self.assertRegexpMatches(config.version_id, r'module1:1\.\d+')
+    self.assertEqual('vm', config.runtime)
+    self.assertEqual(vm_settings['vm_runtime'], config.effective_runtime)
+    self.assertItemsEqual(
+        {49111: 49111, 5002: 49112, 8000: 8000},
+        config.forwarded_ports)
+    self.assertFalse(config.threadsafe)
+    self.assertEqual(manual_scaling, config.manual_scaling)
+    self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
+    self.assertEqual(info.health_check, config.health_check)
+
+  def test_vm_no_version(self):
+    manual_scaling = appinfo.ManualScaling()
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        runtime='vm',
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+    )
+
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.StubOutWithMock(application_configuration, 'generate_version_id')
+    application_configuration.generate_version_id().AndReturn(
+        'generated-version')
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+
+    self.mox.VerifyAll()
+    self.assertEqual(config.major_version, 'generated-version')
+
+  def test_vm_health_check_taken_into_account(self):
+    manual_scaling = appinfo.ManualScaling()
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    vm_settings['forwarded_ports'] = '49111:49111,5002:49112,8000'
+    vm_health_check = appinfo.VmHealthCheck(enable_health_check=False)
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+        vm_health_check=vm_health_check
+    )
+
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+
+    self.mox.VerifyAll()
+    # tests if it is not overriden from the defaults of health_check
+    self.assertIs(config.health_check.enable_health_check, False)
 
   def test_set_health_check_defaults(self):
     # Pass nothing in.
@@ -181,11 +280,11 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual(
         _DEFAULT_HEALTH_CHECK,
         application_configuration._set_health_check_defaults(
-            appinfo.VmHealthCheck()))
+            appinfo.HealthCheck()))
 
     # Override some.
-    health_check = appinfo.VmHealthCheck(restart_threshold=7,
-                                         healthy_threshold=4)
+    health_check = appinfo.HealthCheck(restart_threshold=7,
+                                       healthy_threshold=4)
     defaults_set = application_configuration._set_health_check_defaults(
         health_check)
 
@@ -678,14 +777,14 @@ class TestBackendConfiguration(unittest.TestCase):
                                                  max_pending_latency='2.0s',
                                                  min_idle_instances=1,
                                                  max_idle_instances=2)
-    vm_settings = appinfo.VmSettings()
-    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    beta_settings = appinfo.BetaSettings()
+    beta_settings['vm_runtime'] = 'myawesomeruntime'
     info = appinfo.AppInfoExternal(
         application='app',
         module='module1',
         version='1',
         runtime='vm',
-        vm_settings=vm_settings,
+        beta_settings=beta_settings,
         threadsafe=False,
         automatic_scaling=automatic_scaling,
     )
@@ -712,7 +811,7 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertEqual('1', config.major_version)
     self.assertRegexpMatches(config.version_id, r'static:1\.\d+')
     self.assertEqual('vm', config.runtime)
-    self.assertEqual(vm_settings['vm_runtime'], config.effective_runtime)
+    self.assertEqual(beta_settings['vm_runtime'], config.effective_runtime)
     self.assertFalse(config.threadsafe)
     # Resident backends are assigned manual scaling.
     self.assertEqual(None, config.automatic_scaling)
@@ -1146,6 +1245,16 @@ class TestApplicationConfiguration(unittest.TestCase):
     self.assertSequenceEqual(
         [module1_config, module2_config], config.modules)
     self.assertEqual(dispatch_config, config.dispatch)
+
+
+class GenerateVersionIdTest(unittest.TestCase):
+  """Tests the GenerateVersionId function."""
+
+  def test_generate_version_id(self):
+    datetime_getter = lambda: datetime.datetime(2014, 9, 18, 17, 31, 45, 92949)
+    generated_version = application_configuration.generate_version_id(
+        datetime_getter)
+    self.assertEqual(generated_version, '20140918t173145')
 
 
 if __name__ == '__main__':

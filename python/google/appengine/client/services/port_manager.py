@@ -17,13 +17,11 @@
 """A helper file with a helper class for opening ports."""
 
 import logging
-
-from google.appengine.client.services import vme_errors
+import re
 
 # These ports are used by our code or critical system daemons.
 RESERVED_HOST_PORTS = [22,  # SSH
                        5000,  # Docker registry
-                       8080,  # HTTP server
                        10000,  # For unlocking?
                        10001,  # Nanny stubby proxy endpoint
                       ]
@@ -33,48 +31,39 @@ RESERVED_DOCKER_PORTS = [22,  # SSH
                          10001,  # Nanny stubby proxy endpoint
                         ]
 
+PROTOCOL_RE = '^tcp|udp$'  # Matches only exactly tcp or udp.
 
-class InconsistentPortConfigurationError(vme_errors.PermanentAppError):
+
+class InconsistentPortConfigurationError(Exception):
   """The port is already in use."""
   pass
 
 
-class IllegalPortConfigurationError(vme_errors.PermanentAppError):
+class IllegalPortConfigurationError(Exception):
   """Raised if the port configuration is illegal."""
   pass
-
-
-def CreatePortManager(forwarded_ports):
-  """Construct a PortManager object with port forwarding configured.
-
-  Args:
-    forwarded_ports: A dictionary containing desired mappings from VM host port
-        to docker container port.
-
-  Returns:
-    The PortManager instance.
-  """
-  port_manager_obj = PortManager()
-  ports_list = forwarded_ports if forwarded_ports else []
-  logging.debug('setting forwarded ports %s', ports_list)
-  port_manager_obj.Add(ports_list, 'forwarded')
-  return port_manager_obj
 
 
 class PortManager(object):
   """A helper class for VmManager to deal with port mappings."""
 
   def __init__(self):
-    self.used_host_ports = {}
-    self.port_mappings = {}
+    self.used_host_ports = {'tcp': {},
+                            'udp': {}}
+    self._port_mappings = {'tcp': {},
+                           'udp': {}}
+    self._port_names = {}
 
-  def Add(self, ports, kind):
+  def Add(self, ports, kind, allow_privileged=False, prohibited_host_ports=()):
     """Load port configurations and adds them to an internal dict.
 
     Args:
       ports: A list of strings or a CSV representing port forwarding.
       kind: what kind of port configuration this is, only used for error
         reporting.
+      allow_privileged: Allow to bind to ports under 1024.
+      prohibited_host_ports: A list of ports that are used outside of
+        the container and may not be mapped to this port manager.
 
     Raises:
       InconsistentPortConfigurationError: If a port is configured to do
@@ -85,19 +74,38 @@ class PortManager(object):
     Returns:
       A dictionary with forwarding rules as external_port => local_port.
     """
+    if not ports:
+      # Obviously nothing to do.
+      return
+
+    if isinstance(ports, int):
+      ports = str(ports)
     if isinstance(ports, basestring):
       # split a csv
       ports = [port.strip() for port in ports.split(',')]
-    port_translations = {}
+    port_translations = {'tcp': {}, 'udp': {}}
     for port in ports:
       try:
+        if '/' in port:
+          tmp = port.split('/')
+          if len(tmp) != 2 or not re.match(PROTOCOL_RE, tmp[1].lower()):
+            raise IllegalPortConfigurationError(
+                '%r was not recognized as a valid port configuration.' % port)
+          port = tmp[0]
+          protocol = tmp[1].lower()
+        else:
+          protocol = 'tcp'  # This is the default.
         if ':' in port:
           host_port, docker_port = (int(p.strip()) for p in port.split(':'))
-          port_translations[host_port] = docker_port
+          port_translations[protocol][host_port] = docker_port
         else:
           host_port = int(port)
           docker_port = host_port
-          port_translations[host_port] = host_port
+          port_translations[protocol][host_port] = host_port
+        if host_port in prohibited_host_ports:
+          raise InconsistentPortConfigurationError(
+              'Configuration conflict, port %d cannot be used by the '
+              'application.' % host_port)
         if (host_port in self.used_host_ports and
             self.used_host_ports[host_port] != docker_port):
           raise InconsistentPortConfigurationError(
@@ -109,7 +117,7 @@ class PortManager(object):
           raise IllegalPortConfigurationError(
               'Failed to load %s port configuration: invalid port %s'
               % (kind, port))
-        if docker_port < 1024:
+        if docker_port < 1024 and not allow_privileged:
           raise IllegalPortConfigurationError(
               'Cannot listen on port %d as it is priviliged, use a forwarding '
               'port.' % docker_port)
@@ -127,7 +135,10 @@ class PortManager(object):
             'Failed to load %s port configuration: "%s" error: "%s"'
             % (kind, port, e))
     # At this point we know they are not destructive.
-    self.port_mappings.update(port_translations)
+    self._port_mappings['tcp'].update(port_translations['tcp'])
+    self._port_mappings['udp'].update(port_translations['udp'])
+    # TODO: This is a bit of a hack.
+    self._port_names[kind] = port_translations
     return port_translations
 
   def GetAllMappedPorts(self):
@@ -136,4 +147,45 @@ class PortManager(object):
     Returns:
       A dict of port mappings {host: docker}
     """
-    return self.port_mappings
+    return self._port_mappings
+
+  # TODO: look into moving this into a DockerManager.
+  def _BuildDockerPublishArgumentString(self):
+    """Generates a string of ports to expose to the Docker container.
+
+    Returns:
+      A string with --publish=host:docker pairs.
+    """
+    port_map = self.GetAllMappedPorts()
+    result = ''
+    for protocol in sorted(port_map):
+      for k, v in sorted(port_map[protocol].items()):
+        result += '--publish=%d:%s/%s ' % (k, v, protocol)
+    return result
+
+  def GetReplicaPoolParameters(self):
+    """Returns the contribution to the replica template."""
+    publish_ports = self._BuildDockerPublishArgumentString()
+    maps = {
+        'template': {
+            'vmParams': {
+                'metadata': {
+                    'items': [
+                        {'key': 'gae_publish_ports', 'value': publish_ports}
+                        ]
+                    }
+                }
+            }
+        }
+    return maps
+
+  def GetPortDict(self, name):
+    """Get the port translation dict.
+
+    Args:
+      name: Name used when adding the ports to port manager.
+
+    Returns:
+      A dict of mappings {protocol: {host: docker}}.
+    """
+    return self._port_names.get(name) or {'tcp': {}, 'udp': {}}

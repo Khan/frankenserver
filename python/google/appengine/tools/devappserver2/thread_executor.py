@@ -26,10 +26,12 @@ compared to the work being done.
 """
 
 
+
 import threading
 
 import google
 from concurrent import futures
+
 
 def _worker(future, fn, args, kwargs):
   if not future.set_running_or_notify_cancel():
@@ -45,6 +47,7 @@ def _worker(future, fn, args, kwargs):
 
 class ThreadExecutor(futures.Executor):
   """A thread-based executor that creates a new thread per work submission."""
+
   def __init__(self):
     """Initializes a new ThreadExecutor instance."""
     self._shutdown = False
@@ -56,7 +59,9 @@ class ThreadExecutor(futures.Executor):
         raise RuntimeError('cannot schedule new futures after shutdown')
 
     f = futures.Future()
-    t = threading.Thread(target=_worker, args=(f, fn, args, kwargs))
+    t = threading.Thread(
+        target=_worker, args=(f, fn, args, kwargs),
+        name='Executor for %s args=%s kwargs=%s' % (fn, args, kwargs))
     t.start()
     return f
   submit.__doc__ = futures.Executor.submit.__doc__

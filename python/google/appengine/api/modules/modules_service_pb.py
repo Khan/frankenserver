@@ -1736,30 +1736,25 @@ class GetHostnameResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_hostname_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: hostname not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.hostname_))
-    return n + 1
+    if (self.has_hostname_): n += 1 + self.lengthString(len(self.hostname_))
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_hostname_):
-      n += 1
-      n += self.lengthString(len(self.hostname_))
+    if (self.has_hostname_): n += 1 + self.lengthString(len(self.hostname_))
     return n
 
   def Clear(self):
     self.clear_hostname()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.hostname_)
+    if (self.has_hostname_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.hostname_)
 
   def OutputPartial(self, out):
     if (self.has_hostname_):

@@ -43,6 +43,7 @@ The namespace schemas are:
 
 
 
+
 import base64
 import calendar
 import datetime
@@ -63,12 +64,17 @@ from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import entity_v4_pb
 from google.appengine.datastore import sortable_pb_encoder
 
+if datastore_pbs._CLOUD_DATASTORE_ENABLED:
+  from google.appengine.datastore.datastore_pbs import googledatastore
 
 
 
 
 
-_MAX_STRING_LENGTH = 500
+
+
+_MAX_STRING_LENGTH = 1500
+
 
 
 
@@ -84,8 +90,7 @@ _MAX_LINK_PROPERTY_LENGTH = 2083
 
 
 
-
-_MAX_RAW_PROPERTY_BYTES = 1000 * 1000
+_MAX_RAW_PROPERTY_BYTES = 1048487
 
 
 
@@ -788,6 +793,10 @@ class _OverflowDateTime(long):
   """
   pass
 
+def _EmptyList(val):
+  if val is not None:
+    raise datastore_errors.BadValueError('value should be None.')
+  return []
 
 def _When(val):
   """Coverts a GD_WHEN value to the appropriate type."""
@@ -1378,6 +1387,10 @@ def ValidateStringLength(name, value, max_len):
   Raises:
     OverflowError if the value is larger than the maximum length.
   """
+
+  if isinstance(value, unicode):
+    value = value.encode('utf-8')
+
   if len(value) > max_len:
     raise datastore_errors.BadValueError(
       'Property %s is %d bytes long; it must be %d or less. '
@@ -1523,12 +1536,6 @@ def ValidateProperty(name, values, read_only=False):
 
   if values_type is not list:
     values = [values]
-
-
-  if not values:
-    raise datastore_errors.BadValueError(
-        'May not use the empty list as a property value; property %s is %s.' %
-        (name, repr(values)))
 
 
 
@@ -1743,7 +1750,15 @@ def ToPropertyPb(name, values):
   encoded_name = name.encode('utf-8')
 
   values_type = type(values)
-  if values_type is list:
+  if values_type is list and len(values) == 0:
+
+    pb = entity_pb.Property()
+    pb.set_meaning(entity_pb.Property.EMPTY_LIST)
+    pb.set_name(encoded_name)
+    pb.set_multiple(False)
+    pb.mutable_value()
+    return pb
+  elif values_type is list:
     multiple = True
   else:
     multiple = False
@@ -1817,6 +1832,7 @@ _PROPERTY_CONVERSIONS = {
   entity_pb.Property.BYTESTRING:        ByteString,
   entity_pb.Property.TEXT:              Text,
   entity_pb.Property.BLOBKEY:           BlobKey,
+  entity_pb.Property.EMPTY_LIST:        _EmptyList,
 }
 
 
@@ -2068,18 +2084,25 @@ def PropertyValueFromString(type_,
   return type_(value_string)
 
 
-def ReferenceToKeyValue(key):
+def ReferenceToKeyValue(key, id_resolver=None):
   """Converts a key into a comparable hashable "key" value.
 
   Args:
-    key: The entity_pb.Reference or entity_v4_pb.Key from which to construct
+    key: The entity_pb.Reference or googledatastore.Key from which to construct
         the key value.
-
+    id_resolver: An optional datastore_pbs.IdResolver. Only necessary for
+        googledatastore.Key values.
   Returns:
     A comparable and hashable representation of the given key that is
     compatible with one derived from a key property value.
   """
-  if isinstance(key, entity_v4_pb.Key):
+  if (datastore_pbs._CLOUD_DATASTORE_ENABLED
+      and isinstance(key, googledatastore.Key)):
+    v1_key = key
+    key = entity_pb.Reference()
+    datastore_pbs.get_entity_converter(id_resolver).v1_to_v3_reference(v1_key,
+                                                                       key)
+  elif isinstance(key, entity_v4_pb.Key):
     v4_key = key
     key = entity_pb.Reference()
     datastore_pbs.get_entity_converter().v4_to_v3_reference(v4_key, key)
@@ -2090,7 +2113,7 @@ def ReferenceToKeyValue(key):
     element_list = key.pathelement_list()
   else:
     raise datastore_errors.BadArgumentError(
-        "key arg expected to be entity_pb.Reference or entity_v4.Key (%r)"
+        "key arg expected to be entity_pb.Reference or googledatastore.Key (%r)"
         % (key,))
 
   result = [entity_pb.PropertyValue.kReferenceValueGroup,

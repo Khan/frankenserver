@@ -21,6 +21,7 @@
 """Constants and static functions to support protocol buffer wire format."""
 
 
+
 import struct
 from google.net.proto2.python.public import descriptor
 from google.net.proto2.python.public import message

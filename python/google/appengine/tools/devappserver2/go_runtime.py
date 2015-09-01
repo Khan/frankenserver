@@ -17,6 +17,7 @@
 """Serves content for "script" handlers using the Go runtime."""
 
 
+
 import logging
 import os
 import os.path
@@ -26,6 +27,8 @@ import threading
 from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import go_application
+from google.appengine.tools.devappserver2 import go_errors
+from google.appengine.tools.devappserver2 import go_managedvm
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
 
@@ -100,8 +103,15 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
     self._application_lock = threading.Lock()
-    self._go_application = go_application.GoApplication(
-        self._module_configuration)
+    if (module_configuration.runtime == 'vm' and
+        os.environ.get('GAE_LOCAL_VM_RUNTIME') != '0'):
+      self._start_process_flavor = http_runtime.START_PROCESS_REVERSE
+      self._go_application = go_managedvm.GoManagedVMApp(
+          self._module_configuration)
+    else:
+      self._start_process_flavor = http_runtime.START_PROCESS
+      self._go_application = go_application.GoApplication(
+          self._module_configuration)
     self._modified_since_last_build = False
     self._last_build_error = None
 
@@ -166,7 +176,7 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
           if self._last_build_error:
             logging.info('Go application successfully built.')
           self._last_build_error = None
-      except go_application.BuildError as e:
+      except go_errors.BuildError as e:
         logging.error('Failed to build Go application: %s', e)
         # Deploy a failure proxy now and each time a new instance is requested.
         self._last_build_error = e
@@ -177,11 +187,17 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
         logging.debug('Deploying new instance of failure proxy.')
         proxy = _GoBuildFailureRuntimeProxy(self._last_build_error)
       else:
+        environ = self._go_application.get_environment()
+        # Add in the environment settings from app_yaml "env_variables:"
+        runtime_config = self._runtime_config_getter()
+        for kv in runtime_config.environ:
+          environ[kv.key] = kv.value
         proxy = http_runtime.HttpRuntimeProxy(
-            self._go_application.go_executable,
+            [self._go_application.go_executable],
             instance_config_getter,
             self._module_configuration,
-            self._go_application.get_environment())
+            environ,
+            start_process_flavor=self._start_process_flavor)
 
     return instance.Instance(self.request_data,
                              instance_id,

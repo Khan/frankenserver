@@ -18,6 +18,10 @@
 
 
 
+
+
+
+
 import base64
 import json
 import logging
@@ -81,6 +85,9 @@ class ApiConfigManager(object):
     Args:
       body: A string, the JSON body of the getApiConfigs response.
     """
+
+
+
 
     try:
       response_obj = json.loads(body)
@@ -151,6 +158,12 @@ class ApiConfigManager(object):
         Returns:
           The score for the given path.
         """
+
+
+
+
+
+
 
         score = 0
         parts = path.split('/')

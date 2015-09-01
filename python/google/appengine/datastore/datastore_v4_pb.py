@@ -67,6 +67,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   CAPABILITY_DISABLED =    9
   TRY_ALTERNATE_BACKEND =   10
   SAFE_TIME_TOO_OLD =   11
+  RESOURCE_EXHAUSTED =   12
 
   _ErrorCode_NAMES = {
     1: "BAD_REQUEST",
@@ -80,6 +81,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
     9: "CAPABILITY_DISABLED",
     10: "TRY_ALTERNATE_BACKEND",
     11: "SAFE_TIME_TOO_OLD",
+    12: "RESOURCE_EXHAUSTED",
   }
 
   def ErrorCode_Name(cls, x): return cls._ErrorCode_NAMES.get(x, "")
@@ -177,7 +179,7 @@ class Error(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Error'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAF0ugGJNwonYXBwaG9zdGluZy9kYXRhc3RvcmUvZGF0YXN0b3JlX3Y0LnByb3RvEhdhcHBob3N0aW5nLmRhdGFzdG9yZS52NBokYXBwaG9zdGluZy9kYXRhc3RvcmUvZW50aXR5X3Y0LnByb3RvIosCCgVFcnJvciKBAgoJRXJyb3JDb2RlEg8KC0JBRF9SRVFVRVNUEAESGgoWQ09OQ1VSUkVOVF9UUkFOU0FDVElPThACEhIKDklOVEVSTkFMX0VSUk9SEAMSDgoKTkVFRF9JTkRFWBAEEgsKB1RJTUVPVVQQBRIVChFQRVJNSVNTSU9OX0RFTklFRBAGEhIKDkJJR1RBQkxFX0VSUk9SEAcSIAocQ09NTUlUVEVEX0JVVF9TVElMTF9BUFBMWUlORxAIEhcKE0NBUEFCSUxJVFlfRElTQUJMRUQQCRIZChVUUllfQUxURVJOQVRFX0JBQ0tFTkQQChIVChFTQUZFX1RJTUVfVE9PX09MRBALIpYBCgxFbnRpdHlSZXN1bHQSLwoGZW50aXR5GAEgAigLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5Eg8KB3ZlcnNpb24YAiABKAMSDgoGY3Vyc29yGAMgASgMIjQKClJlc3VsdFR5cGUSCAoERlVMTBABEg4KClBST0pFQ1RJT04QAhIMCghLRVlfT05MWRADIvECCgVRdWVyeRI/Cgpwcm9qZWN0aW9uGAIgAygLMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlFeHByZXNzaW9uEjUKBGtpbmQYAyADKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LaW5kRXhwcmVzc2lvbhIvCgZmaWx0ZXIYBCABKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5GaWx0ZXISNQoFb3JkZXIYBSADKAsyJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eU9yZGVyEjwKCGdyb3VwX2J5GAYgAygLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USFAoMc3RhcnRfY3Vyc29yGAcgASgMEhIKCmVuZF9jdXJzb3IYCCABKAwSEQoGb2Zmc2V0GAogASgFOgEwEg0KBWxpbWl0GAsgASgFIh4KDktpbmRFeHByZXNzaW9uEgwKBG5hbWUYASACKAkiIQoRUHJvcGVydHlSZWZlcmVuY2USDAoEbmFtZRgCIAIoCSLTAQoSUHJvcGVydHlFeHByZXNzaW9uEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USXQoUYWdncmVnYXRpb25fZnVuY3Rpb24YAiABKA4yPy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUV4cHJlc3Npb24uQWdncmVnYXRpb25GdW5jdGlvbiIgChNBZ2dyZWdhdGlvbkZ1bmN0aW9uEgkKBUZJUlNUEAEiyQEKDVByb3BlcnR5T3JkZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJOCglkaXJlY3Rpb24YAiABKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eU9yZGVyLkRpcmVjdGlvbjoJQVNDRU5ESU5HIioKCURpcmVjdGlvbhINCglBU0NFTkRJTkcQARIOCgpERVNDRU5ESU5HEAIipgIKBkZpbHRlchJCChBjb21wb3NpdGVfZmlsdGVyGAEgASgLMiguYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyEkAKD3Byb3BlcnR5X2ZpbHRlchgCIAEoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyEk0KFmJvdW5kaW5nX2NpcmNsZV9maWx0ZXIYAyABKAsyLS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Cb3VuZGluZ0NpcmNsZUZpbHRlchJHChNib3VuZGluZ19ib3hfZmlsdGVyGAQgASgLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQm91bmRpbmdCb3hGaWx0ZXIinAEKD0NvbXBvc2l0ZUZpbHRlchJDCghvcGVyYXRvchgBIAIoDjIxLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlci5PcGVyYXRvchIvCgZmaWx0ZXIYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5GaWx0ZXIiEwoIT3BlcmF0b3ISBwoDQU5EEAEivgIKDlByb3BlcnR5RmlsdGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USQgoIb3BlcmF0b3IYAiACKA4yMC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlci5PcGVyYXRvchItCgV2YWx1ZRgDIAIoCzIeLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlInsKCE9wZXJhdG9yEg0KCUxFU1NfVEhBThABEhYKEkxFU1NfVEhBTl9PUl9FUVVBTBACEhAKDEdSRUFURVJfVEhBThADEhkKFUdSRUFURVJfVEhBTl9PUl9FUVVBTBAEEgkKBUVRVUFMEAUSEAoMSEFTX0FOQ0VTVE9SEAsingEKFEJvdW5kaW5nQ2lyY2xlRmlsdGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USMQoGY2VudGVyGAIgAigLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR2VvUG9pbnQSFQoNcmFkaXVzX21ldGVycxgDIAIoASK9AQoRQm91bmRpbmdCb3hGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRI0Cglzb3V0aHdlc3QYAiACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludBI0Cglub3J0aGVhc3QYAyACKAsyIS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludCKwAQoIR3FsUXVlcnkSFAoMcXVlcnlfc3RyaW5nGAEgAigJEhwKDWFsbG93X2xpdGVyYWwYAiABKAg6BWZhbHNlEjYKCG5hbWVfYXJnGAMgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmcSOAoKbnVtYmVyX2FyZxgEIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnIloKC0dxbFF1ZXJ5QXJnEgwKBG5hbWUYASABKAkSLQoFdmFsdWUYAiABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIOCgZjdXJzb3IYAyABKAwiqQMKEFF1ZXJ5UmVzdWx0QmF0Y2gSTAoSZW50aXR5X3Jlc3VsdF90eXBlGAEgAigOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0LlJlc3VsdFR5cGUSPAoNZW50aXR5X3Jlc3VsdBgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIWCg5za2lwcGVkX2N1cnNvchgDIAEoDBISCgplbmRfY3Vyc29yGAQgASgMEk8KDG1vcmVfcmVzdWx0cxgFIAIoDjI5LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2guTW9yZVJlc3VsdHNUeXBlEhoKD3NraXBwZWRfcmVzdWx0cxgGIAEoBToBMBIYChBzbmFwc2hvdF92ZXJzaW9uGAcgASgDIlYKD01vcmVSZXN1bHRzVHlwZRIQCgxOT1RfRklOSVNIRUQQARIcChhNT1JFX1JFU1VMVFNfQUZURVJfTElNSVQQAhITCg9OT19NT1JFX1JFU1VMVFMQAyLyAQoITXV0YXRpb24SQAoCb3AYASABKA4yKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbi5PcGVyYXRpb246B1VOS05PV04SKQoDa2V5GAIgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei8KBmVudGl0eRgDIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eSJICglPcGVyYXRpb24SCwoHVU5LTk9XThAAEgoKBklOU0VSVBABEgoKBlVQREFURRACEgoKBlVQU0VSVBADEgoKBkRFTEVURRAEIlMKDk11dGF0aW9uUmVzdWx0EikKA2tleRgDIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCgtuZXdfdmVyc2lvbhgEIAEoAzoBMCKkAgoSRGVwcmVjYXRlZE11dGF0aW9uEi8KBnVwc2VydBgBIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIvCgZ1cGRhdGUYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGaW5zZXJ0GAMgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjcKDmluc2VydF9hdXRvX2lkGAQgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EiwKBmRlbGV0ZRgFIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIUCgVmb3JjZRgGIAEoCDoFZmFsc2Ui6wEKGERlcHJlY2F0ZWRNdXRhdGlvblJlc3VsdBIVCg1pbmRleF91cGRhdGVzGAEgAigFEjgKEmluc2VydF9hdXRvX2lkX2tleRgCIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCg51cHNlcnRfdmVyc2lvbhgDIAMoAxIWCg51cGRhdGVfdmVyc2lvbhgEIAMoAxIWCg5pbnNlcnRfdmVyc2lvbhgFIAMoAxIeChZpbnNlcnRfYXV0b19pZF92ZXJzaW9uGAYgAygDEhYKDmRlbGV0ZV92ZXJzaW9uGAcgAygDIrUBCgtSZWFkT3B0aW9ucxJXChByZWFkX2NvbnNpc3RlbmN5GAEgASgOMjQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMuUmVhZENvbnNpc3RlbmN5OgdERUZBVUxUEhMKC3RyYW5zYWN0aW9uGAIgASgMIjgKD1JlYWRDb25zaXN0ZW5jeRILCgdERUZBVUxUEAASCgoGU1RST05HEAESDAoIRVZFTlRVQUwQAiJ2Cg1Mb29rdXBSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEikKA2tleRgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKuAQoOTG9va3VwUmVzcG9uc2USNAoFZm91bmQYASADKAsyJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQSNgoHbWlzc2luZxgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIuCghkZWZlcnJlZBgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKrAgoPUnVuUXVlcnlSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEjoKDHBhcnRpdGlvbl9pZBgCIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkEi0KBXF1ZXJ5GAMgASgLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnkSNAoJZ3FsX3F1ZXJ5GAcgASgLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnkSHQoVbWluX3NhZmVfdGltZV9zZWNvbmRzGAQgASgDEhwKFHN1Z2dlc3RlZF9iYXRjaF9zaXplGAUgASgFImIKEFJ1blF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoEhQKDHF1ZXJ5X2hhbmRsZRgCIAEoDCIsChRDb250aW51ZVF1ZXJ5UmVxdWVzdBIUCgxxdWVyeV9oYW5kbGUYASACKAwiUQoVQ29udGludWVRdWVyeVJlc3BvbnNlEjgKBWJhdGNoGAEgAigLMikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaCJTChdCZWdpblRyYW5zYWN0aW9uUmVxdWVzdBIaCgtjcm9zc19ncm91cBgBIAEoCDoFZmFsc2USHAoNY3Jvc3NfcmVxdWVzdBgCIAEoCDoFZmFsc2UiLwoYQmVnaW5UcmFuc2FjdGlvblJlc3BvbnNlEhMKC3RyYW5zYWN0aW9uGAEgAigMIiYKD1JvbGxiYWNrUmVxdWVzdBITCgt0cmFuc2FjdGlvbhgBIAIoDCISChBSb2xsYmFja1Jlc3BvbnNlIsACCg1Db21taXRSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgASgMEjMKCG11dGF0aW9uGAUgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24SSAoTZGVwcmVjYXRlZF9tdXRhdGlvbhgCIAEoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvbhJICgRtb2RlGAQgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdC5Nb2RlOg1UUkFOU0FDVElPTkFMEh8KEGlnbm9yZV9yZWFkX29ubHkYBiABKAg6BWZhbHNlIjAKBE1vZGUSEQoNVFJBTlNBQ1RJT05BTBABEhUKEU5PTl9UUkFOU0FDVElPTkFMEAIiwAEKDkNvbW1pdFJlc3BvbnNlEkAKD211dGF0aW9uX3Jlc3VsdBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uUmVzdWx0ElUKGmRlcHJlY2F0ZWRfbXV0YXRpb25fcmVzdWx0GAEgASgLMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYBCABKAUicwoSQWxsb2NhdGVJZHNSZXF1ZXN0Ei4KCGFsbG9jYXRlGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei0KB3Jlc2VydmUYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiRgoTQWxsb2NhdGVJZHNSZXNwb25zZRIvCglhbGxvY2F0ZWQYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiWAoMV3JpdGVSZXF1ZXN0EkgKE2RlcHJlY2F0ZWRfbXV0YXRpb24YASACKAsyKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5EZXByZWNhdGVkTXV0YXRpb24yogcKEkRhdGFzdG9yZVY0U2VydmljZRJ5ChBCZWdpblRyYW5zYWN0aW9uEjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QaMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVzcG9uc2UiABJhCghSb2xsYmFjaxIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVzcG9uc2UiABJbCgZDb21taXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiABJhCghSdW5RdWVyeRIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVzcG9uc2UiABJwCg1Db250aW51ZVF1ZXJ5Ei0uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlcXVlc3QaLi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVzcG9uc2UiABJbCgZMb29rdXASJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJqCgtBbGxvY2F0ZUlkcxIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVxdWVzdBosLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVzcG9uc2UiABJYCgNHZXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJZCgVXcml0ZRIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LldyaXRlUmVxdWVzdBonLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbW1pdFJlc3BvbnNlIgBCIwofY29tLmdvb2dsZS5hcHBob3N0aW5nLmRhdGFzdG9yZSAB"))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9yc3oJRXJyb3JDb2RliwGSAQtCQURfUkVRVUVTVJgBAYwBiwGSARZDT05DVVJSRU5UX1RSQU5TQUNUSU9OmAECjAGLAZIBDklOVEVSTkFMX0VSUk9SmAEDjAGLAZIBCk5FRURfSU5ERViYAQSMAYsBkgEHVElNRU9VVJgBBYwBiwGSARFQRVJNSVNTSU9OX0RFTklFRJgBBowBiwGSAQ5CSUdUQUJMRV9FUlJPUpgBB4wBiwGSARxDT01NSVRURURfQlVUX1NUSUxMX0FQUExZSU5HmAEIjAGLAZIBE0NBUEFCSUxJVFlfRElTQUJMRUSYAQmMAYsBkgEVVFJZX0FMVEVSTkFURV9CQUNLRU5EmAEKjAGLAZIBEVNBRkVfVElNRV9UT09fT0xEmAELjAGLAZIBElJFU09VUkNFX0VYSEFVU1RFRJgBDIwBdLoBmTEKJ2FwcGhvc3RpbmcvZGF0YXN0b3JlL2RhdGFzdG9yZV92NC5wcm90bxIXYXBwaG9zdGluZy5kYXRhc3RvcmUudjQaJGFwcGhvc3RpbmcvZGF0YXN0b3JlL2VudGl0eV92NC5wcm90byKjAgoFRXJyb3IimQIKCUVycm9yQ29kZRIPCgtCQURfUkVRVUVTVBABEhoKFkNPTkNVUlJFTlRfVFJBTlNBQ1RJT04QAhISCg5JTlRFUk5BTF9FUlJPUhADEg4KCk5FRURfSU5ERVgQBBILCgdUSU1FT1VUEAUSFQoRUEVSTUlTU0lPTl9ERU5JRUQQBhISCg5CSUdUQUJMRV9FUlJPUhAHEiAKHENPTU1JVFRFRF9CVVRfU1RJTExfQVBQTFlJTkcQCBIXChNDQVBBQklMSVRZX0RJU0FCTEVEEAkSGQoVVFJZX0FMVEVSTkFURV9CQUNLRU5EEAoSFQoRU0FGRV9USU1FX1RPT19PTEQQCxIWChJSRVNPVVJDRV9FWEhBVVNURUQQDCKWAQoMRW50aXR5UmVzdWx0Ei8KBmVudGl0eRgBIAIoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIPCgd2ZXJzaW9uGAIgASgDEg4KBmN1cnNvchgDIAEoDCI0CgpSZXN1bHRUeXBlEggKBEZVTEwQARIOCgpQUk9KRUNUSU9OEAISDAoIS0VZX09OTFkQAyLxAgoFUXVlcnkSPwoKcHJvamVjdGlvbhgCIAMoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RXhwcmVzc2lvbhI1CgRraW5kGAMgAygLMicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2luZEV4cHJlc3Npb24SLwoGZmlsdGVyGAQgASgLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRmlsdGVyEjUKBW9yZGVyGAUgAygLMiYuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlchI8Cghncm91cF9ieRgGIAMoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEhQKDHN0YXJ0X2N1cnNvchgHIAEoDBISCgplbmRfY3Vyc29yGAggASgMEhEKBm9mZnNldBgKIAEoBToBMBINCgVsaW1pdBgLIAEoBSIeCg5LaW5kRXhwcmVzc2lvbhIMCgRuYW1lGAEgAigJIiEKEVByb3BlcnR5UmVmZXJlbmNlEgwKBG5hbWUYAiACKAki0wEKElByb3BlcnR5RXhwcmVzc2lvbhI8Cghwcm9wZXJ0eRgBIAIoCzIqLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5UmVmZXJlbmNlEl0KFGFnZ3JlZ2F0aW9uX2Z1bmN0aW9uGAIgASgOMj8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlFeHByZXNzaW9uLkFnZ3JlZ2F0aW9uRnVuY3Rpb24iIAoTQWdncmVnYXRpb25GdW5jdGlvbhIJCgVGSVJTVBABIskBCg1Qcm9wZXJ0eU9yZGVyEjwKCHByb3BlcnR5GAEgAigLMiouYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2USTgoJZGlyZWN0aW9uGAIgASgOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlPcmRlci5EaXJlY3Rpb246CUFTQ0VORElORyIqCglEaXJlY3Rpb24SDQoJQVNDRU5ESU5HEAESDgoKREVTQ0VORElORxACIo4BCgZGaWx0ZXISQgoQY29tcG9zaXRlX2ZpbHRlchgBIAEoCzIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkNvbXBvc2l0ZUZpbHRlchJACg9wcm9wZXJ0eV9maWx0ZXIYAiABKAsyJy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlciKcAQoPQ29tcG9zaXRlRmlsdGVyEkMKCG9wZXJhdG9yGAEgAigOMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyLk9wZXJhdG9yEi8KBmZpbHRlchgCIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlciITCghPcGVyYXRvchIHCgNBTkQQASK+AgoOUHJvcGVydHlGaWx0ZXISPAoIcHJvcGVydHkYASACKAsyKi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eVJlZmVyZW5jZRJCCghvcGVyYXRvchgCIAIoDjIwLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyLk9wZXJhdG9yEi0KBXZhbHVlGAMgAigLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuVmFsdWUiewoIT3BlcmF0b3ISDQoJTEVTU19USEFOEAESFgoSTEVTU19USEFOX09SX0VRVUFMEAISEAoMR1JFQVRFUl9USEFOEAMSGQoVR1JFQVRFUl9USEFOX09SX0VRVUFMEAQSCQoFRVFVQUwQBRIQCgxIQVNfQU5DRVNUT1IQCyKwAQoIR3FsUXVlcnkSFAoMcXVlcnlfc3RyaW5nGAEgAigJEhwKDWFsbG93X2xpdGVyYWwYAiABKAg6BWZhbHNlEjYKCG5hbWVfYXJnGAMgAygLMiQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnlBcmcSOAoKbnVtYmVyX2FyZxgEIAMoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkdxbFF1ZXJ5QXJnIloKC0dxbFF1ZXJ5QXJnEgwKBG5hbWUYASABKAkSLQoFdmFsdWUYAiABKAsyHi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5WYWx1ZRIOCgZjdXJzb3IYAyABKAwiqQMKEFF1ZXJ5UmVzdWx0QmF0Y2gSTAoSZW50aXR5X3Jlc3VsdF90eXBlGAEgAigOMjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5UmVzdWx0LlJlc3VsdFR5cGUSPAoNZW50aXR5X3Jlc3VsdBgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIWCg5za2lwcGVkX2N1cnNvchgDIAEoDBISCgplbmRfY3Vyc29yGAQgASgMEk8KDG1vcmVfcmVzdWx0cxgFIAIoDjI5LmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlF1ZXJ5UmVzdWx0QmF0Y2guTW9yZVJlc3VsdHNUeXBlEhoKD3NraXBwZWRfcmVzdWx0cxgGIAEoBToBMBIYChBzbmFwc2hvdF92ZXJzaW9uGAcgASgDIlYKD01vcmVSZXN1bHRzVHlwZRIQCgxOT1RfRklOSVNIRUQQARIcChhNT1JFX1JFU1VMVFNfQUZURVJfTElNSVQQAhITCg9OT19NT1JFX1JFU1VMVFMQAyLyAQoITXV0YXRpb24SQAoCb3AYASABKA4yKy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5NdXRhdGlvbi5PcGVyYXRpb246B1VOS05PV04SKQoDa2V5GAIgASgLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei8KBmVudGl0eRgDIAEoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eSJICglPcGVyYXRpb24SCwoHVU5LTk9XThAAEgoKBklOU0VSVBABEgoKBlVQREFURRACEgoKBlVQU0VSVBADEgoKBkRFTEVURRAEIlMKDk11dGF0aW9uUmVzdWx0EikKA2tleRgDIAEoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCgtuZXdfdmVyc2lvbhgEIAEoAzoBMCKkAgoSRGVwcmVjYXRlZE11dGF0aW9uEi8KBnVwc2VydBgBIAMoCzIfLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eRIvCgZ1cGRhdGUYAiADKAsyHy5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHkSLwoGaW5zZXJ0GAMgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EjcKDmluc2VydF9hdXRvX2lkGAQgAygLMh8uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRW50aXR5EiwKBmRlbGV0ZRgFIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIUCgVmb3JjZRgGIAEoCDoFZmFsc2Ui6wEKGERlcHJlY2F0ZWRNdXRhdGlvblJlc3VsdBIVCg1pbmRleF91cGRhdGVzGAEgAigFEjgKEmluc2VydF9hdXRvX2lkX2tleRgCIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleRIWCg51cHNlcnRfdmVyc2lvbhgDIAMoAxIWCg51cGRhdGVfdmVyc2lvbhgEIAMoAxIWCg5pbnNlcnRfdmVyc2lvbhgFIAMoAxIeChZpbnNlcnRfYXV0b19pZF92ZXJzaW9uGAYgAygDEhYKDmRlbGV0ZV92ZXJzaW9uGAcgAygDIrUBCgtSZWFkT3B0aW9ucxJXChByZWFkX2NvbnNpc3RlbmN5GAEgASgOMjQuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUmVhZE9wdGlvbnMuUmVhZENvbnNpc3RlbmN5OgdERUZBVUxUEhMKC3RyYW5zYWN0aW9uGAIgASgMIjgKD1JlYWRDb25zaXN0ZW5jeRILCgdERUZBVUxUEAASCgoGU1RST05HEAESDAoIRVZFTlRVQUwQAiJ2Cg1Mb29rdXBSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEikKA2tleRgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKuAQoOTG9va3VwUmVzcG9uc2USNAoFZm91bmQYASADKAsyJS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FbnRpdHlSZXN1bHQSNgoHbWlzc2luZxgCIAMoCzIlLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVudGl0eVJlc3VsdBIuCghkZWZlcnJlZBgDIAMoCzIcLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LktleSKrAgoPUnVuUXVlcnlSZXF1ZXN0EjoKDHJlYWRfb3B0aW9ucxgBIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJlYWRPcHRpb25zEjoKDHBhcnRpdGlvbl9pZBgCIAEoCzIkLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlBhcnRpdGlvbklkEi0KBXF1ZXJ5GAMgASgLMh4uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnkSNAoJZ3FsX3F1ZXJ5GAcgASgLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuR3FsUXVlcnkSHQoVbWluX3NhZmVfdGltZV9zZWNvbmRzGAQgASgDEhwKFHN1Z2dlc3RlZF9iYXRjaF9zaXplGAUgASgFImIKEFJ1blF1ZXJ5UmVzcG9uc2USOAoFYmF0Y2gYASACKAsyKS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5RdWVyeVJlc3VsdEJhdGNoEhQKDHF1ZXJ5X2hhbmRsZRgCIAEoDCIsChRDb250aW51ZVF1ZXJ5UmVxdWVzdBIUCgxxdWVyeV9oYW5kbGUYASACKAwiUQoVQ29udGludWVRdWVyeVJlc3BvbnNlEjgKBWJhdGNoGAEgAigLMikuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUXVlcnlSZXN1bHRCYXRjaCJTChdCZWdpblRyYW5zYWN0aW9uUmVxdWVzdBIaCgtjcm9zc19ncm91cBgBIAEoCDoFZmFsc2USHAoNY3Jvc3NfcmVxdWVzdBgCIAEoCDoFZmFsc2UiLwoYQmVnaW5UcmFuc2FjdGlvblJlc3BvbnNlEhMKC3RyYW5zYWN0aW9uGAEgAigMIiYKD1JvbGxiYWNrUmVxdWVzdBITCgt0cmFuc2FjdGlvbhgBIAIoDCISChBSb2xsYmFja1Jlc3BvbnNlIsACCg1Db21taXRSZXF1ZXN0EhMKC3RyYW5zYWN0aW9uGAEgASgMEjMKCG11dGF0aW9uGAUgAygLMiEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTXV0YXRpb24SSAoTZGVwcmVjYXRlZF9tdXRhdGlvbhgCIAEoCzIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkRlcHJlY2F0ZWRNdXRhdGlvbhJICgRtb2RlGAQgASgOMisuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVxdWVzdC5Nb2RlOg1UUkFOU0FDVElPTkFMEh8KEGlnbm9yZV9yZWFkX29ubHkYBiABKAg6BWZhbHNlIjAKBE1vZGUSEQoNVFJBTlNBQ1RJT05BTBABEhUKEU5PTl9UUkFOU0FDVElPTkFMEAIiwAEKDkNvbW1pdFJlc3BvbnNlEkAKD211dGF0aW9uX3Jlc3VsdBgDIAMoCzInLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lk11dGF0aW9uUmVzdWx0ElUKGmRlcHJlY2F0ZWRfbXV0YXRpb25fcmVzdWx0GAEgASgLMjEuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uUmVzdWx0EhUKDWluZGV4X3VwZGF0ZXMYBCABKAUicwoSQWxsb2NhdGVJZHNSZXF1ZXN0Ei4KCGFsbG9jYXRlGAEgAygLMhwuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuS2V5Ei0KB3Jlc2VydmUYAiADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXkiRgoTQWxsb2NhdGVJZHNSZXNwb25zZRIvCglhbGxvY2F0ZWQYASADKAsyHC5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5LZXky7QUKEkRhdGFzdG9yZVY0U2VydmljZRJ5ChBCZWdpblRyYW5zYWN0aW9uEjAuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQmVnaW5UcmFuc2FjdGlvblJlcXVlc3QaMS5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5CZWdpblRyYW5zYWN0aW9uUmVzcG9uc2UiABJhCghSb2xsYmFjaxIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJvbGxiYWNrUmVzcG9uc2UiABJbCgZDb21taXQSJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db21taXRSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tbWl0UmVzcG9uc2UiABJhCghSdW5RdWVyeRIoLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVxdWVzdBopLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlJ1blF1ZXJ5UmVzcG9uc2UiABJwCg1Db250aW51ZVF1ZXJ5Ei0uYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29udGludWVRdWVyeVJlcXVlc3QaLi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Db250aW51ZVF1ZXJ5UmVzcG9uc2UiABJbCgZMb29rdXASJi5hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Mb29rdXBSZXF1ZXN0GicuYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuTG9va3VwUmVzcG9uc2UiABJqCgtBbGxvY2F0ZUlkcxIrLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVxdWVzdBosLmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkFsbG9jYXRlSWRzUmVzcG9uc2UiAEIjCh9jb20uZ29vZ2xlLmFwcGhvc3RpbmcuZGF0YXN0b3JlIAE="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -1531,10 +1533,6 @@ class Filter(ProtocolBuffer.ProtocolMessage):
   composite_filter_ = None
   has_property_filter_ = 0
   property_filter_ = None
-  has_bounding_circle_filter_ = 0
-  bounding_circle_filter_ = None
-  has_bounding_box_filter_ = 0
-  bounding_box_filter_ = None
 
   def __init__(self, contents=None):
     self.lazy_init_lock_ = thread.allocate_lock()
@@ -1578,51 +1576,11 @@ class Filter(ProtocolBuffer.ProtocolMessage):
 
   def has_property_filter(self): return self.has_property_filter_
 
-  def bounding_circle_filter(self):
-    if self.bounding_circle_filter_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.bounding_circle_filter_ is None: self.bounding_circle_filter_ = BoundingCircleFilter()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.bounding_circle_filter_
-
-  def mutable_bounding_circle_filter(self): self.has_bounding_circle_filter_ = 1; return self.bounding_circle_filter()
-
-  def clear_bounding_circle_filter(self):
-
-    if self.has_bounding_circle_filter_:
-      self.has_bounding_circle_filter_ = 0;
-      if self.bounding_circle_filter_ is not None: self.bounding_circle_filter_.Clear()
-
-  def has_bounding_circle_filter(self): return self.has_bounding_circle_filter_
-
-  def bounding_box_filter(self):
-    if self.bounding_box_filter_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.bounding_box_filter_ is None: self.bounding_box_filter_ = BoundingBoxFilter()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.bounding_box_filter_
-
-  def mutable_bounding_box_filter(self): self.has_bounding_box_filter_ = 1; return self.bounding_box_filter()
-
-  def clear_bounding_box_filter(self):
-
-    if self.has_bounding_box_filter_:
-      self.has_bounding_box_filter_ = 0;
-      if self.bounding_box_filter_ is not None: self.bounding_box_filter_.Clear()
-
-  def has_bounding_box_filter(self): return self.has_bounding_box_filter_
-
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_composite_filter()): self.mutable_composite_filter().MergeFrom(x.composite_filter())
     if (x.has_property_filter()): self.mutable_property_filter().MergeFrom(x.property_filter())
-    if (x.has_bounding_circle_filter()): self.mutable_bounding_circle_filter().MergeFrom(x.bounding_circle_filter())
-    if (x.has_bounding_box_filter()): self.mutable_bounding_box_filter().MergeFrom(x.bounding_box_filter())
 
   if _net_proto___parse__python is not None:
     def _CMergeFromString(self, s):
@@ -1657,41 +1615,29 @@ class Filter(ProtocolBuffer.ProtocolMessage):
     if self.has_composite_filter_ and self.composite_filter_ != x.composite_filter_: return 0
     if self.has_property_filter_ != x.has_property_filter_: return 0
     if self.has_property_filter_ and self.property_filter_ != x.property_filter_: return 0
-    if self.has_bounding_circle_filter_ != x.has_bounding_circle_filter_: return 0
-    if self.has_bounding_circle_filter_ and self.bounding_circle_filter_ != x.bounding_circle_filter_: return 0
-    if self.has_bounding_box_filter_ != x.has_bounding_box_filter_: return 0
-    if self.has_bounding_box_filter_ and self.bounding_box_filter_ != x.bounding_box_filter_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_composite_filter_ and not self.composite_filter_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_property_filter_ and not self.property_filter_.IsInitialized(debug_strs)): initialized = 0
-    if (self.has_bounding_circle_filter_ and not self.bounding_circle_filter_.IsInitialized(debug_strs)): initialized = 0
-    if (self.has_bounding_box_filter_ and not self.bounding_box_filter_.IsInitialized(debug_strs)): initialized = 0
     return initialized
 
   def ByteSize(self):
     n = 0
     if (self.has_composite_filter_): n += 1 + self.lengthString(self.composite_filter_.ByteSize())
     if (self.has_property_filter_): n += 1 + self.lengthString(self.property_filter_.ByteSize())
-    if (self.has_bounding_circle_filter_): n += 1 + self.lengthString(self.bounding_circle_filter_.ByteSize())
-    if (self.has_bounding_box_filter_): n += 1 + self.lengthString(self.bounding_box_filter_.ByteSize())
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_composite_filter_): n += 1 + self.lengthString(self.composite_filter_.ByteSizePartial())
     if (self.has_property_filter_): n += 1 + self.lengthString(self.property_filter_.ByteSizePartial())
-    if (self.has_bounding_circle_filter_): n += 1 + self.lengthString(self.bounding_circle_filter_.ByteSizePartial())
-    if (self.has_bounding_box_filter_): n += 1 + self.lengthString(self.bounding_box_filter_.ByteSizePartial())
     return n
 
   def Clear(self):
     self.clear_composite_filter()
     self.clear_property_filter()
-    self.clear_bounding_circle_filter()
-    self.clear_bounding_box_filter()
 
   def OutputUnchecked(self, out):
     if (self.has_composite_filter_):
@@ -1702,14 +1648,6 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.property_filter_.ByteSize())
       self.property_filter_.OutputUnchecked(out)
-    if (self.has_bounding_circle_filter_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.bounding_circle_filter_.ByteSize())
-      self.bounding_circle_filter_.OutputUnchecked(out)
-    if (self.has_bounding_box_filter_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.bounding_box_filter_.ByteSize())
-      self.bounding_box_filter_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_composite_filter_):
@@ -1720,14 +1658,6 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.property_filter_.ByteSizePartial())
       self.property_filter_.OutputPartial(out)
-    if (self.has_bounding_circle_filter_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.bounding_circle_filter_.ByteSizePartial())
-      self.bounding_circle_filter_.OutputPartial(out)
-    if (self.has_bounding_box_filter_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.bounding_box_filter_.ByteSizePartial())
-      self.bounding_box_filter_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1743,18 +1673,6 @@ class Filter(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_property_filter().TryMerge(tmp)
-        continue
-      if tt == 26:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_bounding_circle_filter().TryMerge(tmp)
-        continue
-      if tt == 34:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_bounding_box_filter().TryMerge(tmp)
         continue
 
 
@@ -1772,14 +1690,6 @@ class Filter(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"property_filter <\n"
       res+=self.property_filter_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
-    if self.has_bounding_circle_filter_:
-      res+=prefix+"bounding_circle_filter <\n"
-      res+=self.bounding_circle_filter_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_bounding_box_filter_:
-      res+=prefix+"bounding_box_filter <\n"
-      res+=self.bounding_box_filter_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     return res
 
 
@@ -1788,31 +1698,25 @@ class Filter(ProtocolBuffer.ProtocolMessage):
 
   kcomposite_filter = 1
   kproperty_filter = 2
-  kbounding_circle_filter = 3
-  kbounding_box_filter = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "composite_filter",
     2: "property_filter",
-    3: "bounding_circle_filter",
-    4: "bounding_box_filter",
-  }, 4)
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-    4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.Filter'
   _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchMaEGNvbXBvc2l0ZV9maWx0ZXIgASgCMAs4AUonYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaD3Byb3BlcnR5X2ZpbHRlciACKAIwCzgBSiZhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlcqMBqgEFY3R5cGWyAQZwcm90bzKkARQTGhZib3VuZGluZ19jaXJjbGVfZmlsdGVyIAMoAjALOAFKLGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaE2JvdW5kaW5nX2JveF9maWx0ZXIgBCgCMAs4AUopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQm91bmRpbmdCb3hGaWx0ZXKjAaoBBWN0eXBlsgEGcHJvdG8ypAEUwgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
+  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KHmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkZpbHRlchMaEGNvbXBvc2l0ZV9maWx0ZXIgASgCMAs4AUonYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuQ29tcG9zaXRlRmlsdGVyowGqAQVjdHlwZbIBBnByb3RvMqQBFBMaD3Byb3BlcnR5X2ZpbHRlciACKAIwCzgBSiZhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5Qcm9wZXJ0eUZpbHRlcqMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -2250,446 +2154,6 @@ class PropertyFilter(ProtocolBuffer.ProtocolMessage):
   _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.PropertyFilter'
   _SERIALIZED_DESCRIPTOR = array.array('B')
   _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJmFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlByb3BlcnR5RmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoIb3BlcmF0b3IgAigAMAU4AmgAFBMaBXZhbHVlIAMoAjALOAJKHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LlZhbHVlowGqAQVjdHlwZbIBBnByb3RvMqQBFHN6CE9wZXJhdG9yiwGSAQlMRVNTX1RIQU6YAQGMAYsBkgESTEVTU19USEFOX09SX0VRVUFMmAECjAGLAZIBDEdSRUFURVJfVEhBTpgBA4wBiwGSARVHUkVBVEVSX1RIQU5fT1JfRVFVQUyYAQSMAYsBkgEFRVFVQUyYAQWMAYsBkgEMSEFTX0FOQ0VTVE9SmAELjAF0wgEdYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRXJyb3I="))
-  if _net_proto___parse__python is not None:
-    _net_proto___parse__python.RegisterType(
-        _SERIALIZED_DESCRIPTOR.tostring())
-
-class BoundingCircleFilter(ProtocolBuffer.ProtocolMessage):
-  has_property_ = 0
-  has_center_ = 0
-  has_radius_meters_ = 0
-  radius_meters_ = 0.0
-
-  def __init__(self, contents=None):
-    self.property_ = PropertyReference()
-    self.center_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
-    if contents is not None: self.MergeFromString(contents)
-
-  def property(self): return self.property_
-
-  def mutable_property(self): self.has_property_ = 1; return self.property_
-
-  def clear_property(self):self.has_property_ = 0; self.property_.Clear()
-
-  def has_property(self): return self.has_property_
-
-  def center(self): return self.center_
-
-  def mutable_center(self): self.has_center_ = 1; return self.center_
-
-  def clear_center(self):self.has_center_ = 0; self.center_.Clear()
-
-  def has_center(self): return self.has_center_
-
-  def radius_meters(self): return self.radius_meters_
-
-  def set_radius_meters(self, x):
-    self.has_radius_meters_ = 1
-    self.radius_meters_ = x
-
-  def clear_radius_meters(self):
-    if self.has_radius_meters_:
-      self.has_radius_meters_ = 0
-      self.radius_meters_ = 0.0
-
-  def has_radius_meters(self): return self.has_radius_meters_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_property()): self.mutable_property().MergeFrom(x.property())
-    if (x.has_center()): self.mutable_center().MergeFrom(x.center())
-    if (x.has_radius_meters()): self.set_radius_meters(x.radius_meters())
-
-  if _net_proto___parse__python is not None:
-    def _CMergeFromString(self, s):
-      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
-
-  if _net_proto___parse__python is not None:
-    def _CEncode(self):
-      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.BoundingCircleFilter')
-
-  if _net_proto___parse__python is not None:
-    def _CEncodePartial(self):
-      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.BoundingCircleFilter')
-
-  if _net_proto___parse__python is not None:
-    def _CToASCII(self, output_format):
-      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.BoundingCircleFilter', output_format)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCII(self, s):
-      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCIIIgnoreUnknown(self, s):
-      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.BoundingCircleFilter', s)
-
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_property_ != x.has_property_: return 0
-    if self.has_property_ and self.property_ != x.property_: return 0
-    if self.has_center_ != x.has_center_: return 0
-    if self.has_center_ and self.center_ != x.center_: return 0
-    if self.has_radius_meters_ != x.has_radius_meters_: return 0
-    if self.has_radius_meters_ and self.radius_meters_ != x.radius_meters_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_property_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: property not set.')
-    elif not self.property_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_center_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: center not set.')
-    elif not self.center_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_radius_meters_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: radius_meters not set.')
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(self.property_.ByteSize())
-    n += self.lengthString(self.center_.ByteSize())
-    return n + 11
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_property_):
-      n += 1
-      n += self.lengthString(self.property_.ByteSizePartial())
-    if (self.has_center_):
-      n += 1
-      n += self.lengthString(self.center_.ByteSizePartial())
-    if (self.has_radius_meters_):
-      n += 9
-    return n
-
-  def Clear(self):
-    self.clear_property()
-    self.clear_center()
-    self.clear_radius_meters()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.property_.ByteSize())
-    self.property_.OutputUnchecked(out)
-    out.putVarInt32(18)
-    out.putVarInt32(self.center_.ByteSize())
-    self.center_.OutputUnchecked(out)
-    out.putVarInt32(25)
-    out.putDouble(self.radius_meters_)
-
-  def OutputPartial(self, out):
-    if (self.has_property_):
-      out.putVarInt32(10)
-      out.putVarInt32(self.property_.ByteSizePartial())
-      self.property_.OutputPartial(out)
-    if (self.has_center_):
-      out.putVarInt32(18)
-      out.putVarInt32(self.center_.ByteSizePartial())
-      self.center_.OutputPartial(out)
-    if (self.has_radius_meters_):
-      out.putVarInt32(25)
-      out.putDouble(self.radius_meters_)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 10:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_property().TryMerge(tmp)
-        continue
-      if tt == 18:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_center().TryMerge(tmp)
-        continue
-      if tt == 25:
-        self.set_radius_meters(d.getDouble())
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_property_:
-      res+=prefix+"property <\n"
-      res+=self.property_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_center_:
-      res+=prefix+"center <\n"
-      res+=self.center_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_radius_meters_: res+=prefix+("radius_meters: %s\n" % self.DebugFormat(self.radius_meters_))
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kproperty = 1
-  kcenter = 2
-  kradius_meters = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "property",
-    2: "center",
-    3: "radius_meters",
-  }, 3)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.DOUBLE,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.BoundingCircleFilter'
-  _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KLGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQ2lyY2xlRmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoGY2VudGVyIAIoAjALOAJKIGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaDXJhZGl1c19tZXRlcnMgAygBMAE4AhTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
-  if _net_proto___parse__python is not None:
-    _net_proto___parse__python.RegisterType(
-        _SERIALIZED_DESCRIPTOR.tostring())
-
-class BoundingBoxFilter(ProtocolBuffer.ProtocolMessage):
-  has_property_ = 0
-  has_southwest_ = 0
-  has_northeast_ = 0
-
-  def __init__(self, contents=None):
-    self.property_ = PropertyReference()
-    self.southwest_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
-    self.northeast_ = google.appengine.datastore.entity_v4_pb.GeoPoint()
-    if contents is not None: self.MergeFromString(contents)
-
-  def property(self): return self.property_
-
-  def mutable_property(self): self.has_property_ = 1; return self.property_
-
-  def clear_property(self):self.has_property_ = 0; self.property_.Clear()
-
-  def has_property(self): return self.has_property_
-
-  def southwest(self): return self.southwest_
-
-  def mutable_southwest(self): self.has_southwest_ = 1; return self.southwest_
-
-  def clear_southwest(self):self.has_southwest_ = 0; self.southwest_.Clear()
-
-  def has_southwest(self): return self.has_southwest_
-
-  def northeast(self): return self.northeast_
-
-  def mutable_northeast(self): self.has_northeast_ = 1; return self.northeast_
-
-  def clear_northeast(self):self.has_northeast_ = 0; self.northeast_.Clear()
-
-  def has_northeast(self): return self.has_northeast_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_property()): self.mutable_property().MergeFrom(x.property())
-    if (x.has_southwest()): self.mutable_southwest().MergeFrom(x.southwest())
-    if (x.has_northeast()): self.mutable_northeast().MergeFrom(x.northeast())
-
-  if _net_proto___parse__python is not None:
-    def _CMergeFromString(self, s):
-      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
-
-  if _net_proto___parse__python is not None:
-    def _CEncode(self):
-      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.BoundingBoxFilter')
-
-  if _net_proto___parse__python is not None:
-    def _CEncodePartial(self):
-      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.BoundingBoxFilter')
-
-  if _net_proto___parse__python is not None:
-    def _CToASCII(self, output_format):
-      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.BoundingBoxFilter', output_format)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCII(self, s):
-      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCIIIgnoreUnknown(self, s):
-      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.BoundingBoxFilter', s)
-
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_property_ != x.has_property_: return 0
-    if self.has_property_ and self.property_ != x.property_: return 0
-    if self.has_southwest_ != x.has_southwest_: return 0
-    if self.has_southwest_ and self.southwest_ != x.southwest_: return 0
-    if self.has_northeast_ != x.has_northeast_: return 0
-    if self.has_northeast_ and self.northeast_ != x.northeast_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_property_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: property not set.')
-    elif not self.property_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_southwest_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: southwest not set.')
-    elif not self.southwest_.IsInitialized(debug_strs): initialized = 0
-    if (not self.has_northeast_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: northeast not set.')
-    elif not self.northeast_.IsInitialized(debug_strs): initialized = 0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(self.property_.ByteSize())
-    n += self.lengthString(self.southwest_.ByteSize())
-    n += self.lengthString(self.northeast_.ByteSize())
-    return n + 3
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_property_):
-      n += 1
-      n += self.lengthString(self.property_.ByteSizePartial())
-    if (self.has_southwest_):
-      n += 1
-      n += self.lengthString(self.southwest_.ByteSizePartial())
-    if (self.has_northeast_):
-      n += 1
-      n += self.lengthString(self.northeast_.ByteSizePartial())
-    return n
-
-  def Clear(self):
-    self.clear_property()
-    self.clear_southwest()
-    self.clear_northeast()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.property_.ByteSize())
-    self.property_.OutputUnchecked(out)
-    out.putVarInt32(18)
-    out.putVarInt32(self.southwest_.ByteSize())
-    self.southwest_.OutputUnchecked(out)
-    out.putVarInt32(26)
-    out.putVarInt32(self.northeast_.ByteSize())
-    self.northeast_.OutputUnchecked(out)
-
-  def OutputPartial(self, out):
-    if (self.has_property_):
-      out.putVarInt32(10)
-      out.putVarInt32(self.property_.ByteSizePartial())
-      self.property_.OutputPartial(out)
-    if (self.has_southwest_):
-      out.putVarInt32(18)
-      out.putVarInt32(self.southwest_.ByteSizePartial())
-      self.southwest_.OutputPartial(out)
-    if (self.has_northeast_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.northeast_.ByteSizePartial())
-      self.northeast_.OutputPartial(out)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 10:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_property().TryMerge(tmp)
-        continue
-      if tt == 18:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_southwest().TryMerge(tmp)
-        continue
-      if tt == 26:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_northeast().TryMerge(tmp)
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_property_:
-      res+=prefix+"property <\n"
-      res+=self.property_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_southwest_:
-      res+=prefix+"southwest <\n"
-      res+=self.southwest_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    if self.has_northeast_:
-      res+=prefix+"northeast <\n"
-      res+=self.northeast_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kproperty = 1
-  ksouthwest = 2
-  knortheast = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "property",
-    2: "southwest",
-    3: "northeast",
-  }, 3)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.BoundingBoxFilter'
-  _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KKWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkJvdW5kaW5nQm94RmlsdGVyExoIcHJvcGVydHkgASgCMAs4AkopYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuUHJvcGVydHlSZWZlcmVuY2WjAaoBBWN0eXBlsgEGcHJvdG8ypAEUExoJc291dGh3ZXN0IAIoAjALOAJKIGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0Lkdlb1BvaW50owGqAQVjdHlwZbIBBnByb3RvMqQBFBMaCW5vcnRoZWFzdCADKAIwCzgCSiBhcHBob3N0aW5nLmRhdGFzdG9yZS52NC5HZW9Qb2ludKMBqgEFY3R5cGWyAQZwcm90bzKkARTCAR1hcHBob3N0aW5nLmRhdGFzdG9yZS52NC5FcnJvcg=="))
   if _net_proto___parse__python is not None:
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
@@ -7616,143 +7080,6 @@ class AllocateIdsResponse(ProtocolBuffer.ProtocolMessage):
     _net_proto___parse__python.RegisterType(
         _SERIALIZED_DESCRIPTOR.tostring())
 
-class WriteRequest(ProtocolBuffer.ProtocolMessage):
-  has_deprecated_mutation_ = 0
-
-  def __init__(self, contents=None):
-    self.deprecated_mutation_ = DeprecatedMutation()
-    if contents is not None: self.MergeFromString(contents)
-
-  def deprecated_mutation(self): return self.deprecated_mutation_
-
-  def mutable_deprecated_mutation(self): self.has_deprecated_mutation_ = 1; return self.deprecated_mutation_
-
-  def clear_deprecated_mutation(self):self.has_deprecated_mutation_ = 0; self.deprecated_mutation_.Clear()
-
-  def has_deprecated_mutation(self): return self.has_deprecated_mutation_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_deprecated_mutation()): self.mutable_deprecated_mutation().MergeFrom(x.deprecated_mutation())
-
-  if _net_proto___parse__python is not None:
-    def _CMergeFromString(self, s):
-      _net_proto___parse__python.MergeFromString(self, 'apphosting.datastore.v4.WriteRequest', s)
-
-  if _net_proto___parse__python is not None:
-    def _CEncode(self):
-      return _net_proto___parse__python.Encode(self, 'apphosting.datastore.v4.WriteRequest')
-
-  if _net_proto___parse__python is not None:
-    def _CEncodePartial(self):
-      return _net_proto___parse__python.EncodePartial(self, 'apphosting.datastore.v4.WriteRequest')
-
-  if _net_proto___parse__python is not None:
-    def _CToASCII(self, output_format):
-      return _net_proto___parse__python.ToASCII(self, 'apphosting.datastore.v4.WriteRequest', output_format)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCII(self, s):
-      _net_proto___parse__python.ParseASCII(self, 'apphosting.datastore.v4.WriteRequest', s)
-
-
-  if _net_proto___parse__python is not None:
-    def ParseASCIIIgnoreUnknown(self, s):
-      _net_proto___parse__python.ParseASCIIIgnoreUnknown(self, 'apphosting.datastore.v4.WriteRequest', s)
-
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_deprecated_mutation_ != x.has_deprecated_mutation_: return 0
-    if self.has_deprecated_mutation_ and self.deprecated_mutation_ != x.deprecated_mutation_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_deprecated_mutation_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: deprecated_mutation not set.')
-    elif not self.deprecated_mutation_.IsInitialized(debug_strs): initialized = 0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(self.deprecated_mutation_.ByteSize())
-    return n + 1
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_deprecated_mutation_):
-      n += 1
-      n += self.lengthString(self.deprecated_mutation_.ByteSizePartial())
-    return n
-
-  def Clear(self):
-    self.clear_deprecated_mutation()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putVarInt32(self.deprecated_mutation_.ByteSize())
-    self.deprecated_mutation_.OutputUnchecked(out)
-
-  def OutputPartial(self, out):
-    if (self.has_deprecated_mutation_):
-      out.putVarInt32(10)
-      out.putVarInt32(self.deprecated_mutation_.ByteSizePartial())
-      self.deprecated_mutation_.OutputPartial(out)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 10:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_deprecated_mutation().TryMerge(tmp)
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_deprecated_mutation_:
-      res+=prefix+"deprecated_mutation <\n"
-      res+=self.deprecated_mutation_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kdeprecated_mutation = 1
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "deprecated_mutation",
-  }, 1)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting.datastore.v4.WriteRequest'
-  _SERIALIZED_DESCRIPTOR = array.array('B')
-  _SERIALIZED_DESCRIPTOR.fromstring(base64.decodestring("WidhcHBob3N0aW5nL2RhdGFzdG9yZS9kYXRhc3RvcmVfdjQucHJvdG8KJGFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LldyaXRlUmVxdWVzdBMaE2RlcHJlY2F0ZWRfbXV0YXRpb24gASgCMAs4AkoqYXBwaG9zdGluZy5kYXRhc3RvcmUudjQuRGVwcmVjYXRlZE11dGF0aW9uowGqAQVjdHlwZbIBBnByb3RvMqQBFMIBHWFwcGhvc3RpbmcuZGF0YXN0b3JlLnY0LkVycm9y"))
-  if _net_proto___parse__python is not None:
-    _net_proto___parse__python.RegisterType(
-        _SERIALIZED_DESCRIPTOR.tostring())
-
 
 
 class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
@@ -7766,8 +7093,6 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
       '_protorpc_ContinueQuery', '_full_name_ContinueQuery',
       '_protorpc_Lookup', '_full_name_Lookup',
       '_protorpc_AllocateIds', '_full_name_AllocateIds',
-      '_protorpc_Get', '_full_name_Get',
-      '_protorpc_Write', '_full_name_Write',
   )
 
   def __init__(self, rpc_stub):
@@ -7800,14 +7125,6 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
     self._protorpc_AllocateIds = pywraprpc.RPC()
     self._full_name_AllocateIds = self._stub.GetFullMethodName(
         'AllocateIds')
-
-    self._protorpc_Get = pywraprpc.RPC()
-    self._full_name_Get = self._stub.GetFullMethodName(
-        'Get')
-
-    self._protorpc_Write = pywraprpc.RPC()
-    self._full_name_Write = self._stub.GetFullMethodName(
-        'Write')
 
   def BeginTransaction(self, request, rpc=None, callback=None, response=None):
     """Make a BeginTransaction RPC call.
@@ -7984,56 +7301,6 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           callback,
                           self._protorpc_AllocateIds)
 
-  def Get(self, request, rpc=None, callback=None, response=None):
-    """Make a Get RPC call.
-
-    Args:
-      request: a LookupRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The LookupResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = LookupResponse
-    return self._MakeCall(rpc,
-                          self._full_name_Get,
-                          'Get',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_Get)
-
-  def Write(self, request, rpc=None, callback=None, response=None):
-    """Make a Write RPC call.
-
-    Args:
-      request: a WriteRequest instance.
-      rpc: Optional RPC instance to use for the call.
-      callback: Optional final callback. Will be called as
-          callback(rpc, result) when the rpc completes. If None, the
-          call is synchronous.
-      response: Optional ProtocolMessage to be filled in with response.
-
-    Returns:
-      The CommitResponse if callback is None. Otherwise, returns None.
-    """
-
-    if response is None:
-      response = CommitResponse
-    return self._MakeCall(rpc,
-                          self._full_name_Write,
-                          'Write',
-                          request,
-                          response,
-                          callback,
-                          self._protorpc_Write)
-
 
 class _DatastoreV4Service_ClientStub(_DatastoreV4Service_ClientBaseStub):
   __slots__ = ('_params',)
@@ -8073,8 +7340,6 @@ class DatastoreV4Service(_server_stub_base_class):
       'ContinueQuery': (ContinueQueryRequest, ContinueQueryResponse),
       'Lookup': (LookupRequest, LookupResponse),
       'AllocateIds': (AllocateIdsRequest, AllocateIdsResponse),
-      'Get': (LookupRequest, LookupResponse),
-      'Write': (WriteRequest, CommitResponse),
       }
 
   @classmethod
@@ -8098,7 +7363,7 @@ class DatastoreV4Service(_server_stub_base_class):
     """Creates a new DatastoreV4Service Stubby client stub.
 
     Args:
-      rpc_stub_parameters: an RPC_StubParameter instance.
+      rpc_stub_parameters: an RPC_StubParameters instance.
       service_name: the service name used by the Stubby server.
     """
 
@@ -8197,28 +7462,6 @@ class DatastoreV4Service(_server_stub_base_class):
     """
     raise NotImplementedError
 
-
-  def Get(self, rpc, request, response):
-    """Handles a Get RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a LookupRequest that contains the client request
-      response: a LookupResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
-
-  def Write(self, rpc, request, response):
-    """Handles a Write RPC call. You should override this.
-
-    Args:
-      rpc: a Stubby RPC object
-      request: a WriteRequest that contains the client request
-      response: a CommitResponse that should be modified to send the response
-    """
-    raise NotImplementedError
-
   def _AddMethodAttributes(self):
     """Sets attributes on Python RPC handlers.
 
@@ -8266,20 +7509,8 @@ class DatastoreV4Service(_server_stub_base_class):
         AllocateIdsResponse,
         None,
         'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.Get, '__func__'),
-        LookupRequest,
-        LookupResponse,
-        None,
-        'INTEGRITY')
-    rpcserver._GetHandlerDecorator(
-        getattr(self.Write, '__func__'),
-        WriteRequest,
-        CommitResponse,
-        None,
-        'INTEGRITY')
 
 if _extension_runtime:
   pass
 
-__all__ = ['Error','EntityResult','Query','KindExpression','PropertyReference','PropertyExpression','PropertyOrder','Filter','CompositeFilter','PropertyFilter','BoundingCircleFilter','BoundingBoxFilter','GqlQuery','GqlQueryArg','QueryResultBatch','Mutation','MutationResult','DeprecatedMutation','DeprecatedMutationResult','ReadOptions','LookupRequest','LookupResponse','RunQueryRequest','RunQueryResponse','ContinueQueryRequest','ContinueQueryResponse','BeginTransactionRequest','BeginTransactionResponse','RollbackRequest','RollbackResponse','CommitRequest','CommitResponse','AllocateIdsRequest','AllocateIdsResponse','WriteRequest','DatastoreV4Service']
+__all__ = ['Error','EntityResult','Query','KindExpression','PropertyReference','PropertyExpression','PropertyOrder','Filter','CompositeFilter','PropertyFilter','GqlQuery','GqlQueryArg','QueryResultBatch','Mutation','MutationResult','DeprecatedMutation','DeprecatedMutationResult','ReadOptions','LookupRequest','LookupResponse','RunQueryRequest','RunQueryResponse','ContinueQueryRequest','ContinueQueryResponse','BeginTransactionRequest','BeginTransactionResponse','RollbackRequest','RollbackResponse','CommitRequest','CommitResponse','AllocateIdsRequest','AllocateIdsResponse','DatastoreV4Service']

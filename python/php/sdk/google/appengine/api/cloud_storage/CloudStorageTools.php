@@ -30,8 +30,8 @@ use google\appengine\ImagesGetUrlBaseResponse;
 use google\appengine\ImagesServiceError;
 use google\appengine\ext\cloud_storage_streams\CloudStorageClient;
 use google\appengine\ext\cloud_storage_streams\CloudStorageStreamWrapper;
-use google\appengine\files\GetDefaultGsBucketNameRequest;
-use google\appengine\files\GetDefaultGsBucketNameResponse;
+use google\appengine\GetDefaultGcsBucketNameRequest;
+use google\appengine\GetDefaultGcsBucketNameResponse;
 use google\appengine\runtime\ApiProxy;
 use google\appengine\runtime\ApplicationError;
 use google\appengine\util\ArrayUtil;
@@ -63,21 +63,40 @@ final class CloudStorageTools {
   // The GCS filename format (bucket, object).
   const GS_FILENAME_FORMAT = "gs://%s/%s";
 
+  // The maximum value in seconds for the upload URL timeout option.
+  const MAX_URL_EXPIRY_TIME_SECONDS = 86400;  // 24 hours
+
+  // The keyword to be replaced by app's default bucket in GCS filename.
+  const GS_DEFAULT_BUCKET_KEYWORD = '#default#';
+
+  // The key to use when caching the default GCS bucket name in APC.
+  const GS_DEFAULT_BUCKET_APC_KEY = '__DEFAULT_GCS_BUCKET_NAME__';
+
   /**
    * The list of options that can be supplied to createUploadUrl.
    * @see CloudStorageTools::createUploadUrl()
    * @var array
+   *
+   * @access private
    */
   private static $create_upload_url_options = ['gs_bucket_name',
-      'max_bytes_per_blob', 'max_bytes_total'];
+      'max_bytes_per_blob', 'max_bytes_total', 'url_expiry_time_seconds'];
 
   /**
    * The list of options that can be suppied to serve.
    * @var array
+   *
+   * @access private
    */
   private static $serve_options = ['content_type', 'save_as', 'start', 'end',
       'use_range'];
 
+  /**
+   * The list of default options for the method getImageServingUrl()
+   * @var array
+   *
+   * @access private
+   */
   private static $get_image_serving_url_default_options = [
       'crop'       => false,
       'secure_url' => false,
@@ -89,6 +108,8 @@ final class CloudStorageTools {
    * trying to send headers from unit tests. If set, then $send_header is
    * expected to be a closure that accepts a key, value pair where key is the
    * header name, and value is the header value.
+   *
+   * @access private
    */
   private static $send_header = null;
 
@@ -97,6 +118,8 @@ final class CloudStorageTools {
    * building the URL. All characters allowed for bucket name are URL-safe. See
    * https://developers.google.com/storage/docs/bucketnaming#requirements for
    * more details.
+   *
+   * @access private
    */
   private static $url_path_translation_map = [
       ' ' => '%20',
@@ -122,6 +145,11 @@ final class CloudStorageTools {
    *   bucket that the blobs should be uploaded to. Not specifying a value
    *   will result in the blob being uploaded to the application's default
    *   bucket.
+   * <li>'url_expiry_time_seconds': integer The number of seconds that the
+   *   generated URL can be used for to upload files to Google Cloud Storage.
+   *   Once this timeout expires, the URL is no longer valid and any attempts
+   *   to upload using the URL will fail. Must be a positive integer, maximum
+   *   value is one day (86400 seconds). Default Value: 600 seconds.
    * </ul>
    * @return string The upload URL.
    *
@@ -167,6 +195,24 @@ final class CloudStorageTools {
             'max_bytes_total must be positive.');
       }
       $req->setMaxUploadSizeBytes($val);
+    }
+
+    if (array_key_exists('url_expiry_time_seconds', $options)) {
+      $val = $options['url_expiry_time_seconds'];
+      if (!is_int($val)) {
+        throw new \InvalidArgumentException(
+            'url_expiry_time_seconds must be an integer');
+      }
+      if ($val < 1) {
+        throw new \InvalidArgumentException(
+            'url_expiry_time_seconds must be positive.');
+      }
+      if ($val > self::MAX_URL_EXPIRY_TIME_SECONDS) {
+        throw new \InvalidArgumentException(
+            'url_expiry_time_seconds must not exceed ' .
+            self::MAX_URL_EXPIRY_TIME_SECONDS);
+      }
+      $req->setUrlExpiryTimeSeconds($val);
     }
 
     if (array_key_exists('gs_bucket_name', $options)) {
@@ -403,7 +449,7 @@ final class CloudStorageTools {
    * @param string $filename The filename in the format gs://bucket_name or
    * gs://bucket_name/object_name.
    * @param string &$bucket The extracted bucket.
-   * @param string &$object The extracted bucket. Can be null if the filename
+   * @param string &$object The extracted object. Can be null if the filename
    * contains only bucket name.
    *
    * @return bool true if the filename is successfully parsed, false otherwise.
@@ -436,6 +482,18 @@ final class CloudStorageTools {
       return false;
     }
 
+    // Substitute default bucket name.
+    if (ini_get('google_app_engine.gcs_default_keyword')) {
+      if ($bucket === self::GS_DEFAULT_BUCKET_KEYWORD) {
+        $bucket = self::getDefaultGoogleStorageBucketName();
+        if (!$bucket) {
+          throw new \InvalidArgumentException(
+              'Application does not have a default Cloud Storage Bucket, ' .
+              'must specify a bucket name');
+        }
+      }
+    }
+
     // Validate bucket & object names.
     if (self::validateBucketName($bucket) === false) {
       trigger_error(sprintf('Invalid cloud storage bucket name \'%s\'',
@@ -455,6 +513,10 @@ final class CloudStorageTools {
   /**
    * Validate the bucket name according to the rules stated at
    * https://developers.google.com/storage/docs/bucketnaming.
+   *
+   * @param string $bucket_name The Google Cloud Storage bucket name.
+   *
+   * @access private
    */
   private static function validateBucketName($bucket_name) {
     $valid_bucket_regex = '/^[a-z0-9]+[a-z0-9\.\-_]+[a-z0-9]+$/';
@@ -489,6 +551,10 @@ final class CloudStorageTools {
   /**
    * Validate the object name according to the rules stated at
    * https://developers.google.com/storage/docs/bucketnaming.
+   *
+   * @param string $object_name The Google Cloud Stroage object name.
+   *
+   * @access private
    */
   private static function validateObjectName($object_name) {
     $invalid_object_regex = "/[\n\r\v\f]/";
@@ -513,9 +579,17 @@ final class CloudStorageTools {
    * @throws CloudStorageException If there was a problem contacting the
    * service.
    * @deprecated This method will be made private in the next version.
+   *
+   * @access private
    */
   private static function createGsKey($filename) {
-    $gs_filename = sprintf('/gs/%s', self::stripGsPrefix($filename));
+    if (!self::parseFilename($filename, $bucket, $object) || !$object) {
+      throw new \InvalidArgumentException(
+          sprintf('Invalid Google Cloud Storage filename: %s',
+                  htmlspecialchars($filename)));
+    }
+
+    $gs_filename = sprintf('/gs/%s%s', $bucket, $object);
 
     $request = new CreateEncodedGoogleStorageKeyRequest();
     $response = new CreateEncodedGoogleStorageKeyResponse();
@@ -602,15 +676,25 @@ final class CloudStorageTools {
    * configured.
    */
   public static function getDefaultGoogleStorageBucketName() {
-    $request = new GetDefaultGsBucketNameRequest();
-    $response = new GetDefaultGsBucketNameResponse();
+    $success = false;
+    $default_bucket_name = apc_fetch(self::GS_DEFAULT_BUCKET_APC_KEY, $success);
+    if ($success) {
+      return $default_bucket_name;
+    }
 
-    ApiProxy::makeSyncCall('file',
-                           'GetDefaultGsBucketName',
+    $request = new GetDefaultGcsBucketNameRequest();
+    $response = new GetDefaultGcsBucketNameResponse();
+
+    ApiProxy::makeSyncCall('app_identity_service',
+                           'GetDefaultGcsBucketName',
                            $request,
                            $response);
 
-    return $response->getDefaultGsBucketName();
+    $default_bucket_name = $response->getDefaultGcsBucketName();
+    if ($default_bucket_name) {
+      apc_store(self::GS_DEFAULT_BUCKET_APC_KEY, $default_bucket_name);
+    }
+    return $default_bucket_name;
   }
 
   /**
@@ -619,6 +703,8 @@ final class CloudStorageTools {
    *
    * @param mixed $new_header_func The function to use to set response headers.
    * Set to null to use the inbuilt PHP method header().
+   *
+   * @access private
    */
   public static function setSendHeaderFunction($new_header_func) {
     self::$send_header = $new_header_func;
@@ -656,6 +742,20 @@ final class CloudStorageTools {
     return $wrapper->getContentType();
   }
 
+  /**
+   * Retrieve the CloudStorageStreamWrapper instance from a Google Cloud Storage
+   * file pointer resource.
+   *
+   * @param resource $handle A Google Cloud Storage file pointer resource that
+   * is typically created using fopen().
+   *
+   * @return object The CloudStorageStreamWrapper instance.
+   *
+   * @throws \InvalidArgumentException If $handler is not a Google Cloud Storage
+   * file pointer resource.
+   *
+   * @access private
+   */
   private static function getStreamWrapperFromFileHandle($handle) {
     $wrapper = stream_get_meta_data($handle)['wrapper_data'];
     if (!$wrapper instanceof CloudStorageStreamWrapper) {
@@ -667,85 +767,90 @@ final class CloudStorageTools {
   }
 
   /**
-   * Validates the format of a GCS filename and strips the gs:// prefix.
+   * Convert an BlobstoreServiceError returned from an RPC call to an
+   * exception.
    *
-   * @param string $filename The google cloud storage filename, in the format
-   * gs://bucket_name/object_name
+   * @param int $error A BlobstoreServiceError::ErrorCode error value.
    *
-   * @return string The string that follows gs://
+   * @return Exception The exception that corresponds to the error code.
    *
-   * @throws \InvalidArgumentException if the filename is not in the correct
-   * format.
-   */
-  private static function stripGsPrefix($filename) {
-    if (!is_string($filename)) {
-      throw new \InvalidArgumentException('filename must be a string. ' .
-          'Actual type: ' . gettype($filename));
-    }
-
-    $gs_prefix_len = strlen(self::GS_PREFIX);
-
-    if (strncmp($filename, self::GS_PREFIX, $gs_prefix_len) != 0) {
-      throw new \InvalidArgumentException(
-          sprintf('filename must start with the prefix %s.', self::GS_PREFIX));
-    }
-
-    $stripped = substr($filename, $gs_prefix_len);
-
-    if (!strpos($stripped, "/")) {
-      throw new \InvalidArgumentException(
-        'filename not in the format gs://bucket_name/object_name.');
-    }
-
-    return $stripped;
-  }
-
-  /**
    * @access private
    */
   private static function applicationErrorToException($error) {
     switch($error->getApplicationError()) {
       case ErrorCode::URL_TOO_LONG:
-        return new \InvalidArgumentException(
+        $result = new \InvalidArgumentException(
             'The upload URL supplied was too long.');
+        break;
       case ErrorCode::PERMISSION_DENIED:
-        return new CloudStorageException('Permission Denied');
+        $result = new CloudStorageException('Permission Denied');
+        break;
       case ErrorCode::ARGUMENT_OUT_OF_RANGE:
-        return new \InvalidArgumentException($error->getMessage());
+        $result = new \InvalidArgumentException($error->getMessage());
+        break;
       default:
-        return new CloudStorageException(
+        $result = new CloudStorageException(
             'Error Code: ' . $error->getApplicationError());
     }
+    return $result;
   }
 
   /**
+   * Convert an ImagesServiceError returned from an RPC call to an exception.
+   *
+   * @param int $error A ImagesServiceError::ErrorCode error value.
+   *
+   * @return Exception The exception that corresponds to the error code.
+   *
    * @access private
    */
   private static function imagesApplicationErrorToException($error) {
     switch($error->getApplicationError()) {
       case ImagesServiceError\ErrorCode::UNSPECIFIED_ERROR:
-        return new CloudStorageException('Unspecified error with image.');
+        $result = new CloudStorageException('Unspecified error with image.');
+        break;
       case ImagesServiceError\ErrorCode::BAD_TRANSFORM_DATA:
-        return new CloudStorageException('Bad image transform data.');
+        $result = new CloudStorageException('Bad image transform data.');
+        break;
       case ImagesServiceError\ErrorCode::NOT_IMAGE:
-        return new CloudStorageException('Not an image.');
+        $result = new CloudStorageException('Not an image.');
+        break;
       case ImagesServiceError\ErrorCode::BAD_IMAGE_DATA:
-        return new CloudStorageException('Bad image data.');
+        $result = new CloudStorageException('Bad image data.');
+        break;
       case ImagesServiceError\ErrorCode::IMAGE_TOO_LARGE:
-        return new CloudStorageException('Image too large.');
+        $result = new CloudStorageException('Image too large.');
+        break;
       case ImagesServiceError\ErrorCode::INVALID_BLOB_KEY:
-        return new CloudStorageException('Invalid blob key for image.');
+        $result = new CloudStorageException('Invalid blob key for image.');
+        break;
       case ImagesServiceError\ErrorCode::ACCESS_DENIED:
-        return new CloudStorageException('Access denied to image.');
+        $result = new CloudStorageException('Access denied to image.');
+        break;
       case ImagesServiceError\ErrorCode::OBJECT_NOT_FOUND:
-        return new CloudStorageException('Image object not found.');
+        $result = new CloudStorageException('Image object not found.');
+        break;
       default:
-        return new CloudStorageException(
+        $result = new CloudStorageException(
             'Images Error Code: ' . $error->getApplicationError());
     }
+    return $result;
   }
 
   /**
+   * Check that the values for a Range: header are valid.
+   *
+   * @param int $start The start value for the range header.
+   * @param int $end The end value for the range header.
+   * @param bool $use_range Use the range header supplied in $range_header after
+   *     checking that is is valid.
+   * @param string $range_header The requests range header.
+   *
+   * @returns mixed The string range header to use, or null if there is no range
+   *     header to use.
+   *
+   * @throws \InvalidArgumentException If the range header values are invalid.
+   *
    * @access private
    */
   private static function checkRanges($start, $end, $use_range, $range_header) {
@@ -793,6 +898,13 @@ final class CloudStorageTools {
   }
 
   /**
+   * Create the value for a range header from start and end byte values.
+   *
+   * @param int $start The start byte for the range header.
+   * @param mixed $end The end byte for the range header
+   *
+   * @return string The range header value.
+   *
    * @access private
    */
   private static function serializeRange($start, $end) {
@@ -807,6 +919,11 @@ final class CloudStorageTools {
   }
 
   /**
+   * SendHeader hook, used for testing.
+   *
+   * @param string $key The header key.
+   * @param string $value The header value.
+   *
    * @access private
    */
   private static function sendHeader($key, $value) {
@@ -818,6 +935,10 @@ final class CloudStorageTools {
   }
 
   /**
+   * Convert the upload_max_filesize ini setting to a number of bytes.
+   *
+   * @return int The value of the upload_max_filesize in bytes.
+   *
    * @access private
    */
   private static function getUploadMaxFileSizeInBytes() {
@@ -841,6 +962,8 @@ final class CloudStorageTools {
    * Determine if the code is executing on the development server.
    *
    * @return bool True if running in the developement server, false otherwise.
+   *
+   * @access private
    */
   private static function isDevelServer() {
     $server_software = getenv("SERVER_SOFTWARE");

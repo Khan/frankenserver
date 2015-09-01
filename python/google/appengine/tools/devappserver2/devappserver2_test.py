@@ -17,6 +17,7 @@
 """Tests for google.apphosting.tools.devappserver2.devappserver2."""
 
 
+
 import argparse
 import getpass
 import itertools
@@ -307,29 +308,53 @@ class CreateModuleToSettingTest(unittest.TestCase):
         FakeModuleConfiguration('m1'), FakeModuleConfiguration('m2'),
         FakeModuleConfiguration('m3')])
 
-  def testNone(self):
+  def test_none(self):
     self.assertEquals(
         {},
         devappserver2.DevelopmentServer._create_module_to_setting(
             None, self.application_configuration, '--option'))
 
-  def testDict(self):
+  def test_dict(self):
     self.assertEquals(
         {'m1': 3, 'm3': 1},
         devappserver2.DevelopmentServer._create_module_to_setting(
             {'m1': 3, 'm3': 1}, self.application_configuration, '--option'))
 
-  def testSingleValue(self):
+  def test_single_value(self):
     self.assertEquals(
         {'m1': True, 'm2': True, 'm3': True},
         devappserver2.DevelopmentServer._create_module_to_setting(
             True, self.application_configuration, '--option'))
 
-  def testDictWithUnknownModules(self):
+  def test_dict_with_unknown_modules(self):
     self.assertEquals(
         {'m1': 3.5},
         devappserver2.DevelopmentServer._create_module_to_setting(
             {'m1': 3.5, 'm4': 2.7}, self.application_configuration, '--option'))
+
+
+class CommandLineParserTest(unittest.TestCase):
+  """Tests for devappserver.create_command_line_parser."""
+
+  def test_default_host(self):
+    self.assertEquals(
+        'localhost',
+        devappserver2.create_command_line_parser().get_default('host'))
+
+  def test_devshell_host(self):
+    os.environ[devappserver2._DEVSHELL_ENV] = 'port'
+    try:
+      self.assertEquals(
+          '0.0.0.0',
+          devappserver2.create_command_line_parser().get_default('host'))
+      self.assertEquals(
+          '0.0.0.0',
+          devappserver2.create_command_line_parser().get_default('admin_host'))
+      self.assertEquals(
+          '0.0.0.0',
+          devappserver2.create_command_line_parser().get_default('api_host'))
+    finally:
+      os.environ[devappserver2._DEVSHELL_ENV] = ''
 
 
 if __name__ == '__main__':

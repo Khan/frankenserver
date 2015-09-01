@@ -37,6 +37,7 @@ Contains handlers to help with receiving mail and mail bounces.
 
 
 
+
 from google.appengine.api import mail
 from google.appengine.ext import webapp
 
@@ -89,10 +90,6 @@ class InboundMailHandler(webapp.RequestHandler):
     return MAIL_HANDLER_URL_PATTERN, cls
 
 
-class InvalidBounceNotificationError(Exception):
-  """Error that indicates invalid data for a bounce notification handler."""
-
-
 class BounceNotificationHandler(webapp.RequestHandler):
   """Base class for bounce notification handlers.
 
@@ -141,36 +138,34 @@ class BounceNotification(object):
       original_raw_message: the raw message that caused the bounce.
 
     The 'original' and 'notification' dicts contain the following keys:
-      to, from, subject, text
+      to, cc, bcc, from, subject, text
 
     Args:
       post_vars: a dict-like object containing bounce information.
           This is typically the self.request.POST variable of a RequestHandler
-          object. The following keys are expected in the dict:
+          object. The following keys are handled in the dict:
             original-from
             original-to
+            original-cc
+            original-bcc
             original-subject
             original-text
             notification-from
             notification-to
+            notification-cc
+            notification-bcc
             notification-subject
             notification-text
             raw-message
-
-    Raises:
-      InvalidBounceNotification if any of the expected fields are missing.
     """
-    try:
-      self.__original = {}
-      self.__notification = {}
-      for field in ['to', 'from', 'subject', 'text']:
-        self.__original[field] = post_vars['original-' + field]
-        self.__notification[field] = post_vars['notification-' + field]
+    self.__original = {}
+    self.__notification = {}
+    for field in ['to', 'cc', 'bcc', 'from', 'subject', 'text']:
+      self.__original[field] = post_vars.get('original-' + field, '')
+      self.__notification[field] = post_vars.get('notification-' + field, '')
 
-      self.__original_raw_message = mail.InboundEmailMessage(
-          post_vars['raw-message'])
-    except KeyError, e:
-      raise InvalidBounceNotificationError(e[0])
+    self.__original_raw_message = mail.InboundEmailMessage(
+        post_vars.get('raw-message', ''))
 
   @property
   def original(self):

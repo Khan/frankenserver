@@ -17,6 +17,7 @@
 """A Python devappserver2 runtime."""
 
 
+
 import os
 import sys
 import time
@@ -129,11 +130,9 @@ def main():
   sys.stdout = AutoFlush(sys.stdout)
   assert len(sys.argv) == 3
   child_in_path = sys.argv[1]
-  child_out_path = sys.argv[2]
   config = runtime_config_pb2.Config()
   config.ParseFromString(open(child_in_path, 'rb').read())
   os.remove(child_in_path)
-  child_out = open(child_out_path, 'wb')
   debugging_app = None
   if config.python_config and config.python_config.startup_script:
     global_vars = {'config': config}
@@ -144,9 +143,12 @@ def main():
                                                       str(e),
                                                       traceback.format_exc())
 
+  # This line needs to be before enabling the sandbox because os.environ is
+  # patched away.
+  port = os.environ['PORT']
   if debugging_app:
     server = wsgi_server.WsgiServer(
-        ('localhost', 0),
+        ('localhost', port),
         debugging_app)
   else:
     setup_stubs(config)
@@ -156,12 +158,10 @@ def main():
     from google.appengine.tools.devappserver2.python import request_handler
 
     server = wsgi_server.WsgiServer(
-        ('localhost', 0),
+        ('localhost', port),
         request_rewriter.runtime_rewriter_middleware(
             request_handler.RequestHandler(config)))
   server.start()
-  print >>child_out, server.port
-  child_out.close()
   try:
     while True:
       time.sleep(1)

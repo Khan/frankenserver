@@ -33,6 +33,7 @@
 from __future__ import with_statement
 
 
+
 __all__ = [
     "BlobstoreOutputWriter",
     "BlobstoreOutputWriterBase",
@@ -40,12 +41,18 @@ __all__ = [
     "FileOutputWriter",
     "FileOutputWriterBase",
     "FileRecordsOutputWriter",
+    "GoogleCloudStorageConsistentOutputWriter",
+    "GoogleCloudStorageConsistentRecordOutputWriter",
+    "GoogleCloudStorageKeyValueOutputWriter",
+    "GoogleCloudStorageOutputWriter",
+    "GoogleCloudStorageRecordOutputWriter",
     "KeyValueBlobstoreOutputWriter",
     "KeyValueFileOutputWriter",
     "COUNTER_IO_WRITE_BYTES",
     "COUNTER_IO_WRITE_MSEC",
     "OutputWriter",
     "RecordsPool",
+    "GCSRecordsPool"
     ]
 
 
@@ -55,6 +62,7 @@ import cStringIO
 import gc
 import logging
 import pickle
+import random
 import string
 import time
 
@@ -66,19 +74,31 @@ from google.appengine.ext.mapreduce import json_util
 from google.appengine.ext.mapreduce import model
 from google.appengine.ext.mapreduce import operation
 from google.appengine.ext.mapreduce import records
+from google.appengine.ext.mapreduce import shard_life_cycle
 
 
 
 try:
 
-  from google.appengine.ext import cloudstorage
+  cloudstorage = None
+  from google.appengine._internal import cloudstorage
   if hasattr(cloudstorage, "_STUB"):
     cloudstorage = None
 
   if cloudstorage:
-    from google.appengine.ext.cloudstorage import cloudstorage_api
+    from google.appengine._internal.cloudstorage import cloudstorage_api
+    from google.appengine._internal.cloudstorage import errors as cloud_errors
 except ImportError:
   pass
+
+
+if cloudstorage is None:
+  try:
+    import cloudstorage
+    from cloudstorage import cloudstorage_api
+    from cloudstorage import errors as cloud_errors
+  except ImportError:
+    pass
 
 
 
@@ -285,10 +305,10 @@ class OutputWriter(json_util.JsonMixin):
 
 
 
-_FILES_API_FLUSH_SIZE = 128*1024
+_FILE_POOL_FLUSH_SIZE = 128*1024
 
 
-_FILES_API_MAX_SIZE = 1000*1024
+_FILE_POOL_MAX_SIZE = 1000*1024
 
 
 def _get_params(mapper_spec, allowed_keys=None, allow_old=True):
@@ -336,7 +356,7 @@ def _get_params(mapper_spec, allowed_keys=None, allow_old=True):
 class _FilePool(context.Pool):
   """Pool of file append operations."""
 
-  def __init__(self, flush_size_chars=_FILES_API_FLUSH_SIZE, ctx=None):
+  def __init__(self, flush_size_chars=_FILE_POOL_FLUSH_SIZE, ctx=None):
     """Constructor.
 
     Args:
@@ -368,10 +388,10 @@ class _FilePool(context.Pool):
     if self._size + len(data) > self._flush_size:
       self.flush()
 
-    if len(data) > _FILES_API_MAX_SIZE:
+    if len(data) > _FILE_POOL_MAX_SIZE:
       raise errors.Error(
           "Can't write more than %s bytes in one request: "
-          "risk of writes interleaving." % _FILES_API_MAX_SIZE)
+          "risk of writes interleaving." % _FILE_POOL_MAX_SIZE)
     else:
       self.__append(filename, data)
 
@@ -383,7 +403,7 @@ class _FilePool(context.Pool):
     start_time = time.time()
     for filename, data in self._append_buffer.iteritems():
       with files.open(filename, "a") as f:
-        if len(data) > _FILES_API_MAX_SIZE:
+        if len(data) > _FILE_POOL_MAX_SIZE:
           raise errors.Error("Bad data of length: %s" % len(data))
         if self._ctx:
           operation.counters.Increment(
@@ -397,20 +417,21 @@ class _FilePool(context.Pool):
     self._size = 0
 
 
-class RecordsPool(context.Pool):
-  """Pool of append operations for records files."""
+class _RecordsPoolBase(context.Pool):
+  """Base class for Pool of append operations for records files."""
 
 
   _RECORD_OVERHEAD_BYTES = 10
 
-  def __init__(self, filename,
-               flush_size_chars=_FILES_API_FLUSH_SIZE,
+  def __init__(self,
+               flush_size_chars=_FILE_POOL_FLUSH_SIZE,
                ctx=None,
                exclusive=False):
     """Constructor.
 
+    Any classes that subclass this will need to implement the _write() function.
+
     Args:
-      filename: file name to write data to as string.
       flush_size_chars: buffer flush threshold as int.
       ctx: mapreduce context as context.Context.
       exclusive: a boolean flag indicating if the pool has an exclusive
@@ -420,7 +441,6 @@ class RecordsPool(context.Pool):
     self._flush_size = flush_size_chars
     self._buffer = []
     self._size = 0
-    self._filename = filename
     self._ctx = ctx
     self._exclusive = exclusive
 
@@ -430,9 +450,9 @@ class RecordsPool(context.Pool):
     if self._size + data_length > self._flush_size:
       self.flush()
 
-    if not self._exclusive and data_length > _FILES_API_MAX_SIZE:
+    if not self._exclusive and data_length > _FILE_POOL_MAX_SIZE:
       raise errors.Error(
-          "Too big input %s (%s)."  % (data_length, _FILES_API_MAX_SIZE))
+          "Too big input %s (%s)."  % (data_length, _FILE_POOL_MAX_SIZE))
     else:
       self._buffer.append(data)
       self._size += data_length
@@ -451,21 +471,19 @@ class RecordsPool(context.Pool):
     str_buf = buf.getvalue()
     buf.close()
 
-    if not self._exclusive and len(str_buf) > _FILES_API_MAX_SIZE:
+    if not self._exclusive and len(str_buf) > _FILE_POOL_MAX_SIZE:
 
       raise errors.Error(
           "Buffer too big. Can't write more than %s bytes in one request: "
           "risk of writes interleaving. Got: %s" %
-          (_FILES_API_MAX_SIZE, len(str_buf)))
+          (_FILE_POOL_MAX_SIZE, len(str_buf)))
 
 
     start_time = time.time()
-    with files.open(self._filename, "a", exclusive_lock=self._exclusive) as f:
-      f.write(str_buf)
-      if self._ctx:
-        operation.counters.Increment(
-            COUNTER_IO_WRITE_BYTES, len(str_buf))(self._ctx)
+    self._write(str_buf)
     if self._ctx:
+      operation.counters.Increment(
+          COUNTER_IO_WRITE_BYTES, len(str_buf))(self._ctx)
       operation.counters.Increment(
           COUNTER_IO_WRITE_MSEC,
           int((time.time() - start_time) * 1000))(self._ctx)
@@ -475,11 +493,68 @@ class RecordsPool(context.Pool):
     self._size = 0
     gc.collect()
 
+  def _write(self, str_buf):
+    raise NotImplementedError("_write() not implemented in %s" % type(self))
+
   def __enter__(self):
     return self
 
   def __exit__(self, atype, value, traceback):
     self.flush()
+
+
+class RecordsPool(_RecordsPoolBase):
+  """Pool of append operations for records using Files API."""
+
+  def __init__(self,
+               filename,
+               flush_size_chars=_FILE_POOL_FLUSH_SIZE,
+               ctx=None,
+               exclusive=False):
+    """Requires the filename of the file to write to via the Filaes API."""
+    super(RecordsPool, self).__init__(flush_size_chars, ctx, exclusive)
+    self._filename = filename
+
+  def _write(self, str_buf):
+    """Opens and appends to the filename."""
+    with files.open(self._filename, "a", exclusive_lock=self._exclusive) as f:
+      f.write(str_buf)
+
+
+class GCSRecordsPool(_RecordsPoolBase):
+  """Pool of append operations for records using GCS."""
+
+
+  _GCS_BLOCK_SIZE = 256 * 1024
+
+  def __init__(self,
+               filehandle,
+               flush_size_chars=_FILE_POOL_FLUSH_SIZE,
+               ctx=None,
+               exclusive=False):
+    """Requires the filehandle of an open GCS file to write to."""
+    super(GCSRecordsPool, self).__init__(flush_size_chars, ctx, exclusive)
+    self._filehandle = filehandle
+    self._buf_size = 0
+
+  def _write(self, str_buf):
+    """Uses the filehandle to the file in GCS to write to it."""
+    self._filehandle.write(str_buf)
+    self._buf_size += len(str_buf)
+
+  def flush(self, force=False):
+    """Flush pool contents.
+
+    Args:
+      force: Inserts additional padding to achieve the minimum block size
+        required for GCS.
+    """
+    super(GCSRecordsPool, self).flush()
+    if force:
+      extra_padding = self._buf_size % self._GCS_BLOCK_SIZE
+      if extra_padding > 0:
+        self._write("\x00" * (self._GCS_BLOCK_SIZE - extra_padding))
+    self._filehandle.flush()
 
 
 class FileOutputWriterBase(OutputWriter):
@@ -876,11 +951,9 @@ class KeyValueBlobstoreOutputWriter(KeyValueFileOutputWriter,
   """Output writer for KeyValue records files in blobstore."""
 
 
-class _GoogleCloudStorageOutputWriter(OutputWriter):
-  """Output writer to Google Cloud Storage using the cloudstorage library.
-
-  This class is expected to be subclassed with a writer that applies formatting
-  to user-level records.
+class _GoogleCloudStorageBase(shard_life_cycle._ShardLifeCycle,
+                              OutputWriter):
+  """Base abstract class for all GCS writers.
 
   Required configuration in the mapper_spec.output_writer dictionary.
     BUCKET_NAME_PARAM: name of the bucket to use (with no extra delimiters or
@@ -900,6 +973,209 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
       be applied by the writer.
     CONTENT_TYPE_PARAM: mime type to apply on the files. If not provided, Google
       Cloud Storage will apply its default.
+    TMP_BUCKET_NAME_PARAM: name of the bucket used for writing tmp files by
+      consistent GCS output writers. Defaults to BUCKET_NAME_PARAM if not set.
+  """
+
+  BUCKET_NAME_PARAM = "bucket_name"
+  TMP_BUCKET_NAME_PARAM = "tmp_bucket_name"
+  ACL_PARAM = "acl"
+  NAMING_FORMAT_PARAM = "naming_format"
+  CONTENT_TYPE_PARAM = "content_type"
+
+
+  _ACCOUNT_ID_PARAM = "account_id"
+  _TMP_ACCOUNT_ID_PARAM = "tmp_account_id"
+
+  @classmethod
+  def _get_gcs_bucket(cls, writer_spec):
+    return writer_spec[cls.BUCKET_NAME_PARAM]
+
+  @classmethod
+  def _get_account_id(cls, writer_spec):
+    return writer_spec.get(cls._ACCOUNT_ID_PARAM, None)
+
+  @classmethod
+  def _get_tmp_gcs_bucket(cls, writer_spec):
+    """Returns bucket used for writing tmp files."""
+    if cls.TMP_BUCKET_NAME_PARAM in writer_spec:
+      return writer_spec[cls.TMP_BUCKET_NAME_PARAM]
+    return cls._get_gcs_bucket(writer_spec)
+
+  @classmethod
+  def _get_tmp_account_id(cls, writer_spec):
+    """Returns the account id to use with tmp bucket."""
+
+    if cls.TMP_BUCKET_NAME_PARAM in writer_spec:
+      return writer_spec.get(cls._TMP_ACCOUNT_ID_PARAM, None)
+    return cls._get_account_id(writer_spec)
+
+
+class _GoogleCloudStorageOutputWriterBase(_GoogleCloudStorageBase):
+  """Base class for GCS writers directly interacting with GCS.
+
+  Base class for both _GoogleCloudStorageOutputWriter and
+  GoogleCloudStorageConsistentOutputWriter.
+
+  This class is expected to be subclassed with a writer that applies formatting
+  to user-level records.
+
+  Subclasses need to define to_json, from_json, create, finalize and
+  _get_write_buffer methods.
+
+  See _GoogleCloudStorageBase for config options.
+  """
+
+
+  _DEFAULT_NAMING_FORMAT = "$name/$id/output-$num"
+
+
+  _MR_TMP = "gae_mr_tmp"
+  _TMP_FILE_NAMING_FORMAT = (
+      _MR_TMP + "/$name/$id/attempt-$attempt/output-$num/seg-$seg")
+
+  @classmethod
+  def _generate_filename(cls, writer_spec, name, job_id, num,
+                         attempt=None, seg_index=None):
+    """Generates a filename for a particular output.
+
+    Args:
+      writer_spec: specification dictionary for the output writer.
+      name: name of the job.
+      job_id: the ID number assigned to the job.
+      num: shard number.
+      attempt: the shard attempt number.
+      seg_index: index of the seg. None means the final output.
+
+    Returns:
+      a string containing the filename.
+
+    Raises:
+      BadWriterParamsError: if the template contains any errors such as invalid
+        syntax or contains unknown substitution placeholders.
+    """
+    naming_format = cls._TMP_FILE_NAMING_FORMAT
+    if seg_index is None:
+      naming_format = writer_spec.get(cls.NAMING_FORMAT_PARAM,
+                                      cls._DEFAULT_NAMING_FORMAT)
+
+    template = string.Template(naming_format)
+    try:
+
+      if seg_index is None:
+        return template.substitute(name=name, id=job_id, num=num)
+      else:
+        return template.substitute(name=name, id=job_id, num=num,
+                                   attempt=attempt,
+                                   seg=seg_index)
+    except ValueError, error:
+      raise errors.BadWriterParamsError("Naming template is bad, %s" % (error))
+    except KeyError, error:
+      raise errors.BadWriterParamsError("Naming template '%s' has extra "
+                                        "mappings, %s" % (naming_format, error))
+
+  @classmethod
+  def get_params(cls, mapper_spec, allowed_keys=None, allow_old=True):
+    params = _get_params(mapper_spec, allowed_keys, allow_old)
+
+
+    if (mapper_spec.params.get(cls.BUCKET_NAME_PARAM) is not None and
+        params.get(cls.BUCKET_NAME_PARAM) is None):
+      params[cls.BUCKET_NAME_PARAM] = mapper_spec.params[cls.BUCKET_NAME_PARAM]
+    return params
+
+  @classmethod
+  def validate(cls, mapper_spec):
+    """Validate mapper specification.
+
+    Args:
+      mapper_spec: an instance of model.MapperSpec.
+
+    Raises:
+      BadWriterParamsError: if the specification is invalid for any reason such
+        as missing the bucket name or providing an invalid bucket name.
+    """
+    writer_spec = cls.get_params(mapper_spec, allow_old=False)
+
+
+    if cls.BUCKET_NAME_PARAM not in writer_spec:
+      raise errors.BadWriterParamsError(
+          "%s is required for Google Cloud Storage" %
+          cls.BUCKET_NAME_PARAM)
+    try:
+      cloudstorage.validate_bucket_name(
+          writer_spec[cls.BUCKET_NAME_PARAM])
+    except ValueError, error:
+      raise errors.BadWriterParamsError("Bad bucket name, %s" % (error))
+
+
+    cls._generate_filename(writer_spec, "name", "id", 0)
+    cls._generate_filename(writer_spec, "name", "id", 0, 1, 0)
+
+  @classmethod
+  def _open_file(cls, writer_spec, filename_suffix, use_tmp_bucket=False):
+    """Opens a new gcs file for writing."""
+    if use_tmp_bucket:
+      bucket = cls._get_tmp_gcs_bucket(writer_spec)
+      account_id = cls._get_tmp_account_id(writer_spec)
+    else:
+      bucket = cls._get_gcs_bucket(writer_spec)
+      account_id = cls._get_account_id(writer_spec)
+
+
+    filename = "/%s/%s" % (bucket, filename_suffix)
+
+    content_type = writer_spec.get(cls.CONTENT_TYPE_PARAM, None)
+
+    options = {}
+    if cls.ACL_PARAM in writer_spec:
+      options["x-goog-acl"] = writer_spec.get(cls.ACL_PARAM)
+
+    return cloudstorage.open(filename, mode="w", content_type=content_type,
+                             options=options, _account_id=account_id)
+
+  @classmethod
+  def _get_filename(cls, shard_state):
+    return shard_state.writer_state["filename"]
+
+  @classmethod
+  def get_filenames(cls, mapreduce_state):
+    filenames = []
+    for shard in model.ShardState.find_all_by_mapreduce_state(mapreduce_state):
+      if shard.result_status == model.ShardState.RESULT_SUCCESS:
+        filenames.append(cls._get_filename(shard))
+    return filenames
+
+  def _get_write_buffer(self):
+    """Returns a buffer to be used by the write() method."""
+    raise NotImplementedError()
+
+  def write(self, data):
+    """Write data to the GoogleCloudStorage file.
+
+    Args:
+      data: string containing the data to be written.
+    """
+    start_time = time.time()
+    self._get_write_buffer().write(data)
+    ctx = context.get()
+    operation.counters.Increment(COUNTER_IO_WRITE_BYTES, len(data))(ctx)
+    operation.counters.Increment(
+        COUNTER_IO_WRITE_MSEC, int((time.time() - start_time) * 1000))(ctx)
+
+
+  def _supports_shard_retry(self, tstate):
+    return True
+
+
+class _GoogleCloudStorageOutputWriter(_GoogleCloudStorageOutputWriterBase):
+  """Naive version of GoogleCloudStorageWriter.
+
+  This version is known to create inconsistent outputs if the input changes
+  during slice retries. Consider using GoogleCloudStorageConsistentOutputWriter
+  instead.
+
+  Optional configuration in the mapper_spec.output_writer dictionary:
     _NO_DUPLICATE: if True, slice recovery logic will be used to ensure
       output files has no duplicates. Every shard should have only one final
       output in user specified location. But it may produce many smaller
@@ -907,22 +1183,6 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
       tmp directory and should be combined and renamed to the final location.
       In current impl, they are not combined.
   """
-
-
-  BUCKET_NAME_PARAM = "bucket_name"
-  ACL_PARAM = "acl"
-  NAMING_FORMAT_PARAM = "naming_format"
-  CONTENT_TYPE_PARAM = "content_type"
-  _NO_DUPLICATE = "no_duplicate"
-
-
-  DEFAULT_NAMING_FORMAT = "$name/$id/output-$num"
-
-
-  _MR_TMP = "gae_mr_tmp"
-  _TMP_FILE_NAMING_FORMAT = (
-      _MR_TMP + "/$name/$id/attempt-$attempt/output-$num/seg-$seg")
-  _ACCOUNT_ID_PARAM = "account_id"
   _SEG_PREFIX = "seg_prefix"
   _LAST_SEG_INDEX = "last_seg_index"
   _JSON_GCS_BUFFER = "buffer"
@@ -930,6 +1190,7 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
   _JSON_NO_DUP = "no_dup"
 
   _VALID_LENGTH = "x-goog-meta-gae-mr-valid-length"
+  _NO_DUPLICATE = "no_duplicate"
 
 
   def __init__(self, streaming_buffer, writer_spec=None):
@@ -956,80 +1217,20 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
       self._seg_valid_length = 0
 
   @classmethod
-  def _generate_filename(cls, writer_spec, name, job_id, num,
-                         attempt=None, seg_index=None):
-    """Generates a filename for a particular output.
-
-    Args:
-      writer_spec: specification dictionary for the output writer.
-      name: name of the job.
-      job_id: the ID number assigned to the job.
-      num: shard number.
-      attempt: the shard attempt number.
-      seg_index: index of the seg. None means the final output.
-
-    Returns:
-      a string containing the filename.
-
-    Raises:
-      BadWriterParamsError: if the template contains any errors such as invalid
-        syntax or contains unknown substitution placeholders.
-    """
-    naming_format = cls._TMP_FILE_NAMING_FORMAT
-    if seg_index is None:
-      naming_format = writer_spec.get(cls.NAMING_FORMAT_PARAM,
-                                      cls.DEFAULT_NAMING_FORMAT)
-
-    template = string.Template(naming_format)
-    try:
-
-      if seg_index is None:
-        return template.substitute(name=name, id=job_id, num=num)
-      else:
-        return template.substitute(name=name, id=job_id, num=num,
-                                   attempt=attempt,
-                                   seg=seg_index)
-    except ValueError, error:
-      raise errors.BadWriterParamsError("Naming template is bad, %s" % (error))
-    except KeyError, error:
-      raise errors.BadWriterParamsError("Naming template '%s' has extra "
-                                        "mappings, %s" % (naming_format, error))
-
-  @classmethod
   def validate(cls, mapper_spec):
-    """Validate mapper specification.
-
-    Args:
-      mapper_spec: an instance of model.MapperSpec.
-
-    Raises:
-      BadWriterParamsError: if the specification is invalid for any reason such
-        as missing the bucket name or providing an invalid bucket name.
-    """
-    writer_spec = _get_params(mapper_spec, allow_old=False)
-
-
-    if cls.BUCKET_NAME_PARAM not in writer_spec:
-      raise errors.BadWriterParamsError(
-          "%s is required for Google Cloud Storage" %
-          cls.BUCKET_NAME_PARAM)
-    try:
-      cloudstorage.validate_bucket_name(
-          writer_spec[cls.BUCKET_NAME_PARAM])
-    except ValueError, error:
-      raise errors.BadWriterParamsError("Bad bucket name, %s" % (error))
-
+    """Inherit docs."""
+    writer_spec = cls.get_params(mapper_spec, allow_old=False)
     if writer_spec.get(cls._NO_DUPLICATE, False) not in (True, False):
       raise errors.BadWriterParamsError("No duplicate must a boolean.")
+    super(_GoogleCloudStorageOutputWriter, cls).validate(mapper_spec)
 
-
-    cls._generate_filename(writer_spec, "name", "id", 0)
-    cls._generate_filename(writer_spec, "name", "id", 0, 1, 0)
+  def _get_write_buffer(self):
+    return self._streaming_buffer
 
   @classmethod
   def create(cls, mr_spec, shard_number, shard_attempt, _writer_state=None):
     """Inherit docs."""
-    writer_spec = _get_params(mr_spec.mapper, allow_old=False)
+    writer_spec = cls.get_params(mr_spec.mapper, allow_old=False)
     seg_index = None
     if writer_spec.get(cls._NO_DUPLICATE, False):
       seg_index = 0
@@ -1044,35 +1245,8 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
   @classmethod
   def _create(cls, writer_spec, filename_suffix):
     """Helper method that actually creates the file in cloud storage."""
-
-    filename = "/%s/%s" % (writer_spec[cls.BUCKET_NAME_PARAM], filename_suffix)
-
-    content_type = writer_spec.get(cls.CONTENT_TYPE_PARAM, None)
-
-    options = {}
-    if cls.ACL_PARAM in writer_spec:
-      options["x-goog-acl"] = writer_spec.get(cls.ACL_PARAM)
-
-    account_id = writer_spec.get(cls._ACCOUNT_ID_PARAM, None)
-
-    writer = cloudstorage.open(filename, mode="w",
-                               content_type=content_type,
-                               options=options,
-                               _account_id=account_id)
-
+    writer = cls._open_file(writer_spec, filename_suffix)
     return cls(writer, writer_spec=writer_spec)
-
-  @classmethod
-  def _get_filename(cls, shard_state):
-    return shard_state.writer_state["filename"]
-
-  @classmethod
-  def get_filenames(cls, mapreduce_state):
-    filenames = []
-    for shard in model.ShardState.find_all_by_mapreduce_state(mapreduce_state):
-      if shard.result_status == model.ShardState.RESULT_SUCCESS:
-        filenames.append(cls._get_filename(shard))
-    return filenames
 
   @classmethod
   def from_json(cls, state):
@@ -1084,10 +1258,11 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
       writer._seg_index = state[cls._JSON_SEG_INDEX]
     return writer
 
-  def to_json(self):
-
+  def end_slice(self, slice_ctx):
     if not self._streaming_buffer.closed:
       self._streaming_buffer.flush()
+
+  def to_json(self):
     result = {self._JSON_GCS_BUFFER: pickle.dumps(self._streaming_buffer),
               self._JSON_NO_DUP: self._no_dup}
     if self._no_dup:
@@ -1101,31 +1276,18 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
           self._JSON_SEG_INDEX: self._seg_index})
     return result
 
-  def write(self, data):
-    """Write data to the GoogleCloudStorage file.
-
-    Args:
-      data: string containing the data to be written.
-    """
-    start_time = time.time()
-    self._streaming_buffer.write(data)
-    ctx = context.get()
-    operation.counters.Increment(COUNTER_IO_WRITE_BYTES, len(data))(ctx)
-    operation.counters.Increment(
-        COUNTER_IO_WRITE_MSEC, int((time.time() - start_time) * 1000))(ctx)
-
   def finalize(self, ctx, shard_state):
     self._streaming_buffer.close()
 
     if self._no_dup:
-      cloudstorage_api._copy2(
+      cloudstorage_api.copy2(
           self._streaming_buffer.name,
           self._streaming_buffer.name,
           metadata={self._VALID_LENGTH: self._streaming_buffer.tell()})
 
 
       mr_spec = ctx.mapreduce_spec
-      writer_spec = _get_params(mr_spec.mapper, allow_old=False)
+      writer_spec = self.get_params(mr_spec.mapper, allow_old=False)
       filename = self._generate_filename(writer_spec,
                                          mr_spec.name,
                                          mr_spec.mapreduce_id,
@@ -1141,12 +1303,8 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
     else:
       shard_state.writer_state = {"filename": self._streaming_buffer.name}
 
-
-  def _supports_shard_retry(self, tstate):
-    return True
-
   def _supports_slice_recovery(self, mapper_spec):
-    writer_spec = _get_params(mapper_spec, allow_old=False)
+    writer_spec = self.get_params(mapper_spec, allow_old=False)
     return writer_spec.get(self._NO_DUPLICATE, False)
 
   def _recover(self, mr_spec, shard_number, shard_attempt):
@@ -1166,14 +1324,14 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
           self._streaming_buffer.close()
       except cloudstorage.FileClosedError:
         pass
-      cloudstorage_api._copy2(
+      cloudstorage_api.copy2(
           self._streaming_buffer.name,
           self._streaming_buffer.name,
           metadata={self._VALID_LENGTH:
                     self._seg_valid_length})
       next_seg_index = self._seg_index + 1
 
-    writer_spec = _get_params(mr_spec.mapper, allow_old=False)
+    writer_spec = self.get_params(mr_spec.mapper, allow_old=False)
 
     key = self._generate_filename(
         writer_spec, mr_spec.name,
@@ -1185,44 +1343,323 @@ class _GoogleCloudStorageOutputWriter(OutputWriter):
     new_writer._seg_index = next_seg_index
     return new_writer
 
+  def _get_filename_for_test(self):
+    return self._streaming_buffer.name
 
-class _GoogleCloudStorageRecordOutputWriter(_GoogleCloudStorageOutputWriter):
-  """Write data to the Google Cloud Storage file using LevelDB format.
 
-  Data are written to cloudstorage in record format. On writer serializaton,
-  up to 32KB padding may be added to ensure the next slice aligns with
-  record boundary.
+GoogleCloudStorageOutputWriter = _GoogleCloudStorageOutputWriter
 
-  See the _GoogleCloudStorageOutputWriter for configuration options.
+
+class _ConsistentStatus(object):
+  """Object used to pass status to the next slice."""
+
+  def __init__(self):
+    self.writer_spec = None
+    self.mapreduce_id = None
+    self.shard = None
+    self.mainfile = None
+    self.tmpfile = None
+    self.tmpfile_1ago = None
+
+
+class GoogleCloudStorageConsistentOutputWriter(
+    _GoogleCloudStorageOutputWriterBase):
+  """Output writer to Google Cloud Storage using the cloudstorage library.
+
+  This version ensures that the output written to GCS is consistent.
   """
 
-  def __init__(self,
-               streaming_buffer,
-               writer_spec=None):
-    """Initialize a CloudStorageOutputWriter instance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  _JSON_STATUS = "status"
+  _RAND_BITS = 128
+  _REWRITE_BLOCK_SIZE = 1024 * 256
+  _REWRITE_MR_TMP = "gae_mr_tmp"
+  _TMPFILE_PATTERN = _REWRITE_MR_TMP + "/$id-tmp-$shard-$random"
+  _TMPFILE_PREFIX = _REWRITE_MR_TMP + "/$id-tmp-$shard-"
+
+  def __init__(self, status):
+    """Initialize a GoogleCloudStorageConsistentOutputWriter instance.
 
     Args:
-      streaming_buffer: an instance of writable buffer from cloudstorage_api.
-      writer_spec: the specification for the writer.
+      status: an instance of _ConsistentStatus with initialized tmpfile
+              and mainfile.
     """
-    super(_GoogleCloudStorageRecordOutputWriter, self).__init__(
-        streaming_buffer, writer_spec)
-    self._record_writer = records.RecordsWriter(
-        super(_GoogleCloudStorageRecordOutputWriter, self))
+
+    self.status = status
+    self._data_written_to_slice = False
+
+  def _get_write_buffer(self):
+    if not self.status.tmpfile:
+      raise errors.FailJobError(
+          "write buffer called but empty, begin_slice missing?")
+    return self.status.tmpfile
+
+  def _get_filename_for_test(self):
+    return self.status.mainfile.name
+
+  @classmethod
+  def create(cls, mr_spec, shard_number, shard_attempt, _writer_state=None):
+    """Inherit docs."""
+    writer_spec = cls.get_params(mr_spec.mapper, allow_old=False)
+
+
+    key = cls._generate_filename(writer_spec, mr_spec.name,
+                                 mr_spec.mapreduce_id,
+                                 shard_number, shard_attempt)
+
+    status = _ConsistentStatus()
+    status.writer_spec = writer_spec
+    status.mainfile = cls._open_file(writer_spec, key)
+    status.mapreduce_id = mr_spec.mapreduce_id
+    status.shard = shard_number
+
+    return cls(status)
+
+  def _remove_tmpfile(self, filename, writer_spec):
+    if not filename:
+      return
+    account_id = self._get_tmp_account_id(writer_spec)
+    try:
+      cloudstorage_api.delete(filename, _account_id=account_id)
+    except cloud_errors.NotFoundError:
+      pass
+
+  def _exists_in_gcs(self, filename, _account_id=None):
+    """Checks if file exists in GCS already."""
+    try:
+      with cloudstorage_api.open(filename, _account_id=_account_id):
+        return True
+    except cloud_errors.NotFoundError:
+      return False
+
+  def _rewrite_tmpfile(self, mainfile, tmpfile, writer_spec):
+    """Copies contents of tmpfile (name) to mainfile (buffer)."""
+
+    account_id = self._get_tmp_account_id(writer_spec)
+    try:
+
+      f = cloudstorage_api.open(tmpfile, _account_id=account_id)
+    except cloud_errors.NotFoundError:
+
+
+
+
+
+
+
+
+
+
+
+      if self._exists_in_gcs(mainfile.name, _account_id=account_id):
+        return
+      raise
+
+
+    data = f.read(self._REWRITE_BLOCK_SIZE)
+    while data:
+
+      mainfile.write(data)
+      data = f.read(self._REWRITE_BLOCK_SIZE)
+    f.close()
+    mainfile.flush()
+
+  @classmethod
+  def _create_tmpfile(cls, status):
+    """Creates a new random-named tmpfile."""
+
+
+
+
+
+
+
+    tmpl = string.Template(cls._TMPFILE_PATTERN)
+    filename = tmpl.substitute(
+        id=status.mapreduce_id, shard=status.shard,
+        random=random.getrandbits(cls._RAND_BITS))
+
+    return cls._open_file(status.writer_spec, filename, use_tmp_bucket=True)
+
+  def begin_slice(self, slice_ctx):
+    status = self.status
+    writer_spec = status.writer_spec
+
+
+    if status.tmpfile_1ago:
+      self._remove_tmpfile(status.tmpfile_1ago.name, writer_spec)
+
+
+
+
+    files_to_keep = []
+    if status.tmpfile:
+      self._rewrite_tmpfile(status.mainfile, status.tmpfile.name, writer_spec)
+      files_to_keep.append(status.tmpfile.name)
+
+
+    self._try_to_clean_garbage(
+        writer_spec, exclude_list=files_to_keep)
+
+
+    status.tmpfile_1ago = status.tmpfile
+    status.tmpfile = self._create_tmpfile(status)
+
+
+    if status.mainfile.closed:
+      status.tmpfile.close()
+      self._remove_tmpfile(status.tmpfile.name, writer_spec)
+
+  @classmethod
+  def from_json(cls, state):
+    return cls(pickle.loads(state[cls._JSON_STATUS]))
+
+  def end_slice(self, slice_ctx):
+    self.status.tmpfile.close()
 
   def to_json(self):
-
-    if not self._streaming_buffer.closed:
-      self._record_writer._pad_block()
-    return super(_GoogleCloudStorageRecordOutputWriter, self).to_json()
+    return {self._JSON_STATUS: pickle.dumps(self.status)}
 
   def write(self, data):
-    """Write a single record of data to the file using LevelDB format.
+    super(GoogleCloudStorageConsistentOutputWriter, self).write(data)
+    self._data_written_to_slice = True
+
+  def _try_to_clean_garbage(self, writer_spec, exclude_list=()):
+    """Tries to remove any files created by this shard that aren't needed.
 
     Args:
-      data: string containing the data to be written.
+      writer_spec: writer_spec for the MR.
+      exclude_list: A list of filenames (strings) that should not be
+        removed.
     """
+
+
+    tmpl = string.Template(self._TMPFILE_PREFIX)
+    prefix = tmpl.substitute(
+        id=self.status.mapreduce_id, shard=self.status.shard)
+    bucket = self._get_tmp_gcs_bucket(writer_spec)
+    account_id = self._get_tmp_account_id(writer_spec)
+    for f in cloudstorage.listbucket("/%s/%s" % (bucket, prefix),
+                                     _account_id=account_id):
+      if f.filename not in exclude_list:
+        self._remove_tmpfile(f.filename, self.status.writer_spec)
+
+  def finalize(self, ctx, shard_state):
+    if self._data_written_to_slice:
+      raise errors.FailJobError(
+          "finalize() called after data was written")
+
+    if self.status.tmpfile:
+      self.status.tmpfile.close()
+    self.status.mainfile.close()
+
+
+    if self.status.tmpfile_1ago:
+      self._remove_tmpfile(self.status.tmpfile_1ago.name,
+                           self.status.writer_spec)
+    if self.status.tmpfile:
+      self._remove_tmpfile(self.status.tmpfile.name,
+                           self.status.writer_spec)
+
+    self._try_to_clean_garbage(self.status.writer_spec)
+
+    shard_state.writer_state = {"filename": self.status.mainfile.name}
+
+
+class _GoogleCloudStorageRecordOutputWriterBase(_GoogleCloudStorageBase):
+  """Wraps a GCS writer with a records.RecordsWriter.
+
+  This class wraps a WRITER_CLS (and its instance) and delegates most calls
+  to it. write() calls are done using records.RecordsWriter.
+
+  WRITER_CLS has to be set to a subclass of _GoogleCloudStorageOutputWriterBase.
+
+  For list of supported parameters see _GoogleCloudStorageBase.
+  """
+
+  WRITER_CLS = None
+
+  def __init__(self, writer):
+    self._writer = writer
+    self._record_writer = records.RecordsWriter(writer)
+
+  @classmethod
+  def validate(cls, mapper_spec):
+    return cls.WRITER_CLS.validate(mapper_spec)
+
+  @classmethod
+  def init_job(cls, mapreduce_state):
+    return cls.WRITER_CLS.init_job(mapreduce_state)
+
+  @classmethod
+  def finalize_job(cls, mapreduce_state):
+    return cls.WRITER_CLS.finalize_job(mapreduce_state)
+
+  @classmethod
+  def from_json(cls, state):
+    return cls(cls.WRITER_CLS.from_json(state))
+
+  def to_json(self):
+    return self._writer.to_json()
+
+  @classmethod
+  def create(cls, mr_spec, shard_number, shard_attempt, _writer_state=None):
+    return cls(cls.WRITER_CLS.create(mr_spec, shard_number, shard_attempt,
+                                     _writer_state))
+
+  def write(self, data):
     self._record_writer.write(data)
+
+  def finalize(self, ctx, shard_state):
+    return self._writer.finalize(ctx, shard_state)
+
+  @classmethod
+  def get_filenames(cls, mapreduce_state):
+    return cls.WRITER_CLS.get_filenames(mapreduce_state)
+
+  def _supports_shard_retry(self, tstate):
+    return self._writer._supports_shard_retry(tstate)
+
+  def _supports_slice_recovery(self, mapper_spec):
+    return self._writer._supports_slice_recovery(mapper_spec)
+
+  def _recover(self, mr_spec, shard_number, shard_attempt):
+    return self._writer._recover(mr_spec, shard_number, shard_attempt)
+
+  def begin_slice(self, slice_ctx):
+    return self._writer.begin_slice(slice_ctx)
+
+  def end_slice(self, slice_ctx):
+
+    if not self._writer._get_write_buffer().closed:
+      self._record_writer._pad_block()
+    return self._writer.end_slice(slice_ctx)
+
+
+class _GoogleCloudStorageRecordOutputWriter(
+    _GoogleCloudStorageRecordOutputWriterBase):
+  WRITER_CLS = _GoogleCloudStorageOutputWriter
+
+
+GoogleCloudStorageRecordOutputWriter = _GoogleCloudStorageRecordOutputWriter
+
+
+class GoogleCloudStorageConsistentRecordOutputWriter(
+    _GoogleCloudStorageRecordOutputWriterBase):
+  WRITER_CLS = GoogleCloudStorageConsistentOutputWriter
 
 
 
@@ -1245,4 +1682,7 @@ class _GoogleCloudStorageKeyValueOutputWriter(
     proto = file_service_pb.KeyValue()
     proto.set_key(key)
     proto.set_value(value)
-    _GoogleCloudStorageRecordOutputWriter.write(self, proto.Encode())
+    GoogleCloudStorageRecordOutputWriter.write(self, proto.Encode())
+
+
+GoogleCloudStorageKeyValueOutputWriter = _GoogleCloudStorageKeyValueOutputWriter

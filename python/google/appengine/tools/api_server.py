@@ -22,6 +22,7 @@ The Remote API protocol is used for communication.
 from __future__ import with_statement
 
 
+
 import BaseHTTPServer
 import httplib
 import logging
@@ -382,8 +383,6 @@ def _SetupStubs(
   except ImportError:
 
 
-    logging.warning('Could not initialize images API; you are likely missing '
-                    'the Python "PIL" module.')
 
     from google.appengine.api.images import images_not_implemented_stub
     apiproxy_stub_map.apiproxy.RegisterStub(

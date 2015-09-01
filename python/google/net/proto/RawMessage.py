@@ -25,6 +25,7 @@ python from google.net.proto.RawMessage import RawMessage
 
 """
 
+
 __pychecker__ = 'no-callinit no-argsused'
 
 from google.net.proto import ProtocolBuffer

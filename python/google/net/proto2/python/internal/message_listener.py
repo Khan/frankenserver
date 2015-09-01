@@ -26,6 +26,7 @@ Also defines a null implementation of this interface.
 
 
 
+
 class MessageListener(object):
 
   """Listens for modifications made to a message.  Meant to be registered via

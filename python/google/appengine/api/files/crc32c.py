@@ -30,6 +30,7 @@ pycrc 0.7.1 (http://www.tty1.net/pycrc/). Command line used:
 
 
 
+
 import array
 
 CRC_TABLE = (

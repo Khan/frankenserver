@@ -1,6 +1,6 @@
 Metadata-Version: 1.1
 Name: six
-Version: 1.5.2
+Version: 1.9.0
 Summary: Python 2 and 3 compatibility utilities
 Home-page: http://pypi.python.org/pypi/six/
 Author: Benjamin Peterson
@@ -17,8 +17,8 @@ Description: Six is a Python 2 and 3 compatibility library.  It provides utility
         
         Online documentation is at http://pythonhosted.org/six/.
         
-        Bugs can be reported to http://bitbucket.org/gutworth/six.  The code can also be
-        found there.
+        Bugs can be reported to https://bitbucket.org/gutworth/six.  The code can also
+        be found there.
         
         For questions about six or porting in general, email the python-porting mailing
         list: http://mail.python.org/mailman/listinfo/python-porting

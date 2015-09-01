@@ -96,6 +96,8 @@ final class UserService {
   }
 
   /**
+   * Get the current logged in user.
+   *
    * @return User The object representing the current signed in user, or null
    * if no user is signed in.
    */
@@ -149,6 +151,16 @@ final class UserService {
     return getenv('USER_IS_ADMIN') == '1';
   }
 
+  /**
+   * Convert a UserService RPC error to an exception.
+   *
+   * @param mixed $error The application error object.
+   * @param string $destination_url A URL that was used for the RPC call.
+   *
+   * @return mixed The correct exception object for the supplied error.
+   *
+   * @access private.
+   */
   private static function applicationErrorToException($error,
                                                       $destination_url) {
     switch ($error->getApplicationError()) {

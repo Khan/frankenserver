@@ -20,6 +20,9 @@
  */
 namespace google\appengine\util;
 
+/**
+ * Various PHP string related utility functions.
+ */
 final class StringUtil {
   /**
    * Return true if the first paramater contains the second parameter at the
@@ -36,6 +39,8 @@ final class StringUtil {
   }
 
   /**
+   * Return true if the input string starts with the prefix string.
+   *
    * @param string $input The string which may contain the prefix at the start.
    * @param string $prefix The string to look for at the start of the input.
    *
@@ -47,6 +52,8 @@ final class StringUtil {
   }
 
   /**
+   * Base64 encode a string, ensuring that the output is safe to use in a URL.
+   *
    * @param string $input The string which may not be url safe.
    *
    * @return string A Base64 encoded url safe string.
@@ -56,6 +63,8 @@ final class StringUtil {
   }
 
   /**
+   * Base64 decode a string that was encoded with base64UrlEncode.
+   *
    * @param string $input The url safe Base64 encoded string.
    *
    * @return string The original string which may not be url safe.

@@ -35,6 +35,7 @@ Most of these kinds are based on the gd namespace "kinds" from GData:
 
 
 
+
 import types
 import urlparse
 from xml.sax import saxutils

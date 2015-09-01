@@ -233,6 +233,10 @@ final class CloudStorageStreamWrapper {
     return false;
   }
 
+  public function stream_lock($operation) {
+    return false;
+  }
+
   public function stream_open($path, $mode, $options, &$opened_path) {
     if (!CloudStorageTools::parseFilename($path, $bucket, $object) ||
         !isset($object)) {
@@ -359,12 +363,21 @@ final class CloudStorageStreamWrapper {
   }
 
   private function getAllowedBuckets() {
-    static $allowed_buckets;
-
-    if (!isset($allowed_buckets)) {
+    static $allowed_buckets = null;
+    if (!$allowed_buckets) {
       $allowed_buckets = explode(',', GAE_INCLUDE_GS_BUCKETS);
       $allowed_buckets = array_map('trim', $allowed_buckets);
       $allowed_buckets = array_filter($allowed_buckets);
+
+      if (ini_get('google_app_engine.gcs_default_keyword')) {
+        $allowed_buckets = array_map(function($path) {
+          $parts = explode('/', $path);
+          if ($parts[0] == CloudStorageTools::GS_DEFAULT_BUCKET_KEYWORD) {
+            $parts[0] = CloudStorageTools::getDefaultGoogleStorageBucketName();
+          }
+          return implode('/', $parts);
+        }, $allowed_buckets);
+      }
     }
 
     return $allowed_buckets;

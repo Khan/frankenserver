@@ -24,6 +24,8 @@ will be provided elsewhere in the future.
 """
 
 
+
+
 import base64
 
 try:
@@ -281,11 +283,8 @@ def _get_id_token_user(token, audiences, allowed_client_ids, time_now, cache):
 
   try:
     parsed_token = _verify_signed_jwt_with_certs(token, time_now, cache)
-  except _AppIdentityError, e:
+  except Exception, e:
     logging.debug('id_token verification failed: %s', e)
-    return None
-  except:
-    logging.debug('id_token verification failed.')
     return None
 
   if _verify_parsed_token(parsed_token, audiences, allowed_client_ids):
@@ -593,20 +592,26 @@ def _verify_signed_jwt_with_certs(
 
   verified = False
   for keyvalue in certs['keyvalues']:
-    modulus = _b64_to_long(keyvalue['modulus'])
-    exponent = _b64_to_long(keyvalue['exponent'])
-    key = RSA.construct((modulus, exponent))
+    try:
+      modulus = _b64_to_long(keyvalue['modulus'])
+      exponent = _b64_to_long(keyvalue['exponent'])
+      key = RSA.construct((modulus, exponent))
 
 
-    hexsig = '%064x' % key.encrypt(lsignature, '')[0]
+      hexsig = '%064x' % key.encrypt(lsignature, '')[0]
 
-    hexsig = hexsig[-64:]
+      hexsig = hexsig[-64:]
 
 
 
-    verified = (hexsig == local_hash)
-    if verified:
-      break
+      verified = (hexsig == local_hash)
+      if verified:
+        break
+    except Exception, e:
+
+      logging.debug(
+          "Signature verification error: %s; continue with the next cert.", e)
+      continue
   if not verified:
     raise _AppIdentityError('Invalid token signature')
 
