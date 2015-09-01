@@ -147,7 +147,7 @@ class FSEventsFileWatcher(object):
     """Stop watching the directory for changes."""
     self._quit_event.set()
 
-  def changes(self):
+  def changes(self, timeout_ms=0):
     assert self._event_watcher_thread.is_alive(), (
         'watcher thread exited or was not started')
     try:
