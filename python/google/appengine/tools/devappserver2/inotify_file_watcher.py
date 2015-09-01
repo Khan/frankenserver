@@ -273,7 +273,6 @@ class InotifyFileWatcher(object):
             _AGGREGATE_CHANGES_MS_APART if paths else timeout_ms):
           break
 
-<<<<<<< HEAD
         self._inotify_events += os.read(self._inotify_fd, 1024)
         while len(self._inotify_events) > _INOTIFY_EVENT_SIZE:
           wd, mask, cookie, length = _INOTIFY_EVENT.unpack(
