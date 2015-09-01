@@ -90,7 +90,6 @@ class MtimeFileWatcher(object):
           old_filename_to_mtime.items())
       # returns immediately if we found a difference.
       if diff_items or timeout_ms == 0:
-        for path, _ in diff_items:
         return {k for k, _ in diff_items}
 
       self._timeout.wait(timeout_s)
