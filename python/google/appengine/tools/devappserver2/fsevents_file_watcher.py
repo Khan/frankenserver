@@ -55,7 +55,7 @@ class FSEventsFileWatcher(object):
     """
     self._directories = [os.path.abspath(d) for d in directories]
     self._skip_files_re = None
-    self._changes = {}
+    self._changes = set()
     self._quit_event = threading.Event()
     self._event_watcher_thread = threading.Thread(target=self._watch_changes)
 
@@ -65,7 +65,7 @@ class FSEventsFileWatcher(object):
 
   def _fsevents_callback(self, stream_ref, client_call_back_info, num_events,
       event_paths, event_flags, event_ids):
-    changes = {}
+    changes = set()
     for absolute_path, flag in zip(event_paths, event_flags):
       directory = next(
         d for d in self._directories if absolute_path.startswith(d))
@@ -137,7 +137,7 @@ class FSEventsFileWatcher(object):
 
   def start(self):
     """Start watching the directory for changes."""
-    self._changes = {}
+    self._changes = set()
     self._event_watcher_thread.start()
 
   def set_skip_files_re(self, skip_files_re):
@@ -154,4 +154,4 @@ class FSEventsFileWatcher(object):
     try:
       return self._changes
     finally:
-      self._changes = {}
+      self._changes = set()
