@@ -16,7 +16,6 @@
 #
 """Monitors a directory tree for changes using mtime polling."""
 
-import logging
 import os
 import threading
 import warnings
