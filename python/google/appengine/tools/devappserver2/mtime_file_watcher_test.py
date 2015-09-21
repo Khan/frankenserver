@@ -221,14 +221,16 @@ class TestMtimeFileWatcher(unittest.TestCase):
     self._create_file('a/bar')
     self._create_file('a/b/baz')
     self._create_file('a/b/c/qux')
-    self.assertFalse(self._watcher._has_changed_paths())
+    self.assertEqual(set(), self._watcher.changes())
 
     self._create_file('foobar')
-    self.assertTrue(self._watcher._has_changed_paths())
+    self.assertEqual(set([os.path.join(self._directory, 'foobar')]),
+                     self._watcher.changes())
 
-    self.assertFalse(self._watcher._has_changed_paths())   # should reset
+    self.assertEqual(set(), self._watcher.changes())     # should reset
     self._create_file('a/barabella')
-    self.assertTrue(self._watcher._has_changed_paths())
+    self.assertEqual(set([os.path.join(self._directory, 'a', 'barabella')]),
+    self._watcher.changes())
 
 
 if __name__ == '__main__':

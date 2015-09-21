@@ -117,9 +117,11 @@ class MtimeFileWatcher(object):
       relative_dirpath = os.path.relpath(dirname, self._directory)
       watcher_common.skip_ignored_dirs(dirnames, relative_dirpath,
                                        self._skip_files_re)
+      import pdb; pdb.set_trace() #!!
       filenames = [f for f in filenames
                    if not watcher_common.ignore_file(
-                       os.path.join(relative_dirpath, f), self._skip_files_re)]
+                       os.path.normpath(os.path.join(relative_dirpath, f)),
+                       self._skip_files_re)]
       for filename in filenames + dirnames:
         if self._quit_event.is_set():
           raise ShutdownError()
