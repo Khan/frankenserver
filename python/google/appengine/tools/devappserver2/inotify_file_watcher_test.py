@@ -353,7 +353,7 @@ class TestInotifyFileWatcher(unittest.TestCase):
     self._create_file('a/b/c/qux')
     self.assertEqual(
         set([path1, path2]),
-        self._watcher._get_changed_paths())
+        self._watcher.changes())
 
 
 @unittest.skipUnless(sys.platform.startswith('linux'), 'requires linux')
@@ -405,7 +405,7 @@ class TestInotifyFileWatcherMultipleDirectories(unittest.TestCase):
     path2 = self._create_file(self._directories[1], 'moo')
     self.assertEqual(
         set([path2]),
-        self._watcher._get_changed_paths())
+        self._watcher.changes())
 
 
 class TestBitStr(unittest.TestCase):
