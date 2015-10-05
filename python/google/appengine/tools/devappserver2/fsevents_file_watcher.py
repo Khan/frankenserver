@@ -56,6 +56,7 @@ class FSEventsFileWatcher(object):
     self._directories = [os.path.abspath(d) for d in directories]
     self._skip_files_re = {}   # map from _directory to skip-re for that dir
     self._changes = set()
+    self._change_event = threading.Event()
     self._quit_event = threading.Event()
     self._event_watcher_thread = threading.Thread(target=self._watch_changes)
 
@@ -102,6 +103,7 @@ class FSEventsFileWatcher(object):
       changes.add(path)
 
       self._changes = changes
+      self._change_event.set()
 
   def _watch_changes(self):
     # Do the file watching in a thread to ensure that
@@ -151,6 +153,8 @@ class FSEventsFileWatcher(object):
     assert self._event_watcher_thread.is_alive(), (
         'watcher thread exited or was not started')
     try:
+      self._change_event.wait(timeout_ms / 1000.0)
       return self._changes
     finally:
       self._changes = set()
+      self._change_event.clear()
