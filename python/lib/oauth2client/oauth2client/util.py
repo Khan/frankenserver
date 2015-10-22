@@ -123,8 +123,6 @@ def positional(max_positional_args):
     @functools.wraps(wrapped)
     def positional_wrapper(*args, **kwargs):
       if len(args) > max_positional_args:
-        # Added to help track down http://stackoverflow.com/questions/18126157/appengine-warning-during-python-app-update
-        import traceback; traceback.print_stack()
         plural_s = ''
         if max_positional_args != 1:
           plural_s = 's'
