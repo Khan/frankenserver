@@ -244,15 +244,21 @@ def GetQueryNodeTextUnicode(node):
   return node.getText()
 
 
-def GetPhraseQueryNodeText(node):
-  """Returns the text from a query node."""
-  text = GetQueryNodeText(node)
+def RemoveSurroundingQuotes(text):
+  """Removes outer quotation marks, if present."""
   if text:
 
 
 
     if text[0] == '"' and text[-1] == '"':
       text = text[1:-1]
+  return text
+
+
+def GetPhraseQueryNodeText(node):
+  """Returns the text from a query node."""
+  text = GetQueryNodeText(node)
+  text = RemoveSurroundingQuotes(text)
   return text
 
 

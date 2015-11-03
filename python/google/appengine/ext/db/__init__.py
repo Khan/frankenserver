@@ -3900,7 +3900,7 @@ class ComputedProperty(Property):
   you may not set values on them.  Attempting to do so raises
   db.DerivedPropertyError which db.Model knows to ignore during entity
   loading time.  Whenever getattr is used for the property
-  the value is recaclulated.  This happens when the model calls
+  the value is recalculated.  This happens when the model calls
   get_value_for_datastore on the property.
 
   Example:

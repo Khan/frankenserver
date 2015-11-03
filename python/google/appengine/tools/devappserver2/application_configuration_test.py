@@ -129,6 +129,35 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
     self.assertEqual(_DEFAULT_HEALTH_CHECK, config.health_check)
 
+  def test_vm_app_yaml_configuration_with_env(self):
+    manual_scaling = appinfo.ManualScaling()
+    vm_settings = appinfo.VmSettings()
+    vm_settings['vm_runtime'] = 'myawesomeruntime'
+    vm_settings['forwarded_ports'] = '49111:49111,5002:49112,8000'
+    health_check = appinfo.HealthCheck()
+    health_check.enable_health_check = False
+    info = appinfo.AppInfoExternal(
+        application='app',
+        module='module1',
+        version='1',
+        runtime='vm',
+        env='2',
+        vm_settings=vm_settings,
+        threadsafe=False,
+        manual_scaling=manual_scaling,
+        health_check=health_check
+    )
+
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+
+    self.mox.VerifyAll()
+    self.assertEqual('2', config.env)
+
   def test_vm_app_yaml_configuration(self):
     manual_scaling = appinfo.ManualScaling()
     vm_settings = appinfo.VmSettings()
@@ -710,6 +739,7 @@ class TestBackendConfiguration(unittest.TestCase):
     info = appinfo.AppInfoExternal(
         application='app',
         module='module1',
+        env='1',
         version='1',
         runtime='python27',
         threadsafe=False,
@@ -740,6 +770,7 @@ class TestBackendConfiguration(unittest.TestCase):
     self.assertEqual('dev~app', config.application)
     self.assertEqual('app', config.application_external_name)
     self.assertEqual('dev', config.partition)
+    self.assertEqual('1', config.env)
     self.assertEqual('static', config.module_name)
     self.assertEqual('1', config.major_version)
     self.assertRegexpMatches(config.version_id, r'static:1\.\d+')

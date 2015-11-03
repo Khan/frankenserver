@@ -431,9 +431,9 @@ def get_hostname(module=None,
     module/version/instance.  E.g. 0.v1.module5.myapp.appspot.com
 
   Raises:
-    InvalidModuleError if the given moduleversion is invalid.
-    InvalidInstancesError if the given instance value is invalid.
-    TypeError if the given instance type is invalid.
+    InvalidModuleError: if the given moduleversion is invalid.
+    InvalidInstancesError: if the given instance value is invalid.
+    TypeError: if the given instance type is invalid.
   """
   def _ResultHook(rpc):
     mapped_errors = [modules_service_pb.ModulesServiceError.INVALID_MODULE,
@@ -446,7 +446,7 @@ def get_hostname(module=None,
     request.set_module(module)
   if version:
     request.set_version(version)
-  if instance:
+  if instance or instance == 0:
     if not isinstance(instance, (basestring, long, int)):
       raise TypeError(
           "'instance' arg must be of type basestring, long or int.")

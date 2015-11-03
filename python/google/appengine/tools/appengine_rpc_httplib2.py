@@ -376,10 +376,11 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
         host, None, user_agent, source, host_override=host_override,
         extra_headers=extra_headers, auth_tries=auth_tries,
         debug_data=debug_data, secure=secure, ignore_certs=ignore_certs,
-        rpc_tries=rpc_tries)
+        rpc_tries=rpc_tries, save_cookies=save_cookies)
 
     if not isinstance(oauth2_parameters, self.OAuth2Parameters):
-      raise TypeError('oauth2_parameters must be an OAuth2Parameters.')
+      raise TypeError('oauth2_parameters must be an OAuth2Parameters: %r' %
+                      oauth2_parameters)
     self.oauth2_parameters = oauth2_parameters
 
     if save_cookies:

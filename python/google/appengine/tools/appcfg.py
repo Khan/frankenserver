@@ -148,7 +148,8 @@ DEFAULT_RESOURCE_LIMITS = {
 APPCFG_CLIENT_ID = '550516889912.apps.googleusercontent.com'
 APPCFG_CLIENT_NOTSOSECRET = 'ykPq-0UYfKNprLRjVx1hBBar'
 APPCFG_SCOPES = ('https://www.googleapis.com/auth/appengine.admin',
-                 'https://www.googleapis.com/auth/cloud-platform')
+                 'https://www.googleapis.com/auth/cloud-platform',
+                 'https://www.googleapis.com/auth/userinfo.email')
 
 
 STATIC_FILE_PREFIX = '__static__'
@@ -2540,7 +2541,7 @@ class AppVersionUpload(object):
                         '(max %d bytes, file is %d bytes).%s',
                         path, max_size, file_length, extra_msg)
         else:
-          logging.debug('Processing file \'%s\'', path)
+          logging.info('Processing file \'%s\'', path)
           self.AddFile(path, file_handle)
       finally:
         file_handle.close()
@@ -2681,12 +2682,12 @@ def FileIterator(base, skip_files, runtime, separator=os.path.sep):
 
       if os.path.isfile(fullname):
         if skip_files.match(name):
-          logging.debug('Ignoring file \'%s\': File matches ignore regex.', name)
+          logging.info('Ignoring file \'%s\': File matches ignore regex.', name)
         else:
           yield name
       elif os.path.isdir(fullname):
         if skip_files.match(name):
-          logging.debug(
+          logging.info(
               'Ignoring directory \'%s\': Directory matches ignore regex.',
               name)
         else:
@@ -2796,7 +2797,6 @@ class AppCfgApp(object):
     options: The command line options parsed by 'parser'.
     argv: The original command line as a list.
     args: The positional command line args left over after parsing the options.
-    raw_input_fn: Function used for getting raw user input, like email.
     error_fh: Unexpected HTTPErrors are printed to this file handle.
 
   Attributes for testing:
@@ -2808,7 +2808,6 @@ class AppCfgApp(object):
 
   def __init__(self, argv, parser_class=optparse.OptionParser,
                rpc_server_class=None,
-               raw_input_fn=raw_input,
                out_fh=sys.stdout,
                error_fh=sys.stderr,
                update_check_class=sdk_update_checker.SDKUpdateChecker,
@@ -2829,7 +2828,6 @@ class AppCfgApp(object):
       argv: The list of arguments passed to this program.
       parser_class: Options parser to use for this application.
       rpc_server_class: RPC server class to use for this application.
-      raw_input_fn: Function used for getting user email.
       out_fh: All normal output is printed to this file handle.
       error_fh: Unexpected HTTPErrors are printed to this file handle.
       update_check_class: sdk_update_checker.SDKUpdateChecker class (can be
@@ -2859,7 +2857,6 @@ class AppCfgApp(object):
     self.parser_class = parser_class
     self.argv = argv
     self.rpc_server_class = rpc_server_class
-    self.raw_input_fn = raw_input_fn
     self.out_fh = out_fh
     self.error_fh = error_fh
     self.update_check_class = update_check_class
@@ -3253,18 +3250,10 @@ class AppCfgApp(object):
       self.rpc_server_class = appengine_rpc_httplib2.HttpRpcServerOAuth2
 
 
-    get_user_credentials = (
-        appengine_rpc_httplib2.HttpRpcServerOAuth2.OAuth2Parameters(
-            access_token=self.options.oauth2_access_token,
-            client_id=self.oauth_client_id,
-            client_secret=self.oauth_client_secret,
-            scope=self.oauth_scopes,
-            refresh_token=self.options.oauth2_refresh_token,
-            credential_file=self.options.oauth2_credential_file,
-            token_uri=self._GetTokenUri()))
+    oauth2_parameters = self._GetOAuth2Parameters()
 
 
-    return self.rpc_server_class(self.options.server, get_user_credentials,
+    return self.rpc_server_class(self.options.server, oauth2_parameters,
                                  GetUserAgent(), source,
                                  host_override=self.options.host,
                                  save_cookies=self.options.save_cookies,
@@ -3273,6 +3262,19 @@ class AppCfgApp(object):
                                  secure=self.options.secure,
                                  ignore_certs=self.options.ignore_certs,
                                  options=self.options)
+
+  def _GetOAuth2Parameters(self):
+    """Returns appropriate an OAuth2Parameters object for authentication."""
+    oauth2_parameters = (
+        appengine_rpc_httplib2.HttpRpcServerOAuth2.OAuth2Parameters(
+            access_token=self.options.oauth2_access_token,
+            client_id=self.oauth_client_id,
+            client_secret=self.oauth_client_secret,
+            scope=self.oauth_scopes,
+            refresh_token=self.options.oauth2_refresh_token,
+            credential_file=self.options.oauth2_credential_file,
+            token_uri=self._GetTokenUri()))
+    return oauth2_parameters
 
   def _GetTokenUri(self):
     """Returns the OAuth2 token_uri, or None to use the default URI.
@@ -4774,7 +4776,7 @@ class AppCfgApp(object):
                     'sqlite3 module (included in python since 2.5).')
       sys.exit(1)
 
-    sys.exit(bulkloader.Run(arg_dict))
+    sys.exit(bulkloader.Run(arg_dict, self._GetOAuth2Parameters()))
 
   def _SetupLoad(self):
     """Performs common verification and set up for upload and download."""
@@ -4835,13 +4837,10 @@ class AppCfgApp(object):
                      'has_header',
                      'loader_opts',
                      'log_file',
-                     'passin',
-                     'email',
                      'debug',
                      'exporter_opts',
                      'mapper_opts',
                      'result_db_filename',
-                     'mapper_opts',
                      'dry_run',
                      'dump',
                      'restore',

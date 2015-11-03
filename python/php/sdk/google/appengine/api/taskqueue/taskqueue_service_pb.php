@@ -18,8 +18,10 @@
 # source: google/appengine/api/taskqueue/taskqueue_service.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
-  require_once 'google/appengine/datastore/datastore_v3_pb.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+    require_once 'google/appengine/datastore/datastore_v3_pb.php';
+  }
 }
 namespace google\appengine\TaskQueueServiceError {
   class ErrorCode {
@@ -1214,6 +1216,23 @@ namespace google\appengine {
     public function hasCronRetryParameters() {
       return isset($this->cron_retry_parameters);
     }
+    public function getDatastoreTransaction() {
+      if (!isset($this->datastore_transaction)) {
+        return '';
+      }
+      return $this->datastore_transaction;
+    }
+    public function setDatastoreTransaction($val) {
+      $this->datastore_transaction = $val;
+      return $this;
+    }
+    public function clearDatastoreTransaction() {
+      unset($this->datastore_transaction);
+      return $this;
+    }
+    public function hasDatastoreTransaction() {
+      return isset($this->datastore_transaction);
+    }
     public function clear() {
       $this->clearQueueName();
       $this->clearTaskName();
@@ -1231,6 +1250,7 @@ namespace google\appengine {
       $this->clearMode();
       $this->clearTag();
       $this->clearCronRetryParameters();
+      $this->clearDatastoreTransaction();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1298,6 +1318,10 @@ namespace google\appengine {
       if (isset($this->cron_retry_parameters)) {
         $res += 2;
         $res += $this->lengthString($this->cron_retry_parameters->byteSizePartial());
+      }
+      if (isset($this->datastore_transaction)) {
+        $res += 2;
+        $res += $this->lengthString(strlen($this->datastore_transaction));
       }
       return $res;
     }
@@ -1372,6 +1396,10 @@ namespace google\appengine {
         $out->putVarInt32(162);
         $out->putVarInt32($this->cron_retry_parameters->byteSizePartial());
         $this->cron_retry_parameters->outputPartial($out);
+      }
+      if (isset($this->datastore_transaction)) {
+        $out->putVarInt32(170);
+        $out->putPrefixedString($this->datastore_transaction);
       }
     }
     public function tryMerge($d) {
@@ -1452,6 +1480,11 @@ namespace google\appengine {
             $d->skip($length);
             $this->mutableCronRetryParameters()->tryMerge($tmp);
             break;
+          case 170:
+            $length = $d->getVarInt32();
+            $this->setDatastoreTransaction(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -1524,6 +1557,9 @@ namespace google\appengine {
       if ($x->hasCronRetryParameters()) {
         $this->mutableCronRetryParameters()->mergeFrom($x->getCronRetryParameters());
       }
+      if ($x->hasDatastoreTransaction()) {
+        $this->setDatastoreTransaction($x->getDatastoreTransaction());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1561,6 +1597,8 @@ namespace google\appengine {
       if (isset($this->tag) && $this->tag !== $x->tag) return false;
       if (isset($this->cron_retry_parameters) !== isset($x->cron_retry_parameters)) return false;
       if (isset($this->cron_retry_parameters) && !$this->cron_retry_parameters->equals($x->cron_retry_parameters)) return false;
+      if (isset($this->datastore_transaction) !== isset($x->datastore_transaction)) return false;
+      if (isset($this->datastore_transaction) && $this->datastore_transaction !== $x->datastore_transaction) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1612,6 +1650,9 @@ namespace google\appengine {
       }
       if (isset($this->cron_retry_parameters)) {
         $res .= $prefix . "cron_retry_parameters <\n" . $this->cron_retry_parameters->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->datastore_transaction)) {
+        $res .= $prefix . "datastore_transaction: " . $this->debugFormatString($this->datastore_transaction) . "\n";
       }
       return $res;
     }

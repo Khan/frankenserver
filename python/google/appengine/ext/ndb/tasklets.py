@@ -1049,7 +1049,6 @@ def toplevel(func):
 
 _CONTEXT_KEY = '__CONTEXT__'
 
-_DATASTORE_HOST_ENV = 'DATASTORE_HOST'
 _DATASTORE_APP_ID_ENV = 'DATASTORE_APP_ID'
 _DATASTORE_PROJECT_ID_ENV = 'DATASTORE_PROJECT_ID'
 _DATASTORE_ADDITIONAL_APP_IDS_ENV = 'DATASTORE_ADDITIONAL_APP_IDS'
@@ -1103,9 +1102,7 @@ def make_default_context():
     datastore_app_id = datastore_project_id or datastore_app_id
     additional_app_str = os.environ.get(_DATASTORE_ADDITIONAL_APP_IDS_ENV, '')
     additional_apps = (app.strip() for app in additional_app_str.split(','))
-    host = os.environ.get(_DATASTORE_HOST_ENV, None)
-    return _make_cloud_datastore_context(datastore_app_id,
-                                         additional_apps, host)
+    return _make_cloud_datastore_context(datastore_app_id, additional_apps)
   return make_context()
 
 
@@ -1116,7 +1113,7 @@ def make_context(conn=None, config=None):
   return context.Context(conn=conn, config=config)
 
 
-def _make_cloud_datastore_context(app_id, external_app_ids=(), host=None):
+def _make_cloud_datastore_context(app_id, external_app_ids=()):
   """Creates a new context to connect to a remote Cloud Datastore instance.
 
   This should only be used outside of Google App Engine.
@@ -1128,8 +1125,6 @@ def _make_cloud_datastore_context(app_id, external_app_ids=(), host=None):
       application. For example, if you are connected to s~my-app and store keys
       for s~my-other-app, you should include s~my-other-app in the external_apps
       list.
-    host: The hostname to provide to the datastore connection. If None, the
-      default is used.
   Returns:
     An ndb.Context that can connect to a Remote Cloud Datastore. You can use
     this context by passing it to ndb.set_context.
@@ -1156,7 +1151,10 @@ def _make_cloud_datastore_context(app_id, external_app_ids=(), host=None):
 
   id_resolver = datastore_pbs.IdResolver((app_id,) + tuple(external_app_ids))
   project_id = id_resolver.resolve_project_id(app_id)
-  datastore = googledatastore.Datastore(project_id, host=host)
+  endpoint = googledatastore.helper.get_project_endpoint_from_env(project_id)
+  datastore = googledatastore.Datastore(
+      project_endpoint=endpoint,
+      credentials=googledatastore.helper.get_credentials_from_env())
 
   conn = model.make_connection(_api_version=datastore_rpc._CLOUD_DATASTORE_V1,
                                _id_resolver=id_resolver)

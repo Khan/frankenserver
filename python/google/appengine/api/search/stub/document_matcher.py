@@ -500,7 +500,7 @@ class DocumentMatcher(object):
       field_name = self._GetFieldName(lhs)
       if node.getType() in INEQUALITY_COMPARISON_TYPES:
         try:
-          float(query_parser.GetQueryNodeText(match))
+          float(query_parser.GetPhraseQueryNodeText(match))
         except ValueError:
           self._CheckValidDateComparison(field_name, match)
       elif (self._IsValidDateValue(field_name) or

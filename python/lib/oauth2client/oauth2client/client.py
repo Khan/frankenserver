@@ -532,7 +532,6 @@ class OAuth2Credentials(Credentials):
     request_orig = http.request
 
     # The closure that will replace 'httplib2.Http.request'.
-    @util.positional(1)
     def new_request(uri, method='GET', body=None, headers=None,
                     redirections=httplib2.DEFAULT_MAX_REDIRECTS,
                     connection_type=None):
@@ -976,38 +975,46 @@ def _detect_gce_environment(urlopen=None):
     return False
 
 
-def _get_environment(urlopen=None):
-  """Detect the environment the code is being run on.
+def _in_gae_environment():
+  """Detects if the code is running in the App Engine environment.
+
+  Returns:
+     True if running in the GAE environment, False otherwise.
+  """
+  if SETTINGS.env_name is not None:
+    return SETTINGS.env_name in ('GAE_PRODUCTION', 'GAE_LOCAL')
+
+  try:
+    import google.appengine
+    server_software = os.environ.get('SERVER_SOFTWARE', '')
+    if server_software.startswith('Google App Engine/'):
+      SETTINGS.env_name = 'GAE_PRODUCTION'
+      return True
+    elif server_software.startswith('Development/'):
+      SETTINGS.env_name = 'GAE_LOCAL'
+      return True
+  except ImportError:
+    pass
+
+  return False
+
+
+def _in_gce_environment(urlopen=None):
+  """Detect if the code is running in the Compute Engine environment.
 
   Args:
       urlopen: Optional argument. Function used to open a connection to a URL.
 
   Returns:
-      The value of SETTINGS.env_name after being set. If already
-          set, simply returns the value.
+      True if running in the GCE environment, False otherwise.
   """
   if SETTINGS.env_name is not None:
-    return SETTINGS.env_name
+    return SETTINGS.env_name == 'GCE_PRODUCTION'
 
-  # None is an unset value, not the default.
-  SETTINGS.env_name = DEFAULT_ENV_NAME
-
-  try:
-    import google.appengine
-    has_gae_sdk = True
-  except ImportError:
-    has_gae_sdk = False
-
-  if has_gae_sdk:
-    server_software = os.environ.get('SERVER_SOFTWARE', '')
-    if server_software.startswith('Google App Engine/'):
-      SETTINGS.env_name = 'GAE_PRODUCTION'
-    elif server_software.startswith('Development/'):
-      SETTINGS.env_name = 'GAE_LOCAL'
-  elif NO_GCE_CHECK != 'True' and _detect_gce_environment(urlopen=urlopen):
+  if NO_GCE_CHECK != 'True' and _detect_gce_environment(urlopen=urlopen):
     SETTINGS.env_name = 'GCE_PRODUCTION'
-
-  return SETTINGS.env_name
+    return True
+  return False
 
 
 class GoogleCredentials(OAuth2Credentials):
@@ -1086,55 +1093,44 @@ class GoogleCredentials(OAuth2Credentials):
     }
 
   @staticmethod
-  def _implicit_credentials_from_gae(env_name=None):
+  def _implicit_credentials_from_gae():
     """Attempts to get implicit credentials in Google App Engine env.
 
     If the current environment is not detected as App Engine, returns None,
     indicating no Google App Engine credentials can be detected from the
     current environment.
 
-    Args:
-        env_name: String, indicating current environment.
-
     Returns:
         None, if not in GAE, else an appengine.AppAssertionCredentials object.
     """
-    env_name = env_name or _get_environment()
-    if env_name not in ('GAE_PRODUCTION', 'GAE_LOCAL'):
+    if not _in_gae_environment():
       return None
 
     return _get_application_default_credential_GAE()
 
   @staticmethod
-  def _implicit_credentials_from_gce(env_name=None):
+  def _implicit_credentials_from_gce():
     """Attempts to get implicit credentials in Google Compute Engine env.
 
     If the current environment is not detected as Compute Engine, returns None,
     indicating no Google Compute Engine credentials can be detected from the
     current environment.
 
-    Args:
-        env_name: String, indicating current environment.
-
     Returns:
         None, if not in GCE, else a gce.AppAssertionCredentials object.
     """
-    env_name = env_name or _get_environment()
-    if env_name != 'GCE_PRODUCTION':
+    if not _in_gce_environment():
       return None
 
     return _get_application_default_credential_GCE()
 
   @staticmethod
-  def _implicit_credentials_from_files(env_name=None):
+  def _implicit_credentials_from_files():
     """Attempts to get implicit credentials from local credential files.
 
     First checks if the environment variable GOOGLE_APPLICATION_CREDENTIALS
     is set with a filename and then falls back to a configuration file (the
     "well known" file) associated with the 'gcloud' command line tool.
-
-    Args:
-        env_name: Unused argument.
 
     Returns:
         Credentials object associated with the GOOGLE_APPLICATION_CREDENTIALS
@@ -1157,6 +1153,10 @@ class GoogleCredentials(OAuth2Credentials):
     if not credentials_filename:
       return
 
+    # If we can read the credentials from a file, we don't need to know what
+    # environment we are in.
+    SETTINGS.env_name = DEFAULT_ENV_NAME
+
     try:
       return _get_application_default_credential_from_file(credentials_filename)
     except (ApplicationDefaultCredentialsError, ValueError) as error:
@@ -1177,10 +1177,8 @@ class GoogleCredentials(OAuth2Credentials):
       ApplicationDefaultCredentialsError: raised when the credentials fail
           to be retrieved.
     """
-    env_name = _get_environment()
 
-    # Environ checks (in order). Assumes each checker takes `env_name`
-    # as a kwarg.
+    # Environ checks (in order).
     environ_checkers = [
       cls._implicit_credentials_from_gae,
       cls._implicit_credentials_from_files,
@@ -1188,7 +1186,7 @@ class GoogleCredentials(OAuth2Credentials):
     ]
 
     for checker in environ_checkers:
-      credentials = checker(env_name=env_name)
+      credentials = checker()
       if credentials is not None:
         return credentials
 
@@ -1785,7 +1783,9 @@ class OAuth2WebServerFlow(Flow):
   """
 
   @util.positional(4)
-  def __init__(self, client_id, client_secret, scope,
+  def __init__(self, client_id,
+               client_secret=None,
+               scope=None,
                redirect_uri=None,
                user_agent=None,
                auth_uri=GOOGLE_AUTH_URI,
@@ -1793,6 +1793,7 @@ class OAuth2WebServerFlow(Flow):
                revoke_uri=GOOGLE_REVOKE_URI,
                login_hint=None,
                device_uri=GOOGLE_DEVICE_URI,
+               authorization_header=None,
                **kwargs):
     """Constructor for OAuth2WebServerFlow.
 
@@ -1820,9 +1821,16 @@ class OAuth2WebServerFlow(Flow):
         proper multi-login session, thereby simplifying the login flow.
       device_uri: string, URI for device authorization endpoint. For convenience
         defaults to Google's endpoints but any OAuth 2.0 provider can be used.
+      authorization_header: string, For use with OAuth 2.0 providers that
+        require a client to authenticate using a header value instead of passing
+        client_secret in the POST body.
       **kwargs: dict, The keyword arguments are all optional and required
                         parameters for the OAuth calls.
     """
+    # scope is a required argument, but to preserve backwards-compatibility
+    # we don't want to rearrange the positional arguments
+    if scope is None:
+      raise TypeError("The value of scope must not be None")
     self.client_id = client_id
     self.client_secret = client_secret
     self.scope = util.scopes_to_string(scope)
@@ -1833,6 +1841,7 @@ class OAuth2WebServerFlow(Flow):
     self.token_uri = token_uri
     self.revoke_uri = revoke_uri
     self.device_uri = device_uri
+    self.authorization_header = authorization_header
     self.params = {
         'access_type': 'offline',
         'response_type': 'code',
@@ -1958,10 +1967,11 @@ class OAuth2WebServerFlow(Flow):
 
     post_data = {
         'client_id': self.client_id,
-        'client_secret': self.client_secret,
         'code': code,
         'scope': self.scope,
     }
+    if self.client_secret is not None:
+      post_data['client_secret'] = self.client_secret
     if device_flow_info is not None:
       post_data['grant_type'] = 'http://oauth.net/grant_type/device/1.0'
     else:
@@ -1971,7 +1981,8 @@ class OAuth2WebServerFlow(Flow):
     headers = {
         'content-type': 'application/x-www-form-urlencoded',
     }
-
+    if self.authorization_header is not None:
+      headers['Authorization'] = self.authorization_header
     if self.user_agent is not None:
       headers['user-agent'] = self.user_agent
 

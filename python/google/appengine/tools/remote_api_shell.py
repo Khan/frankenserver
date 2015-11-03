@@ -64,14 +64,19 @@ def auth_func():
   return (raw_input('Email: '), getpass.getpass('Password: '))
 
 
-def remote_api_shell(servername, appid, path, secure, rpc_server_factory):
+def remote_api_shell(servername, appid, path, secure,
+                     rpc_server_factory, oauth2=False):
   """Actually run the remote_api_shell."""
 
 
-  remote_api_stub.ConfigureRemoteApi(appid, path, auth_func,
-                                     servername=servername,
-                                     save_cookies=True, secure=secure,
-                                     rpc_server_factory=rpc_server_factory)
+  if oauth2:
+    remote_api_stub.ConfigureRemoteApiForOAuth(servername, path,
+                                               secure=secure)
+  else:
+    remote_api_stub.ConfigureRemoteApi(appid, path, auth_func,
+                                       servername=servername,
+                                       save_cookies=True, secure=secure,
+                                       rpc_server_factory=rpc_server_factory)
   remote_api_stub.MaybeInvokeAuthentication()
 
 
@@ -104,18 +109,18 @@ def remote_api_shell(servername, appid, path, secure, rpc_server_factory):
   code.interact(banner=BANNER, local=preimported_locals)
 
 
-def main(argv):
+def main(_):
   """Parse arguments and run shell."""
   parser = optparse.OptionParser(usage=__doc__)
   parser.add_option('-s', '--server', dest='server',
-                    help='The hostname your app is deployed on. '
-                         'Defaults to <app_id>.appspot.com.')
+                    help=('The hostname your app is deployed on. '
+                          'Defaults to <app_id>.appspot.com.'))
   parser.add_option('-p', '--path', dest='path',
-                    help='The path on the server to the remote_api handler. '
-                         'Defaults to %s.' % DEFAULT_PATH)
-  parser.add_option('--secure', dest='secure', action="store_true",
-                    default=False, help='Use HTTPS when communicating '
-                                        'with the server.')
+                    help=('The path on the server to the remote_api handler. '
+                          'Defaults to %s.' % DEFAULT_PATH))
+  parser.add_option('--secure', dest='secure', action='store_true',
+                    default=False, help=('Use HTTPS when communicating '
+                                         'with the server.'))
   (options, args) = parser.parse_args()
 
 
@@ -142,8 +147,13 @@ def main(argv):
     if len(args) == 2:
 
       path = args[1]
-  remote_api_shell(servername, appid, path, options.secure,
-                   appengine_rpc.HttpRpcServer)
+  remote_api_shell(
+      servername=servername,
+      appid=appid,
+      path=path,
+      secure=options.secure,
+      rpc_server_factory=appengine_rpc.HttpRpcServer,
+      oauth2=True)
 
 
 if __name__ == '__main__':

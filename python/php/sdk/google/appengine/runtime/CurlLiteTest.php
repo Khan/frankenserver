@@ -24,6 +24,15 @@ use google\appengine\runtime\ApplicationError;
 
 class CurlLiteTest extends ApiProxyTestBase {
 
+  private $expected_log_messages = [];
+
+  public function setUp() {
+    parent::setUp();
+    TestUtils::setStaticProperty('google\appengine\runtime\CurlLite',
+                                 'logging_callback',
+                                 [$this, 'mockLog']);
+  }
+
   private function setupRequest($url, $body = null) {
     $this->request = new \google\appengine\URLFetchRequest();
     $this->response = new \google\appengine\URLFetchResponse();
@@ -37,6 +46,10 @@ class CurlLiteTest extends ApiProxyTestBase {
     if (isset($body)) {
       $this->response->setContent($body);
     }
+  }
+
+  private function expectLogMessage($log_level, $log_message) {
+    $this->expected_log_messages[] = [$log_level, $log_message];
   }
 
   /**
@@ -303,6 +316,10 @@ class CurlLiteTest extends ApiProxyTestBase {
                                     'Fetch',
                                     $this->request,
                                     $exception);
+    $this->expectLogMessage(
+      LOG_ERR,
+      "Call to URLFetch failed with application error 7 (Couldn't resolve " .
+      "host name) for url http://host_does_not_exist.com/.");
 
     $curl = new CurlLite($url);
     $result = $curl->exec();
@@ -426,6 +443,13 @@ class CurlLiteTest extends ApiProxyTestBase {
     $this->assertEquals(222, $curl_lite->getInfo(CURLINFO_SIZE_DOWNLOAD));
     $this->assertEquals(1, $curl_lite->getInfo(CURLINFO_REDIRECT_COUNT));
     $this->apiProxyMock->verify();
+  }
+
+  public function mockLog($log_level, $log_message) {
+    $this->assertFalse(empty($this->expected_log_messages));
+    $expected = array_shift($this->expected_log_messages);
+    $this->assertEquals($expected[0], $log_level);
+    $this->assertEquals($expected[1], $log_message);
   }
 
   private function addRequestHeader($key, $value) {

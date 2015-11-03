@@ -1382,7 +1382,7 @@ class EmailMessage(_EmailMessageBase):
 
 
 class AdminEmailMessage(_EmailMessageBase):
-  """Interface to sending email messages to all admins via the amil API.
+  """Interface to sending email messages to all admins via the mail API.
 
   This class is used to programmatically build an admin email message to send
   via the Mail API.  The usage is to construct an instance, populate its fields

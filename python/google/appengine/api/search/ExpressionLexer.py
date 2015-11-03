@@ -27,62 +27,62 @@ from google.appengine._internal.antlr3.compat import set, frozenset
 HIDDEN = BaseRecognizer.HIDDEN
 
 
-DOLLAR=54
-EXPONENT=49
-LT=11
-LSQUARE=23
-ASCII_LETTER=52
-LOG=40
-SNIPPET=44
-OCTAL_ESC=57
-MAX=41
-COUNT=38
-FLOAT=34
-NAME_START=50
-HTML=28
-NOT=10
-ATOM=29
-AND=7
-EOF=-1
-LPAREN=21
-INDEX=5
-QUOTE=47
-RPAREN=22
-DISTANCE=39
-T__58=58
-NAME=26
-ESC_SEQ=48
-POW=43
-COMMA=36
-PLUS=17
-GEO=32
-DIGIT=46
-EQ=15
-NE=16
-GE=14
-XOR=9
-SWITCH=45
-UNICODE_ESC=56
-NUMBER=31
-HEX_DIGIT=55
 UNDERSCORE=53
-INT=24
-MIN=42
-TEXT=27
-RSQUARE=25
-MINUS=18
 GEOPOINT=33
+UNICODE_ESC=56
+LT=11
+TEXT=27
+HTML=28
+MINUS=18
+RSQUARE=25
+SNIPPET=44
 PHRASE=35
-ABS=37
-WS=51
-NEG=4
-OR=8
-GT=13
-DIV=20
+T__58=58
+INDEX=5
+OCTAL_ESC=57
+NUMBER=31
+DISTANCE=39
+LOG=40
+LPAREN=21
+RPAREN=22
+EQ=15
+NAME=26
+GEO=32
 DATE=30
-TIMES=19
+NOT=10
+MIN=42
+ASCII_LETTER=52
+AND=7
+NE=16
+POW=43
+XOR=9
+COUNT=38
+SWITCH=45
+DOLLAR=54
 COND=6
+PLUS=17
+QUOTE=47
+FLOAT=34
+MAX=41
+INT=24
+ATOM=29
+NAME_START=50
+ABS=37
+HEX_DIGIT=55
+ESC_SEQ=48
+WS=51
+EOF=-1
+GE=14
+COMMA=36
+OR=8
+TIMES=19
+GT=13
+DIGIT=46
+DIV=20
+NEG=4
+LSQUARE=23
 LE=12
+EXPONENT=49
 
 
 class ExpressionLexer(Lexer):
@@ -1737,9 +1737,9 @@ class ExpressionLexer(Lexer):
                     LA15_2 = self.input.LA(3)
 
                     if ((48 <= LA15_2 <= 55)) :
-                        LA15_5 = self.input.LA(4)
+                        LA15_4 = self.input.LA(4)
 
-                        if ((48 <= LA15_5 <= 55)) :
+                        if ((48 <= LA15_4 <= 55)) :
                             alt15 = 1
                         else:
                             alt15 = 2
@@ -2164,7 +2164,7 @@ class ExpressionLexer(Lexer):
 
 
     DFA16_eot = DFA.unpack(
-        u"\1\uffff\1\43\17\23\1\70\1\71\11\uffff\1\74\1\76\7\uffff\13\23"
+        u"\1\uffff\1\44\17\23\1\70\1\71\11\uffff\1\74\1\76\7\uffff\13\23"
         u"\1\112\7\23\7\uffff\1\122\4\23\1\130\1\131\1\132\1\133\1\134\1"
         u"\135\1\uffff\1\136\1\137\5\23\1\uffff\1\145\2\23\1\150\1\23\10"
         u"\uffff\2\23\1\154\1\155\1\23\1\uffff\1\157\1\23\1\uffff\3\23\2"
@@ -2201,7 +2201,7 @@ class ExpressionLexer(Lexer):
 
     DFA16_accept = DFA.unpack(
         u"\23\uffff\1\31\1\32\1\33\1\34\1\35\1\36\1\37\1\40\1\41\2\uffff"
-        u"\1\46\1\47\1\50\1\52\1\53\1\1\1\30\23\uffff\1\26\1\51\1\27\1\43"
+        u"\1\46\1\47\1\50\1\52\1\53\1\30\1\1\23\uffff\1\26\1\51\1\27\1\43"
         u"\1\42\1\45\1\44\13\uffff\1\13\7\uffff\1\2\5\uffff\1\25\1\6\1\7"
         u"\1\10\1\11\1\12\1\14\1\15\5\uffff\1\22\2\uffff\1\23\3\uffff\1\20"
         u"\1\21\1\uffff\1\3\10\uffff\1\17\1\24\2\uffff\1\16\1\4\1\5"
@@ -2218,7 +2218,7 @@ class ExpressionLexer(Lexer):
         u"\1\34\1\36\1\35\1\40\1\uffff\1\11\14\23\1\14\1\12\10\23\1\13\2"
         u"\23\1\26\1\uffff\1\27\1\uffff\1\23\1\uffff\1\2\1\23\1\3\1\4\2\23"
         u"\1\5\1\17\3\23\1\6\1\7\1\20\1\23\1\10\2\23\1\15\1\16\6\23"),
-        DFA.unpack(u"\12\44"),
+        DFA.unpack(u"\12\43"),
         DFA.unpack(u"\1\45\21\uffff\1\46"),
         DFA.unpack(u"\1\47"),
         DFA.unpack(u"\1\51\7\uffff\1\50"),
@@ -2234,7 +2234,7 @@ class ExpressionLexer(Lexer):
         DFA.unpack(u"\1\65"),
         DFA.unpack(u"\1\66"),
         DFA.unpack(u"\1\67"),
-        DFA.unpack(u"\1\44\1\uffff\12\21\13\uffff\1\44\37\uffff\1\44"),
+        DFA.unpack(u"\1\43\1\uffff\12\21\13\uffff\1\43\37\uffff\1\43"),
         DFA.unpack(u"\0\72"),
         DFA.unpack(u""),
         DFA.unpack(u""),

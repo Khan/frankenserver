@@ -68,9 +68,10 @@ def fnmatch_any(relpath, patterns):
     return any([fnmatch(relpath, pattern) for pattern in patterns])
 
 
-def tar(path, exclude=None):
-    f = tempfile.NamedTemporaryFile()
-    t = tarfile.open(mode='w', fileobj=f)
+def tar(path, exclude=None, fileobj=None):
+    if not fileobj:
+      fileobj = tempfile.NamedTemporaryFile()
+    t = tarfile.open(mode='w', fileobj=fileobj)
     for dirpath, dirnames, filenames in os.walk(path):
         relpath = os.path.relpath(dirpath, path)
         if relpath == '.':
@@ -93,8 +94,8 @@ def tar(path, exclude=None):
             t.add(os.path.join(path, arcname),
                   arcname=arcname, recursive=False)
     t.close()
-    f.seek(0)
-    return f
+    fileobj.seek(0)
+    return fileobj
 
 
 def compare_version(v1, v2):

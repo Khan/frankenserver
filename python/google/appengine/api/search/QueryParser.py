@@ -28,50 +28,50 @@ from google.appengine._internal.antlr3.tree import *
 HIDDEN = BaseRecognizer.HIDDEN
 
 
-FUNCTION=8
-FIX=30
-ESC=36
-FUZZY=9
-OCTAL_ESC=35
-NOT=28
-AND=26
-ESCAPED_CHAR=44
-EOF=-1
-LPAREN=24
-HAS=23
-RPAREN=25
-QUOTE=33
-START_CHAR=39
-EXCLAMATION=46
-COMMA=29
-ARGS=4
-DIGIT=43
-EQ=22
-NE=21
-LESSTHAN=18
-GE=19
-TEXT_ESC=41
-CONJUNCTION=5
-UNICODE_ESC=34
-HEX_DIGIT=45
-LITERAL=11
-VALUE=15
-TEXT=32
-MINUS=38
-NUMBER_PREFIX=40
 REWRITE=31
-EMPTY=7
-SEQUENCE=14
-DISJUNCTION=6
-WS=16
-NEGATION=12
-OR=27
-GT=20
-GLOBAL=10
-LE=17
-MID_CHAR=42
-STRING=13
+NUMBER_PREFIX=40
+UNICODE_ESC=34
+TEXT=32
+VALUE=15
+MINUS=38
 BACKSLASH=37
+DISJUNCTION=6
+OCTAL_ESC=35
+LITERAL=11
+TEXT_ESC=41
+LPAREN=24
+RPAREN=25
+EQ=22
+FUNCTION=8
+NOT=28
+NE=21
+AND=26
+QUOTE=33
+ESCAPED_CHAR=44
+ARGS=4
+MID_CHAR=42
+START_CHAR=39
+ESC=36
+SEQUENCE=14
+GLOBAL=10
+HEX_DIGIT=45
+WS=16
+EOF=-1
+EMPTY=7
+GE=19
+COMMA=29
+OR=27
+FUZZY=9
+NEGATION=12
+GT=20
+DIGIT=43
+CONJUNCTION=5
+FIX=30
+EXCLAMATION=46
+LESSTHAN=18
+STRING=13
+LE=17
+HAS=23
 
 
 tokenNames = [
@@ -927,8 +927,8 @@ class QueryParser(Parser):
         primitive18 = None
 
 
-        stream_notOp = RewriteRuleSubtreeStream(self._adaptor, "rule notOp")
         stream_primitive = RewriteRuleSubtreeStream(self._adaptor, "rule primitive")
+        stream_notOp = RewriteRuleSubtreeStream(self._adaptor, "rule notOp")
         try:
             try:
 
@@ -1126,9 +1126,9 @@ class QueryParser(Parser):
         arg23 = None
 
 
+        stream_comparator = RewriteRuleSubtreeStream(self._adaptor, "rule comparator")
         stream_arg = RewriteRuleSubtreeStream(self._adaptor, "rule arg")
         stream_comparable = RewriteRuleSubtreeStream(self._adaptor, "rule comparable")
-        stream_comparator = RewriteRuleSubtreeStream(self._adaptor, "rule comparator")
         try:
             try:
 
@@ -1269,14 +1269,14 @@ class QueryParser(Parser):
         x_tree = None
         WS24_tree = None
         WS25_tree = None
-        stream_HAS = RewriteRuleTokenStream(self._adaptor, "token HAS")
+        stream_NE = RewriteRuleTokenStream(self._adaptor, "token NE")
         stream_LESSTHAN = RewriteRuleTokenStream(self._adaptor, "token LESSTHAN")
-        stream_GE = RewriteRuleTokenStream(self._adaptor, "token GE")
-        stream_GT = RewriteRuleTokenStream(self._adaptor, "token GT")
+        stream_LE = RewriteRuleTokenStream(self._adaptor, "token LE")
+        stream_HAS = RewriteRuleTokenStream(self._adaptor, "token HAS")
         stream_WS = RewriteRuleTokenStream(self._adaptor, "token WS")
         stream_EQ = RewriteRuleTokenStream(self._adaptor, "token EQ")
-        stream_LE = RewriteRuleTokenStream(self._adaptor, "token LE")
-        stream_NE = RewriteRuleTokenStream(self._adaptor, "token NE")
+        stream_GT = RewriteRuleTokenStream(self._adaptor, "token GT")
+        stream_GE = RewriteRuleTokenStream(self._adaptor, "token GE")
 
         try:
             try:
@@ -1616,8 +1616,8 @@ class QueryParser(Parser):
 
         LPAREN30_tree = None
         RPAREN32_tree = None
-        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_LPAREN = RewriteRuleTokenStream(self._adaptor, "token LPAREN")
+        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_arglist = RewriteRuleSubtreeStream(self._adaptor, "rule arglist")
         stream_text = RewriteRuleSubtreeStream(self._adaptor, "rule text")
         try:
@@ -2401,9 +2401,9 @@ class QueryParser(Parser):
         WS51_tree = None
         WS53_tree = None
         RPAREN54_tree = None
+        stream_LPAREN = RewriteRuleTokenStream(self._adaptor, "token LPAREN")
         stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_WS = RewriteRuleTokenStream(self._adaptor, "token WS")
-        stream_LPAREN = RewriteRuleTokenStream(self._adaptor, "token LPAREN")
         stream_expression = RewriteRuleSubtreeStream(self._adaptor, "rule expression")
         try:
             try:
@@ -2533,8 +2533,8 @@ class QueryParser(Parser):
 
         FIX55_tree = None
         REWRITE57_tree = None
-        stream_FIX = RewriteRuleTokenStream(self._adaptor, "token FIX")
         stream_REWRITE = RewriteRuleTokenStream(self._adaptor, "token REWRITE")
+        stream_FIX = RewriteRuleTokenStream(self._adaptor, "token FIX")
         stream_value = RewriteRuleSubtreeStream(self._adaptor, "rule value")
         try:
             try:
@@ -2709,8 +2709,8 @@ class QueryParser(Parser):
         phrase61 = None
 
 
-        stream_text = RewriteRuleSubtreeStream(self._adaptor, "rule text")
         stream_phrase = RewriteRuleSubtreeStream(self._adaptor, "rule phrase")
+        stream_text = RewriteRuleSubtreeStream(self._adaptor, "rule text")
         try:
             try:
 

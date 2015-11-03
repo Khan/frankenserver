@@ -234,8 +234,6 @@ def _install_import_hooks(config, path_override_hook):
         PathRestrictingImportHook(enabled_library_regexes)]
   else:
     sys.meta_path = [
-        # Picks up custom versions of certain system libraries.
-        StubModuleImportHook(),
         # Picks up custom versions of certain libraries in the libraries section
         #     of app.yaml
         path_override_hook,

@@ -37,19 +37,17 @@ from google.appengine.api import request_info
 from google.appengine.tools.devappserver2 import api_server
 from google.appengine.tools.devappserver2 import application_configuration
 from google.appengine.tools.devappserver2 import constants
+from google.appengine.tools.devappserver2 import custom_runtime
 from google.appengine.tools.devappserver2 import dispatcher
 from google.appengine.tools.devappserver2 import go_application
 from google.appengine.tools.devappserver2 import go_runtime
-from google.appengine.tools.devappserver2 import health_check_service
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import java_runtime
 from google.appengine.tools.devappserver2 import module
 from google.appengine.tools.devappserver2 import python_runtime
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import start_response_utils
-from google.appengine.tools.devappserver2 import vm_runtime_factory
 from google.appengine.tools.devappserver2 import wsgi_server
-from google.appengine.tools.docker import containers
 
 
 class ModuleConfigurationStub(object):
@@ -61,6 +59,7 @@ class ModuleConfigurationStub(object):
                automatic_scaling=appinfo.AutomaticScaling(),
                version='version',
                runtime='python27',
+               env='1',
                effective_runtime='',
                threadsafe=False,
                skip_files='',
@@ -71,7 +70,6 @@ class ModuleConfigurationStub(object):
                env_variables=None,
                manual_scaling=None,
                basic_scaling=None,
-               health_check=None,
                application_external_name='app'):
     self.application_root = application_root
     self.application = application
@@ -81,6 +79,7 @@ class ModuleConfigurationStub(object):
     self.basic_scaling = basic_scaling
     self.major_version = version
     self.runtime = runtime
+    self.env = env
     self.effective_runtime = effective_runtime
     self.threadsafe = threadsafe
     self.skip_files = skip_files
@@ -90,7 +89,6 @@ class ModuleConfigurationStub(object):
     self.env_variables = env_variables or []
     self.version_id = '%s:%s.%s' % (module_name, version, '12345')
     self.is_backend = False
-    self.health_check = health_check
     self.application_external_name = application_external_name
 
   def check_for_updates(self):
@@ -555,8 +553,10 @@ class TestModuleGetRuntimeConfig(parameterized.ParameterizedTestCase):
       ('php55', 'php_config', runtime_config_pb2.PhpConfig),
       ('java', 'java_config', runtime_config_pb2.JavaConfig),
       ('java7', 'java_config', runtime_config_pb2.JavaConfig),
+      ('java-compat', 'java_config', runtime_config_pb2.JavaConfig),
       ('python', 'python_config', runtime_config_pb2.PythonConfig),
       ('python27', 'python_config', runtime_config_pb2.PythonConfig),
+      ('python-compat', 'python_config', runtime_config_pb2.PythonConfig),
   )
   @mock.patch('google.appengine.tools.devappserver2.java_runtime.'
               'JavaRuntimeInstanceFactory._make_java_command',
@@ -1547,46 +1547,6 @@ class TestManualScalingModuleAddInstance(googletest.TestCase):
     self.assertIn(inst, servr._instances)
     self.assertEqual((servr, inst), servr._port_registry.get(12345))
 
-  def test_add_with_health_checks(self):
-    os.environ['GAE_LOCAL_VM_RUNTIME'] = '0'
-
-    class MockFuture(object):
-      """Mock Future object."""
-
-      def __init__(self):
-        self.cb = None
-
-      def add_done_callback(self, cb):
-        # Just run the callback immediately.
-        cb(None)
-
-    servr = ManualScalingModuleFacade(instance_factory=self.factory)
-    servr.vm_config = runtime_config_pb2.VMConfig()
-    servr.module_configuration.runtime = 'vm'
-    servr.module_configuration.health_check = appinfo.VmHealthCheck(
-        enable_health_check=True)
-
-    inst = self.mox.CreateMock(instance.Instance)
-    self.mox.StubOutWithMock(module._THREAD_POOL, 'submit')
-    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'start')
-    self.mox.StubOutWithMock(wsgi_server.WsgiServer, 'port')
-    self.mox.StubOutWithMock(health_check_service.HealthChecker, 'start')
-    wsgi_server.WsgiServer.port = 12345
-    self.factory.new_instance(0, expect_ready_request=True).AndReturn(inst)
-    wsgi_server.WsgiServer.start()
-    health_check_service.HealthChecker.start()
-
-    mock_future = MockFuture()
-    module._THREAD_POOL.submit(
-        servr._start_instance,
-        mox.IsA(wsgi_server.WsgiServer), inst).AndReturn(mock_future)
-
-    self.mox.ReplayAll()
-    servr._add_instance()
-    self.mox.VerifyAll()
-    self.assertIn(inst, servr._instances)
-    self.assertEqual((servr, inst), servr._port_registry.get(12345))
-
   def test_add_while_stopped(self):
     servr = ManualScalingModuleFacade(instance_factory=self.factory)
     servr._suspended = True
@@ -1606,50 +1566,6 @@ class TestManualScalingModuleAddInstance(googletest.TestCase):
     self.assertIn(inst, servr._instances)
     self.assertEqual((servr, inst), servr._port_registry.get(12345))
 
-  def test_add_health_checks(self):
-    inst = self.mox.CreateMock(instance.Instance)
-    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
-    config = appinfo.VmHealthCheck()
-    self.mox.StubOutWithMock(health_check_service.HealthChecker, 'start')
-    health_check_service.HealthChecker.start()
-    servr = ManualScalingModuleFacade(instance_factory=self.factory)
-
-    self.mox.ReplayAll()
-    servr._add_health_checks(inst, wsgi_servr, config)
-    self.mox.VerifyAll()
-
-  def test_do_health_check_last_successful(self):
-    servr = ManualScalingModuleFacade(instance_factory=self.factory)
-    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
-    wsgi_servr.port = 3
-    inst = self.mox.CreateMock(instance.Instance)
-    start_response = start_response_utils.CapturingStartResponse()
-    self.mox.StubOutWithMock(module.ManualScalingModule, '_handle_request')
-    servr._handle_request(
-        mox.And(
-            mox.ContainsKeyValue('PATH_INFO', '/_ah/health'),
-            mox.ContainsKeyValue('QUERY_STRING', 'IsLastSuccessful=yes')),
-        start_response, inst=inst, request_type=instance.NORMAL_REQUEST)
-    self.mox.ReplayAll()
-    servr._do_health_check(wsgi_servr, inst, start_response, True)
-    self.mox.VerifyAll()
-
-  def test_do_health_check_last_unsuccessful(self):
-    servr = ManualScalingModuleFacade(instance_factory=self.factory)
-    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
-    wsgi_servr.port = 3
-    inst = self.mox.CreateMock(instance.Instance)
-    start_response = start_response_utils.CapturingStartResponse()
-    self.mox.StubOutWithMock(module.ManualScalingModule, '_handle_request')
-    servr._handle_request(
-        mox.And(
-            mox.ContainsKeyValue('PATH_INFO', '/_ah/health'),
-            mox.ContainsKeyValue('QUERY_STRING', 'IsLastSuccessful=no')),
-        start_response, inst=inst, request_type=instance.NORMAL_REQUEST)
-    self.mox.ReplayAll()
-    servr._do_health_check(wsgi_servr, inst, start_response, False)
-    self.mox.VerifyAll()
-
   def test_restart_instance(self):
     inst = self.mox.CreateMock(instance.Instance)
     new_inst = self.mox.CreateMock(instance.Instance)
@@ -1660,43 +1576,9 @@ class TestManualScalingModuleAddInstance(googletest.TestCase):
     self.mox.StubOutWithMock(new_inst, 'start')
     self.mox.StubOutWithMock(
         self.factory, 'new_instance')
-    self.mox.StubOutWithMock(module.ManualScalingModule, '_add_health_checks')
 
     servr = ManualScalingModuleFacade(instance_factory=self.factory)
     servr.module_configuration.runtime = 'vm'
-    servr.module_configuration.health_check = appinfo.VmHealthCheck(
-        enable_health_check=True)
-    wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
-    self.mox.StubOutWithMock(wsgi_servr, 'set_app')
-    wsgi_servr.port = 3
-    servr._wsgi_servers = [wsgi_servr]
-    servr._instances = [inst]
-
-    inst.quit(force=True)
-    wsgi_servr.set_app(mox.IsA(functools.partial))
-    self.factory.new_instance(0).AndReturn(new_inst)
-    module.ManualScalingModule._add_health_checks(
-        new_inst, wsgi_servr, mox.IsA(appinfo.VmHealthCheck))
-    new_inst.start()
-
-    self.mox.ReplayAll()
-    servr._restart_instance(inst)
-    self.mox.VerifyAll()
-
-  def test_restart_instance_no_health_checks(self):
-    inst = self.mox.CreateMock(instance.Instance)
-    new_inst = self.mox.CreateMock(instance.Instance)
-    inst.instance_id = 0
-    new_inst.instance_id = 0
-
-    self.mox.StubOutWithMock(inst, 'quit')
-    self.mox.StubOutWithMock(new_inst, 'start')
-    self.mox.StubOutWithMock(
-        self.factory, 'new_instance')
-
-    servr = ManualScalingModuleFacade(instance_factory=self.factory)
-    servr.module_configuration.health_check = appinfo.VmHealthCheck(
-        enable_health_check=False)
     wsgi_servr = self.mox.CreateMock(wsgi_server.WsgiServer)
     self.mox.StubOutWithMock(wsgi_servr, 'set_app')
     wsgi_servr.port = 3
@@ -2839,17 +2721,16 @@ class InstanceFactoryTest(googletest.TestCase):
 
   def setUp(self):
     self.mox = mox.Mox()
-    if os.environ.get('GAE_LOCAL_VM_RUNTIME'):
-      del os.environ['GAE_LOCAL_VM_RUNTIME']
 
   def tearDown(self):
     self.mox.UnsetStubs()
     self.mox.VerifyAll()
 
-  def _run_test(self, runtime, vm, expected_factory_class):
-    if vm:
+  def _run_test(self, runtime, expected_factory_class, vm=False, env='1'):
+    if vm or env == '2':
       module_stub = ModuleFacade(vm_config=runtime_config_pb2.VMConfig())
       module_configuration = ModuleConfigurationStub(runtime='vm')
+      module_configuration.env = env
       module_configuration.effective_runtime = runtime
     else:
       module_stub = ModuleFacade()
@@ -2861,35 +2742,42 @@ class InstanceFactoryTest(googletest.TestCase):
     self.assertIsInstance(instance_factory, expected_factory_class)
 
   def test_non_vm_python(self):
-    self._run_test('python', False, python_runtime.PythonRuntimeInstanceFactory)
+    self._run_test('python', python_runtime.PythonRuntimeInstanceFactory)
 
   def test_non_vm_go(self):
     self.mox.StubOutWithMock(go_application, 'GoApplication')
     go_application.GoApplication(mox.IgnoreArg())
-    self._run_test('go', False, go_runtime.GoRuntimeInstanceFactory)
+    self._run_test('go', go_runtime.GoRuntimeInstanceFactory)
 
   def test_non_vm_java(self):
     self.mox.StubOutWithMock(
         java_runtime.JavaRuntimeInstanceFactory, '_make_java_command')
     java_runtime.JavaRuntimeInstanceFactory._make_java_command()
-    self._run_test('java', False, java_runtime.JavaRuntimeInstanceFactory)
+    self._run_test('java', java_runtime.JavaRuntimeInstanceFactory)
 
   def test_vm_python(self):
-    os.environ['GAE_LOCAL_VM_RUNTIME'] = '0'
-    self.mox.StubOutWithMock(containers, 'NewDockerClient')
-    containers.NewDockerClient(version=mox.IgnoreArg(), timeout=mox.IgnoreArg())
     self._run_test(
-        'python27', True, vm_runtime_factory.VMRuntimeInstanceFactory)
+        'python', python_runtime.PythonRuntimeInstanceFactory, vm=True)
 
-  def test_vm_disabled(self):
-    self._run_test('python', True, python_runtime.PythonRuntimeInstanceFactory)
-
-  def test_custom(self):
-    os.environ['GAE_LOCAL_VM_RUNTIME'] = '0'
-    self.mox.StubOutWithMock(containers, 'NewDockerClient')
-    containers.NewDockerClient(version=mox.IgnoreArg(), timeout=mox.IgnoreArg())
+  def test_vm_go(self):
     self._run_test(
-        'custom', True, vm_runtime_factory.VMRuntimeInstanceFactory)
+        'go', go_runtime.GoRuntimeInstanceFactory, vm=True)
+
+  def test_vm_custom(self):
+    self._run_test(
+        'custom', custom_runtime.CustomRuntimeInstanceFactory, vm=True)
+
+  def test_env_python_compat(self):
+    self._run_test(
+        'python-compat', python_runtime.PythonRuntimeInstanceFactory, env='2')
+
+  def test_env_python_noncompat(self):
+    self._run_test(
+        'python', custom_runtime.CustomRuntimeInstanceFactory, env='2')
+
+  def test_env_go(self):
+    self._run_test(
+        'go', go_runtime.GoRuntimeInstanceFactory, env='2')
 
 if __name__ == '__main__':
   googletest.main()

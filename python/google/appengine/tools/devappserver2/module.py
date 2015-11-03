@@ -53,7 +53,6 @@ from google.appengine.tools.devappserver2 import errors
 from google.appengine.tools.devappserver2 import file_watcher
 from google.appengine.tools.devappserver2 import gcs_server
 from google.appengine.tools.devappserver2 import go_runtime
-from google.appengine.tools.devappserver2 import health_check_service
 from google.appengine.tools.devappserver2 import http_proxy
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import http_runtime_constants
@@ -72,7 +71,6 @@ from google.appengine.tools.devappserver2 import static_files_handler
 from google.appengine.tools.devappserver2 import thread_executor
 from google.appengine.tools.devappserver2 import url_handler
 from google.appengine.tools.devappserver2 import util
-from google.appengine.tools.devappserver2 import vm_runtime_factory
 from google.appengine.tools.devappserver2 import wsgi_handler
 from google.appengine.tools.devappserver2 import wsgi_server
 
@@ -196,14 +194,14 @@ class Module(object):
       'php55': php_runtime.PHPRuntimeInstanceFactory,
       'python': python_runtime.PythonRuntimeInstanceFactory,
       'python27': python_runtime.PythonRuntimeInstanceFactory,
+      'python-compat': python_runtime.PythonRuntimeInstanceFactory,
       'custom': custom_runtime.CustomRuntimeInstanceFactory,
-      # TODO: uncomment for GA.
-      # 'vm': vm_runtime_factory.VMRuntimeInstanceFactory,
   }
   if java_runtime:
     _RUNTIME_INSTANCE_FACTORIES.update({
         'java': java_runtime.JavaRuntimeInstanceFactory,
         'java7': java_runtime.JavaRuntimeInstanceFactory,
+        'java-compat': java_runtime.JavaRuntimeInstanceFactory,
     })
 
   _MAX_REQUEST_WAIT_TIME = 10
@@ -214,8 +212,6 @@ class Module(object):
     Returns:
       The timeout value in seconds.
     """
-    if self.vm_enabled():
-      return self._MAX_REQUEST_WAIT_TIME * _VMENGINE_SLOWDOWN_FACTOR
     return self._MAX_REQUEST_WAIT_TIME
 
   def _create_instance_factory(self,
@@ -233,13 +229,14 @@ class Module(object):
     Raises:
       RuntimeError: if the configuration specifies an unknown runtime.
     """
-    # TODO: Remove this when we have sandboxing disabled for all
-    # runtimes.
-    if (os.environ.get('GAE_LOCAL_VM_RUNTIME') != '0' and
-        module_configuration.runtime == 'vm'):
+    runtime = module_configuration.runtime
+    if runtime == 'vm':
       runtime = module_configuration.effective_runtime
-    else:
-      runtime = module_configuration.runtime
+      # NOTE(bryanmau): b/24139391
+      # If in env: 2, users either use a compat runtime or custom.
+      if module_configuration.env == '2':
+        if runtime not in ('python-compat', 'java-compat', 'go'):
+          runtime = 'custom'
 
     # TODO: a bad runtime should be caught before we get here.
     if runtime not in self._RUNTIME_INSTANCE_FACTORIES:
@@ -375,17 +372,13 @@ class Module(object):
         self._module_configuration.runtime.startswith('python')):
       runtime_config.python_config.CopyFrom(self._python_config)
     if (self._java_config and
-        self._module_configuration.runtime.startswith('java')):
+        (self._module_configuration.runtime.startswith('java') or
+         self._module_configuration.effective_runtime.startswith('java'))):
       runtime_config.java_config.CopyFrom(self._java_config)
 
     if self._vm_config:
       runtime_config.vm_config.CopyFrom(self._vm_config)
-      # If the effective runtime is "custom" and --custom_entrypoint is not set,
-      # bail out early; otherwise, load custom into runtime_config.
-      # TODO: Remove the GAE_LOCAL_VM_RUNTIME check here once
-      # sandboxing is disabled.
-      if (self._module_configuration.effective_runtime == 'custom' and
-          os.environ.get('GAE_LOCAL_VM_RUNTIME') != '0'):
+      if self._module_configuration.effective_runtime == 'custom':
         if not self._custom_config.custom_entrypoint:
           raise ValueError('The --custom_entrypoint flag must be set for '
                            'custom runtimes')
@@ -399,7 +392,7 @@ class Module(object):
   def _maybe_restart_instances(self, config_changed, file_changed):
     """Restarts instances. May avoid some restarts depending on policy.
 
-    One of config_changed or file_changed must be True.
+    If neither config_changed or file_changed is True, returns immediately.
 
     Args:
       config_changed: True if the configuration for the application has changed.
@@ -426,26 +419,21 @@ class Module(object):
 
   def _handle_changes(self, timeout=0):
     """Handle file or configuration changes."""
+    # Check for file changes first, because they can trigger config changes.
+    file_changes = self._watcher.changes(timeout)
+    if file_changes:
+      logging.info(
+          '[%s] Detected file changes:\n  %s', self.name,
+          '\n  '.join(sorted(file_changes)))
+      self._instance_factory.files_changed()
+
     # Always check for config and file changes because checking also clears
     # pending changes.
     config_changes = self._module_configuration.check_for_updates()
-
-    if application_configuration.SKIP_FILES_CHANGED in config_changes:
-      self._watcher.set_skip_files_re(
-        self._module_configuration.skip_files,
-        self._module_configuration.application_root)
-
     if application_configuration.HANDLERS_CHANGED in config_changes:
       handlers = self._create_url_handlers()
       with self._handler_lock:
         self._handlers = handlers
-
-    file_changes = self._watcher.changes(timeout)
-    if file_changes:
-      logging.warning(
-          '[%s] Detected file changes:\n  %s', self.name,
-          '\n  '.join(sorted(file_changes)))
-      self._instance_factory.files_changed()
 
     if config_changes & _RESTART_INSTANCES_CONFIG_CHANGES:
       self._instance_factory.configuration_changed(config_changes)
@@ -552,10 +540,6 @@ class Module(object):
     self._default_version_port = default_version_port
     self._port_registry = port_registry
 
-    if self.vm_enabled():
-      self._RUNTIME_INSTANCE_FACTORIES['vm'] = (
-          vm_runtime_factory.VMRuntimeInstanceFactory)
-
     self._instance_factory = self._create_instance_factory(
         self._module_configuration)
     if self._automatic_restarts:
@@ -563,9 +547,6 @@ class Module(object):
           [self._module_configuration.application_root] +
           self._instance_factory.get_restart_directories(),
           self._use_mtime_file_watcher)
-      self._watcher.set_skip_files_re(
-        self._module_configuration.skip_files,
-        self._module_configuration.application_root)
     else:
       self._watcher = None
     self._handler_lock = threading.Lock()
@@ -583,10 +564,6 @@ class Module(object):
       self._filesapi_warning_message = _FILESAPI_DEPRECATION_WARNING_GO
     else:
       self._filesapi_warning_message = None
-
-  def vm_enabled(self):
-    # TODO: change when GA
-    return self._vm_config
 
   @property
   def name(self):
@@ -735,7 +712,7 @@ class Module(object):
     else:
       environ['SERVER_PORT'] = str(self.balanced_port)
     if 'HTTP_HOST' in environ:
-      environ['SERVER_NAME'] = environ['HTTP_HOST'].rsplit(':', 1)[0]
+      environ['SERVER_NAME'] = environ['HTTP_HOST'].split(':', 1)[0]
     environ['DEFAULT_VERSION_HOSTNAME'] = '%s:%s' % (
         environ['SERVER_NAME'], self._default_version_port)
 
@@ -891,7 +868,9 @@ class Module(object):
               return request_rewriter.frontend_rewriter_middleware(app)(
                   environ, wrapped_start_response)
             else:
-              return handler.handle(match, environ, wrapped_start_response)
+              ret = handler.handle(match, environ, wrapped_start_response)
+              if ret is not None:
+                return ret
         return self._no_handler_for_request(environ, wrapped_start_response,
                                             request_id)
       except StandardError, e:
@@ -1098,10 +1077,7 @@ class Module(object):
 
     url = urlparse.urlsplit(relative_url)
     if port != 80:
-      if ":" in self.host:
-        host = '[%s]:%s' % (self.host, port)
-      else:
-        host = '%s:%s' % (self.host, port)
+      host = '%s:%s' % (self.host, port)
     else:
       host = self.host
     environ = {constants.FAKE_IS_ADMIN_HEADER: '1',
@@ -1741,25 +1717,7 @@ class ManualScalingModule(Module):
       self._instances.append(inst)
       suspended = self._suspended
     if not suspended:
-      future = self._async_start_instance(wsgi_servr, inst)
-      health_check_config = self.module_configuration.health_check
-      if (self.module_configuration.runtime == 'vm' and
-          health_check_config.enable_health_check and
-          os.environ.get('GAE_LOCAL_VM_RUNTIME') == '0'):
-        # Health checks should only get added after the build is done and the
-        # container starts.
-        def _add_health_checks_callback(unused_future):
-          return self._add_health_checks(inst, wsgi_servr, health_check_config)
-        future.add_done_callback(_add_health_checks_callback)
-
-  def _add_health_checks(self, inst, wsgi_servr, config):
-    do_health_check = functools.partial(
-        self._do_health_check, wsgi_servr, inst)
-    restart_instance = functools.partial(
-        self._restart_instance, inst)
-    health_checker = health_check_service.HealthChecker(
-        inst, config, do_health_check, restart_instance)
-    health_checker.start()
+      self._async_start_instance(wsgi_servr, inst)
 
   def _async_start_instance(self, wsgi_servr, inst):
     return _THREAD_POOL.submit(self._start_instance, wsgi_servr, inst)
@@ -1789,20 +1747,6 @@ class ManualScalingModule(Module):
         self._condition.notify(self.max_instance_concurrent_requests)
     except Exception, e:  # pylint: disable=broad-except
       logging.exception('Internal error while handling start request: %s', e)
-
-  def _do_health_check(self, wsgi_servr, inst, start_response,
-                       is_last_successful):
-    is_last_successful = 'yes' if is_last_successful else 'no'
-    url = '/_ah/health?%s' % urllib.urlencode(
-        [('IsLastSuccessful', is_last_successful)])
-    environ = self.build_request_environ(
-        'GET', url, [], '', '', wsgi_servr.port,
-        fake_login=True)
-    return self._handle_request(
-        environ,
-        start_response,
-        inst=inst,
-        request_type=instance.NORMAL_REQUEST)
 
   def _choose_instance(self, timeout_time):
     """Returns an Instance to handle a request or None if all are busy."""
@@ -1955,12 +1899,6 @@ class ManualScalingModule(Module):
         for wsgi_servr, inst in zip(wsgi_servers, instances_to_start)]
     logging.info('Waiting for instances to restart')
 
-    health_check_config = self.module_configuration.health_check
-    for (inst, wsgi_servr) in zip(instances_to_start, wsgi_servers):
-      if (self.module_configuration.runtime == 'vm'
-          and health_check_config.enable_health_check):
-        self._add_health_checks(inst, wsgi_servr, health_check_config)
-
     _, not_done = futures.wait(start_futures, timeout=_SHUTDOWN_TIMEOUT)
     if not_done:
       logging.warning('All instances may not have restarted')
@@ -1980,12 +1918,7 @@ class ManualScalingModule(Module):
       self._port_registry.add(wsgi_servr.port, self, new_instance)
       # Start the new instance.
       self._start_instance(wsgi_servr, new_instance)
-    health_check_config = self.module_configuration.health_check
-    if (self.module_configuration.runtime == 'vm'
-        and health_check_config.enable_health_check):
-      self._add_health_checks(new_instance, wsgi_servr, health_check_config)
       # Replace it in the module registry.
-    with self._instances_change_lock:
       with self._condition:
         self._instances[new_instance.instance_id] = new_instance
 

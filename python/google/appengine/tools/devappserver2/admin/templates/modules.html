@@ -15,14 +15,13 @@
         <th>Latency (ms)</th>
         <th>QPS</th>
         <th>Total Requests</th>
-        <th>Logs</th>
         <th>Runtime</th>
       </tr>
     </thead>
     <tbody>
       {% for module in modules|sort(attribute='name') %}
         <tr>
-          <th colspan=5>
+          <th colspan=4>
             <a href="//{{ module.balanced_address }}" target="_blank">
               {{ module.name }}</a>
           </th>
@@ -54,14 +53,6 @@
             <td>
               {{ instance.total_requests }}
             </td>
-            {% if module.mvm_logs_enabled %}
-            <td>
-              <a href="/instances/logs?app={{ module.app_name_external }}&module={{ module.name }}&version={{ module.version }}&instance={{ instance.instance_id }}&log_type=request">
-                Logs
-              </a>
-            </td>
-            {% endif %}
-            <td></td>
           </tr>
         {% endfor %}
       {% endfor %}

@@ -66,6 +66,7 @@ class DefaultCredentialsBasedAppIdentityServiceStub(
     super(DefaultCredentialsBasedAppIdentityServiceStub,
           self).__init__(service_name)
 
+    client.NO_GCE_CHECK = 'True'
     self._credentials = (
         client.GoogleCredentials.get_application_default())
     self._access_token_cache_lock = threading.Lock()

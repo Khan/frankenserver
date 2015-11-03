@@ -771,7 +771,8 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_Exec)
+                          self._protorpc_Exec,
+                          package_name='speckle.sql')
 
   def ExecOp(self, request, rpc=None, callback=None, response=None):
     """Make a ExecOp RPC call.
@@ -796,7 +797,8 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_ExecOp)
+                          self._protorpc_ExecOp,
+                          package_name='speckle.sql')
 
   def GetMetadata(self, request, rpc=None, callback=None, response=None):
     """Make a GetMetadata RPC call.
@@ -821,7 +823,8 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_GetMetadata)
+                          self._protorpc_GetMetadata,
+                          package_name='speckle.sql')
 
   def OpenConnection(self, request, rpc=None, callback=None, response=None):
     """Make a OpenConnection RPC call.
@@ -846,7 +849,8 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_OpenConnection)
+                          self._protorpc_OpenConnection,
+                          package_name='speckle.sql')
 
   def CloseConnection(self, request, rpc=None, callback=None, response=None):
     """Make a CloseConnection RPC call.
@@ -871,7 +875,8 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_CloseConnection)
+                          self._protorpc_CloseConnection,
+                          package_name='speckle.sql')
 
 
 class _SqlService_ClientStub(_SqlService_ClientBaseStub):
@@ -921,7 +926,12 @@ class SqlService(_server_stub_base_class):
   def __init__(self, *args, **kwargs):
     """Creates a Stubby RPC server.
 
-    See BaseRpcServer.__init__ in rpcserver.py for detail on arguments.
+    The arguments to this constructor are the same as the arguments to
+    BaseRpcServer.__init__ in rpcserver.py *MINUS* export_name. This
+    constructor passes its own value for export_name to
+    BaseRpcServer.__init__, so callers of this constructor should only
+    pass to this constructor values corresponding to
+    BaseRpcServer.__init__'s remaining arguments.
     """
     if _server_stub_base_class is object:
       raise NotImplementedError('Add //net/rpc/python:rpcserver as a '

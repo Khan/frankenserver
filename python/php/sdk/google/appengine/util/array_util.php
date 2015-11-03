@@ -93,4 +93,75 @@ final class ArrayUtil {
     }
     return $result;
   }
+
+
+  /**
+   * Checks whether an array's keys are associative. An array's keys are
+   * associate if they are not values 0 to count(array) - 1.
+   *
+   * @param $arr array The array whos keys will be checked.
+   *
+   * @return bool True if the array's keys are associative. Also true in the
+   * case of an empty array.
+   */
+  public static function isAssociative(array $arr) {
+    $size = count($arr);
+    $keys = array_keys($arr);
+    return $keys !== range(0, $size - 1);
+  }
+
+  /**
+   * Checks whether every value in an array passes the provided predicate.
+   *
+   * @param $array array The array to test.
+   *
+   * @param $predicate callable A predicate which should take one argument and
+   *                            return a boolean.
+   *
+   * @return bool Whether every value in the array passes the predicate.
+   */
+  public static function all(array $array, callable $predicate) {
+    foreach($array as $val) {
+      if(!$predicate($val)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Checks whether every value in an array is an instance of a class.
+   *
+   * @param $array array The array to test.
+   *
+   * @param $class The fully qualified class name to check every array value
+   *               with.
+   *
+   * @return bool Whether every value in the array is an instance of $class.
+   *
+   * @throw \InvalidArgumentException if no class with name $class is found.
+   */
+  public static function allInstanceOf(array $array, $class) {
+    if(!is_string($class)) {
+      throw new \InvalidArgumentException('$class must be a string.');
+    }
+    if(!class_exists($class)) {
+      throw new \InvalidArgumentException("Class with name $class not found.");
+    }
+    foreach($array as $val) {
+      if(!self::instanceOfClass($val, $class)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+
+  /**
+   * Checks whether $obj is an instance of $class.
+   */
+  private static function instanceOfClass($obj, $class) {
+    return is_object($obj) && is_a($obj, $class);
+  }
+
 }

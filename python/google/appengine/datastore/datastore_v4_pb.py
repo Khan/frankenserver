@@ -7149,7 +7149,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_BeginTransaction)
+                          self._protorpc_BeginTransaction,
+                          package_name='apphosting.datastore.v4')
 
   def Rollback(self, request, rpc=None, callback=None, response=None):
     """Make a Rollback RPC call.
@@ -7174,7 +7175,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_Rollback)
+                          self._protorpc_Rollback,
+                          package_name='apphosting.datastore.v4')
 
   def Commit(self, request, rpc=None, callback=None, response=None):
     """Make a Commit RPC call.
@@ -7199,7 +7201,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_Commit)
+                          self._protorpc_Commit,
+                          package_name='apphosting.datastore.v4')
 
   def RunQuery(self, request, rpc=None, callback=None, response=None):
     """Make a RunQuery RPC call.
@@ -7224,7 +7227,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_RunQuery)
+                          self._protorpc_RunQuery,
+                          package_name='apphosting.datastore.v4')
 
   def ContinueQuery(self, request, rpc=None, callback=None, response=None):
     """Make a ContinueQuery RPC call.
@@ -7249,7 +7253,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_ContinueQuery)
+                          self._protorpc_ContinueQuery,
+                          package_name='apphosting.datastore.v4')
 
   def Lookup(self, request, rpc=None, callback=None, response=None):
     """Make a Lookup RPC call.
@@ -7274,7 +7279,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_Lookup)
+                          self._protorpc_Lookup,
+                          package_name='apphosting.datastore.v4')
 
   def AllocateIds(self, request, rpc=None, callback=None, response=None):
     """Make a AllocateIds RPC call.
@@ -7299,7 +7305,8 @@ class _DatastoreV4Service_ClientBaseStub(_client_stub_base_class):
                           request,
                           response,
                           callback,
-                          self._protorpc_AllocateIds)
+                          self._protorpc_AllocateIds,
+                          package_name='apphosting.datastore.v4')
 
 
 class _DatastoreV4Service_ClientStub(_DatastoreV4Service_ClientBaseStub):
@@ -7351,7 +7358,12 @@ class DatastoreV4Service(_server_stub_base_class):
   def __init__(self, *args, **kwargs):
     """Creates a Stubby RPC server.
 
-    See BaseRpcServer.__init__ in rpcserver.py for detail on arguments.
+    The arguments to this constructor are the same as the arguments to
+    BaseRpcServer.__init__ in rpcserver.py *MINUS* export_name. This
+    constructor passes its own value for export_name to
+    BaseRpcServer.__init__, so callers of this constructor should only
+    pass to this constructor values corresponding to
+    BaseRpcServer.__init__'s remaining arguments.
     """
     if _server_stub_base_class is object:
       raise NotImplementedError('Add //net/rpc/python:rpcserver as a '

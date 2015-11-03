@@ -126,12 +126,9 @@ class InotifyFileWatcher(object):
     assert _libc is not None, 'InotifyFileWatcher only available on Linux.'
     self._directories = [os.path.abspath(d) for d in directories]
     self._real_directories = [os.path.realpath(d) for d in self._directories]
-    self._skip_files_re = {}   # map from _directory to skip-re for that dir
     self._watch_to_directory = {}
     self._directory_to_watch_descriptor = {}
     self._directory_to_subdirs = {}
-    # A map from a watched-directory to the self._directory it is under.
-    self._directory_to_rootdir = dict([(d, d) for d in self._directories])
     self._inotify_events = ''
     self._inotify_fd = _libc.inotify_init()
     if self._inotify_fd < 0:
@@ -168,29 +165,15 @@ class InotifyFileWatcher(object):
     del self._watch_to_directory[wd]
     del self._directory_to_watch_descriptor[path]
     del self._directory_to_subdirs[path]
-    del self._directory_to_rootdir[path]
 
   def _add_watch_for_path(self, path):
     # Must be called with _inotify_fd_lock held.
     logging.debug('_add_watch_for_path(%r)', path)
 
-    if path not in self._directory_to_rootdir:   # a newly created dir, perhaps
-      self._directory_to_rootdir[path] = (
-        self._directory_to_rootdir[os.path.dirname(path)])
-
-    # Get the skip-files-re that applies to this subtree, if any.
-    rootdir = self._directory_to_rootdir[path]
-    skip_files_re = self._skip_files_re.get(rootdir)
-
     for dirpath, directories, _ in itertools.chain(
         [(os.path.dirname(path), [os.path.basename(path)], None)],
         os.walk(path, topdown=True, followlinks=True)):
-      relative_dirpath = os.path.relpath(dirpath, rootdir)
-      if relative_dirpath == '.':
-        relative_dirpath = ''
-      if relative_dirpath != '..':     # never skip the top-level directory
-        watcher_common.skip_ignored_dirs(directories, relative_dirpath,
-                                         skip_files_re)
+      watcher_common.skip_ignored_dirs(directories)
       # TODO: this is not an ideal solution as there are other ways for
       # symlinks to confuse our algorithm but a general solution is going to
       # be very complex and this is good enough to solve the immediate problem
@@ -226,8 +209,6 @@ class InotifyFileWatcher(object):
         self._watch_to_directory[watch_descriptor] = directory_path
         self._directory_to_watch_descriptor[directory_path] = watch_descriptor
         self._directory_to_subdirs[directory_path] = set()
-        self._directory_to_rootdir[directory_path] = (
-          self._directory_to_rootdir[path])
 
   def start(self):
     """Start watching the directory for changes."""
@@ -237,10 +218,6 @@ class InotifyFileWatcher(object):
       self._inotify_poll.register(self._inotify_fd, select.POLLIN)
       for directory in self._directories:
         self._add_watch_for_path(directory)
-
-  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
-    """All re's in skip_files_re are taken to be relative to its base-dir."""
-    self._skip_files_re[skip_files_base_dir] = skip_files_re
 
   def quit(self):
     """Stop watching the directory for changes."""
@@ -309,11 +286,6 @@ class InotifyFileWatcher(object):
               self._add_watch_for_path(path)
             elif mask & IN_MOVED_TO:
               self._add_watch_for_path(path)
-          if path not in paths:
-            rootdir = self._directory_to_rootdir[directory]
-            relative_path = os.path.relpath(path, rootdir)
-            skip_files_re = self._skip_files_re.get(rootdir)
-            if not watcher_common.ignore_file(relative_path, skip_files_re):
-              paths.add(path)
-
+          if path not in paths and not watcher_common.ignore_file(path):
+            paths.add(path)
     return paths

@@ -312,7 +312,7 @@ class Response(object):
 
     if (self.headers.get('Cache-Control') == 'no-cache' and
         not self.headers.get('Expires')):
-      self.headers['Expires'] = 'Fri, 01 Jan 1990 00:00:00 GMT'
+      self.headers['Expires'] = 'Mon, 01 Jan 1990 00:00:00 GMT'
     self.headers['Content-Length'] = str(len(body))
 
 

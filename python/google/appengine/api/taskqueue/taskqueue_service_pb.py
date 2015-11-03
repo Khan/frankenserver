@@ -1029,6 +1029,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   body_ = ""
   has_transaction_ = 0
   transaction_ = None
+  has_datastore_transaction_ = 0
+  datastore_transaction_ = ""
   has_app_id_ = 0
   app_id_ = ""
   has_crontimetable_ = 0
@@ -1163,6 +1165,19 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       if self.transaction_ is not None: self.transaction_.Clear()
 
   def has_transaction(self): return self.has_transaction_
+
+  def datastore_transaction(self): return self.datastore_transaction_
+
+  def set_datastore_transaction(self, x):
+    self.has_datastore_transaction_ = 1
+    self.datastore_transaction_ = x
+
+  def clear_datastore_transaction(self):
+    if self.has_datastore_transaction_:
+      self.has_datastore_transaction_ = 0
+      self.datastore_transaction_ = ""
+
+  def has_datastore_transaction(self): return self.has_datastore_transaction_
 
   def app_id(self): return self.app_id_
 
@@ -1303,6 +1318,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.header_size()): self.add_header().CopyFrom(x.header(i))
     if (x.has_body()): self.set_body(x.body())
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
+    if (x.has_datastore_transaction()): self.set_datastore_transaction(x.datastore_transaction())
     if (x.has_app_id()): self.set_app_id(x.app_id())
     if (x.has_crontimetable()): self.mutable_crontimetable().MergeFrom(x.crontimetable())
     if (x.has_description()): self.set_description(x.description())
@@ -1331,6 +1347,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_body_ and self.body_ != x.body_: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
+    if self.has_datastore_transaction_ != x.has_datastore_transaction_: return 0
+    if self.has_datastore_transaction_ and self.datastore_transaction_ != x.datastore_transaction_: return 0
     if self.has_app_id_ != x.has_app_id_: return 0
     if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
     if self.has_crontimetable_ != x.has_crontimetable_: return 0
@@ -1383,6 +1401,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSize()
     if (self.has_body_): n += 1 + self.lengthString(len(self.body_))
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
+    if (self.has_datastore_transaction_): n += 2 + self.lengthString(len(self.datastore_transaction_))
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     if (self.has_crontimetable_): n += 2 + self.crontimetable_.ByteSize()
     if (self.has_description_): n += 1 + self.lengthString(len(self.description_))
@@ -1410,6 +1429,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.header_)): n += self.header_[i].ByteSizePartial()
     if (self.has_body_): n += 1 + self.lengthString(len(self.body_))
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
+    if (self.has_datastore_transaction_): n += 2 + self.lengthString(len(self.datastore_transaction_))
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     if (self.has_crontimetable_): n += 2 + self.crontimetable_.ByteSizePartial()
     if (self.has_description_): n += 1 + self.lengthString(len(self.description_))
@@ -1429,6 +1449,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_header()
     self.clear_body()
     self.clear_transaction()
+    self.clear_datastore_transaction()
     self.clear_app_id()
     self.clear_crontimetable()
     self.clear_description()
@@ -1490,6 +1511,9 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(162)
       out.putVarInt32(self.cron_retry_parameters_.ByteSize())
       self.cron_retry_parameters_.OutputUnchecked(out)
+    if (self.has_datastore_transaction_):
+      out.putVarInt32(170)
+      out.putPrefixedString(self.datastore_transaction_)
 
   def OutputPartial(self, out):
     if (self.has_queue_name_):
@@ -1546,6 +1570,9 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(162)
       out.putVarInt32(self.cron_retry_parameters_.ByteSizePartial())
       self.cron_retry_parameters_.OutputPartial(out)
+    if (self.has_datastore_transaction_):
+      out.putVarInt32(170)
+      out.putPrefixedString(self.datastore_transaction_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1610,6 +1637,9 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_cron_retry_parameters().TryMerge(tmp)
         continue
+      if tt == 170:
+        self.set_datastore_transaction(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1636,6 +1666,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_datastore_transaction_: res+=prefix+("datastore_transaction: %s\n" % self.DebugFormatString(self.datastore_transaction_))
     if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
     if self.has_crontimetable_:
       res+=prefix+"CronTimetable {\n"
@@ -1672,6 +1703,7 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
   kHeadervalue = 8
   kbody = 9
   ktransaction = 10
+  kdatastore_transaction = 21
   kapp_id = 11
   kCronTimetableGroup = 12
   kCronTimetableschedule = 13
@@ -1705,7 +1737,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     18: "mode",
     19: "tag",
     20: "cron_retry_parameters",
-  }, 20)
+    21: "datastore_transaction",
+  }, 21)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1729,7 +1762,8 @@ class TaskQueueAddRequest(ProtocolBuffer.ProtocolMessage):
     18: ProtocolBuffer.Encoder.NUMERIC,
     19: ProtocolBuffer.Encoder.STRING,
     20: ProtocolBuffer.Encoder.STRING,
-  }, 20, ProtocolBuffer.Encoder.MAX_TYPE)
+    21: ProtocolBuffer.Encoder.STRING,
+  }, 21, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

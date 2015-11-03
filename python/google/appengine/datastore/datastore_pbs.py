@@ -209,6 +209,23 @@ def is_complete_v3_key(v3_key):
           (last_element.has_name() and last_element.name() != ''))
 
 
+def get_v1_mutation_key_and_entity(v1_mutation):
+  """Returns the v1 key and entity for a v1 mutation proto, if applicable.
+
+  Args:
+    v1_mutation: a googledatastore.Mutation
+
+  Returns:
+    a tuple (googledatastore.Key for this mutation,
+             googledatastore.Entity or None if the mutation is a deletion)
+  """
+  if v1_mutation.HasField('delete'):
+    return v1_mutation.delete, None
+  else:
+    v1_entity = getattr(v1_mutation, v1_mutation.WhichOneof('operation'))
+    return v1_entity.key, v1_entity
+
+
 def is_valid_utf8(s):
   if isinstance(s, unicode):
     return True

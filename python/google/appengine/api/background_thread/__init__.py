@@ -16,14 +16,7 @@
 #
 
 
-"""Background Threads API.
-
-.. deprecated:: 1.9.1
-   Use Modules library instead.
-
-Although Google will continue to support the Background Threads API in accordance with our
-terms of service, it is strongly recommended that all new applications use the
-Modules API instead."""
+"""Background Threads API."""
 
 
 from background_thread import *

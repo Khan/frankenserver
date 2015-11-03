@@ -46,7 +46,6 @@ Usage:
     --download              Export entities to a file.
     --dry_run               Do not execute any remote_api calls.
     --dump                  Use zero-configuration dump format.
-    --email=<string>        The username to use. Will prompt if omitted.
     --exporter_opts=<string>
                             A string to pass to the Exporter.initialize method.
     --filename=<path>       Path to the file to import/export. (Required when
@@ -64,7 +63,6 @@ Usage:
     --mapper_opts=<string>  A string to pass to the Mapper.Initialize method.
     --num_threads=<int>     Number of threads to use for uploading/downloading
                             entities (Default: 10)
-    --passin                Read the login password from stdin.
     --restore               Restore from zero-configuration dump format.
     --result_db_filename=<path>
                             Result database to write to for downloads.
@@ -97,7 +95,6 @@ Example:
 import csv
 import errno
 import getopt
-import getpass
 import imp
 import logging
 import os
@@ -130,6 +127,7 @@ from google.appengine.ext.remote_api import throttle as remote_api_throttle
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools import adaptive_thread_pool
 from google.appengine.tools import appengine_rpc
+from google.appengine.tools import appengine_rpc_httplib2
 from google.appengine.tools.requeue import ReQueue
 
 
@@ -1214,36 +1212,6 @@ def ReserveKeys(keys):
   datastore._GetConnection()._reserve_keys(ConvertKeys(keys))
 
 
-def _AuthFunction(host, email, passin, raw_input_fn, password_input_fn):
-  """Internal method shared between RequestManager and _GetRemoteAppId.
-
-  Args:
-    host: Hostname to present to the user.
-    email: Existing email address to use; if none, will prompt the user.
-    passin: Value of the --passin command line flag. If true, will get the
-      password using raw_input_fn insetad of password_input_fn.
-    raw_input_fn: Method to get a string, typically raw_input.
-    password_input_fn: Method to get a string, typically getpass.
-
-  Returns:
-    Pair, (email, password).
-  """
-  if not email:
-    print 'Please enter login credentials for %s' % host
-    email = raw_input_fn('Email: ')
-
-  if email:
-    password_prompt = 'Password for %s: ' % email
-    if passin:
-      password = raw_input_fn(password_prompt)
-    else:
-      password = password_input_fn(password_prompt)
-  else:
-    password = None
-
-  return email, password
-
-
 class RequestManager(object):
   """A class which wraps a connection to the server."""
 
@@ -1255,11 +1223,10 @@ class RequestManager(object):
                throttle,
                batch_size,
                secure,
-               email,
-               passin,
                dry_run=False,
                server=None,
-               throttle_class=None):
+               throttle_class=None,
+               oauth2_parameters=None):
     """Initialize a RequestManager object.
 
     Args:
@@ -1270,8 +1237,6 @@ class RequestManager(object):
       throttle: A Throttle instance.
       batch_size: The number of entities to transfer per request.
       secure: Use SSL when communicating with server.
-      email: If not none, the username to log in with.
-      passin: If True, the password will be read from standard in.
       server: An existing AbstractRpcServer to reuse.
       throttle_class: A class to use instead of the default
         ThrottledHttpRpcServer.
@@ -1289,8 +1254,6 @@ class RequestManager(object):
     self.authenticated = False
     self.auth_called = False
     self.parallel_download = True
-    self.email = email
-    self.passin = passin
     self.mapper = None
     self.dry_run = dry_run
 
@@ -1308,13 +1271,14 @@ class RequestManager(object):
     if server:
       remote_api_stub.ConfigureRemoteApiFromServer(server, url_path, app_id)
     else:
-      remote_api_stub.ConfigureRemoteApi(
-          app_id,
-          url_path,
-          self.AuthFunction,
+      remote_api_stub.ConfigureRemoteApiForOAuth(
           servername=host_port,
-          rpc_server_factory=throttled_rpc_server_factory,
-          secure=self.secure)
+          path=url_path,
+          secure=self.secure,
+          oauth2_parameters=oauth2_parameters,
+          save_cookies=True,
+          auth_tries=3,
+          rpc_server_factory=throttled_rpc_server_factory)
 
     remote_api_throttle.ThrottleRemoteDatastore(self.throttle)
     logger.debug('Bulkloader using app_id: %s', os.environ['APPLICATION_ID'])
@@ -1328,25 +1292,6 @@ class RequestManager(object):
 
     remote_api_stub.MaybeInvokeAuthentication()
     self.authenticated = True
-
-  def AuthFunction(self,
-                   raw_input_fn=raw_input,
-                   password_input_fn=getpass.getpass):
-    """Prompts the user for a username and password.
-
-    Caches the results the first time it is called and returns the
-    same result every subsequent time.
-
-    Args:
-      raw_input_fn: Used for dependency injection.
-      password_input_fn: Used for dependency injection.
-
-    Returns:
-      A pair of the username and password.
-    """
-    self.auth_called = True
-    return _AuthFunction(self.host, self.email, self.passin,
-                         raw_input_fn, password_input_fn)
 
   def ReserveKeys(self, keys):
     """Reserve all ids in the paths of the given keys.
@@ -2669,7 +2614,6 @@ class Loader(object):
         For example:
           [('name', str),
            ('id_number', int),
-           ('email', datastore_types.Email),
            ('user', users.User),
            ('birthdate', lambda x: datetime.datetime.fromtimestamp(float(x))),
            ('description', datastore_types.Text),
@@ -3042,7 +2986,6 @@ class Exporter(object):
       For example:
         [('name', str, None),
          ('id_number', str, None),
-         ('email', str, ''),
          ('user', str, None),
          ('birthdate',
           lambda x: str(datetime.datetime.fromtimestamp(float(x))),
@@ -3381,7 +3324,9 @@ class BulkTransporterApp(object):
                datasourcethread_factory=DataSourceThread,
                progress_queue_factory=Queue.Queue,
                thread_pool_factory=adaptive_thread_pool.AdaptiveThreadPool,
-               server=None):
+               throttle_class=None,
+               server=None,
+               oauth2_parameters=None):
     """Instantiate a BulkTransporterApp.
 
     Uploads or downloads data to or from application using HTTP requests.
@@ -3402,7 +3347,10 @@ class BulkTransporterApp(object):
       datasourcethread_factory: Used for dependency injection.
       progress_queue_factory: Used for dependency injection.
       thread_pool_factory: Used for dependency injection.
+      throttle_class: None, or class to use for throttling.
       server: An existing AbstractRpcServer to reuse.
+      oauth2_parameters: None, or an
+        appengine_rpc_httplib2.HttpRpcServerOAuth2.OAuth2Parameters instance.
     """
     self.app_id = arg_dict['application']
     self.post_url = arg_dict['url']
@@ -3410,10 +3358,7 @@ class BulkTransporterApp(object):
     self.batch_size = arg_dict['batch_size']
     self.input_generator_factory = input_generator_factory
     self.num_threads = arg_dict['num_threads']
-    self.email = arg_dict['email']
-    self.passin = arg_dict['passin']
     self.dry_run = arg_dict['dry_run']
-    self.throttle_class = arg_dict['throttle_class']
     self.throttle = throttle
     self.progress_db = progress_db
     self.progresstrackerthread_factory = progresstrackerthread_factory
@@ -3422,11 +3367,13 @@ class BulkTransporterApp(object):
     self.datasourcethread_factory = datasourcethread_factory
     self.progress_queue_factory = progress_queue_factory
     self.thread_pool_factory = thread_pool_factory
+    self.throttle_class = throttle_class
     self.server = server
     (scheme,
      self.host_port, self.url_path,
      unused_query, unused_fragment) = urlparse.urlsplit(self.post_url)
     self.secure = (scheme == 'https')
+    self.oauth2_parameters = oauth2_parameters
 
   def RunPostAuthentication(self):
     """Method that gets called after authentication."""
@@ -3448,18 +3395,18 @@ class BulkTransporterApp(object):
         self.num_threads, queue_size=self.max_queue_size)
 
     progress_queue = self.progress_queue_factory(self.max_queue_size)
-    self.request_manager = self.request_manager_factory(self.app_id,
-                                                        self.host_port,
-                                                        self.url_path,
-                                                        self.kind,
-                                                        self.throttle,
-                                                        self.batch_size,
-                                                        self.secure,
-                                                        self.email,
-                                                        self.passin,
-                                                        self.dry_run,
-                                                        self.server,
-                                                        self.throttle_class)
+    self.request_manager = self.request_manager_factory(
+        app_id=self.app_id,
+        host_port=self.host_port,
+        url_path=self.url_path,
+        kind=self.kind,
+        throttle=self.throttle,
+        batch_size=self.batch_size,
+        secure=self.secure,
+        dry_run=self.dry_run,
+        server=self.server,
+        throttle_class=self.throttle_class,
+        oauth2_parameters=self.oauth2_parameters)
     try:
 
 
@@ -3714,12 +3661,12 @@ REQUIRED_OPTION = object()
 
 
 BOOL_ARGS = ('create_config', 'debug', 'download', 'dry_run', 'dump',
-             'has_header', 'map', 'passin', 'restore')
+             'has_header', 'map', 'restore')
 INT_ARGS = ('bandwidth_limit', 'batch_size', 'http_limit', 'num_threads',
             'rps_limit')
 FILENAME_ARGS = ('config_file', 'db_filename', 'filename', 'log_file',
                  'result_db_filename')
-STRING_ARGS = ('application', 'auth_domain', 'email', 'exporter_opts',
+STRING_ARGS = ('application', 'auth_domain', 'exporter_opts',
                'kind', 'loader_opts', 'mapper_opts', 'namespace', 'url')
 DEPRECATED_OPTIONS = {'csv_has_header': 'has_header', 'app_id': 'application'}
 FLAG_SPEC = (['csv_has_header', 'help', 'app_id='] +
@@ -3764,7 +3711,6 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
   arg_dict['download'] = False
   arg_dict['dry_run'] = False
   arg_dict['dump'] = False
-  arg_dict['email'] = None
   arg_dict['exporter_opts'] = None
   arg_dict['has_header'] = False
   arg_dict['loader_opts'] = None
@@ -3772,7 +3718,6 @@ def ParseArguments(argv, die_fn=lambda: PrintUsageExit(1)):
   arg_dict['map'] = False
   arg_dict['mapper_opts'] = None
   arg_dict['namespace'] = ''
-  arg_dict['passin'] = False
   arg_dict['restore'] = False
   arg_dict['result_db_filename'] = None
   arg_dict['throttle_class'] = None
@@ -4009,7 +3954,6 @@ def ProcessArguments(arg_dict,
   log_file = GetArgument(arg_dict, 'log_file', die_fn)
   perform_map = GetArgument(arg_dict, 'map', die_fn)
   namespace = GetArgument(arg_dict, 'namespace', die_fn)
-  unused_passin = GetArgument(arg_dict, 'passin', die_fn)
 
   errors = []
 
@@ -4078,9 +4022,43 @@ def ProcessArguments(arg_dict,
   return arg_dict
 
 
-def _GetRemoteAppId(url, throttle, email, passin,
-                    raw_input_fn=raw_input, password_input_fn=getpass.getpass,
-                    throttle_class=None):
+class ThrottledHttpRpcServerOAuth2(
+    appengine_rpc_httplib2.HttpRpcServerOAuth2):
+  """Provides a simplified RPC-style interface for HTTP requests.
+
+  This RPC server uses a Throttle to prevent exceeding quotas.
+  """
+
+  def __init__(self, throttle, *args, **kwargs):
+    """Initialize a ThrottledHttpRpcServer.
+
+    Also sets request_manager.rpc_server to the ThrottledHttpRpcServer instance.
+
+    Args:
+      throttle: A Throttles instance.
+      *args: Positional arguments to pass through to
+        appengine_rpc.HttpRpcServer.__init__
+      **kwargs: Keyword arguments to pass through to
+        appengine_rpc.HttpRpcServer.__init__
+    """
+    self.throttle = throttle
+    kwargs['auth_tries'] = 3
+    appengine_rpc_httplib2.HttpRpcServerOAuth2.__init__(self, *args, **kwargs)
+
+  def _GetOpener(self):
+    """Returns an OpenerDirector that supports cookies and ignores redirects.
+
+    Returns:
+      A urllib2.OpenerDirector object.
+    """
+
+    opener = appengine_rpc_httplib2.HttpRpcServerHttpLib2._GetOpener(self)
+    opener.add_handler(remote_api_throttle.ThrottleHandler(self.throttle))
+
+    return opener
+
+
+def _GetRemoteAppId(url, throttle, oauth2_parameters, throttle_class=None):
   """Get the App ID from the remote server."""
   scheme, host_port, url_path, _, _ = urlparse.urlsplit(url)
 
@@ -4090,12 +4068,8 @@ def _GetRemoteAppId(url, throttle, email, passin,
       remote_api_throttle.ThrottledHttpRpcServerFactory(
             throttle, throttle_class=throttle_class))
 
-  def AuthFunction():
-    return _AuthFunction(host_port, email, passin, raw_input_fn,
-                         password_input_fn)
-
   app_id, server = remote_api_stub.GetRemoteAppId(
-      host_port, url_path, AuthFunction,
+      servername=host_port, path=url_path, auth_func=oauth2_parameters,
       rpc_server_factory=throttled_rpc_server_factory, secure=secure)
 
   return app_id, server
@@ -4109,12 +4083,14 @@ def ParseKind(kind):
 
 
 def _PerformBulkload(arg_dict,
+                     oauth2_parameters=None,
                      check_file=CheckFile,
                      check_output_file=CheckOutputFile):
   """Runs the bulkloader, given the command line options.
 
   Args:
     arg_dict: Dictionary of bulkloader options.
+    oauth2_parameters: Parameters for OAuth2 authentication.
     check_file: Used for dependency injection.
     check_output_file: Used for dependency injection.
 
@@ -4142,21 +4118,19 @@ def _PerformBulkload(arg_dict,
   loader_opts = arg_dict['loader_opts']
   exporter_opts = arg_dict['exporter_opts']
   mapper_opts = arg_dict['mapper_opts']
-  email = arg_dict['email']
-  passin = arg_dict['passin']
   perform_map = arg_dict['map']
   dump = arg_dict['dump']
   restore = arg_dict['restore']
   create_config = arg_dict['create_config']
   namespace = arg_dict['namespace']
   dry_run = arg_dict['dry_run']
-  throttle_class = arg_dict['throttle_class']
+  throttle_class = arg_dict['throttle_class'] or ThrottledHttpRpcServerOAuth2
 
   if namespace:
     namespace_manager.set_namespace(namespace)
   os.environ['AUTH_DOMAIN'] = auth_domain
 
-  kind = ParseKind(kind)
+  kind = arg_dict['kind'] = ParseKind(kind)
 
   if not dump and not restore and not create_config:
 
@@ -4188,8 +4162,8 @@ def _PerformBulkload(arg_dict,
     if dry_run:
 
       raise ConfigurationError('Must sepcify application ID in dry run mode.')
-    app_id, server = _GetRemoteAppId(url, throttle, email, passin,
-                                       throttle_class=throttle_class)
+    app_id, server = _GetRemoteAppId(url, throttle, oauth2_parameters,
+                                     throttle_class=throttle_class)
 
     arg_dict['application'] = app_id
 
@@ -4262,7 +4236,9 @@ def _PerformBulkload(arg_dict,
                             RequestManager,
                             DataSourceThread,
                             Queue.Queue,
-                            server=server)
+                            throttle_class=throttle_class,
+                            server=server,
+                            oauth2_parameters=oauth2_parameters)
       try:
         return_code = app.Run()
       except AuthenticationError:
@@ -4296,6 +4272,7 @@ def _PerformBulkload(arg_dict,
                               RequestManager,
                               DataSourceThread,
                               Queue.Queue,
+                              throttle_class=throttle_class,
                               server=server)
       try:
         return_code = app.Run()
@@ -4331,6 +4308,7 @@ def _PerformBulkload(arg_dict,
                           RequestManager,
                           DataSourceThread,
                           Queue.Queue,
+                          throttle_class=throttle_class,
                           server=server)
       try:
         return_code = app.Run()
@@ -4390,11 +4368,12 @@ def SetupLogging(arg_dict):
   adaptive_thread_pool.logger.propagate = False
 
 
-def Run(arg_dict):
+def Run(arg_dict, oauth2_parameters=None):
   """Sets up and runs the bulkloader, given the options as keyword arguments.
 
   Args:
     arg_dict: Dictionary of bulkloader options
+    oauth2_parameters: None, or the parameters for OAuth2 authentication.
 
   Returns:
     An exit code.
@@ -4403,7 +4382,7 @@ def Run(arg_dict):
 
   SetupLogging(arg_dict)
 
-  return _PerformBulkload(arg_dict)
+  return _PerformBulkload(arg_dict, oauth2_parameters)
 
 
 def main(argv):

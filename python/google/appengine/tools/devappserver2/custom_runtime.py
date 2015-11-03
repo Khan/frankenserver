@@ -79,10 +79,7 @@ class CustomRuntimeInstanceFactory(instance.InstanceFactory):
         instance_config_getter,
         self._module_configuration,
         env=dict(os.environ),
-        start_process_flavor=http_runtime.START_PROCESS_REVERSE)
-    return instance.Instance(self.request_data,
-                             instance_id,
-                             proxy,
+        start_process_flavor=http_runtime.START_PROCESS_REVERSE_NO_FILE)
+    return instance.Instance(self.request_data, instance_id, proxy,
                              self.max_concurrent_requests,
-                             self.max_background_threads,
-                             expect_ready_request)
+                             self.max_background_threads, expect_ready_request)

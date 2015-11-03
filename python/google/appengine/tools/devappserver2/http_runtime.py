@@ -358,9 +358,20 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       with self._process_lock:
         assert not self._process, 'start() can only be called once'
         port = portpicker.PickUnusedPort()
-        self._args.append(self._extra_args_getter(port))
+        if self._extra_args_getter:
+          self._args.append(self._extra_args_getter(port))
+
+        # If any of the strings in _args contain {port}, {api_host}, {api_port},
+        # replace that substring with the selected port. This allows
+        # a user-specified runtime to pass the port along to the subprocess
+        # as a command-line argument.
+        args = [arg.replace('{port}', str(port))
+                .replace('{api_port}', str(runtime_config.api_port))
+                .replace('{api_host}', runtime_config.api_host)
+                for arg in self._args]
+
         self._process = safe_subprocess.start_process(
-            self._args,
+            args=args,
             input_string=serialized_config,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

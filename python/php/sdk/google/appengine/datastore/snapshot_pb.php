@@ -18,7 +18,9 @@
 # source: google/appengine/datastore/snapshot.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace storage_onestore_v3\Snapshot {
   class Status {

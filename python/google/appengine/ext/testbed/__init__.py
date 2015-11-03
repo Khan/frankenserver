@@ -541,6 +541,9 @@ class Testbed(object):
     v4_stub = datastore_v4_stub.DatastoreV4Stub(os.environ['APPLICATION_ID'])
     self._register_stub(datastore_v4_stub.SERVICE_NAME, v4_stub)
     if datastore_pbs._CLOUD_DATASTORE_ENABLED:
+      helper = datastore_pbs.googledatastore.helper
+      credential_env = helper._DATASTORE_USE_STUB_CREDENTIAL_FOR_TEST_ENV
+      os.environ[credential_env] = 'True'
       cloud_stub = cloud_datastore_v1_stub.CloudDatastoreV1Stub(
           os.environ['APPLICATION_ID'])
       self._register_stub(cloud_datastore_v1_stub.SERVICE_NAME, cloud_stub)

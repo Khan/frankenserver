@@ -730,9 +730,28 @@ class IndexMetadata_Storage(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.IndexMetadata_Storage'
 class IndexMetadata(ProtocolBuffer.ProtocolMessage):
+
+
+  ACTIVE       =    0
+  SOFT_DELETED =    1
+  PURGING      =    2
+
+  _IndexState_NAMES = {
+    0: "ACTIVE",
+    1: "SOFT_DELETED",
+    2: "PURGING",
+  }
+
+  def IndexState_Name(cls, x): return cls._IndexState_NAMES.get(x, "")
+  IndexState_Name = classmethod(IndexState_Name)
+
   has_index_spec_ = 0
   has_storage_ = 0
   storage_ = None
+  has_index_state_ = 0
+  index_state_ = 0
+  has_index_delete_time_ = 0
+  index_delete_time_ = 0
 
   def __init__(self, contents=None):
     self.index_spec_ = IndexSpec()
@@ -783,12 +802,40 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_storage(self): return self.has_storage_
 
+  def index_state(self): return self.index_state_
+
+  def set_index_state(self, x):
+    self.has_index_state_ = 1
+    self.index_state_ = x
+
+  def clear_index_state(self):
+    if self.has_index_state_:
+      self.has_index_state_ = 0
+      self.index_state_ = 0
+
+  def has_index_state(self): return self.has_index_state_
+
+  def index_delete_time(self): return self.index_delete_time_
+
+  def set_index_delete_time(self, x):
+    self.has_index_delete_time_ = 1
+    self.index_delete_time_ = x
+
+  def clear_index_delete_time(self):
+    if self.has_index_delete_time_:
+      self.has_index_delete_time_ = 0
+      self.index_delete_time_ = 0
+
+  def has_index_delete_time(self): return self.has_index_delete_time_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
     for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_storage()): self.mutable_storage().MergeFrom(x.storage())
+    if (x.has_index_state()): self.set_index_state(x.index_state())
+    if (x.has_index_delete_time()): self.set_index_delete_time(x.index_delete_time())
 
   def Equals(self, x):
     if x is self: return 1
@@ -799,6 +846,10 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_storage_ != x.has_storage_: return 0
     if self.has_storage_ and self.storage_ != x.storage_: return 0
+    if self.has_index_state_ != x.has_index_state_: return 0
+    if self.has_index_state_ and self.index_state_ != x.index_state_: return 0
+    if self.has_index_delete_time_ != x.has_index_delete_time_: return 0
+    if self.has_index_delete_time_ and self.index_delete_time_ != x.index_delete_time_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -819,6 +870,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSize())
+    if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
+    if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     return n + 1
 
   def ByteSizePartial(self):
@@ -829,12 +882,16 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
     if (self.has_storage_): n += 1 + self.lengthString(self.storage_.ByteSizePartial())
+    if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
+    if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     return n
 
   def Clear(self):
     self.clear_index_spec()
     self.clear_field()
     self.clear_storage()
+    self.clear_index_state()
+    self.clear_index_delete_time()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -848,6 +905,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(26)
       out.putVarInt32(self.storage_.ByteSize())
       self.storage_.OutputUnchecked(out)
+    if (self.has_index_state_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.index_state_)
+    if (self.has_index_delete_time_):
+      out.putVarInt32(40)
+      out.putVarInt64(self.index_delete_time_)
 
   def OutputPartial(self, out):
     if (self.has_index_spec_):
@@ -862,6 +925,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(26)
       out.putVarInt32(self.storage_.ByteSizePartial())
       self.storage_.OutputPartial(out)
+    if (self.has_index_state_):
+      out.putVarInt32(32)
+      out.putVarInt32(self.index_state_)
+    if (self.has_index_delete_time_):
+      out.putVarInt32(40)
+      out.putVarInt64(self.index_delete_time_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -883,6 +952,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.mutable_storage().TryMerge(tmp)
+        continue
+      if tt == 32:
+        self.set_index_state(d.getVarInt32())
+        continue
+      if tt == 40:
+        self.set_index_delete_time(d.getVarInt64())
         continue
 
 
@@ -908,6 +983,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"storage <\n"
       res+=self.storage_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if self.has_index_state_: res+=prefix+("index_state: %s\n" % self.DebugFormatInt32(self.index_state_))
+    if self.has_index_delete_time_: res+=prefix+("index_delete_time: %s\n" % self.DebugFormatInt64(self.index_delete_time_))
     return res
 
 
@@ -917,20 +994,26 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   kindex_spec = 1
   kfield = 2
   kstorage = 3
+  kindex_state = 4
+  kindex_delete_time = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "index_spec",
     2: "field",
     3: "storage",
-  }, 3)
+    4: "index_state",
+    5: "index_delete_time",
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.NUMERIC,
+    5: ProtocolBuffer.Encoder.NUMERIC,
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2369,6 +2452,698 @@ class ListDocumentsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ListDocumentsResponse'
+class DeleteIndexParams(ProtocolBuffer.ProtocolMessage):
+  has_index_spec_ = 0
+
+  def __init__(self, contents=None):
+    self.index_spec_ = IndexSpec()
+    if contents is not None: self.MergeFromString(contents)
+
+  def index_spec(self): return self.index_spec_
+
+  def mutable_index_spec(self): self.has_index_spec_ = 1; return self.index_spec_
+
+  def clear_index_spec(self):self.has_index_spec_ = 0; self.index_spec_.Clear()
+
+  def has_index_spec(self): return self.has_index_spec_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_index_spec_ != x.has_index_spec_: return 0
+    if self.has_index_spec_ and self.index_spec_ != x.index_spec_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_index_spec_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: index_spec not set.')
+    elif not self.index_spec_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.index_spec_.ByteSize())
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_index_spec_):
+      n += 1
+      n += self.lengthString(self.index_spec_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_index_spec()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.index_spec_.ByteSize())
+    self.index_spec_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_index_spec_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.index_spec_.ByteSizePartial())
+      self.index_spec_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_index_spec().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_index_spec_:
+      res+=prefix+"index_spec <\n"
+      res+=self.index_spec_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kindex_spec = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "index_spec",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteIndexParams'
+class DeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
+  has_params_ = 0
+  has_app_id_ = 0
+  app_id_ = ""
+
+  def __init__(self, contents=None):
+    self.params_ = DeleteIndexParams()
+    if contents is not None: self.MergeFromString(contents)
+
+  def params(self): return self.params_
+
+  def mutable_params(self): self.has_params_ = 1; return self.params_
+
+  def clear_params(self):self.has_params_ = 0; self.params_.Clear()
+
+  def has_params(self): return self.has_params_
+
+  def app_id(self): return self.app_id_
+
+  def set_app_id(self, x):
+    self.has_app_id_ = 1
+    self.app_id_ = x
+
+  def clear_app_id(self):
+    if self.has_app_id_:
+      self.has_app_id_ = 0
+      self.app_id_ = ""
+
+  def has_app_id(self): return self.has_app_id_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_params()): self.mutable_params().MergeFrom(x.params())
+    if (x.has_app_id()): self.set_app_id(x.app_id())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_params_ != x.has_params_: return 0
+    if self.has_params_ and self.params_ != x.params_: return 0
+    if self.has_app_id_ != x.has_app_id_: return 0
+    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_params_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: params not set.')
+    elif not self.params_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.params_.ByteSize())
+    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_params_):
+      n += 1
+      n += self.lengthString(self.params_.ByteSizePartial())
+    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
+    return n
+
+  def Clear(self):
+    self.clear_params()
+    self.clear_app_id()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.params_.ByteSize())
+    self.params_.OutputUnchecked(out)
+    if (self.has_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.app_id_)
+
+  def OutputPartial(self, out):
+    if (self.has_params_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.params_.ByteSizePartial())
+      self.params_.OutputPartial(out)
+    if (self.has_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.app_id_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_params().TryMerge(tmp)
+        continue
+      if tt == 18:
+        self.set_app_id(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_params_:
+      res+=prefix+"params <\n"
+      res+=self.params_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kparams = 1
+  kapp_id = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "params",
+    2: "app_id",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteIndexRequest'
+class DeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
+  has_status_ = 0
+
+  def __init__(self, contents=None):
+    self.status_ = RequestStatus()
+    if contents is not None: self.MergeFromString(contents)
+
+  def status(self): return self.status_
+
+  def mutable_status(self): self.has_status_ = 1; return self.status_
+
+  def clear_status(self):self.has_status_ = 0; self.status_.Clear()
+
+  def has_status(self): return self.has_status_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_status()): self.mutable_status().MergeFrom(x.status())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_status_ != x.has_status_: return 0
+    if self.has_status_ and self.status_ != x.status_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_status_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: status not set.')
+    elif not self.status_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.status_.ByteSize())
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_status_):
+      n += 1
+      n += self.lengthString(self.status_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_status()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.status_.ByteSize())
+    self.status_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_status_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.status_.ByteSizePartial())
+      self.status_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_status().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_status_:
+      res+=prefix+"status <\n"
+      res+=self.status_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kstatus = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "status",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.DeleteIndexResponse'
+class CancelDeleteIndexParams(ProtocolBuffer.ProtocolMessage):
+  has_index_spec_ = 0
+
+  def __init__(self, contents=None):
+    self.index_spec_ = IndexSpec()
+    if contents is not None: self.MergeFromString(contents)
+
+  def index_spec(self): return self.index_spec_
+
+  def mutable_index_spec(self): self.has_index_spec_ = 1; return self.index_spec_
+
+  def clear_index_spec(self):self.has_index_spec_ = 0; self.index_spec_.Clear()
+
+  def has_index_spec(self): return self.has_index_spec_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_index_spec()): self.mutable_index_spec().MergeFrom(x.index_spec())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_index_spec_ != x.has_index_spec_: return 0
+    if self.has_index_spec_ and self.index_spec_ != x.index_spec_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_index_spec_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: index_spec not set.')
+    elif not self.index_spec_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.index_spec_.ByteSize())
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_index_spec_):
+      n += 1
+      n += self.lengthString(self.index_spec_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_index_spec()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.index_spec_.ByteSize())
+    self.index_spec_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_index_spec_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.index_spec_.ByteSizePartial())
+      self.index_spec_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_index_spec().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_index_spec_:
+      res+=prefix+"index_spec <\n"
+      res+=self.index_spec_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kindex_spec = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "index_spec",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CancelDeleteIndexParams'
+class CancelDeleteIndexRequest(ProtocolBuffer.ProtocolMessage):
+  has_params_ = 0
+  has_app_id_ = 0
+  app_id_ = ""
+
+  def __init__(self, contents=None):
+    self.params_ = CancelDeleteIndexParams()
+    if contents is not None: self.MergeFromString(contents)
+
+  def params(self): return self.params_
+
+  def mutable_params(self): self.has_params_ = 1; return self.params_
+
+  def clear_params(self):self.has_params_ = 0; self.params_.Clear()
+
+  def has_params(self): return self.has_params_
+
+  def app_id(self): return self.app_id_
+
+  def set_app_id(self, x):
+    self.has_app_id_ = 1
+    self.app_id_ = x
+
+  def clear_app_id(self):
+    if self.has_app_id_:
+      self.has_app_id_ = 0
+      self.app_id_ = ""
+
+  def has_app_id(self): return self.has_app_id_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_params()): self.mutable_params().MergeFrom(x.params())
+    if (x.has_app_id()): self.set_app_id(x.app_id())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_params_ != x.has_params_: return 0
+    if self.has_params_ and self.params_ != x.params_: return 0
+    if self.has_app_id_ != x.has_app_id_: return 0
+    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_params_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: params not set.')
+    elif not self.params_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.params_.ByteSize())
+    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_params_):
+      n += 1
+      n += self.lengthString(self.params_.ByteSizePartial())
+    if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
+    return n
+
+  def Clear(self):
+    self.clear_params()
+    self.clear_app_id()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.params_.ByteSize())
+    self.params_.OutputUnchecked(out)
+    if (self.has_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.app_id_)
+
+  def OutputPartial(self, out):
+    if (self.has_params_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.params_.ByteSizePartial())
+      self.params_.OutputPartial(out)
+    if (self.has_app_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.app_id_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_params().TryMerge(tmp)
+        continue
+      if tt == 18:
+        self.set_app_id(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_params_:
+      res+=prefix+"params <\n"
+      res+=self.params_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kparams = 1
+  kapp_id = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "params",
+    2: "app_id",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CancelDeleteIndexRequest'
+class CancelDeleteIndexResponse(ProtocolBuffer.ProtocolMessage):
+  has_status_ = 0
+
+  def __init__(self, contents=None):
+    self.status_ = RequestStatus()
+    if contents is not None: self.MergeFromString(contents)
+
+  def status(self): return self.status_
+
+  def mutable_status(self): self.has_status_ = 1; return self.status_
+
+  def clear_status(self):self.has_status_ = 0; self.status_.Clear()
+
+  def has_status(self): return self.has_status_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_status()): self.mutable_status().MergeFrom(x.status())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_status_ != x.has_status_: return 0
+    if self.has_status_ and self.status_ != x.status_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_status_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: status not set.')
+    elif not self.status_.IsInitialized(debug_strs): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(self.status_.ByteSize())
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_status_):
+      n += 1
+      n += self.lengthString(self.status_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_status()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putVarInt32(self.status_.ByteSize())
+    self.status_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_status_):
+      out.putVarInt32(10)
+      out.putVarInt32(self.status_.ByteSizePartial())
+      self.status_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_status().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_status_:
+      res+=prefix+"status <\n"
+      res+=self.status_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kstatus = 1
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "status",
+  }, 1)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting.CancelDeleteIndexResponse'
 class ListIndexesParams(ProtocolBuffer.ProtocolMessage):
   has_fetch_schema_ = 0
   fetch_schema_ = 0
@@ -6766,4 +7541,4 @@ class SearchResponse(_ExtendableProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['SearchServiceError','RequestStatus','IndexSpec','IndexMetadata_Storage','IndexMetadata','IndexDocumentParams','IndexDocumentRequest','IndexDocumentResponse','DeleteDocumentParams','DeleteDocumentRequest','DeleteDocumentResponse','ListDocumentsParams','ListDocumentsRequest','ListDocumentsResponse','ListIndexesParams','ListIndexesRequest','ListIndexesResponse','DeleteSchemaParams','DeleteSchemaRequest','DeleteSchemaResponse','SortSpec','ScorerSpec','FieldSpec','FieldSpec_Expression','FacetRange','FacetRequestParam','FacetAutoDetectParam','FacetRequest','FacetRefinement_Range','FacetRefinement','SearchParams','SearchRequest','FacetResultValue','FacetResult','SearchResult','SearchResponse']
+__all__ = ['SearchServiceError','RequestStatus','IndexSpec','IndexMetadata_Storage','IndexMetadata','IndexDocumentParams','IndexDocumentRequest','IndexDocumentResponse','DeleteDocumentParams','DeleteDocumentRequest','DeleteDocumentResponse','ListDocumentsParams','ListDocumentsRequest','ListDocumentsResponse','DeleteIndexParams','DeleteIndexRequest','DeleteIndexResponse','CancelDeleteIndexParams','CancelDeleteIndexRequest','CancelDeleteIndexResponse','ListIndexesParams','ListIndexesRequest','ListIndexesResponse','DeleteSchemaParams','DeleteSchemaRequest','DeleteSchemaResponse','SortSpec','ScorerSpec','FieldSpec','FieldSpec_Expression','FacetRange','FacetRequestParam','FacetAutoDetectParam','FacetRequest','FacetRefinement_Range','FacetRefinement','SearchParams','SearchRequest','FacetResultValue','FacetResult','SearchResult','SearchResponse']

@@ -18,9 +18,11 @@
 # source: google/appengine/api/logservice/log_service.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
-  require_once 'google/appengine/api/api_base_pb.php';
-  require_once 'google/appengine/api/source_pb.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+    require_once 'google/appengine/api/api_base_pb.php';
+    require_once 'google/appengine/api/source_pb.php';
+  }
 }
 namespace google\appengine\LogServiceError {
   class ErrorCode {
@@ -551,8 +553,26 @@ namespace google\appengine {
     public function hasRequestId() {
       return isset($this->request_id);
     }
+    public function getRequestIdSet() {
+      if (!isset($this->request_id_set)) {
+        return false;
+      }
+      return $this->request_id_set;
+    }
+    public function setRequestIdSet($val) {
+      $this->request_id_set = $val;
+      return $this;
+    }
+    public function clearRequestIdSet() {
+      unset($this->request_id_set);
+      return $this;
+    }
+    public function hasRequestIdSet() {
+      return isset($this->request_id_set);
+    }
     public function clear() {
       $this->clearRequestId();
+      $this->clearRequestIdSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -560,12 +580,19 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->request_id));
       }
+      if (isset($this->request_id_set)) {
+        $res += 3;
+      }
       return $res;
     }
     public function outputPartial($out) {
       if (isset($this->request_id)) {
         $out->putVarInt32(10);
         $out->putPrefixedString($this->request_id);
+      }
+      if (isset($this->request_id_set)) {
+        $out->putVarInt32(808);
+        $out->putBoolean($this->request_id_set);
       }
     }
     public function tryMerge($d) {
@@ -576,6 +603,9 @@ namespace google\appengine {
             $length = $d->getVarInt32();
             $this->setRequestId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
+            break;
+          case 808:
+            $this->setRequestIdSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -593,17 +623,25 @@ namespace google\appengine {
       if ($x->hasRequestId()) {
         $this->setRequestId($x->getRequestId());
       }
+      if ($x->hasRequestIdSet()) {
+        $this->setRequestIdSet($x->getRequestIdSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
       if (isset($this->request_id) !== isset($x->request_id)) return false;
       if (isset($this->request_id) && $this->request_id !== $x->request_id) return false;
+      if (isset($this->request_id_set) !== isset($x->request_id_set)) return false;
+      if (isset($this->request_id_set) && $this->request_id_set !== $x->request_id_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
       $res = '';
       if (isset($this->request_id)) {
         $res .= $prefix . "request_id: " . $this->debugFormatString($this->request_id) . "\n";
+      }
+      if (isset($this->request_id_set)) {
+        $res .= $prefix . "request_id_set: " . $this->debugFormatBool($this->request_id_set) . "\n";
       }
       return $res;
     }
@@ -2448,9 +2486,45 @@ namespace google\appengine {
     public function hasVersionId() {
       return isset($this->version_id);
     }
+    public function getModuleIdSet() {
+      if (!isset($this->module_id_set)) {
+        return false;
+      }
+      return $this->module_id_set;
+    }
+    public function setModuleIdSet($val) {
+      $this->module_id_set = $val;
+      return $this;
+    }
+    public function clearModuleIdSet() {
+      unset($this->module_id_set);
+      return $this;
+    }
+    public function hasModuleIdSet() {
+      return isset($this->module_id_set);
+    }
+    public function getVersionIdSet() {
+      if (!isset($this->version_id_set)) {
+        return false;
+      }
+      return $this->version_id_set;
+    }
+    public function setVersionIdSet($val) {
+      $this->version_id_set = $val;
+      return $this;
+    }
+    public function clearVersionIdSet() {
+      unset($this->version_id_set);
+      return $this;
+    }
+    public function hasVersionIdSet() {
+      return isset($this->version_id_set);
+    }
     public function clear() {
       $this->clearModuleId();
       $this->clearVersionId();
+      $this->clearModuleIdSet();
+      $this->clearVersionIdSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2462,6 +2536,12 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthString(strlen($this->version_id));
       }
+      if (isset($this->module_id_set)) {
+        $res += 3;
+      }
+      if (isset($this->version_id_set)) {
+        $res += 3;
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -2472,6 +2552,14 @@ namespace google\appengine {
       if (isset($this->version_id)) {
         $out->putVarInt32(18);
         $out->putPrefixedString($this->version_id);
+      }
+      if (isset($this->module_id_set)) {
+        $out->putVarInt32(808);
+        $out->putBoolean($this->module_id_set);
+      }
+      if (isset($this->version_id_set)) {
+        $out->putVarInt32(816);
+        $out->putBoolean($this->version_id_set);
       }
     }
     public function tryMerge($d) {
@@ -2487,6 +2575,12 @@ namespace google\appengine {
             $length = $d->getVarInt32();
             $this->setVersionId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
+            break;
+          case 808:
+            $this->setModuleIdSet($d->getBoolean());
+            break;
+          case 816:
+            $this->setVersionIdSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -2507,6 +2601,12 @@ namespace google\appengine {
       if ($x->hasVersionId()) {
         $this->setVersionId($x->getVersionId());
       }
+      if ($x->hasModuleIdSet()) {
+        $this->setModuleIdSet($x->getModuleIdSet());
+      }
+      if ($x->hasVersionIdSet()) {
+        $this->setVersionIdSet($x->getVersionIdSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -2514,6 +2614,10 @@ namespace google\appengine {
       if (isset($this->module_id) && $this->module_id !== $x->module_id) return false;
       if (isset($this->version_id) !== isset($x->version_id)) return false;
       if (isset($this->version_id) && $this->version_id !== $x->version_id) return false;
+      if (isset($this->module_id_set) !== isset($x->module_id_set)) return false;
+      if (isset($this->module_id_set) && $this->module_id_set !== $x->module_id_set) return false;
+      if (isset($this->version_id_set) !== isset($x->version_id_set)) return false;
+      if (isset($this->version_id_set) && $this->version_id_set !== $x->version_id_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2523,6 +2627,12 @@ namespace google\appengine {
       }
       if (isset($this->version_id)) {
         $res .= $prefix . "version_id: " . $this->debugFormatString($this->version_id) . "\n";
+      }
+      if (isset($this->module_id_set)) {
+        $res .= $prefix . "module_id_set: " . $this->debugFormatBool($this->module_id_set) . "\n";
+      }
+      if (isset($this->version_id_set)) {
+        $res .= $prefix . "version_id_set: " . $this->debugFormatBool($this->version_id_set) . "\n";
       }
       return $res;
     }
@@ -2893,6 +3003,159 @@ namespace google\appengine {
     public function clearModuleVersion() {
       $this->module_version = array();
     }
+    public function getStartTimeSet() {
+      if (!isset($this->start_time_set)) {
+        return false;
+      }
+      return $this->start_time_set;
+    }
+    public function setStartTimeSet($val) {
+      $this->start_time_set = $val;
+      return $this;
+    }
+    public function clearStartTimeSet() {
+      unset($this->start_time_set);
+      return $this;
+    }
+    public function hasStartTimeSet() {
+      return isset($this->start_time_set);
+    }
+    public function getEndTimeSet() {
+      if (!isset($this->end_time_set)) {
+        return false;
+      }
+      return $this->end_time_set;
+    }
+    public function setEndTimeSet($val) {
+      $this->end_time_set = $val;
+      return $this;
+    }
+    public function clearEndTimeSet() {
+      unset($this->end_time_set);
+      return $this;
+    }
+    public function hasEndTimeSet() {
+      return isset($this->end_time_set);
+    }
+    public function getMinimumLogLevelSet() {
+      if (!isset($this->minimum_log_level_set)) {
+        return false;
+      }
+      return $this->minimum_log_level_set;
+    }
+    public function setMinimumLogLevelSet($val) {
+      $this->minimum_log_level_set = $val;
+      return $this;
+    }
+    public function clearMinimumLogLevelSet() {
+      unset($this->minimum_log_level_set);
+      return $this;
+    }
+    public function hasMinimumLogLevelSet() {
+      return isset($this->minimum_log_level_set);
+    }
+    public function getCountSet() {
+      if (!isset($this->count_set)) {
+        return false;
+      }
+      return $this->count_set;
+    }
+    public function setCountSet($val) {
+      $this->count_set = $val;
+      return $this;
+    }
+    public function clearCountSet() {
+      unset($this->count_set);
+      return $this;
+    }
+    public function hasCountSet() {
+      return isset($this->count_set);
+    }
+    public function getCombinedLogRegexSet() {
+      if (!isset($this->combined_log_regex_set)) {
+        return false;
+      }
+      return $this->combined_log_regex_set;
+    }
+    public function setCombinedLogRegexSet($val) {
+      $this->combined_log_regex_set = $val;
+      return $this;
+    }
+    public function clearCombinedLogRegexSet() {
+      unset($this->combined_log_regex_set);
+      return $this;
+    }
+    public function hasCombinedLogRegexSet() {
+      return isset($this->combined_log_regex_set);
+    }
+    public function getHostRegexSet() {
+      if (!isset($this->host_regex_set)) {
+        return false;
+      }
+      return $this->host_regex_set;
+    }
+    public function setHostRegexSet($val) {
+      $this->host_regex_set = $val;
+      return $this;
+    }
+    public function clearHostRegexSet() {
+      unset($this->host_regex_set);
+      return $this;
+    }
+    public function hasHostRegexSet() {
+      return isset($this->host_regex_set);
+    }
+    public function getReplicaIndexSet() {
+      if (!isset($this->replica_index_set)) {
+        return false;
+      }
+      return $this->replica_index_set;
+    }
+    public function setReplicaIndexSet($val) {
+      $this->replica_index_set = $val;
+      return $this;
+    }
+    public function clearReplicaIndexSet() {
+      unset($this->replica_index_set);
+      return $this;
+    }
+    public function hasReplicaIndexSet() {
+      return isset($this->replica_index_set);
+    }
+    public function getAppLogsPerRequestSet() {
+      if (!isset($this->app_logs_per_request_set)) {
+        return false;
+      }
+      return $this->app_logs_per_request_set;
+    }
+    public function setAppLogsPerRequestSet($val) {
+      $this->app_logs_per_request_set = $val;
+      return $this;
+    }
+    public function clearAppLogsPerRequestSet() {
+      unset($this->app_logs_per_request_set);
+      return $this;
+    }
+    public function hasAppLogsPerRequestSet() {
+      return isset($this->app_logs_per_request_set);
+    }
+    public function getNumShardsSet() {
+      if (!isset($this->num_shards_set)) {
+        return false;
+      }
+      return $this->num_shards_set;
+    }
+    public function setNumShardsSet($val) {
+      $this->num_shards_set = $val;
+      return $this;
+    }
+    public function clearNumShardsSet() {
+      unset($this->num_shards_set);
+      return $this;
+    }
+    public function hasNumShardsSet() {
+      return isset($this->num_shards_set);
+    }
     public function clear() {
       $this->clearAppId();
       $this->clearVersionId();
@@ -2913,6 +3176,15 @@ namespace google\appengine {
       $this->clearAppLogsPerRequest();
       $this->clearNumShards();
       $this->clearModuleVersion();
+      $this->clearStartTimeSet();
+      $this->clearEndTimeSet();
+      $this->clearMinimumLogLevelSet();
+      $this->clearCountSet();
+      $this->clearCombinedLogRegexSet();
+      $this->clearHostRegexSet();
+      $this->clearReplicaIndexSet();
+      $this->clearAppLogsPerRequestSet();
+      $this->clearNumShardsSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2989,6 +3261,33 @@ namespace google\appengine {
       $res += 2 * sizeof($this->module_version);
       foreach ($this->module_version as $value) {
         $res += $this->lengthString($value->byteSizePartial());
+      }
+      if (isset($this->start_time_set)) {
+        $res += 3;
+      }
+      if (isset($this->end_time_set)) {
+        $res += 3;
+      }
+      if (isset($this->minimum_log_level_set)) {
+        $res += 3;
+      }
+      if (isset($this->count_set)) {
+        $res += 3;
+      }
+      if (isset($this->combined_log_regex_set)) {
+        $res += 3;
+      }
+      if (isset($this->host_regex_set)) {
+        $res += 3;
+      }
+      if (isset($this->replica_index_set)) {
+        $res += 3;
+      }
+      if (isset($this->app_logs_per_request_set)) {
+        $res += 3;
+      }
+      if (isset($this->num_shards_set)) {
+        $res += 3;
       }
       return $res;
     }
@@ -3074,6 +3373,42 @@ namespace google\appengine {
         $out->putVarInt32($value->byteSizePartial());
         $value->outputPartial($out);
       }
+      if (isset($this->start_time_set)) {
+        $out->putVarInt32(824);
+        $out->putBoolean($this->start_time_set);
+      }
+      if (isset($this->end_time_set)) {
+        $out->putVarInt32(832);
+        $out->putBoolean($this->end_time_set);
+      }
+      if (isset($this->minimum_log_level_set)) {
+        $out->putVarInt32(856);
+        $out->putBoolean($this->minimum_log_level_set);
+      }
+      if (isset($this->count_set)) {
+        $out->putVarInt32(872);
+        $out->putBoolean($this->count_set);
+      }
+      if (isset($this->combined_log_regex_set)) {
+        $out->putVarInt32(912);
+        $out->putBoolean($this->combined_log_regex_set);
+      }
+      if (isset($this->host_regex_set)) {
+        $out->putVarInt32(920);
+        $out->putBoolean($this->host_regex_set);
+      }
+      if (isset($this->replica_index_set)) {
+        $out->putVarInt32(928);
+        $out->putBoolean($this->replica_index_set);
+      }
+      if (isset($this->app_logs_per_request_set)) {
+        $out->putVarInt32(936);
+        $out->putBoolean($this->app_logs_per_request_set);
+      }
+      if (isset($this->num_shards_set)) {
+        $out->putVarInt32(944);
+        $out->putBoolean($this->num_shards_set);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3152,6 +3487,33 @@ namespace google\appengine {
             $d->skip($length);
             $this->addModuleVersion()->tryMerge($tmp);
             break;
+          case 824:
+            $this->setStartTimeSet($d->getBoolean());
+            break;
+          case 832:
+            $this->setEndTimeSet($d->getBoolean());
+            break;
+          case 856:
+            $this->setMinimumLogLevelSet($d->getBoolean());
+            break;
+          case 872:
+            $this->setCountSet($d->getBoolean());
+            break;
+          case 912:
+            $this->setCombinedLogRegexSet($d->getBoolean());
+            break;
+          case 920:
+            $this->setHostRegexSet($d->getBoolean());
+            break;
+          case 928:
+            $this->setReplicaIndexSet($d->getBoolean());
+            break;
+          case 936:
+            $this->setAppLogsPerRequestSet($d->getBoolean());
+            break;
+          case 944:
+            $this->setNumShardsSet($d->getBoolean());
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -3227,6 +3589,33 @@ namespace google\appengine {
       foreach ($x->getModuleVersionList() as $v) {
         $this->addModuleVersion()->copyFrom($v);
       }
+      if ($x->hasStartTimeSet()) {
+        $this->setStartTimeSet($x->getStartTimeSet());
+      }
+      if ($x->hasEndTimeSet()) {
+        $this->setEndTimeSet($x->getEndTimeSet());
+      }
+      if ($x->hasMinimumLogLevelSet()) {
+        $this->setMinimumLogLevelSet($x->getMinimumLogLevelSet());
+      }
+      if ($x->hasCountSet()) {
+        $this->setCountSet($x->getCountSet());
+      }
+      if ($x->hasCombinedLogRegexSet()) {
+        $this->setCombinedLogRegexSet($x->getCombinedLogRegexSet());
+      }
+      if ($x->hasHostRegexSet()) {
+        $this->setHostRegexSet($x->getHostRegexSet());
+      }
+      if ($x->hasReplicaIndexSet()) {
+        $this->setReplicaIndexSet($x->getReplicaIndexSet());
+      }
+      if ($x->hasAppLogsPerRequestSet()) {
+        $this->setAppLogsPerRequestSet($x->getAppLogsPerRequestSet());
+      }
+      if ($x->hasNumShardsSet()) {
+        $this->setNumShardsSet($x->getNumShardsSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3274,6 +3663,24 @@ namespace google\appengine {
       foreach (array_map(null, $this->module_version, $x->module_version) as $v) {
         if (!$v[0]->equals($v[1])) return false;
       }
+      if (isset($this->start_time_set) !== isset($x->start_time_set)) return false;
+      if (isset($this->start_time_set) && $this->start_time_set !== $x->start_time_set) return false;
+      if (isset($this->end_time_set) !== isset($x->end_time_set)) return false;
+      if (isset($this->end_time_set) && $this->end_time_set !== $x->end_time_set) return false;
+      if (isset($this->minimum_log_level_set) !== isset($x->minimum_log_level_set)) return false;
+      if (isset($this->minimum_log_level_set) && $this->minimum_log_level_set !== $x->minimum_log_level_set) return false;
+      if (isset($this->count_set) !== isset($x->count_set)) return false;
+      if (isset($this->count_set) && $this->count_set !== $x->count_set) return false;
+      if (isset($this->combined_log_regex_set) !== isset($x->combined_log_regex_set)) return false;
+      if (isset($this->combined_log_regex_set) && $this->combined_log_regex_set !== $x->combined_log_regex_set) return false;
+      if (isset($this->host_regex_set) !== isset($x->host_regex_set)) return false;
+      if (isset($this->host_regex_set) && $this->host_regex_set !== $x->host_regex_set) return false;
+      if (isset($this->replica_index_set) !== isset($x->replica_index_set)) return false;
+      if (isset($this->replica_index_set) && $this->replica_index_set !== $x->replica_index_set) return false;
+      if (isset($this->app_logs_per_request_set) !== isset($x->app_logs_per_request_set)) return false;
+      if (isset($this->app_logs_per_request_set) && $this->app_logs_per_request_set !== $x->app_logs_per_request_set) return false;
+      if (isset($this->num_shards_set) !== isset($x->num_shards_set)) return false;
+      if (isset($this->num_shards_set) && $this->num_shards_set !== $x->num_shards_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3334,6 +3741,33 @@ namespace google\appengine {
       }
       foreach ($this->module_version as $value) {
         $res .= $prefix . "module_version <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->start_time_set)) {
+        $res .= $prefix . "start_time_set: " . $this->debugFormatBool($this->start_time_set) . "\n";
+      }
+      if (isset($this->end_time_set)) {
+        $res .= $prefix . "end_time_set: " . $this->debugFormatBool($this->end_time_set) . "\n";
+      }
+      if (isset($this->minimum_log_level_set)) {
+        $res .= $prefix . "minimum_log_level_set: " . $this->debugFormatBool($this->minimum_log_level_set) . "\n";
+      }
+      if (isset($this->count_set)) {
+        $res .= $prefix . "count_set: " . $this->debugFormatBool($this->count_set) . "\n";
+      }
+      if (isset($this->combined_log_regex_set)) {
+        $res .= $prefix . "combined_log_regex_set: " . $this->debugFormatBool($this->combined_log_regex_set) . "\n";
+      }
+      if (isset($this->host_regex_set)) {
+        $res .= $prefix . "host_regex_set: " . $this->debugFormatBool($this->host_regex_set) . "\n";
+      }
+      if (isset($this->replica_index_set)) {
+        $res .= $prefix . "replica_index_set: " . $this->debugFormatBool($this->replica_index_set) . "\n";
+      }
+      if (isset($this->app_logs_per_request_set)) {
+        $res .= $prefix . "app_logs_per_request_set: " . $this->debugFormatBool($this->app_logs_per_request_set) . "\n";
+      }
+      if (isset($this->num_shards_set)) {
+        $res .= $prefix . "num_shards_set: " . $this->debugFormatBool($this->num_shards_set) . "\n";
       }
       return $res;
     }
@@ -3940,6 +4374,40 @@ namespace google\appengine {
     public function hasVersionsOnly() {
       return isset($this->versions_only);
     }
+    public function getResolutionHoursSet() {
+      if (!isset($this->resolution_hours_set)) {
+        return false;
+      }
+      return $this->resolution_hours_set;
+    }
+    public function setResolutionHoursSet($val) {
+      $this->resolution_hours_set = $val;
+      return $this;
+    }
+    public function clearResolutionHoursSet() {
+      unset($this->resolution_hours_set);
+      return $this;
+    }
+    public function hasResolutionHoursSet() {
+      return isset($this->resolution_hours_set);
+    }
+    public function getUsageVersionSet() {
+      if (!isset($this->usage_version_set)) {
+        return false;
+      }
+      return $this->usage_version_set;
+    }
+    public function setUsageVersionSet($val) {
+      $this->usage_version_set = $val;
+      return $this;
+    }
+    public function clearUsageVersionSet() {
+      unset($this->usage_version_set);
+      return $this;
+    }
+    public function hasUsageVersionSet() {
+      return isset($this->usage_version_set);
+    }
     public function clear() {
       $this->clearAppId();
       $this->clearVersionId();
@@ -3949,6 +4417,8 @@ namespace google\appengine {
       $this->clearCombineVersions();
       $this->clearUsageVersion();
       $this->clearVersionsOnly();
+      $this->clearResolutionHoursSet();
+      $this->clearUsageVersionSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3982,6 +4452,12 @@ namespace google\appengine {
       }
       if (isset($this->versions_only)) {
         $res += 2;
+      }
+      if (isset($this->resolution_hours_set)) {
+        $res += 3;
+      }
+      if (isset($this->usage_version_set)) {
+        $res += 3;
       }
       return $res;
     }
@@ -4019,6 +4495,14 @@ namespace google\appengine {
         $out->putVarInt32(64);
         $out->putBoolean($this->versions_only);
       }
+      if (isset($this->resolution_hours_set)) {
+        $out->putVarInt32(840);
+        $out->putBoolean($this->resolution_hours_set);
+      }
+      if (isset($this->usage_version_set)) {
+        $out->putVarInt32(856);
+        $out->putBoolean($this->usage_version_set);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -4051,6 +4535,12 @@ namespace google\appengine {
             break;
           case 64:
             $this->setVersionsOnly($d->getBoolean());
+            break;
+          case 840:
+            $this->setResolutionHoursSet($d->getBoolean());
+            break;
+          case 856:
+            $this->setUsageVersionSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -4090,6 +4580,12 @@ namespace google\appengine {
       if ($x->hasVersionsOnly()) {
         $this->setVersionsOnly($x->getVersionsOnly());
       }
+      if ($x->hasResolutionHoursSet()) {
+        $this->setResolutionHoursSet($x->getResolutionHoursSet());
+      }
+      if ($x->hasUsageVersionSet()) {
+        $this->setUsageVersionSet($x->getUsageVersionSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -4111,6 +4607,10 @@ namespace google\appengine {
       if (isset($this->usage_version) && !$this->integerEquals($this->usage_version, $x->usage_version)) return false;
       if (isset($this->versions_only) !== isset($x->versions_only)) return false;
       if (isset($this->versions_only) && $this->versions_only !== $x->versions_only) return false;
+      if (isset($this->resolution_hours_set) !== isset($x->resolution_hours_set)) return false;
+      if (isset($this->resolution_hours_set) && $this->resolution_hours_set !== $x->resolution_hours_set) return false;
+      if (isset($this->usage_version_set) !== isset($x->usage_version_set)) return false;
+      if (isset($this->usage_version_set) && $this->usage_version_set !== $x->usage_version_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -4138,6 +4638,12 @@ namespace google\appengine {
       }
       if (isset($this->versions_only)) {
         $res .= $prefix . "versions_only: " . $this->debugFormatBool($this->versions_only) . "\n";
+      }
+      if (isset($this->resolution_hours_set)) {
+        $res .= $prefix . "resolution_hours_set: " . $this->debugFormatBool($this->resolution_hours_set) . "\n";
+      }
+      if (isset($this->usage_version_set)) {
+        $res .= $prefix . "usage_version_set: " . $this->debugFormatBool($this->usage_version_set) . "\n";
       }
       return $res;
     }

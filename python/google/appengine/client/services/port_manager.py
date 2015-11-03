@@ -19,17 +19,20 @@
 import logging
 import re
 
+# These ports are reserved for future usage.
+RESERVED_INTERNAL_PORTS = range(10400, 10499)
+
 # These ports are used by our code or critical system daemons.
 RESERVED_HOST_PORTS = [22,  # SSH
-                       5000,  # Docker registry
                        10000,  # For unlocking?
                        10001,  # Nanny stubby proxy endpoint
-                      ]
+                       11211,
+                      ] + RESERVED_INTERNAL_PORTS
 # We allow users to forward traffic to our HTTP server internally.
 RESERVED_DOCKER_PORTS = [22,  # SSH
-                         5000,  # Docker registry
                          10001,  # Nanny stubby proxy endpoint
-                        ]
+                         11211,
+                        ] + RESERVED_INTERNAL_PORTS
 
 PROTOCOL_RE = '^tcp|udp$'  # Matches only exactly tcp or udp.
 

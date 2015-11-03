@@ -24,6 +24,7 @@
 
 
 
+import logging
 import os
 import urllib
 import urlparse
@@ -47,6 +48,12 @@ _OAUTH_EMAIL = 'example@example.com'
 _OAUTH_USER_ID = '0'
 _OAUTH_AUTH_DOMAIN = _DEFAULT_AUTH_DOMAIN
 _OAUTH_CLIENT_ID = '123456789.apps.googleusercontent.com'
+
+_OPENID_DEPRECATION_WARNING = (
+    'Open ID 2.0 support in the App Engine Users service is deprecated and '
+    'will soon be removed. Please see '
+    'https://cloud.google.com/appengine/docs/deprecations/open_id '
+    'for details.')
 
 
 class UserServiceStub(apiproxy_stub.APIProxyStub):
@@ -125,6 +132,9 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       request_id: A unique string identifying the request associated with the
           API call.
     """
+    if request.federated_identity:
+      logging.warning(_OPENID_DEPRECATION_WARNING)
+
     response.set_login_url(
         self._login_url %
         urllib.quote(self._AddHostToContinueURL(request.destination_url(),

@@ -16,8 +16,6 @@
 #
 
 
-
-
 """AppInfo tools.
 
 Library for working with AppInfo records in memory, store and load from
@@ -46,6 +44,7 @@ import string
 import sys
 import wsgiref.util
 
+
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
   from google.appengine.api import pagespeedinfo
   from google.appengine.api import validation
@@ -62,6 +61,8 @@ else:
 
 from google.appengine.api import appinfo_errors
 from google.appengine.api import backendinfo
+
+
 
 
 
@@ -170,6 +171,7 @@ BUILTIN_NAME_PREFIX = 'ah-builtin'
 RUNTIME_RE_STRING = r'[a-z][a-z0-9\-]{0,29}'
 
 API_VERSION_RE_STRING = r'[\w.]{1,32}'
+ENV_RE_STRING = r'[\w.]{1,32}'
 
 SOURCE_LANGUAGE_RE_STRING = r'[\w.\-]{1,32}'
 
@@ -231,6 +233,7 @@ REDIRECT_HTTP_RESPONSE_CODE = 'redirect_http_response_code'
 APPLICATION = 'application'
 PROJECT = 'project'
 MODULE = 'module'
+SERVICE = 'service'
 AUTOMATIC_SCALING = 'automatic_scaling'
 MANUAL_SCALING = 'manual_scaling'
 BASIC_SCALING = 'basic_scaling'
@@ -246,6 +249,8 @@ MAJOR_VERSION = 'major_version'
 MINOR_VERSION = 'minor_version'
 RUNTIME = 'runtime'
 API_VERSION = 'api_version'
+ENV = 'env'
+ENTRYPOINT = 'entrypoint'
 SOURCE_LANGUAGE = 'source_language'
 BUILTINS = 'builtins'
 INCLUDES = 'includes'
@@ -446,9 +451,9 @@ _SUPPORTED_LIBRARIES = [
         'MySQLdb',
         'http://mysql-python.sourceforge.net/',
         'A Python DB API v2.0 compatible interface to MySQL.',
-        ['1.2.4b4', '1.2.4'],
+        ['1.2.4b4', '1.2.4', '1.2.5'],
         latest_version='1.2.4b4',
-        experimental_versions=['1.2.4b4', '1.2.4']
+        experimental_versions=['1.2.4b4', '1.2.4', '1.2.5']
         ),
     _VersionedLibrary(
         'numpy',
@@ -549,8 +554,7 @@ REQUIRED_LIBRARIES = {
     ('matplotlib', 'latest'): [('numpy', 'latest')],
 }
 
-_USE_VERSION_FORMAT = ('use one of: "%s" or "latest" '
-                       '("latest" recommended for development only)')
+_USE_VERSION_FORMAT = ('use one of: "%s"')
 
 
 
@@ -591,12 +595,11 @@ _MAX_URL_LENGTH = 2047
 
 
 
-
+_MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS = 10240
 
 _CANNED_RUNTIMES = ('contrib-dart', 'dart', 'go', 'php', 'php55', 'python',
                     'python27', 'java', 'java7', 'vm', 'custom', 'nodejs')
 _all_runtimes = _CANNED_RUNTIMES
-_vm_runtimes = _CANNED_RUNTIMES
 
 
 def GetAllRuntimes():
@@ -608,35 +611,6 @@ def GetAllRuntimes():
     Tuple of strings.
   """
   return _all_runtimes
-
-
-def SetAllRuntimes(runtimes):
-  """Sets the list of all valid runtimes.
-
-  Args:
-    runtimes: Tuple of strings defining the names of all valid runtimes.
-  """
-  global _all_runtimes
-  _all_runtimes = runtimes
-
-
-def GetVmRuntimes():
-  """Returns the list of runtimes for the vm_runtimes field.
-
-  Returns:
-    Tuple of strings.
-  """
-  return _vm_runtimes
-
-
-def SetVmRuntimes(runtimes):
-  """Sets the list of all runtimes valid for the vm_runtimes field.
-
-  Args:
-    runtimes: Tuple of strings defining all valid vm runtimes.
-  """
-  global _vm_runtimes
-  _vm_runtimes = runtimes
 
 
 class HandlerBase(validation.Validated):
@@ -692,6 +666,11 @@ class HttpHeadersDict(validation.ValidatedDict):
 
   MAX_HEADER_LENGTH = 500
   MAX_HEADER_VALUE_LENGTHS = {
+      'content-security-policy': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'x-content-security-policy': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'x-webkit-csp': _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
+      'content-security-policy-report-only':
+          _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS,
       'set-cookie': _MAX_COOKIE_LENGTH,
       'set-cookie2': _MAX_COOKIE_LENGTH,
       'location': _MAX_URL_LENGTH}
@@ -1389,21 +1368,22 @@ class Library(validation.Validated):
     if self.name not in _NAME_TO_SUPPORTED_LIBRARY:
       raise appinfo_errors.InvalidLibraryName(
           'the library "%s" is not supported' % self.name)
-
     supported_library = _NAME_TO_SUPPORTED_LIBRARY[self.name]
-    if self.version != 'latest':
-      if self.version not in supported_library.supported_versions:
-        raise appinfo_errors.InvalidLibraryVersion(
-            ('%s version "%s" is not supported, ' + _USE_VERSION_FORMAT) % (
-                self.name,
-                self.version,
-                '", "'.join(supported_library.non_deprecated_versions)))
-      elif self.version in supported_library.deprecated_versions:
-        logging.warning(
-            ('%s version "%s" is deprecated, ' + _USE_VERSION_FORMAT) % (
-                self.name,
-                self.version,
-                '", "'.join(supported_library.non_deprecated_versions)))
+    if self.version == 'latest':
+      self.version = supported_library.latest_version
+    elif self.version not in supported_library.supported_versions:
+      raise appinfo_errors.InvalidLibraryVersion(
+          ('%s version "%s" is not supported, ' + _USE_VERSION_FORMAT) % (
+              self.name,
+              self.version,
+              '", "'.join(supported_library.non_deprecated_versions)))
+    elif self.version in supported_library.deprecated_versions:
+      use_vers = '", "'.join(supported_library.non_deprecated_versions)
+      logging.warning(
+          '%s version "%s" is deprecated, ' + _USE_VERSION_FORMAT,
+          self.name,
+          self.version,
+          use_vers)
 
 
 class CpuUtilization(validation.Validated):
@@ -1473,7 +1453,7 @@ class BasicScaling(validation.Validated):
 class VmSettings(validation.ValidatedDict):
   """Class for VM settings.
 
-  We don't validate these further here.  They're validated in Olympus.
+  We don't validate these further here.  They're validated server side.
   """
 
   KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
@@ -1496,7 +1476,7 @@ class BetaSettings(VmSettings):
   This class is meant to replace VmSettings eventually.
   All new beta settings must be registered in shared_constants.py.
 
-  We don't validate these further here.  They're validated in Olympus.
+  We don't validate these further here.  They're validated server side.
   """
 
   @classmethod
@@ -1543,19 +1523,9 @@ def VmSafeSetRuntime(appyaml, runtime):
   Returns:
      The passed in appyaml (which has been modified).
   """
-  if appyaml.vm:
+  if appyaml.env == '2' or appyaml.vm:
     if not appyaml.vm_settings:
       appyaml.vm_settings = VmSettings()
-
-
-
-    if runtime == 'dart' or runtime == 'contrib-dart':
-      runtime = 'dart'
-      appyaml.vm_settings['has_docker_image'] = True
-
-
-    elif runtime not in GetVmRuntimes():
-      runtime = 'custom'
 
 
 
@@ -1581,7 +1551,8 @@ def NormalizeVmSettings(appyaml):
 
 
 
-  if appyaml.vm:
+
+  if appyaml.env == '2' or appyaml.vm:
     if not appyaml.vm_settings:
       appyaml.vm_settings = VmSettings()
 
@@ -1816,8 +1787,9 @@ class AppInclude(validation.Validated):
 
   @classmethod
   def MergeAppIncludes(cls, appinclude_one, appinclude_two):
-    """This function merges the non-referential state of the provided AppInclude
-    objects.  That is, builtins and includes directives are not preserved, but
+    """Merges the non-referential state of the provided AppInclude.
+
+    That is, builtins and includes directives are not preserved, but
     any static objects are copied into an aggregate AppInclude object that
     preserves the directives of both provided AppInclude objects.
 
@@ -1895,11 +1867,17 @@ class AppInfoExternal(validation.Validated):
 
       PROJECT: validation.Optional(APPLICATION_RE_STRING),
       MODULE: validation.Optional(MODULE_ID_RE_STRING),
+
+      SERVICE: validation.Optional(MODULE_ID_RE_STRING),
       VERSION: validation.Optional(MODULE_VERSION_ID_RE_STRING),
       RUNTIME: validation.Optional(RUNTIME_RE_STRING),
 
 
-      API_VERSION: API_VERSION_RE_STRING,
+      API_VERSION: validation.Optional(API_VERSION_RE_STRING),
+
+      ENV: validation.Optional(ENV_RE_STRING),
+
+      ENTRYPOINT: validation.Optional(validation.Type(str)),
       INSTANCE_CLASS: validation.Optional(_INSTANCE_CLASS_REGEX),
       SOURCE_LANGUAGE: validation.Optional(
           validation.Regex(SOURCE_LANGUAGE_RE_STRING)),
@@ -1939,7 +1917,6 @@ class AppInfoExternal(validation.Validated):
       PAGESPEED: validation.Optional(pagespeedinfo.PagespeedEntry),
   }
 
-
   def CheckInitialized(self):
     """Performs non-regex-based validation.
 
@@ -1952,6 +1929,7 @@ class AppInfoExternal(validation.Validated):
         can be used.
       - That the version name doesn't start with BUILTIN_NAME_PREFIX
       - If redirect_http_response_code exists, it is in the list of valid 300s.
+      - That module and service aren't both set
 
     Raises:
       DuplicateLibrary: if the name library name is specified more than once.
@@ -1965,6 +1943,7 @@ class AppInfoExternal(validation.Validated):
           present.
       RuntimeDoesNotSupportLibraries: if libraries clause is used for a runtime
           that does not support it (e.g. python25).
+      ModuleAndServiceDefined: if both 'module' and 'service' keywords are used.
     """
     super(AppInfoExternal, self).CheckInitialized()
     if self.runtime is None and not self.vm:
@@ -1982,6 +1961,9 @@ class AppInfoExternal(validation.Validated):
       raise appinfo_errors.TooManyURLMappings(
           'Found more than %d URLMap entries in application configuration' %
           MAX_URL_MAPS)
+    if self.service and self.module:
+      raise appinfo_errors.ModuleAndServiceDefined(
+          'Cannot define both "module" and "service" in configuration')
 
     vm_runtime_python27 = (
         self.runtime == 'vm' and
@@ -1995,7 +1977,7 @@ class AppInfoExternal(validation.Validated):
     if (self.threadsafe is None and
         (self.runtime == 'python27' or vm_runtime_python27)):
       raise appinfo_errors.MissingThreadsafe(
-          'threadsafe must be present and set to either "yes" or "no"')
+          'threadsafe must be present and set to a true or false YAML value')
 
     if self.auto_id_policy == DATASTORE_ID_POLICY_LEGACY:
       datastore_auto_ids_url = ('http://developers.google.com/'

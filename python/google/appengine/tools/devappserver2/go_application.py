@@ -145,35 +145,6 @@ def list_go_files(application_root, nobuild_files, skip_files):
   return go_files
 
 
-def get_app_extras_for_vm(application_root, nobuild_files, skip_files):
-  """Returns an iterable describing extra Go files needed to build VM apps.
-
-  The Go files are decided based on the production environment linux/amd64.
-
-  Args:
-    application_root: string path to the root dir of the application.
-    nobuild_files: regexp identifying which files to not build.
-    skip_files: regexp identifying which files to omit from app.
-
-  Returns:
-    An iterable of pairs, one per extra Go file. The first pair element
-    is the relative path at which to import the Go file; the second is its
-    absolute path.
-
-  Raises:
-    BuildError: if the go application builder fails.
-  """
-  gab_args = ['-print_extras', '-vm']
-  gab_args.extend(list_go_files(application_root, nobuild_files, skip_files))
-  env = {
-      'GOOS': 'linux',
-      'GOARCH': 'amd64',
-  }
-  gab_stdout, _ = _run_gab(application_root, nobuild_files, '6', gab_args, env)
-
-  return [l.split('|') for l in gab_stdout.split('\n') if l]
-
-
 class GoApplication(object):
   """An abstraction around the source and executable for a Go application."""
 

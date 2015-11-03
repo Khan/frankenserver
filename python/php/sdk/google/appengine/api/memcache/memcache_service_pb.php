@@ -18,7 +18,9 @@
 # source: google/appengine/api/memcache/memcache_service.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace google\appengine\MemcacheServiceError {
   class ErrorCode {

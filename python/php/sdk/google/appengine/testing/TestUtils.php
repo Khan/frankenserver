@@ -80,6 +80,22 @@ final class TestUtils {
   }
 
   /**
+   * Get protected/private non-static property of an object.
+   *
+   * @param object &$object      Instantiated object with the property to get.
+   * @param string $propertyName Name of the property to get.
+   *
+   * @return mixed The value of the property.
+   */
+  public static function getProperty($object,
+                                     $propertyName) {
+    $reflection = new \ReflectionClass(get_class($object));
+    $property = $reflection->getProperty($propertyName);
+    $property->setAccessible(true);
+    return $property->getValue($object);
+  }
+
+  /**
    * Set protected/private static property of a class.
    *
    * @param object $className    Name of the class for the static property.
@@ -99,5 +115,20 @@ final class TestUtils {
     return $old_value;
   }
 
+  /**
+   * Get protected/private static property of a class.
+   *
+   * @param object $className    Name of the class for the static property.
+   * @param string $propertyName Name of the property to get.
+   *
+   * @return mixed The value for the property.
+   */
+  public static function getStaticProperty($className,
+                                           $propertyName) {
+    $reflection = new \ReflectionClass($className);
+    $property = $reflection->getProperty($propertyName);
+    $property->setAccessible(true);
+    return $property->getValue();
+  }
 
 }

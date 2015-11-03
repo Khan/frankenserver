@@ -285,6 +285,9 @@ class AppEngineWebXmlParser(object):
   def ProcessVmNode(self, node):
     self.app_engine_web_xml.vm = xml_parser_utils.BooleanValue(node.text)
 
+  def ProcessEnvNode(self, node):
+    self.app_engine_web_xml.env = node.text
+
   def ProcessApiConfigNode(self, node):
     servlet = xml_parser_utils.GetAttribute(node, 'servlet-class').strip()
     url = xml_parser_utils.GetAttribute(node, 'url-pattern').strip()
@@ -483,6 +486,7 @@ class AppEngineWebXml(ValueMixin):
     self.threadsafe_value_provided = False
     self.codelock = None
     self.vm = False
+    self.env = '1'
     self.api_config = None
     self.api_endpoint_ids = []
     self.pagespeed = None

@@ -7,13 +7,17 @@
 
 namespace google\appengine\runtime;
 
-final class ClassLoader {
-  private static $classmap = null;
+if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+  define('GOOGLE_APPENGINE_CLASSLOADER', true);
 
-  public static function loadClass($class_name) {
-    if (self::$classmap === null) {
-      self::$classmap = [
-        'org\bovigo\vfs\vfsstreamwrapper' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/vfsStreamWrapper.php',
+  final class ClassLoader {
+    private static $classmap = null;
+    private static $sdk_root = null;
+
+    public static function loadClass($class_name) {
+      if (self::$classmap === null) {
+        self::$classmap = [
+          'org\bovigo\vfs\vfsstreamwrapper' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/vfsStreamWrapper.php',
         'org\bovigo\vfs\vfsstreamfile' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/vfsStreamFile.php',
         'org\bovigo\vfs\vfsstreamexception' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/vfsStreamException.php',
         'org\bovigo\vfs\vfsstreamdirectory' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/vfsStreamDirectory.php',
@@ -27,6 +31,49 @@ final class ClassLoader {
         'org\bovigo\vfs\visitor\vfsstreamstructurevisitor' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/visitor/vfsStreamStructureVisitor.php',
         'org\bovigo\vfs\visitor\vfsstreamprintvisitor' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/visitor/vfsStreamPrintVisitor.php',
         'org\bovigo\vfs\visitor\vfsstreamabstractvisitor' => 'third_party/vfsstream/vendor/mikey179/vfsStream/src/main/php/org/bovigo/vfs/visitor/vfsStreamAbstractVisitor.php',
+        'google\datastore\v1beta3\entityresult\resulttype' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\entityresult' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\query' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\kindexpression' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\propertyreference' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\projection' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\propertyorder\direction' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\propertyorder' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\filter' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\compositefilter\operator' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\compositefilter' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\propertyfilter\operator' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\propertyfilter' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\gqlquery\namedbindingsentry' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\gqlquery' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\gqlqueryparameter' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\queryresultbatch\moreresultstype' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\queryresultbatch' => 'google/datastore/v1beta3/query.php',
+        'google\datastore\v1beta3\partitionid' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\key\pathelement' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\key' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\arrayvalue' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\value' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\entity\propertiesentry' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\entity' => 'google/datastore/v1beta3/entity.php',
+        'google\datastore\v1beta3\lookuprequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\lookupresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\runqueryrequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\runqueryresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\begintransactionrequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\begintransactionresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\rollbackrequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\rollbackresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\commitrequest\mode' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\commitrequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\commitresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\allocateidsrequest' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\allocateidsresponse' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\mutation' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\mutationresult' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\readoptions\readconsistency' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\readoptions' => 'google/datastore/v1beta3/datastore.php',
+        'google\datastore\v1beta3\transactionoptions' => 'google/datastore/v1beta3/datastore.php',
         'google\appengine\util\stringutil' => 'google/appengine/util/string_util.php',
         'google\appengine\util\httputil' => 'google/appengine/util/http_util.php',
         'google\appengine\util\arrayutiltest' => 'google/appengine/util/array_util_test.php',
@@ -35,6 +82,7 @@ final class ClassLoader {
         'google\appengine\testing\apiproxytestbase' => 'google/appengine/testing/ApiProxyTestBase.php',
         'google\appengine\testing\apiproxymock' => 'google/appengine/testing/ApiProxyMock.php',
         'google\appengine\testing\apicallarguments' => 'google/appengine/testing/ApiCallArguments.php',
+        'google\appengine\runtime\vmapiproxy' => 'google/appengine/runtime/VmApiProxy.php',
         'google\appengine\runtime\virtualfilesystem' => 'google/appengine/runtime/VirtualFileSystem.php',
         'google\appengine\runtime\unlinkuploads' => 'google/appengine/runtime/UnlinkUploads.php',
         'google\appengine\runtime\sploverride' => 'google/appengine/runtime/SplOverride.php',
@@ -123,6 +171,20 @@ final class ClassLoader {
         'storage_onestore_v3\indexpostfix\indexvalue' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\indexpostfix' => 'google/appengine/datastore/entity_pb.php',
         'storage_onestore_v3\indexposition' => 'google/appengine/datastore/entity_pb.php',
+        'storage_onestore_v3\fieldvalue\contenttype' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\fieldvalue\geo' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\fieldvalue' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\field' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\fieldtypes' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\indexshardsettings' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\indexmetadata\indexstate' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\indexmetadata' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\facetvalue\contenttype' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\facetvalue' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\facet' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\documentmetadata' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\document\storage' => 'google/appengine/datastore/document_pb.php',
+        'storage_onestore_v3\document' => 'google/appengine/datastore/document_pb.php',
         'google\appengine\datastore\v4\error\errorcode' => 'google/appengine/datastore/datastore_v4_pb.php',
         'google\appengine\datastore\v4\error' => 'google/appengine/datastore/datastore_v4_pb.php',
         'google\appengine\datastore\v4\entityresult\resulttype' => 'google/appengine/datastore/datastore_v4_pb.php',
@@ -241,6 +303,7 @@ final class ClassLoader {
         'google\appengine\base\bytesproto' => 'google/appengine/api/api_base_pb.php',
         'google\appengine\base\voidproto' => 'google/appengine/api/api_base_pb.php',
         'google\appengine\api\users\usersexception' => 'google/appengine/api/users/UsersException.php',
+        'google\appengine\api\users\userserviceutil' => 'google/appengine/api/users/UserServiceUtil.php',
         'google\appengine\api\users\userservice' => 'google/appengine/api/users/UserService.php',
         'google\appengine\api\users\user' => 'google/appengine/api/users/User.php',
         'google\appengine\taskqueueserviceerror\errorcode' => 'google/appengine/api/taskqueue/taskqueue_service_pb.php',
@@ -302,6 +365,57 @@ final class ClassLoader {
         'google\appengine\api\taskqueue\pushtask' => 'google/appengine/api/taskqueue/PushTask.php',
         'google\appengine\api\taskqueue\pushqueue' => 'google/appengine/api/taskqueue/PushQueue.php',
         'google\appengine\api\taskqueue\mockmicrotime' => 'google/appengine/api/taskqueue/MockMicrotime.php',
+        'google\appengine\searchserviceerror\errorcode' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchserviceerror' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\requeststatus' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexspec\consistency' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexspec\source' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexspec\mode' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexspec' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexmetadata\indexstate' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexmetadata\storage' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexmetadata' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexdocumentparams\freshness' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexdocumentparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexdocumentrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\indexdocumentresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deletedocumentparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deletedocumentrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deletedocumentresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listdocumentsparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listdocumentsrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listdocumentsresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteindexparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteindexrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteindexresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\canceldeleteindexparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\canceldeleteindexrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\canceldeleteindexresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listindexesparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listindexesrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\listindexesresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteschemaparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteschemarequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\deleteschemaresponse' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\sortspec' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\scorerspec\scorer' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\scorerspec' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\fieldspec\expression' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\fieldspec' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetrange' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetrequestparam' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetautodetectparam' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetrefinement\range' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetrefinement' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchparams\cursortype' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchparams\parsingmode' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchparams' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchrequest' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetresultvalue' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\facetresult' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchresult' => 'google/appengine/api/search/search_service_pb.php',
+        'google\appengine\searchresponse' => 'google/appengine/api/search/search_service_pb.php',
         'google\appengine\modulesserviceerror\errorcode' => 'google/appengine/api/modules/modules_service_pb.php',
         'google\appengine\modulesserviceerror' => 'google/appengine/api/modules/modules_service_pb.php',
         'google\appengine\getmodulesrequest' => 'google/appengine/api/modules/modules_service_pb.php',
@@ -477,14 +591,25 @@ final class ClassLoader {
         'google\appengine\api\app_identity\publiccertificate' => 'google/appengine/api/app_identity/PublicCertificate.php',
         'google\appengine\api\app_identity\appidentityservice' => 'google/appengine/api/app_identity/AppIdentityService.php',
         'google\appengine\api\app_identity\appidentityexception' => 'google/appengine/api/app_identity/AppIdentityException.php',
-      ];
-    }
-    $class_name = strtolower($class_name);
-    if (array_key_exists($class_name, self::$classmap)) {
-      require self::$classmap[$class_name];
+        ];
+        $base_dir = dirname(__FILE__);
+        self::$sdk_root = dirname(dirname(dirname($base_dir))) .
+                          DIRECTORY_SEPARATOR;
+      }
+      $class_name = strtolower($class_name);
+      if (array_key_exists($class_name, self::$classmap)) {
+        $target_file = self::$classmap[$class_name];
+        $full_path = self::$sdk_root . $target_file;
+        if (file_exists($full_path)) {
+          require $full_path;
+        } else {
+          require $target_file;
+        }
+      }
     }
   }
-}
 
-spl_autoload_register(__NAMESPACE__ . '\ClassLoader::loadClass');
+  spl_autoload_register(__NAMESPACE__ . '\ClassLoader::loadClass');
+
+}  // defined ('GOOGLE_APPENGINE_CLASSLOADER')
 

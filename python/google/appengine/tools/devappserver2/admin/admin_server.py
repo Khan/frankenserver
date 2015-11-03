@@ -31,7 +31,6 @@ from google.appengine.tools.devappserver2.admin import cron_handler
 from google.appengine.tools.devappserver2.admin import datastore_indexes_viewer
 from google.appengine.tools.devappserver2.admin import datastore_stats_handler
 from google.appengine.tools.devappserver2.admin import datastore_viewer
-from google.appengine.tools.devappserver2.admin import logs_handler
 from google.appengine.tools.devappserver2.admin import mail_request_handler
 from google.appengine.tools.devappserver2.admin import memcache_viewer
 from google.appengine.tools.devappserver2.admin import modules_handler
@@ -79,7 +78,6 @@ class AdminApplication(webapp2.WSGIApplication):
          ('/search/index', search_handler.SearchIndexHandler),
          ('/assets/(.+)', static_file_handler.StaticFileHandler),
          ('/instances', modules_handler.ModulesHandler),
-         ('/instances/logs', logs_handler.LogsHandler),
          webapp2.Route('/',
                        webapp2.RedirectHandler,
                        defaults={'_uri': '/instances'})],

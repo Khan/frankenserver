@@ -41,6 +41,7 @@ This module is internal and should not be used by client applications.
 
 import re
 
+from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_pbs
 if datastore_pbs._CLOUD_DATASTORE_ENABLED:
   from google.appengine.datastore.datastore_pbs import googledatastore
@@ -924,9 +925,10 @@ def get_query_validator():
 class _ServiceValidator(object):
   """Validator for request/response protos."""
 
-  def __init__(self, entity_validator, query_validator):
+  def __init__(self, entity_validator, query_validator, id_resolver):
     self.__entity_validator = entity_validator
     self.__query_validator = query_validator
+    self.__id_resolver = id_resolver
 
   def validate_begin_transaction_req(self, req):
     """Validates a normalized BeginTransactionRequest.
@@ -963,12 +965,39 @@ class _ServiceValidator(object):
     _assert_initialized(req)
     if (req.mode == googledatastore.CommitRequest.MODE_UNSPECIFIED or
         req.mode == googledatastore.CommitRequest.TRANSACTIONAL):
-      _assert_condition(req.transaction,
+      _assert_condition(req.WhichOneof('transaction_selector'),
                         'Transactional commit requires a transaction.')
+
+      seen_base_versions = {}
+      for mutation in req.mutations:
+        v1_key, _ = datastore_pbs.get_v1_mutation_key_and_entity(mutation)
+        if datastore_pbs.is_complete_v1_key(v1_key):
+          mutation_base_version = None
+          if mutation.HasField('base_version'):
+            mutation_base_version = mutation.base_version
+
+          key = datastore_types.ReferenceToKeyValue(v1_key, self.__id_resolver)
+          if key in seen_base_versions:
+            _assert_condition(seen_base_versions[key] == mutation_base_version,
+                              'Mutations for the same entity must have the '
+                              'same base version.')
+          seen_base_versions[key] = mutation_base_version
+
     elif req.mode == googledatastore.CommitRequest.NON_TRANSACTIONAL:
-      _assert_condition(not req.transaction,
-                        ('Non-transactional commit cannot specify a '
-                         'transaction.'))
+      _assert_condition(not req.WhichOneof('transaction_selector'),
+                        'Non-transactional commit cannot specify a '
+                        'transaction.')
+
+      seen_complete_keys = set()
+      for mutation in req.mutations:
+        v1_key, _ = datastore_pbs.get_v1_mutation_key_and_entity(mutation)
+        if datastore_pbs.is_complete_v1_key(v1_key):
+          key = datastore_types.ReferenceToKeyValue(v1_key, self.__id_resolver)
+          _assert_condition(key not in seen_complete_keys,
+                            'A non-transactional commit may not contain '
+                            'multiple mutations affecting the same entity.')
+          seen_complete_keys.add(key)
+
     for mutation in req.mutations:
       self.__validate_mutation(mutation)
 
@@ -1025,25 +1054,35 @@ class _ServiceValidator(object):
     if mutation.HasField('insert'):
 
       self.__entity_validator.validate_entity(UPSERT, mutation.insert)
+      mutation_key = mutation.insert.key
     elif mutation.HasField('update'):
       self.__entity_validator.validate_entity(UPDATE, mutation.update)
+      mutation_key = mutation.update.key
     elif mutation.HasField('upsert'):
       self.__entity_validator.validate_entity(UPSERT, mutation.upsert)
+      mutation_key = mutation.upsert.key
     elif mutation.HasField('delete'):
       self.__entity_validator.validate_key(DELETE, mutation.delete)
+      mutation_key = mutation.delete
     else:
       _assert_condition(False, 'mutation lacks required op')
 
+    if mutation.WhichOneof('conflict_detection_strategy') != None:
+      _assert_condition(datastore_pbs.is_complete_v1_key(mutation_key),
+                        'conflict detection is not allowed for incomplete keys')
+    if mutation.HasField('base_version'):
+      _assert_condition(mutation.base_version >= 0,
+                        'Invalid base_version: %d, '
+                        'it should be >= 0' % mutation.base_version)
 
 
-__service_validator = _ServiceValidator(__entity_validator,
-                                        __query_validator)
-
-
-def get_service_validator():
+def get_service_validator(id_resolver):
   """Returns a validator for v1 service request/response protos.
+
+  Args:
+    id_resolver: a datastore_pbs.IdResolver.
 
   Returns:
     a _ServiceValidator
   """
-  return __service_validator
+  return _ServiceValidator(__entity_validator, __query_validator, id_resolver)

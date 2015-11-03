@@ -32,7 +32,6 @@ Contains API classes that forward to apiproxy.
 import base64
 import datetime
 import logging
-import math
 import re
 import string
 import sys
@@ -478,6 +477,24 @@ def _CheckEnum(value, name, values=None):
   return value
 
 
+def _IsFinite(value):
+  """Returns whether a value is a finite number.
+
+  Args:
+    value: The value to check.
+
+  Returns:
+    True if the value is a finite number; otherwise False.
+  """
+
+  if isinstance(value, float) and -1e30000 < value < 1e30000:
+    return True
+  elif isinstance(value, (int, long)):
+    return True
+  else:
+    return False
+
+
 def _CheckNumber(value, name, should_be_finite=False):
   """Checks whether number value is of valid type and (optionally) finite.
 
@@ -496,7 +513,7 @@ def _CheckNumber(value, name, should_be_finite=False):
   if not isinstance(value, (int, long, float)):
     raise TypeError('%s must be a int, long or float, got %s' %
                     (name, value.__class__.__name__))
-  if should_be_finite and (math.isnan(value) or math.isinf(value)):
+  if should_be_finite and not _IsFinite(value):
     raise ValueError('%s must be a finite value (got %f)' % (name, value))
   return value
 
@@ -777,10 +794,10 @@ def _Repr(class_instance, ordered_dictionary):
        if value is not None and value != []]))
 
 
-def _ListIndexesResponsePbToGetResponse(response):
+def _ListIndexesResponsePbToGetResponse(response, include_schema):
   """Returns a GetResponse constructed from get_indexes response pb."""
   return GetResponse(
-      results=[_NewIndexFromPb(index)
+      results=[_NewIndexFromPb(index, include_schema)
                for index in response.index_metadata_list()])
 
 
@@ -869,7 +886,7 @@ def get_indexes_async(namespace='', offset=None, limit=20,
 
   def hook():
     _CheckStatus(response.status())
-    return _ListIndexesResponsePbToGetResponse(response)
+    return _ListIndexesResponsePbToGetResponse(response, fetch_schema)
   return _RpcOperationFuture(
       'ListIndexes', request, response, deadline, hook)
 
@@ -3491,6 +3508,9 @@ class Index(object):
     Raises:
       DeleteError: If the schema failed to be deleted.
     """
+
+
+
     warnings.warn('delete_schema is deprecated in 1.7.4.',
                   DeprecationWarning, stacklevel=2)
     request = search_service_pb.DeleteSchemaRequest()
@@ -3854,10 +3874,10 @@ def _NewIndexFromIndexSpecPb(index_spec_pb):
   return index
 
 
-def _NewIndexFromPb(index_metadata_pb):
+def _NewIndexFromPb(index_metadata_pb, include_schema):
   """Creates an Index from a search_service_pb.IndexMetadata."""
   index = _NewIndexFromIndexSpecPb(index_metadata_pb.index_spec())
-  if index_metadata_pb.field_list():
+  if include_schema:
     index._schema = _NewSchemaFromPb(index_metadata_pb.field_list())
   if index_metadata_pb.has_storage():
     index._storage_usage = index_metadata_pb.storage().amount_used()

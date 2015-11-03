@@ -655,6 +655,8 @@ class SetStatusRequest(ProtocolBuffer.ProtocolMessage):
 class LogOffset(ProtocolBuffer.ProtocolMessage):
   has_request_id_ = 0
   request_id_ = ""
+  has_request_id_set_ = 0
+  request_id_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -672,15 +674,31 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
 
   def has_request_id(self): return self.has_request_id_
 
+  def request_id_set(self): return self.request_id_set_
+
+  def set_request_id_set(self, x):
+    self.has_request_id_set_ = 1
+    self.request_id_set_ = x
+
+  def clear_request_id_set(self):
+    if self.has_request_id_set_:
+      self.has_request_id_set_ = 0
+      self.request_id_set_ = 0
+
+  def has_request_id_set(self): return self.has_request_id_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_request_id()): self.set_request_id(x.request_id())
+    if (x.has_request_id_set()): self.set_request_id_set(x.request_id_set())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_request_id_ != x.has_request_id_: return 0
     if self.has_request_id_ and self.request_id_ != x.request_id_: return 0
+    if self.has_request_id_set_ != x.has_request_id_set_: return 0
+    if self.has_request_id_set_ and self.request_id_set_ != x.request_id_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -690,31 +708,43 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
+    if (self.has_request_id_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_request_id_): n += 1 + self.lengthString(len(self.request_id_))
+    if (self.has_request_id_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_request_id()
+    self.clear_request_id_set()
 
   def OutputUnchecked(self, out):
     if (self.has_request_id_):
       out.putVarInt32(10)
       out.putPrefixedString(self.request_id_)
+    if (self.has_request_id_set_):
+      out.putVarInt32(808)
+      out.putBoolean(self.request_id_set_)
 
   def OutputPartial(self, out):
     if (self.has_request_id_):
       out.putVarInt32(10)
       out.putPrefixedString(self.request_id_)
+    if (self.has_request_id_set_):
+      out.putVarInt32(808)
+      out.putBoolean(self.request_id_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_request_id(d.getPrefixedString())
+        continue
+      if tt == 808:
+        self.set_request_id_set(d.getBoolean())
         continue
 
 
@@ -725,6 +755,7 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_request_id_: res+=prefix+("request_id: %s\n" % self.DebugFormatString(self.request_id_))
+    if self.has_request_id_set_: res+=prefix+("request_id_set: %s\n" % self.DebugFormatBool(self.request_id_set_))
     return res
 
 
@@ -732,16 +763,19 @@ class LogOffset(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   krequest_id = 1
+  krequest_id_set = 101
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "request_id",
-  }, 1)
+    101: "request_id_set",
+  }, 101)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
+    101: ProtocolBuffer.Encoder.NUMERIC,
+  }, 101, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2475,8 +2509,12 @@ class RequestLog(ProtocolBuffer.ProtocolMessage):
 class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   has_module_id_ = 0
   module_id_ = "default"
+  has_module_id_set_ = 0
+  module_id_set_ = 0
   has_version_id_ = 0
   version_id_ = ""
+  has_version_id_set_ = 0
+  version_id_set_ = 0
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -2494,6 +2532,19 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
 
   def has_module_id(self): return self.has_module_id_
 
+  def module_id_set(self): return self.module_id_set_
+
+  def set_module_id_set(self, x):
+    self.has_module_id_set_ = 1
+    self.module_id_set_ = x
+
+  def clear_module_id_set(self):
+    if self.has_module_id_set_:
+      self.has_module_id_set_ = 0
+      self.module_id_set_ = 0
+
+  def has_module_id_set(self): return self.has_module_id_set_
+
   def version_id(self): return self.version_id_
 
   def set_version_id(self, x):
@@ -2507,18 +2558,37 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
 
   def has_version_id(self): return self.has_version_id_
 
+  def version_id_set(self): return self.version_id_set_
+
+  def set_version_id_set(self, x):
+    self.has_version_id_set_ = 1
+    self.version_id_set_ = x
+
+  def clear_version_id_set(self):
+    if self.has_version_id_set_:
+      self.has_version_id_set_ = 0
+      self.version_id_set_ = 0
+
+  def has_version_id_set(self): return self.has_version_id_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_module_id()): self.set_module_id(x.module_id())
+    if (x.has_module_id_set()): self.set_module_id_set(x.module_id_set())
     if (x.has_version_id()): self.set_version_id(x.version_id())
+    if (x.has_version_id_set()): self.set_version_id_set(x.version_id_set())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_module_id_ != x.has_module_id_: return 0
     if self.has_module_id_ and self.module_id_ != x.module_id_: return 0
+    if self.has_module_id_set_ != x.has_module_id_set_: return 0
+    if self.has_module_id_set_ and self.module_id_set_ != x.module_id_set_: return 0
     if self.has_version_id_ != x.has_version_id_: return 0
     if self.has_version_id_ and self.version_id_ != x.version_id_: return 0
+    if self.has_version_id_set_ != x.has_version_id_set_: return 0
+    if self.has_version_id_set_ and self.version_id_set_ != x.version_id_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2528,18 +2598,24 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_module_id_): n += 1 + self.lengthString(len(self.module_id_))
+    if (self.has_module_id_set_): n += 3
     if (self.has_version_id_): n += 1 + self.lengthString(len(self.version_id_))
+    if (self.has_version_id_set_): n += 3
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_module_id_): n += 1 + self.lengthString(len(self.module_id_))
+    if (self.has_module_id_set_): n += 3
     if (self.has_version_id_): n += 1 + self.lengthString(len(self.version_id_))
+    if (self.has_version_id_set_): n += 3
     return n
 
   def Clear(self):
     self.clear_module_id()
+    self.clear_module_id_set()
     self.clear_version_id()
+    self.clear_version_id_set()
 
   def OutputUnchecked(self, out):
     if (self.has_module_id_):
@@ -2548,6 +2624,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_id_):
       out.putVarInt32(18)
       out.putPrefixedString(self.version_id_)
+    if (self.has_module_id_set_):
+      out.putVarInt32(808)
+      out.putBoolean(self.module_id_set_)
+    if (self.has_version_id_set_):
+      out.putVarInt32(816)
+      out.putBoolean(self.version_id_set_)
 
   def OutputPartial(self, out):
     if (self.has_module_id_):
@@ -2556,6 +2638,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     if (self.has_version_id_):
       out.putVarInt32(18)
       out.putPrefixedString(self.version_id_)
+    if (self.has_module_id_set_):
+      out.putVarInt32(808)
+      out.putBoolean(self.module_id_set_)
+    if (self.has_version_id_set_):
+      out.putVarInt32(816)
+      out.putBoolean(self.version_id_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2566,6 +2654,12 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
       if tt == 18:
         self.set_version_id(d.getPrefixedString())
         continue
+      if tt == 808:
+        self.set_module_id_set(d.getBoolean())
+        continue
+      if tt == 816:
+        self.set_version_id_set(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2575,7 +2669,9 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_module_id_: res+=prefix+("module_id: %s\n" % self.DebugFormatString(self.module_id_))
+    if self.has_module_id_set_: res+=prefix+("module_id_set: %s\n" % self.DebugFormatBool(self.module_id_set_))
     if self.has_version_id_: res+=prefix+("version_id: %s\n" % self.DebugFormatString(self.version_id_))
+    if self.has_version_id_set_: res+=prefix+("version_id_set: %s\n" % self.DebugFormatBool(self.version_id_set_))
     return res
 
 
@@ -2583,19 +2679,25 @@ class LogModuleVersion(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kmodule_id = 1
+  kmodule_id_set = 101
   kversion_id = 2
+  kversion_id_set = 102
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "module_id",
     2: "version_id",
-  }, 2)
+    101: "module_id_set",
+    102: "version_id_set",
+  }, 102)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    101: ProtocolBuffer.Encoder.NUMERIC,
+    102: ProtocolBuffer.Encoder.NUMERIC,
+  }, 102, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -2606,26 +2708,42 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   app_id_ = ""
   has_start_time_ = 0
   start_time_ = 0
+  has_start_time_set_ = 0
+  start_time_set_ = 0
   has_end_time_ = 0
   end_time_ = 0
+  has_end_time_set_ = 0
+  end_time_set_ = 0
   has_offset_ = 0
   offset_ = None
   has_minimum_log_level_ = 0
   minimum_log_level_ = 0
+  has_minimum_log_level_set_ = 0
+  minimum_log_level_set_ = 0
   has_include_incomplete_ = 0
   include_incomplete_ = 0
   has_count_ = 0
   count_ = 0
+  has_count_set_ = 0
+  count_set_ = 0
   has_combined_log_regex_ = 0
   combined_log_regex_ = ""
+  has_combined_log_regex_set_ = 0
+  combined_log_regex_set_ = 0
   has_host_regex_ = 0
   host_regex_ = ""
+  has_host_regex_set_ = 0
+  host_regex_set_ = 0
   has_replica_index_ = 0
   replica_index_ = 0
+  has_replica_index_set_ = 0
+  replica_index_set_ = 0
   has_include_app_logs_ = 0
   include_app_logs_ = 0
   has_app_logs_per_request_ = 0
   app_logs_per_request_ = 0
+  has_app_logs_per_request_set_ = 0
+  app_logs_per_request_set_ = 0
   has_include_host_ = 0
   include_host_ = 0
   has_include_all_ = 0
@@ -2634,6 +2752,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   cache_iterator_ = 0
   has_num_shards_ = 0
   num_shards_ = 0
+  has_num_shards_set_ = 0
+  num_shards_set_ = 0
 
   def __init__(self, contents=None):
     self.version_id_ = []
@@ -2699,6 +2819,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_start_time(self): return self.has_start_time_
 
+  def start_time_set(self): return self.start_time_set_
+
+  def set_start_time_set(self, x):
+    self.has_start_time_set_ = 1
+    self.start_time_set_ = x
+
+  def clear_start_time_set(self):
+    if self.has_start_time_set_:
+      self.has_start_time_set_ = 0
+      self.start_time_set_ = 0
+
+  def has_start_time_set(self): return self.has_start_time_set_
+
   def end_time(self): return self.end_time_
 
   def set_end_time(self, x):
@@ -2711,6 +2844,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.end_time_ = 0
 
   def has_end_time(self): return self.has_end_time_
+
+  def end_time_set(self): return self.end_time_set_
+
+  def set_end_time_set(self, x):
+    self.has_end_time_set_ = 1
+    self.end_time_set_ = x
+
+  def clear_end_time_set(self):
+    if self.has_end_time_set_:
+      self.has_end_time_set_ = 0
+      self.end_time_set_ = 0
+
+  def has_end_time_set(self): return self.has_end_time_set_
 
   def offset(self):
     if self.offset_ is None:
@@ -2759,6 +2905,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_minimum_log_level(self): return self.has_minimum_log_level_
 
+  def minimum_log_level_set(self): return self.minimum_log_level_set_
+
+  def set_minimum_log_level_set(self, x):
+    self.has_minimum_log_level_set_ = 1
+    self.minimum_log_level_set_ = x
+
+  def clear_minimum_log_level_set(self):
+    if self.has_minimum_log_level_set_:
+      self.has_minimum_log_level_set_ = 0
+      self.minimum_log_level_set_ = 0
+
+  def has_minimum_log_level_set(self): return self.has_minimum_log_level_set_
+
   def include_incomplete(self): return self.include_incomplete_
 
   def set_include_incomplete(self, x):
@@ -2785,6 +2944,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_count(self): return self.has_count_
 
+  def count_set(self): return self.count_set_
+
+  def set_count_set(self, x):
+    self.has_count_set_ = 1
+    self.count_set_ = x
+
+  def clear_count_set(self):
+    if self.has_count_set_:
+      self.has_count_set_ = 0
+      self.count_set_ = 0
+
+  def has_count_set(self): return self.has_count_set_
+
   def combined_log_regex(self): return self.combined_log_regex_
 
   def set_combined_log_regex(self, x):
@@ -2797,6 +2969,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.combined_log_regex_ = ""
 
   def has_combined_log_regex(self): return self.has_combined_log_regex_
+
+  def combined_log_regex_set(self): return self.combined_log_regex_set_
+
+  def set_combined_log_regex_set(self, x):
+    self.has_combined_log_regex_set_ = 1
+    self.combined_log_regex_set_ = x
+
+  def clear_combined_log_regex_set(self):
+    if self.has_combined_log_regex_set_:
+      self.has_combined_log_regex_set_ = 0
+      self.combined_log_regex_set_ = 0
+
+  def has_combined_log_regex_set(self): return self.has_combined_log_regex_set_
 
   def host_regex(self): return self.host_regex_
 
@@ -2811,6 +2996,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_host_regex(self): return self.has_host_regex_
 
+  def host_regex_set(self): return self.host_regex_set_
+
+  def set_host_regex_set(self, x):
+    self.has_host_regex_set_ = 1
+    self.host_regex_set_ = x
+
+  def clear_host_regex_set(self):
+    if self.has_host_regex_set_:
+      self.has_host_regex_set_ = 0
+      self.host_regex_set_ = 0
+
+  def has_host_regex_set(self): return self.has_host_regex_set_
+
   def replica_index(self): return self.replica_index_
 
   def set_replica_index(self, x):
@@ -2823,6 +3021,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.replica_index_ = 0
 
   def has_replica_index(self): return self.has_replica_index_
+
+  def replica_index_set(self): return self.replica_index_set_
+
+  def set_replica_index_set(self, x):
+    self.has_replica_index_set_ = 1
+    self.replica_index_set_ = x
+
+  def clear_replica_index_set(self):
+    if self.has_replica_index_set_:
+      self.has_replica_index_set_ = 0
+      self.replica_index_set_ = 0
+
+  def has_replica_index_set(self): return self.has_replica_index_set_
 
   def include_app_logs(self): return self.include_app_logs_
 
@@ -2849,6 +3060,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       self.app_logs_per_request_ = 0
 
   def has_app_logs_per_request(self): return self.has_app_logs_per_request_
+
+  def app_logs_per_request_set(self): return self.app_logs_per_request_set_
+
+  def set_app_logs_per_request_set(self, x):
+    self.has_app_logs_per_request_set_ = 1
+    self.app_logs_per_request_set_ = x
+
+  def clear_app_logs_per_request_set(self):
+    if self.has_app_logs_per_request_set_:
+      self.has_app_logs_per_request_set_ = 0
+      self.app_logs_per_request_set_ = 0
+
+  def has_app_logs_per_request_set(self): return self.has_app_logs_per_request_set_
 
   def include_host(self): return self.include_host_
 
@@ -2902,6 +3126,19 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_num_shards(self): return self.has_num_shards_
 
+  def num_shards_set(self): return self.num_shards_set_
+
+  def set_num_shards_set(self, x):
+    self.has_num_shards_set_ = 1
+    self.num_shards_set_ = x
+
+  def clear_num_shards_set(self):
+    if self.has_num_shards_set_:
+      self.has_num_shards_set_ = 0
+      self.num_shards_set_ = 0
+
+  def has_num_shards_set(self): return self.has_num_shards_set_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -2909,21 +3146,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.version_id_size()): self.add_version_id(x.version_id(i))
     for i in xrange(x.module_version_size()): self.add_module_version().CopyFrom(x.module_version(i))
     if (x.has_start_time()): self.set_start_time(x.start_time())
+    if (x.has_start_time_set()): self.set_start_time_set(x.start_time_set())
     if (x.has_end_time()): self.set_end_time(x.end_time())
+    if (x.has_end_time_set()): self.set_end_time_set(x.end_time_set())
     if (x.has_offset()): self.mutable_offset().MergeFrom(x.offset())
     for i in xrange(x.request_id_size()): self.add_request_id(x.request_id(i))
     if (x.has_minimum_log_level()): self.set_minimum_log_level(x.minimum_log_level())
+    if (x.has_minimum_log_level_set()): self.set_minimum_log_level_set(x.minimum_log_level_set())
     if (x.has_include_incomplete()): self.set_include_incomplete(x.include_incomplete())
     if (x.has_count()): self.set_count(x.count())
+    if (x.has_count_set()): self.set_count_set(x.count_set())
     if (x.has_combined_log_regex()): self.set_combined_log_regex(x.combined_log_regex())
+    if (x.has_combined_log_regex_set()): self.set_combined_log_regex_set(x.combined_log_regex_set())
     if (x.has_host_regex()): self.set_host_regex(x.host_regex())
+    if (x.has_host_regex_set()): self.set_host_regex_set(x.host_regex_set())
     if (x.has_replica_index()): self.set_replica_index(x.replica_index())
+    if (x.has_replica_index_set()): self.set_replica_index_set(x.replica_index_set())
     if (x.has_include_app_logs()): self.set_include_app_logs(x.include_app_logs())
     if (x.has_app_logs_per_request()): self.set_app_logs_per_request(x.app_logs_per_request())
+    if (x.has_app_logs_per_request_set()): self.set_app_logs_per_request_set(x.app_logs_per_request_set())
     if (x.has_include_host()): self.set_include_host(x.include_host())
     if (x.has_include_all()): self.set_include_all(x.include_all())
     if (x.has_cache_iterator()): self.set_cache_iterator(x.cache_iterator())
     if (x.has_num_shards()): self.set_num_shards(x.num_shards())
+    if (x.has_num_shards_set()): self.set_num_shards_set(x.num_shards_set())
 
   def Equals(self, x):
     if x is self: return 1
@@ -2937,8 +3183,12 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_start_time_ != x.has_start_time_: return 0
     if self.has_start_time_ and self.start_time_ != x.start_time_: return 0
+    if self.has_start_time_set_ != x.has_start_time_set_: return 0
+    if self.has_start_time_set_ and self.start_time_set_ != x.start_time_set_: return 0
     if self.has_end_time_ != x.has_end_time_: return 0
     if self.has_end_time_ and self.end_time_ != x.end_time_: return 0
+    if self.has_end_time_set_ != x.has_end_time_set_: return 0
+    if self.has_end_time_set_ and self.end_time_set_ != x.end_time_set_: return 0
     if self.has_offset_ != x.has_offset_: return 0
     if self.has_offset_ and self.offset_ != x.offset_: return 0
     if len(self.request_id_) != len(x.request_id_): return 0
@@ -2946,20 +3196,32 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_minimum_log_level_ != x.has_minimum_log_level_: return 0
     if self.has_minimum_log_level_ and self.minimum_log_level_ != x.minimum_log_level_: return 0
+    if self.has_minimum_log_level_set_ != x.has_minimum_log_level_set_: return 0
+    if self.has_minimum_log_level_set_ and self.minimum_log_level_set_ != x.minimum_log_level_set_: return 0
     if self.has_include_incomplete_ != x.has_include_incomplete_: return 0
     if self.has_include_incomplete_ and self.include_incomplete_ != x.include_incomplete_: return 0
     if self.has_count_ != x.has_count_: return 0
     if self.has_count_ and self.count_ != x.count_: return 0
+    if self.has_count_set_ != x.has_count_set_: return 0
+    if self.has_count_set_ and self.count_set_ != x.count_set_: return 0
     if self.has_combined_log_regex_ != x.has_combined_log_regex_: return 0
     if self.has_combined_log_regex_ and self.combined_log_regex_ != x.combined_log_regex_: return 0
+    if self.has_combined_log_regex_set_ != x.has_combined_log_regex_set_: return 0
+    if self.has_combined_log_regex_set_ and self.combined_log_regex_set_ != x.combined_log_regex_set_: return 0
     if self.has_host_regex_ != x.has_host_regex_: return 0
     if self.has_host_regex_ and self.host_regex_ != x.host_regex_: return 0
+    if self.has_host_regex_set_ != x.has_host_regex_set_: return 0
+    if self.has_host_regex_set_ and self.host_regex_set_ != x.host_regex_set_: return 0
     if self.has_replica_index_ != x.has_replica_index_: return 0
     if self.has_replica_index_ and self.replica_index_ != x.replica_index_: return 0
+    if self.has_replica_index_set_ != x.has_replica_index_set_: return 0
+    if self.has_replica_index_set_ and self.replica_index_set_ != x.replica_index_set_: return 0
     if self.has_include_app_logs_ != x.has_include_app_logs_: return 0
     if self.has_include_app_logs_ and self.include_app_logs_ != x.include_app_logs_: return 0
     if self.has_app_logs_per_request_ != x.has_app_logs_per_request_: return 0
     if self.has_app_logs_per_request_ and self.app_logs_per_request_ != x.app_logs_per_request_: return 0
+    if self.has_app_logs_per_request_set_ != x.has_app_logs_per_request_set_: return 0
+    if self.has_app_logs_per_request_set_ and self.app_logs_per_request_set_ != x.app_logs_per_request_set_: return 0
     if self.has_include_host_ != x.has_include_host_: return 0
     if self.has_include_host_ and self.include_host_ != x.include_host_: return 0
     if self.has_include_all_ != x.has_include_all_: return 0
@@ -2968,6 +3230,8 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_cache_iterator_ and self.cache_iterator_ != x.cache_iterator_: return 0
     if self.has_num_shards_ != x.has_num_shards_: return 0
     if self.has_num_shards_ and self.num_shards_ != x.num_shards_: return 0
+    if self.has_num_shards_set_ != x.has_num_shards_set_: return 0
+    if self.has_num_shards_set_ and self.num_shards_set_ != x.num_shards_set_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2989,22 +3253,31 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.module_version_)
     for i in xrange(len(self.module_version_)): n += self.lengthString(self.module_version_[i].ByteSize())
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
+    if (self.has_start_time_set_): n += 3
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
+    if (self.has_end_time_set_): n += 3
     if (self.has_offset_): n += 1 + self.lengthString(self.offset_.ByteSize())
     n += 1 * len(self.request_id_)
     for i in xrange(len(self.request_id_)): n += self.lengthString(len(self.request_id_[i]))
     if (self.has_minimum_log_level_): n += 1 + self.lengthVarInt64(self.minimum_log_level_)
+    if (self.has_minimum_log_level_set_): n += 3
     if (self.has_include_incomplete_): n += 2
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
+    if (self.has_count_set_): n += 3
     if (self.has_combined_log_regex_): n += 1 + self.lengthString(len(self.combined_log_regex_))
+    if (self.has_combined_log_regex_set_): n += 3
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
+    if (self.has_host_regex_set_): n += 3
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
+    if (self.has_replica_index_set_): n += 3
     if (self.has_include_app_logs_): n += 2
     if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
+    if (self.has_app_logs_per_request_set_): n += 3
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
     if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
+    if (self.has_num_shards_set_): n += 3
     return n + 1
 
   def ByteSizePartial(self):
@@ -3017,22 +3290,31 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     n += 2 * len(self.module_version_)
     for i in xrange(len(self.module_version_)): n += self.lengthString(self.module_version_[i].ByteSizePartial())
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
+    if (self.has_start_time_set_): n += 3
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
+    if (self.has_end_time_set_): n += 3
     if (self.has_offset_): n += 1 + self.lengthString(self.offset_.ByteSizePartial())
     n += 1 * len(self.request_id_)
     for i in xrange(len(self.request_id_)): n += self.lengthString(len(self.request_id_[i]))
     if (self.has_minimum_log_level_): n += 1 + self.lengthVarInt64(self.minimum_log_level_)
+    if (self.has_minimum_log_level_set_): n += 3
     if (self.has_include_incomplete_): n += 2
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
+    if (self.has_count_set_): n += 3
     if (self.has_combined_log_regex_): n += 1 + self.lengthString(len(self.combined_log_regex_))
+    if (self.has_combined_log_regex_set_): n += 3
     if (self.has_host_regex_): n += 1 + self.lengthString(len(self.host_regex_))
+    if (self.has_host_regex_set_): n += 3
     if (self.has_replica_index_): n += 2 + self.lengthVarInt64(self.replica_index_)
+    if (self.has_replica_index_set_): n += 3
     if (self.has_include_app_logs_): n += 2
     if (self.has_app_logs_per_request_): n += 2 + self.lengthVarInt64(self.app_logs_per_request_)
+    if (self.has_app_logs_per_request_set_): n += 3
     if (self.has_include_host_): n += 2
     if (self.has_include_all_): n += 2
     if (self.has_cache_iterator_): n += 2
     if (self.has_num_shards_): n += 2 + self.lengthVarInt64(self.num_shards_)
+    if (self.has_num_shards_set_): n += 3
     return n
 
   def Clear(self):
@@ -3040,21 +3322,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_version_id()
     self.clear_module_version()
     self.clear_start_time()
+    self.clear_start_time_set()
     self.clear_end_time()
+    self.clear_end_time_set()
     self.clear_offset()
     self.clear_request_id()
     self.clear_minimum_log_level()
+    self.clear_minimum_log_level_set()
     self.clear_include_incomplete()
     self.clear_count()
+    self.clear_count_set()
     self.clear_combined_log_regex()
+    self.clear_combined_log_regex_set()
     self.clear_host_regex()
+    self.clear_host_regex_set()
     self.clear_replica_index()
+    self.clear_replica_index_set()
     self.clear_include_app_logs()
     self.clear_app_logs_per_request()
+    self.clear_app_logs_per_request_set()
     self.clear_include_host()
     self.clear_include_all()
     self.clear_cache_iterator()
     self.clear_num_shards()
+    self.clear_num_shards_set()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -3115,6 +3406,33 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(154)
       out.putVarInt32(self.module_version_[i].ByteSize())
       self.module_version_[i].OutputUnchecked(out)
+    if (self.has_start_time_set_):
+      out.putVarInt32(824)
+      out.putBoolean(self.start_time_set_)
+    if (self.has_end_time_set_):
+      out.putVarInt32(832)
+      out.putBoolean(self.end_time_set_)
+    if (self.has_minimum_log_level_set_):
+      out.putVarInt32(856)
+      out.putBoolean(self.minimum_log_level_set_)
+    if (self.has_count_set_):
+      out.putVarInt32(872)
+      out.putBoolean(self.count_set_)
+    if (self.has_combined_log_regex_set_):
+      out.putVarInt32(912)
+      out.putBoolean(self.combined_log_regex_set_)
+    if (self.has_host_regex_set_):
+      out.putVarInt32(920)
+      out.putBoolean(self.host_regex_set_)
+    if (self.has_replica_index_set_):
+      out.putVarInt32(928)
+      out.putBoolean(self.replica_index_set_)
+    if (self.has_app_logs_per_request_set_):
+      out.putVarInt32(936)
+      out.putBoolean(self.app_logs_per_request_set_)
+    if (self.has_num_shards_set_):
+      out.putVarInt32(944)
+      out.putBoolean(self.num_shards_set_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -3176,6 +3494,33 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(154)
       out.putVarInt32(self.module_version_[i].ByteSizePartial())
       self.module_version_[i].OutputPartial(out)
+    if (self.has_start_time_set_):
+      out.putVarInt32(824)
+      out.putBoolean(self.start_time_set_)
+    if (self.has_end_time_set_):
+      out.putVarInt32(832)
+      out.putBoolean(self.end_time_set_)
+    if (self.has_minimum_log_level_set_):
+      out.putVarInt32(856)
+      out.putBoolean(self.minimum_log_level_set_)
+    if (self.has_count_set_):
+      out.putVarInt32(872)
+      out.putBoolean(self.count_set_)
+    if (self.has_combined_log_regex_set_):
+      out.putVarInt32(912)
+      out.putBoolean(self.combined_log_regex_set_)
+    if (self.has_host_regex_set_):
+      out.putVarInt32(920)
+      out.putBoolean(self.host_regex_set_)
+    if (self.has_replica_index_set_):
+      out.putVarInt32(928)
+      out.putBoolean(self.replica_index_set_)
+    if (self.has_app_logs_per_request_set_):
+      out.putVarInt32(936)
+      out.putBoolean(self.app_logs_per_request_set_)
+    if (self.has_num_shards_set_):
+      out.putVarInt32(944)
+      out.putBoolean(self.num_shards_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3243,6 +3588,33 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_module_version().TryMerge(tmp)
         continue
+      if tt == 824:
+        self.set_start_time_set(d.getBoolean())
+        continue
+      if tt == 832:
+        self.set_end_time_set(d.getBoolean())
+        continue
+      if tt == 856:
+        self.set_minimum_log_level_set(d.getBoolean())
+        continue
+      if tt == 872:
+        self.set_count_set(d.getBoolean())
+        continue
+      if tt == 912:
+        self.set_combined_log_regex_set(d.getBoolean())
+        continue
+      if tt == 920:
+        self.set_host_regex_set(d.getBoolean())
+        continue
+      if tt == 928:
+        self.set_replica_index_set(d.getBoolean())
+        continue
+      if tt == 936:
+        self.set_app_logs_per_request_set(d.getBoolean())
+        continue
+      if tt == 944:
+        self.set_num_shards_set(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3267,7 +3639,9 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
       cnt+=1
     if self.has_start_time_: res+=prefix+("start_time: %s\n" % self.DebugFormatInt64(self.start_time_))
+    if self.has_start_time_set_: res+=prefix+("start_time_set: %s\n" % self.DebugFormatBool(self.start_time_set_))
     if self.has_end_time_: res+=prefix+("end_time: %s\n" % self.DebugFormatInt64(self.end_time_))
+    if self.has_end_time_set_: res+=prefix+("end_time_set: %s\n" % self.DebugFormatBool(self.end_time_set_))
     if self.has_offset_:
       res+=prefix+"offset <\n"
       res+=self.offset_.__str__(prefix + "  ", printElemNumber)
@@ -3279,17 +3653,24 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+("request_id%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
     if self.has_minimum_log_level_: res+=prefix+("minimum_log_level: %s\n" % self.DebugFormatInt32(self.minimum_log_level_))
+    if self.has_minimum_log_level_set_: res+=prefix+("minimum_log_level_set: %s\n" % self.DebugFormatBool(self.minimum_log_level_set_))
     if self.has_include_incomplete_: res+=prefix+("include_incomplete: %s\n" % self.DebugFormatBool(self.include_incomplete_))
     if self.has_count_: res+=prefix+("count: %s\n" % self.DebugFormatInt64(self.count_))
+    if self.has_count_set_: res+=prefix+("count_set: %s\n" % self.DebugFormatBool(self.count_set_))
     if self.has_combined_log_regex_: res+=prefix+("combined_log_regex: %s\n" % self.DebugFormatString(self.combined_log_regex_))
+    if self.has_combined_log_regex_set_: res+=prefix+("combined_log_regex_set: %s\n" % self.DebugFormatBool(self.combined_log_regex_set_))
     if self.has_host_regex_: res+=prefix+("host_regex: %s\n" % self.DebugFormatString(self.host_regex_))
+    if self.has_host_regex_set_: res+=prefix+("host_regex_set: %s\n" % self.DebugFormatBool(self.host_regex_set_))
     if self.has_replica_index_: res+=prefix+("replica_index: %s\n" % self.DebugFormatInt32(self.replica_index_))
+    if self.has_replica_index_set_: res+=prefix+("replica_index_set: %s\n" % self.DebugFormatBool(self.replica_index_set_))
     if self.has_include_app_logs_: res+=prefix+("include_app_logs: %s\n" % self.DebugFormatBool(self.include_app_logs_))
     if self.has_app_logs_per_request_: res+=prefix+("app_logs_per_request: %s\n" % self.DebugFormatInt32(self.app_logs_per_request_))
+    if self.has_app_logs_per_request_set_: res+=prefix+("app_logs_per_request_set: %s\n" % self.DebugFormatBool(self.app_logs_per_request_set_))
     if self.has_include_host_: res+=prefix+("include_host: %s\n" % self.DebugFormatBool(self.include_host_))
     if self.has_include_all_: res+=prefix+("include_all: %s\n" % self.DebugFormatBool(self.include_all_))
     if self.has_cache_iterator_: res+=prefix+("cache_iterator: %s\n" % self.DebugFormatBool(self.cache_iterator_))
     if self.has_num_shards_: res+=prefix+("num_shards: %s\n" % self.DebugFormatInt32(self.num_shards_))
+    if self.has_num_shards_set_: res+=prefix+("num_shards_set: %s\n" % self.DebugFormatBool(self.num_shards_set_))
     return res
 
 
@@ -3300,21 +3681,30 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
   kversion_id = 2
   kmodule_version = 19
   kstart_time = 3
+  kstart_time_set = 103
   kend_time = 4
+  kend_time_set = 104
   koffset = 5
   krequest_id = 6
   kminimum_log_level = 7
+  kminimum_log_level_set = 107
   kinclude_incomplete = 8
   kcount = 9
+  kcount_set = 109
   kcombined_log_regex = 14
+  kcombined_log_regex_set = 114
   khost_regex = 15
+  khost_regex_set = 115
   kreplica_index = 16
+  kreplica_index_set = 116
   kinclude_app_logs = 10
   kapp_logs_per_request = 17
+  kapp_logs_per_request_set = 117
   kinclude_host = 11
   kinclude_all = 12
   kcache_iterator = 13
   knum_shards = 18
+  knum_shards_set = 118
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -3337,7 +3727,16 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     17: "app_logs_per_request",
     18: "num_shards",
     19: "module_version",
-  }, 19)
+    103: "start_time_set",
+    104: "end_time_set",
+    107: "minimum_log_level_set",
+    109: "count_set",
+    114: "combined_log_regex_set",
+    115: "host_regex_set",
+    116: "replica_index_set",
+    117: "app_logs_per_request_set",
+    118: "num_shards_set",
+  }, 118)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -3360,7 +3759,16 @@ class LogReadRequest(ProtocolBuffer.ProtocolMessage):
     17: ProtocolBuffer.Encoder.NUMERIC,
     18: ProtocolBuffer.Encoder.NUMERIC,
     19: ProtocolBuffer.Encoder.STRING,
-  }, 19, ProtocolBuffer.Encoder.MAX_TYPE)
+    103: ProtocolBuffer.Encoder.NUMERIC,
+    104: ProtocolBuffer.Encoder.NUMERIC,
+    107: ProtocolBuffer.Encoder.NUMERIC,
+    109: ProtocolBuffer.Encoder.NUMERIC,
+    114: ProtocolBuffer.Encoder.NUMERIC,
+    115: ProtocolBuffer.Encoder.NUMERIC,
+    116: ProtocolBuffer.Encoder.NUMERIC,
+    117: ProtocolBuffer.Encoder.NUMERIC,
+    118: ProtocolBuffer.Encoder.NUMERIC,
+  }, 118, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -3838,10 +4246,14 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
   end_time_ = 0
   has_resolution_hours_ = 0
   resolution_hours_ = 1
+  has_resolution_hours_set_ = 0
+  resolution_hours_set_ = 0
   has_combine_versions_ = 0
   combine_versions_ = 0
   has_usage_version_ = 0
   usage_version_ = 0
+  has_usage_version_set_ = 0
+  usage_version_set_ = 0
   has_versions_only_ = 0
   versions_only_ = 0
 
@@ -3916,6 +4328,19 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_resolution_hours(self): return self.has_resolution_hours_
 
+  def resolution_hours_set(self): return self.resolution_hours_set_
+
+  def set_resolution_hours_set(self, x):
+    self.has_resolution_hours_set_ = 1
+    self.resolution_hours_set_ = x
+
+  def clear_resolution_hours_set(self):
+    if self.has_resolution_hours_set_:
+      self.has_resolution_hours_set_ = 0
+      self.resolution_hours_set_ = 0
+
+  def has_resolution_hours_set(self): return self.has_resolution_hours_set_
+
   def combine_versions(self): return self.combine_versions_
 
   def set_combine_versions(self, x):
@@ -3942,6 +4367,19 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_usage_version(self): return self.has_usage_version_
 
+  def usage_version_set(self): return self.usage_version_set_
+
+  def set_usage_version_set(self, x):
+    self.has_usage_version_set_ = 1
+    self.usage_version_set_ = x
+
+  def clear_usage_version_set(self):
+    if self.has_usage_version_set_:
+      self.has_usage_version_set_ = 0
+      self.usage_version_set_ = 0
+
+  def has_usage_version_set(self): return self.has_usage_version_set_
+
   def versions_only(self): return self.versions_only_
 
   def set_versions_only(self, x):
@@ -3963,8 +4401,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_start_time()): self.set_start_time(x.start_time())
     if (x.has_end_time()): self.set_end_time(x.end_time())
     if (x.has_resolution_hours()): self.set_resolution_hours(x.resolution_hours())
+    if (x.has_resolution_hours_set()): self.set_resolution_hours_set(x.resolution_hours_set())
     if (x.has_combine_versions()): self.set_combine_versions(x.combine_versions())
     if (x.has_usage_version()): self.set_usage_version(x.usage_version())
+    if (x.has_usage_version_set()): self.set_usage_version_set(x.usage_version_set())
     if (x.has_versions_only()): self.set_versions_only(x.versions_only())
 
   def Equals(self, x):
@@ -3980,10 +4420,14 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_end_time_ and self.end_time_ != x.end_time_: return 0
     if self.has_resolution_hours_ != x.has_resolution_hours_: return 0
     if self.has_resolution_hours_ and self.resolution_hours_ != x.resolution_hours_: return 0
+    if self.has_resolution_hours_set_ != x.has_resolution_hours_set_: return 0
+    if self.has_resolution_hours_set_ and self.resolution_hours_set_ != x.resolution_hours_set_: return 0
     if self.has_combine_versions_ != x.has_combine_versions_: return 0
     if self.has_combine_versions_ and self.combine_versions_ != x.combine_versions_: return 0
     if self.has_usage_version_ != x.has_usage_version_: return 0
     if self.has_usage_version_ and self.usage_version_ != x.usage_version_: return 0
+    if self.has_usage_version_set_ != x.has_usage_version_set_: return 0
+    if self.has_usage_version_set_ and self.usage_version_set_ != x.usage_version_set_: return 0
     if self.has_versions_only_ != x.has_versions_only_: return 0
     if self.has_versions_only_ and self.versions_only_ != x.versions_only_: return 0
     return 1
@@ -4004,8 +4448,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_resolution_hours_): n += 1 + self.lengthVarInt64(self.resolution_hours_)
+    if (self.has_resolution_hours_set_): n += 3
     if (self.has_combine_versions_): n += 2
     if (self.has_usage_version_): n += 1 + self.lengthVarInt64(self.usage_version_)
+    if (self.has_usage_version_set_): n += 3
     if (self.has_versions_only_): n += 2
     return n + 1
 
@@ -4019,8 +4465,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_start_time_): n += 1 + self.lengthVarInt64(self.start_time_)
     if (self.has_end_time_): n += 1 + self.lengthVarInt64(self.end_time_)
     if (self.has_resolution_hours_): n += 1 + self.lengthVarInt64(self.resolution_hours_)
+    if (self.has_resolution_hours_set_): n += 3
     if (self.has_combine_versions_): n += 2
     if (self.has_usage_version_): n += 1 + self.lengthVarInt64(self.usage_version_)
+    if (self.has_usage_version_set_): n += 3
     if (self.has_versions_only_): n += 2
     return n
 
@@ -4030,8 +4478,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_start_time()
     self.clear_end_time()
     self.clear_resolution_hours()
+    self.clear_resolution_hours_set()
     self.clear_combine_versions()
     self.clear_usage_version()
+    self.clear_usage_version_set()
     self.clear_versions_only()
 
   def OutputUnchecked(self, out):
@@ -4058,6 +4508,12 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_versions_only_):
       out.putVarInt32(64)
       out.putBoolean(self.versions_only_)
+    if (self.has_resolution_hours_set_):
+      out.putVarInt32(840)
+      out.putBoolean(self.resolution_hours_set_)
+    if (self.has_usage_version_set_):
+      out.putVarInt32(856)
+      out.putBoolean(self.usage_version_set_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
@@ -4084,6 +4540,12 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_versions_only_):
       out.putVarInt32(64)
       out.putBoolean(self.versions_only_)
+    if (self.has_resolution_hours_set_):
+      out.putVarInt32(840)
+      out.putBoolean(self.resolution_hours_set_)
+    if (self.has_usage_version_set_):
+      out.putVarInt32(856)
+      out.putBoolean(self.usage_version_set_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4112,6 +4574,12 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 64:
         self.set_versions_only(d.getBoolean())
         continue
+      if tt == 840:
+        self.set_resolution_hours_set(d.getBoolean())
+        continue
+      if tt == 856:
+        self.set_usage_version_set(d.getBoolean())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -4130,8 +4598,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_start_time_: res+=prefix+("start_time: %s\n" % self.DebugFormatInt32(self.start_time_))
     if self.has_end_time_: res+=prefix+("end_time: %s\n" % self.DebugFormatInt32(self.end_time_))
     if self.has_resolution_hours_: res+=prefix+("resolution_hours: %s\n" % self.DebugFormatInt64(self.resolution_hours_))
+    if self.has_resolution_hours_set_: res+=prefix+("resolution_hours_set: %s\n" % self.DebugFormatBool(self.resolution_hours_set_))
     if self.has_combine_versions_: res+=prefix+("combine_versions: %s\n" % self.DebugFormatBool(self.combine_versions_))
     if self.has_usage_version_: res+=prefix+("usage_version: %s\n" % self.DebugFormatInt32(self.usage_version_))
+    if self.has_usage_version_set_: res+=prefix+("usage_version_set: %s\n" % self.DebugFormatBool(self.usage_version_set_))
     if self.has_versions_only_: res+=prefix+("versions_only: %s\n" % self.DebugFormatBool(self.versions_only_))
     return res
 
@@ -4144,8 +4614,10 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
   kstart_time = 3
   kend_time = 4
   kresolution_hours = 5
+  kresolution_hours_set = 105
   kcombine_versions = 6
   kusage_version = 7
+  kusage_version_set = 107
   kversions_only = 8
 
   _TEXT = _BuildTagLookupTable({
@@ -4158,7 +4630,9 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     6: "combine_versions",
     7: "usage_version",
     8: "versions_only",
-  }, 8)
+    105: "resolution_hours_set",
+    107: "usage_version_set",
+  }, 107)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -4170,7 +4644,9 @@ class LogUsageRequest(ProtocolBuffer.ProtocolMessage):
     6: ProtocolBuffer.Encoder.NUMERIC,
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.NUMERIC,
-  }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
+    105: ProtocolBuffer.Encoder.NUMERIC,
+    107: ProtocolBuffer.Encoder.NUMERIC,
+  }, 107, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

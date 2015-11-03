@@ -667,6 +667,8 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
   app_id_ = ""
   has_project_id_ = 0
   project_id_ = 0
+  has_pool_ = 0
+  pool_ = ""
 
   def __init__(self, contents=None):
     self.socket_options_ = []
@@ -792,6 +794,19 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_project_id(self): return self.has_project_id_
 
+  def pool(self): return self.pool_
+
+  def set_pool(self, x):
+    self.has_pool_ = 1
+    self.pool_ = x
+
+  def clear_pool(self):
+    if self.has_pool_:
+      self.has_pool_ = 0
+      self.pool_ = ""
+
+  def has_pool(self): return self.has_pool_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -803,6 +818,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (x.has_remote_ip()): self.mutable_remote_ip().MergeFrom(x.remote_ip())
     if (x.has_app_id()): self.set_app_id(x.app_id())
     if (x.has_project_id()): self.set_project_id(x.project_id())
+    if (x.has_pool()): self.set_pool(x.pool())
 
   def Equals(self, x):
     if x is self: return 1
@@ -823,6 +839,8 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
     if self.has_project_id_ != x.has_project_id_: return 0
     if self.has_project_id_ and self.project_id_ != x.project_id_: return 0
+    if self.has_pool_ != x.has_pool_: return 0
+    if self.has_pool_ and self.pool_ != x.pool_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -852,6 +870,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_remote_ip_): n += 1 + self.lengthString(self.remote_ip_.ByteSize())
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     if (self.has_project_id_): n += 1 + self.lengthVarInt64(self.project_id_)
+    if (self.has_pool_): n += 1 + self.lengthString(len(self.pool_))
     return n + 2
 
   def ByteSizePartial(self):
@@ -869,6 +888,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_remote_ip_): n += 1 + self.lengthString(self.remote_ip_.ByteSizePartial())
     if (self.has_app_id_): n += 1 + self.lengthString(len(self.app_id_))
     if (self.has_project_id_): n += 1 + self.lengthVarInt64(self.project_id_)
+    if (self.has_pool_): n += 1 + self.lengthString(len(self.pool_))
     return n
 
   def Clear(self):
@@ -880,6 +900,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     self.clear_remote_ip()
     self.clear_app_id()
     self.clear_project_id()
+    self.clear_pool()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(8)
@@ -907,6 +928,9 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_project_id_):
       out.putVarInt32(80)
       out.putVarInt64(self.project_id_)
+    if (self.has_pool_):
+      out.putVarInt32(90)
+      out.putPrefixedString(self.pool_)
 
   def OutputPartial(self, out):
     if (self.has_family_):
@@ -936,6 +960,9 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_project_id_):
       out.putVarInt32(80)
       out.putVarInt64(self.project_id_)
+    if (self.has_pool_):
+      out.putVarInt32(90)
+      out.putPrefixedString(self.pool_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -973,6 +1000,9 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 80:
         self.set_project_id(d.getVarInt64())
         continue
+      if tt == 90:
+        self.set_pool(d.getPrefixedString())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1002,6 +1032,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
     if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
     if self.has_project_id_: res+=prefix+("project_id: %s\n" % self.DebugFormatInt64(self.project_id_))
+    if self.has_pool_: res+=prefix+("pool: %s\n" % self.DebugFormatString(self.pool_))
     return res
 
 
@@ -1016,6 +1047,7 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
   kremote_ip = 6
   kapp_id = 9
   kproject_id = 10
+  kpool = 11
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1027,7 +1059,8 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     6: "remote_ip",
     9: "app_id",
     10: "project_id",
-  }, 10)
+    11: "pool",
+  }, 11)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1039,7 +1072,8 @@ class CreateSocketRequest(ProtocolBuffer.ProtocolMessage):
     6: ProtocolBuffer.Encoder.STRING,
     9: ProtocolBuffer.Encoder.STRING,
     10: ProtocolBuffer.Encoder.NUMERIC,
-  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
+    11: ProtocolBuffer.Encoder.STRING,
+  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

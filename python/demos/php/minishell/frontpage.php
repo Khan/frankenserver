@@ -18,8 +18,6 @@
  * Template for rendering the frontpage of the PHP shell.
  * TODO: get rid of the logic and use a templating system, like Smarty.
  */
-require_once 'google/appengine/api/users/UserService.php';
-
 use google\appengine\api\users\UserService;
 
 session_start();

@@ -26,9 +26,9 @@ import xml.etree
 
 from google.appengine.tools import java_utils
 
-
 _JAVA_VMRUNTIME_PATH = os.path.join(
-    'google', 'appengine', 'javamanagedvm', 'appengine-java-vmruntime')
+    'google', 'appengine', 'tools', 'java', 'lib',
+    'java-managed-vm', 'appengine-java-vmruntime')
 _QUICKSTART_JAR_PATH = os.path.join(
     _JAVA_VMRUNTIME_PATH, 'quickstartgenerator.jar')
 _WEBDEFAULT_XML_PATH = os.path.join(

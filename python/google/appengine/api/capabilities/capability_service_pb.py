@@ -222,6 +222,7 @@ class IsEnabledRequest(ProtocolBuffer.ProtocolMessage):
 class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
 
 
+  DEFAULT      =    0
   ENABLED      =    1
   SCHEDULED_FUTURE =    2
   SCHEDULED_NOW =    3
@@ -229,6 +230,7 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
   UNKNOWN      =    5
 
   _SummaryStatus_NAMES = {
+    0: "DEFAULT",
     1: "ENABLED",
     2: "SCHEDULED_FUTURE",
     3: "SCHEDULED_NOW",

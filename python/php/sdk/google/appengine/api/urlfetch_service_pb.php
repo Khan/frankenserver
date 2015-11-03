@@ -18,7 +18,9 @@
 # source: google/appengine/api/urlfetch_service.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace google\appengine\URLFetchServiceError {
   class ErrorCode {

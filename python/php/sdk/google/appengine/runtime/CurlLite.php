@@ -164,6 +164,8 @@ final class CurlLite {
       CURLINFO_HEADER_OUT => "request_header"
   ];
 
+  private static $logging_callback = 'syslog';
+
   const CONTENT_TYPE_HEADER = 'Content-Type';
   const CRLF = '\r\n';
   const STATUS_LINE_FORMAT = 'HTTP/1.1 %d %s\r\n';
@@ -248,14 +250,19 @@ final class CurlLite {
                              $this->request,
                              $this->response);
     } catch (ApplicationError $e) {
-        syslog(LOG_ERR,
-               sprintf("Call to URLFetch failed with application error %d " .
-                       "for url %s.",
-                       $e->getApplicationError(),
-                       $this->request->getUrl()));
-        $this->setCurlErrorFromUrlFetchError($e->getApplicationError(),
-                                             $e->getMessage());
-        return false;
+      $error_number = $e->getApplicationError();
+      $curl_error_number = static::$urlfetch_curl_error_map[$error_number];
+      $error_message = static::$curle_error_code_str_map[$curl_error_number];
+
+      static::log(LOG_ERR,
+                  sprintf('Call to URLFetch failed with application error %d ' .
+                          '(%s) for url %s.',
+                          $error_number,
+                          $error_message,
+                          $this->request->getUrl()));
+      $this->setCurlErrorFromUrlFetchError($e->getApplicationError(),
+                                           $e->getMessage());
+      return false;
     }
 
     $response = $this->prepareResponse();
@@ -689,5 +696,16 @@ final class CurlLite {
       }
     }
     return $result;
+  }
+
+  /**
+   * Log a message to the system log. Provided so we can hook the logging in
+   * unit tests without resorting to namespace mocking tricks.
+   *
+   * @param int $log_level The level of the logging message
+   * @param string $message The message to log.
+   */
+  private static function log($log_level, $message) {
+    call_user_func(static::$logging_callback, $log_level, $message);
   }
 }

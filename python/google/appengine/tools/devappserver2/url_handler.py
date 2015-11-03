@@ -81,7 +81,8 @@ class URLHandler(object):
       start_response: A function with semantics defined in PEP-333.
 
     Returns:
-      An iterable over strings containing the body of the HTTP response.
+      An iterable over strings containing the body of the HTTP response, or
+      None if this handler is not applicable to this URL.
     """
     raise NotImplementedError()
 

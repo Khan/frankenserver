@@ -18,7 +18,9 @@
 # source: google/appengine/api/api_base.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace google\appengine\base {
   class StringProto extends \google\net\ProtocolMessage {

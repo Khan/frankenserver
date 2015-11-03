@@ -67,8 +67,7 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._application_lock = threading.Lock()
     self._java_application = java_application.JavaApplication(
         self._module_configuration)
-    self._for_jetty9 = (os.environ.get('GAE_LOCAL_VM_RUNTIME') != '0' and
-                        module_configuration.runtime == 'vm')
+    self._for_jetty9 = module_configuration.runtime == 'vm'
     self._java_command = self._make_java_command()
 
   def _make_java_command(self):
@@ -100,12 +99,11 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     if self._for_jetty9:
       jetty_home = os.environ.get('APP_ENGINE_JETTY_HOME', None)
       jetty_base = os.environ.get('APP_ENGINE_JETTY_BASE', None)
-      appengine_dir = os.path.dirname(tools_dir)
       if not jetty_home:
-        jetty_home = os.path.join(appengine_dir,
-                                  'javamanagedvm', 'appengine-java-vmruntime')
+        jetty_home = os.path.join(java_lib_dir, 'java-managed-vm',
+                                  'appengine-java-vmruntime')
       if not jetty_base:
-        jetty_base = os.path.join(appengine_dir, 'jettybasesdk')
+        jetty_base = os.path.join(java_lib_dir, 'jetty-base-sdk')
 
       args = [
           java_bin,
@@ -117,7 +115,6 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
       args.extend(self._runtime_config_getter().java_config.jvm_args)
       args.append('-jar')
       args.append('%s/start.jar' % jetty_home)
-      args.append('-module=http')
     else:
       args = [
           java_bin,

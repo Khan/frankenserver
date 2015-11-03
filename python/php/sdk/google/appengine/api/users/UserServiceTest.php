@@ -180,9 +180,12 @@ class UserServiceTest extends ApiProxyTestBase {
     $this->assertEquals(null, UserService::getCurrentUser());
   }
 
-  public function testGetCurrentUser() {
-    putenv('AUTH_DOMAIN=example.com');
-    putenv('USER_EMAIL=bill@example.com');
+  /**
+   * @dataProvider getCurrentUserDataProvider
+   */
+  public function testGetCurrentUser($auth_domain_env, $user_email_env) {
+    putenv($auth_domain_env . '=example.com');
+    putenv($user_email_env . '=bill@example.com');
     $expectedUser = new User("bill@example.com");
     $user = UserService::getCurrentUser();
 
@@ -193,13 +196,38 @@ class UserServiceTest extends ApiProxyTestBase {
     $this->assertSame("example.com", $user->getAuthDomain());
     $this->assertSame(null, $user->getFederatedIdentity());
     $this->assertSame(null, $user->getFederatedProvider());
+
+    // Clear environment variables.
+    putenv($auth_domain_env);
+    putenv($user_email_env);
   }
 
-  public function testIsCurrentUserAdmin() {
-    putenv('USER_IS_ADMIN=0');
+  public function getCurrentUserDataProvider() {
+    return [
+        ['AUTH_DOMAIN', 'USER_EMAIL'],
+        ['HTTP_X_APPENGINE_AUTH_DOMAIN', 'HTTP_X_APPENGINE_USER_EMAIL'],
+    ];
+  }
+
+  /**
+   * @dataProvider isCurrentUserAdminDataProvider
+   */
+  public function testIsCurrentUserAdmin($env_var_name) {
+    putenv($env_var_name . '=0');
     $this->assertFalse(UserService::isCurrentUserAdmin());
 
-    putenv('USER_IS_ADMIN=1');
+    putenv($env_var_name . '=1');
     $this->assertTrue(UserService::isCurrentUserAdmin());
+
+    // Clear the environment variable.
+    putenv($env_var_name);
+  }
+
+  public function isCurrentUserAdminDataProvider() {
+    $var_name = 'USER_IS_ADMIN';
+    return [
+        ['USER_IS_ADMIN'],
+        ['HTTP_X_APPENGINE_USER_IS_ADMIN'],
+    ];
   }
 }

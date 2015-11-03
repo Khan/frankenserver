@@ -340,7 +340,7 @@ class ImagesServiceStub(apiproxy_stub.APIProxyStub):
         green = (substitution_rgb >> 8) & 0xFF
         red = (substitution_rgb >> 16) & 0xFF
         background = Image.new(RGB, image.size, (red, green, blue))
-        background.paste(image, mask=image.split()[3])
+        background.paste(image, mask=image.convert(RGBA).split()[3])
         image = background
       else:
         image = image.convert(RGB)

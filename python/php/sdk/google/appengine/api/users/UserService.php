@@ -102,10 +102,12 @@ final class UserService {
    * if no user is signed in.
    */
   public static function getCurrentUser() {
-    $email = getenv('USER_EMAIL');
-    $userId = getenv('USER_ID');
-    $federatedIdentity = getenv('FEDERATED_IDENTITY');
-    $federatedProvider = getenv('FEDERATED_PROVIDER');
+    $email = UserServiceUtil::getUserEnvironmentVariable('USER_EMAIL');
+    $userId = UserServiceUtil::getUserEnvironmentVariable('USER_ID');
+    $federatedIdentity =
+        UserServiceUtil::getUserEnvironmentVariable('FEDERATED_IDENTITY');
+    $federatedProvider =
+        UserServiceUtil::getUserEnvironmentVariable('FEDERATED_PROVIDER');
 
     if (!$email && !$federatedIdentity) {
       return null;
@@ -148,7 +150,7 @@ final class UserService {
    * application.
    */
   public static function isCurrentUserAdmin() {
-    return getenv('USER_IS_ADMIN') == '1';
+    return UserServiceUtil::getUserEnvironmentVariable('USER_IS_ADMIN') == '1';
   }
 
   /**

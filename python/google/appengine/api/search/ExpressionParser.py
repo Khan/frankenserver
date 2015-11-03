@@ -30,62 +30,62 @@ from google.appengine._internal.antlr3.tree import *
 HIDDEN = BaseRecognizer.HIDDEN
 
 
-DOLLAR=54
-EXPONENT=49
-LT=11
-LSQUARE=23
-ASCII_LETTER=52
-LOG=40
-SNIPPET=44
-OCTAL_ESC=57
-MAX=41
-FLOAT=34
-COUNT=38
-NAME_START=50
-NOT=10
-HTML=28
-ATOM=29
-AND=7
-EOF=-1
-LPAREN=21
-INDEX=5
-QUOTE=47
-RPAREN=22
-DISTANCE=39
-T__58=58
-NAME=26
-ESC_SEQ=48
-POW=43
-COMMA=36
-PLUS=17
-GEO=32
-DIGIT=46
-EQ=15
-NE=16
-GE=14
-XOR=9
-SWITCH=45
-UNICODE_ESC=56
-NUMBER=31
-HEX_DIGIT=55
 UNDERSCORE=53
-INT=24
-MIN=42
+GEOPOINT=33
+UNICODE_ESC=56
+LT=11
+TEXT=27
+HTML=28
 MINUS=18
 RSQUARE=25
-TEXT=27
-GEOPOINT=33
+SNIPPET=44
 PHRASE=35
-ABS=37
-WS=51
-OR=8
-NEG=4
-GT=13
-DIV=20
-TIMES=19
+T__58=58
+INDEX=5
+OCTAL_ESC=57
+NUMBER=31
+DISTANCE=39
+LOG=40
+LPAREN=21
+RPAREN=22
+EQ=15
+NAME=26
+GEO=32
 DATE=30
+NOT=10
+MIN=42
+ASCII_LETTER=52
+AND=7
+NE=16
+POW=43
+XOR=9
+COUNT=38
+SWITCH=45
+DOLLAR=54
 COND=6
+PLUS=17
+QUOTE=47
+FLOAT=34
+MAX=41
+INT=24
+ATOM=29
+NAME_START=50
+ABS=37
+HEX_DIGIT=55
+ESC_SEQ=48
+WS=51
+EOF=-1
+GE=14
+COMMA=36
+OR=8
+TIMES=19
+GT=13
+DIGIT=46
+DIV=20
+NEG=4
+LSQUARE=23
 LE=12
+EXPONENT=49
 
 
 tokenNames = [
@@ -1173,8 +1173,8 @@ class ExpressionParser(Parser):
 
         LPAREN34_tree = None
         RPAREN36_tree = None
-        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_LPAREN = RewriteRuleTokenStream(self._adaptor, "token LPAREN")
+        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_conjunction = RewriteRuleSubtreeStream(self._adaptor, "rule conjunction")
         try:
             try:
@@ -1310,8 +1310,8 @@ class ExpressionParser(Parser):
         index39 = None
 
 
-        stream_index = RewriteRuleSubtreeStream(self._adaptor, "rule index")
         stream_name = RewriteRuleSubtreeStream(self._adaptor, "rule name")
+        stream_index = RewriteRuleSubtreeStream(self._adaptor, "rule index")
         try:
             try:
 
@@ -1417,9 +1417,9 @@ class ExpressionParser(Parser):
         x_tree = None
         LSQUARE40_tree = None
         RSQUARE41_tree = None
-        stream_INT = RewriteRuleTokenStream(self._adaptor, "token INT")
         stream_LSQUARE = RewriteRuleTokenStream(self._adaptor, "token LSQUARE")
         stream_RSQUARE = RewriteRuleTokenStream(self._adaptor, "token RSQUARE")
+        stream_INT = RewriteRuleTokenStream(self._adaptor, "token INT")
 
         try:
             try:
@@ -1506,12 +1506,12 @@ class ExpressionParser(Parser):
         char_literal43_tree = None
         NAME44_tree = None
         stream_GEO = RewriteRuleTokenStream(self._adaptor, "token GEO")
+        stream_DATE = RewriteRuleTokenStream(self._adaptor, "token DATE")
+        stream_NUMBER = RewriteRuleTokenStream(self._adaptor, "token NUMBER")
+        stream_GEOPOINT = RewriteRuleTokenStream(self._adaptor, "token GEOPOINT")
+        stream_TEXT = RewriteRuleTokenStream(self._adaptor, "token TEXT")
         stream_HTML = RewriteRuleTokenStream(self._adaptor, "token HTML")
         stream_ATOM = RewriteRuleTokenStream(self._adaptor, "token ATOM")
-        stream_TEXT = RewriteRuleTokenStream(self._adaptor, "token TEXT")
-        stream_DATE = RewriteRuleTokenStream(self._adaptor, "token DATE")
-        stream_GEOPOINT = RewriteRuleTokenStream(self._adaptor, "token GEOPOINT")
-        stream_NUMBER = RewriteRuleTokenStream(self._adaptor, "token NUMBER")
 
         try:
             try:
@@ -1957,9 +1957,9 @@ class ExpressionParser(Parser):
         LPAREN48_tree = None
         COMMA50_tree = None
         RPAREN52_tree = None
-        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_COMMA = RewriteRuleTokenStream(self._adaptor, "token COMMA")
         stream_LPAREN = RewriteRuleTokenStream(self._adaptor, "token LPAREN")
+        stream_RPAREN = RewriteRuleTokenStream(self._adaptor, "token RPAREN")
         stream_fnName = RewriteRuleSubtreeStream(self._adaptor, "rule fnName")
         stream_condExpr = RewriteRuleSubtreeStream(self._adaptor, "rule condExpr")
         try:

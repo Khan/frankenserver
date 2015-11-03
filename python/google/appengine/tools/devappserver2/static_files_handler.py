@@ -131,6 +131,8 @@ class StaticContentHandler(url_handler.UserConfiguredURLHandler):
       if if_match:
         start_response('412 Precondition Failed', [])
         return []
+      elif self._url_map.require_matching_file:
+        return None
       else:
         return self._handle_io_exception(start_response, e)
 
@@ -314,7 +316,10 @@ class StaticFilesHandler(StaticContentHandler):
     """
     relative_path = match.expand(self._url_map.static_files)
     if not self._is_relative_path_valid(relative_path):
-      return self._not_found_404(environ, start_response)
+      if self._url_map.require_matching_file:
+        return None
+      else:
+        return self._not_found_404(environ, start_response)
     full_path = os.path.join(self._root_path, relative_path)
     return self._handle_path(full_path, environ, start_response)
 

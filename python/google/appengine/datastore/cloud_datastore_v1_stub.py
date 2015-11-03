@@ -33,12 +33,15 @@ This implementation forwards directly to the v3 service."""
 
 
 
+import collections
+
 from google.appengine.datastore import entity_pb
 
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_rpc
 from google.appengine.api import apiproxy_stub
 from google.appengine.api import apiproxy_stub_map
+from google.appengine.api import datastore_types
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
 from google.appengine.datastore import datastore_query
@@ -50,8 +53,13 @@ _CLOUD_DATASTORE_ENABLED = datastore_pbs._CLOUD_DATASTORE_ENABLED
 if _CLOUD_DATASTORE_ENABLED:
   from datastore_pbs import googledatastore
 
-SERVICE_NAME = 'cloud_datastore_v1'
+SERVICE_NAME = 'cloud_datastore_v1beta3'
 V3_SERVICE_NAME = 'datastore_v3'
+
+
+_NO_VERSION = 0
+
+_MINIMUM_VERSION = 1
 
 
 class _StubIdResolver(datastore_pbs.IdResolver):
@@ -90,12 +98,13 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
         ' Datastore client libraries.')
     apiproxy_stub.APIProxyStub.__init__(self, SERVICE_NAME)
     self.__app_id = app_id
-    id_resolver = _StubIdResolver([app_id])
+    self._id_resolver = _StubIdResolver([app_id])
     self.__entity_converter = datastore_pbs.get_entity_converter(
-        id_resolver)
+        self._id_resolver)
     self.__service_converter = datastore_stub_util.get_service_converter(
-        id_resolver)
-    self.__service_validator = cloud_datastore_validator.get_service_validator()
+        self._id_resolver)
+    self.__service_validator = cloud_datastore_validator.get_service_validator(
+        self._id_resolver)
 
   def _Dynamic_BeginTransaction(self, req, resp):
 
@@ -136,7 +145,6 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
 
     self.__make_v3_call('Rollback', v3_req, api_base_pb.VoidProto())
 
-
   def _Dynamic_Commit(self, req, resp):
 
 
@@ -145,28 +153,38 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
     except cloud_datastore_validator.ValidationError, e:
       raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                              str(e))
+    single_use_txn = None
+    if req.WhichOneof('transaction_selector') == 'single_use_transaction':
+      single_use_txn = self.__begin_adhoc_txn(req)
+
     try:
-      txn = None
-      if req.transaction:
-        txn = req.transaction
-      total_index_writes = 0
-      for mutation in req.mutations:
-        mutation_result, index_writes = (
-            self.__apply_v1_mutation(mutation, req.transaction))
-        resp.mutation_results.add().CopyFrom(mutation_result)
-        total_index_writes += index_writes
-      if txn:
-        v3_req = self.__service_converter.v1_commit_req_to_v3_txn(req)
-        v3_resp = datastore_pb.CommitResponse()
-        self.__make_v3_call('Commit', v3_req, v3_resp)
-        total_index_writes += v3_resp.cost().index_writes()
-      resp.index_updates = total_index_writes
-    except datastore_pbs.InvalidConversionError, e:
+      try:
+        if req.transaction or single_use_txn:
+          self.__commit(req.mutations, req.transaction or single_use_txn, resp)
+        else:
+          v3_txn_req = datastore_pb.BeginTransactionRequest()
+          v3_txn_req.set_app(self.__app_id)
+
+          for mutation in req.mutations:
+            v3_txn = datastore_pb.Transaction()
+            self.__make_v3_call('BeginTransaction', v3_txn_req, v3_txn)
+            v1_txn = self.__service_converter._v3_to_v1_txn(v3_txn)
+
+            commit_resp = googledatastore.CommitResponse()
+            self.__commit([mutation], v1_txn, commit_resp)
+
+            resp.index_updates += commit_resp.index_updates
+            mutation_result = commit_resp.mutation_results[0]
+            resp.mutation_results.add().CopyFrom(mutation_result)
+      except datastore_pbs.InvalidConversionError, e:
 
 
-      raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
-                                             str(e))
-
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                               str(e))
+    except:
+      if single_use_txn:
+        self.__rollback_adhoc_txn(req, single_use_txn)
+      raise
 
   def _Dynamic_RunQuery(self, req, resp):
 
@@ -250,174 +268,234 @@ class CloudDatastoreV1Stub(apiproxy_stub.APIProxyStub):
         raise apiproxy_errors.ApplicationError(
             datastore_pb.Error.INTERNAL_ERROR, str(e))
 
-
-  def __insert_v3_entity(self, v3_entity, v3_txn):
-    """Inserts a v3 entity.
+  def __begin_adhoc_txn(self, request):
+    """Begins a new transaction as part of another request and returns it.
 
     Args:
-      v3_entity: an entity_pb.EntityProto
-      v3_txn: a datastore_pb.Transaction or None
+      request: the request that asked for a new transaction to be created.
 
     Returns:
-      a tuple (the number of index writes that occurred,
-               the entity key)
-
-    Raises:
-      ApplicationError: if the entity already exists
+      a new v1 transaction.
     """
-    if not v3_txn:
+    v1_txn_req = googledatastore.BeginTransactionRequest()
+    v1_txn_req.project_id = request.project_id
+    v1_txn_resp = googledatastore.BeginTransactionResponse()
+    self._Dynamic_BeginTransaction(v1_txn_req, v1_txn_resp)
+    return v1_txn_resp.transaction
 
-      v3_txn = datastore_pb.Transaction()
-      v3_begin_txn_req = datastore_pb.BeginTransactionRequest()
-      v3_begin_txn_req.set_app(v3_entity.key().app())
-      self.__make_v3_call('BeginTransaction', v3_begin_txn_req, v3_txn)
-      _, key = self.__insert_v3_entity(v3_entity, v3_txn)
-      v3_resp = datastore_pb.CommitResponse()
-      self.__make_v3_call('Commit', v3_txn, v3_resp)
-      return (v3_resp.cost().index_writes(), key)
+  def __rollback_adhoc_txn(self, request, v1_transaction):
+    """Rolls back a transaction that was created as part of another request.
 
-    if datastore_pbs.is_complete_v3_key(v3_entity.key()):
-      v3_get_req = datastore_pb.GetRequest()
-      v3_get_req.mutable_transaction().CopyFrom(v3_txn)
-      v3_get_req.key_list().append(v3_entity.key())
-      v3_get_resp = datastore_pb.GetResponse()
-      self.__make_v3_call('Get', v3_get_req, v3_get_resp)
-      if v3_get_resp.entity(0).has_entity():
+    This is best effort only, so any error occuring during the rollback will be
+    silenced.
+
+    Args:
+      request: the request that asked for a new transaction to be created.
+      v1_transaction: the transaction that was created and needs to be rolled
+          back.
+    """
+    try:
+      v1_rollback_req = googledatastore.RollbackRequest()
+      v1_rollback_req.project_id = request.project_id
+      v1_rollback_req.transaction = v1_transaction
+      self._Dynamic_Rollback(v1_rollback_req,
+                             googledatastore.RollbackResponse())
+    except apiproxy_errors.ApplicationError, e:
+      pass
+
+  def __commit(self, v1_mutations, v1_txn, resp):
+    """Commits a list of v1 mutations.
+
+    Args:
+      v1_mutations: the list of mutations to apply and commit
+      v1_txn: required v1 transaction handle in which to apply the mutations
+      resp: a v1 CommitResponse to update with the result of this commit
+    """
+
+
+    mutation_keys = []
+
+
+    seen_keys = set()
+
+
+    allocated_keys = {}
+
+
+    conflict_cache = {}
+
+
+    version_cache = {}
+
+    for i, mutation in enumerate(v1_mutations):
+      v1_key, v1_entity = datastore_pbs.get_v1_mutation_key_and_entity(mutation)
+      key = datastore_types.ReferenceToKeyValue(v1_key, self._id_resolver)
+      if not datastore_pbs.is_complete_v1_key(v1_key):
+
+        v1_key = self.__put_v1_entity(v1_entity, v1_txn)
+        key = datastore_types.ReferenceToKeyValue(v1_key, self._id_resolver)
+        allocated_keys[key] = v1_key
+      elif key not in conflict_cache:
+
+
+        base_version = None
+        if mutation.HasField('base_version') and key not in seen_keys:
+          base_version = mutation.base_version
+
+        conflict_version = self.__apply_v1_mutation(mutation, base_version,
+                                                    v1_txn, version_cache)
+        if conflict_version is not None:
+          conflict_cache[key] = conflict_version
+
+      mutation_keys.append(key)
+      seen_keys.add(key)
+
+    v3_txn = datastore_pb.Transaction()
+    self.__service_converter.v1_to_v3_txn(v1_txn, v3_txn)
+    v3_resp = datastore_pb.CommitResponse()
+    self.__make_v3_call('Commit', v3_txn, v3_resp)
+    resp.index_updates = v3_resp.cost().index_writes()
+
+
+
+    mutation_versions = {}
+    for version in v3_resp.version_list():
+      key = datastore_types.ReferenceToKeyValue(version.root_entity_key())
+      mutation_versions[key] = version.version()
+
+    for key in mutation_keys:
+      mutation_result = resp.mutation_results.add()
+      if key in allocated_keys:
+        mutation_result.key.CopyFrom(allocated_keys[key])
+      if key in conflict_cache:
+        mutation_result.conflict_detected = True
+        mutation_result.version = conflict_cache[key]
+      else:
+        mutation_result.version = mutation_versions[key]
+
+
+  def __apply_v1_mutation(self, v1_mutation, base_version, v1_txn,
+                          version_cache):
+    """Applies a v1 Mutation in a transaction.
+
+    Args:
+      v1_mutation: a googledatastore.Mutation, must be for a complete key.
+      base_version: optional, the version the entity is expected to be at. If
+          the entity has a different version number, the mutation does not
+          apply. If None, then this check is skipped.
+      v1_txn: a v1 transaction handle
+      version_cache: a cache of entity keys to version, for entities that have
+          been mutated previously in this transaction.
+    """
+    v1_key, v1_entity = datastore_pbs.get_v1_mutation_key_and_entity(
+        v1_mutation)
+    key = datastore_types.ReferenceToKeyValue(v1_key, self._id_resolver)
+
+
+
+    if (v1_mutation.HasField('insert') or v1_mutation.HasField('update') or
+        base_version is not None) and key not in version_cache:
+      version_cache[key] = self.__get_v1_entity_version(v1_key, v1_txn)
+
+    if v1_mutation.HasField('insert'):
+      if base_version is not None and base_version != _NO_VERSION:
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                               'Cannot insert an entity with a '
+                                               'base version greater than zero')
+      elif version_cache[key] != _NO_VERSION:
         raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
                                                'Entity already exists.')
-    v3_put_req = datastore_pb.PutRequest()
-    v3_put_req.mutable_transaction().CopyFrom(v3_txn)
-    v3_put_req.entity_list().append(v3_entity)
-    v3_put_resp = datastore_pb.PutResponse()
-    self.__make_v3_call('Put', v3_put_req, v3_put_resp)
-    return (v3_put_resp.cost().index_writes(),
-            v3_put_resp.key(0))
+    elif v1_mutation.HasField('update'):
+      if base_version is not None and base_version == _NO_VERSION:
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                               'Cannot update an entity with a '
+                                               'base version set to zero')
+      elif version_cache[key] == _NO_VERSION:
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                               'Entity does not exist.')
 
-  def __update_v3_entity(self, v3_entity, v3_txn):
-    """Updates a v3 entity.
+
+    if base_version is not None:
+      persisted_version = version_cache[key]
+      if persisted_version != _NO_VERSION and persisted_version < base_version:
+        raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
+                                               'Invalid base version, it is '
+                                               'greater than the stored '
+                                               'version')
+      if persisted_version != base_version:
+        return persisted_version
+
+
+    if v1_mutation.HasField('delete'):
+      self.__delete_v1_key(v1_key, v1_txn)
+      version_cache[key] = _NO_VERSION
+    else:
+      self.__put_v1_entity(v1_entity, v1_txn)
+      version_cache[key] = _MINIMUM_VERSION
+
+  def __get_v1_entity_version(self, v1_key, v1_txn):
+    """Returns the version of an entity, or _NO_VERSION if it does not exist.
 
     Args:
-      v3_entity: an entity_pb.EntityProto
-      v3_txn: a datastore_pb.Transaction or None
+      v1_key: the key of the entity to lookup.
+      v1_txn: the transaction to use when retrieving the entity.
 
     Returns:
-      the number of index writes that occurred
-
-    Raises:
-      ApplicationError: if the entity does not exist
+      the version number of the entity if it was found, or _NO_VERSION
+      otherwise.
     """
-    if not v3_txn:
-
-      v3_txn = datastore_pb.Transaction()
-      v3_begin_txn_req = datastore_pb.BeginTransactionRequest()
-      v3_begin_txn_req.set_app(v3_entity.key().app())
-      self.__make_v3_call('BeginTransaction', v3_begin_txn_req, v3_txn)
-      self.__update_v3_entity(v3_entity, v3_txn)
-      v3_resp = datastore_pb.CommitResponse()
-      self.__make_v3_call('Commit', v3_txn, v3_resp)
-      return v3_resp.cost().index_writes()
+    v3_key = entity_pb.Reference()
+    self.__entity_converter.v1_to_v3_reference(v1_key, v3_key)
+    v3_txn = datastore_pb.Transaction()
+    self.__service_converter.v1_to_v3_txn(v1_txn, v3_txn)
 
     v3_get_req = datastore_pb.GetRequest()
     v3_get_req.mutable_transaction().CopyFrom(v3_txn)
-    v3_get_req.key_list().append(v3_entity.key())
+    v3_get_req.key_list().append(v3_key)
     v3_get_resp = datastore_pb.GetResponse()
     self.__make_v3_call('Get', v3_get_req, v3_get_resp)
-    if not v3_get_resp.entity(0).has_entity():
-      raise apiproxy_errors.ApplicationError(datastore_pb.Error.BAD_REQUEST,
-                                             'Entity does not exist.')
+    if v3_get_resp.entity(0).has_entity():
+      return v3_get_resp.entity(0).version()
+    return _NO_VERSION
+
+  def __put_v1_entity(self, v1_entity, v1_txn):
+    """Writes a v1 entity to the datastore in a transaction and return its key.
+
+    Args:
+      v1_entity: the entity to write
+      v1_txn: the transaction in which to write the entity.
+
+    Returns:
+      the key of the entity, which may have been allocated.
+    """
+    v3_entity = entity_pb.EntityProto()
+    self.__entity_converter.v1_to_v3_entity(v1_entity, v3_entity)
+    v3_txn = datastore_pb.Transaction()
+    self.__service_converter.v1_to_v3_txn(v1_txn, v3_txn)
+
     v3_put_req = datastore_pb.PutRequest()
     v3_put_req.mutable_transaction().CopyFrom(v3_txn)
     v3_put_req.entity_list().append(v3_entity)
     v3_put_resp = datastore_pb.PutResponse()
     self.__make_v3_call('Put', v3_put_req, v3_put_resp)
-    return v3_put_resp.cost().index_writes()
+    v3_key = v3_put_resp.key(0)
 
-  def __upsert_v3_entity(self, v3_entity, v3_txn):
-    """Upsert a v3 entity.
+    v1_key = googledatastore.Key()
+    self.__entity_converter.v3_to_v1_key(v3_key, v1_key)
+    return v1_key
 
-    Args:
-      v3_entity: an entity_pb.EntityProto
-      v3_txn: a datastore_pb.Transaction or None
+  def __delete_v1_key(self, v1_key, v1_txn):
+    """Deletes an entity from a v1 key in a transaction."""
+    v3_key = entity_pb.Reference()
+    self.__entity_converter.v1_to_v3_reference(v1_key, v3_key)
+    v3_txn = datastore_pb.Transaction()
+    self.__service_converter.v1_to_v3_txn(v1_txn, v3_txn)
 
-    Returns:
-      a tuple (the number of index writes that occurred,
-               the key of the entity)
-    """
-    v3_put_req = datastore_pb.PutRequest()
-    if v3_txn:
-      v3_put_req.mutable_transaction().CopyFrom(v3_txn)
-    v3_put_req.entity_list().append(v3_entity)
-    v3_put_resp = datastore_pb.PutResponse()
-    self.__make_v3_call('Put', v3_put_req, v3_put_resp)
-    return (v3_put_resp.cost().index_writes(),
-            v3_put_resp.key(0))
-
-  def __delete_v3_reference(self, v3_key, v3_txn):
-    """Deletes a v3 entity.
-
-    Args:
-      v3_key: an entity_pb.Reference
-      v3_txn: a datastore_pb.Transaction or None
-
-    Returns:
-      the number of index writes that occurred
-    """
     v3_delete_req = datastore_pb.DeleteRequest()
-    if v3_txn:
-      v3_delete_req.mutable_transaction().CopyFrom(v3_txn)
+    v3_delete_req.mutable_transaction().CopyFrom(v3_txn)
     v3_delete_req.add_key().CopyFrom(v3_key)
     v3_delete_resp = datastore_pb.DeleteResponse()
     self.__make_v3_call('Delete', v3_delete_req, v3_delete_resp)
-    return v3_delete_resp.cost().index_writes()
-
-  def __apply_v1_mutation(self, v1_mutation, v1_txn):
-    """Applies a v1 Mutation.
-
-    Args:
-      v1_mutation: a googledatastore.Mutation
-      v1_txn: an optional v1 transaction handle or None
-
-    Returns:
-     a tuple (googledatastore.MutationResult, number of index writes)
-    """
-    v3_txn = None
-    v3_key = None
-    if v1_txn:
-      v3_txn = datastore_pb.Transaction()
-      self.__service_converter.v1_to_v3_txn(v1_txn, v3_txn)
-
-
-    if v1_mutation.HasField('insert'):
-      v3_entity = entity_pb.EntityProto()
-      v1_entity = v1_mutation.insert
-      self.__entity_converter.v1_to_v3_entity(v1_entity, v3_entity)
-      index_writes, v3_key = self.__insert_v3_entity(v3_entity, v3_txn)
-
-
-    elif v1_mutation.HasField('update'):
-      v3_entity = entity_pb.EntityProto()
-      self.__entity_converter.v1_to_v3_entity(v1_mutation.update,
-                                              v3_entity)
-      index_writes = self.__update_v3_entity(v3_entity, v3_txn)
-
-
-    elif v1_mutation.HasField('upsert'):
-      v3_entity = entity_pb.EntityProto()
-      v1_entity = v1_mutation.upsert
-      self.__entity_converter.v1_to_v3_entity(v1_entity, v3_entity)
-      index_writes, v3_key = self.__upsert_v3_entity(v3_entity, v3_txn)
-
-
-    elif v1_mutation.HasField('delete'):
-      v3_ref = entity_pb.Reference()
-      self.__entity_converter.v1_to_v3_reference(v1_mutation.delete,
-                                                 v3_ref)
-      index_writes = self.__delete_v3_reference(v3_ref, v3_txn)
-
-    v1_mutation_result = googledatastore.MutationResult()
-    if v3_key and not datastore_pbs.is_complete_v1_key(v1_entity.key):
-      self.__entity_converter.v3_to_v1_key(v3_key, v1_mutation_result.key)
-    return v1_mutation_result, index_writes
 
   def __normalize_v1_run_query_request(self, v1_req):
 

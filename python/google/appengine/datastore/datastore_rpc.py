@@ -83,7 +83,7 @@ _MAX_ID_BATCH_SIZE = 1000 * 1000 * 1000
 
 _DATASTORE_V3 = 'datastore_v3'
 _DATASTORE_V4 = 'datastore_v4'
-_CLOUD_DATASTORE_V1 = 'cloud_datastore_v1'
+_CLOUD_DATASTORE_V1 = 'cloud_datastore_v1beta3'
 
 
 
@@ -2681,6 +2681,44 @@ def _ToDatastoreError(err):
                                                    err.error_detail)
 
 
+_DATASTORE_EXCEPTION_CLASSES = {
+    datastore_pb.Error.BAD_REQUEST: datastore_errors.BadRequestError,
+    datastore_pb.Error.CONCURRENT_TRANSACTION:
+        datastore_errors.TransactionFailedError,
+    datastore_pb.Error.INTERNAL_ERROR: datastore_errors.InternalError,
+    datastore_pb.Error.NEED_INDEX: datastore_errors.NeedIndexError,
+    datastore_pb.Error.TIMEOUT: datastore_errors.Timeout,
+    datastore_pb.Error.BIGTABLE_ERROR: datastore_errors.Timeout,
+    datastore_pb.Error.COMMITTED_BUT_STILL_APPLYING:
+        datastore_errors.CommittedButStillApplying,
+    datastore_pb.Error.CAPABILITY_DISABLED:
+        apiproxy_errors.CapabilityDisabledError,
+}
+
+_CLOUD_DATASTORE_EXCEPTION_CLASSES = {}
+
+if _CLOUD_DATASTORE_ENABLED:
+  _CLOUD_DATASTORE_EXCEPTION_CLASSES = {
+      googledatastore.code_pb2.INVALID_ARGUMENT:
+          datastore_errors.BadRequestError,
+      googledatastore.code_pb2.ABORTED:
+          datastore_errors.TransactionFailedError,
+      googledatastore.code_pb2.FAILED_PRECONDITION:
+
+          datastore_errors.NeedIndexError,
+      googledatastore.code_pb2.DEADLINE_EXCEEDED: datastore_errors.Timeout,
+      googledatastore.code_pb2.PERMISSION_DENIED:
+          datastore_errors.BadRequestError,
+      googledatastore.code_pb2.UNAVAILABLE:
+          apiproxy_errors.RPCFailedError,
+      googledatastore.code_pb2.RESOURCE_EXHAUSTED:
+          apiproxy_errors.OverQuotaError,
+      googledatastore.code_pb2.INTERNAL:
+
+          datastore_errors.InternalError,
+  }
+
+
 def _DatastoreExceptionFromErrorCodeAndDetail(error, detail):
   """Converts a datastore_pb.Error into a datastore_errors.Error.
 
@@ -2691,19 +2729,27 @@ def _DatastoreExceptionFromErrorCodeAndDetail(error, detail):
   Returns:
     An instance of a subclass of datastore_errors.Error.
   """
-  exception_class = {
-      datastore_pb.Error.BAD_REQUEST: datastore_errors.BadRequestError,
-      datastore_pb.Error.CONCURRENT_TRANSACTION:
-          datastore_errors.TransactionFailedError,
-      datastore_pb.Error.INTERNAL_ERROR: datastore_errors.InternalError,
-      datastore_pb.Error.NEED_INDEX: datastore_errors.NeedIndexError,
-      datastore_pb.Error.TIMEOUT: datastore_errors.Timeout,
-      datastore_pb.Error.BIGTABLE_ERROR: datastore_errors.Timeout,
-      datastore_pb.Error.COMMITTED_BUT_STILL_APPLYING:
-          datastore_errors.CommittedButStillApplying,
-      datastore_pb.Error.CAPABILITY_DISABLED:
-          apiproxy_errors.CapabilityDisabledError,
-  }.get(error, datastore_errors.Error)
+  exception_class = _DATASTORE_EXCEPTION_CLASSES.get(error,
+                                                     datastore_errors.Error)
+
+  if detail is None:
+    return exception_class()
+  else:
+    return exception_class(detail)
+
+
+def _DatastoreExceptionFromCanonicalErrorCodeAndDetail(error, detail):
+  """Converts a canonical error code into a datastore_errors.Error.
+
+  Args:
+    error: A canonical error code from google.rpc.code.
+    detail: A string providing extra details about the error.
+
+  Returns:
+    An instance of a subclass of datastore_errors.Error.
+  """
+  exception_class = _CLOUD_DATASTORE_EXCEPTION_CLASSES.get(
+      error, datastore_errors.InternalError)
 
   if detail is None:
     return exception_class()

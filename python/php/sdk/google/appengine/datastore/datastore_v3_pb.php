@@ -18,11 +18,13 @@
 # source: google/appengine/datastore/datastore_v3.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
-  require_once 'google/appengine/api/api_base_pb.php';
-  require_once 'google/appengine/datastore/action_pb.php';
-  require_once 'google/appengine/datastore/entity_pb.php';
-  require_once 'google/appengine/datastore/snapshot_pb.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+    require_once 'google/appengine/api/api_base_pb.php';
+    require_once 'google/appengine/datastore/action_pb.php';
+    require_once 'google/appengine/datastore/entity_pb.php';
+    require_once 'google/appengine/datastore/snapshot_pb.php';
+  }
 }
 namespace google\appengine_datastore_v3 {
   class InternalHeader extends \google\net\ProtocolMessage {

@@ -437,6 +437,7 @@ class AbstractRpcServer(object):
 
 class ContentEncodingHandler(urllib2.BaseHandler):
   """Request and handle HTTP Content-Encoding."""
+
   def http_request(self, request):
 
     request.add_header("Accept-Encoding", "gzip")
@@ -465,9 +466,11 @@ class ContentEncodingHandler(urllib2.BaseHandler):
     encodings = []
     headers = resp.headers
 
+    encoding_header = None
     for header in headers:
       if header.lower() == "content-encoding":
-        for encoding in headers.get(header, "").split(","):
+        encoding_header = header
+        for encoding in headers[header].split(","):
           encoding = encoding.strip()
           if encoding:
             encodings.append(encoding)
@@ -476,7 +479,9 @@ class ContentEncodingHandler(urllib2.BaseHandler):
     if not encodings:
       return resp
 
-    del headers[header]
+
+
+    del headers[encoding_header]
 
     fp = resp
     while encodings and encodings[-1].lower() == "gzip":
@@ -489,7 +494,7 @@ class ContentEncodingHandler(urllib2.BaseHandler):
 
 
 
-      headers[header] = ", ".join(encodings)
+      headers[encoding_header] = ", ".join(encodings)
       logger.warning("Unrecognized Content-Encoding: %s", encodings[-1])
 
     msg = resp.msg

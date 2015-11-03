@@ -18,7 +18,9 @@
 # source: google/appengine/api/source.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace google\appengine {
   class SourceLocation extends \google\net\ProtocolMessage {

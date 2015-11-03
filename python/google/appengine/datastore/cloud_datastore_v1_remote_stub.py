@@ -17,7 +17,9 @@
 """A Cloud Datastore stub that connects to a remote Datastore service."""
 
 from google.appengine.api import apiproxy_rpc
-
+from google.appengine.api import datastore_errors
+from google.appengine.datastore import datastore_pbs
+from google.appengine.datastore import datastore_rpc
 
 class CloudDatastoreV1RemoteStub(object):
   """A stub for calling Cloud Datastore via the Cloud Datastore API."""
@@ -31,14 +33,20 @@ class CloudDatastoreV1RemoteStub(object):
     self._datastore = datastore
 
   def MakeSyncCall(self, service, call, request, response):
-    assert service == 'cloud_datastore_v1'
+    assert service == 'cloud_datastore_v1beta3'
 
 
     call = call[0:1].lower() + call[1:]
 
 
-    response.CopyFrom(
-        self._datastore._call_method(call, request, response.__class__))
+    try:
+      response.CopyFrom(
+          self._datastore._call_method(call, request, response.__class__))
+    except datastore_pbs.googledatastore.RPCError, e:
+      raise datastore_rpc._DatastoreExceptionFromCanonicalErrorCodeAndDetail(
+          e.code, e.message)
+    except Exception, e:
+      raise datastore_errors.InternalError(e)
 
   def CreateRPC(self):
     return apiproxy_rpc.RPC(stub=self)

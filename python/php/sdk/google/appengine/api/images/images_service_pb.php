@@ -18,7 +18,9 @@
 # source: google/appengine/api/images/images_service.proto
 
 namespace dummy {
-  require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  if (!defined('GOOGLE_APPENGINE_CLASSLOADER')) {
+    require_once 'google/appengine/runtime/proto/ProtocolMessage.php';
+  }
 }
 namespace google\appengine\ImagesServiceError {
   class ErrorCode {
@@ -358,6 +360,108 @@ namespace google\appengine {
     public function hasAllowStretch() {
       return isset($this->allow_stretch);
     }
+    public function getWidthSet() {
+      if (!isset($this->width_set)) {
+        return false;
+      }
+      return $this->width_set;
+    }
+    public function setWidthSet($val) {
+      $this->width_set = $val;
+      return $this;
+    }
+    public function clearWidthSet() {
+      unset($this->width_set);
+      return $this;
+    }
+    public function hasWidthSet() {
+      return isset($this->width_set);
+    }
+    public function getHeightSet() {
+      if (!isset($this->height_set)) {
+        return false;
+      }
+      return $this->height_set;
+    }
+    public function setHeightSet($val) {
+      $this->height_set = $val;
+      return $this;
+    }
+    public function clearHeightSet() {
+      unset($this->height_set);
+      return $this;
+    }
+    public function hasHeightSet() {
+      return isset($this->height_set);
+    }
+    public function getCropRightXSet() {
+      if (!isset($this->crop_right_x_set)) {
+        return false;
+      }
+      return $this->crop_right_x_set;
+    }
+    public function setCropRightXSet($val) {
+      $this->crop_right_x_set = $val;
+      return $this;
+    }
+    public function clearCropRightXSet() {
+      unset($this->crop_right_x_set);
+      return $this;
+    }
+    public function hasCropRightXSet() {
+      return isset($this->crop_right_x_set);
+    }
+    public function getCropBottomYSet() {
+      if (!isset($this->crop_bottom_y_set)) {
+        return false;
+      }
+      return $this->crop_bottom_y_set;
+    }
+    public function setCropBottomYSet($val) {
+      $this->crop_bottom_y_set = $val;
+      return $this;
+    }
+    public function clearCropBottomYSet() {
+      unset($this->crop_bottom_y_set);
+      return $this;
+    }
+    public function hasCropBottomYSet() {
+      return isset($this->crop_bottom_y_set);
+    }
+    public function getCropOffsetXSet() {
+      if (!isset($this->crop_offset_x_set)) {
+        return false;
+      }
+      return $this->crop_offset_x_set;
+    }
+    public function setCropOffsetXSet($val) {
+      $this->crop_offset_x_set = $val;
+      return $this;
+    }
+    public function clearCropOffsetXSet() {
+      unset($this->crop_offset_x_set);
+      return $this;
+    }
+    public function hasCropOffsetXSet() {
+      return isset($this->crop_offset_x_set);
+    }
+    public function getCropOffsetYSet() {
+      if (!isset($this->crop_offset_y_set)) {
+        return false;
+      }
+      return $this->crop_offset_y_set;
+    }
+    public function setCropOffsetYSet($val) {
+      $this->crop_offset_y_set = $val;
+      return $this;
+    }
+    public function clearCropOffsetYSet() {
+      unset($this->crop_offset_y_set);
+      return $this;
+    }
+    public function hasCropOffsetYSet() {
+      return isset($this->crop_offset_y_set);
+    }
     public function clear() {
       $this->clearWidth();
       $this->clearHeight();
@@ -373,6 +477,12 @@ namespace google\appengine {
       $this->clearCropOffsetX();
       $this->clearCropOffsetY();
       $this->clearAllowStretch();
+      $this->clearWidthSet();
+      $this->clearHeightSet();
+      $this->clearCropRightXSet();
+      $this->clearCropBottomYSet();
+      $this->clearCropOffsetXSet();
+      $this->clearCropOffsetYSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -420,6 +530,24 @@ namespace google\appengine {
       }
       if (isset($this->allow_stretch)) {
         $res += 2;
+      }
+      if (isset($this->width_set)) {
+        $res += 3;
+      }
+      if (isset($this->height_set)) {
+        $res += 3;
+      }
+      if (isset($this->crop_right_x_set)) {
+        $res += 3;
+      }
+      if (isset($this->crop_bottom_y_set)) {
+        $res += 3;
+      }
+      if (isset($this->crop_offset_x_set)) {
+        $res += 3;
+      }
+      if (isset($this->crop_offset_y_set)) {
+        $res += 3;
       }
       return $res;
     }
@@ -480,6 +608,30 @@ namespace google\appengine {
         $out->putVarInt32(112);
         $out->putBoolean($this->allow_stretch);
       }
+      if (isset($this->width_set)) {
+        $out->putVarInt32(808);
+        $out->putBoolean($this->width_set);
+      }
+      if (isset($this->height_set)) {
+        $out->putVarInt32(816);
+        $out->putBoolean($this->height_set);
+      }
+      if (isset($this->crop_right_x_set)) {
+        $out->putVarInt32(864);
+        $out->putBoolean($this->crop_right_x_set);
+      }
+      if (isset($this->crop_bottom_y_set)) {
+        $out->putVarInt32(872);
+        $out->putBoolean($this->crop_bottom_y_set);
+      }
+      if (isset($this->crop_offset_x_set)) {
+        $out->putVarInt32(896);
+        $out->putBoolean($this->crop_offset_x_set);
+      }
+      if (isset($this->crop_offset_y_set)) {
+        $out->putVarInt32(904);
+        $out->putBoolean($this->crop_offset_y_set);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -526,6 +678,24 @@ namespace google\appengine {
             break;
           case 112:
             $this->setAllowStretch($d->getBoolean());
+            break;
+          case 808:
+            $this->setWidthSet($d->getBoolean());
+            break;
+          case 816:
+            $this->setHeightSet($d->getBoolean());
+            break;
+          case 864:
+            $this->setCropRightXSet($d->getBoolean());
+            break;
+          case 872:
+            $this->setCropBottomYSet($d->getBoolean());
+            break;
+          case 896:
+            $this->setCropOffsetXSet($d->getBoolean());
+            break;
+          case 904:
+            $this->setCropOffsetYSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -582,6 +752,24 @@ namespace google\appengine {
       if ($x->hasAllowStretch()) {
         $this->setAllowStretch($x->getAllowStretch());
       }
+      if ($x->hasWidthSet()) {
+        $this->setWidthSet($x->getWidthSet());
+      }
+      if ($x->hasHeightSet()) {
+        $this->setHeightSet($x->getHeightSet());
+      }
+      if ($x->hasCropRightXSet()) {
+        $this->setCropRightXSet($x->getCropRightXSet());
+      }
+      if ($x->hasCropBottomYSet()) {
+        $this->setCropBottomYSet($x->getCropBottomYSet());
+      }
+      if ($x->hasCropOffsetXSet()) {
+        $this->setCropOffsetXSet($x->getCropOffsetXSet());
+      }
+      if ($x->hasCropOffsetYSet()) {
+        $this->setCropOffsetYSet($x->getCropOffsetYSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -613,6 +801,18 @@ namespace google\appengine {
       if (isset($this->crop_offset_y) && $this->crop_offset_y !== $x->crop_offset_y) return false;
       if (isset($this->allow_stretch) !== isset($x->allow_stretch)) return false;
       if (isset($this->allow_stretch) && $this->allow_stretch !== $x->allow_stretch) return false;
+      if (isset($this->width_set) !== isset($x->width_set)) return false;
+      if (isset($this->width_set) && $this->width_set !== $x->width_set) return false;
+      if (isset($this->height_set) !== isset($x->height_set)) return false;
+      if (isset($this->height_set) && $this->height_set !== $x->height_set) return false;
+      if (isset($this->crop_right_x_set) !== isset($x->crop_right_x_set)) return false;
+      if (isset($this->crop_right_x_set) && $this->crop_right_x_set !== $x->crop_right_x_set) return false;
+      if (isset($this->crop_bottom_y_set) !== isset($x->crop_bottom_y_set)) return false;
+      if (isset($this->crop_bottom_y_set) && $this->crop_bottom_y_set !== $x->crop_bottom_y_set) return false;
+      if (isset($this->crop_offset_x_set) !== isset($x->crop_offset_x_set)) return false;
+      if (isset($this->crop_offset_x_set) && $this->crop_offset_x_set !== $x->crop_offset_x_set) return false;
+      if (isset($this->crop_offset_y_set) !== isset($x->crop_offset_y_set)) return false;
+      if (isset($this->crop_offset_y_set) && $this->crop_offset_y_set !== $x->crop_offset_y_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -658,6 +858,24 @@ namespace google\appengine {
       }
       if (isset($this->allow_stretch)) {
         $res .= $prefix . "allow_stretch: " . $this->debugFormatBool($this->allow_stretch) . "\n";
+      }
+      if (isset($this->width_set)) {
+        $res .= $prefix . "width_set: " . $this->debugFormatBool($this->width_set) . "\n";
+      }
+      if (isset($this->height_set)) {
+        $res .= $prefix . "height_set: " . $this->debugFormatBool($this->height_set) . "\n";
+      }
+      if (isset($this->crop_right_x_set)) {
+        $res .= $prefix . "crop_right_x_set: " . $this->debugFormatBool($this->crop_right_x_set) . "\n";
+      }
+      if (isset($this->crop_bottom_y_set)) {
+        $res .= $prefix . "crop_bottom_y_set: " . $this->debugFormatBool($this->crop_bottom_y_set) . "\n";
+      }
+      if (isset($this->crop_offset_x_set)) {
+        $res .= $prefix . "crop_offset_x_set: " . $this->debugFormatBool($this->crop_offset_x_set) . "\n";
+      }
+      if (isset($this->crop_offset_y_set)) {
+        $res .= $prefix . "crop_offset_y_set: " . $this->debugFormatBool($this->crop_offset_y_set) . "\n";
       }
       return $res;
     }
@@ -733,11 +951,29 @@ namespace google\appengine {
     public function hasHeight() {
       return isset($this->height);
     }
+    public function getBlobKeySet() {
+      if (!isset($this->blob_key_set)) {
+        return false;
+      }
+      return $this->blob_key_set;
+    }
+    public function setBlobKeySet($val) {
+      $this->blob_key_set = $val;
+      return $this;
+    }
+    public function clearBlobKeySet() {
+      unset($this->blob_key_set);
+      return $this;
+    }
+    public function hasBlobKeySet() {
+      return isset($this->blob_key_set);
+    }
     public function clear() {
       $this->clearContent();
       $this->clearBlobKey();
       $this->clearWidth();
       $this->clearHeight();
+      $this->clearBlobKeySet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -757,6 +993,9 @@ namespace google\appengine {
         $res += 1;
         $res += $this->lengthVarInt64($this->height);
       }
+      if (isset($this->blob_key_set)) {
+        $res += 3;
+      }
       return $res;
     }
     public function outputPartial($out) {
@@ -775,6 +1014,10 @@ namespace google\appengine {
       if (isset($this->height)) {
         $out->putVarInt32(32);
         $out->putVarInt32($this->height);
+      }
+      if (isset($this->blob_key_set)) {
+        $out->putVarInt32(816);
+        $out->putBoolean($this->blob_key_set);
       }
     }
     public function tryMerge($d) {
@@ -796,6 +1039,9 @@ namespace google\appengine {
             break;
           case 32:
             $this->setHeight($d->getVarInt32());
+            break;
+          case 816:
+            $this->setBlobKeySet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -823,6 +1069,9 @@ namespace google\appengine {
       if ($x->hasHeight()) {
         $this->setHeight($x->getHeight());
       }
+      if ($x->hasBlobKeySet()) {
+        $this->setBlobKeySet($x->getBlobKeySet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -834,6 +1083,8 @@ namespace google\appengine {
       if (isset($this->width) && !$this->integerEquals($this->width, $x->width)) return false;
       if (isset($this->height) !== isset($x->height)) return false;
       if (isset($this->height) && !$this->integerEquals($this->height, $x->height)) return false;
+      if (isset($this->blob_key_set) !== isset($x->blob_key_set)) return false;
+      if (isset($this->blob_key_set) && $this->blob_key_set !== $x->blob_key_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -849,6 +1100,9 @@ namespace google\appengine {
       }
       if (isset($this->height)) {
         $res .= $prefix . "height: " . $this->debugFormatInt32($this->height) . "\n";
+      }
+      if (isset($this->blob_key_set)) {
+        $res .= $prefix . "blob_key_set: " . $this->debugFormatBool($this->blob_key_set) . "\n";
       }
       return $res;
     }
@@ -913,10 +1167,46 @@ namespace google\appengine {
     public function hasTransparentSubstitutionRgb() {
       return isset($this->transparent_substitution_rgb);
     }
+    public function getCorrectExifOrientationSet() {
+      if (!isset($this->correct_exif_orientation_set)) {
+        return false;
+      }
+      return $this->correct_exif_orientation_set;
+    }
+    public function setCorrectExifOrientationSet($val) {
+      $this->correct_exif_orientation_set = $val;
+      return $this;
+    }
+    public function clearCorrectExifOrientationSet() {
+      unset($this->correct_exif_orientation_set);
+      return $this;
+    }
+    public function hasCorrectExifOrientationSet() {
+      return isset($this->correct_exif_orientation_set);
+    }
+    public function getTransparentSubstitutionRgbSet() {
+      if (!isset($this->transparent_substitution_rgb_set)) {
+        return false;
+      }
+      return $this->transparent_substitution_rgb_set;
+    }
+    public function setTransparentSubstitutionRgbSet($val) {
+      $this->transparent_substitution_rgb_set = $val;
+      return $this;
+    }
+    public function clearTransparentSubstitutionRgbSet() {
+      unset($this->transparent_substitution_rgb_set);
+      return $this;
+    }
+    public function hasTransparentSubstitutionRgbSet() {
+      return isset($this->transparent_substitution_rgb_set);
+    }
     public function clear() {
       $this->clearCorrectExifOrientation();
       $this->clearParseMetadata();
       $this->clearTransparentSubstitutionRgb();
+      $this->clearCorrectExifOrientationSet();
+      $this->clearTransparentSubstitutionRgbSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -930,6 +1220,12 @@ namespace google\appengine {
       if (isset($this->transparent_substitution_rgb)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->transparent_substitution_rgb);
+      }
+      if (isset($this->correct_exif_orientation_set)) {
+        $res += 3;
+      }
+      if (isset($this->transparent_substitution_rgb_set)) {
+        $res += 3;
       }
       return $res;
     }
@@ -946,6 +1242,14 @@ namespace google\appengine {
         $out->putVarInt32(24);
         $out->putVarInt32($this->transparent_substitution_rgb);
       }
+      if (isset($this->correct_exif_orientation_set)) {
+        $out->putVarInt32(808);
+        $out->putBoolean($this->correct_exif_orientation_set);
+      }
+      if (isset($this->transparent_substitution_rgb_set)) {
+        $out->putVarInt32(824);
+        $out->putBoolean($this->transparent_substitution_rgb_set);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -959,6 +1263,12 @@ namespace google\appengine {
             break;
           case 24:
             $this->setTransparentSubstitutionRgb($d->getVarInt32());
+            break;
+          case 808:
+            $this->setCorrectExifOrientationSet($d->getBoolean());
+            break;
+          case 824:
+            $this->setTransparentSubstitutionRgbSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -982,6 +1292,12 @@ namespace google\appengine {
       if ($x->hasTransparentSubstitutionRgb()) {
         $this->setTransparentSubstitutionRgb($x->getTransparentSubstitutionRgb());
       }
+      if ($x->hasCorrectExifOrientationSet()) {
+        $this->setCorrectExifOrientationSet($x->getCorrectExifOrientationSet());
+      }
+      if ($x->hasTransparentSubstitutionRgbSet()) {
+        $this->setTransparentSubstitutionRgbSet($x->getTransparentSubstitutionRgbSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -991,6 +1307,10 @@ namespace google\appengine {
       if (isset($this->parse_metadata) && $this->parse_metadata !== $x->parse_metadata) return false;
       if (isset($this->transparent_substitution_rgb) !== isset($x->transparent_substitution_rgb)) return false;
       if (isset($this->transparent_substitution_rgb) && !$this->integerEquals($this->transparent_substitution_rgb, $x->transparent_substitution_rgb)) return false;
+      if (isset($this->correct_exif_orientation_set) !== isset($x->correct_exif_orientation_set)) return false;
+      if (isset($this->correct_exif_orientation_set) && $this->correct_exif_orientation_set !== $x->correct_exif_orientation_set) return false;
+      if (isset($this->transparent_substitution_rgb_set) !== isset($x->transparent_substitution_rgb_set)) return false;
+      if (isset($this->transparent_substitution_rgb_set) && $this->transparent_substitution_rgb_set !== $x->transparent_substitution_rgb_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1003,6 +1323,12 @@ namespace google\appengine {
       }
       if (isset($this->transparent_substitution_rgb)) {
         $res .= $prefix . "transparent_substitution_rgb: " . $this->debugFormatInt32($this->transparent_substitution_rgb) . "\n";
+      }
+      if (isset($this->correct_exif_orientation_set)) {
+        $res .= $prefix . "correct_exif_orientation_set: " . $this->debugFormatBool($this->correct_exif_orientation_set) . "\n";
+      }
+      if (isset($this->transparent_substitution_rgb_set)) {
+        $res .= $prefix . "transparent_substitution_rgb_set: " . $this->debugFormatBool($this->transparent_substitution_rgb_set) . "\n";
       }
       return $res;
     }
@@ -1808,11 +2134,29 @@ namespace google\appengine {
     public function hasColor() {
       return isset($this->color);
     }
+    public function getColorSet() {
+      if (!isset($this->color_set)) {
+        return false;
+      }
+      return $this->color_set;
+    }
+    public function setColorSet($val) {
+      $this->color_set = $val;
+      return $this;
+    }
+    public function clearColorSet() {
+      unset($this->color_set);
+      return $this;
+    }
+    public function hasColorSet() {
+      return isset($this->color_set);
+    }
     public function clear() {
       $this->clearWidth();
       $this->clearHeight();
       $this->clearOutput();
       $this->clearColor();
+      $this->clearColorSet();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1831,6 +2175,9 @@ namespace google\appengine {
       if (isset($this->color)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->color);
+      }
+      if (isset($this->color_set)) {
+        $res += 3;
       }
       return $res;
     }
@@ -1852,6 +2199,10 @@ namespace google\appengine {
         $out->putVarInt32(32);
         $out->putVarInt32($this->color);
       }
+      if (isset($this->color_set)) {
+        $out->putVarInt32(832);
+        $out->putBoolean($this->color_set);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -1871,6 +2222,9 @@ namespace google\appengine {
             break;
           case 32:
             $this->setColor($d->getVarInt32());
+            break;
+          case 832:
+            $this->setColorSet($d->getBoolean());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -1900,6 +2254,9 @@ namespace google\appengine {
       if ($x->hasColor()) {
         $this->setColor($x->getColor());
       }
+      if ($x->hasColorSet()) {
+        $this->setColorSet($x->getColorSet());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1911,6 +2268,8 @@ namespace google\appengine {
       if (isset($this->output) && !$this->output->equals($x->output)) return false;
       if (isset($this->color) !== isset($x->color)) return false;
       if (isset($this->color) && !$this->integerEquals($this->color, $x->color)) return false;
+      if (isset($this->color_set) !== isset($x->color_set)) return false;
+      if (isset($this->color_set) && $this->color_set !== $x->color_set) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1926,6 +2285,9 @@ namespace google\appengine {
       }
       if (isset($this->color)) {
         $res .= $prefix . "color: " . $this->debugFormatInt32($this->color) . "\n";
+      }
+      if (isset($this->color_set)) {
+        $res .= $prefix . "color_set: " . $this->debugFormatBool($this->color_set) . "\n";
       }
       return $res;
     }

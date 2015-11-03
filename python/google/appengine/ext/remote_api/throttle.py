@@ -588,19 +588,24 @@ class ThrottledHttpRpcServer(appengine_rpc.HttpRpcServer):
     return opener
 
 
-def ThrottledHttpRpcServerFactory(throttle, throttle_class=None):
-  """Create a factory to produce ThrottledHttpRpcServer for a given throttle.
+class ThrottledHttpRpcServerFactory(object):
+  """A factory to produce ThrottledHttpRpcServer for a given throttle."""
 
-  Args:
-    throttle: A Throttle instance to use for the ThrottledHttpRpcServer.
-    throttle_class: A class to use instead of the default
-      ThrottledHttpRpcServer.
+  def __init__(self, throttle, throttle_class=None):
+    """Initialize a ThrottledHttpRpcServerFactory.
 
-  Returns:
-    A factory to produce a ThrottledHttpRpcServer.
-  """
+    Args:
+      throttle: A Throttle instance to use for the ThrottledHttpRpcServer.
+      throttle_class: A class to use instead of the default
+        ThrottledHttpRpcServer.
 
-  def MakeRpcServer(*args, **kwargs):
+    Returns:
+      A factory to produce a ThrottledHttpRpcServer.
+    """
+    self.throttle = throttle
+    self.throttle_class = throttle_class
+
+  def __call__(self, *args, **kwargs):
     """Factory to produce a ThrottledHttpRpcServer.
 
     Args:
@@ -614,12 +619,11 @@ def ThrottledHttpRpcServerFactory(throttle, throttle_class=None):
     kwargs['account_type'] = 'HOSTED_OR_GOOGLE'
 
     kwargs['save_cookies'] = True
-    if throttle_class:
-      rpc_server = throttle_class(throttle, *args, **kwargs)
+    if self.throttle_class:
+      rpc_server = self.throttle_class(self.throttle, *args, **kwargs)
     else:
-      rpc_server = ThrottledHttpRpcServer(throttle, *args, **kwargs)
+      rpc_server = ThrottledHttpRpcServer(self.throttle, *args, **kwargs)
     return rpc_server
-  return MakeRpcServer
 
 
 class Throttler(object):

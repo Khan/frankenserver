@@ -25,50 +25,50 @@ from google.appengine._internal.antlr3.compat import set, frozenset
 HIDDEN = BaseRecognizer.HIDDEN
 
 
-FUNCTION=8
-FIX=30
-ESC=36
-OCTAL_ESC=35
-FUZZY=9
-NOT=28
-AND=26
-ESCAPED_CHAR=44
-EOF=-1
-LPAREN=24
-HAS=23
-QUOTE=33
-RPAREN=25
-START_CHAR=39
-EXCLAMATION=46
-COMMA=29
-ARGS=4
-DIGIT=43
-EQ=22
-NE=21
-LESSTHAN=18
-GE=19
-TEXT_ESC=41
-CONJUNCTION=5
-UNICODE_ESC=34
-HEX_DIGIT=45
-LITERAL=11
-VALUE=15
-TEXT=32
-MINUS=38
-NUMBER_PREFIX=40
 REWRITE=31
-EMPTY=7
-SEQUENCE=14
-DISJUNCTION=6
-WS=16
-NEGATION=12
-OR=27
-GT=20
-GLOBAL=10
-LE=17
-MID_CHAR=42
-STRING=13
+NUMBER_PREFIX=40
+UNICODE_ESC=34
+TEXT=32
+VALUE=15
+MINUS=38
 BACKSLASH=37
+DISJUNCTION=6
+OCTAL_ESC=35
+LITERAL=11
+TEXT_ESC=41
+LPAREN=24
+RPAREN=25
+EQ=22
+FUNCTION=8
+NOT=28
+NE=21
+AND=26
+QUOTE=33
+ESCAPED_CHAR=44
+ARGS=4
+MID_CHAR=42
+START_CHAR=39
+ESC=36
+SEQUENCE=14
+GLOBAL=10
+HEX_DIGIT=45
+WS=16
+EOF=-1
+EMPTY=7
+GE=19
+COMMA=29
+OR=27
+FUZZY=9
+NEGATION=12
+GT=20
+DIGIT=43
+CONJUNCTION=5
+FIX=30
+EXCLAMATION=46
+LESSTHAN=18
+STRING=13
+LE=17
+HAS=23
 
 
 class QueryLexer(Lexer):
@@ -890,9 +890,9 @@ class QueryLexer(Lexer):
                     LA6_2 = self.input.LA(3)
 
                     if ((48 <= LA6_2 <= 55)) :
-                        LA6_5 = self.input.LA(4)
+                        LA6_4 = self.input.LA(4)
 
-                        if ((48 <= LA6_5 <= 55)) :
+                        if ((48 <= LA6_4 <= 55)) :
                             alt6 = 1
                         else:
                             alt6 = 2

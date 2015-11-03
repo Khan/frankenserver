@@ -57,7 +57,7 @@ final class User {
       $federated_identity = null,
       $federated_provider = null,
       $user_id = null) {
-    $auth_domain = getenv('AUTH_DOMAIN');
+    $auth_domain = UserServiceUtil::getUserEnvironmentVariable('AUTH_DOMAIN');
     assert($auth_domain !== false);
 
     if ($email === null and $federated_identity === null) {
