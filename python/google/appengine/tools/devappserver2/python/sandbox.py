@@ -21,6 +21,7 @@
 import __builtin__
 import imp
 import os
+import platform
 import re
 import sys
 import traceback
@@ -161,7 +162,11 @@ def enable_sandbox(config):
   # Note that the above code (see _find_shared_object_c_module) imports modules
   # that must be pruned so please use care if you move the call to
   # _prune_sys_modules.
-  _prune_sys_modules()
+  #
+  # Also note that _prune_sys_modules may not make sense for non-CPython
+  # environments, so in that situation, don't.
+  if platform.python_implementation() == 'CPython':
+    _prune_sys_modules()
   path_override_hook = PathOverrideImportHook(
       set(_THIRD_PARTY_LIBRARY_NAME_OVERRIDES.get(lib.name, lib.name)
           for lib in config.libraries).intersection(_C_MODULES))
