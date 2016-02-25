@@ -94,7 +94,22 @@ except ImportError:
     import StringIO
 DEFAULT_BUFFER_SIZE = -1
 
-_fileobject_uses_str_type = isinstance(socket._fileobject(None)._rbuf, basestring)
+class RefCounter(object):
+    """This is needed for pypy's _fileobject() constructor, in pypy2.4."""
+    def __init__(self, *args, **kwargs):
+        self.__count = 0
+        super(RefCounter, self).__init__(*args, **kwargs)
+
+    def _drop(self):
+        self.__count -= 1
+        if self.__count <= 0 and getattr(self, 'close'):
+            self.close()
+
+    def _reuse(self):
+        self.__count += 1
+
+_fileobject_uses_str_type = isinstance(socket._fileobject(RefCounter())._rbuf,
+                                       basestring)
 
 import threading
 import time
