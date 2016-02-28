@@ -1,3 +1,3 @@
-git+https://github.com/Khan/pyobjc-core
-git+https://github.com/Khan/pyobjc-framework-Cocoa
-git+https://github.com/Khan/pyobjc-framework-FSEvents
+pyobjc-core==3.0.4
+pyobjc-framework-Cocoa==3.0.4
+pyobjc-framework-FSEvents==3.0.4
