@@ -23,6 +23,7 @@
 
 
 
+
 class Error(Exception):
   """Base APIProxy error type."""
 
@@ -40,7 +41,11 @@ class ArgumentError(Error):
 
 
 class DeadlineExceededError(Error):
-  """Raised by APIProxy calls if the call took too long to respond."""
+  """Raised by APIProxy calls if the call took too long to respond.
+
+  Not to be confused with runtime.DeadlineExceededError.
+  That one is raised when the overall HTTP response deadline is exceeded.
+  """
 
 
 class CancelledError(Error):
@@ -63,17 +68,22 @@ class OverQuotaError(Error):
   """Raised by APIProxy calls when they have been blocked due to a lack of
   available quota."""
 
+
 class RequestTooLargeError(Error):
   """Raised by APIProxy calls if the request was too large."""
+
 
 class ResponseTooLargeError(Error):
   """Raised by APIProxy calls if the response was too large."""
 
+
 class CapabilityDisabledError(Error):
   """Raised by APIProxy when API calls are temporarily disabled."""
 
+
 class FeatureNotEnabledError(Error):
   """Raised by APIProxy when the app must enable a feature to use this call."""
+
 
 class InterruptedError(Error):
   """Raised by APIProxy.Wait() when the wait is interrupted by an uncaught
@@ -92,3 +102,7 @@ class InterruptedError(Error):
   @property
   def exception(self):
     return self.__exception
+
+
+class RpcAuthorityError(Error):
+  """Raised by APIProxy when loading rpc authority from the environment."""

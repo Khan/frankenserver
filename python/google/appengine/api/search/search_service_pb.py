@@ -7234,6 +7234,8 @@ class SearchResponse(_ExtendableProtocolMessage):
   has_status_ = 0
   has_cursor_ = 0
   cursor_ = ""
+  has_docs_scored_ = 0
+  docs_scored_ = 0
 
   def __init__(self, contents=None):
     if _extension_runtime:
@@ -7309,6 +7311,19 @@ class SearchResponse(_ExtendableProtocolMessage):
 
   def clear_facet_result(self):
     self.facet_result_ = []
+  def docs_scored(self): return self.docs_scored_
+
+  def set_docs_scored(self, x):
+    self.has_docs_scored_ = 1
+    self.docs_scored_ = x
+
+  def clear_docs_scored(self):
+    if self.has_docs_scored_:
+      self.has_docs_scored_ = 0
+      self.docs_scored_ = 0
+
+  def has_docs_scored(self): return self.has_docs_scored_
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -7317,6 +7332,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if (x.has_status()): self.mutable_status().MergeFrom(x.status())
     if (x.has_cursor()): self.set_cursor(x.cursor())
     for i in xrange(x.facet_result_size()): self.add_facet_result().CopyFrom(x.facet_result(i))
+    if (x.has_docs_scored()): self.set_docs_scored(x.docs_scored())
     if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
@@ -7333,6 +7349,8 @@ class SearchResponse(_ExtendableProtocolMessage):
     if len(self.facet_result_) != len(x.facet_result_): return 0
     for e1, e2 in zip(self.facet_result_, x.facet_result_):
       if e1 != e2: return 0
+    if self.has_docs_scored_ != x.has_docs_scored_: return 0
+    if self.has_docs_scored_ and self.docs_scored_ != x.docs_scored_: return 0
     if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
@@ -7362,6 +7380,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     n += 1 * len(self.facet_result_)
     for i in xrange(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSize())
+    if (self.has_docs_scored_): n += 1 + self.lengthVarInt64(self.docs_scored_)
     if _extension_runtime:
       n += self._ExtensionByteSize(False)
     return n + 2
@@ -7379,6 +7398,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     if (self.has_cursor_): n += 1 + self.lengthString(len(self.cursor_))
     n += 1 * len(self.facet_result_)
     for i in xrange(len(self.facet_result_)): n += self.lengthString(self.facet_result_[i].ByteSizePartial())
+    if (self.has_docs_scored_): n += 1 + self.lengthVarInt64(self.docs_scored_)
     if _extension_runtime:
       n += self._ExtensionByteSize(True)
     return n
@@ -7389,6 +7409,7 @@ class SearchResponse(_ExtendableProtocolMessage):
     self.clear_status()
     self.clear_cursor()
     self.clear_facet_result()
+    self.clear_docs_scored()
     if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
@@ -7411,6 +7432,9 @@ class SearchResponse(_ExtendableProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.facet_result_[i].ByteSize())
       self.facet_result_[i].OutputUnchecked(out)
+    if (self.has_docs_scored_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.docs_scored_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 10000)
 
@@ -7436,6 +7460,9 @@ class SearchResponse(_ExtendableProtocolMessage):
       out.putVarInt32(42)
       out.putVarInt32(self.facet_result_[i].ByteSizePartial())
       self.facet_result_[i].OutputPartial(out)
+    if (self.has_docs_scored_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.docs_scored_)
     if _extension_runtime:
       extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 10000)
 
@@ -7465,6 +7492,9 @@ class SearchResponse(_ExtendableProtocolMessage):
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
         self.add_facet_result().TryMerge(tmp)
+        continue
+      if tt == 48:
+        self.set_docs_scored(d.getVarInt32())
         continue
       if _extension_runtime:
         if (1000 <= tt and tt < 10000):
@@ -7500,6 +7530,7 @@ class SearchResponse(_ExtendableProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if self.has_docs_scored_: res+=prefix+("docs_scored: %s\n" % self.DebugFormatInt32(self.docs_scored_))
     if _extension_runtime:
       res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
@@ -7515,6 +7546,7 @@ class SearchResponse(_ExtendableProtocolMessage):
   kstatus = 3
   kcursor = 4
   kfacet_result = 5
+  kdocs_scored = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -7523,7 +7555,8 @@ class SearchResponse(_ExtendableProtocolMessage):
     3: "status",
     4: "cursor",
     5: "facet_result",
-  }, 5)
+    6: "docs_scored",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -7532,7 +7565,8 @@ class SearchResponse(_ExtendableProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.NUMERIC,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

@@ -445,11 +445,11 @@ class DatastoreIndexesAutoXmlUpdater(object):
     counts = []
     for (kind, ancestor, props), count in sorted(index_dict.iteritems()):
       properties = []
-      for name, direction_code in props:
+      for prop in props:
         direction = (
-            'asc' if direction_code == datastore_index.ASCENDING else 'desc')
+            'asc' if prop.direction == datastore_index.ASCENDING else 'desc')
         properties.append(
-            datastore_index.Property(name=name, direction=direction))
+            datastore_index.Property(name=prop.name, direction=direction))
 
       indexes.append(datastore_index.Index(
           kind=kind, ancestor=bool(ancestor), properties=properties))

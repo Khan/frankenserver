@@ -121,7 +121,7 @@ final class Glob {
     $basename = static::getBaseNameForPath($filename);
 
     $results = [];
-    $handle = opendir($openpath);
+    $handle = @opendir($openpath);
 
     if ($handle === false) {
       return false;

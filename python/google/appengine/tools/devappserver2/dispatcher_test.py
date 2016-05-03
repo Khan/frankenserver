@@ -53,6 +53,7 @@ class ModuleConfigurationStub(object):
     self.major_version = version
     self.version_id = '%s:%s.%s' % (module_name, version, '12345')
     self.runtime = 'python27'
+    self.effective_runtime = self.runtime
     self.threadsafe = False
     self.handlers = []
     self.skip_files = []

@@ -679,28 +679,28 @@ namespace storage_onestore_v3\PropertyValue {
     public function hasNameSpace() {
       return isset($this->name_space);
     }
-    public function getDatabase() {
-      if (!isset($this->database)) {
+    public function getDatabaseId() {
+      if (!isset($this->database_id)) {
         return '';
       }
-      return $this->database;
+      return $this->database_id;
     }
-    public function setDatabase($val) {
-      $this->database = $val;
+    public function setDatabaseId($val) {
+      $this->database_id = $val;
       return $this;
     }
-    public function clearDatabase() {
-      unset($this->database);
+    public function clearDatabaseId() {
+      unset($this->database_id);
       return $this;
     }
-    public function hasDatabase() {
-      return isset($this->database);
+    public function hasDatabaseId() {
+      return isset($this->database_id);
     }
     public function clear() {
       $this->clearApp();
       $this->clearPathElement();
       $this->clearNameSpace();
-      $this->clearDatabase();
+      $this->clearDatabaseId();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -717,9 +717,9 @@ namespace storage_onestore_v3\PropertyValue {
         $res += 2;
         $res += $this->lengthString(strlen($this->name_space));
       }
-      if (isset($this->database)) {
+      if (isset($this->database_id)) {
         $res += 2;
-        $res += $this->lengthString(strlen($this->database));
+        $res += $this->lengthString(strlen($this->database_id));
       }
       return $res;
     }
@@ -738,9 +738,9 @@ namespace storage_onestore_v3\PropertyValue {
         $out->putVarInt32(162);
         $out->putPrefixedString($this->name_space);
       }
-      if (isset($this->database)) {
+      if (isset($this->database_id)) {
         $out->putVarInt32(186);
-        $out->putPrefixedString($this->database);
+        $out->putPrefixedString($this->database_id);
       }
     }
     public function tryMerge($d) {
@@ -763,7 +763,7 @@ namespace storage_onestore_v3\PropertyValue {
             break;
           case 186:
             $length = $d->getVarInt32();
-            $this->setDatabase(substr($d->buffer(), $d->pos(), $length));
+            $this->setDatabaseId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -792,8 +792,8 @@ namespace storage_onestore_v3\PropertyValue {
       if ($x->hasNameSpace()) {
         $this->setNameSpace($x->getNameSpace());
       }
-      if ($x->hasDatabase()) {
-        $this->setDatabase($x->getDatabase());
+      if ($x->hasDatabaseId()) {
+        $this->setDatabaseId($x->getDatabaseId());
       }
     }
     public function equals($x) {
@@ -806,8 +806,8 @@ namespace storage_onestore_v3\PropertyValue {
       }
       if (isset($this->name_space) !== isset($x->name_space)) return false;
       if (isset($this->name_space) && $this->name_space !== $x->name_space) return false;
-      if (isset($this->database) !== isset($x->database)) return false;
-      if (isset($this->database) && $this->database !== $x->database) return false;
+      if (isset($this->database_id) !== isset($x->database_id)) return false;
+      if (isset($this->database_id) && $this->database_id !== $x->database_id) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -821,8 +821,8 @@ namespace storage_onestore_v3\PropertyValue {
       if (isset($this->name_space)) {
         $res .= $prefix . "name_space: " . $this->debugFormatString($this->name_space) . "\n";
       }
-      if (isset($this->database)) {
-        $res .= $prefix . "database: " . $this->debugFormatString($this->database) . "\n";
+      if (isset($this->database_id)) {
+        $res .= $prefix . "database_id: " . $this->debugFormatString($this->database_id) . "\n";
       }
       return $res;
     }
@@ -1801,28 +1801,28 @@ namespace storage_onestore_v3 {
     public function hasNameSpace() {
       return isset($this->name_space);
     }
-    public function getDatabase() {
-      if (!isset($this->database)) {
+    public function getDatabaseId() {
+      if (!isset($this->database_id)) {
         return '';
       }
-      return $this->database;
+      return $this->database_id;
     }
-    public function setDatabase($val) {
-      $this->database = $val;
+    public function setDatabaseId($val) {
+      $this->database_id = $val;
       return $this;
     }
-    public function clearDatabase() {
-      unset($this->database);
+    public function clearDatabaseId() {
+      unset($this->database_id);
       return $this;
     }
-    public function hasDatabase() {
-      return isset($this->database);
+    public function hasDatabaseId() {
+      return isset($this->database_id);
     }
     public function clear() {
       $this->clearApp();
       $this->clearPath();
       $this->clearNameSpace();
-      $this->clearDatabase();
+      $this->clearDatabaseId();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -1838,9 +1838,9 @@ namespace storage_onestore_v3 {
         $res += 2;
         $res += $this->lengthString(strlen($this->name_space));
       }
-      if (isset($this->database)) {
+      if (isset($this->database_id)) {
         $res += 2;
-        $res += $this->lengthString(strlen($this->database));
+        $res += $this->lengthString(strlen($this->database_id));
       }
       return $res;
     }
@@ -1858,9 +1858,9 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(162);
         $out->putPrefixedString($this->name_space);
       }
-      if (isset($this->database)) {
+      if (isset($this->database_id)) {
         $out->putVarInt32(186);
-        $out->putPrefixedString($this->database);
+        $out->putPrefixedString($this->database_id);
       }
     }
     public function tryMerge($d) {
@@ -1885,7 +1885,7 @@ namespace storage_onestore_v3 {
             break;
           case 186:
             $length = $d->getVarInt32();
-            $this->setDatabase(substr($d->buffer(), $d->pos(), $length));
+            $this->setDatabaseId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -1912,8 +1912,8 @@ namespace storage_onestore_v3 {
       if ($x->hasNameSpace()) {
         $this->setNameSpace($x->getNameSpace());
       }
-      if ($x->hasDatabase()) {
-        $this->setDatabase($x->getDatabase());
+      if ($x->hasDatabaseId()) {
+        $this->setDatabaseId($x->getDatabaseId());
       }
     }
     public function equals($x) {
@@ -1924,8 +1924,8 @@ namespace storage_onestore_v3 {
       if (isset($this->path) && !$this->path->equals($x->path)) return false;
       if (isset($this->name_space) !== isset($x->name_space)) return false;
       if (isset($this->name_space) && $this->name_space !== $x->name_space) return false;
-      if (isset($this->database) !== isset($x->database)) return false;
-      if (isset($this->database) && $this->database !== $x->database) return false;
+      if (isset($this->database_id) !== isset($x->database_id)) return false;
+      if (isset($this->database_id) && $this->database_id !== $x->database_id) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1939,8 +1939,8 @@ namespace storage_onestore_v3 {
       if (isset($this->name_space)) {
         $res .= $prefix . "name_space: " . $this->debugFormatString($this->name_space) . "\n";
       }
-      if (isset($this->database)) {
-        $res .= $prefix . "database: " . $this->debugFormatString($this->database) . "\n";
+      if (isset($this->database_id)) {
+        $res .= $prefix . "database_id: " . $this->debugFormatString($this->database_id) . "\n";
       }
       return $res;
     }
@@ -3438,6 +3438,23 @@ namespace storage_onestore_v3 {
     public function hasErrorMessage() {
       return isset($this->error_message);
     }
+    public function getDatabaseId() {
+      if (!isset($this->database_id)) {
+        return '';
+      }
+      return $this->database_id;
+    }
+    public function setDatabaseId($val) {
+      $this->database_id = $val;
+      return $this;
+    }
+    public function clearDatabaseId() {
+      unset($this->database_id);
+      return $this;
+    }
+    public function hasDatabaseId() {
+      return isset($this->database_id);
+    }
     public function clear() {
       $this->clearAppId();
       $this->clearId();
@@ -3449,6 +3466,7 @@ namespace storage_onestore_v3 {
       $this->clearDisabledIndex();
       $this->clearWorkflowState();
       $this->clearErrorMessage();
+      $this->clearDatabaseId();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -3490,6 +3508,10 @@ namespace storage_onestore_v3 {
       if (isset($this->error_message)) {
         $res += 1;
         $res += $this->lengthString(strlen($this->error_message));
+      }
+      if (isset($this->database_id)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->database_id));
       }
       return $res;
     }
@@ -3536,6 +3558,10 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(90);
         $out->putPrefixedString($this->error_message);
       }
+      if (isset($this->database_id)) {
+        $out->putVarInt32(98);
+        $out->putPrefixedString($this->database_id);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -3580,6 +3606,11 @@ namespace storage_onestore_v3 {
           case 90:
             $length = $d->getVarInt32();
             $this->setErrorMessage(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 98:
+            $length = $d->getVarInt32();
+            $this->setDatabaseId(substr($d->buffer(), $d->pos(), $length));
             $d->skip($length);
             break;
           case 0:
@@ -3629,6 +3660,9 @@ namespace storage_onestore_v3 {
       if ($x->hasErrorMessage()) {
         $this->setErrorMessage($x->getErrorMessage());
       }
+      if ($x->hasDatabaseId()) {
+        $this->setDatabaseId($x->getDatabaseId());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3654,6 +3688,8 @@ namespace storage_onestore_v3 {
       if (isset($this->workflow_state) && $this->workflow_state !== $x->workflow_state) return false;
       if (isset($this->error_message) !== isset($x->error_message)) return false;
       if (isset($this->error_message) && $this->error_message !== $x->error_message) return false;
+      if (isset($this->database_id) !== isset($x->database_id)) return false;
+      if (isset($this->database_id) && $this->database_id !== $x->database_id) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3687,6 +3723,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->error_message)) {
         $res .= $prefix . "error_message: " . $this->debugFormatString($this->error_message) . "\n";
+      }
+      if (isset($this->database_id)) {
+        $res .= $prefix . "database_id: " . $this->debugFormatString($this->database_id) . "\n";
       }
       return $res;
     }

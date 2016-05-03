@@ -43,18 +43,26 @@ from google.appengine.datastore import entity_pb
 from google.appengine.datastore import datastore_v4_pb
 from google.appengine.datastore import entity_v4_pb
 
+_MIN_CLOUD_DATASTORE_VERSION = (4, 0, 0, 'b1')
 _CLOUD_DATASTORE_ENABLED = False
+
 try:
   
   
   import googledatastore
-  _CLOUD_DATASTORE_ENABLED = True
+
+  if googledatastore.VERSION >= _MIN_CLOUD_DATASTORE_VERSION:
+    _CLOUD_DATASTORE_ENABLED = True
 except ImportError:
   pass
+except AttributeError:
 
-MISSING_CLOUD_DATASTORE_MESSAGE = ('Could not import googledatastore. This '
-                                   'library must be installed to use the '
-                                   'Cloud Datastore API.')
+  pass
+
+MISSING_CLOUD_DATASTORE_MESSAGE = (
+    'Could not import googledatastore. This library must be installed with '
+    'version >= %s to use the Cloud Datastore API.' %
+    '.'.join([str(v) for v in _MIN_CLOUD_DATASTORE_VERSION]))
 
 
 MEANING_ATOM_CATEGORY = 1
@@ -63,6 +71,7 @@ MEANING_ATOM_TITLE = 3
 MEANING_ATOM_CONTENT = 4
 MEANING_ATOM_SUMMARY = 5
 MEANING_ATOM_AUTHOR = 6
+MEANING_NON_RFC_3339_TIMESTAMP = 7
 MEANING_GD_EMAIL = 8
 MEANING_GEORSS_POINT = 9
 MEANING_GD_IM = 10
@@ -111,6 +120,10 @@ PROPERTY_NAME_FEDERATED_PROVIDER = 'federated_provider'
 PROPERTY_NAME_KEY = '__key__'
 
 DEFAULT_GAIA_ID = 0
+
+
+RFC_3339_MIN_MICROSECONDS_INCLUSIVE = -62135596800 * 1000 * 1000
+RFC_3339_MAX_MICROSECONDS_INCLUSIVE = 253402300799 * 1000 * 1000 + 999999
 
 
 def v4_key_to_string(v4_key):
@@ -248,6 +261,11 @@ def check_conversion(condition, message):
   """
   if not condition:
     raise InvalidConversionError(message)
+
+
+def is_in_rfc_3339_bounds(microseconds):
+  return (RFC_3339_MIN_MICROSECONDS_INCLUSIVE <= microseconds
+          <= RFC_3339_MAX_MICROSECONDS_INCLUSIVE)
 
 
 
@@ -1173,7 +1191,8 @@ class _EntityConverter(object):
     elif v3_property_value.has_booleanvalue():
       v1_value.boolean_value = v3_property_value.booleanvalue()
     elif v3_property_value.has_int64value():
-      if v3_meaning == entity_pb.Property.GD_WHEN:
+      if (v3_meaning == entity_pb.Property.GD_WHEN
+          and is_in_rfc_3339_bounds(v3_property_value.int64value())):
         googledatastore.helper.micros_to_timestamp(
             v3_property_value.int64value(), v1_value.timestamp_value)
         v3_meaning = None
@@ -1287,6 +1306,10 @@ class _EntityConverter(object):
       if v1_meaning != MEANING_POINT_WITHOUT_V3_MEANING:
         v3_property.set_meaning(MEANING_GEORSS_POINT)
       v1_meaning = None
+    elif v1_value_type == 'integer_value':
+      if v1_meaning == MEANING_NON_RFC_3339_TIMESTAMP:
+        v3_property.set_meaning(entity_pb.Property.GD_WHEN)
+        v1_meaning = None
     else:
 
       pass

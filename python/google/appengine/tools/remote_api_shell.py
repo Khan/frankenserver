@@ -71,7 +71,7 @@ def remote_api_shell(servername, appid, path, secure,
 
   if oauth2:
     remote_api_stub.ConfigureRemoteApiForOAuth(servername, path,
-                                               secure=secure)
+                                               secure=secure, app_id=appid)
   else:
     remote_api_stub.ConfigureRemoteApi(appid, path, auth_func,
                                        servername=servername,

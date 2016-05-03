@@ -42,6 +42,7 @@ from search import FieldExpression
 from search import GeoField
 from search import GeoPoint
 from search import get_indexes
+from search import get_indexes_async
 from search import GetResponse
 from search import HtmlField
 from search import Index
@@ -58,6 +59,7 @@ from search import MAXIMUM_FACET_VALUES_TO_RETURN
 from search import MAXIMUM_EXPRESSION_LENGTH
 from search import MAXIMUM_FIELD_ATOM_LENGTH
 from search import MAXIMUM_FIELD_NAME_LENGTH
+from search import MAXIMUM_FIELD_PREFIX_LENGTH
 from search import MAXIMUM_FIELD_VALUE_LENGTH
 from search import MAXIMUM_FIELDS_RETURNED_PER_SEARCH
 from search import MAXIMUM_GET_INDEXES_OFFSET
@@ -84,4 +86,6 @@ from search import SortExpression
 from search import SortOptions
 from search import TextField
 from search import TIMESTAMP_FIELD_NAME
+from search import TokenizedPrefixField
 from search import TransientError
+from search import UntokenizedPrefixField

@@ -159,6 +159,8 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
 
     self.mox.ReplayAll()
     self.proxy.start()
+    self.assertEquals(30000, self.proxy._proxy._port)
+    self.assertEquals('localhost', self.proxy._proxy._host)
     self.mox.VerifyAll()
     self.mox.ResetAll()
 
@@ -176,6 +178,24 @@ class HttpRuntimeProxyTest(wsgi_test_utils.WSGITestCase):
 
   def test_start_and_quit_with_sigterm(self):
     self._test_start_and_quit(quit_with_sigterm=True)
+
+  def test_start_with_host_port(self):
+    # start()
+    safe_subprocess.start_process(
+        ['/runtime'],
+        base64.b64encode(self.runtime_config.SerializeToString()),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env={'foo': 'bar'},
+        cwd=self.tmpdir).AndReturn(self.process)
+    self.process.stdout.readline().AndReturn('::1\t34567')
+    self.proxy._stderr_tee = FakeTee('')
+
+    self.mox.ReplayAll()
+    self.proxy.start()
+    self.assertEquals(34567, self.proxy._proxy._port)
+    self.assertEquals('::1', self.proxy._proxy._host)
+    self.mox.VerifyAll()
 
   def test_start_bad_port(self):
     safe_subprocess.start_process(

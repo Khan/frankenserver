@@ -69,4 +69,55 @@ class DirectUploadHandlerTest extends \PHPUnit_Framework_TestCase {
                         file_get_contents('vfs://root/uploads/0'));
     $this->assertFalse(file_exists('vfs://root/uploads/1'));
   }
+
+  public function testMultipleUploadHandler() {
+    // Add file entries that mimics what the modified php runtime provides.
+    $_FILES = [
+      // Uploaded properly and should be processed.
+      'file1' => [
+        'name' => 'test1.txt',
+        'type' => 'text/plain',
+        'contents' => 'Hello world',
+        'tmp_name' => 'vfs://root/uploads/0',
+        'error' => UPLOAD_ERR_OK,
+        'size' => 11,  // strlen('hello world')
+      ],
+      // Actual error that should be left alone.
+      'file2' => [
+        'name' => 'test2.txt',
+        'type' => 'text/plain',
+        'contents' => 'Hello world 2',
+        'tmp_name' => 'vfs://root/uploads/1',
+        'error' => UPLOAD_ERR_OK,
+        'size' => 13,  // strlen('hello world 2')
+      ],
+    ];
+
+    DirectUploadHandler::handle();
+
+    // 'contents' key was removed, but everything else untouched.
+    $this->assertEquals([
+      'file1' => [
+        'name' => 'test1.txt',
+        'type' => 'text/plain',
+        'tmp_name' => 'vfs://root/uploads/0',
+        'error' => UPLOAD_ERR_OK,
+        'size' => 11,
+      ],
+      'file2' => [
+        'name' => 'test2.txt',
+        'type' => 'text/plain',
+        'tmp_name' => 'vfs://root/uploads/1',
+        'error' => UPLOAD_ERR_OK,
+        'size' => 13,
+      ],
+    ], $_FILES);
+
+    // Ensure contents was moved into vfs:// stream where applicable.
+    $this->assertEquals('Hello world 2',
+                        file_get_contents('vfs://root/uploads/1'));
+    $this->assertEquals('Hello world',
+                        file_get_contents('vfs://root/uploads/0'));
+  }
+
 }

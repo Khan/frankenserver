@@ -8,6 +8,8 @@ if version_info[0] <= 2:
     octs2ints = lambda s: [ oct2int(x) for x in s ]
     str2octs = lambda x: x
     octs2str = lambda x: x
+    isOctetsType = lambda s: isinstance(s, str)
+    isStringType = lambda s: isinstance(s, (str, unicode))
 else:
     ints2octs = bytes
     int2oct = lambda x: ints2octs((x,))
@@ -16,3 +18,5 @@ else:
     octs2ints = lambda s: [ x for x in s ]
     str2octs = lambda x: x.encode()
     octs2str = lambda x: x.decode()
+    isOctetsType = lambda s: isinstance(s, bytes)
+    isStringType = lambda s: isinstance(s, str)

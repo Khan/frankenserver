@@ -25,7 +25,7 @@ import sys
 import tempfile
 
 from google.appengine.tools import sdk_update_checker
-from google.appengine.tools.devappserver2 import module
+from google.appengine.tools.devappserver2 import runtime_factories
 
 
 def generate_gcd_app(app_id):
@@ -55,7 +55,7 @@ def generate_gcd_app(app_id):
     os.mkdir(webinf_path)
     filter_path = os.path.join(webinf_path, 'lib')
     os.mkdir(filter_path)
-    if module.java_runtime:
+    if runtime_factories.java_runtime:
       filter_jar = _get_filter_jar()
       shutil.copy(filter_jar, filter_path)
 

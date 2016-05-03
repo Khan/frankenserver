@@ -78,7 +78,8 @@ final class PushQueue {
       case ErrorCode::UNKNOWN_QUEUE:
         return new TaskQueueException('Unknown queue');
       case ErrorCode::TRANSIENT_ERROR:
-        return new TransientTaskQueueException();
+        return new TransientTaskQueueException(
+            'Temporary error, please re-try');
       case ErrorCode::INTERNAL_ERROR:
         return new TaskQueueException('Internal error');
       case ErrorCode::TASK_TOO_LARGE:
@@ -99,7 +100,8 @@ final class PushQueue {
       // interesting: the main point is that it has already been added.
       case ErrorCode::TASK_ALREADY_EXISTS:
       case ErrorCode::TOMBSTONED_TASK:
-        return new TaskAlreadyExistsException();
+        return new TaskAlreadyExistsException(
+            'Task with the same name exists already');
       case ErrorCode::INVALID_ETA:
         return new TaskQueueException('Invalid delay_seconds');
       case ErrorCode::INVALID_REQUEST:

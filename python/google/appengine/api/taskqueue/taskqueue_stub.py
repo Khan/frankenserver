@@ -657,7 +657,8 @@ class _Group(object):
       return
 
 
-    if request.add_request(0).has_transaction():
+    if (request.add_request(0).has_transaction()
+        or request.add_request(0).has_datastore_transaction()):
       self._TransactionalBulkAdd(request)
     else:
       self._NonTransactionalBulkAdd(request, response, now)
@@ -680,6 +681,9 @@ class _Group(object):
         assigned unique names.
     """
     try:
+
+
+
       apiproxy_stub_map.MakeSyncCall(
           'datastore_v3', 'AddActions', request, api_base_pb.VoidProto())
     except apiproxy_errors.ApplicationError, e:

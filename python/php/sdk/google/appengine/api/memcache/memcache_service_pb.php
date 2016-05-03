@@ -2694,14 +2694,36 @@ namespace google\appengine {
     public function hasOverride() {
       return isset($this->override);
     }
+    public function getMaxHotkeyCount() {
+      if (!isset($this->max_hotkey_count)) {
+        return 0;
+      }
+      return $this->max_hotkey_count;
+    }
+    public function setMaxHotkeyCount($val) {
+      $this->max_hotkey_count = $val;
+      return $this;
+    }
+    public function clearMaxHotkeyCount() {
+      unset($this->max_hotkey_count);
+      return $this;
+    }
+    public function hasMaxHotkeyCount() {
+      return isset($this->max_hotkey_count);
+    }
     public function clear() {
       $this->clearOverride();
+      $this->clearMaxHotkeyCount();
     }
     public function byteSizePartial() {
       $res = 0;
       if (isset($this->override)) {
         $res += 1;
         $res += $this->lengthString($this->override->byteSizePartial());
+      }
+      if (isset($this->max_hotkey_count)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->max_hotkey_count);
       }
       return $res;
     }
@@ -2710,6 +2732,10 @@ namespace google\appengine {
         $out->putVarInt32(10);
         $out->putVarInt32($this->override->byteSizePartial());
         $this->override->outputPartial($out);
+      }
+      if (isset($this->max_hotkey_count)) {
+        $out->putVarInt32(16);
+        $out->putVarInt32($this->max_hotkey_count);
       }
     }
     public function tryMerge($d) {
@@ -2721,6 +2747,9 @@ namespace google\appengine {
             $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
             $d->skip($length);
             $this->mutableOverride()->tryMerge($tmp);
+            break;
+          case 16:
+            $this->setMaxHotkeyCount($d->getVarInt32());
             break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
@@ -2739,11 +2768,16 @@ namespace google\appengine {
       if ($x->hasOverride()) {
         $this->mutableOverride()->mergeFrom($x->getOverride());
       }
+      if ($x->hasMaxHotkeyCount()) {
+        $this->setMaxHotkeyCount($x->getMaxHotkeyCount());
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
       if (isset($this->override) !== isset($x->override)) return false;
       if (isset($this->override) && !$this->override->equals($x->override)) return false;
+      if (isset($this->max_hotkey_count) !== isset($x->max_hotkey_count)) return false;
+      if (isset($this->max_hotkey_count) && !$this->integerEquals($this->max_hotkey_count, $x->max_hotkey_count)) return false;
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -2751,12 +2785,16 @@ namespace google\appengine {
       if (isset($this->override)) {
         $res .= $prefix . "override <\n" . $this->override->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
+      if (isset($this->max_hotkey_count)) {
+        $res .= $prefix . "max_hotkey_count: " . $this->debugFormatInt32($this->max_hotkey_count) . "\n";
+      }
       return $res;
     }
   }
 }
 namespace google\appengine {
   class MergedNamespaceStats extends \google\net\ProtocolMessage {
+    private $hotkeys = array();
     public function getHits() {
       if (!isset($this->hits)) {
         return "0";
@@ -2879,6 +2917,37 @@ namespace google\appengine {
     public function hasOldestItemAge() {
       return isset($this->oldest_item_age);
     }
+    public function getHotkeysSize() {
+      return sizeof($this->hotkeys);
+    }
+    public function getHotkeysList() {
+      return $this->hotkeys;
+    }
+    public function mutableHotkeys($idx) {
+      if (!isset($this->hotkeys[$idx])) {
+        $val = new \google\appengine\MemcacheHotKey();
+        $this->hotkeys[$idx] = $val;
+        return $val;
+      }
+      return $this->hotkeys[$idx];
+    }
+    public function getHotkeys($idx) {
+      if (isset($this->hotkeys[$idx])) {
+        return $this->hotkeys[$idx];
+      }
+      if ($idx >= end(array_keys($this->hotkeys))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \google\appengine\MemcacheHotKey();
+    }
+    public function addHotkeys() {
+      $val = new \google\appengine\MemcacheHotKey();
+      $this->hotkeys[] = $val;
+      return $val;
+    }
+    public function clearHotkeys() {
+      $this->hotkeys = array();
+    }
     public function clear() {
       $this->clearHits();
       $this->clearMisses();
@@ -2886,6 +2955,7 @@ namespace google\appengine {
       $this->clearItems();
       $this->clearBytes();
       $this->clearOldestItemAge();
+      $this->clearHotkeys();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -2911,6 +2981,11 @@ namespace google\appengine {
       }
       if (isset($this->oldest_item_age)) {
         $res += 5;
+      }
+      $this->checkProtoArray($this->hotkeys);
+      $res += 1 * sizeof($this->hotkeys);
+      foreach ($this->hotkeys as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
       }
       return $res;
     }
@@ -2939,6 +3014,12 @@ namespace google\appengine {
         $out->putVarInt32(53);
         $out->put32($this->oldest_item_age);
       }
+      $this->checkProtoArray($this->hotkeys);
+      foreach ($this->hotkeys as $value) {
+        $out->putVarInt32(58);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -2962,6 +3043,12 @@ namespace google\appengine {
           case 53:
             $this->setOldestItemAge($d->getFixed32());
             break;
+          case 58:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addHotkeys()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -2977,6 +3064,9 @@ namespace google\appengine {
       if (!isset($this->items)) return 'items';
       if (!isset($this->bytes)) return 'bytes';
       if (!isset($this->oldest_item_age)) return 'oldest_item_age';
+      foreach ($this->hotkeys as $value) {
+        if (!$value->isInitialized()) return 'hotkeys';
+      }
       return null;
     }
     public function mergeFrom($x) {
@@ -2999,6 +3089,9 @@ namespace google\appengine {
       if ($x->hasOldestItemAge()) {
         $this->setOldestItemAge($x->getOldestItemAge());
       }
+      foreach ($x->getHotkeysList() as $v) {
+        $this->addHotkeys()->copyFrom($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -3014,6 +3107,10 @@ namespace google\appengine {
       if (isset($this->bytes) && !$this->integerEquals($this->bytes, $x->bytes)) return false;
       if (isset($this->oldest_item_age) !== isset($x->oldest_item_age)) return false;
       if (isset($this->oldest_item_age) && !$this->integerEquals($this->oldest_item_age, $x->oldest_item_age)) return false;
+      if (sizeof($this->hotkeys) !== sizeof($x->hotkeys)) return false;
+      foreach (array_map(null, $this->hotkeys, $x->hotkeys) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -3035,6 +3132,163 @@ namespace google\appengine {
       }
       if (isset($this->oldest_item_age)) {
         $res .= $prefix . "oldest_item_age: " . $this->debugFormatFixed32($this->oldest_item_age) . "\n";
+      }
+      foreach ($this->hotkeys as $value) {
+        $res .= $prefix . "hotkeys <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace google\appengine {
+  class MemcacheHotKey extends \google\net\ProtocolMessage {
+    public function getKey() {
+      if (!isset($this->key)) {
+        return '';
+      }
+      return $this->key;
+    }
+    public function setKey($val) {
+      $this->key = $val;
+      return $this;
+    }
+    public function clearKey() {
+      unset($this->key);
+      return $this;
+    }
+    public function hasKey() {
+      return isset($this->key);
+    }
+    public function getQps() {
+      if (!isset($this->qps)) {
+        return 0.0;
+      }
+      return $this->qps;
+    }
+    public function setQps($val) {
+      $this->qps = $val;
+      return $this;
+    }
+    public function clearQps() {
+      unset($this->qps);
+      return $this;
+    }
+    public function hasQps() {
+      return isset($this->qps);
+    }
+    public function getNameSpace() {
+      if (!isset($this->name_space)) {
+        return '';
+      }
+      return $this->name_space;
+    }
+    public function setNameSpace($val) {
+      $this->name_space = $val;
+      return $this;
+    }
+    public function clearNameSpace() {
+      unset($this->name_space);
+      return $this;
+    }
+    public function hasNameSpace() {
+      return isset($this->name_space);
+    }
+    public function clear() {
+      $this->clearKey();
+      $this->clearQps();
+      $this->clearNameSpace();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->key)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->key));
+      }
+      if (isset($this->qps)) {
+        $res += 9;
+      }
+      if (isset($this->name_space)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->name_space));
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->key)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->key);
+      }
+      if (isset($this->qps)) {
+        $out->putVarInt32(17);
+        $out->putDouble($this->qps);
+      }
+      if (isset($this->name_space)) {
+        $out->putVarInt32(26);
+        $out->putPrefixedString($this->name_space);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setKey(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 17:
+            $this->setQps($d->getDouble());
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $this->setNameSpace(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->key)) return 'key';
+      if (!isset($this->qps)) return 'qps';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasKey()) {
+        $this->setKey($x->getKey());
+      }
+      if ($x->hasQps()) {
+        $this->setQps($x->getQps());
+      }
+      if ($x->hasNameSpace()) {
+        $this->setNameSpace($x->getNameSpace());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->key) !== isset($x->key)) return false;
+      if (isset($this->key) && $this->key !== $x->key) return false;
+      if (isset($this->qps) !== isset($x->qps)) return false;
+      if (isset($this->qps) && $this->qps !== $x->qps) return false;
+      if (isset($this->name_space) !== isset($x->name_space)) return false;
+      if (isset($this->name_space) && $this->name_space !== $x->name_space) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->key)) {
+        $res .= $prefix . "key: " . $this->debugFormatString($this->key) . "\n";
+      }
+      if (isset($this->qps)) {
+        $res .= $prefix . "qps: " . $this->debugFormatDouble($this->qps) . "\n";
+      }
+      if (isset($this->name_space)) {
+        $res .= $prefix . "name_space: " . $this->debugFormatString($this->name_space) . "\n";
       }
       return $res;
     }

@@ -86,7 +86,7 @@ def ParseAndReturnIncludePaths(appinfo_file, open_fn=open):
 
   if not appyaml.handlers:
 
-    if appyaml.vm:
+    if appyaml.IsVm():
       appyaml.handlers = [appinfo.URLMap(url='.*', script='PLACEHOLDER')]
     else:
       raise appinfo_errors.MissingURLMapping(

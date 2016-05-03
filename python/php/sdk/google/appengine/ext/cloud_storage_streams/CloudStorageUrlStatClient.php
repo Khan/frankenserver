@@ -15,8 +15,6 @@
  * limitations under the License.
  */
 /**
- * Cloud Storage Url Stat Client handles stat() calls for objects and buckets.
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
@@ -24,7 +22,7 @@ namespace google\appengine\ext\cloud_storage_streams;
 use google\appengine\util\StringUtil;
 
 /**
- * Client for stating objects in Google Cloud Storage.
+ * Cloud Storage Url Stat Client handles stat() calls for objects and buckets.
  */
 final class CloudStorageUrlStatClient extends CloudStorageClient {
   // Maximum number of keys to return when querying a bucket.

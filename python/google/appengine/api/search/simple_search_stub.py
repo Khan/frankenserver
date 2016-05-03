@@ -328,12 +328,32 @@ class RamInvertedIndex(object):
   def _AddTokens(self, doc_id, field_name, field_value, token_position):
     """Adds token occurrences for a given doc's field value."""
     for token in self._tokenizer.TokenizeValue(field_value, token_position):
-      self._AddToken(doc_id, token)
-      self._AddToken(doc_id, token.RestrictField(field_name))
+      if (field_value.type() == document_pb.FieldValue.UNTOKENIZED_PREFIX or
+          field_value.type() == document_pb.FieldValue.TOKENIZED_PREFIX):
+        for token in self._ExtractPrefixTokens(token):
+          self._AddToken(doc_id, token.RestrictField(field_name))
+      else:
+        self._AddToken(doc_id, token)
+        self._AddToken(doc_id, token.RestrictField(field_name))
+
+  def _ExtractPrefixTokens(self, token):
+    """Extracts the prefixes from a term."""
+    term = token.chars.strip()
+    prefix_tokens = []
+    for i in range(0, len(term)):
+
+      if term[i]:
+        prefix_tokens.append(tokens.Token(chars=term[:i+1],
+                                          position=token.position))
+    return prefix_tokens
 
   def _RemoveTokens(self, doc_id, field_name, field_value):
     """Removes tokens occurrences for a given doc's field value."""
     for token in self._tokenizer.TokenizeValue(field_value=field_value):
+      if (field_value.type() == document_pb.FieldValue.UNTOKENIZED_PREFIX or
+          field_value.type() == document_pb.FieldValue.TOKENIZED_PREFIX):
+        for token in self._ExtractPrefixTokens(token):
+          self._RemoveToken(doc_id, token.RestrictField(field_name))
       self._RemoveToken(doc_id, token)
       self._RemoveToken(doc_id, token.RestrictField(field_name))
 

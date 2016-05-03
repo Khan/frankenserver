@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 /**
- * Cloud Storage Directory Client handles dir_opendir(), dir_readdir() and
- * dir_closedir() calls for GCS bucket.
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
@@ -25,7 +22,8 @@ namespace google\appengine\ext\cloud_storage_streams;
 use google\appengine\util\StringUtil;
 
 /**
- * Client for deleting objects from Google Cloud Storage.
+ * Cloud Storage Directory Client handles dir_opendir(), dir_readdir() and
+ * dir_closedir() calls for Google Cloud Storage bucket.
  */
 final class CloudStorageDirectoryClient extends CloudStorageClient {
   // Maximum number of keys to return per call

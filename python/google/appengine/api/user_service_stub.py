@@ -132,7 +132,7 @@ class UserServiceStub(apiproxy_stub.APIProxyStub):
       request_id: A unique string identifying the request associated with the
           API call.
     """
-    if request.federated_identity:
+    if request.has_federated_identity():
       logging.warning(_OPENID_DEPRECATION_WARNING)
 
     response.set_login_url(

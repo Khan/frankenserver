@@ -38,6 +38,8 @@ TEXT_DOCUMENT_FIELD_TYPES = [
     document_pb.FieldValue.ATOM,
     document_pb.FieldValue.TEXT,
     document_pb.FieldValue.HTML,
+    document_pb.FieldValue.UNTOKENIZED_PREFIX,
+    document_pb.FieldValue.TOKENIZED_PREFIX,
     ]
 
 TEXT_QUERY_TYPES = [
@@ -176,8 +178,24 @@ def TreeRepr(tree, depth=0):
   return depth * '  ' + _NodeRepr(tree) + children
 
 
+def RemoveAccents(text):
+  if not isinstance(text, basestring):
+    return text
+  if isinstance(text, str):
+    text = text.decode('utf-8')
+  return u''.join([c for c in text if not unicodedata.combining(c)])
+
+
+def ConvertToNfkd(text):
+  if not isinstance(text, basestring):
+    return text
+  if isinstance(text, str):
+    text = text.decode('utf-8')
+  return unicodedata.normalize('NFKD', text)
+
+
 def RemoveAccentsNfkd(text):
-  if not isinstance(text, (str, unicode)):
+  if not isinstance(text, basestring):
     return text
   if isinstance(text, str):
     text = text.decode('utf-8')

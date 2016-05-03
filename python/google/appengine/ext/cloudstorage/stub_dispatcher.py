@@ -404,7 +404,7 @@ class _ContentType(_Header):
   """Content-type header."""
 
   HEADER = 'Content-Type'
-  DEFAULT = 'binary/octet-stream'
+  DEFAULT = 'application/octet-stream'
 
 
 class _ContentRange(_Header):

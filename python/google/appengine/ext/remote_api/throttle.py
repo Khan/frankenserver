@@ -64,12 +64,22 @@ it for details.
 
 
 
+import functools
 import logging
 import os
 import threading
 import time
 import urllib2
 import urlparse
+
+_HTTPLIB2_AVAILABLE = False
+
+try:
+  import httplib2
+  from google.appengine.tools import appengine_rpc_httplib2
+  _HTTPLIB2_AVAILABLE = True
+except ImportError:
+  pass
 
 
 if os.environ.get('APPENGINE_RUNTIME') == 'python27':
@@ -438,6 +448,63 @@ class ThrottleHandler(urllib2.BaseHandler):
     """
     self.throttle = throttle
 
+  def _CalculateRequestSize(self, req):
+    """Calculates the request size.
+
+    May be overriden to support different types of requests.
+
+    Args:
+      req: A urllib2.Request.
+
+    Returns:
+      the size of the request, in bytes.
+    """
+    (unused_scheme,
+     unused_host_port, url_path,
+     unused_query, unused_fragment) = urlparse.urlsplit(req.get_full_url())
+    size = len('%s %s HTTP/1.1\n' % (req.get_method(), url_path))
+    size += self._CalculateHeaderSize(req.headers)
+    size += self._CalculateHeaderSize(req.unredirected_hdrs)
+
+
+    data = req.get_data()
+    if data:
+      size += len(data)
+    return size
+
+  def _CalculateResponseSize(self, res):
+    """Calculates the response size.
+
+    May be overriden to support different types of response.
+
+    Args:
+      res: A urllib2.Response.
+
+    Returns:
+      the size of the response, in bytes.
+    """
+    content = res.read()
+
+    def ReturnContent():
+      return content
+
+    res.read = ReturnContent
+
+
+    return len(content) + self._CalculateHeaderSize(dict(res.info().items()))
+
+  def _CalculateHeaderSize(self, headers):
+    """Calculates the size of the headers.
+
+    Args:
+      headers: A dict of header values.
+
+    Returns:
+      the size of the headers.
+    """
+    return sum([len('%s: %s\n' % (key, value))
+                for key, value in headers.iteritems()])
+
   def AddRequest(self, throttle_name, req):
     """Add to bandwidth throttle for given request.
 
@@ -445,19 +512,7 @@ class ThrottleHandler(urllib2.BaseHandler):
       throttle_name: The name of the bandwidth throttle to add to.
       req: The request whose size will be added to the throttle.
     """
-    size = 0
-    for key, value in req.headers.iteritems():
-      size += len('%s: %s\n' % (key, value))
-    for key, value in req.unredirected_hdrs.iteritems():
-      size += len('%s: %s\n' % (key, value))
-    (unused_scheme,
-     unused_host_port, url_path,
-     unused_query, unused_fragment) = urlparse.urlsplit(req.get_full_url())
-    size += len('%s %s HTTP/1.1\n' % (req.get_method(), url_path))
-    data = req.get_data()
-    if data:
-      size += len(data)
-    self.throttle.AddTransfer(throttle_name, size)
+    self.throttle.AddTransfer(throttle_name, self._CalculateRequestSize(req))
 
   def AddResponse(self, throttle_name, res):
     """Add to bandwidth throttle for given response.
@@ -466,17 +521,7 @@ class ThrottleHandler(urllib2.BaseHandler):
       throttle_name: The name of the bandwidth throttle to add to.
       res: The response whose size will be added to the throttle.
     """
-    content = res.read()
-
-    def ReturnContent():
-      return content
-
-    res.read = ReturnContent
-    size = len(content)
-    headers = res.info()
-    for key, value in headers.items():
-      size += len('%s: %s\n' % (key, value))
-    self.throttle.AddTransfer(throttle_name, size)
+    self.throttle.AddTransfer(throttle_name, self._CalculateResponseSize(res))
 
   def http_request(self, req):
     """Process an HTTP request.
@@ -586,6 +631,83 @@ class ThrottledHttpRpcServer(appengine_rpc.HttpRpcServer):
     opener.add_handler(ThrottleHandler(self.throttle))
 
     return opener
+
+
+
+
+if _HTTPLIB2_AVAILABLE:
+
+  class ThrottledHttpRpcServerOAuth2(
+      appengine_rpc_httplib2.HttpRpcServerOAuth2):
+
+    def __init__(self, throttle, *args, **kwargs):
+      kwargs['http_class'] = functools.partial(_ThrottledHttp, throttle)
+      super(ThrottledHttpRpcServerOAuth2, self).__init__(*args, **kwargs)
+
+  class _ThrottledHttp(httplib2.Http):
+    """An implementation of Http which throttles requests."""
+
+    def __init__(self, throttle, *args, **kwargs):
+      self.throttle_handler = _HttpThrottleHandler(throttle)
+      super(_ThrottledHttp, self).__init__(*args, **kwargs)
+
+    def request(self, uri, method='GET', body=None, headers=None,
+                redirections=httplib2.DEFAULT_MAX_REDIRECTS,
+                connection_type=None):
+      scheme = urlparse.urlparse(uri).scheme
+      request = (uri, method, body, headers)
+      if scheme == 'http':
+        self.throttle_handler.http_request(request)
+      elif scheme == 'https':
+        self.throttle_handler.https_request(request)
+
+      response = super(_ThrottledHttp, self).request(
+          uri, method, body, headers, redirections, connection_type)
+
+      if scheme == 'http':
+        self.throttle_handler.http_response(request, response)
+      elif scheme == 'https':
+        self.throttle_handler.https_response(request, response)
+
+      return response
+
+
+class _HttpThrottleHandler(ThrottleHandler):
+  """A ThrottleHandler designed to be used by ThrottledHttp."""
+
+  def _CalculateRequestSize(self, req):
+    """Calculates the request size.
+
+    Args:
+      req: A tuple of (uri, method name, request body, header map)
+    Returns:
+      the size of the request, in bytes.
+    """
+    uri, method, body, headers = req
+    (unused_scheme,
+     unused_host_port, url_path,
+     unused_query, unused_fragment) = urlparse.urlsplit(uri)
+    size = len('%s %s HTTP/1.1\n' % (method, url_path))
+    size += self._CalculateHeaderSize(headers)
+
+
+    if body:
+      size += len(body)
+    return size
+
+  def _CalculateResponseSize(self, res):
+    """Calculates the response size.
+
+    May be overriden to support different types of response.
+
+    Args:
+      res: A tuple of (header map, response body).
+
+    Returns:
+      the size of the response, in bytes.
+    """
+    headers, content = res
+    return len(content) + self._CalculateHeaderSize(headers)
 
 
 class ThrottledHttpRpcServerFactory(object):

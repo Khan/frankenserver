@@ -1258,14 +1258,13 @@ def method(request_message=message_types.VoidMessage,
     scopes: list of string, OAuth2 token must contain one of these scopes.
     audiences: list of string, IdToken must contain one of these audiences.
     allowed_client_ids: list of string, Client IDs allowed to call the method.
-      Currently limited to 5.  If None, no calls will be allowed.
+      If None and auth_level is REQUIRED, no calls will be allowed.
     auth_level: enum from AUTH_LEVEL, Frontend auth level for the method.
 
   Returns:
     'apiserving_method_wrapper' function.
 
   Raises:
-    ValueError: if more than 5 allowed_client_ids are specified.
     TypeError: if the request_type or response_type parameters are not
       proper subclasses of messages.Message.
   """

@@ -1,5 +1,9 @@
 # DER decoder
-from pyasn1.type import univ
 from pyasn1.codec.cer import decoder
 
-decode = decoder.Decoder(decoder.tagMap, decoder.typeMap)
+tagMap = decoder.tagMap
+typeMap = decoder.typeMap
+class Decoder(decoder.Decoder):
+    supportIndefLength = False
+
+decode = Decoder(tagMap, typeMap)

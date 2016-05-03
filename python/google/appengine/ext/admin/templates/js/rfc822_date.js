@@ -51,7 +51,7 @@ RFC822Date.padZero = function(val) {
 
 /**
  * Returns a timezone offset in the format +|-dddd.
- * @param {String} tzo A time zone offset from GMT in minutes.
+ * @param {string} tzo A time zone offset from GMT in minutes.
  * @return {string} The time zone offset as a string.
  */
 RFC822Date.getTZO = function(tzo) {

@@ -2547,10 +2547,9 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     index_pb = composite_index_pb.mutable_definition()
     index_pb.set_entity_type(kind)
     index_pb.set_ancestor(bool(ancestor))
-    for name, direction in datastore_index.GetRecommendedIndexProperties(props):
+    for prop in datastore_index.GetRecommendedIndexProperties(props):
       prop_pb = entity_pb.Index_Property()
-      prop_pb.set_name(name)
-      prop_pb.set_direction(direction)
+      prop.CopyToIndexPb(prop_pb)
       index_pb.property_list().append(prop_pb)
     return [composite_index_pb]
 
@@ -3297,18 +3296,28 @@ class DatastoreStub(object):
     if not request.add_request_list():
       return
 
-    transaction = request.add_request_list()[0].transaction()
+    first_add_request = request.add_request_list()[0]
+    datastore_transaction = None
+    if first_add_request.has_datastore_transaction():
+      datastore_transaction = first_add_request.datastore_transaction()
+      transaction = datastore_pb.Transaction()
+      get_service_converter().v1_to_v3_txn(datastore_transaction, transaction)
+    else:
+      transaction = first_add_request.transaction()
     txn = self._datastore.GetTxn(transaction, self._trusted, self._app_id)
     new_actions = []
     for add_request in request.add_request_list():
 
 
 
-      Check(add_request.transaction() == transaction,
+      Check(datastore_transaction is not None
+            and add_request.datastore_transaction() == datastore_transaction
+            or add_request.transaction() == transaction,
             'Cannot add requests to different transactions')
       clone = taskqueue_service_pb.TaskQueueAddRequest()
       clone.CopyFrom(add_request)
       clone.clear_transaction()
+      clone.clear_datastore_transaction()
       new_actions.append(clone)
 
     txn.AddActions(new_actions, self._MAX_ACTIONS_PER_TXN)
@@ -3338,9 +3347,9 @@ class DatastoreStub(object):
                                                       self._app_id))
 
   @_NeedsIndexes
-  def _Dynamic_GetIndices(self, app_str, composite_indices):
+  def _Dynamic_GetIndices(self, get_indicies_request, composite_indices):
     composite_indices.index_list().extend(self._datastore.GetIndexes(
-        app_str.value(), self._trusted, self._app_id))
+        get_indicies_request.app_id(), self._trusted, self._app_id))
 
   def _Dynamic_UpdateIndex(self, index, _):
     self._datastore.UpdateIndex(index, self._trusted, self._app_id)
@@ -4013,34 +4022,51 @@ class StubServiceConverter(object):
 
 
 
-  def v1_run_query_req_to_v3_query(self, v1_req):
+  def v1_run_query_req_to_v3_query(self, v1_req, new_txn=None):
     """Converts a v1 RunQueryRequest to a v3 Query.
 
     GQL is not supported.
 
     Args:
       v1_req: a googledatastore.RunQueryRequest
+      new_txn: a v1 transaction created ad-hoc for this query, or None.
 
     Returns:
       a datastore_pb.Query
     """
+    consistency_type = v1_req.read_options.WhichOneof('consistency_type')
 
     datastore_pbs.check_conversion(not v1_req.HasField('gql_query'),
                                    'GQL not supported')
+    if (new_txn is None) == (consistency_type == 'new_transaction'):
+      raise datastore_errors.InternalError('new_txn should be set only if the '
+                                           'consistency type is '
+                                           'new_transaction')
+
     v3_query = datastore_pb.Query()
     self._query_converter.v1_to_v3_query(v1_req.partition_id, v1_req.query,
                                          v3_query)
 
 
-    read_options = v1_req.read_options
-    if read_options.transaction:
-      self.v1_to_v3_txn(read_options.transaction,
+    if consistency_type == 'transaction':
+      self.v1_to_v3_txn(v1_req.read_options.transaction,
                         v3_query.mutable_transaction())
-    elif read_options.read_consistency == googledatastore.ReadOptions.EVENTUAL:
-      v3_query.set_strong(False)
-      v3_query.set_failover_ms(-1)
-    elif read_options.read_consistency == googledatastore.ReadOptions.STRONG:
-      v3_query.set_strong(True)
+    elif consistency_type == 'new_transaction':
+      self.v1_to_v3_txn(new_txn, v3_query.mutable_transaction())
+    elif consistency_type == 'read_consistency':
+      read_consistency = v1_req.read_options.read_consistency
+      if read_consistency == googledatastore.ReadOptions.EVENTUAL:
+        v3_query.set_strong(False)
+        v3_query.set_failover_ms(-1)
+      elif read_consistency == googledatastore.ReadOptions.STRONG:
+        v3_query.set_strong(True)
+      elif (read_consistency !=
+            googledatastore.ReadOptions.READ_CONSISTENCY_UNSPECIFIED):
+        raise datastore_errors.InternalError('Unknown read_consistency %d'
+                                             % read_consistency)
+    elif consistency_type is not None:
+      raise datastore_errors.InternalError('Unknown consistency_type: %s'
+                                           % consistency_type)
 
     return v3_query
 
@@ -4088,62 +4114,85 @@ class StubServiceConverter(object):
 
     return v3_resp
 
-  def v3_to_v1_run_query_resp(self, v3_resp):
+  def v3_to_v1_run_query_resp(self, v3_resp, new_txn=None):
     """Converts a v3 QueryResult to a V4 RunQueryResponse.
 
     Args:
       v3_resp: a datastore_pb.QueryResult
+      new_txn: optional, a transaction that was created when processing the
+        RunQueryRequest.
 
     Returns:
       a googledatastore.RunQueryResponse
     """
     v1_resp = googledatastore.RunQueryResponse()
     self.v3_to_v1_query_result_batch(v3_resp, v1_resp.batch)
+    if new_txn:
+      v1_resp.transaction = new_txn
 
     return v1_resp
 
 
 
 
-  def v1_to_v3_get_req(self, v1_req):
+  def v1_to_v3_get_req(self, v1_req, new_txn=None):
     """Converts a v1 LookupRequest to a v3 GetRequest.
 
     Args:
       v1_req: a googledatastore.LookupRequest
+      new_txn: a v1 transaction created ad-hoc for this lookup, or None.
 
     Returns:
       a datastore_pb.GetRequest
     """
+    consistency_type = v1_req.read_options.WhichOneof('consistency_type')
+    if (new_txn is None) == (consistency_type == 'new_transaction'):
+      raise datastore_errors.InternalError('new_txn should be set only if the '
+                                           'consistency type is '
+                                           'new_transaction')
+
     v3_req = datastore_pb.GetRequest()
     v3_req.set_allow_deferred(True)
 
 
-    if v1_req.read_options.transaction:
+    if consistency_type == 'transaction':
       self.v1_to_v3_txn(v1_req.read_options.transaction,
                         v3_req.mutable_transaction())
-    elif (v1_req.read_options.read_consistency
-          == googledatastore.ReadOptions.EVENTUAL):
-      v3_req.set_strong(False)
-      v3_req.set_failover_ms(-1)
-    elif (v1_req.read_options.read_consistency
-          == googledatastore.ReadOptions.STRONG):
-      v3_req.set_strong(True)
+    elif consistency_type == 'new_transaction':
+      self.v1_to_v3_txn(new_txn, v3_req.mutable_transaction())
+    elif consistency_type == 'read_consistency':
+      read_consistency = v1_req.read_options.read_consistency
+      if read_consistency == googledatastore.ReadOptions.EVENTUAL:
+        v3_req.set_strong(False)
+        v3_req.set_failover_ms(-1)
+      elif read_consistency == googledatastore.ReadOptions.STRONG:
+        v3_req.set_strong(True)
+      elif (read_consistency !=
+            googledatastore.ReadOptions.READ_CONSISTENCY_UNSPECIFIED):
+        raise datastore_errors.InternalError('Unknown read_consistency %d'
+                                             % read_consistency)
+    elif consistency_type is not None:
+      raise datastore_errors.InternalError('Unknown consistency_type: %s'
+                                           % consistency_type)
 
     for v1_key in v1_req.keys:
       self._entity_converter.v1_to_v3_reference(v1_key, v3_req.add_key())
 
     return v3_req
 
-  def v3_to_v1_lookup_resp(self, v3_resp):
+  def v3_to_v1_lookup_resp(self, v3_resp, new_txn=None):
     """Converts a v3 GetResponse to a v1 LookupResponse.
 
     Args:
       v3_resp: a datastore_pb.GetResponse
+      new_txn: a v1 transaction created ad-hoc for this lookup, or None.
 
     Returns:
       a googledatastore.LookupResponse
     """
     v1_resp = googledatastore.LookupResponse()
+    if new_txn:
+      v1_resp.transaction = new_txn
 
     for v3_ref in v3_resp.deferred_list():
       self._entity_converter.v3_to_v1_key(v3_ref, v1_resp.deferred.add())

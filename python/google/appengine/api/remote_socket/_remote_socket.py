@@ -874,7 +874,7 @@ class socket(object):
 
     See recv() for documentation about the flags.
     """
-    raise SocketApiNotImplementedError()
+    return self.recvfrom_into(buf, nbytes, flags)[0]
 
   def recvfrom(self, buffersize, flags=0):
     """recvfrom(buffersize[, flags]) -> (data, address info)
@@ -919,16 +919,18 @@ class socket(object):
 
     return reply.data(), address
 
-
-
   def recvfrom_into(self, buffer, nbytes=0, flags=0):
     """recvfrom_into(buffer[, nbytes[, flags]]) -> (nbytes, address info)
 
     Like recv_into(buffer[, nbytes[, flags]]) but also return the
     sender's address info.
     """
-
-    raise SocketApiNotImplementedError()
+    if nbytes == 0 or nbytes > len(buffer):
+      nbytes = len(buffer)
+    (data, addr) = self.recvfrom(nbytes, flags)
+    data = bytearray(data)
+    buffer[:len(data)] = data
+    return (len(data), addr)
 
   def send(self, data, flags=0):
     """send(data[, flags]) -> count

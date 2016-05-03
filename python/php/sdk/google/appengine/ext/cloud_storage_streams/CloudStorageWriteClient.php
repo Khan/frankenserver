@@ -15,15 +15,14 @@
  * limitations under the License.
  */
 /**
- * Cloud Storage Write Client implements the stream wrapper functions required
- * to write to a Google Cloud Storage object.
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
 
-// TODO: Retry on transient errors.
-
+/**
+ * Cloud Storage Write Client implements the stream wrapper functions required
+ * to write to a Google Cloud Storage object.
+ */
 final class CloudStorageWriteClient extends CloudStorageClient {
   // GS requires all chunks of data written to be multiples of 256K except for
   // the last chunk.
@@ -68,7 +67,6 @@ final class CloudStorageWriteClient extends CloudStorageClient {
     }
     $headers = array_merge($headers, $token_header);
 
-    // TODO: b/13132830: Remove once feature releases.
     if (!ini_get('google_app_engine.enable_additional_cloud_storage_headers')) {
       foreach (static::$METADATA_HEADERS as $key) {
         // Leave Content-Type since it has been supported.
@@ -259,7 +257,7 @@ final class CloudStorageWriteClient extends CloudStorageClient {
     $http_response = $this->makeHttpRequest($url, "PUT", $headers, $body);
     $code = $http_response['status_code'];
 
-    // TODO: Retry on some status codes.
+    // TODO: Retry on some status codes & transient errors.
     if (($complete && $code != HttpResponse::OK) ||
         (!$complete && $code != HttpResponse::RESUME_INCOMPLETE)) {
       trigger_error($this->getErrorMessage($http_response['status_code'],

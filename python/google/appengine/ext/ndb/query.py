@@ -1,3 +1,18 @@
+#
+# Copyright 2008 The ndb Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Higher-level Query wrapper.
 
 There are perhaps too many query APIs in the world.
@@ -149,7 +164,7 @@ __all__ = ['Query', 'QueryOptions', 'Cursor', 'QueryIterator',
            'FilterNode', 'PostFilterNode', 'FalseNode', 'Node',
            'ParameterNode', 'ParameterizedThing', 'Parameter',
            'ParameterizedFunction', 'gql',
-           ]
+          ]
 
 # Re-export some useful classes from the lower-level module.
 Cursor = datastore_query.Cursor
@@ -259,6 +274,7 @@ class ParameterizedThing(object):
       eq = not eq
     return eq
 
+
 class Parameter(ParameterizedThing):
   """Represents a bound variable in a GQL query.
 
@@ -296,7 +312,7 @@ class Parameter(ParameterizedThing):
     key = self.__key
     if key not in bindings:
       raise datastore_errors.BadArgumentError(
-        'Parameter :%s is not bound.' % key)
+          'Parameter :%s is not bound.' % key)
     value = bindings[key]
     used[key] = True
     return value
@@ -422,7 +438,7 @@ class FalseNode(Node):
     # Because there's no point submitting a query that will never
     # return anything.
     raise datastore_errors.BadQueryError(
-      'Cannot convert FalseNode to predicate')
+        'Cannot convert FalseNode to predicate')
 
 
 class ParameterNode(Node):
@@ -453,7 +469,7 @@ class ParameterNode(Node):
 
   def _to_filter(self, post=False):
     raise datastore_errors.BadArgumentError(
-      'Parameter :%s is not bound.' % (self.__param.key,))
+        'Parameter :%s is not bound.' % (self.__param.key,))
 
   def resolve(self, bindings, used):
     value = self.__param.resolve(bindings, used)
@@ -837,8 +853,8 @@ class Query(object):
         raise TypeError('projection argument cannot be empty')
       if not isinstance(projection, (tuple, list)):
         raise TypeError(
-          'projection must be a tuple, list or None; received %r' %
-          (projection,))
+            'projection must be a tuple, list or None; received %r' %
+            (projection,))
       self._check_properties(self._to_property_names(projection))
       self.__projection = tuple(projection)
 
@@ -848,7 +864,7 @@ class Query(object):
         raise TypeError('group_by argument cannot be empty')
       if not isinstance(group_by, (tuple, list)):
         raise TypeError(
-          'group_by must be a tuple, list or None; received %r' % (group_by,))
+            'group_by must be a tuple, list or None; received %r' % (group_by,))
       self._check_properties(self._to_property_names(group_by))
       self.__group_by = tuple(group_by)
 
@@ -896,7 +912,7 @@ class Query(object):
                           projection=self.projection, group_by=self.group_by)
 
   def _get_query(self, connection):
-    self.bind()  #  Raises an exception if there are unbound parameters.
+    self.bind()  # Raises an exception if there are unbound parameters.
     kind = self.kind
     ancestor = self.ancestor
     if ancestor is not None:
@@ -918,8 +934,8 @@ class Query(object):
                                     group_by=group_by)
     if post_filters is not None:
       dsquery = datastore_query._AugmentedQuery(
-        dsquery,
-        in_memory_filter=post_filters._to_filter(post=True))
+          dsquery,
+          in_memory_filter=post_filters._to_filter(post=True))
     return dsquery
 
   @tasklets.tasklet
@@ -1114,7 +1130,7 @@ class Query(object):
     Returns:
       A QueryIterator object.
     """
-    self.bind()  #  Raises an exception if there are unbound parameters.
+    self.bind()  # Raises an exception if there are unbound parameters.
     return QueryIterator(self, **q_options)
 
   __iter__ = iter
@@ -1167,11 +1183,11 @@ class Query(object):
     """
     qry = self._fix_namespace()
     return tasklets.get_context().map_query(
-      qry,
-      callback,
-      pass_batch_into_callback=pass_batch_into_callback,
-      options=self._make_options(q_options),
-      merge_future=merge_future)
+        qry,
+        callback,
+        pass_batch_into_callback=pass_batch_into_callback,
+        options=self._make_options(q_options),
+        merge_future=merge_future)
 
   @utils.positional(2)
   def fetch(self, limit=None, **q_options):
@@ -1382,7 +1398,7 @@ class Query(object):
     if q_options.get('projection'):
       try:
         q_options['projection'] = self._to_property_names(
-          q_options['projection'])
+            q_options['projection'])
       except TypeError, e:
         raise datastore_errors.BadArgumentError(e)
       self._check_properties(q_options['projection'])
@@ -1393,7 +1409,7 @@ class Query(object):
         options.projection is None and
         self.__projection):
       options = QueryOptions(
-        projection=self._to_property_names(self.__projection), config=options)
+          projection=self._to_property_names(self.__projection), config=options)
     # Populate default options
     if self.default_options is not None:
       options = self.default_options.merge(options)
@@ -1422,6 +1438,7 @@ class Query(object):
   def analyze(self):
     """Return a list giving the parameters required by a query."""
     class MockBindings(dict):
+
       def __contains__(self, key):
         self[key] = None
         return True
@@ -1457,8 +1474,8 @@ class Query(object):
         unused.append(i)
     if unused:
       raise datastore_errors.BadArgumentError(
-        'Positional arguments %s were given but not used.' %
-        ', '.join(str(i) for i in unused))
+          'Positional arguments %s were given but not used.' %
+          ', '.join(str(i) for i in unused))
     return self.__class__(kind=self.kind, ancestor=ancestor,
                           filters=filters, orders=self.orders,
                           app=self.app, namespace=self.namespace,
@@ -1502,7 +1519,8 @@ def _gql(query_string, query_class=Query):
     # construct the results).
     modelclass = model.Expando
   else:
-    modelclass = model.Model._lookup_model(kind,
+    modelclass = model.Model._lookup_model(
+        kind,
         tasklets.get_context()._conn.adapter.default_model)
     # Adjust kind to the kind of the model class.
     kind = modelclass._get_kind()
@@ -1768,6 +1786,9 @@ class QueryIterator(object):
       self._fut = self._iter.getq()
     try:
       try:
+        # The future result is set by this class's _extended_callback
+        # method.
+        # pylint: disable=unpacking-non-sequence
         (ent,
          self._cursor_before,
          self._cursor_after,
@@ -1892,7 +1913,7 @@ class _MultiQuery(object):
           names = self.__orders._get_prop_names()
         if '__key__' not in names:
           raise datastore_errors.BadArgumentError(
-            '_MultiQuery with cursors requires __key__ order')
+              '_MultiQuery with cursors requires __key__ order')
 
     # Decide if we need to modify the options passed to subqueries.
     # NOTE: It would seem we can sometimes let the datastore handle

@@ -91,6 +91,7 @@ __all__ = [
     'MAXIMUM_EXPRESSION_LENGTH',
     'MAXIMUM_FIELD_ATOM_LENGTH',
     'MAXIMUM_FIELD_NAME_LENGTH',
+    'MAXIMUM_FIELD_PREFIX_LENGTH',
     'MAXIMUM_FIELD_VALUE_LENGTH',
     'MAXIMUM_FIELDS_RETURNED_PER_SEARCH',
     'MAXIMUM_GET_INDEXES_OFFSET',
@@ -122,12 +123,15 @@ __all__ = [
     'TextField',
     'Timeout',
     'TIMESTAMP_FIELD_NAME',
+    'TokenizedPrefixField',
     'TransientError',
+    'UntokenizedPrefixField',
     ]
 
 MAXIMUM_INDEX_NAME_LENGTH = 100
 MAXIMUM_FIELD_VALUE_LENGTH = 1024 * 1024
 MAXIMUM_FIELD_ATOM_LENGTH = 500
+MAXIMUM_FIELD_PREFIX_LENGTH = 500
 MAXIMUM_FIELD_NAME_LENGTH = 500
 MAXIMUM_DOCUMENT_ID_LENGTH = 500
 MAXIMUM_DOCUMENTS_PER_PUT_REQUEST = 200
@@ -180,9 +184,12 @@ MAX_NUMBER_VALUE = 2147483647
 MIN_NUMBER_VALUE = -2147483647
 
 
-_PROTO_FIELDS_STRING_VALUE = frozenset([document_pb.FieldValue.TEXT,
-                                        document_pb.FieldValue.HTML,
-                                        document_pb.FieldValue.ATOM])
+_PROTO_FIELDS_STRING_VALUE = frozenset(
+    [document_pb.FieldValue.TEXT,
+     document_pb.FieldValue.HTML,
+     document_pb.FieldValue.ATOM,
+     document_pb.FieldValue.UNTOKENIZED_PREFIX,
+     document_pb.FieldValue.TOKENIZED_PREFIX])
 
 
 class Error(Exception):
@@ -724,6 +731,12 @@ def _CheckAtom(atom):
                          empty_ok=True)
 
 
+def _CheckPrefix(prefix):
+  """Checks if the untokenized or tokenized prefix field is a valid string."""
+  return _ValidateString(prefix, 'prefix', MAXIMUM_FIELD_PREFIX_LENGTH,
+                         empty_ok=True)
+
+
 def _CheckDate(date):
   """Checks the date is in the correct range."""
   if isinstance(date, datetime.datetime):
@@ -898,10 +911,12 @@ class Field(object):
   """
 
 
-  TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT = ('TEXT', 'HTML', 'ATOM', 'DATE',
-                                               'NUMBER', 'GEO_POINT')
+  (TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT, UNTOKENIZED_PREFIX,
+   TOKENIZED_PREFIX) = ('TEXT', 'HTML', 'ATOM', 'DATE', 'NUMBER', 'GEO_POINT',
+                        'UNTOKENIZED_PREFIX', 'TOKENIZED_PREFIX')
 
-  _FIELD_TYPES = frozenset([TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT])
+  _FIELD_TYPES = frozenset([TEXT, HTML, ATOM, DATE, NUMBER, GEO_POINT,
+                            UNTOKENIZED_PREFIX, TOKENIZED_PREFIX])
 
   def __init__(self, name, value, language=None):
     """Initializer.
@@ -1470,8 +1485,68 @@ class AtomField(Field):
     self._CopyStringValueToProtocolBuffer(field_value_pb)
 
 
+class UntokenizedPrefixField(Field):
+  """A field that matches searches on prefixes of the whole field.
+
+  The following example shows an untokenized prefix field named title:
+    UntokenizedPrefixField(name='title', value='how to swim freestyle')
+  """
+
+  def __init__(self, name, value=None, language=None):
+    """Initializer.
+
+    Args:
+      name: The name of the field.
+      value: The untokenized prefix field value.
+      language: The code of the language the value is encoded in.
+
+    Raises:
+      TypeError: If value is not a string.
+      ValueError: If value is longer than allowed.
+    """
+    Field.__init__(self, name, _ConvertToUnicode(value), language)
+
+  def _CheckValue(self, value):
+    return _CheckPrefix(value)
+
+  def _CopyValueToProtocolBuffer(self, field_value_pb):
+    field_value_pb.set_type(document_pb.FieldValue.UNTOKENIZED_PREFIX)
+    self._CopyStringValueToProtocolBuffer(field_value_pb)
+
+
+class TokenizedPrefixField(Field):
+  """A field that matches searches on prefixes of its individual terms.
+
+  The following example shows a tokenized prefix field named title:
+    TokenizedPrefixField(name='title', value='Goodwill Hunting')
+  """
+
+  def __init__(self, name, value=None, language=None):
+    """Initializer.
+
+    Args:
+      name: The name of the field.
+      value: The tokenized prefix field value.
+      language: The code of the language the value is encoded in.
+
+    Raises:
+      TypeError: If value is not a string.
+      ValueError: If value is longer than allowed.
+    """
+    Field.__init__(self, name, _ConvertToUnicode(value), language)
+
+  def _CheckValue(self, value):
+    return _CheckPrefix(value)
+
+  def _CopyValueToProtocolBuffer(self, field_value_pb):
+    field_value_pb.set_type(document_pb.FieldValue.TOKENIZED_PREFIX)
+    self._CopyStringValueToProtocolBuffer(field_value_pb)
+
+
 class DateField(Field):
   """A Field that has a date or datetime value.
+
+  Only Python "naive" date or datetime values may be used (not "aware" values).
 
   The following example shows a date field named creation_date:
     DateField(name='creation_date', value=datetime.date(2011, 03, 11))
@@ -1646,7 +1721,9 @@ def _GetValue(value_pb):
 
 _STRING_TYPES = set([document_pb.FieldValue.TEXT,
                      document_pb.FieldValue.HTML,
-                     document_pb.FieldValue.ATOM])
+                     document_pb.FieldValue.ATOM,
+                     document_pb.FieldValue.UNTOKENIZED_PREFIX,
+                     document_pb.FieldValue.TOKENIZED_PREFIX])
 
 
 def _DecodeUTF8(pb_value):
@@ -1677,6 +1754,10 @@ def _NewFieldFromPb(pb):
     return HtmlField(name, value, lang)
   elif val_type == document_pb.FieldValue.ATOM:
     return AtomField(name, value, lang)
+  elif val_type == document_pb.FieldValue.UNTOKENIZED_PREFIX:
+    return UntokenizedPrefixField(name, value, lang)
+  elif val_type == document_pb.FieldValue.TOKENIZED_PREFIX:
+    return TokenizedPrefixField(name, value, lang)
   elif val_type == document_pb.FieldValue.DATE:
     return DateField(name, value)
   elif val_type == document_pb.FieldValue.NUMBER:
@@ -3841,6 +3922,8 @@ _FIELD_TYPE_MAP = {
     document_pb.FieldValue.TEXT: Field.TEXT,
     document_pb.FieldValue.HTML: Field.HTML,
     document_pb.FieldValue.ATOM: Field.ATOM,
+    document_pb.FieldValue.UNTOKENIZED_PREFIX: Field.UNTOKENIZED_PREFIX,
+    document_pb.FieldValue.TOKENIZED_PREFIX: Field.TOKENIZED_PREFIX,
     document_pb.FieldValue.DATE: Field.DATE,
     document_pb.FieldValue.NUMBER: Field.NUMBER,
     document_pb.FieldValue.GEO: Field.GEO_POINT,

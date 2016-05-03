@@ -312,27 +312,21 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_summary_status_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: summary_status not set.')
     for p in self.config_:
       if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthVarInt64(self.summary_status_)
+    if (self.has_summary_status_): n += 1 + self.lengthVarInt64(self.summary_status_)
     if (self.has_time_until_scheduled_): n += 1 + self.lengthVarInt64(self.time_until_scheduled_)
     n += 1 * len(self.config_)
     for i in xrange(len(self.config_)): n += self.lengthString(self.config_[i].ByteSize())
-    return n + 1
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_summary_status_):
-      n += 1
-      n += self.lengthVarInt64(self.summary_status_)
+    if (self.has_summary_status_): n += 1 + self.lengthVarInt64(self.summary_status_)
     if (self.has_time_until_scheduled_): n += 1 + self.lengthVarInt64(self.time_until_scheduled_)
     n += 1 * len(self.config_)
     for i in xrange(len(self.config_)): n += self.lengthString(self.config_[i].ByteSizePartial())
@@ -344,8 +338,9 @@ class IsEnabledResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_config()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(8)
-    out.putVarInt32(self.summary_status_)
+    if (self.has_summary_status_):
+      out.putVarInt32(8)
+      out.putVarInt32(self.summary_status_)
     if (self.has_time_until_scheduled_):
       out.putVarInt32(16)
       out.putVarInt64(self.time_until_scheduled_)

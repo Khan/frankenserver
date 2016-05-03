@@ -51,9 +51,9 @@ final class ModulesService {
       case ErrorCode::INVALID_INSTANCES:
         return new ModulesException('Invalid instances.');
       case ErrorCode::TRANSIENT_ERROR:
-        return new TransientModulesException();
+        return new TransientModulesException('Temporary error, please re-try');
       case ErrorCode::UNEXPECTED_STATE:
-        return new InvalidModuleStateException();
+        return new InvalidModuleStateException('Module in an unexpected state');
       default:
         return new ModulesException('Error Code: ' . $error);
     }

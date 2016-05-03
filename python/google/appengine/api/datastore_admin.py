@@ -29,6 +29,8 @@
 
 
 
+from types import MethodType
+
 from google.appengine.api import api_base_pb
 from google.appengine.api import apiproxy_stub_map
 from google.appengine.api import datastore
@@ -38,6 +40,15 @@ from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.runtime import apiproxy_errors
 
+
+def _StringProtoAppIdGet(self):
+  return self.value()
+
+
+def _StringProtoAppIdSet(self, app_id):
+  return self.set_value(app_id)
+
+
 def GetIndices(_app=None):
   """Fetches all composite indices in the datastore for this app.
 
@@ -45,8 +56,21 @@ def GetIndices(_app=None):
     list of entity_pb.CompositeIndex
   """
 
-  req = api_base_pb.StringProto()
-  req.set_value(datastore_types.ResolveAppId(_app))
+
+  resolved_app_id = datastore_types.ResolveAppId(_app)
+
+
+  if hasattr(datastore_pb, 'GetIndicesRequest'):
+    req = datastore_pb.GetIndicesRequest()
+    req.set_app_id(resolved_app_id)
+  else:
+
+
+    req = api_base_pb.StringProto()
+    req.app_id = MethodType(_StringProtoAppIdGet, req)
+    req.set_app_id = MethodType(_StringProtoAppIdSet, req)
+    req.set_app_id(resolved_app_id)
+
   resp = datastore_pb.CompositeIndices()
   resp = _Call('GetIndices', req, resp)
   return resp.index_list()

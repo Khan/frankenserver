@@ -129,6 +129,29 @@ class TestModuleConfiguration(unittest.TestCase):
     self.assertEqual({'/appdir/app.yaml': 10}, config._mtimes)
     self.assertEqual(_DEFAULT_HEALTH_CHECK, config.health_check)
 
+  def test_app_yaml_with_service(self):
+    handlers = [appinfo.URLMap()]
+    info = appinfo.AppInfoExternal(
+        application='app',
+        service='module1',
+        version='1',
+        runtime='python27',
+        threadsafe=False,
+        handlers=handlers,
+        )
+    appinfo_includes.ParseAndReturnIncludePaths(mox.IgnoreArg()).AndReturn(
+        (info, []))
+    os.path.getmtime('/appdir/app.yaml').AndReturn(10)
+
+    self.mox.ReplayAll()
+    config = application_configuration.ModuleConfiguration('/appdir/app.yaml')
+    self.mox.VerifyAll()
+
+    self.assertEqual('dev~app', config.application)
+    self.assertEqual('app', config.application_external_name)
+    self.assertEqual('module1', config.module_name)
+    self.assertEqual('1', config.major_version)
+
   def test_vm_app_yaml_configuration_with_env(self):
     manual_scaling = appinfo.ManualScaling()
     vm_settings = appinfo.VmSettings()

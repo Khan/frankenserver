@@ -1,3 +1,18 @@
+#
+# Copyright 2008 The ndb Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """The Key class, and associated utilities.
 
 A Key encapsulates the following pieces of information, which together
@@ -242,7 +257,7 @@ class Key(object):
       elif id is None:
         if i + 1 < len(pairs):
           raise datastore_errors.BadArgumentError(
-            'Incomplete Key entry must be last')
+              'Incomplete Key entry must be last')
       else:
         if not isinstance(id, (int, long, str)):
           raise TypeError('Key id must be a string or a number; received %r' %
@@ -252,8 +267,8 @@ class Key(object):
       if isinstance(kind, unicode):
         kind = kind.encode('utf8')
       if not isinstance(kind, str):
-          raise TypeError('Key kind must be a string or Model class; '
-                          'received %r' % kind)
+        raise TypeError('Key kind must be a string or Model class; '
+                        'received %r' % kind)
       if not id:
         id = None
       pairs[i] = (kind, id)
@@ -263,7 +278,7 @@ class Key(object):
             'Expected Key instance, got %r' % parent)
       if not parent.id():
         raise datastore_errors.BadArgumentError(
-          'Parent cannot have incomplete key')
+            'Parent cannot have incomplete key')
       pairs[:0] = parent.pairs()
       if app:
         if app != parent.app():
@@ -730,6 +745,7 @@ def _ReferenceFromPairs(pairs, reference=None, app=None, namespace=None):
       else:
         raise TypeError('Key kind must be either a string or subclass of Model;'
                         ' received %r' % kind)
+    # pylint: disable=superfluous-parens
     if not (1 <= len(kind) <= _MAX_KEYPART_BYTES):
       raise ValueError('Key kind string must be a non-empty string up to %i'
                        'bytes; received %s' %
@@ -738,10 +754,12 @@ def _ReferenceFromPairs(pairs, reference=None, app=None, namespace=None):
     elem.set_type(kind)
     t = type(idorname)
     if t is int or t is long:
+      # pylint: disable=superfluous-parens
       if not (1 <= idorname < _MAX_LONG):
         raise ValueError('Key id number is too long; received %i' % idorname)
       elem.set_id(idorname)
     elif t is str:
+      # pylint: disable=superfluous-parens
       if not (1 <= len(idorname) <= _MAX_KEYPART_BYTES):
         raise ValueError('Key name strings must be non-empty strings up to %i '
                          'bytes; received %s' %
@@ -749,6 +767,7 @@ def _ReferenceFromPairs(pairs, reference=None, app=None, namespace=None):
       elem.set_name(idorname)
     elif t is unicode:
       idorname = idorname.encode('utf8')
+      # pylint: disable=superfluous-parens
       if not (1 <= len(idorname) <= _MAX_KEYPART_BYTES):
         raise ValueError('Key name unicode strings must be non-empty strings up'
                          ' to %i bytes; received %s' %
@@ -757,12 +776,14 @@ def _ReferenceFromPairs(pairs, reference=None, app=None, namespace=None):
     elif idorname is None:
       last = True
     elif issubclass(t, (int, long)):
+      # pylint: disable=superfluous-parens
       if not (1 <= idorname < _MAX_LONG):
         raise ValueError('Key id number is too long; received %i' % idorname)
       elem.set_id(idorname)
     elif issubclass(t, basestring):
       if issubclass(t, unicode):
         idorname = idorname.encode('utf8')
+      # pylint: disable=superfluous-parens
       if not (1 <= len(idorname) <= _MAX_KEYPART_BYTES):
         raise ValueError('Key name strings must be non-empty strings up to %i '
                          'bytes; received %s' % (_MAX_KEYPART_BYTES, idorname))

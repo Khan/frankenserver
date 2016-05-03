@@ -62,7 +62,9 @@ from google.appengine.tools.devappserver2 import tee
 # These are different approaches to passing configuration into the runtimes
 # and getting configuration back out of the runtime.
 
-# Works by passing config in via stdin and reading the port over stdout.
+# Works by passing config in via stdin and reading the port, and optionally
+# host, over stdout. If the host is present, it will be separated from the
+# port by a tab character.
 START_PROCESS = -1
 
 # Works by passing config in via a file and reading the port over a file.
@@ -311,6 +313,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
     # from signals sent to the parent. Only available in subprocess in
     # Python 2.7.
     assert self._start_process_flavor in self._VALID_START_PROCESS_FLAVORS
+    host = 'localhost'
     if self._start_process_flavor == START_PROCESS:
       serialized_config = base64.b64encode(runtime_config.SerializeToString())
       with self._process_lock:
@@ -323,6 +326,8 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
             env=self._env,
             cwd=self._module_configuration.application_root)
       port = self._process.stdout.readline()
+      if '\t' in port:  # Split out the host if present.
+        host, port = port.split('\t', 1)
     elif self._start_process_flavor == START_PROCESS_FILE:
       serialized_config = runtime_config.SerializeToString()
       with self._process_lock:
@@ -391,7 +396,7 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
       logging.error(error)
     finally:
       self._proxy = http_proxy.HttpProxy(
-          host='localhost', port=port,
+          host=host, port=port,
           instance_died_unexpectedly=self._instance_died_unexpectedly,
           instance_logs_getter=self._get_instance_logs,
           error_handler_file=application_configuration.get_app_error_file(

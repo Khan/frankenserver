@@ -1,3 +1,18 @@
+#
+# Copyright 2008 The ndb Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """NDB interface for Blobstore.
 
 This currently builds on google.appengine.ext.blobstore and provides a
@@ -315,9 +330,9 @@ def create_upload_url(success_path,
 
 @tasklets.tasklet
 def create_upload_url_async(success_path,
-                      max_bytes_per_blob=None,
-                      max_bytes_total=None,
-                      **options):
+                            max_bytes_per_blob=None,
+                            max_bytes_total=None,
+                            **options):
   """Async version of create_upload_url()."""
   rpc = blobstore.create_rpc(**options)
   rpc = blobstore.create_upload_url_async(success_path,
@@ -382,7 +397,7 @@ def parse_blob_info(field_storage):
                   filename=filename,
                   size=size,
                   md5_hash=md5_hash,
-                  )
+                 )
 
 
 def fetch_data(blob, start_index, end_index, **options):

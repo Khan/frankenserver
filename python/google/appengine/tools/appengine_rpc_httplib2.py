@@ -96,7 +96,7 @@ class HttpRpcServerHttpLib2(object):
                host_override=None, extra_headers=None, save_cookies=False,
                auth_tries=None, account_type=None, debug_data=True, secure=True,
                ignore_certs=False, rpc_tries=3, conflict_max_errors=10,
-               timeout_max_errors=2):
+               timeout_max_errors=2, http_class=None):
     """Creates a new HttpRpcServerHttpLib2.
 
     Args:
@@ -120,6 +120,7 @@ class HttpRpcServerHttpLib2(object):
         (i.e. Response code 409) before failing.
       timeout_max_errors: The number of rpc retries upon http server timeout
         (i.e. Response code 408) before failing.
+      http_class: the httplib2.Http subclass to use. Defaults to httplib2.Http.
     """
     self.host = host
     self.auth_function = auth_function
@@ -137,6 +138,7 @@ class HttpRpcServerHttpLib2(object):
     self.scheme = secure and 'https' or 'http'
     self.conflict_max_errors = conflict_max_errors
     self.timeout_max_errors = timeout_max_errors
+    self.http_class = http_class if http_class is not None else httplib2.Http
 
     self.certpath = None
     self.cert_file_available = False
@@ -194,7 +196,7 @@ class HttpRpcServerHttpLib2(object):
 
 
 
-    self.http = httplib2.Http(
+    self.http = self.http_class(
         cache=self.memory_cache, ca_certs=self.certpath,
         disable_ssl_certificate_validation=(not self.cert_file_available))
     self.http.follow_redirects = False
@@ -348,7 +350,7 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
   def __init__(self, host, oauth2_parameters, user_agent, source,
                host_override=None, extra_headers=None, save_cookies=False,
                auth_tries=None, account_type=None, debug_data=True, secure=True,
-               ignore_certs=False, rpc_tries=3, options=None):
+               ignore_certs=False, rpc_tries=3, options=None, http_class=None):
     """Creates a new HttpRpcServerOAuth2.
 
     Args:
@@ -371,12 +373,13 @@ class HttpRpcServerOAuth2(HttpRpcServerHttpLib2):
       rpc_tries: The number of rpc retries upon http server error (i.e.
         Response code >= 500 and < 600) before failing.
       options: the command line options.
+      http_class: the httplib2.Http subclass to use. Defaults to httplib2.Http.
     """
     super(HttpRpcServerOAuth2, self).__init__(
         host, None, user_agent, source, host_override=host_override,
         extra_headers=extra_headers, auth_tries=auth_tries,
         debug_data=debug_data, secure=secure, ignore_certs=ignore_certs,
-        rpc_tries=rpc_tries, save_cookies=save_cookies)
+        rpc_tries=rpc_tries, save_cookies=save_cookies, http_class=http_class)
 
     if not isinstance(oauth2_parameters, self.OAuth2Parameters):
       raise TypeError('oauth2_parameters must be an OAuth2Parameters: %r' %

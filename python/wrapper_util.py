@@ -250,7 +250,6 @@ class Paths(object):
         'download_appstats.py': self.v1_extra_paths,
         'endpointscfg.py': self.v1_extra_paths + self.endpointscfg_extra_paths,
         'gen_protorpc.py': self.v1_extra_paths,
-        'google_sql.py': self.v1_extra_paths + self.google_sql_extra_paths,
         'php_cli.py': devappserver2_paths,
         'remote_api_shell.py': self.v1_extra_paths,
         'vmboot.py': self.v1_extra_paths,
@@ -271,7 +270,6 @@ class Paths(object):
         dir_path, 'google', 'storage', 'speckle', 'python', 'tool')
 
     self._script_to_dir = {
-        'google_sql.py': self.google_sql_dir,
         'dev_appserver.py': devappserver2_dir,
         '_php_runtime.py': php_runtime_dir,
         '_python_runtime.py': python_runtime_dir,

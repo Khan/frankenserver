@@ -40,12 +40,12 @@ _WORD_SEPARATOR_RE = re.compile('|'.join(_WORD_SEPARATORS))
 
 def _StripSeparators(value):
   """Remove special characters and collapse spaces."""
-  return re.sub(r'  [ ]*', ' ', re.sub(_WORD_SEPARATOR_RE, ' ', value))
+  return re.sub(r'  [ ]*', ' ', re.sub(_WORD_SEPARATOR_RE, ' ', value)).strip()
 
 
 def NormalizeString(value):
   """Lowers case, removes punctuation and collapses whitespace."""
-  return _StripSeparators(value).lower().strip()
+  return _StripSeparators(value).lower()
 
 
 class SimpleTokenizer(object):
@@ -68,6 +68,33 @@ class SimpleTokenizer(object):
     else:
       return value.lower()
 
+  def Normalize(self, text, field_type):
+    """Handle normalization for the different string types.
+
+    Atom - lowercase
+    Untokenized Prefix - lowercase, nfkd conversion, strip whitespace
+    Tokenized Prefix - lower case, nfkd conversion, strip whitespace,
+                       strip separators.
+    Text - lowercase, nfkd conversion, strip whitespace, strip separators,
+           remove accents
+    Html - lowercase, nfkd conversion, strip whitespace, strip separators,
+           remove accents, strip html tags.
+    """
+    text = self.SetCase(text)
+    if field_type == document_pb.FieldValue.HTML:
+      text = self._StripHtmlTags(text)
+    if field_type == document_pb.FieldValue.ATOM:
+
+      return text
+    text = text.strip()
+    text = search_util.ConvertToNfkd(text)
+    if field_type == document_pb.FieldValue.UNTOKENIZED_PREFIX:
+      return text
+    text = _StripSeparators(text)
+    if field_type == document_pb.FieldValue.TOKENIZED_PREFIX:
+      return text
+    return search_util.RemoveAccents(text)
+
   def TokenizeText(self, text, token_position=0,
                    input_field_type=document_pb.FieldValue.TEXT):
     """Tokenizes the text into a sequence of Tokens."""
@@ -80,17 +107,14 @@ class SimpleTokenizer(object):
       return self._TokenizeForType(field_type=field_value.type(),
                                    value=field_value.geo(),
                                    token_position=token_position)
-    return self._TokenizeForType(
-        field_type=field_value.type(),
-        value=search_util.RemoveAccentsNfkd(field_value.string_value()),
-        token_position=token_position)
+    return self._TokenizeForType(field_type=field_value.type(),
+                                 value=field_value.string_value(),
+                                 token_position=token_position)
 
   def _TokenizeString(self, value, field_type):
-    value = self.SetCase(value)
-    if field_type != document_pb.FieldValue.ATOM:
-      if field_type == document_pb.FieldValue.HTML:
-        value = self._StripHtmlTags(value)
-      value = _StripSeparators(value)
+    value = self.Normalize(value, field_type)
+    if (field_type != document_pb.FieldValue.ATOM and
+        field_type != document_pb.FieldValue.UNTOKENIZED_PREFIX):
       return value.split()
     else:
       return [value]
@@ -112,7 +136,7 @@ class SimpleTokenizer(object):
     token_strings = []
 
     if not self._split_restricts:
-      token_strings = self.SetCase(value).split()
+      token_strings = self.SetCase(search_util.RemoveAccentsNfkd(value)).split()
     else:
       token_strings = self._TokenizeString(value, field_type)
     for token in token_strings:

@@ -89,7 +89,11 @@ def setup_stubs(config):
       #
       # A warning is not logged if FindUnixSocket returns None because it would
       # appear for all users, not just those who call connect.
-      connect_kwargs['unix_socket'] = rdbms_mysqldb.FindUnixSocket()
+      socket = rdbms_mysqldb.FindUnixSocket()
+      # Don't set socket to None or the mysql driver will blow up with a
+      # TypeError. This way it will raise a nicer connection error message.
+      if socket is not None:
+        connect_kwargs['unix_socket'] = socket
 
     rdbms_mysqldb.SetConnectKwargs(**connect_kwargs)
 

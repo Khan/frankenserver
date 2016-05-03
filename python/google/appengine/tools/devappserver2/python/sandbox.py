@@ -21,7 +21,6 @@
 import __builtin__
 import imp
 import os
-import platform
 import re
 import sys
 import traceback
@@ -162,11 +161,7 @@ def enable_sandbox(config):
   # Note that the above code (see _find_shared_object_c_module) imports modules
   # that must be pruned so please use care if you move the call to
   # _prune_sys_modules.
-  #
-  # Also note that _prune_sys_modules may not make sense for non-CPython
-  # environments, so in that situation, don't.
-  if platform.python_implementation() == 'CPython':
-    _prune_sys_modules()
+  _prune_sys_modules()
   path_override_hook = PathOverrideImportHook(
       set(_THIRD_PARTY_LIBRARY_NAME_OVERRIDES.get(lib.name, lib.name)
           for lib in config.libraries).intersection(_C_MODULES))
@@ -174,7 +169,21 @@ def enable_sandbox(config):
   if not config.vm:
     _install_fake_file(config, python_lib_paths, path_override_hook)
     _install_open_hooks()
-  sys.platform = 'linux3'
+
+  # NOTE(bryanmau): The sys.platform was a hack needed to solve
+  # b/7482060.  After python version 2.7.4 this is no longer needed.
+  def was_created_before(ver1, ver2):
+    """Returns true if the integer tuple ver1 is less than the tuple ver2."""
+    if ver1[0] != ver2[0]:
+      return ver1[0] < ver2[0]
+    elif ver1[1] != ver2[1]:
+      return ver1[1] < ver2[1]
+    else:
+      return ver1[2] < ver2[2]
+
+  if was_created_before(sys.version_info, (2, 7, 4)):
+    sys.platform = 'linux3'
+
   _install_import_hooks(config, path_override_hook)
   sys.path_importer_cache = {}
   if not config.vm:
@@ -898,6 +907,7 @@ _WHITE_LIST_C_MODULES = [
     'posix',  # Only indirectly through the os module.
     'pyexpat',
     '_random',
+    '_scproxy',  # Mac OS X compatibility
     '_sha256',  # Python2.5 compatibility
     '_sha512',  # Python2.5 compatibility
     '_sha',  # Python2.5 compatibility

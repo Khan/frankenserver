@@ -15,10 +15,6 @@
  * limitations under the License.
  */
 /**
- * A user space stream wrapper for reading and writing to Google Cloud Storage.
- *
- * See: http://www.php.net/manual/en/class.streamwrapper.php
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
@@ -27,6 +23,10 @@ use google\appengine\api\cloud_storage\CloudStorageTools;
 use google\appengine\util\ArrayUtil;
 
 /**
+ * A user space stream wrapper for reading and writing to Google Cloud Storage.
+ *
+ * See: http://www.php.net/manual/en/class.streamwrapper.php
+ *
  * Allowed stream_context options.
  * "anonymous": Boolean, if set then OAuth tokens will not be generated.
  * "acl": The ACL to apply when creating an object.

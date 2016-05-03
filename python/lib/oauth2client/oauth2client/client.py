@@ -132,6 +132,13 @@ class AccessTokenCredentialsError(Error):
   """Having only the access_token means no refresh is possible."""
 
 
+class HttpAccessTokenRefreshError(AccessTokenRefreshError):
+    """Error (with HTTP status) trying to refresh an expired access token."""
+    def __init__(self, *args, **kwargs):
+        super(HttpAccessTokenRefreshError, self).__init__(*args)
+        self.status = kwargs.get('status')
+
+
 class VerifyJwtTokenError(Error):
   """Could not retrieve certificates for validation."""
 
@@ -1377,9 +1384,9 @@ def _get_application_default_credential_GAE():
 
 
 def _get_application_default_credential_GCE():
-  from oauth2client.gce import AppAssertionCredentials
+    from oauth2client.contrib.gce import AppAssertionCredentials
 
-  return AppAssertionCredentials([])
+    return AppAssertionCredentials([])
 
 
 class AssertionCredentials(GoogleCredentials):

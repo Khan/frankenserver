@@ -31,243 +31,25 @@ else:
   _extension_runtime = False
   _ExtendableProtocolMessage = ProtocolBuffer.ProtocolMessage
 
-from google.appengine.api.api_base_pb import *
-import google.appengine.api.api_base_pb
 from google.appengine.datastore.action_pb import *
 import google.appengine.datastore.action_pb
 from google.appengine.datastore.entity_pb import *
 import google.appengine.datastore.entity_pb
 from google.appengine.datastore.snapshot_pb import *
 import google.appengine.datastore.snapshot_pb
-class InternalHeader(ProtocolBuffer.ProtocolMessage):
-  has_requesting_app_id_ = 0
-  requesting_app_id_ = ""
-  has_requesting_project_number_ = 0
-  requesting_project_number_ = ""
-  has_requesting_version_id_ = 0
-  requesting_version_id_ = ""
-  has_api_settings_ = 0
-  api_settings_ = ""
-
-  def __init__(self, contents=None):
-    if contents is not None: self.MergeFromString(contents)
-
-  def requesting_app_id(self): return self.requesting_app_id_
-
-  def set_requesting_app_id(self, x):
-    self.has_requesting_app_id_ = 1
-    self.requesting_app_id_ = x
-
-  def clear_requesting_app_id(self):
-    if self.has_requesting_app_id_:
-      self.has_requesting_app_id_ = 0
-      self.requesting_app_id_ = ""
-
-  def has_requesting_app_id(self): return self.has_requesting_app_id_
-
-  def requesting_project_number(self): return self.requesting_project_number_
-
-  def set_requesting_project_number(self, x):
-    self.has_requesting_project_number_ = 1
-    self.requesting_project_number_ = x
-
-  def clear_requesting_project_number(self):
-    if self.has_requesting_project_number_:
-      self.has_requesting_project_number_ = 0
-      self.requesting_project_number_ = ""
-
-  def has_requesting_project_number(self): return self.has_requesting_project_number_
-
-  def requesting_version_id(self): return self.requesting_version_id_
-
-  def set_requesting_version_id(self, x):
-    self.has_requesting_version_id_ = 1
-    self.requesting_version_id_ = x
-
-  def clear_requesting_version_id(self):
-    if self.has_requesting_version_id_:
-      self.has_requesting_version_id_ = 0
-      self.requesting_version_id_ = ""
-
-  def has_requesting_version_id(self): return self.has_requesting_version_id_
-
-  def api_settings(self): return self.api_settings_
-
-  def set_api_settings(self, x):
-    self.has_api_settings_ = 1
-    self.api_settings_ = x
-
-  def clear_api_settings(self):
-    if self.has_api_settings_:
-      self.has_api_settings_ = 0
-      self.api_settings_ = ""
-
-  def has_api_settings(self): return self.has_api_settings_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_requesting_app_id()): self.set_requesting_app_id(x.requesting_app_id())
-    if (x.has_requesting_project_number()): self.set_requesting_project_number(x.requesting_project_number())
-    if (x.has_requesting_version_id()): self.set_requesting_version_id(x.requesting_version_id())
-    if (x.has_api_settings()): self.set_api_settings(x.api_settings())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_requesting_app_id_ != x.has_requesting_app_id_: return 0
-    if self.has_requesting_app_id_ and self.requesting_app_id_ != x.requesting_app_id_: return 0
-    if self.has_requesting_project_number_ != x.has_requesting_project_number_: return 0
-    if self.has_requesting_project_number_ and self.requesting_project_number_ != x.requesting_project_number_: return 0
-    if self.has_requesting_version_id_ != x.has_requesting_version_id_: return 0
-    if self.has_requesting_version_id_ and self.requesting_version_id_ != x.requesting_version_id_: return 0
-    if self.has_api_settings_ != x.has_api_settings_: return 0
-    if self.has_api_settings_ and self.api_settings_ != x.api_settings_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
-    if (self.has_requesting_project_number_): n += 1 + self.lengthString(len(self.requesting_project_number_))
-    if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
-    if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
-    return n
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_requesting_app_id_): n += 1 + self.lengthString(len(self.requesting_app_id_))
-    if (self.has_requesting_project_number_): n += 1 + self.lengthString(len(self.requesting_project_number_))
-    if (self.has_requesting_version_id_): n += 1 + self.lengthString(len(self.requesting_version_id_))
-    if (self.has_api_settings_): n += 1 + self.lengthString(len(self.api_settings_))
-    return n
-
-  def Clear(self):
-    self.clear_requesting_app_id()
-    self.clear_requesting_project_number()
-    self.clear_requesting_version_id()
-    self.clear_api_settings()
-
-  def OutputUnchecked(self, out):
-    if (self.has_requesting_app_id_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.requesting_app_id_)
-    if (self.has_api_settings_):
-      out.putVarInt32(26)
-      out.putPrefixedString(self.api_settings_)
-    if (self.has_requesting_project_number_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.requesting_project_number_)
-    if (self.has_requesting_version_id_):
-      out.putVarInt32(42)
-      out.putPrefixedString(self.requesting_version_id_)
-
-  def OutputPartial(self, out):
-    if (self.has_requesting_app_id_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.requesting_app_id_)
-    if (self.has_api_settings_):
-      out.putVarInt32(26)
-      out.putPrefixedString(self.api_settings_)
-    if (self.has_requesting_project_number_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.requesting_project_number_)
-    if (self.has_requesting_version_id_):
-      out.putVarInt32(42)
-      out.putPrefixedString(self.requesting_version_id_)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 18:
-        self.set_requesting_app_id(d.getPrefixedString())
-        continue
-      if tt == 26:
-        self.set_api_settings(d.getPrefixedString())
-        continue
-      if tt == 34:
-        self.set_requesting_project_number(d.getPrefixedString())
-        continue
-      if tt == 42:
-        self.set_requesting_version_id(d.getPrefixedString())
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_requesting_app_id_: res+=prefix+("requesting_app_id: %s\n" % self.DebugFormatString(self.requesting_app_id_))
-    if self.has_requesting_project_number_: res+=prefix+("requesting_project_number: %s\n" % self.DebugFormatString(self.requesting_project_number_))
-    if self.has_requesting_version_id_: res+=prefix+("requesting_version_id: %s\n" % self.DebugFormatString(self.requesting_version_id_))
-    if self.has_api_settings_: res+=prefix+("api_settings: %s\n" % self.DebugFormatString(self.api_settings_))
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  krequesting_app_id = 2
-  krequesting_project_number = 4
-  krequesting_version_id = 5
-  kapi_settings = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    2: "requesting_app_id",
-    3: "api_settings",
-    4: "requesting_project_number",
-    5: "requesting_version_id",
-  }, 5)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-    4: ProtocolBuffer.Encoder.STRING,
-    5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.InternalHeader'
 class Transaction(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_handle_ = 0
   handle_ = 0
   has_app_ = 0
   app_ = ""
+  has_database_id_ = 0
+  database_id_ = ""
   has_mark_changes_ = 0
   mark_changes_ = 0
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
+    self.composite_index_ = []
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def handle(self): return self.handle_
 
@@ -295,6 +77,19 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   def has_app(self): return self.has_app_
 
+  def database_id(self): return self.database_id_
+
+  def set_database_id(self, x):
+    self.has_database_id_ = 1
+    self.database_id_ = x
+
+  def clear_database_id(self):
+    if self.has_database_id_:
+      self.has_database_id_ = 0
+      self.database_id_ = ""
+
+  def has_database_id(self): return self.has_database_id_
+
   def mark_changes(self): return self.mark_changes_
 
   def set_mark_changes(self, x):
@@ -308,29 +103,48 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   def has_mark_changes(self): return self.has_mark_changes_
 
+  def composite_index_size(self): return len(self.composite_index_)
+  def composite_index_list(self): return self.composite_index_
+
+  def composite_index(self, i):
+    return self.composite_index_[i]
+
+  def mutable_composite_index(self, i):
+    return self.composite_index_[i]
+
+  def add_composite_index(self):
+    x = CompositeIndex()
+    self.composite_index_.append(x)
+    return x
+
+  def clear_composite_index(self):
+    self.composite_index_ = []
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_handle()): self.set_handle(x.handle())
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_database_id()): self.set_database_id(x.database_id())
     if (x.has_mark_changes()): self.set_mark_changes(x.mark_changes())
+    for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_handle_ != x.has_handle_: return 0
     if self.has_handle_ and self.handle_ != x.handle_: return 0
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_database_id_ != x.has_database_id_: return 0
+    if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
     if self.has_mark_changes_ != x.has_mark_changes_: return 0
     if self.has_mark_changes_ and self.mark_changes_ != x.mark_changes_: return 0
+    if len(self.composite_index_) != len(x.composite_index_): return 0
+    for e1, e2 in zip(self.composite_index_, x.composite_index_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (not self.has_handle_):
       initialized = 0
       if debug_strs is not None:
@@ -339,31 +153,38 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
       initialized = 0
       if debug_strs is not None:
         debug_strs.append('Required field: app not set.')
+    for p in self.composite_index_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     if (self.has_mark_changes_): n += 2
+    n += 1 * len(self.composite_index_)
+    for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSize())
     return n + 10
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_handle_):
       n += 9
     if (self.has_app_):
       n += 1
       n += self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     if (self.has_mark_changes_): n += 2
+    n += 1 * len(self.composite_index_)
+    for i in xrange(len(self.composite_index_)): n += self.lengthString(self.composite_index_[i].ByteSizePartial())
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_handle()
     self.clear_app()
+    self.clear_database_id()
     self.clear_mark_changes()
+    self.clear_composite_index()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(9)
@@ -373,10 +194,13 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if (self.has_mark_changes_):
       out.putVarInt32(24)
       out.putBoolean(self.mark_changes_)
-    if (self.has_header_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
+    for i in xrange(len(self.composite_index_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.composite_index_[i].ByteSize())
+      self.composite_index_[i].OutputUnchecked(out)
+    if (self.has_database_id_):
+      out.putVarInt32(50)
+      out.putPrefixedString(self.database_id_)
 
   def OutputPartial(self, out):
     if (self.has_handle_):
@@ -388,10 +212,13 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
     if (self.has_mark_changes_):
       out.putVarInt32(24)
       out.putBoolean(self.mark_changes_)
-    if (self.has_header_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
+    for i in xrange(len(self.composite_index_)):
+      out.putVarInt32(42)
+      out.putVarInt32(self.composite_index_[i].ByteSizePartial())
+      self.composite_index_[i].OutputPartial(out)
+    if (self.has_database_id_):
+      out.putVarInt32(50)
+      out.putPrefixedString(self.database_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -405,11 +232,14 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_mark_changes(d.getBoolean())
         continue
-      if tt == 34:
+      if tt == 42:
         length = d.getVarInt32()
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
         d.skip(length)
-        self.mutable_header().TryMerge(tmp)
+        self.add_composite_index().TryMerge(tmp)
+        continue
+      if tt == 50:
+        self.set_database_id(d.getPrefixedString())
         continue
 
 
@@ -419,39 +249,47 @@ class Transaction(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_handle_: res+=prefix+("handle: %s\n" % self.DebugFormatFixed64(self.handle_))
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
     if self.has_mark_changes_: res+=prefix+("mark_changes: %s\n" % self.DebugFormatBool(self.mark_changes_))
+    cnt=0
+    for e in self.composite_index_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("composite_index%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 4
   khandle = 1
   kapp = 2
+  kdatabase_id = 6
   kmark_changes = 3
+  kcomposite_index = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "handle",
     2: "app",
     3: "mark_changes",
-    4: "header",
-  }, 4)
+    5: "composite_index",
+    6: "database_id",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.DOUBLE,
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
-    4: ProtocolBuffer.Encoder.STRING,
-  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+    5: ProtocolBuffer.Encoder.STRING,
+    6: ProtocolBuffer.Encoder.STRING,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -801,10 +639,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
   def Hint_Name(cls, x): return cls._Hint_NAMES.get(x, "")
   Hint_Name = classmethod(Hint_Name)
 
-  has_header_ = 0
-  header_ = None
   has_app_ = 0
   app_ = ""
+  has_database_id_ = 0
+  database_id_ = ""
   has_name_space_ = 0
   name_space_ = ""
   has_kind_ = 0
@@ -854,25 +692,6 @@ class Query(ProtocolBuffer.ProtocolMessage):
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
-
   def app(self): return self.app_
 
   def set_app(self, x):
@@ -885,6 +704,19 @@ class Query(ProtocolBuffer.ProtocolMessage):
       self.app_ = ""
 
   def has_app(self): return self.has_app_
+
+  def database_id(self): return self.database_id_
+
+  def set_database_id(self, x):
+    self.has_database_id_ = 1
+    self.database_id_ = x
+
+  def clear_database_id(self):
+    if self.has_database_id_:
+      self.has_database_id_ = 0
+      self.database_id_ = ""
+
+  def has_database_id(self): return self.has_database_id_
 
   def name_space(self): return self.name_space_
 
@@ -1253,8 +1085,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_database_id()): self.set_database_id(x.database_id())
     if (x.has_name_space()): self.set_name_space(x.name_space())
     if (x.has_kind()): self.set_kind(x.kind())
     if (x.has_ancestor()): self.mutable_ancestor().MergeFrom(x.ancestor())
@@ -1283,10 +1115,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_database_id_ != x.has_database_id_: return 0
+    if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
     if self.has_name_space_ != x.has_name_space_: return 0
     if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
     if self.has_kind_ != x.has_kind_: return 0
@@ -1347,7 +1179,6 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (not self.has_app_):
       initialized = 0
       if debug_strs is not None:
@@ -1366,8 +1197,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 2 + self.lengthString(self.header_.ByteSize())
     n += self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 2 + self.lengthString(len(self.database_id_))
     if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     if (self.has_kind_): n += 1 + self.lengthString(len(self.kind_))
     if (self.has_ancestor_): n += 2 + self.lengthString(self.ancestor_.ByteSize())
@@ -1403,10 +1234,10 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 2 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_app_):
       n += 1
       n += self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 2 + self.lengthString(len(self.database_id_))
     if (self.has_name_space_): n += 2 + self.lengthString(len(self.name_space_))
     if (self.has_kind_): n += 1 + self.lengthString(len(self.kind_))
     if (self.has_ancestor_): n += 2 + self.lengthString(self.ancestor_.ByteSizePartial())
@@ -1441,8 +1272,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_app()
+    self.clear_database_id()
     self.clear_name_space()
     self.clear_kind()
     self.clear_ancestor()
@@ -1554,10 +1385,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_persist_offset_):
       out.putVarInt32(296)
       out.putBoolean(self.persist_offset_)
-    if (self.has_header_):
-      out.putVarInt32(314)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
+    if (self.has_database_id_):
+      out.putVarInt32(338)
+      out.putPrefixedString(self.database_id_)
 
   def OutputPartial(self, out):
     if (self.has_app_):
@@ -1645,10 +1475,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     if (self.has_persist_offset_):
       out.putVarInt32(296)
       out.putBoolean(self.persist_offset_)
-    if (self.has_header_):
-      out.putVarInt32(314)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
+    if (self.has_database_id_):
+      out.putVarInt32(338)
+      out.putPrefixedString(self.database_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1746,11 +1575,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
       if tt == 296:
         self.set_persist_offset(d.getBoolean())
         continue
-      if tt == 314:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
+      if tt == 338:
+        self.set_database_id(d.getPrefixedString())
         continue
 
 
@@ -1760,11 +1586,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
     if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
     if self.has_kind_: res+=prefix+("kind: %s\n" % self.DebugFormatString(self.kind_))
     if self.has_ancestor_:
@@ -1844,8 +1667,8 @@ class Query(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 39
   kapp = 1
+  kdatabase_id = 42
   kname_space = 29
   kkind = 3
   kancestor = 17
@@ -1909,9 +1732,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     35: "min_safe_time_seconds",
     36: "safe_replica_name",
     37: "persist_offset",
-    39: "header",
     40: "geo_region",
-  }, 40)
+    42: "database_id",
+  }, 42)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1945,9 +1768,9 @@ class Query(ProtocolBuffer.ProtocolMessage):
     35: ProtocolBuffer.Encoder.NUMERIC,
     36: ProtocolBuffer.Encoder.STRING,
     37: ProtocolBuffer.Encoder.NUMERIC,
-    39: ProtocolBuffer.Encoder.STRING,
     40: ProtocolBuffer.Encoder.STRING,
-  }, 40, ProtocolBuffer.Encoder.MAX_TYPE)
+    42: ProtocolBuffer.Encoder.STRING,
+  }, 42, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4238,6 +4061,8 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
   cursor_ = 0
   has_app_ = 0
   app_ = ""
+  has_database_id_ = 0
+  database_id_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -4268,11 +4093,25 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
 
   def has_app(self): return self.has_app_
 
+  def database_id(self): return self.database_id_
+
+  def set_database_id(self, x):
+    self.has_database_id_ = 1
+    self.database_id_ = x
+
+  def clear_database_id(self):
+    if self.has_database_id_:
+      self.has_database_id_ = 0
+      self.database_id_ = ""
+
+  def has_database_id(self): return self.has_database_id_
+
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_cursor()): self.set_cursor(x.cursor())
     if (x.has_app()): self.set_app(x.app())
+    if (x.has_database_id()): self.set_database_id(x.database_id())
 
   def Equals(self, x):
     if x is self: return 1
@@ -4280,6 +4119,8 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     if self.has_cursor_ and self.cursor_ != x.cursor_: return 0
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
+    if self.has_database_id_ != x.has_database_id_: return 0
+    if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4293,6 +4134,7 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_app_): n += 1 + self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     return n + 9
 
   def ByteSizePartial(self):
@@ -4300,11 +4142,13 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     if (self.has_cursor_):
       n += 9
     if (self.has_app_): n += 1 + self.lengthString(len(self.app_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     return n
 
   def Clear(self):
     self.clear_cursor()
     self.clear_app()
+    self.clear_database_id()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(9)
@@ -4312,6 +4156,9 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_):
       out.putVarInt32(18)
       out.putPrefixedString(self.app_)
+    if (self.has_database_id_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.database_id_)
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -4320,6 +4167,9 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_):
       out.putVarInt32(18)
       out.putPrefixedString(self.app_)
+    if (self.has_database_id_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.database_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4329,6 +4179,9 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
         continue
       if tt == 18:
         self.set_app(d.getPrefixedString())
+        continue
+      if tt == 26:
+        self.set_database_id(d.getPrefixedString())
         continue
 
 
@@ -4340,6 +4193,7 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
     res=""
     if self.has_cursor_: res+=prefix+("cursor: %s\n" % self.DebugFormatFixed64(self.cursor_))
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
+    if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
     return res
 
 
@@ -4348,18 +4202,21 @@ class Cursor(ProtocolBuffer.ProtocolMessage):
 
   kcursor = 1
   kapp = 2
+  kdatabase_id = 3
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "cursor",
     2: "app",
-  }, 2)
+    3: "database_id",
+  }, 3)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.DOUBLE,
     2: ProtocolBuffer.Encoder.STRING,
-  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+    3: ProtocolBuffer.Encoder.STRING,
+  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -4889,8 +4746,6 @@ class Cost(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.Cost'
 class GetRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_transaction_ = 0
   transaction_ = None
   has_failover_ms_ = 0
@@ -4904,25 +4759,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     self.key_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def key_size(self): return len(self.key_)
   def key_list(self): return self.key_
@@ -5001,7 +4837,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     if (x.has_failover_ms()): self.set_failover_ms(x.failover_ms())
@@ -5010,8 +4845,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if len(self.key_) != len(x.key_): return 0
     for e1, e2 in zip(self.key_, x.key_):
       if e1 != e2: return 0
@@ -5027,7 +4860,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     for p in self.key_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
@@ -5035,7 +4867,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
@@ -5046,7 +4877,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSizePartial())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
@@ -5056,7 +4886,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_key()
     self.clear_transaction()
     self.clear_failover_ms()
@@ -5081,10 +4910,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_deferred_):
       out.putVarInt32(40)
       out.putBoolean(self.allow_deferred_)
-    if (self.has_header_):
-      out.putVarInt32(50)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.key_)):
@@ -5104,10 +4929,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_deferred_):
       out.putVarInt32(40)
       out.putBoolean(self.allow_deferred_)
-    if (self.has_header_):
-      out.putVarInt32(50)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5133,12 +4954,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_allow_deferred(d.getBoolean())
         continue
-      if tt == 50:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -5147,10 +4962,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     cnt=0
     for e in self.key_:
       elm=""
@@ -5172,7 +4983,6 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 6
   kkey = 1
   ktransaction = 2
   kfailover_ms = 3
@@ -5186,8 +4996,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     3: "failover_ms",
     4: "strong",
     5: "allow_deferred",
-    6: "header",
-  }, 6)
+  }, 5)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -5196,8 +5005,7 @@ class GetRequest(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-    6: ProtocolBuffer.Encoder.STRING,
-  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -5593,8 +5401,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
   def AutoIdPolicy_Name(cls, x): return cls._AutoIdPolicy_NAMES.get(x, "")
   AutoIdPolicy_Name = classmethod(AutoIdPolicy_Name)
 
-  has_header_ = 0
-  header_ = None
   has_transaction_ = 0
   transaction_ = None
   has_trusted_ = 0
@@ -5612,25 +5418,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     self.snapshot_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def entity_size(self): return len(self.entity_)
   def entity_list(self): return self.entity_
@@ -5754,7 +5541,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     for i in xrange(x.entity_size()): self.add_entity().CopyFrom(x.entity(i))
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
@@ -5766,8 +5552,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if len(self.entity_) != len(x.entity_): return 0
     for e1, e2 in zip(self.entity_, x.entity_):
       if e1 != e2: return 0
@@ -5791,7 +5575,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     for p in self.entity_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
@@ -5803,7 +5586,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += 1 * len(self.entity_)
     for i in xrange(len(self.entity_)): n += self.lengthString(self.entity_[i].ByteSize())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
@@ -5819,7 +5601,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     n += 1 * len(self.entity_)
     for i in xrange(len(self.entity_)): n += self.lengthString(self.entity_[i].ByteSizePartial())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
@@ -5834,7 +5615,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_entity()
     self.clear_transaction()
     self.clear_composite_index()
@@ -5873,10 +5653,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_auto_id_policy_):
       out.putVarInt32(80)
       out.putVarInt32(self.auto_id_policy_)
-    if (self.has_header_):
-      out.putVarInt32(90)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.entity_)):
@@ -5907,10 +5683,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_auto_id_policy_):
       out.putVarInt32(80)
       out.putVarInt32(self.auto_id_policy_)
-    if (self.has_header_):
-      out.putVarInt32(90)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5951,12 +5723,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 80:
         self.set_auto_id_policy(d.getVarInt32())
         continue
-      if tt == 90:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -5965,10 +5731,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     cnt=0
     for e in self.entity_:
       elm=""
@@ -6007,7 +5769,6 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 11
   kentity = 1
   ktransaction = 2
   kcomposite_index = 3
@@ -6027,8 +5788,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     8: "mark_changes",
     9: "snapshot",
     10: "auto_id_policy",
-    11: "header",
-  }, 11)
+  }, 10)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6040,8 +5800,7 @@ class PutRequest(ProtocolBuffer.ProtocolMessage):
     8: ProtocolBuffer.Encoder.NUMERIC,
     9: ProtocolBuffer.Encoder.STRING,
     10: ProtocolBuffer.Encoder.NUMERIC,
-    11: ProtocolBuffer.Encoder.STRING,
-  }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6255,8 +6014,6 @@ class PutResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.PutResponse'
 class TouchRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_force_ = 0
   force_ = 0
 
@@ -6264,27 +6021,7 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
     self.key_ = []
     self.composite_index_ = []
     self.snapshot_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def key_size(self): return len(self.key_)
   def key_list(self): return self.key_
@@ -6350,7 +6087,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
     if (x.has_force()): self.set_force(x.force())
@@ -6358,8 +6094,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if len(self.key_) != len(x.key_): return 0
     for e1, e2 in zip(self.key_, x.key_):
       if e1 != e2: return 0
@@ -6375,7 +6109,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     for p in self.key_:
       if not p.IsInitialized(debug_strs): initialized=0
     for p in self.composite_index_:
@@ -6386,7 +6119,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     n += 1 * len(self.composite_index_)
@@ -6398,7 +6130,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSizePartial())
     n += 1 * len(self.composite_index_)
@@ -6409,7 +6140,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_key()
     self.clear_composite_index()
     self.clear_force()
@@ -6431,10 +6161,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(74)
       out.putVarInt32(self.snapshot_[i].ByteSize())
       self.snapshot_[i].OutputUnchecked(out)
-    if (self.has_header_):
-      out.putVarInt32(82)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     for i in xrange(len(self.key_)):
@@ -6452,10 +6178,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(74)
       out.putVarInt32(self.snapshot_[i].ByteSizePartial())
       self.snapshot_[i].OutputPartial(out)
-    if (self.has_header_):
-      out.putVarInt32(82)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -6481,12 +6203,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_snapshot().TryMerge(tmp)
         continue
-      if tt == 82:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -6495,10 +6211,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     cnt=0
     for e in self.key_:
       elm=""
@@ -6530,7 +6242,6 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 10
   kkey = 1
   kcomposite_index = 2
   kforce = 3
@@ -6542,8 +6253,7 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
     2: "composite_index",
     3: "force",
     9: "snapshot",
-    10: "header",
-  }, 10)
+  }, 9)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -6551,8 +6261,7 @@ class TouchRequest(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.STRING,
     3: ProtocolBuffer.Encoder.NUMERIC,
     9: ProtocolBuffer.Encoder.STRING,
-    10: ProtocolBuffer.Encoder.STRING,
-  }, 10, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 9, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -6670,8 +6379,6 @@ class TouchResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.TouchResponse'
 class DeleteRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_transaction_ = 0
   transaction_ = None
   has_trusted_ = 0
@@ -6687,25 +6394,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     self.snapshot_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def key_size(self): return len(self.key_)
   def key_list(self): return self.key_
@@ -6816,7 +6504,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     for i in xrange(x.key_size()): self.add_key().CopyFrom(x.key(i))
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     for i in xrange(x.composite_index_size()): self.add_composite_index().CopyFrom(x.composite_index(i))
@@ -6827,8 +6514,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if len(self.key_) != len(x.key_): return 0
     for e1, e2 in zip(self.key_, x.key_):
       if e1 != e2: return 0
@@ -6850,7 +6535,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     for p in self.key_:
       if not p.IsInitialized(debug_strs): initialized=0
     if (self.has_transaction_ and not self.transaction_.IsInitialized(debug_strs)): initialized = 0
@@ -6862,7 +6546,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSize())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSize())
@@ -6877,7 +6560,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     n += 1 * len(self.key_)
     for i in xrange(len(self.key_)): n += self.lengthString(self.key_[i].ByteSizePartial())
     if (self.has_transaction_): n += 1 + self.lengthString(self.transaction_.ByteSizePartial())
@@ -6891,7 +6573,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_key()
     self.clear_transaction()
     self.clear_composite_index()
@@ -6922,10 +6603,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(74)
       out.putVarInt32(self.snapshot_[i].ByteSize())
       self.snapshot_[i].OutputUnchecked(out)
-    if (self.has_header_):
-      out.putVarInt32(82)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
     for i in xrange(len(self.composite_index_)):
       out.putVarInt32(90)
       out.putVarInt32(self.composite_index_[i].ByteSize())
@@ -6953,10 +6630,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(74)
       out.putVarInt32(self.snapshot_[i].ByteSizePartial())
       self.snapshot_[i].OutputPartial(out)
-    if (self.has_header_):
-      out.putVarInt32(82)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
     for i in xrange(len(self.composite_index_)):
       out.putVarInt32(90)
       out.putVarInt32(self.composite_index_[i].ByteSizePartial())
@@ -6992,12 +6665,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_snapshot().TryMerge(tmp)
         continue
-      if tt == 82:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
       if tt == 90:
         length = d.getVarInt32()
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
@@ -7012,10 +6679,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     cnt=0
     for e in self.key_:
       elm=""
@@ -7053,7 +6716,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 10
   kkey = 6
   ktransaction = 5
   kcomposite_index = 11
@@ -7070,7 +6732,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     7: "force",
     8: "mark_changes",
     9: "snapshot",
-    10: "header",
     11: "composite_index",
   }, 11)
 
@@ -7082,7 +6743,6 @@ class DeleteRequest(ProtocolBuffer.ProtocolMessage):
     7: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.NUMERIC,
     9: ProtocolBuffer.Encoder.STRING,
-    10: ProtocolBuffer.Encoder.STRING,
     11: ProtocolBuffer.Encoder.STRING,
   }, 11, ProtocolBuffer.Encoder.MAX_TYPE)
 
@@ -7245,8 +6905,6 @@ class DeleteResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.DeleteResponse'
 class NextRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_cursor_ = 0
   has_count_ = 0
   count_ = 0
@@ -7257,27 +6915,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def __init__(self, contents=None):
     self.cursor_ = Cursor()
-    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def cursor(self): return self.cursor_
 
@@ -7329,7 +6967,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_cursor()): self.mutable_cursor().MergeFrom(x.cursor())
     if (x.has_count()): self.set_count(x.count())
     if (x.has_offset()): self.set_offset(x.offset())
@@ -7337,8 +6974,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_cursor_ != x.has_cursor_: return 0
     if self.has_cursor_ and self.cursor_ != x.cursor_: return 0
     if self.has_count_ != x.has_count_: return 0
@@ -7351,7 +6986,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (not self.has_cursor_):
       initialized = 0
       if debug_strs is not None:
@@ -7361,7 +6995,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += self.lengthString(self.cursor_.ByteSize())
     if (self.has_count_): n += 1 + self.lengthVarInt64(self.count_)
     if (self.has_offset_): n += 1 + self.lengthVarInt64(self.offset_)
@@ -7370,7 +7003,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_cursor_):
       n += 1
       n += self.lengthString(self.cursor_.ByteSizePartial())
@@ -7380,7 +7012,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_cursor()
     self.clear_count()
     self.clear_offset()
@@ -7399,10 +7030,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_offset_):
       out.putVarInt32(32)
       out.putVarInt32(self.offset_)
-    if (self.has_header_):
-      out.putVarInt32(42)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_cursor_):
@@ -7418,10 +7045,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_offset_):
       out.putVarInt32(32)
       out.putVarInt32(self.offset_)
-    if (self.has_header_):
-      out.putVarInt32(42)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -7441,12 +7064,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 32:
         self.set_offset(d.getVarInt32())
         continue
-      if tt == 42:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -7455,10 +7072,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_cursor_:
       res+=prefix+"cursor <\n"
       res+=self.cursor_.__str__(prefix + "  ", printElemNumber)
@@ -7472,7 +7085,6 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 5
   kcursor = 1
   kcount = 2
   koffset = 4
@@ -7484,8 +7096,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     2: "count",
     3: "compile",
     4: "offset",
-    5: "header",
-  }, 5)
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -7493,8 +7104,7 @@ class NextRequest(ProtocolBuffer.ProtocolMessage):
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
-    5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -8134,8 +7744,6 @@ class QueryResult(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.QueryResult'
 class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_model_key_ = 0
   model_key_ = None
   has_size_ = 0
@@ -8149,25 +7757,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     self.reserve_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def model_key(self):
     if self.model_key_ is None:
@@ -8246,7 +7835,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_model_key()): self.mutable_model_key().MergeFrom(x.model_key())
     if (x.has_size()): self.set_size(x.size())
     if (x.has_max()): self.set_max(x.max())
@@ -8255,8 +7843,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_model_key_ != x.has_model_key_: return 0
     if self.has_model_key_ and self.model_key_ != x.model_key_: return 0
     if self.has_size_ != x.has_size_: return 0
@@ -8272,7 +7858,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (self.has_model_key_ and not self.model_key_.IsInitialized(debug_strs)): initialized = 0
     for p in self.reserve_:
       if not p.IsInitialized(debug_strs): initialized=0
@@ -8280,7 +7865,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     if (self.has_model_key_): n += 1 + self.lengthString(self.model_key_.ByteSize())
     if (self.has_size_): n += 1 + self.lengthVarInt64(self.size_)
     if (self.has_max_): n += 1 + self.lengthVarInt64(self.max_)
@@ -8291,7 +7875,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_model_key_): n += 1 + self.lengthString(self.model_key_.ByteSizePartial())
     if (self.has_size_): n += 1 + self.lengthVarInt64(self.size_)
     if (self.has_max_): n += 1 + self.lengthVarInt64(self.max_)
@@ -8301,7 +7884,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_model_key()
     self.clear_size()
     self.clear_max()
@@ -8319,10 +7901,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_):
       out.putVarInt32(24)
       out.putVarInt64(self.max_)
-    if (self.has_header_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
     for i in xrange(len(self.reserve_)):
       out.putVarInt32(42)
       out.putVarInt32(self.reserve_[i].ByteSize())
@@ -8342,10 +7920,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_):
       out.putVarInt32(24)
       out.putVarInt64(self.max_)
-    if (self.has_header_):
-      out.putVarInt32(34)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
     for i in xrange(len(self.reserve_)):
       out.putVarInt32(42)
       out.putVarInt32(self.reserve_[i].ByteSizePartial())
@@ -8369,12 +7943,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 24:
         self.set_max(d.getVarInt64())
         continue
-      if tt == 34:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
       if tt == 42:
         length = d.getVarInt32()
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
@@ -8392,10 +7960,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_model_key_:
       res+=prefix+"model_key <\n"
       res+=self.model_key_.__str__(prefix + "  ", printElemNumber)
@@ -8417,7 +7981,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 4
   kmodel_key = 1
   ksize = 2
   kmax = 3
@@ -8429,7 +7992,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     1: "model_key",
     2: "size",
     3: "max",
-    4: "header",
     5: "reserve",
     6: "trusted",
   }, 6)
@@ -8439,7 +8001,6 @@ class AllocateIdsRequest(ProtocolBuffer.ProtocolMessage):
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
     3: ProtocolBuffer.Encoder.NUMERIC,
-    4: ProtocolBuffer.Encoder.STRING,
     5: ProtocolBuffer.Encoder.STRING,
     6: ProtocolBuffer.Encoder.NUMERIC,
   }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
@@ -8752,34 +8313,12 @@ class CompositeIndices(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CompositeIndices'
 class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_transaction_ = 0
 
   def __init__(self, contents=None):
     self.transaction_ = Transaction()
     self.action_ = []
-    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def transaction(self): return self.transaction_
 
@@ -8808,14 +8347,11 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_transaction()): self.mutable_transaction().MergeFrom(x.transaction())
     for i in xrange(x.action_size()): self.add_action().CopyFrom(x.action(i))
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_transaction_ != x.has_transaction_: return 0
     if self.has_transaction_ and self.transaction_ != x.transaction_: return 0
     if len(self.action_) != len(x.action_): return 0
@@ -8825,7 +8361,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (not self.has_transaction_):
       initialized = 0
       if debug_strs is not None:
@@ -8837,7 +8372,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += self.lengthString(self.transaction_.ByteSize())
     n += 1 * len(self.action_)
     for i in xrange(len(self.action_)): n += self.lengthString(self.action_[i].ByteSize())
@@ -8845,7 +8379,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_transaction_):
       n += 1
       n += self.lengthString(self.transaction_.ByteSizePartial())
@@ -8854,7 +8387,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_transaction()
     self.clear_action()
 
@@ -8866,10 +8398,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.action_[i].ByteSize())
       self.action_[i].OutputUnchecked(out)
-    if (self.has_header_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_transaction_):
@@ -8880,10 +8408,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(18)
       out.putVarInt32(self.action_[i].ByteSizePartial())
       self.action_[i].OutputPartial(out)
-    if (self.has_header_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -8900,12 +8424,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_action().TryMerge(tmp)
         continue
-      if tt == 26:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
-        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -8914,10 +8432,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_transaction_:
       res+=prefix+"transaction <\n"
       res+=self.transaction_.__str__(prefix + "  ", printElemNumber)
@@ -8936,7 +8450,6 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 3
   ktransaction = 1
   kaction = 2
 
@@ -8944,15 +8457,13 @@ class AddActionsRequest(ProtocolBuffer.ProtocolMessage):
     0: "ErrorCode",
     1: "transaction",
     2: "action",
-    3: "header",
-  }, 3)
+  }, 2)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -9024,35 +8535,15 @@ class AddActionsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.AddActionsResponse'
 class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
-  has_header_ = 0
-  header_ = None
   has_app_ = 0
   app_ = ""
   has_allow_multiple_eg_ = 0
   allow_multiple_eg_ = 0
+  has_database_id_ = 0
+  database_id_ = ""
 
   def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
-
-  def header(self):
-    if self.header_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.header_ is None: self.header_ = InternalHeader()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.header_
-
-  def mutable_header(self): self.has_header_ = 1; return self.header()
-
-  def clear_header(self):
-
-    if self.has_header_:
-      self.has_header_ = 0;
-      if self.header_ is not None: self.header_.Clear()
-
-  def has_header(self): return self.has_header_
 
   def app(self): return self.app_
 
@@ -9080,26 +8571,38 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   def has_allow_multiple_eg(self): return self.has_allow_multiple_eg_
 
+  def database_id(self): return self.database_id_
+
+  def set_database_id(self, x):
+    self.has_database_id_ = 1
+    self.database_id_ = x
+
+  def clear_database_id(self):
+    if self.has_database_id_:
+      self.has_database_id_ = 0
+      self.database_id_ = ""
+
+  def has_database_id(self): return self.has_database_id_
+
 
   def MergeFrom(self, x):
     assert x is not self
-    if (x.has_header()): self.mutable_header().MergeFrom(x.header())
     if (x.has_app()): self.set_app(x.app())
     if (x.has_allow_multiple_eg()): self.set_allow_multiple_eg(x.allow_multiple_eg())
+    if (x.has_database_id()): self.set_database_id(x.database_id())
 
   def Equals(self, x):
     if x is self: return 1
-    if self.has_header_ != x.has_header_: return 0
-    if self.has_header_ and self.header_ != x.header_: return 0
     if self.has_app_ != x.has_app_: return 0
     if self.has_app_ and self.app_ != x.app_: return 0
     if self.has_allow_multiple_eg_ != x.has_allow_multiple_eg_: return 0
     if self.has_allow_multiple_eg_ and self.allow_multiple_eg_ != x.allow_multiple_eg_: return 0
+    if self.has_database_id_ != x.has_database_id_: return 0
+    if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (self.has_header_ and not self.header_.IsInitialized(debug_strs)): initialized = 0
     if (not self.has_app_):
       initialized = 0
       if debug_strs is not None:
@@ -9108,24 +8611,24 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSize())
     n += self.lengthString(len(self.app_))
     if (self.has_allow_multiple_eg_): n += 2
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     return n + 1
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_header_): n += 1 + self.lengthString(self.header_.ByteSizePartial())
     if (self.has_app_):
       n += 1
       n += self.lengthString(len(self.app_))
     if (self.has_allow_multiple_eg_): n += 2
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
     return n
 
   def Clear(self):
-    self.clear_header()
     self.clear_app()
     self.clear_allow_multiple_eg()
+    self.clear_database_id()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
@@ -9133,10 +8636,9 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_multiple_eg_):
       out.putVarInt32(16)
       out.putBoolean(self.allow_multiple_eg_)
-    if (self.has_header_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.header_.ByteSize())
-      self.header_.OutputUnchecked(out)
+    if (self.has_database_id_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.database_id_)
 
   def OutputPartial(self, out):
     if (self.has_app_):
@@ -9145,10 +8647,9 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
     if (self.has_allow_multiple_eg_):
       out.putVarInt32(16)
       out.putBoolean(self.allow_multiple_eg_)
-    if (self.has_header_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.header_.ByteSizePartial())
-      self.header_.OutputPartial(out)
+    if (self.has_database_id_):
+      out.putVarInt32(34)
+      out.putPrefixedString(self.database_id_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -9159,11 +8660,8 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
       if tt == 16:
         self.set_allow_multiple_eg(d.getBoolean())
         continue
-      if tt == 26:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_header().TryMerge(tmp)
+      if tt == 34:
+        self.set_database_id(d.getPrefixedString())
         continue
 
 
@@ -9173,35 +8671,32 @@ class BeginTransactionRequest(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
-    if self.has_header_:
-      res+=prefix+"header <\n"
-      res+=self.header_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
     if self.has_app_: res+=prefix+("app: %s\n" % self.DebugFormatString(self.app_))
     if self.has_allow_multiple_eg_: res+=prefix+("allow_multiple_eg: %s\n" % self.DebugFormatBool(self.allow_multiple_eg_))
+    if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
     return res
 
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
-  kheader = 3
   kapp = 1
   kallow_multiple_eg = 2
+  kdatabase_id = 4
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "app",
     2: "allow_multiple_eg",
-    3: "header",
-  }, 3)
+    4: "database_id",
+  }, 4)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
     2: ProtocolBuffer.Encoder.NUMERIC,
-    3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -9495,7 +8990,247 @@ class CommitResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.CommitResponse'
+class GetIndicesRequest(ProtocolBuffer.ProtocolMessage):
+  has_app_id_ = 0
+  app_id_ = ""
+  has_database_id_ = 0
+  database_id_ = ""
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def app_id(self): return self.app_id_
+
+  def set_app_id(self, x):
+    self.has_app_id_ = 1
+    self.app_id_ = x
+
+  def clear_app_id(self):
+    if self.has_app_id_:
+      self.has_app_id_ = 0
+      self.app_id_ = ""
+
+  def has_app_id(self): return self.has_app_id_
+
+  def database_id(self): return self.database_id_
+
+  def set_database_id(self, x):
+    self.has_database_id_ = 1
+    self.database_id_ = x
+
+  def clear_database_id(self):
+    if self.has_database_id_:
+      self.has_database_id_ = 0
+      self.database_id_ = ""
+
+  def has_database_id(self): return self.has_database_id_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_app_id()): self.set_app_id(x.app_id())
+    if (x.has_database_id()): self.set_database_id(x.database_id())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_app_id_ != x.has_app_id_: return 0
+    if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
+    if self.has_database_id_ != x.has_database_id_: return 0
+    if self.has_database_id_ and self.database_id_ != x.database_id_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_app_id_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: app_id not set.')
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.app_id_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_app_id_):
+      n += 1
+      n += self.lengthString(len(self.app_id_))
+    if (self.has_database_id_): n += 1 + self.lengthString(len(self.database_id_))
+    return n
+
+  def Clear(self):
+    self.clear_app_id()
+    self.clear_database_id()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.app_id_)
+    if (self.has_database_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.database_id_)
+
+  def OutputPartial(self, out):
+    if (self.has_app_id_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.app_id_)
+    if (self.has_database_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.database_id_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_app_id(d.getPrefixedString())
+        continue
+      if tt == 18:
+        self.set_database_id(d.getPrefixedString())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
+    if self.has_database_id_: res+=prefix+("database_id: %s\n" % self.DebugFormatString(self.database_id_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kapp_id = 1
+  kdatabase_id = 2
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "app_id",
+    2: "database_id",
+  }, 2)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+  }, 2, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.GetIndicesRequest'
+class DatastoreService_3(ProtocolBuffer.ProtocolMessage):
+
+
+  Get          =    1
+  Put          =    2
+  Touch        =    3
+  Delete       =    4
+  RunQuery     =    5
+  AddActions   =    6
+  Next         =    7
+  DeleteCursor =    8
+  BeginTransaction =    9
+  Commit       =   10
+  Rollback     =   11
+  AllocateIds  =   12
+  CreateIndex  =   13
+  UpdateIndex  =   14
+  GetIndices   =   15
+  DeleteIndex  =   16
+
+  _Method_NAMES = {
+    1: "Get",
+    2: "Put",
+    3: "Touch",
+    4: "Delete",
+    5: "RunQuery",
+    6: "AddActions",
+    7: "Next",
+    8: "DeleteCursor",
+    9: "BeginTransaction",
+    10: "Commit",
+    11: "Rollback",
+    12: "AllocateIds",
+    13: "CreateIndex",
+    14: "UpdateIndex",
+    15: "GetIndices",
+    16: "DeleteIndex",
+  }
+
+  def Method_Name(cls, x): return cls._Method_NAMES.get(x, "")
+  Method_Name = classmethod(Method_Name)
+
+
+  def __init__(self, contents=None):
+    pass
+    if contents is not None: self.MergeFromString(contents)
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+
+  def Equals(self, x):
+    if x is self: return 1
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    return n
+
+  def Clear(self):
+    pass
+
+  def OutputUnchecked(self, out):
+    pass
+
+  def OutputPartial(self, out):
+    pass
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+  }, 0)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+  }, 0, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'apphosting_datastore_v3.DatastoreService_3'
 if _extension_runtime:
   pass
 
-__all__ = ['InternalHeader','Transaction','Query','Query_Filter','Query_Order','RegionPoint','CircleRegion','RectangleRegion','GeoRegion','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse','CommitResponse_Version']
+__all__ = ['Transaction','Query','Query_Filter','Query_Order','RegionPoint','CircleRegion','RectangleRegion','GeoRegion','CompiledQuery','CompiledQuery_PrimaryScan','CompiledQuery_MergeJoinScan','CompiledQuery_EntityFilter','CompiledCursor','CompiledCursor_PositionIndexValue','CompiledCursor_Position','Cursor','Error','Cost','Cost_CommitCost','GetRequest','GetResponse','GetResponse_Entity','PutRequest','PutResponse','TouchRequest','TouchResponse','DeleteRequest','DeleteResponse','NextRequest','QueryResult','AllocateIdsRequest','AllocateIdsResponse','CompositeIndices','AddActionsRequest','AddActionsResponse','BeginTransactionRequest','CommitResponse','CommitResponse_Version','GetIndicesRequest','DatastoreService_3']

@@ -15,9 +15,6 @@
  * limitations under the License.
  */
 /**
- * CloudStorageClient is the base class for classes that are used to communicate
- * with Google Cloud Storage via the PHP streams interface.
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
@@ -33,6 +30,9 @@ use google\appengine\util\ArrayUtil;
 use google\appengine\util\StringUtil;
 
 /**
+ * CloudStorageClient is the base class for classes that are used to communicate
+ * with Google Cloud Storage via the PHP streams interface.
+ *
  * CloudStorageClient provides default fail implementations for all of the
  * methods that the stream wrapper might potentially call. Derived classes then
  * only implement the methods that are relevant to the operations that they

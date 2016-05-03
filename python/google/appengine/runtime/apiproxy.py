@@ -217,6 +217,17 @@ class RPC(apiproxy_rpc.RPC):
     elif self._result_dict['error'] == FEATURE_DISABLED:
       self._exception = apiproxy_errors.FeatureNotEnabledError(
             self._result_dict['error_detail'])
+    elif self._result_dict['error'] == OVER_QUOTA:
+      if self._result_dict['error_detail']:
+
+        self._exception = apiproxy_errors.OverQuotaError(
+            ('The API call %s.%s() required more quota than is available. %s' %
+             (self.package, self.call, self._result_dict['error_detail'])))
+      else:
+
+        exception_entry = _ExceptionsMap[self._result_dict['error']]
+        self._exception = exception_entry[0](
+            exception_entry[1] % (self.package, self.call))
     elif self._result_dict['error'] in _ExceptionsMap:
       exception_entry = _ExceptionsMap[self._result_dict['error']]
       self._exception = exception_entry[0](

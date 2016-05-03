@@ -127,7 +127,6 @@ from google.appengine.ext.remote_api import throttle as remote_api_throttle
 from google.appengine.runtime import apiproxy_errors
 from google.appengine.tools import adaptive_thread_pool
 from google.appengine.tools import appengine_rpc
-from google.appengine.tools import appengine_rpc_httplib2
 from google.appengine.tools.requeue import ReQueue
 
 
@@ -4022,42 +4021,6 @@ def ProcessArguments(arg_dict,
   return arg_dict
 
 
-class ThrottledHttpRpcServerOAuth2(
-    appengine_rpc_httplib2.HttpRpcServerOAuth2):
-  """Provides a simplified RPC-style interface for HTTP requests.
-
-  This RPC server uses a Throttle to prevent exceeding quotas.
-  """
-
-  def __init__(self, throttle, *args, **kwargs):
-    """Initialize a ThrottledHttpRpcServer.
-
-    Also sets request_manager.rpc_server to the ThrottledHttpRpcServer instance.
-
-    Args:
-      throttle: A Throttles instance.
-      *args: Positional arguments to pass through to
-        appengine_rpc.HttpRpcServer.__init__
-      **kwargs: Keyword arguments to pass through to
-        appengine_rpc.HttpRpcServer.__init__
-    """
-    self.throttle = throttle
-    kwargs['auth_tries'] = 3
-    appengine_rpc_httplib2.HttpRpcServerOAuth2.__init__(self, *args, **kwargs)
-
-  def _GetOpener(self):
-    """Returns an OpenerDirector that supports cookies and ignores redirects.
-
-    Returns:
-      A urllib2.OpenerDirector object.
-    """
-
-    opener = appengine_rpc_httplib2.HttpRpcServerHttpLib2._GetOpener(self)
-    opener.add_handler(remote_api_throttle.ThrottleHandler(self.throttle))
-
-    return opener
-
-
 def _GetRemoteAppId(url, throttle, oauth2_parameters, throttle_class=None):
   """Get the App ID from the remote server."""
   scheme, host_port, url_path, _, _ = urlparse.urlsplit(url)
@@ -4124,7 +4087,8 @@ def _PerformBulkload(arg_dict,
   create_config = arg_dict['create_config']
   namespace = arg_dict['namespace']
   dry_run = arg_dict['dry_run']
-  throttle_class = arg_dict['throttle_class'] or ThrottledHttpRpcServerOAuth2
+  throttle_class = (arg_dict['throttle_class']
+                    or remote_api_throttle.ThrottledHttpRpcServerOAuth2)
 
   if namespace:
     namespace_manager.set_namespace(namespace)

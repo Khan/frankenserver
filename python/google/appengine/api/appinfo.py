@@ -251,6 +251,7 @@ RUNTIME = 'runtime'
 API_VERSION = 'api_version'
 ENV = 'env'
 ENTRYPOINT = 'entrypoint'
+RUNTIME_CONFIG = 'runtime_config'
 SOURCE_LANGUAGE = 'source_language'
 BUILTINS = 'builtins'
 INCLUDES = 'includes'
@@ -281,11 +282,14 @@ SOURCE_REFERENCES_MAX_SIZE = 2048
 
 INSTANCE_CLASS = 'instance_class'
 
+
 MINIMUM_PENDING_LATENCY = 'min_pending_latency'
 MAXIMUM_PENDING_LATENCY = 'max_pending_latency'
 MINIMUM_IDLE_INSTANCES = 'min_idle_instances'
 MAXIMUM_IDLE_INSTANCES = 'max_idle_instances'
 MAXIMUM_CONCURRENT_REQUEST = 'max_concurrent_requests'
+
+
 
 
 
@@ -296,6 +300,9 @@ COOL_DOWN_PERIOD_SEC = 'cool_down_period_sec'
 CPU_UTILIZATION = 'cpu_utilization'
 CPU_UTILIZATION_UTILIZATION = 'target_utilization'
 CPU_UTILIZATION_AGGREGATION_WINDOW_LENGTH_SEC = 'aggregation_window_length_sec'
+
+
+
 TARGET_NETWORK_SENT_BYTES_PER_SEC = 'target_network_sent_bytes_per_sec'
 TARGET_NETWORK_SENT_PACKETS_PER_SEC = 'target_network_sent_packets_per_sec'
 TARGET_NETWORK_RECEIVED_BYTES_PER_SEC = 'target_network_received_bytes_per_sec'
@@ -452,7 +459,7 @@ _SUPPORTED_LIBRARIES = [
         'http://mysql-python.sourceforge.net/',
         'A Python DB API v2.0 compatible interface to MySQL.',
         ['1.2.4b4', '1.2.4', '1.2.5'],
-        latest_version='1.2.4b4',
+        latest_version='1.2.5',
         experimental_versions=['1.2.4b4', '1.2.4', '1.2.5']
         ),
     _VersionedLibrary(
@@ -598,7 +605,8 @@ _MAX_URL_LENGTH = 2047
 _MAX_HEADER_SIZE_FOR_EXEMPTED_HEADERS = 10240
 
 _CANNED_RUNTIMES = ('contrib-dart', 'dart', 'go', 'php', 'php55', 'python',
-                    'python27', 'java', 'java7', 'vm', 'custom', 'nodejs')
+                    'python27', 'python-compat', 'java', 'java7', 'vm',
+                    'custom', 'nodejs', 'ruby')
 _all_runtimes = _CANNED_RUNTIMES
 
 
@@ -1450,6 +1458,19 @@ class BasicScaling(validation.Validated):
   }
 
 
+class RuntimeConfig(validation.ValidatedDict):
+  """Class for "vanilla" runtime configuration.
+
+  Fields used vary by runtime, so we delegate validation to the per-runtime
+  build processes.
+
+  These are intended to be used during Dockerfile generation, not after VM boot.
+  """
+
+  KEY_VALIDATOR = validation.Regex('[a-zA-Z_][a-zA-Z0-9_]*')
+  VALUE_VALIDATOR = str
+
+
 class VmSettings(validation.ValidatedDict):
   """Class for VM settings.
 
@@ -1511,69 +1532,6 @@ class EnvironmentVariables(validation.ValidatedDict):
     result_env_variables.update(env_variables_two or {})
     return (EnvironmentVariables(**result_env_variables)
             if result_env_variables else None)
-
-
-def VmSafeSetRuntime(appyaml, runtime):
-  """Sets the runtime while respecting vm runtimes rules for runtime settings.
-
-  Args:
-     appyaml: AppInfoExternal instance, which will be modified.
-     runtime: The runtime to use.
-
-  Returns:
-     The passed in appyaml (which has been modified).
-  """
-  if appyaml.env == '2' or appyaml.vm:
-    if not appyaml.vm_settings:
-      appyaml.vm_settings = VmSettings()
-
-
-
-    appyaml.vm_settings['vm_runtime'] = runtime
-    appyaml.runtime = 'vm'
-  else:
-    appyaml.runtime = runtime
-  return appyaml
-
-
-def NormalizeVmSettings(appyaml):
-  """Normalize Vm settings.
-
-  Args:
-    appyaml: AppInfoExternal instance.
-
-  Returns:
-    Normalized app yaml.
-  """
-
-
-
-
-
-
-
-  if appyaml.env == '2' or appyaml.vm:
-    if not appyaml.vm_settings:
-      appyaml.vm_settings = VmSettings()
-
-    if 'vm_runtime' not in appyaml.vm_settings:
-      appyaml = VmSafeSetRuntime(appyaml, appyaml.runtime)
-
-
-
-    if hasattr(appyaml, 'beta_settings') and appyaml.beta_settings:
-
-
-
-
-      for field in ['vm_runtime',
-                    'has_docker_image',
-                    'image',
-                    'module_yaml_path']:
-        if field not in appyaml.beta_settings and field in appyaml.vm_settings:
-          appyaml.beta_settings[field] = appyaml.vm_settings[field]
-
-  return appyaml
 
 
 def ValidateSourceReference(ref):
@@ -1783,7 +1741,8 @@ class AppInclude(validation.Validated):
       appyaml.handlers.extend(tail)
 
     appyaml = cls._CommonMergeOps(appyaml, appinclude)
-    return NormalizeVmSettings(appyaml)
+    appyaml.NormalizeVmSettings()
+    return appyaml
 
   @classmethod
   def MergeAppIncludes(cls, appinclude_one, appinclude_two):
@@ -1878,6 +1837,7 @@ class AppInfoExternal(validation.Validated):
       ENV: validation.Optional(ENV_RE_STRING),
 
       ENTRYPOINT: validation.Optional(validation.Type(str)),
+      RUNTIME_CONFIG: validation.Optional(RuntimeConfig),
       INSTANCE_CLASS: validation.Optional(_INSTANCE_CLASS_REGEX),
       SOURCE_LANGUAGE: validation.Optional(
           validation.Regex(SOURCE_LANGUAGE_RE_STRING)),
@@ -1946,7 +1906,7 @@ class AppInfoExternal(validation.Validated):
       ModuleAndServiceDefined: if both 'module' and 'service' keywords are used.
     """
     super(AppInfoExternal, self).CheckInitialized()
-    if self.runtime is None and not self.vm:
+    if self.runtime is None and not self.IsVm():
       raise appinfo_errors.MissingRuntimeError(
           'You must specify a "runtime" field for non-vm applications.')
     elif self.runtime is None:
@@ -1954,7 +1914,7 @@ class AppInfoExternal(validation.Validated):
 
       self.runtime = 'custom'
     if (not self.handlers and not self.builtins and not self.includes
-        and not self.vm):
+        and not self.IsVm()):
       raise appinfo_errors.MissingURLMapping(
           'No URLMap entries found in application configuration')
     if self.handlers and len(self.handlers) > MAX_URL_MAPS:
@@ -2079,10 +2039,6 @@ class AppInfoExternal(validation.Validated):
       if library.default_version and library.name not in enabled_libraries:
         libraries.append(Library(name=library.name,
                                  version=library.default_version))
-    for library in libraries:
-      if library.version == 'latest':
-        library.version = _NAME_TO_SUPPORTED_LIBRARY[
-            library.name].supported_versions[-1]
     return libraries
 
   def ApplyBackendSettings(self, backend_name):
@@ -2140,6 +2096,57 @@ class AppInfoExternal(validation.Validated):
       return self.beta_settings.get('vm_runtime')
     return self.runtime
 
+  def SetEffectiveRuntime(self, runtime):
+    """Sets the runtime while respecting vm runtimes rules for runtime settings.
+
+    Args:
+       runtime: The runtime to use.
+    """
+    if self.IsVm():
+      if not self.vm_settings:
+        self.vm_settings = VmSettings()
+
+
+
+      self.vm_settings['vm_runtime'] = runtime
+      self.runtime = 'vm'
+    else:
+      self.runtime = runtime
+
+  def NormalizeVmSettings(self):
+    """Normalize Vm settings.
+    """
+
+
+
+
+
+
+    if self.IsVm():
+      if not self.vm_settings:
+        self.vm_settings = VmSettings()
+
+      if 'vm_runtime' not in self.vm_settings:
+        self.SetEffectiveRuntime(self.runtime)
+
+
+
+      if hasattr(self, 'beta_settings') and self.beta_settings:
+
+
+
+
+        for field in ['vm_runtime',
+                      'has_docker_image',
+                      'image',
+                      'module_yaml_path']:
+          if field not in self.beta_settings and field in self.vm_settings:
+            self.beta_settings[field] = self.vm_settings[field]
+
+
+  def IsVm(self):
+    return (self.vm or
+            self.env in ['2', 'flex', 'flexible'])
 
 def ValidateHandlers(handlers, is_include_file=False):
   """Validates a list of handler (URLMap) objects.
@@ -2210,7 +2217,8 @@ def LoadSingleAppInfo(app_info):
     appyaml.application = appyaml.project
     appyaml.project = None
 
-  return NormalizeVmSettings(appyaml)
+  appyaml.NormalizeVmSettings()
+  return appyaml
 
 
 class AppInfoSummary(validation.Validated):

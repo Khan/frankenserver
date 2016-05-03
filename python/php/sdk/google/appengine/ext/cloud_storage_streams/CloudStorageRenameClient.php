@@ -15,14 +15,12 @@
  * limitations under the License.
  */
 /**
- * Cloud Storage Rename Client handles rename() calls for renaming a GCS object.
- *
  */
 
 namespace google\appengine\ext\cloud_storage_streams;
 
 /**
- * Client for deleting objects from Google Cloud Storage.
+ * Cloud Storage Rename Client handles rename() calls for renaming a GCS object.
  */
 final class CloudStorageRenameClient extends CloudStorageClient {
   private $from_bucket;
@@ -85,7 +83,6 @@ final class CloudStorageRenameClient extends CloudStorageClient {
         $this->getHeaderValue('ETag', $http_response['headers']),
     ];
 
-    // TODO: b/13132830: Remove once feature releases.
     if (!ini_get('google_app_engine.enable_additional_cloud_storage_headers')) {
       foreach (static::$METADATA_HEADERS as $key) {
         // Leave Content-Type since it has been supported.

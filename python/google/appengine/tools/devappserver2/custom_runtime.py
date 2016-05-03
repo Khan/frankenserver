@@ -22,6 +22,7 @@ import os
 import shlex
 
 import google
+from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
 
@@ -31,6 +32,15 @@ class CustomRuntimeInstanceFactory(instance.InstanceFactory):
 
   SUPPORTS_INTERACTIVE_REQUESTS = True
   FILE_CHANGE_INSTANCE_RESTART_POLICY = instance.NEVER
+
+  START_URL_MAP = appinfo.URLMap(
+      url='/_ah/start',
+      script='/dev/null',
+      login='admin')
+  WARMUP_URL_MAP = appinfo.URLMap(
+      url='/_ah/warmup',
+      script='/dev/null',
+      login='admin')
 
   def __init__(self, request_data, runtime_config_getter, module_configuration):
     """Initializer for CustomRuntimeInstanceFactory.

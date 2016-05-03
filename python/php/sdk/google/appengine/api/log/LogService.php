@@ -32,25 +32,23 @@ use google\appengine\UserAppLogGroup;
 /**
  * The LogService allows an application to query for request and application
  * logs.  Application logs are added to a the current request log by calling
- * @link http://php.net/manual/en/function.syslog.php syslog(int $priority,
- * string $message). The $priority used when creating the application log is
- * translated into a different scale of severity used by the LogService.
- *
- * Application logs have a level in order of increasing severity:
- * <table>
- *   <tr><th>syslog $priority</th><th>GAE severity</th></tr>
- *   <tr><td>LOG_DEBUG</td><td>LogService::LEVEL_DEBUG</td></tr>
- *   <tr><td>LOG_INFO</td><td>LogService::LEVEL_INFO</td></tr>
- *   <tr><td>LOG_NOTICE</td><td>LogService::LEVEL_INFO</td></tr>
- *   <tr><td>LOG_WARNING</td><td>LogService::LEVEL_WARNING</td></tr>
- *   <tr><td>LOG_ERR</td><td>LogService::LEVEL_ERROR</td></tr>
- *   <tr><td>LOG_CRIT</td><td>LogService::LEVEL_CRITICAL</td></tr>
- *   <tr><td>LOG_ALERT</td><td>LogService::LEVEL_CRITICAL</td></tr>
- *   <tr><td>LOG_EMERG</td><td>LogService::LEVEL_CRITICAL</td></tr>
- * <table>
+ * {@link http://php.net/manual/en/function.syslog.php syslog(int $priority,
+ * string $message)}. The $priority used when creating the application log is
+ * translated into a different scale of severity used by the LogService based
+ * on the following mappings,
+ * <ul>
+ *   <li>LOG_DEBUG => LogService::LEVEL_DEBUG</li>
+ *   <li>LOG_INFO => LogService::LEVEL_INFO</li>
+ *   <li>LOG_NOTICE => LogService::LEVEL_INFO</li>
+ *   <li>LOG_WARNING => LogService::LEVEL_WARNING</li>
+ *   <li>LOG_ERR => LogService::LEVEL_ERROR</li>
+ *   <li>LOG_CRIT => LogService::LEVEL_CRITICAL</li>
+ *   <li>LOG_ALERT => LogService::LEVEL_CRITICAL</li>
+ *   <li>LOG_EMERG => LogService::LEVEL_CRITICAL</li>
+ * </ul>
  *
  * When fetching application logs or filtering request logs by severity use the
- * values in the right hand column.
+ * LogService's severity levels.
  */
 final class LogService {
    use ApiProxyAccess;
@@ -130,7 +128,7 @@ final class LogService {
    *   <li>'versions': <code>array</code> The versions of the default module
    *   for which to fetch request logs. Only one of 'versions' and
    *   'module_versions' can be used.</li>
-   *   <li>'module_versions': <code>arrary/code> An associative array of module
+   *   <li>'module_versions': <code>arrary</code> An associative array of module
    *   names to versions for which to fetch request logs.  Each module name may
    *   be mapped to either a single <code>string</code> version or an <code>
    *   array</code> of versions.</li>
@@ -138,7 +136,7 @@ final class LogService {
    *   pre-fetch while iterating.</li>
    * </ul>
    *
-   * @return Iterator The matching <code>RequestLog</code> items.
+   * @return Iterator The matching RequestLog items.
    */
   public static function fetch(array $options = []) {
     $request = new LogReadRequest();
@@ -309,7 +307,7 @@ final class LogService {
    * Get request logs for the given request log ids and optionally include the
    * application logs addded during each request. Request log ids that are not
    * found are ignored so the returned array may have fewer items than
-   * <code>$request_ids</code>.
+   * $request_ids.
    *
    * @param mixed $request_ids A string request id or an array of string request
    * ids obtained from <code>RequestLog::getRequestId()</code>.

@@ -1443,11 +1443,13 @@ class BindRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.BindRequest'
-class BindReply(ProtocolBuffer.ProtocolMessage):
+class BindReply(_ExtendableProtocolMessage):
   has_proxy_external_ip_ = 0
   proxy_external_ip_ = None
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1474,11 +1476,13 @@ class BindReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_proxy_external_ip()): self.mutable_proxy_external_ip().MergeFrom(x.proxy_external_ip())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_proxy_external_ip_ != x.has_proxy_external_ip_: return 0
     if self.has_proxy_external_ip_ and self.proxy_external_ip_ != x.proxy_external_ip_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1489,27 +1493,42 @@ class BindReply(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_proxy_external_ip()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_proxy_external_ip_):
       out.putVarInt32(10)
       out.putVarInt32(self.proxy_external_ip_.ByteSize())
       self.proxy_external_ip_.OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_proxy_external_ip_):
       out.putVarInt32(10)
       out.putVarInt32(self.proxy_external_ip_.ByteSizePartial())
       self.proxy_external_ip_.OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1520,6 +1539,10 @@ class BindReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_proxy_external_ip().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1532,8 +1555,12 @@ class BindReply(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"proxy_external_ip <\n"
       res+=self.proxy_external_ip_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -1654,11 +1681,13 @@ class GetSocketNameRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSocketNameRequest'
-class GetSocketNameReply(ProtocolBuffer.ProtocolMessage):
+class GetSocketNameReply(_ExtendableProtocolMessage):
   has_proxy_external_ip_ = 0
   proxy_external_ip_ = None
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1685,11 +1714,13 @@ class GetSocketNameReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_proxy_external_ip()): self.mutable_proxy_external_ip().MergeFrom(x.proxy_external_ip())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_proxy_external_ip_ != x.has_proxy_external_ip_: return 0
     if self.has_proxy_external_ip_ and self.proxy_external_ip_ != x.proxy_external_ip_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1700,27 +1731,42 @@ class GetSocketNameReply(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_proxy_external_ip_): n += 1 + self.lengthString(self.proxy_external_ip_.ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_proxy_external_ip()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_proxy_external_ip_):
       out.putVarInt32(18)
       out.putVarInt32(self.proxy_external_ip_.ByteSize())
       self.proxy_external_ip_.OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_proxy_external_ip_):
       out.putVarInt32(18)
       out.putVarInt32(self.proxy_external_ip_.ByteSizePartial())
       self.proxy_external_ip_.OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1731,6 +1777,10 @@ class GetSocketNameReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_proxy_external_ip().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1743,8 +1793,12 @@ class GetSocketNameReply(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"proxy_external_ip <\n"
       res+=self.proxy_external_ip_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -1865,11 +1919,13 @@ class GetPeerNameRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetPeerNameRequest'
-class GetPeerNameReply(ProtocolBuffer.ProtocolMessage):
+class GetPeerNameReply(_ExtendableProtocolMessage):
   has_peer_ip_ = 0
   peer_ip_ = None
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1896,11 +1952,13 @@ class GetPeerNameReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_peer_ip()): self.mutable_peer_ip().MergeFrom(x.peer_ip())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_peer_ip_ != x.has_peer_ip_: return 0
     if self.has_peer_ip_ and self.peer_ip_ != x.peer_ip_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -1911,27 +1969,42 @@ class GetPeerNameReply(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_peer_ip_): n += 1 + self.lengthString(self.peer_ip_.ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_peer_ip_): n += 1 + self.lengthString(self.peer_ip_.ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_peer_ip()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_peer_ip_):
       out.putVarInt32(18)
       out.putVarInt32(self.peer_ip_.ByteSize())
       self.peer_ip_.OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_peer_ip_):
       out.putVarInt32(18)
       out.putVarInt32(self.peer_ip_.ByteSizePartial())
       self.peer_ip_.OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1942,6 +2015,10 @@ class GetPeerNameReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_peer_ip().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1954,8 +2031,12 @@ class GetPeerNameReply(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"peer_ip <\n"
       res+=self.peer_ip_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -2391,18 +2472,22 @@ class SetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SetSocketOptionsRequest'
-class SetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
+class SetSocketOptionsReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     pass
     if contents is not None: self.MergeFromString(contents)
 
 
   def MergeFrom(self, x):
     assert x is not self
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2411,24 +2496,40 @@ class SetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
-    pass
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2437,8 +2538,12 @@ class SetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -2609,9 +2714,11 @@ class GetSocketOptionsRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.GetSocketOptionsRequest'
-class GetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
+class GetSocketOptionsReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.options_ = []
     if contents is not None: self.MergeFromString(contents)
 
@@ -2635,12 +2742,14 @@ class GetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.options_size()): self.add_options().CopyFrom(x.options(i))
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.options_) != len(x.options_): return 0
     for e1, e2 in zip(self.options_, x.options_):
       if e1 != e2: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -2653,28 +2762,43 @@ class GetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.options_)
     for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.options_)
     for i in xrange(len(self.options_)): n += self.lengthString(self.options_[i].ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_options()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSize())
       self.options_[i].OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.options_)):
       out.putVarInt32(18)
       out.putVarInt32(self.options_[i].ByteSizePartial())
       self.options_[i].OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -2685,6 +2809,10 @@ class GetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_options().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -2701,8 +2829,12 @@ class GetSocketOptionsReply(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -3177,18 +3309,22 @@ class ListenRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ListenRequest'
-class ListenReply(ProtocolBuffer.ProtocolMessage):
+class ListenReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     pass
     if contents is not None: self.MergeFromString(contents)
 
 
   def MergeFrom(self, x):
     assert x is not self
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3197,24 +3333,40 @@ class ListenReply(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
-    pass
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3223,8 +3375,12 @@ class ListenReply(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -3376,13 +3532,15 @@ class AcceptRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.AcceptRequest'
-class AcceptReply(ProtocolBuffer.ProtocolMessage):
+class AcceptReply(_ExtendableProtocolMessage):
   has_new_socket_descriptor_ = 0
   new_socket_descriptor_ = ""
   has_remote_address_ = 0
   remote_address_ = None
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -3423,6 +3581,7 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
     assert x is not self
     if (x.has_new_socket_descriptor()): self.set_new_socket_descriptor(x.new_socket_descriptor())
     if (x.has_remote_address()): self.mutable_remote_address().MergeFrom(x.remote_address())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
@@ -3430,6 +3589,7 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
     if self.has_new_socket_descriptor_ and self.new_socket_descriptor_ != x.new_socket_descriptor_: return 0
     if self.has_remote_address_ != x.has_remote_address_: return 0
     if self.has_remote_address_ and self.remote_address_ != x.remote_address_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3441,19 +3601,27 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
     n = 0
     if (self.has_new_socket_descriptor_): n += 1 + self.lengthString(len(self.new_socket_descriptor_))
     if (self.has_remote_address_): n += 1 + self.lengthString(self.remote_address_.ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_new_socket_descriptor_): n += 1 + self.lengthString(len(self.new_socket_descriptor_))
     if (self.has_remote_address_): n += 1 + self.lengthString(self.remote_address_.ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_new_socket_descriptor()
     self.clear_remote_address()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_new_socket_descriptor_):
       out.putVarInt32(18)
       out.putPrefixedString(self.new_socket_descriptor_)
@@ -3461,8 +3629,13 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(26)
       out.putVarInt32(self.remote_address_.ByteSize())
       self.remote_address_.OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_new_socket_descriptor_):
       out.putVarInt32(18)
       out.putPrefixedString(self.new_socket_descriptor_)
@@ -3470,6 +3643,8 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(26)
       out.putVarInt32(self.remote_address_.ByteSizePartial())
       self.remote_address_.OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -3483,6 +3658,10 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.mutable_remote_address().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3496,8 +3675,12 @@ class AcceptReply(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"remote_address <\n"
       res+=self.remote_address_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -3714,18 +3897,22 @@ class ShutDownRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ShutDownRequest'
-class ShutDownReply(ProtocolBuffer.ProtocolMessage):
+class ShutDownReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     pass
     if contents is not None: self.MergeFromString(contents)
 
 
   def MergeFrom(self, x):
     assert x is not self
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3734,24 +3921,40 @@ class ShutDownReply(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
-    pass
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3760,8 +3963,12 @@ class ShutDownReply(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -3913,18 +4120,22 @@ class CloseRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.CloseRequest'
-class CloseReply(ProtocolBuffer.ProtocolMessage):
+class CloseReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     pass
     if contents is not None: self.MergeFromString(contents)
 
 
   def MergeFrom(self, x):
     assert x is not self
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -3933,24 +4144,40 @@ class CloseReply(ProtocolBuffer.ProtocolMessage):
 
   def ByteSize(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
-    pass
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
-    pass
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -3959,8 +4186,12 @@ class CloseReply(ProtocolBuffer.ProtocolMessage):
 
   def __str__(self, prefix="", printElemNumber=0):
     res=""
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -4274,11 +4505,13 @@ class SendRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.SendRequest'
-class SendReply(ProtocolBuffer.ProtocolMessage):
+class SendReply(_ExtendableProtocolMessage):
   has_data_sent_ = 0
   data_sent_ = 0
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     if contents is not None: self.MergeFromString(contents)
 
   def data_sent(self): return self.data_sent_
@@ -4298,11 +4531,13 @@ class SendReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_data_sent()): self.set_data_sent(x.data_sent())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_data_sent_ != x.has_data_sent_: return 0
     if self.has_data_sent_ and self.data_sent_ != x.data_sent_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4312,25 +4547,40 @@ class SendReply(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     if (self.has_data_sent_): n += 1 + self.lengthVarInt64(self.data_sent_)
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     if (self.has_data_sent_): n += 1 + self.lengthVarInt64(self.data_sent_)
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_data_sent()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_data_sent_):
       out.putVarInt32(8)
       out.putVarInt32(self.data_sent_)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_data_sent_):
       out.putVarInt32(8)
       out.putVarInt32(self.data_sent_)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4338,6 +4588,10 @@ class SendReply(ProtocolBuffer.ProtocolMessage):
       if tt == 8:
         self.set_data_sent(d.getVarInt32())
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -4347,8 +4601,12 @@ class SendReply(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_data_sent_: res+=prefix+("data_sent: %s\n" % self.DebugFormatInt32(self.data_sent_))
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -4589,7 +4847,7 @@ class ReceiveRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ReceiveRequest'
-class ReceiveReply(ProtocolBuffer.ProtocolMessage):
+class ReceiveReply(_ExtendableProtocolMessage):
   has_stream_offset_ = 0
   stream_offset_ = 0
   has_data_ = 0
@@ -4600,6 +4858,8 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
   buffer_size_ = 0
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -4668,6 +4928,7 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if (x.has_data()): self.set_data(x.data())
     if (x.has_received_from()): self.mutable_received_from().MergeFrom(x.received_from())
     if (x.has_buffer_size()): self.set_buffer_size(x.buffer_size())
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
@@ -4679,6 +4940,7 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if self.has_received_from_ and self.received_from_ != x.received_from_: return 0
     if self.has_buffer_size_ != x.has_buffer_size_: return 0
     if self.has_buffer_size_ and self.buffer_size_ != x.buffer_size_: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -4692,6 +4954,8 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_data_): n += 1 + self.lengthString(len(self.data_))
     if (self.has_received_from_): n += 1 + self.lengthString(self.received_from_.ByteSize())
     if (self.has_buffer_size_): n += 1 + self.lengthVarInt64(self.buffer_size_)
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
@@ -4700,6 +4964,8 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_data_): n += 1 + self.lengthString(len(self.data_))
     if (self.has_received_from_): n += 1 + self.lengthString(self.received_from_.ByteSizePartial())
     if (self.has_buffer_size_): n += 1 + self.lengthVarInt64(self.buffer_size_)
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
@@ -4707,8 +4973,12 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     self.clear_data()
     self.clear_received_from()
     self.clear_buffer_size()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_stream_offset_):
       out.putVarInt32(16)
       out.putVarInt64(self.stream_offset_)
@@ -4722,8 +4992,13 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_buffer_size_):
       out.putVarInt32(40)
       out.putVarInt32(self.buffer_size_)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     if (self.has_stream_offset_):
       out.putVarInt32(16)
       out.putVarInt64(self.stream_offset_)
@@ -4737,6 +5012,8 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_buffer_size_):
       out.putVarInt32(40)
       out.putVarInt32(self.buffer_size_)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -4756,6 +5033,10 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_buffer_size(d.getVarInt32())
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -4771,8 +5052,12 @@ class ReceiveReply(ProtocolBuffer.ProtocolMessage):
       res+=self.received_from_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
     if self.has_buffer_size_: res+=prefix+("buffer_size: %s\n" % self.DebugFormatInt32(self.buffer_size_))
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -5165,9 +5450,11 @@ class PollRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.PollRequest'
-class PollReply(ProtocolBuffer.ProtocolMessage):
+class PollReply(_ExtendableProtocolMessage):
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.events_ = []
     if contents is not None: self.MergeFromString(contents)
 
@@ -5191,12 +5478,14 @@ class PollReply(ProtocolBuffer.ProtocolMessage):
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.events_size()): self.add_events().CopyFrom(x.events(i))
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.events_) != len(x.events_): return 0
     for e1, e2 in zip(self.events_, x.events_):
       if e1 != e2: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -5209,28 +5498,43 @@ class PollReply(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 1 * len(self.events_)
     for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSize())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 1 * len(self.events_)
     for i in xrange(len(self.events_)): n += self.lengthString(self.events_[i].ByteSizePartial())
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_events()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.events_)):
       out.putVarInt32(18)
       out.putVarInt32(self.events_[i].ByteSize())
       self.events_[i].OutputUnchecked(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.events_)):
       out.putVarInt32(18)
       out.putVarInt32(self.events_[i].ByteSizePartial())
       self.events_[i].OutputPartial(out)
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5241,6 +5545,10 @@ class PollReply(ProtocolBuffer.ProtocolMessage):
         d.skip(length)
         self.add_events().TryMerge(tmp)
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -5257,8 +5565,12 @@ class PollReply(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+">\n"
       cnt+=1
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
@@ -5422,7 +5734,7 @@ class ResolveRequest(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.ResolveRequest'
-class ResolveReply(ProtocolBuffer.ProtocolMessage):
+class ResolveReply(_ExtendableProtocolMessage):
 
 
   SOCKET_EAI_ADDRFAMILY =    1
@@ -5466,6 +5778,8 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
   canonical_name_ = ""
 
   def __init__(self, contents=None):
+    if _extension_runtime:
+      self._extension_fields = {}
     self.packed_address_ = []
     self.aliases_ = []
     if contents is not None: self.MergeFromString(contents)
@@ -5519,6 +5833,7 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     for i in xrange(x.packed_address_size()): self.add_packed_address(x.packed_address(i))
     if (x.has_canonical_name()): self.set_canonical_name(x.canonical_name())
     for i in xrange(x.aliases_size()): self.add_aliases(x.aliases(i))
+    if _extension_runtime: self._MergeExtensionFields(x)
 
   def Equals(self, x):
     if x is self: return 1
@@ -5530,6 +5845,7 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     if len(self.aliases_) != len(x.aliases_): return 0
     for e1, e2 in zip(self.aliases_, x.aliases_):
       if e1 != e2: return 0
+    if _extension_runtime and not self._ExtensionEquals(x): return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -5543,6 +5859,8 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_canonical_name_): n += 1 + self.lengthString(len(self.canonical_name_))
     n += 1 * len(self.aliases_)
     for i in xrange(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
+    if _extension_runtime:
+      n += self._ExtensionByteSize(False)
     return n
 
   def ByteSizePartial(self):
@@ -5552,14 +5870,20 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     if (self.has_canonical_name_): n += 1 + self.lengthString(len(self.canonical_name_))
     n += 1 * len(self.aliases_)
     for i in xrange(len(self.aliases_)): n += self.lengthString(len(self.aliases_[i]))
+    if _extension_runtime:
+      n += self._ExtensionByteSize(True)
     return n
 
   def Clear(self):
     self.clear_packed_address()
     self.clear_canonical_name()
     self.clear_aliases()
+    if _extension_runtime: self._extension_fields.clear()
 
   def OutputUnchecked(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.packed_address_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.packed_address_[i])
@@ -5569,8 +5893,13 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.aliases_)):
       out.putVarInt32(34)
       out.putPrefixedString(self.aliases_[i])
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, False, extensions, extension_index, 536870912)
 
   def OutputPartial(self, out):
+    if _extension_runtime:
+      extensions = self._ListExtensions()
+      extension_index = 0
     for i in xrange(len(self.packed_address_)):
       out.putVarInt32(18)
       out.putPrefixedString(self.packed_address_[i])
@@ -5580,6 +5909,8 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
     for i in xrange(len(self.aliases_)):
       out.putVarInt32(34)
       out.putPrefixedString(self.aliases_[i])
+    if _extension_runtime:
+      extension_index = self._OutputExtensionFields(out, True, extensions, extension_index, 536870912)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -5593,6 +5924,10 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
       if tt == 34:
         self.add_aliases(d.getPrefixedString())
         continue
+      if _extension_runtime:
+        if (1000 <= tt):
+          self._ParseOneExtensionField(tt, d)
+          continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -5614,8 +5949,12 @@ class ResolveReply(ProtocolBuffer.ProtocolMessage):
       if printElemNumber: elm="(%d)" % cnt
       res+=prefix+("aliases%s: %s\n" % (elm, self.DebugFormatString(e)))
       cnt+=1
+    if _extension_runtime:
+      res+=self._ExtensionDebugString(prefix, printElemNumber)
     return res
 
+  if _extension_runtime:
+    _extensions_by_field_number = {}
 
   def _BuildTagLookupTable(sparse, maxtag, default=None):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])

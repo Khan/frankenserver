@@ -29,3 +29,8 @@ class InvalidAppConfigError(Error):
 
 class AppConfigNotFoundError(Error):
   """Application configuration file not found i.e. no app.yaml in directory."""
+
+
+class DockerfileError(Error):
+  """Raised if a Dockerfile was found along with a non-custom runtime."""
+

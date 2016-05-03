@@ -113,21 +113,24 @@ class DocumentMatcher(object):
 
   def _MatchPhrase(self, field, match, document):
     """Match a textual field with a phrase query node."""
-    field_text = field.value().string_value()
-    phrase_text = query_parser.GetPhraseQueryNodeText(match)
+    raw_field_text = field.value().string_value()
+    raw_phrase_text = query_parser.GetPhraseQueryNodeText(match)
 
 
     if field.value().type() == document_pb.FieldValue.ATOM:
-      return self._MatchRawPhraseWithRawAtom(field_text, phrase_text)
+      return self._MatchRawPhraseWithRawAtom(raw_field_text, raw_phrase_text)
 
 
-    if not phrase_text:
+    if not raw_phrase_text:
       return False
 
-    phrase = self._parser.TokenizeText(
-        search_util.RemoveAccentsNfkd(phrase_text))
-    field_text = self._parser.TokenizeText(
-        search_util.RemoveAccentsNfkd(field_text))
+    if field.value().type() == document_pb.FieldValue.UNTOKENIZED_PREFIX:
+      phrase = self._parser.Normalize(raw_phrase_text, field.value().type())
+      field_text = self._parser.Normalize(raw_field_text, field.value().type())
+      return field_text.startswith(phrase)
+
+    phrase = self._parser.TokenizeText(raw_phrase_text)
+    field_text = self._parser.TokenizeText(raw_field_text)
     if not phrase:
       return True
     posting = None
@@ -154,6 +157,9 @@ class DocumentMatcher(object):
 
       match = True
       for doc_word, match_word in match_words:
+        if (field.value().type() == document_pb.FieldValue.TOKENIZED_PREFIX and
+            doc_word.startswith(match_word)):
+          continue
         if doc_word != match_word:
           match = False
 
@@ -171,10 +177,17 @@ class DocumentMatcher(object):
       if query_parser.IsPhrase(match):
         return self._MatchPhrase(field, match, document)
 
+      normalized_query = self._parser.Normalize(
+          query_parser.GetQueryNodeText(match), field.value().type())
+      normalized_text_field = self._parser.Normalize(
+          field.value().string_value(), field.value().type())
+
 
       if field.value().type() == document_pb.FieldValue.ATOM:
-        return (field.value().string_value() ==
-                query_parser.GetQueryNodeText(match))
+        return normalized_query == normalized_text_field
+
+      if field.value().type() == document_pb.FieldValue.UNTOKENIZED_PREFIX:
+        return normalized_text_field.startswith(normalized_query)
 
       query_tokens = self._parser.TokenizeText(
           query_parser.GetQueryNodeText(match))
@@ -188,12 +201,13 @@ class DocumentMatcher(object):
 
       if len(query_tokens) > 1:
         def QueryNode(token):
-          return query_parser.CreateQueryNode(
-              search_util.RemoveAccentsNfkd(token.chars), QueryParser.TEXT)
+          token_text = self._parser.Normalize(token.chars, field.value().type())
+          return query_parser.CreateQueryNode(token_text, QueryParser.TEXT)
         return all(self._MatchTextField(field, QueryNode(token), document)
                    for token in query_tokens)
 
-      token_text = search_util.RemoveAccentsNfkd(query_tokens[0].chars)
+      token_text = self._parser.Normalize(query_tokens[0].chars,
+                                          field.value().type())
       matching_docids = [
           post.doc_id for post in self._PostingsForFieldToken(
               field.name(), token_text)]
@@ -369,7 +383,6 @@ class DocumentMatcher(object):
         perform (eg QueryParser.EQ, QueryParser.GT, etc).
       document: The document to match.
     """
-
     if field.value().type() in search_util.TEXT_DOCUMENT_FIELD_TYPES:
       if operator != QueryParser.EQ and operator != QueryParser.HAS:
         return False
@@ -396,6 +409,9 @@ class DocumentMatcher(object):
 
   def _MatchGlobal(self, match, document):
     for field in document.field_list():
+      if (field.value().type() == document_pb.FieldValue.UNTOKENIZED_PREFIX or
+          field.value().type() == document_pb.FieldValue.TOKENIZED_PREFIX):
+        continue
       try:
         if self._MatchAnyField(field.name(), match, QueryParser.EQ, document):
           return True

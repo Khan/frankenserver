@@ -30,7 +30,6 @@ namespace google\appengine\runtime {
   MemcacheSessionHandler::configure();
 
   if (!empty($_FILES)) {
-    // TODO: b/13132830: Remove once feature releases.
     if (ini_get('google_app_engine.direct_file_upload')) {
       VirtualFileSystem::getInstance()->initialize();
       DirectUploadHandler::handle();

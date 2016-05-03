@@ -486,7 +486,6 @@ namespace google\appengine {
       };
     }
     public function checkInitialized() {
-      if (!isset($this->version)) return 'version';
       return null;
     }
     public function mergeFrom($x) {
@@ -682,7 +681,6 @@ namespace google\appengine {
       };
     }
     public function checkInitialized() {
-      if (!isset($this->instances)) return 'instances';
       return null;
     }
     public function mergeFrom($x) {

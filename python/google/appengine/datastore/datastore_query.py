@@ -62,7 +62,6 @@ from google.appengine.datastore import entity_pb
 
 from google.appengine.api import datastore_errors
 from google.appengine.api import datastore_types
-from google.appengine.api.search import geo_util
 from google.appengine.datastore import datastore_index
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs

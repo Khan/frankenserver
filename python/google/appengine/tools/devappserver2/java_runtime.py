@@ -67,7 +67,8 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._application_lock = threading.Lock()
     self._java_application = java_application.JavaApplication(
         self._module_configuration)
-    self._for_jetty9 = module_configuration.runtime == 'vm'
+    self._for_jetty9 = (module_configuration.runtime == 'vm' or
+                        module_configuration.env == '2')
     self._java_command = self._make_java_command()
 
   def _make_java_command(self):

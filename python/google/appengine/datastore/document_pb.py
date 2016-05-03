@@ -153,8 +153,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   DATE         =    3
   NUMBER       =    4
   GEO          =    5
-  PREFIX       =    6
+  UNTOKENIZED_PREFIX =    6
   TOKENIZED_PREFIX =    7
+  VECTOR       =    8
 
   _ContentType_NAMES = {
     0: "TEXT",
@@ -163,8 +164,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     3: "DATE",
     4: "NUMBER",
     5: "GEO",
-    6: "PREFIX",
+    6: "UNTOKENIZED_PREFIX",
     7: "TOKENIZED_PREFIX",
+    8: "VECTOR",
   }
 
   def ContentType_Name(cls, x): return cls._ContentType_NAMES.get(x, "")
@@ -180,6 +182,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   geo_ = None
 
   def __init__(self, contents=None):
+    self.vector_value_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -241,6 +244,21 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
 
   def has_geo(self): return self.has_geo_
 
+  def vector_value_size(self): return len(self.vector_value_)
+  def vector_value_list(self): return self.vector_value_
+
+  def vector_value(self, i):
+    return self.vector_value_[i]
+
+  def set_vector_value(self, i, x):
+    self.vector_value_[i] = x
+
+  def add_vector_value(self, x):
+    self.vector_value_.append(x)
+
+  def clear_vector_value(self):
+    self.vector_value_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
@@ -248,6 +266,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (x.has_language()): self.set_language(x.language())
     if (x.has_string_value()): self.set_string_value(x.string_value())
     if (x.has_geo()): self.mutable_geo().MergeFrom(x.geo())
+    for i in xrange(x.vector_value_size()): self.add_vector_value(x.vector_value(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -259,6 +278,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if self.has_string_value_ and self.string_value_ != x.string_value_: return 0
     if self.has_geo_ != x.has_geo_: return 0
     if self.has_geo_ and self.geo_ != x.geo_: return 0
+    if len(self.vector_value_) != len(x.vector_value_): return 0
+    for e1, e2 in zip(self.vector_value_, x.vector_value_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -272,6 +294,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
     if (self.has_geo_): n += 2 + self.geo_.ByteSize()
+    n += 9 * len(self.vector_value_)
     return n
 
   def ByteSizePartial(self):
@@ -280,6 +303,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     if (self.has_language_): n += 1 + self.lengthString(len(self.language_))
     if (self.has_string_value_): n += 1 + self.lengthString(len(self.string_value_))
     if (self.has_geo_): n += 2 + self.geo_.ByteSizePartial()
+    n += 9 * len(self.vector_value_)
     return n
 
   def Clear(self):
@@ -287,6 +311,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     self.clear_language()
     self.clear_string_value()
     self.clear_geo()
+    self.clear_vector_value()
 
   def OutputUnchecked(self, out):
     if (self.has_type_):
@@ -302,6 +327,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(35)
       self.geo_.OutputUnchecked(out)
       out.putVarInt32(36)
+    for i in xrange(len(self.vector_value_)):
+      out.putVarInt32(57)
+      out.putDouble(self.vector_value_[i])
 
   def OutputPartial(self, out):
     if (self.has_type_):
@@ -317,6 +345,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       out.putVarInt32(35)
       self.geo_.OutputPartial(out)
       out.putVarInt32(36)
+    for i in xrange(len(self.vector_value_)):
+      out.putVarInt32(57)
+      out.putDouble(self.vector_value_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -333,6 +364,9 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       if tt == 35:
         self.mutable_geo().TryMerge(d)
         continue
+      if tt == 57:
+        self.add_vector_value(d.getDouble())
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -348,6 +382,12 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
       res+=prefix+"Geo {\n"
       res+=self.geo_.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
+    cnt=0
+    for e in self.vector_value_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("vector_value%s: %s\n" % (elm, self.DebugFormat(e)))
+      cnt+=1
     return res
 
 
@@ -360,6 +400,7 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
   kGeoGroup = 4
   kGeolat = 5
   kGeolng = 6
+  kvector_value = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -369,7 +410,8 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     4: "Geo",
     5: "lat",
     6: "lng",
-  }, 6)
+    7: "vector_value",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -379,7 +421,8 @@ class FieldValue(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.STARTGROUP,
     5: ProtocolBuffer.Encoder.DOUBLE,
     6: ProtocolBuffer.Encoder.DOUBLE,
-  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
+    7: ProtocolBuffer.Encoder.DOUBLE,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""

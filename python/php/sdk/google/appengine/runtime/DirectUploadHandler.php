@@ -16,6 +16,8 @@
  */
 namespace google\appengine\runtime;
 
+use org\bovigo\vfs\vfsStream;
+
 /**
  * Handle direct file uploads by placing contents in virtual file system.
  *
@@ -25,7 +27,11 @@ namespace google\appengine\runtime;
  * and alters the tmp_name to point to vfs://.
  */
 final class DirectUploadHandler {
+  const BASE_PATH = 'vfs://root/uploads/';
+
   public static function handle() {
+    // An associative array of filenames and data, so we update vfs in one call.
+    $upload_data = [];
     foreach ($_FILES as &$file) {
       // PHP LOL - members of the $_FILES array could be an array if the
       // mutliple file upload syntax was used.
@@ -34,15 +40,28 @@ final class DirectUploadHandler {
         for ($i = 0; $i < $count; $i++) {
           if ($file['error'][$i] == UPLOAD_ERR_OK && isset($file['contents']) &&
               isset($file['contents'][$i])) {
-            file_put_contents($file['tmp_name'][$i], $file['contents'][$i]);
+            $upload_data[$file['tmp_name'][$i]] = $file['contents'][$i];
           }
         }
       } else {
         if ($file['error'] == UPLOAD_ERR_OK && isset($file['contents'])) {
-          file_put_contents($file['tmp_name'], $file['contents']);
+          $upload_data[$file['tmp_name']] = $file['contents'];
         }
       }
       unset($file['contents']);
     }
+    self::createVirtualFiles($upload_data);
+  }
+
+  protected static function createVirtualFiles($upload_data) {
+    $name_corrected_upload_data = [];
+    foreach($upload_data as $k => $v) {
+      $name_corrected_upload_data[str_replace(self::BASE_PATH, "", $k)] = $v;
+    }
+
+    // vfsStream::create will take a reference, not a copy.
+    vfsStream::create([
+      'uploads' => $name_corrected_upload_data,
+    ]);
   }
 }

@@ -318,30 +318,25 @@ class CreateLoginURLResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_login_url_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: login_url not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.login_url_))
-    return n + 1
+    if (self.has_login_url_): n += 1 + self.lengthString(len(self.login_url_))
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_login_url_):
-      n += 1
-      n += self.lengthString(len(self.login_url_))
+    if (self.has_login_url_): n += 1 + self.lengthString(len(self.login_url_))
     return n
 
   def Clear(self):
     self.clear_login_url()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.login_url_)
+    if (self.has_login_url_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.login_url_)
 
   def OutputPartial(self, out):
     if (self.has_login_url_):
@@ -552,30 +547,25 @@ class CreateLogoutURLResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_logout_url_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: logout_url not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.logout_url_))
-    return n + 1
+    if (self.has_logout_url_): n += 1 + self.lengthString(len(self.logout_url_))
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_logout_url_):
-      n += 1
-      n += self.lengthString(len(self.logout_url_))
+    if (self.has_logout_url_): n += 1 + self.lengthString(len(self.logout_url_))
     return n
 
   def Clear(self):
     self.clear_logout_url()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.logout_url_)
+    if (self.has_logout_url_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.logout_url_)
 
   def OutputPartial(self, out):
     if (self.has_logout_url_):
@@ -952,44 +942,26 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_email_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: email not set.')
-    if (not self.has_user_id_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: user_id not set.')
-    if (not self.has_auth_domain_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: auth_domain not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.email_))
-    n += self.lengthString(len(self.user_id_))
-    n += self.lengthString(len(self.auth_domain_))
+    if (self.has_email_): n += 1 + self.lengthString(len(self.email_))
+    if (self.has_user_id_): n += 1 + self.lengthString(len(self.user_id_))
+    if (self.has_auth_domain_): n += 1 + self.lengthString(len(self.auth_domain_))
     if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
     if (self.has_is_admin_): n += 2
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
     n += 1 * len(self.scopes_)
     for i in xrange(len(self.scopes_)): n += self.lengthString(len(self.scopes_[i]))
     if (self.has_is_project_writer_): n += 2
-    return n + 3
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_email_):
-      n += 1
-      n += self.lengthString(len(self.email_))
-    if (self.has_user_id_):
-      n += 1
-      n += self.lengthString(len(self.user_id_))
-    if (self.has_auth_domain_):
-      n += 1
-      n += self.lengthString(len(self.auth_domain_))
+    if (self.has_email_): n += 1 + self.lengthString(len(self.email_))
+    if (self.has_user_id_): n += 1 + self.lengthString(len(self.user_id_))
+    if (self.has_auth_domain_): n += 1 + self.lengthString(len(self.auth_domain_))
     if (self.has_user_organization_): n += 1 + self.lengthString(len(self.user_organization_))
     if (self.has_is_admin_): n += 2
     if (self.has_client_id_): n += 1 + self.lengthString(len(self.client_id_))
@@ -1009,12 +981,15 @@ class GetOAuthUserResponse(ProtocolBuffer.ProtocolMessage):
     self.clear_is_project_writer()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.email_)
-    out.putVarInt32(18)
-    out.putPrefixedString(self.user_id_)
-    out.putVarInt32(26)
-    out.putPrefixedString(self.auth_domain_)
+    if (self.has_email_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.email_)
+    if (self.has_user_id_):
+      out.putVarInt32(18)
+      out.putPrefixedString(self.user_id_)
+    if (self.has_auth_domain_):
+      out.putVarInt32(26)
+      out.putPrefixedString(self.auth_domain_)
     if (self.has_user_organization_):
       out.putVarInt32(34)
       out.putPrefixedString(self.user_organization_)
@@ -1246,30 +1221,25 @@ class CheckOAuthSignatureResponse(ProtocolBuffer.ProtocolMessage):
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
-    if (not self.has_oauth_consumer_key_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: oauth_consumer_key not set.')
     return initialized
 
   def ByteSize(self):
     n = 0
-    n += self.lengthString(len(self.oauth_consumer_key_))
-    return n + 1
+    if (self.has_oauth_consumer_key_): n += 1 + self.lengthString(len(self.oauth_consumer_key_))
+    return n
 
   def ByteSizePartial(self):
     n = 0
-    if (self.has_oauth_consumer_key_):
-      n += 1
-      n += self.lengthString(len(self.oauth_consumer_key_))
+    if (self.has_oauth_consumer_key_): n += 1 + self.lengthString(len(self.oauth_consumer_key_))
     return n
 
   def Clear(self):
     self.clear_oauth_consumer_key()
 
   def OutputUnchecked(self, out):
-    out.putVarInt32(10)
-    out.putPrefixedString(self.oauth_consumer_key_)
+    if (self.has_oauth_consumer_key_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.oauth_consumer_key_)
 
   def OutputPartial(self, out):
     if (self.has_oauth_consumer_key_):

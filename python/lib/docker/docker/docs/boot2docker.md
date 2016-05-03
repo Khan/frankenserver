@@ -4,13 +4,10 @@ For usage with boot2docker, there is a helper function in the utils package name
 
 First run boot2docker in your shell:
 ```bash
-$ $(boot2docker shellinit)
+$ eval "$(boot2docker shellinit)"
 Writing /Users/you/.boot2docker/certs/boot2docker-vm/ca.pem
 Writing /Users/you/.boot2docker/certs/boot2docker-vm/cert.pem
 Writing /Users/you/.boot2docker/certs/boot2docker-vm/key.pem
-export DOCKER_HOST=tcp://192.168.59.103:2376
-export DOCKER_CERT_PATH=/Users/you/.boot2docker/certs/boot2docker-vm
-export DOCKER_TLS_VERIFY=1
 ```
 
 You can then instantiate `docker.Client` like this:
@@ -18,8 +15,8 @@ You can then instantiate `docker.Client` like this:
 from docker.client import Client
 from docker.utils import kwargs_from_env
 
-client = Client(**kwargs_from_env())
-print client.version()
+cli = Client(**kwargs_from_env())
+print cli.version()
 ```
 
 If you're encountering the following error:
@@ -36,6 +33,6 @@ from docker.utils import kwargs_from_env
 kwargs = kwargs_from_env()
 kwargs['tls'].assert_hostname = False
 
-client = Client(**kwargs)
-print client.version()
+cli = Client(**kwargs)
+print cli.version()
 ```

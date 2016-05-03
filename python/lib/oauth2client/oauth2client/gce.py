@@ -59,7 +59,10 @@ class AppAssertionCredentials(AssertionCredentials):
     self.kwargs = kwargs
 
     # Assertion type is no longer used, but still in the parent class signature.
-    super(AppAssertionCredentials, self).__init__(None)
+    super(AppAssertionCredentials, self).__init__(
+        None, user_agent=(
+            'Legacy oauth2client.gce.AppAssertionCrendentials (not current '
+            'oauth2client.contrib.gce.AppAssertionCredentials)'))
 
   @classmethod
   def from_json(cls, json_data):

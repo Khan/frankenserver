@@ -493,6 +493,13 @@ class _ApiServer(object):
       if self.__is_json_error(status, headers_dict):
         status, body = self.protorpc_to_endpoints_error(status, body)
 
+
+        if 'content-length' in headers_dict:
+          for index, (header_name, _) in enumerate(headers):
+            if header_name.lower() == 'content-length':
+              headers[index] = (header_name, str(len(body)))
+              break
+
     start_response(status, headers, exception)
     return [body]
 
