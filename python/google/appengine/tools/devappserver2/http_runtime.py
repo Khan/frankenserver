@@ -323,6 +323,8 @@ class HttpRuntimeProxy(instance.RuntimeProxy):
             env=self._env,
             cwd=self._module_configuration.application_root)
       port = self._process.stdout.readline()
+      if '\t' in port:  # Split out the host if present.
+        host, port = port.split('\t', 1)
     elif self._start_process_flavor == START_PROCESS_FILE:
       serialized_config = runtime_config.SerializeToString()
       with self._process_lock:
