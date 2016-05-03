@@ -40,25 +40,27 @@ get kake's log output.)
 
 ## Dealing with the upstream codebase
 
-This repository is a
-[git-svn](https://www.kernel.org/pub/software/scm/git/docs/git-svn.html) mirror
-of the [official SDK](https://code.google.com/p/googleappengine/). We have
-configured the mirror to skip the java/ directory because it contains large
-build artifacts that GitHub won't accept and are unnecessary for our needs. The
-command to set up the mirror was:
+The github repo is typically behind the release tarballs, so we update
+from upstream using the tarballs.
 
-```
-git svn clone --stdlayout --ignore-paths="^trunk/java" http://googleappengine.googlecode.com/svn/ frankenserver
-```
-
-and here is how Khan Academy developers can pull in upstream changes:
-
-1. Clone or copy the frankenserver repo into a location outside of webapp. *The git-svn steps do not work from within a subrepo.*
-2. `git checkout -b <version>`
-3. `git svn fetch`
-4. `git svn rebase`, fixing any conflicts that arose
-5. `git push -u origin <version>`
-6. From the frankenserver subrepo in webapp, `git pull && git checkout <version>`
-7. Run `make allcheck` and dogfood the new version for a little while to make sure it's working correctly
-8. From the frankenserver subrepo in webapp, `git checkout master && git merge <version> && git push`
-9. From the webapp repo, commit and push the substate change
+1. Visit https://cloud.google.com/appengine/downloads and download the
+   latest zipfile.
+2. Create a new branch: `git checkout master && git checkout -b <gae version>`
+3. Replace the old code with the new: `rm -rf *; unzip <zipfile>`
+4. If the zipfile toplevel is named `google_appengine`, do 
+   `mv google_appengine python`
+5. `git add -A .`
+6. `git commit -am 'Pristine copy of <gae version>, without patches applied'`
+7. (Now comes the hard part: cherry-picking the frankenserver changes
+   from a previous branch.)
+8. Run `git branch` to see what previous versions exist, then run
+   `git log <previous version>` to see all the frankenserver changes.
+   Stop when you get to the 'Pristine copy of <previous version>'
+   log message (or something similar).  Note that commit.
+9. Do `git log --format=%h --no-merges <commit>..<previous version>`.
+   Alternately, if you're curious what these commits are, just do
+   `git log --oneline --no-merges <commit>..<previous version>`.
+   e.g. `git log --oneline --no-merges 526771777..1.9.28`
+10. Starting from the bottom, and preferably one at a time, run
+    `git cherry-pick <commit>`.  Resolve any conflicts you see.
+11. Run `python/run_tests.py`.
