@@ -20,7 +20,6 @@
 
 import os
 import sys
-import time
 
 import google
 from google.appengine.api import appinfo
@@ -64,7 +63,6 @@ class PythonRuntimeInstanceFactory(instance.InstanceFactory):
         8 if runtime_config_getter().threadsafe else 1, 10)
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
-    self._last_restart_time = time.time()
 
   def new_instance(self, instance_id, expect_ready_request=False):
     """Create and return a new Instance.
@@ -83,8 +81,6 @@ class PythonRuntimeInstanceFactory(instance.InstanceFactory):
     def instance_config_getter():
       runtime_config = self._runtime_config_getter()
       runtime_config.instance_id = str(instance_id)
-      runtime_config.environ.add(key='DEV_APPSERVER_LAST_RESTART_TIME',
-                                 value=str(self._last_restart_time))
       return runtime_config
 
     proxy = http_runtime.HttpRuntimeProxy(
@@ -99,7 +95,3 @@ class PythonRuntimeInstanceFactory(instance.InstanceFactory):
                              self.max_concurrent_requests,
                              self.max_background_threads,
                              expect_ready_request)
-
-  def files_changed(self):
-    """Called when a file relevant to the factory *might* have changed."""
-    self._last_restart_time = time.time()
