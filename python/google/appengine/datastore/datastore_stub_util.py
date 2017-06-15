@@ -490,8 +490,8 @@ def CheckReference(request_trusted,
 
   Check(key.path().element_size() > 0, 'key\'s path cannot be empty')
 
-  if require_id_or_name and not datastore_pbs.is_complete_v3_key(key):
-    raise datastore_errors.BadRequestError('missing key id/name')
+  if require_id_or_name:
+    Check(datastore_pbs.is_complete_v3_key(key), 'missing key id/name')
 
   for elem in key.path().element_list():
     Check(not elem.has_id() or not elem.has_name(),
@@ -590,7 +590,7 @@ def CheckPropertyValue(name, value, max_length, meaning):
           'Property %s is too long. Maximum length is %d.' % (name, max_length))
     if (meaning not in _BLOB_MEANINGS and
         meaning != entity_pb.Property.BYTESTRING):
-      CheckValidUTF8(value.stringvalue(), 'String property value')
+      CheckValidUTF8(value.stringvalue(), 'String property "%s" value' % name)
 
 
 def CheckTransaction(request_trusted, request_app_id, transaction):
@@ -1281,6 +1281,17 @@ class ListCursor(BaseCursor):
           new_results.append(result)
       results = new_results
 
+    if query.shallow():
+      key_path_length = 1
+      if query.has_ancestor():
+        key_path_length += query.ancestor().path().element_size()
+
+      new_results = []
+      for result in results:
+        if result.entity.key().path().element_size() == key_path_length:
+          new_results.append(result)
+      results = new_results
+
     if (query.has_compiled_cursor()
         and query.compiled_cursor().has_postfix_position()):
       start_cursor = self._DecodeCompiledCursor(query.compiled_cursor())
@@ -1442,7 +1453,7 @@ class LiveTxn(object):
 
 
   ACTIVE = 1
-  COMMITED = 2
+  COMMITTED = 2
   ROLLEDBACK = 3
   FAILED = 4
 
@@ -1679,7 +1690,7 @@ class LiveTxn(object):
           self._AddWriteOps(old_entity, entity)
 
           if _IsNoOpWrite(old_entity, entity):
-            self._mutation_versions[key] = old_version
+            self._mutation_versions[key] = long(old_version)
 
         for reference in tracker._delete.itervalues():
 
@@ -1692,7 +1703,7 @@ class LiveTxn(object):
             self._AddWriteOps(None, old_entity)
 
           if _IsNoOpWrite(old_entity, None):
-            self._mutation_versions[key] = tracker._read_timestamp
+            self._mutation_versions[key] = long(tracker._read_timestamp)
 
 
       if empty and not self._actions:
@@ -1704,7 +1715,6 @@ class LiveTxn(object):
       self._txn_manager._AcquireWriteLocks(meta_data_list)
     except:
 
-      self.Rollback()
       raise
 
     try:
@@ -1717,14 +1727,14 @@ class LiveTxn(object):
 
       for tracker in trackers:
         tracker._meta_data.Log(self)
-      self._state = self.COMMITED
+      self._state = self.COMMITTED
       self._commit_time_s = time.time()
       write_timestamp = self._txn_manager._IncrementAndGetCommitTimestamp()
 
       for reference in self._mutated_references:
         key = datastore_types.ReferenceToKeyValue(reference)
         if key not in self._mutation_versions:
-          self._mutation_versions[key] = write_timestamp
+          self._mutation_versions[key] = long(write_timestamp)
     except:
 
       self.Rollback()
@@ -1749,8 +1759,8 @@ class LiveTxn(object):
     return self._cost
 
   def GetMutationVersion(self, reference):
-    """Returns the version of an entity after this transaction has commited."""
-    assert self._state == self.COMMITED
+    """Returns the version of an entity after this transaction has committed."""
+    assert self._state == self.COMMITTED
     key = datastore_types.ReferenceToKeyValue(reference)
     return self._mutation_versions[key]
 
@@ -1779,7 +1789,7 @@ class LiveTxn(object):
     self._apply_lock.acquire()
     try:
 
-      assert self._state == self.COMMITED
+      assert self._state == self.COMMITTED
       for tracker in self._entity_groups.values():
         if tracker._meta_data is meta_data:
           break
@@ -1908,12 +1918,12 @@ class BaseConsistencyPolicy(object):
 
 
   def _OnCommit(self, txn):
-    """Called after a LiveTxn has been commited.
+    """Called after a LiveTxn has been committed.
 
     This function can decide whether to apply the txn right away.
 
     Args:
-      txn: A LiveTxn that has been commited
+      txn: A LiveTxn that has been committed
     """
     raise NotImplementedError
 
@@ -1984,15 +1994,15 @@ class BaseHighReplicationConsistencyPolicy(BaseConsistencyPolicy):
         meta_data._write_lock.release()
 
   def _ShouldApply(self, txn, meta_data):
-    """Determins if the given transaction should be applied."""
+    """Determines if the given transaction should be applied."""
     raise NotImplementedError
 
 
 class TimeBasedHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
-  """A High Replication Datastore consiseny policy based on elapsed time.
+  """A High Replication Datastore consistency policy based on elapsed time.
 
   This class tries to simulate performance seen in the high replication
-  datastore using estimated probabilities of a transaction commiting after a
+  datastore using estimated probabilities of a transaction committing after a
   given amount of time.
   """
 
@@ -2007,7 +2017,7 @@ class TimeBasedHRConsistencyPolicy(BaseHighReplicationConsistencyPolicy):
 
     Args:
       classification_map: A list of tuples containing (float between 0 and 1,
-        number of miliseconds) that define the probability of a transaction
+        number of milliseconds) that define the probability of a transaction
         applying after a given amount of time.
     """
     for prob, delay in classification_map:
@@ -2108,12 +2118,13 @@ class BaseTransactionManager(object):
 
     self._txn_map = {}
 
-  def BeginTransaction(self, app, allow_multiple_eg):
+  def BeginTransaction(self, app, allow_multiple_eg, previous_transaction=None):
     """Start a transaction on the given app.
 
     Args:
       app: A string representing the app for which to start the transaction.
       allow_multiple_eg: True if transactions can span multiple entity groups.
+      previous_transaction: The transaction to reset.
 
     Returns:
       A datastore_pb.Transaction for the created transaction
@@ -2122,6 +2133,18 @@ class BaseTransactionManager(object):
         self._consistency_policy, MasterSlaveConsistencyPolicy)),
           'transactions on multiple entity groups only allowed with the '
           'High Replication datastore')
+
+    if previous_transaction is not None:
+      previous_live_txn = self._txn_map.get(previous_transaction.handle())
+
+      if previous_live_txn is not None:
+
+
+        if previous_live_txn._app == app:
+          Check(previous_live_txn._allow_multiple_eg == allow_multiple_eg,
+                'Transaction should have same options as previous_transaction')
+          previous_live_txn.Rollback()
+
     txn = self._BeginTransaction(app, allow_multiple_eg)
     self._txn_map[id(txn)] = txn
     transaction = datastore_pb.Transaction()
@@ -2427,7 +2450,7 @@ class BaseIndexManager(object):
 
 
 class BaseDatastore(BaseTransactionManager, BaseIndexManager):
-  """A base implemenation of a Datastore.
+  """A base implementation of a Datastore.
 
   This class implements common functions associated with a datastore and
   enforces security restrictions passed on by a stub or client. It is designed
@@ -2496,6 +2519,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     CheckAppId(trusted, calling_app, raw_query.app())
 
 
+
+
     filters, orders = datastore_index.Normalize(raw_query.filter_list(),
                                                 raw_query.order_list(),
                                                 raw_query.property_name_list())
@@ -2504,7 +2529,8 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
     CheckQuery(raw_query, filters, orders, self._MAX_QUERY_COMPONENTS)
     FillUsersInQuery(filters)
 
-    self._CheckHasIndex(raw_query, trusted, calling_app)
+    if self._require_indexes:
+      self._CheckHasIndex(raw_query, trusted, calling_app)
 
 
     index_list = self.__IndexListForQuery(raw_query)
@@ -2796,18 +2822,25 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       op: A function to run on each value in the Txn.
 
     Returns:
-      The transaction that was commited.
+      The transaction that was committed.
     """
     retries = 0
     backoff = _INITIAL_RETRY_DELAY_MS / 1000.0
     while True:
+      txn = self._BeginTransaction(app, False)
+
       try:
-        txn = self._BeginTransaction(app, False)
         for value in values:
           op(txn, value)
         txn.Commit()
         return txn
       except apiproxy_errors.ApplicationError, e:
+        try:
+          txn.Rollback()
+        except Exception:
+
+          logging.debug('Exception in rollback.', exc_info=True)
+
         if e.application_error == datastore_pb.Error.CONCURRENT_TRANSACTION:
 
           retries += 1
@@ -2826,8 +2859,11 @@ class BaseDatastore(BaseTransactionManager, BaseIndexManager):
       query: the datastore_pb.Query to check
       trusted: True if the calling app is trusted (like dev_admin_console)
       calling_app: app_id of the current running application
+    Raises:
+      apiproxy_errors.ApplicationError: if the query can be satisfied
+      given the existing indexes.
     """
-    if query.kind() in self._pseudo_kinds or not self._require_indexes:
+    if query.kind() in self._pseudo_kinds:
       return
 
     minimal_index = datastore_index.MinimalCompositeIndexForQuery(query,
@@ -3325,7 +3361,7 @@ class DatastoreStub(object):
   def _Dynamic_BeginTransaction(self, req, transaction):
     CheckAppId(self._trusted, self._app_id, req.app())
     transaction.CopyFrom(self._datastore.BeginTransaction(
-        req.app(), req.allow_multiple_eg()))
+        req.app(), req.allow_multiple_eg(), req.previous_transaction()))
 
   def _Dynamic_Commit(self, transaction, res):
     CheckAppId(self._trusted, self._app_id, transaction.app())
@@ -3380,7 +3416,7 @@ class DatastoreStub(object):
       allocate_ids_response.set_end(end)
     else:
       for reference in allocate_ids_request.reserve_list():
-        CheckAppId(reference.app(), self._trusted, self._app_id)
+        CheckReference(self._trusted, self._app_id, reference)
       self._datastore._AllocateIds(allocate_ids_request.reserve_list())
       allocate_ids_response.set_start(0)
       allocate_ids_response.set_end(0)
@@ -3814,7 +3850,7 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
 
 
     num_v1_filters = len(v3_query.filter_list())
-    if v3_query.has_ancestor():
+    if v3_query.has_ancestor() or v3_query.shallow():
       num_v1_filters += 1
 
     if num_v1_filters == 1:
@@ -3824,7 +3860,7 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
           googledatastore.CompositeFilter.AND)
       get_property_filter = self.__add_property_filter_from_V1
 
-    if v3_query.has_ancestor():
+    if v3_query.has_ancestor() or v3_query.shallow():
       self._v3_query_to_v1_ancestor_filter(v3_query,
                                            get_property_filter(v1_query))
     for v3_filter in v3_query.filter_list():
@@ -3855,19 +3891,30 @@ class StubQueryConverter(datastore_pbs._QueryConverter):
     if filter_type == 'property_filter':
       v1_property_filter = v1_filter.property_filter
       v1_property_name = v1_property_filter.property.name
-      if (v1_property_filter.op
-          == googledatastore.PropertyFilter.HAS_ANCESTOR):
-        datastore_pbs.check_conversion(
-            v1_property_filter.value.HasField('key_value'),
-            'HAS_ANCESTOR requires a reference value')
+      if (v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT or
+          v1_property_filter.op == googledatastore.PropertyFilter.HAS_ANCESTOR):
+        if v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT:
+          datastore_pbs.check_conversion(
+              v1_property_filter.value.HasField('key_value') or
+              v1_property_filter.value.HasField('null_value'),
+              'HAS_PARENT requires a key value or null')
+        else:
+          datastore_pbs.check_conversion(
+              v1_property_filter.value.HasField('key_value'),
+              'HAS_ANCESTOR requires a key value')
         datastore_pbs.check_conversion((v1_property_name
                                         == datastore_pbs.PROPERTY_NAME_KEY),
                                        'unsupported property')
-        datastore_pbs.check_conversion(not v3_query.has_ancestor(),
-                                       'duplicate ancestor constraint')
-        self._entity_converter.v1_to_v3_reference(
-            v1_property_filter.value.key_value,
-            v3_query.mutable_ancestor())
+        datastore_pbs.check_conversion(not v3_query.has_ancestor() and
+                                       not v3_query.shallow(),
+                                       'duplicate ancestor or parent '
+                                       'constraint')
+        if v1_property_filter.value.HasField('key_value'):
+          self._entity_converter.v1_to_v3_reference(
+              v1_property_filter.value.key_value,
+              v3_query.mutable_ancestor())
+        if v1_property_filter.op == googledatastore.PropertyFilter.HAS_PARENT:
+          v3_query.set_shallow(True)
       else:
         v3_filter = v3_query.add_filter()
         property_name = v1_property_name

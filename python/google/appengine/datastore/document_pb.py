@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -934,6 +931,383 @@ class IndexShardSettings(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.IndexShardSettings'
+class IndexMetadata_DeletionStatus(ProtocolBuffer.ProtocolMessage):
+  has_started_time_ = 0
+  started_time_ = 0
+  has_completed_time_ = 0
+  completed_time_ = 0
+
+  def __init__(self, contents=None):
+    if contents is not None: self.MergeFromString(contents)
+
+  def started_time(self): return self.started_time_
+
+  def set_started_time(self, x):
+    self.has_started_time_ = 1
+    self.started_time_ = x
+
+  def clear_started_time(self):
+    if self.has_started_time_:
+      self.has_started_time_ = 0
+      self.started_time_ = 0
+
+  def has_started_time(self): return self.has_started_time_
+
+  def completed_time(self): return self.completed_time_
+
+  def set_completed_time(self, x):
+    self.has_completed_time_ = 1
+    self.completed_time_ = x
+
+  def clear_completed_time(self):
+    if self.has_completed_time_:
+      self.has_completed_time_ = 0
+      self.completed_time_ = 0
+
+  def has_completed_time(self): return self.has_completed_time_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_started_time()): self.set_started_time(x.started_time())
+    if (x.has_completed_time()): self.set_completed_time(x.completed_time())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_started_time_ != x.has_started_time_: return 0
+    if self.has_started_time_ and self.started_time_ != x.started_time_: return 0
+    if self.has_completed_time_ != x.has_completed_time_: return 0
+    if self.has_completed_time_ and self.completed_time_ != x.completed_time_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    if (self.has_started_time_): n += 1 + self.lengthVarInt64(self.started_time_)
+    if (self.has_completed_time_): n += 1 + self.lengthVarInt64(self.completed_time_)
+    return n
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_started_time_): n += 1 + self.lengthVarInt64(self.started_time_)
+    if (self.has_completed_time_): n += 1 + self.lengthVarInt64(self.completed_time_)
+    return n
+
+  def Clear(self):
+    self.clear_started_time()
+    self.clear_completed_time()
+
+  def OutputUnchecked(self, out):
+    if (self.has_started_time_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.started_time_)
+    if (self.has_completed_time_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.completed_time_)
+
+  def OutputPartial(self, out):
+    if (self.has_started_time_):
+      out.putVarInt32(24)
+      out.putVarInt64(self.started_time_)
+    if (self.has_completed_time_):
+      out.putVarInt32(32)
+      out.putVarInt64(self.completed_time_)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 24:
+        self.set_started_time(d.getVarInt64())
+        continue
+      if tt == 32:
+        self.set_completed_time(d.getVarInt64())
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_started_time_: res+=prefix+("started_time: %s\n" % self.DebugFormatInt64(self.started_time_))
+    if self.has_completed_time_: res+=prefix+("completed_time: %s\n" % self.DebugFormatInt64(self.completed_time_))
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kstarted_time = 3
+  kcompleted_time = 4
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    3: "started_time",
+    4: "completed_time",
+  }, 4)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    3: ProtocolBuffer.Encoder.NUMERIC,
+    4: ProtocolBuffer.Encoder.NUMERIC,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.IndexMetadata_DeletionStatus'
+class IndexMetadata_IndexDeletionDetails(ProtocolBuffer.ProtocolMessage):
+  has_replica_name_ = 0
+  replica_name_ = ""
+  has_precheck_ = 0
+  precheck_ = None
+  has_st_bti_ = 0
+  st_bti_ = None
+  has_ms_docs_ = 0
+  ms_docs_ = None
+
+  def __init__(self, contents=None):
+    self.lazy_init_lock_ = thread.allocate_lock()
+    if contents is not None: self.MergeFromString(contents)
+
+  def replica_name(self): return self.replica_name_
+
+  def set_replica_name(self, x):
+    self.has_replica_name_ = 1
+    self.replica_name_ = x
+
+  def clear_replica_name(self):
+    if self.has_replica_name_:
+      self.has_replica_name_ = 0
+      self.replica_name_ = ""
+
+  def has_replica_name(self): return self.has_replica_name_
+
+  def precheck(self):
+    if self.precheck_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.precheck_ is None: self.precheck_ = IndexMetadata_DeletionStatus()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.precheck_
+
+  def mutable_precheck(self): self.has_precheck_ = 1; return self.precheck()
+
+  def clear_precheck(self):
+
+    if self.has_precheck_:
+      self.has_precheck_ = 0;
+      if self.precheck_ is not None: self.precheck_.Clear()
+
+  def has_precheck(self): return self.has_precheck_
+
+  def st_bti(self):
+    if self.st_bti_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.st_bti_ is None: self.st_bti_ = IndexMetadata_DeletionStatus()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.st_bti_
+
+  def mutable_st_bti(self): self.has_st_bti_ = 1; return self.st_bti()
+
+  def clear_st_bti(self):
+
+    if self.has_st_bti_:
+      self.has_st_bti_ = 0;
+      if self.st_bti_ is not None: self.st_bti_.Clear()
+
+  def has_st_bti(self): return self.has_st_bti_
+
+  def ms_docs(self):
+    if self.ms_docs_ is None:
+      self.lazy_init_lock_.acquire()
+      try:
+        if self.ms_docs_ is None: self.ms_docs_ = IndexMetadata_DeletionStatus()
+      finally:
+        self.lazy_init_lock_.release()
+    return self.ms_docs_
+
+  def mutable_ms_docs(self): self.has_ms_docs_ = 1; return self.ms_docs()
+
+  def clear_ms_docs(self):
+
+    if self.has_ms_docs_:
+      self.has_ms_docs_ = 0;
+      if self.ms_docs_ is not None: self.ms_docs_.Clear()
+
+  def has_ms_docs(self): return self.has_ms_docs_
+
+
+  def MergeFrom(self, x):
+    assert x is not self
+    if (x.has_replica_name()): self.set_replica_name(x.replica_name())
+    if (x.has_precheck()): self.mutable_precheck().MergeFrom(x.precheck())
+    if (x.has_st_bti()): self.mutable_st_bti().MergeFrom(x.st_bti())
+    if (x.has_ms_docs()): self.mutable_ms_docs().MergeFrom(x.ms_docs())
+
+  def Equals(self, x):
+    if x is self: return 1
+    if self.has_replica_name_ != x.has_replica_name_: return 0
+    if self.has_replica_name_ and self.replica_name_ != x.replica_name_: return 0
+    if self.has_precheck_ != x.has_precheck_: return 0
+    if self.has_precheck_ and self.precheck_ != x.precheck_: return 0
+    if self.has_st_bti_ != x.has_st_bti_: return 0
+    if self.has_st_bti_ and self.st_bti_ != x.st_bti_: return 0
+    if self.has_ms_docs_ != x.has_ms_docs_: return 0
+    if self.has_ms_docs_ and self.ms_docs_ != x.ms_docs_: return 0
+    return 1
+
+  def IsInitialized(self, debug_strs=None):
+    initialized = 1
+    if (not self.has_replica_name_):
+      initialized = 0
+      if debug_strs is not None:
+        debug_strs.append('Required field: replica_name not set.')
+    if (self.has_precheck_ and not self.precheck_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_st_bti_ and not self.st_bti_.IsInitialized(debug_strs)): initialized = 0
+    if (self.has_ms_docs_ and not self.ms_docs_.IsInitialized(debug_strs)): initialized = 0
+    return initialized
+
+  def ByteSize(self):
+    n = 0
+    n += self.lengthString(len(self.replica_name_))
+    if (self.has_precheck_): n += 1 + self.lengthString(self.precheck_.ByteSize())
+    if (self.has_st_bti_): n += 1 + self.lengthString(self.st_bti_.ByteSize())
+    if (self.has_ms_docs_): n += 1 + self.lengthString(self.ms_docs_.ByteSize())
+    return n + 1
+
+  def ByteSizePartial(self):
+    n = 0
+    if (self.has_replica_name_):
+      n += 1
+      n += self.lengthString(len(self.replica_name_))
+    if (self.has_precheck_): n += 1 + self.lengthString(self.precheck_.ByteSizePartial())
+    if (self.has_st_bti_): n += 1 + self.lengthString(self.st_bti_.ByteSizePartial())
+    if (self.has_ms_docs_): n += 1 + self.lengthString(self.ms_docs_.ByteSizePartial())
+    return n
+
+  def Clear(self):
+    self.clear_replica_name()
+    self.clear_precheck()
+    self.clear_st_bti()
+    self.clear_ms_docs()
+
+  def OutputUnchecked(self, out):
+    out.putVarInt32(10)
+    out.putPrefixedString(self.replica_name_)
+    if (self.has_precheck_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.precheck_.ByteSize())
+      self.precheck_.OutputUnchecked(out)
+    if (self.has_st_bti_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.st_bti_.ByteSize())
+      self.st_bti_.OutputUnchecked(out)
+    if (self.has_ms_docs_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.ms_docs_.ByteSize())
+      self.ms_docs_.OutputUnchecked(out)
+
+  def OutputPartial(self, out):
+    if (self.has_replica_name_):
+      out.putVarInt32(10)
+      out.putPrefixedString(self.replica_name_)
+    if (self.has_precheck_):
+      out.putVarInt32(18)
+      out.putVarInt32(self.precheck_.ByteSizePartial())
+      self.precheck_.OutputPartial(out)
+    if (self.has_st_bti_):
+      out.putVarInt32(26)
+      out.putVarInt32(self.st_bti_.ByteSizePartial())
+      self.st_bti_.OutputPartial(out)
+    if (self.has_ms_docs_):
+      out.putVarInt32(34)
+      out.putVarInt32(self.ms_docs_.ByteSizePartial())
+      self.ms_docs_.OutputPartial(out)
+
+  def TryMerge(self, d):
+    while d.avail() > 0:
+      tt = d.getVarInt32()
+      if tt == 10:
+        self.set_replica_name(d.getPrefixedString())
+        continue
+      if tt == 18:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_precheck().TryMerge(tmp)
+        continue
+      if tt == 26:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_st_bti().TryMerge(tmp)
+        continue
+      if tt == 34:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.mutable_ms_docs().TryMerge(tmp)
+        continue
+
+
+      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
+      d.skipData(tt)
+
+
+  def __str__(self, prefix="", printElemNumber=0):
+    res=""
+    if self.has_replica_name_: res+=prefix+("replica_name: %s\n" % self.DebugFormatString(self.replica_name_))
+    if self.has_precheck_:
+      res+=prefix+"precheck <\n"
+      res+=self.precheck_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_st_bti_:
+      res+=prefix+"st_bti <\n"
+      res+=self.st_bti_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    if self.has_ms_docs_:
+      res+=prefix+"ms_docs <\n"
+      res+=self.ms_docs_.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+    return res
+
+
+  def _BuildTagLookupTable(sparse, maxtag, default=None):
+    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
+
+  kreplica_name = 1
+  kprecheck = 2
+  kst_bti = 3
+  kms_docs = 4
+
+  _TEXT = _BuildTagLookupTable({
+    0: "ErrorCode",
+    1: "replica_name",
+    2: "precheck",
+    3: "st_bti",
+    4: "ms_docs",
+  }, 4)
+
+  _TYPES = _BuildTagLookupTable({
+    0: ProtocolBuffer.Encoder.NUMERIC,
+    1: ProtocolBuffer.Encoder.STRING,
+    2: ProtocolBuffer.Encoder.STRING,
+    3: ProtocolBuffer.Encoder.STRING,
+    4: ProtocolBuffer.Encoder.STRING,
+  }, 4, ProtocolBuffer.Encoder.MAX_TYPE)
+
+
+  _STYLE = """"""
+  _STYLE_CONTENT_TYPE = """"""
+  _PROTO_DESCRIPTOR_NAME = 'storage_onestore_v3.IndexMetadata_IndexDeletionDetails'
 class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
 
@@ -962,6 +1336,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   max_index_size_bytes_ = 0
 
   def __init__(self, contents=None):
+    self.replica_deletion_ = []
     self.lazy_init_lock_ = thread.allocate_lock()
     if contents is not None: self.MergeFromString(contents)
 
@@ -1036,6 +1411,22 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
 
   def has_max_index_size_bytes(self): return self.has_max_index_size_bytes_
 
+  def replica_deletion_size(self): return len(self.replica_deletion_)
+  def replica_deletion_list(self): return self.replica_deletion_
+
+  def replica_deletion(self, i):
+    return self.replica_deletion_[i]
+
+  def mutable_replica_deletion(self, i):
+    return self.replica_deletion_[i]
+
+  def add_replica_deletion(self):
+    x = IndexMetadata_IndexDeletionDetails()
+    self.replica_deletion_.append(x)
+    return x
+
+  def clear_replica_deletion(self):
+    self.replica_deletion_ = []
 
   def MergeFrom(self, x):
     assert x is not self
@@ -1044,6 +1435,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (x.has_index_state()): self.set_index_state(x.index_state())
     if (x.has_index_delete_time()): self.set_index_delete_time(x.index_delete_time())
     if (x.has_max_index_size_bytes()): self.set_max_index_size_bytes(x.max_index_size_bytes())
+    for i in xrange(x.replica_deletion_size()): self.add_replica_deletion().CopyFrom(x.replica_deletion(i))
 
   def Equals(self, x):
     if x is self: return 1
@@ -1057,11 +1449,16 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if self.has_index_delete_time_ and self.index_delete_time_ != x.index_delete_time_: return 0
     if self.has_max_index_size_bytes_ != x.has_max_index_size_bytes_: return 0
     if self.has_max_index_size_bytes_ and self.max_index_size_bytes_ != x.max_index_size_bytes_: return 0
+    if len(self.replica_deletion_) != len(x.replica_deletion_): return 0
+    for e1, e2 in zip(self.replica_deletion_, x.replica_deletion_):
+      if e1 != e2: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
     initialized = 1
     if (self.has_index_shard_settings_ and not self.index_shard_settings_.IsInitialized(debug_strs)): initialized = 0
+    for p in self.replica_deletion_:
+      if not p.IsInitialized(debug_strs): initialized=0
     return initialized
 
   def ByteSize(self):
@@ -1071,6 +1468,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     if (self.has_max_index_size_bytes_): n += 1 + self.lengthVarInt64(self.max_index_size_bytes_)
+    n += 1 * len(self.replica_deletion_)
+    for i in xrange(len(self.replica_deletion_)): n += self.lengthString(self.replica_deletion_[i].ByteSize())
     return n
 
   def ByteSizePartial(self):
@@ -1080,6 +1479,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_index_state_): n += 1 + self.lengthVarInt64(self.index_state_)
     if (self.has_index_delete_time_): n += 1 + self.lengthVarInt64(self.index_delete_time_)
     if (self.has_max_index_size_bytes_): n += 1 + self.lengthVarInt64(self.max_index_size_bytes_)
+    n += 1 * len(self.replica_deletion_)
+    for i in xrange(len(self.replica_deletion_)): n += self.lengthString(self.replica_deletion_[i].ByteSizePartial())
     return n
 
   def Clear(self):
@@ -1088,6 +1489,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     self.clear_index_state()
     self.clear_index_delete_time()
     self.clear_max_index_size_bytes()
+    self.clear_replica_deletion()
 
   def OutputUnchecked(self, out):
     if (self.has_is_over_field_number_threshold_):
@@ -1106,6 +1508,10 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_index_size_bytes_):
       out.putVarInt32(40)
       out.putVarInt64(self.max_index_size_bytes_)
+    for i in xrange(len(self.replica_deletion_)):
+      out.putVarInt32(50)
+      out.putVarInt32(self.replica_deletion_[i].ByteSize())
+      self.replica_deletion_[i].OutputUnchecked(out)
 
   def OutputPartial(self, out):
     if (self.has_is_over_field_number_threshold_):
@@ -1124,6 +1530,10 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if (self.has_max_index_size_bytes_):
       out.putVarInt32(40)
       out.putVarInt64(self.max_index_size_bytes_)
+    for i in xrange(len(self.replica_deletion_)):
+      out.putVarInt32(50)
+      out.putVarInt32(self.replica_deletion_[i].ByteSizePartial())
+      self.replica_deletion_[i].OutputPartial(out)
 
   def TryMerge(self, d):
     while d.avail() > 0:
@@ -1146,6 +1556,12 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_max_index_size_bytes(d.getVarInt64())
         continue
+      if tt == 50:
+        length = d.getVarInt32()
+        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
+        d.skip(length)
+        self.add_replica_deletion().TryMerge(tmp)
+        continue
 
 
       if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
@@ -1162,6 +1578,14 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     if self.has_index_state_: res+=prefix+("index_state: %s\n" % self.DebugFormatInt32(self.index_state_))
     if self.has_index_delete_time_: res+=prefix+("index_delete_time: %s\n" % self.DebugFormatInt64(self.index_delete_time_))
     if self.has_max_index_size_bytes_: res+=prefix+("max_index_size_bytes: %s\n" % self.DebugFormatInt64(self.max_index_size_bytes_))
+    cnt=0
+    for e in self.replica_deletion_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("replica_deletion%s <\n" % elm)
+      res+=e.__str__(prefix + "  ", printElemNumber)
+      res+=prefix+">\n"
+      cnt+=1
     return res
 
 
@@ -1173,6 +1597,7 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
   kindex_state = 3
   kindex_delete_time = 4
   kmax_index_size_bytes = 5
+  kreplica_deletion = 6
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -1181,7 +1606,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: "index_state",
     4: "index_delete_time",
     5: "max_index_size_bytes",
-  }, 5)
+    6: "replica_deletion",
+  }, 6)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -1190,7 +1616,8 @@ class IndexMetadata(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.NUMERIC,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+    6: ProtocolBuffer.Encoder.STRING,
+  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1613,6 +2040,19 @@ class DocumentMetadata(ProtocolBuffer.ProtocolMessage):
 class Document(ProtocolBuffer.ProtocolMessage):
 
 
+  DEFAULTED    =    0
+  SUPPLIED     =    1
+
+  _OrderIdSource_NAMES = {
+    0: "DEFAULTED",
+    1: "SUPPLIED",
+  }
+
+  def OrderIdSource_Name(cls, x): return cls._OrderIdSource_NAMES.get(x, "")
+  OrderIdSource_Name = classmethod(OrderIdSource_Name)
+
+
+
   DISK         =    0
 
   _Storage_NAMES = {
@@ -1628,6 +2068,8 @@ class Document(ProtocolBuffer.ProtocolMessage):
   language_ = "en"
   has_order_id_ = 0
   order_id_ = 0
+  has_order_id_source_ = 0
+  order_id_source_ = 1
   has_storage_ = 0
   storage_ = 0
 
@@ -1691,6 +2133,19 @@ class Document(ProtocolBuffer.ProtocolMessage):
 
   def has_order_id(self): return self.has_order_id_
 
+  def order_id_source(self): return self.order_id_source_
+
+  def set_order_id_source(self, x):
+    self.has_order_id_source_ = 1
+    self.order_id_source_ = x
+
+  def clear_order_id_source(self):
+    if self.has_order_id_source_:
+      self.has_order_id_source_ = 0
+      self.order_id_source_ = 1
+
+  def has_order_id_source(self): return self.has_order_id_source_
+
   def storage(self): return self.storage_
 
   def set_storage(self, x):
@@ -1727,6 +2182,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (x.has_language()): self.set_language(x.language())
     for i in xrange(x.field_size()): self.add_field().CopyFrom(x.field(i))
     if (x.has_order_id()): self.set_order_id(x.order_id())
+    if (x.has_order_id_source()): self.set_order_id_source(x.order_id_source())
     if (x.has_storage()): self.set_storage(x.storage())
     for i in xrange(x.facet_size()): self.add_facet().CopyFrom(x.facet(i))
 
@@ -1741,6 +2197,8 @@ class Document(ProtocolBuffer.ProtocolMessage):
       if e1 != e2: return 0
     if self.has_order_id_ != x.has_order_id_: return 0
     if self.has_order_id_ and self.order_id_ != x.order_id_: return 0
+    if self.has_order_id_source_ != x.has_order_id_source_: return 0
+    if self.has_order_id_source_ and self.order_id_source_ != x.order_id_source_: return 0
     if self.has_storage_ != x.has_storage_: return 0
     if self.has_storage_ and self.storage_ != x.storage_: return 0
     if len(self.facet_) != len(x.facet_): return 0
@@ -1763,6 +2221,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSize())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
+    if (self.has_order_id_source_): n += 1 + self.lengthVarInt64(self.order_id_source_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSize())
@@ -1775,6 +2234,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     n += 1 * len(self.field_)
     for i in xrange(len(self.field_)): n += self.lengthString(self.field_[i].ByteSizePartial())
     if (self.has_order_id_): n += 1 + self.lengthVarInt64(self.order_id_)
+    if (self.has_order_id_source_): n += 1 + self.lengthVarInt64(self.order_id_source_)
     if (self.has_storage_): n += 1 + self.lengthVarInt64(self.storage_)
     n += 1 * len(self.facet_)
     for i in xrange(len(self.facet_)): n += self.lengthString(self.facet_[i].ByteSizePartial())
@@ -1785,6 +2245,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     self.clear_language()
     self.clear_field()
     self.clear_order_id()
+    self.clear_order_id_source()
     self.clear_storage()
     self.clear_facet()
 
@@ -1805,6 +2266,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
+    if (self.has_order_id_source_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.order_id_source_)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSize())
@@ -1827,6 +2291,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
     if (self.has_storage_):
       out.putVarInt32(40)
       out.putVarInt32(self.storage_)
+    if (self.has_order_id_source_):
+      out.putVarInt32(48)
+      out.putVarInt32(self.order_id_source_)
     for i in xrange(len(self.facet_)):
       out.putVarInt32(66)
       out.putVarInt32(self.facet_[i].ByteSizePartial())
@@ -1853,6 +2320,9 @@ class Document(ProtocolBuffer.ProtocolMessage):
       if tt == 40:
         self.set_storage(d.getVarInt32())
         continue
+      if tt == 48:
+        self.set_order_id_source(d.getVarInt32())
+        continue
       if tt == 66:
         length = d.getVarInt32()
         tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
@@ -1878,6 +2348,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
       res+=prefix+">\n"
       cnt+=1
     if self.has_order_id_: res+=prefix+("order_id: %s\n" % self.DebugFormatInt32(self.order_id_))
+    if self.has_order_id_source_: res+=prefix+("order_id_source: %s\n" % self.DebugFormatInt32(self.order_id_source_))
     if self.has_storage_: res+=prefix+("storage: %s\n" % self.DebugFormatInt32(self.storage_))
     cnt=0
     for e in self.facet_:
@@ -1897,6 +2368,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
   klanguage = 2
   kfield = 3
   korder_id = 4
+  korder_id_source = 6
   kstorage = 5
   kfacet = 8
 
@@ -1907,6 +2379,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: "field",
     4: "order_id",
     5: "storage",
+    6: "order_id_source",
     8: "facet",
   }, 8)
 
@@ -1917,6 +2390,7 @@ class Document(ProtocolBuffer.ProtocolMessage):
     3: ProtocolBuffer.Encoder.STRING,
     4: ProtocolBuffer.Encoder.NUMERIC,
     5: ProtocolBuffer.Encoder.NUMERIC,
+    6: ProtocolBuffer.Encoder.NUMERIC,
     8: ProtocolBuffer.Encoder.STRING,
   }, 8, ProtocolBuffer.Encoder.MAX_TYPE)
 
@@ -1927,4 +2401,4 @@ class Document(ProtocolBuffer.ProtocolMessage):
 if _extension_runtime:
   pass
 
-__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','IndexShardSettings','IndexMetadata','FacetValue','Facet','DocumentMetadata','Document']
+__all__ = ['FieldValue','FieldValue_Geo','Field','FieldTypes','IndexShardSettings','IndexMetadata_DeletionStatus','IndexMetadata_IndexDeletionDetails','IndexMetadata','FacetValue','Facet','DocumentMetadata','Document']

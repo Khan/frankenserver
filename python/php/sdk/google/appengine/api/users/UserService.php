@@ -36,13 +36,12 @@ final class UserService {
    *               have a host specified, we will use the host from the
    *               current request.
    *
-   * @param string $federated_identity The parameter is used to trigger OpenId
-   *               Login flow, an empty value will trigger Google OpenID Login
-   *               by default.
+   * @param string $federated_identity OpenID 2.0 support has been disabled.
+   *             Setting this to a non-null value will throw a UsersException.
+   *             For more information see
+   *             https://cloud.google.com/appengine/docs/deprecations
    *
-   * @return string Login URL. If federatedIdentity is set, this will be
-   *         a federated login using the specified identity. If not, this
-   *         will use Google Accounts.
+   * @return string Login URL. The Google Accounts Login URL.
    *
    * @throws UsersException If there was a problem using the Users service.
    */
@@ -56,7 +55,7 @@ final class UserService {
       $req->setDestinationUrl('');
     }
     if ($federated_identity !== null) {
-      $req->setFederatedIdentity($federated_identity);
+      throw new UsersException('Action not allowed: OpenID 2.0 is disabled');
     }
 
     try {

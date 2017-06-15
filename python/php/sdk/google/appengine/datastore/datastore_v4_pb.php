@@ -37,6 +37,10 @@ namespace google\appengine\datastore\v4\Error {
     const TRY_ALTERNATE_BACKEND = 10;
     const SAFE_TIME_TOO_OLD = 11;
     const RESOURCE_EXHAUSTED = 12;
+    const NOT_FOUND = 13;
+    const ALREADY_EXISTS = 14;
+    const FAILED_PRECONDITION = 15;
+    const UNAUTHENTICATED = 16;
   }
 }
 namespace google\appengine\datastore\v4 {

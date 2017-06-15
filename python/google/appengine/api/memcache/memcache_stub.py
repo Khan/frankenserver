@@ -17,7 +17,6 @@
 
 
 
-
 """Stub version of the memcache API, keeping all data in process memory."""
 
 
@@ -42,7 +41,6 @@ MemcacheSetRequest = memcache_service_pb.MemcacheSetRequest
 MemcacheIncrementRequest = memcache_service_pb.MemcacheIncrementRequest
 MemcacheIncrementResponse = memcache_service_pb.MemcacheIncrementResponse
 MemcacheDeleteResponse = memcache_service_pb.MemcacheDeleteResponse
-
 
 MAX_REQUEST_SIZE = 32 << 20
 
@@ -222,9 +220,8 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
           (set_policy == MemcacheSetRequest.REPLACE and old_entry is not None)):
 
 
-        if (old_entry is None or
-            set_policy == MemcacheSetRequest.SET
-            or not old_entry.CheckLocked()):
+        if (old_entry is None or set_policy == MemcacheSetRequest.SET or
+            not old_entry.CheckLocked()):
           set_status = MemcacheSetResponse.STORED
 
       elif (set_policy == MemcacheSetRequest.CAS and item.has_cas_id()):
@@ -293,11 +290,12 @@ class MemcacheServiceStub(apiproxy_stub.APIProxyStub):
       flags = 0
       if request.has_initial_flags():
         flags = request.initial_flags()
-      self._the_cache[namespace][key] = CacheEntry(str(request.initial_value()),
-                                                   expiration=0,
-                                                   flags=flags,
-                                                   cas_id=self._next_cas_id,
-                                                   gettime=self._gettime)
+      self._the_cache[namespace][key] = CacheEntry(
+          str(request.initial_value()),
+          expiration=0,
+          flags=flags,
+          cas_id=self._next_cas_id,
+          gettime=self._gettime)
       self._next_cas_id += 1
       entry = self._GetKey(namespace, key)
       assert entry is not None

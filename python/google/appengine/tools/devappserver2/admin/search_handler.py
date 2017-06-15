@@ -39,6 +39,7 @@ class BaseSearchHandler(admin_request_handler.AdminRequestHandler):
 class SearchIndexesListHandler(BaseSearchHandler):
 
   def get(self):
+    super(SearchIndexesListHandler, self).get()
     start = self.request.get_range('start', min_value=0, default=0)
     namespace = self.request.get('namespace', default_value=None)
     resp = search.get_indexes(offset=start,
@@ -79,6 +80,7 @@ class SearchIndexHandler(BaseSearchHandler):
     return {'documents': template_documents, 'field_names': field_names}
 
   def get(self):
+    super(SearchIndexHandler, self).get()
     index_name = self.request.get('index')
     if not index_name:
       self.redirect('/search')
@@ -104,6 +106,7 @@ class SearchIndexHandler(BaseSearchHandler):
     self.response.write(self.render('search_index.html', values))
 
   def post(self):
+    super(SearchIndexHandler, self).post()
     index_name = self.request.get('index')
     namespace = self.request.get('namespace')
     start = self.request.get_range('start', min_value=0, default=0)
@@ -125,6 +128,7 @@ class SearchIndexHandler(BaseSearchHandler):
 class SearchDocumentHandler(BaseSearchHandler):
 
   def get(self):
+    super(SearchDocumentHandler, self).get()
     index_name = self.request.get('index')
     doc_id = self.request.get('id')
     namespace = self.request.get('namespace')

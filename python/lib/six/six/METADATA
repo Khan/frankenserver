@@ -1,0 +1,22 @@
+# Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
+
+name: "six"
+description:
+    "Six is a Python 2 and 3 compatibility library. It provides utility "
+    "functions for smoothing over the differences between the Python versions "
+    "with the goal of writing Python code that is compatible on both Python "
+    "versions."
+
+third_party {
+  url {
+    type: ARCHIVE
+    value: "https://pypi.python.org/packages/source/s/six/six-1.9.0.tar.gz"
+  }
+  version: "1.9.0"
+  last_upgrade_date { year: 2015 month: 4 day: 4 }
+
+  # NOTE: The "local_modifications" field is entirely optional and may be
+  # removed if it's not useful for the package.
+  #     See go/thirdparty-metadata-local-modifications
+  local_modifications: "http://google3/third_party/py/six/README.google?cl=90336545"
+}

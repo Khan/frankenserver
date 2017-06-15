@@ -29,16 +29,25 @@
 
 
 
+import os
 from types import MethodType
 
-from google.appengine.api import api_base_pb
-from google.appengine.api import apiproxy_stub_map
-from google.appengine.api import datastore
-from google.appengine.api import datastore_errors
-from google.appengine.api import datastore_types
-from google.appengine.datastore import datastore_index
-from google.appengine.datastore import datastore_pb
-from google.appengine.runtime import apiproxy_errors
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import api_base_pb
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.api import datastore
+  from google.appengine.api import datastore_types
+  from google.appengine.datastore import datastore_pb
+  from google.appengine.runtime import apiproxy_errors
+else:
+  from google.appengine.api import api_base_pb
+  from google.appengine.api import apiproxy_stub_map
+  from google.appengine.api import datastore
+  from google.appengine.api import datastore_types
+  from google.appengine.datastore import datastore_pb
+  from google.appengine.runtime import apiproxy_errors
+
 
 
 def _StringProtoAppIdGet(self):

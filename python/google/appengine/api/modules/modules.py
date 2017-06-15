@@ -88,7 +88,8 @@ def get_current_version_name():
   will return "v1".
   """
 
-  return os.environ['CURRENT_VERSION_ID'].split('.')[0]
+  result = os.environ['CURRENT_VERSION_ID'].split('.')[0]
+  return None if result == 'None' else result
 
 
 def get_current_instance_id():

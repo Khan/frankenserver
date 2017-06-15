@@ -28,7 +28,6 @@ Classes defined here:
 
 
 
-import inspect
 import logging
 
 from google.appengine import runtime
@@ -76,7 +75,7 @@ class AppLogsHandler(logging.Handler):
         logservice.write_record(self._AppLogsLevel(record.levelno),
                                 record.created,
                                 self.format(record),
-                                self._AppLogsLocation())
+                                self._AppLogsLocation(record))
       else:
         message = self._AppLogsMessage(record)
         if isinstance(message, unicode):
@@ -115,17 +114,10 @@ class AppLogsHandler(logging.Handler):
     else:
       return 0
 
-  def _AppLogsLocation(self):
+  def _AppLogsLocation(self, record):
     """Find the source location responsible for calling the logging API."""
     if not features.IsEnabled("LogsWriteSourceLocation"):
       return None
 
-    def IsLogging(f):
-      return f.f_code.co_filename.endswith("/logging/__init__.py")
-
-    f = inspect.currentframe()
-    while f and not IsLogging(f):
-      f = f.f_back
-    while f and IsLogging(f):
-      f = f.f_back
-    return inspect.getframeinfo(f)[:3] if f else None
+    return (getattr(record, "pathname", None), getattr(record, "lineno", None),
+            getattr(record, "funcName", None))

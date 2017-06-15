@@ -847,8 +847,348 @@ namespace storage_onestore_v3\IndexMetadata {
     const PURGING = 2;
   }
 }
+namespace storage_onestore_v3\IndexMetadata {
+  class DeletionStatus extends \google\net\ProtocolMessage {
+    public function getStartedTime() {
+      if (!isset($this->started_time)) {
+        return "0";
+      }
+      return $this->started_time;
+    }
+    public function setStartedTime($val) {
+      if (is_double($val)) {
+        $this->started_time = sprintf('%0.0F', $val);
+      } else {
+        $this->started_time = $val;
+      }
+      return $this;
+    }
+    public function clearStartedTime() {
+      unset($this->started_time);
+      return $this;
+    }
+    public function hasStartedTime() {
+      return isset($this->started_time);
+    }
+    public function getCompletedTime() {
+      if (!isset($this->completed_time)) {
+        return "0";
+      }
+      return $this->completed_time;
+    }
+    public function setCompletedTime($val) {
+      if (is_double($val)) {
+        $this->completed_time = sprintf('%0.0F', $val);
+      } else {
+        $this->completed_time = $val;
+      }
+      return $this;
+    }
+    public function clearCompletedTime() {
+      unset($this->completed_time);
+      return $this;
+    }
+    public function hasCompletedTime() {
+      return isset($this->completed_time);
+    }
+    public function clear() {
+      $this->clearStartedTime();
+      $this->clearCompletedTime();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->started_time)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->started_time);
+      }
+      if (isset($this->completed_time)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->completed_time);
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->started_time)) {
+        $out->putVarInt32(24);
+        $out->putVarInt64($this->started_time);
+      }
+      if (isset($this->completed_time)) {
+        $out->putVarInt32(32);
+        $out->putVarInt64($this->completed_time);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 24:
+            $this->setStartedTime($d->getVarInt64());
+            break;
+          case 32:
+            $this->setCompletedTime($d->getVarInt64());
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasStartedTime()) {
+        $this->setStartedTime($x->getStartedTime());
+      }
+      if ($x->hasCompletedTime()) {
+        $this->setCompletedTime($x->getCompletedTime());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->started_time) !== isset($x->started_time)) return false;
+      if (isset($this->started_time) && !$this->integerEquals($this->started_time, $x->started_time)) return false;
+      if (isset($this->completed_time) !== isset($x->completed_time)) return false;
+      if (isset($this->completed_time) && !$this->integerEquals($this->completed_time, $x->completed_time)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->started_time)) {
+        $res .= $prefix . "started_time: " . $this->debugFormatInt64($this->started_time) . "\n";
+      }
+      if (isset($this->completed_time)) {
+        $res .= $prefix . "completed_time: " . $this->debugFormatInt64($this->completed_time) . "\n";
+      }
+      return $res;
+    }
+  }
+}
+namespace storage_onestore_v3\IndexMetadata {
+  class IndexDeletionDetails extends \google\net\ProtocolMessage {
+    public function getReplicaName() {
+      if (!isset($this->replica_name)) {
+        return '';
+      }
+      return $this->replica_name;
+    }
+    public function setReplicaName($val) {
+      $this->replica_name = $val;
+      return $this;
+    }
+    public function clearReplicaName() {
+      unset($this->replica_name);
+      return $this;
+    }
+    public function hasReplicaName() {
+      return isset($this->replica_name);
+    }
+    public function getPrecheck() {
+      if (!isset($this->precheck)) {
+        return new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+      }
+      return $this->precheck;
+    }
+    public function mutablePrecheck() {
+      if (!isset($this->precheck)) {
+        $res = new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+        $this->precheck = $res;
+        return $res;
+      }
+      return $this->precheck;
+    }
+    public function clearPrecheck() {
+      if (isset($this->precheck)) {
+        unset($this->precheck);
+      }
+    }
+    public function hasPrecheck() {
+      return isset($this->precheck);
+    }
+    public function getStBti() {
+      if (!isset($this->st_bti)) {
+        return new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+      }
+      return $this->st_bti;
+    }
+    public function mutableStBti() {
+      if (!isset($this->st_bti)) {
+        $res = new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+        $this->st_bti = $res;
+        return $res;
+      }
+      return $this->st_bti;
+    }
+    public function clearStBti() {
+      if (isset($this->st_bti)) {
+        unset($this->st_bti);
+      }
+    }
+    public function hasStBti() {
+      return isset($this->st_bti);
+    }
+    public function getMsDocs() {
+      if (!isset($this->ms_docs)) {
+        return new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+      }
+      return $this->ms_docs;
+    }
+    public function mutableMsDocs() {
+      if (!isset($this->ms_docs)) {
+        $res = new \storage_onestore_v3\IndexMetadata\DeletionStatus();
+        $this->ms_docs = $res;
+        return $res;
+      }
+      return $this->ms_docs;
+    }
+    public function clearMsDocs() {
+      if (isset($this->ms_docs)) {
+        unset($this->ms_docs);
+      }
+    }
+    public function hasMsDocs() {
+      return isset($this->ms_docs);
+    }
+    public function clear() {
+      $this->clearReplicaName();
+      $this->clearPrecheck();
+      $this->clearStBti();
+      $this->clearMsDocs();
+    }
+    public function byteSizePartial() {
+      $res = 0;
+      if (isset($this->replica_name)) {
+        $res += 1;
+        $res += $this->lengthString(strlen($this->replica_name));
+      }
+      if (isset($this->precheck)) {
+        $res += 1;
+        $res += $this->lengthString($this->precheck->byteSizePartial());
+      }
+      if (isset($this->st_bti)) {
+        $res += 1;
+        $res += $this->lengthString($this->st_bti->byteSizePartial());
+      }
+      if (isset($this->ms_docs)) {
+        $res += 1;
+        $res += $this->lengthString($this->ms_docs->byteSizePartial());
+      }
+      return $res;
+    }
+    public function outputPartial($out) {
+      if (isset($this->replica_name)) {
+        $out->putVarInt32(10);
+        $out->putPrefixedString($this->replica_name);
+      }
+      if (isset($this->precheck)) {
+        $out->putVarInt32(18);
+        $out->putVarInt32($this->precheck->byteSizePartial());
+        $this->precheck->outputPartial($out);
+      }
+      if (isset($this->st_bti)) {
+        $out->putVarInt32(26);
+        $out->putVarInt32($this->st_bti->byteSizePartial());
+        $this->st_bti->outputPartial($out);
+      }
+      if (isset($this->ms_docs)) {
+        $out->putVarInt32(34);
+        $out->putVarInt32($this->ms_docs->byteSizePartial());
+        $this->ms_docs->outputPartial($out);
+      }
+    }
+    public function tryMerge($d) {
+      while($d->avail() > 0) {
+        $tt = $d->getVarInt32();
+        switch ($tt) {
+          case 10:
+            $length = $d->getVarInt32();
+            $this->setReplicaName(substr($d->buffer(), $d->pos(), $length));
+            $d->skip($length);
+            break;
+          case 18:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutablePrecheck()->tryMerge($tmp);
+            break;
+          case 26:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableStBti()->tryMerge($tmp);
+            break;
+          case 34:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->mutableMsDocs()->tryMerge($tmp);
+            break;
+          case 0:
+            throw new \google\net\ProtocolBufferDecodeError();
+            break;
+          default:
+            $d->skipData($tt);
+        }
+      };
+    }
+    public function checkInitialized() {
+      if (!isset($this->replica_name)) return 'replica_name';
+      if (isset($this->precheck) && (!$this->precheck->isInitialized())) return 'precheck';
+      if (isset($this->st_bti) && (!$this->st_bti->isInitialized())) return 'st_bti';
+      if (isset($this->ms_docs) && (!$this->ms_docs->isInitialized())) return 'ms_docs';
+      return null;
+    }
+    public function mergeFrom($x) {
+      if ($x === $this) { throw new \IllegalArgumentException('Cannot copy message to itself'); }
+      if ($x->hasReplicaName()) {
+        $this->setReplicaName($x->getReplicaName());
+      }
+      if ($x->hasPrecheck()) {
+        $this->mutablePrecheck()->mergeFrom($x->getPrecheck());
+      }
+      if ($x->hasStBti()) {
+        $this->mutableStBti()->mergeFrom($x->getStBti());
+      }
+      if ($x->hasMsDocs()) {
+        $this->mutableMsDocs()->mergeFrom($x->getMsDocs());
+      }
+    }
+    public function equals($x) {
+      if ($x === $this) { return true; }
+      if (isset($this->replica_name) !== isset($x->replica_name)) return false;
+      if (isset($this->replica_name) && $this->replica_name !== $x->replica_name) return false;
+      if (isset($this->precheck) !== isset($x->precheck)) return false;
+      if (isset($this->precheck) && !$this->precheck->equals($x->precheck)) return false;
+      if (isset($this->st_bti) !== isset($x->st_bti)) return false;
+      if (isset($this->st_bti) && !$this->st_bti->equals($x->st_bti)) return false;
+      if (isset($this->ms_docs) !== isset($x->ms_docs)) return false;
+      if (isset($this->ms_docs) && !$this->ms_docs->equals($x->ms_docs)) return false;
+      return true;
+    }
+    public function shortDebugString($prefix = "") {
+      $res = '';
+      if (isset($this->replica_name)) {
+        $res .= $prefix . "replica_name: " . $this->debugFormatString($this->replica_name) . "\n";
+      }
+      if (isset($this->precheck)) {
+        $res .= $prefix . "precheck <\n" . $this->precheck->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->st_bti)) {
+        $res .= $prefix . "st_bti <\n" . $this->st_bti->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      if (isset($this->ms_docs)) {
+        $res .= $prefix . "ms_docs <\n" . $this->ms_docs->shortDebugString($prefix . "  ") . $prefix . ">\n";
+      }
+      return $res;
+    }
+  }
+}
 namespace storage_onestore_v3 {
   class IndexMetadata extends \google\net\ProtocolMessage {
+    private $replica_deletion = array();
     public function getIsOverFieldNumberThreshold() {
       if (!isset($this->is_over_field_number_threshold)) {
         return false;
@@ -947,12 +1287,44 @@ namespace storage_onestore_v3 {
     public function hasMaxIndexSizeBytes() {
       return isset($this->max_index_size_bytes);
     }
+    public function getReplicaDeletionSize() {
+      return sizeof($this->replica_deletion);
+    }
+    public function getReplicaDeletionList() {
+      return $this->replica_deletion;
+    }
+    public function mutableReplicaDeletion($idx) {
+      if (!isset($this->replica_deletion[$idx])) {
+        $val = new \storage_onestore_v3\IndexMetadata\IndexDeletionDetails();
+        $this->replica_deletion[$idx] = $val;
+        return $val;
+      }
+      return $this->replica_deletion[$idx];
+    }
+    public function getReplicaDeletion($idx) {
+      if (isset($this->replica_deletion[$idx])) {
+        return $this->replica_deletion[$idx];
+      }
+      if ($idx >= end(array_keys($this->replica_deletion))) {
+        throw new \OutOfRangeException('index out of range: ' + $idx);
+      }
+      return new \storage_onestore_v3\IndexMetadata\IndexDeletionDetails();
+    }
+    public function addReplicaDeletion() {
+      $val = new \storage_onestore_v3\IndexMetadata\IndexDeletionDetails();
+      $this->replica_deletion[] = $val;
+      return $val;
+    }
+    public function clearReplicaDeletion() {
+      $this->replica_deletion = array();
+    }
     public function clear() {
       $this->clearIsOverFieldNumberThreshold();
       $this->clearIndexShardSettings();
       $this->clearIndexState();
       $this->clearIndexDeleteTime();
       $this->clearMaxIndexSizeBytes();
+      $this->clearReplicaDeletion();
     }
     public function byteSizePartial() {
       $res = 0;
@@ -974,6 +1346,11 @@ namespace storage_onestore_v3 {
       if (isset($this->max_index_size_bytes)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->max_index_size_bytes);
+      }
+      $this->checkProtoArray($this->replica_deletion);
+      $res += 1 * sizeof($this->replica_deletion);
+      foreach ($this->replica_deletion as $value) {
+        $res += $this->lengthString($value->byteSizePartial());
       }
       return $res;
     }
@@ -999,6 +1376,12 @@ namespace storage_onestore_v3 {
         $out->putVarInt32(40);
         $out->putVarInt64($this->max_index_size_bytes);
       }
+      $this->checkProtoArray($this->replica_deletion);
+      foreach ($this->replica_deletion as $value) {
+        $out->putVarInt32(50);
+        $out->putVarInt32($value->byteSizePartial());
+        $value->outputPartial($out);
+      }
     }
     public function tryMerge($d) {
       while($d->avail() > 0) {
@@ -1022,6 +1405,12 @@ namespace storage_onestore_v3 {
           case 40:
             $this->setMaxIndexSizeBytes($d->getVarInt64());
             break;
+          case 50:
+            $length = $d->getVarInt32();
+            $tmp = new \google\net\Decoder($d->buffer(), $d->pos(), $d->pos() + $length);
+            $d->skip($length);
+            $this->addReplicaDeletion()->tryMerge($tmp);
+            break;
           case 0:
             throw new \google\net\ProtocolBufferDecodeError();
             break;
@@ -1032,6 +1421,9 @@ namespace storage_onestore_v3 {
     }
     public function checkInitialized() {
       if (isset($this->index_shard_settings) && (!$this->index_shard_settings->isInitialized())) return 'index_shard_settings';
+      foreach ($this->replica_deletion as $value) {
+        if (!$value->isInitialized()) return 'replica_deletion';
+      }
       return null;
     }
     public function mergeFrom($x) {
@@ -1051,6 +1443,9 @@ namespace storage_onestore_v3 {
       if ($x->hasMaxIndexSizeBytes()) {
         $this->setMaxIndexSizeBytes($x->getMaxIndexSizeBytes());
       }
+      foreach ($x->getReplicaDeletionList() as $v) {
+        $this->addReplicaDeletion()->copyFrom($v);
+      }
     }
     public function equals($x) {
       if ($x === $this) { return true; }
@@ -1064,6 +1459,10 @@ namespace storage_onestore_v3 {
       if (isset($this->index_delete_time) && !$this->integerEquals($this->index_delete_time, $x->index_delete_time)) return false;
       if (isset($this->max_index_size_bytes) !== isset($x->max_index_size_bytes)) return false;
       if (isset($this->max_index_size_bytes) && !$this->integerEquals($this->max_index_size_bytes, $x->max_index_size_bytes)) return false;
+      if (sizeof($this->replica_deletion) !== sizeof($x->replica_deletion)) return false;
+      foreach (array_map(null, $this->replica_deletion, $x->replica_deletion) as $v) {
+        if (!$v[0]->equals($v[1])) return false;
+      }
       return true;
     }
     public function shortDebugString($prefix = "") {
@@ -1082,6 +1481,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->max_index_size_bytes)) {
         $res .= $prefix . "max_index_size_bytes: " . $this->debugFormatInt64($this->max_index_size_bytes) . "\n";
+      }
+      foreach ($this->replica_deletion as $value) {
+        $res .= $prefix . "replica_deletion <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";
       }
       return $res;
     }
@@ -1453,6 +1855,12 @@ namespace storage_onestore_v3 {
   }
 }
 namespace storage_onestore_v3\Document {
+  class OrderIdSource {
+    const DEFAULTED = 0;
+    const SUPPLIED = 1;
+  }
+}
+namespace storage_onestore_v3\Document {
   class Storage {
     const DISK = 0;
   }
@@ -1560,6 +1968,23 @@ namespace storage_onestore_v3 {
     public function hasStorage() {
       return isset($this->storage);
     }
+    public function getOrderIdSource() {
+      if (!isset($this->order_id_source)) {
+        return 1;
+      }
+      return $this->order_id_source;
+    }
+    public function setOrderIdSource($val) {
+      $this->order_id_source = $val;
+      return $this;
+    }
+    public function clearOrderIdSource() {
+      unset($this->order_id_source);
+      return $this;
+    }
+    public function hasOrderIdSource() {
+      return isset($this->order_id_source);
+    }
     public function getFacetSize() {
       return sizeof($this->facet);
     }
@@ -1597,6 +2022,7 @@ namespace storage_onestore_v3 {
       $this->clearField();
       $this->clearOrderId();
       $this->clearStorage();
+      $this->clearOrderIdSource();
       $this->clearFacet();
     }
     public function byteSizePartial() {
@@ -1621,6 +2047,10 @@ namespace storage_onestore_v3 {
       if (isset($this->storage)) {
         $res += 1;
         $res += $this->lengthVarInt64($this->storage);
+      }
+      if (isset($this->order_id_source)) {
+        $res += 1;
+        $res += $this->lengthVarInt64($this->order_id_source);
       }
       $this->checkProtoArray($this->facet);
       $res += 1 * sizeof($this->facet);
@@ -1651,6 +2081,10 @@ namespace storage_onestore_v3 {
       if (isset($this->storage)) {
         $out->putVarInt32(40);
         $out->putVarInt32($this->storage);
+      }
+      if (isset($this->order_id_source)) {
+        $out->putVarInt32(48);
+        $out->putVarInt32($this->order_id_source);
       }
       $this->checkProtoArray($this->facet);
       foreach ($this->facet as $value) {
@@ -1684,6 +2118,9 @@ namespace storage_onestore_v3 {
             break;
           case 40:
             $this->setStorage($d->getVarInt32());
+            break;
+          case 48:
+            $this->setOrderIdSource($d->getVarInt32());
             break;
           case 66:
             $length = $d->getVarInt32();
@@ -1725,6 +2162,9 @@ namespace storage_onestore_v3 {
       if ($x->hasStorage()) {
         $this->setStorage($x->getStorage());
       }
+      if ($x->hasOrderIdSource()) {
+        $this->setOrderIdSource($x->getOrderIdSource());
+      }
       foreach ($x->getFacetList() as $v) {
         $this->addFacet()->copyFrom($v);
       }
@@ -1743,6 +2183,8 @@ namespace storage_onestore_v3 {
       if (isset($this->order_id) && !$this->integerEquals($this->order_id, $x->order_id)) return false;
       if (isset($this->storage) !== isset($x->storage)) return false;
       if (isset($this->storage) && $this->storage !== $x->storage) return false;
+      if (isset($this->order_id_source) !== isset($x->order_id_source)) return false;
+      if (isset($this->order_id_source) && $this->order_id_source !== $x->order_id_source) return false;
       if (sizeof($this->facet) !== sizeof($x->facet)) return false;
       foreach (array_map(null, $this->facet, $x->facet) as $v) {
         if (!$v[0]->equals($v[1])) return false;
@@ -1765,6 +2207,9 @@ namespace storage_onestore_v3 {
       }
       if (isset($this->storage)) {
         $res .= $prefix . "storage: " . ($this->storage) . "\n";
+      }
+      if (isset($this->order_id_source)) {
+        $res .= $prefix . "order_id_source: " . ($this->order_id_source) . "\n";
       }
       foreach ($this->facet as $value) {
         $res .= $prefix . "facet <\n" . $value->shortDebugString($prefix . "  ") . $prefix . ">\n";

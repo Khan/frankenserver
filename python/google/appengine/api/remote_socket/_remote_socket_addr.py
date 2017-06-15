@@ -223,12 +223,6 @@ def inet_pton(af, ip):
         parts[idx:idx+1] = pad
       else:
         raise error('illegal IP address string passed to inet_pton')
-
-    # Strip out the zone ID from the address (if present). This will make sure
-    # we properly handle an address like fe80::1%lo0.
-    if len(parts) == 8:
-      parts[7] = re.sub(r'%[0-9A-Za-z]+$', "", parts[7])
-
     if (len(parts) != 8 or
         [x for x in parts if not re.match(r'^[0-9A-Fa-f]{1,4}$', x)]):
       raise error('illegal IP address string passed to inet_pton')

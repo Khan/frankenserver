@@ -490,6 +490,8 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler,
                              'render')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'get')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -499,6 +501,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render('datastore_viewer.html',
                    {'entities': [],
                     'headers': [],
@@ -529,6 +532,8 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
+
     self.mox.ReplayAll()
     handler.get()
     self.mox.VerifyAll()
@@ -547,6 +552,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render(
         'datastore_viewer.html',
         {'entities': mox.IgnoreArg(),  # Tested with _get_entity_template_data.
@@ -580,6 +586,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render(
         'datastore_viewer.html',
         {'entities': mox.IgnoreArg(),  # Tested with _get_entity_template_data.
@@ -617,6 +624,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render(
         'datastore_viewer.html',
         {'entities': mox.IgnoreArg(),  # Tested with _get_entity_template_data.
@@ -651,6 +659,7 @@ class DatastoreRequestHandlerGetTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render(
         'datastore_viewer.html',
         {'entities': mox.IgnoreArg(),  # Tested with _get_entity_template_data.
@@ -692,7 +701,8 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler,
                              'render')
-
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'get')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
     self.entity1 = datastore.Entity('Kind1', id=123, _app=self.app_id)
     self.entity1['intprop'] = 1
     self.entity1['listprop'] = [7, 8, 9]
@@ -731,6 +741,7 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get(None)
     handler.render(
         'datastore_edit.html',
         {'fields': [('boolprop',
@@ -768,6 +779,7 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
         '/datastore/edit?kind=Kind1&namespace=cat&next=http://next/')
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).get(None)
 
     self.mox.ReplayAll()
     handler.get()
@@ -783,7 +795,8 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
         '/datastore/edit/%s?next=http://next/' % self.entity1.key())
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
-
+    admin_request_handler.AdminRequestHandler(handler).get(
+        str(self.entity1.key()))
     handler.render(
         'datastore_edit.html',
         {'fields': [('dateprop',
@@ -813,6 +826,8 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
 
+    admin_request_handler.AdminRequestHandler(handler).get(
+        str(self.entity5.key()))
     handler.render(
         'datastore_edit.html',
         {'fields': [('boolprop',
@@ -850,6 +865,7 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
               'next': 'http://redirect/'})
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post(None)
 
     self.mox.ReplayAll()
     handler.post()
@@ -874,6 +890,8 @@ class DatastoreEditRequestHandlerTest(unittest.TestCase):
               'next': 'http://redirect/'})
     response = webapp2.Response()
     handler = datastore_viewer.DatastoreEditRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post(
+        str(self.entity4.key()))
 
     self.mox.ReplayAll()
     handler.post(str(self.entity4.key()))

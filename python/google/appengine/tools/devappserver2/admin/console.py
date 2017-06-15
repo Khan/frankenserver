@@ -31,12 +31,14 @@ class ConsoleRequestHandler(admin_request_handler.AdminRequestHandler):
   _modulename_to_shell_module_lock = threading.Lock()
 
   def get(self):
+    super(ConsoleRequestHandler, self).get()
     self.response.write(
         self.render('console.html',
                     {'modules': [modul for modul in self.dispatcher.modules
                                  if modul.supports_interactive_commands]}))
 
   def post(self):
+    super(ConsoleRequestHandler, self).post()
     module_name = self.request.get('module_name')
     with self._modulename_to_shell_module_lock:
       if module_name in self._modulename_to_shell_module:

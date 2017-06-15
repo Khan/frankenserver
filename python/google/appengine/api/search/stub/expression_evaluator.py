@@ -377,7 +377,7 @@ class ExpressionEvaluator(object):
       raise ValueError('%s operator must always have one arguments' % op_name)
     return op(self._Eval(node.children[0], document_pb.FieldValue.NUMBER))
 
-  def _Eval(self, node, return_type=None):
+  def _Eval(self, node, return_type=None, allow_rank=True):
     """Evaluate an expression node on the document.
 
     Args:
@@ -386,6 +386,8 @@ class ExpressionEvaluator(object):
         in the expression. Used when the field type is ambiguous and cannot be
         inferred from the context. If None, we retrieve the first field type
         found in doc list.
+      allow_rank: For expressions that will be used in a sort context, indicate
+        if rank is allowed.
 
     Returns:
       The Python value that maps to the value of node. Types are inferred from
@@ -395,11 +397,13 @@ class ExpressionEvaluator(object):
 
     Raises:
       _ExpressionError: The expression cannot be evaluated on this document
-      because either the expression is malformed or the document does not
-      contain the required fields. Callers of _Eval should catch
-      _ExpressionErrors and optionally log them; these are not fatal in any way,
-      and are used to indicate that this expression should not be set on this
-      document.
+        because either the expression is malformed or the document does not
+        contain the required fields. Callers of _Eval should catch
+        _ExpressionErrors and optionally log them; these are not fatal in any
+        way and are used to indicate that this expression should not be set on
+        this document.
+      QueryExpressionEvaluationError: same as ExpressionEvaluationError but
+        these errors should return query as error status to users.
     """
     if node.getType() in self._function_table:
       func = self._function_table[node.getType()]
@@ -431,6 +435,13 @@ class ExpressionEvaluator(object):
       name = query_parser.GetQueryNodeText(node)
       if name == '_score':
         return self._doc.score
+      elif name == '_rank':
+        if allow_rank:
+          return self._doc.document.order_id()
+        else:
+          raise QueryExpressionEvaluationError(
+              'SortSpec order must be descending in \'_rank\'')
+
       field = search_util.GetFieldInDocument(self._doc_pb, name,
                                              return_type)
       if field:
@@ -439,7 +450,11 @@ class ExpressionEvaluator(object):
 
     raise _ExpressionError('Unable to handle node %s' % node)
 
-  def ValueOf(self, expression, default_value=None, return_type=None):
+  def ValueOf(self,
+              expression,
+              default_value=None,
+              return_type=None,
+              allow_rank=True):
     """Returns the value of an expression on a document.
 
     Args:
@@ -449,6 +464,8 @@ class ExpressionEvaluator(object):
         multiple sorts for ambiguous expressions. If None, the expression
         evaluates to the inferred type or first type of a field it encounters in
         a document.
+      allow_rank: For expressions that will be used in a sort context,
+        indicate if rank is allowed.
 
     Returns:
       The value of the expression on the evaluator's document, or default_value
@@ -490,7 +507,8 @@ class ExpressionEvaluator(object):
                 name + '\': failed to parse date \"' + default_value + '\"')
     result = default_value
     try:
-      result = self._Eval(expression_tree, return_type=return_type)
+      result = self._Eval(
+          expression_tree, return_type=return_type, allow_rank=allow_rank)
     except _ExpressionError, e:
 
 

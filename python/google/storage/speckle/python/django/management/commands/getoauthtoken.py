@@ -31,7 +31,7 @@ from google.storage.speckle.python.api import rdbms_googleapi
 
 import apiclient
 from django.core.management import base
-from oauth2client import client
+from oauth2client_1_4_12_plus import client
 
 
 class Command(base.NoArgsCommand):

@@ -107,6 +107,7 @@ class Paths(object):
       dir_path: the directory path where the calling script is to be found.
         This directory should have a lib subdirectory.
     """
+    self.dir_path = dir_path
 
 
     self.v1_extra_paths = [
@@ -189,7 +190,7 @@ class Paths(object):
         os.path.join(dir_path, 'lib', 'pyasn1'),
         os.path.join(dir_path, 'lib', 'pyasn1_modules'),
         os.path.join(dir_path, 'lib', 'httplib2'),
-        os.path.join(dir_path, 'lib', 'oauth2client'),
+        os.path.join(dir_path, 'lib', 'oauth2client_devserver'),
         os.path.join(dir_path, 'lib', 'six'),
     ]
 
@@ -329,3 +330,13 @@ class Paths(object):
 
     return [path for path in paths
             if os.path.normcase(path) not in sys_paths_to_scrub]
+
+  def add_grpc_path(self, script_name):
+    """Adds grpcio-1.0.0 to sys.path and avoid hard-coding.
+
+    Args:
+      script_name: the basename of the script, for example 'appcfg.py'.
+    """
+
+    grpc_lib_path = os.path.join(self.dir_path, 'lib', 'grpcio-1.0.0')
+    self._script_to_paths[script_name].append(grpc_lib_path)

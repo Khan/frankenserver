@@ -1,0 +1,24 @@
+# Format: google3/devtools/metadata/metadata.proto (go/google3metadata)
+
+name: "django"
+description:
+    "Django is a python-based web framework. As of 2016-May-02 this was listed "
+    "as the latest 1.9 version."
+
+third_party {
+  url {
+    type: ARCHIVE
+    value: "http://www.djangoproject.com/download/1.9.5/tarball/"
+  }
+  version: "1.9.5"
+  last_upgrade_date: {
+    year: 2016
+    month: 5
+    day: 5
+  }
+
+  # NOTE: The "local_modifications" field is entirely optional and may be
+  # removed if it's not useful for the package.
+  #     See go/thirdparty-metadata-local-modifications
+  local_modifications: "http://google3/third_party/apphosting/python/django/v1_9_5_vendor/README.google?cl=53510988"
+}

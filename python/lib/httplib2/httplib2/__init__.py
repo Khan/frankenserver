@@ -34,6 +34,7 @@ import StringIO
 import gzip
 import zlib
 import httplib
+import logging
 import urlparse
 import urllib
 import base64
@@ -68,20 +69,41 @@ try:
     import ssl # python 2.6
     ssl_SSLError = ssl.SSLError
     def _ssl_wrap_socket(sock, key_file, cert_file,
-                         disable_validation, ca_certs):
+                         disable_validation, ca_certs, host=None):
         if disable_validation:
             cert_reqs = ssl.CERT_NONE
         else:
             cert_reqs = ssl.CERT_REQUIRED
-        # We should be specifying SSL version 3 or TLS v1, but the ssl module
-        # doesn't expose the necessary knobs. So we need to go with the default
-        # of SSLv23.
-        return ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
-                               cert_reqs=cert_reqs, ca_certs=ca_certs)
+        # SNI (Server Name Indication) is required by some HTTPS sites.
+        # SSLContext.wrap_socket(), introduced in 2.7.9, supports SNI.
+        # ssl.wrap_socket() does not support SNI.
+        try:
+            # PROTOCOL_SSLv23 is currently recommended for max interoperability.
+            context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        except AttributeError:
+            context = None
+            if sys.version_info[2] >= 9:
+                logging.warning('Unable to create SSLContext.')
+        if context:
+            context.verify_mode = cert_reqs
+            if ca_certs:
+                try:
+                    context.load_verify_locations(ca_certs)
+                except Exception, e:
+                    raise ssl.SSLError(e)
+            if cert_file:
+                context.load_cert_chain(cert_file, key_file)
+            return context.wrap_socket(sock, server_hostname=host)
+        else:
+            # We should be specifying SSL version 3 or TLS v1, but the ssl
+            # module doesn't expose the necessary knobs. So we need to go
+            # with the default of SSLv23.
+            return ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
+                                   cert_reqs=cert_reqs, ca_certs=ca_certs)
 except (AttributeError, ImportError):
     ssl_SSLError = None
     def _ssl_wrap_socket(sock, key_file, cert_file,
-                         disable_validation, ca_certs):
+                         disable_validation, ca_certs, host=None):
         if not disable_validation:
             raise CertificateValidationUnsupported(
                     "SSL certificate validation is not supported without "
@@ -1011,7 +1033,8 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
                 sock.connect((self.host, self.port))
                 self.sock =_ssl_wrap_socket(
                     sock, self.key_file, self.cert_file,
-                    self.disable_ssl_certificate_validation, self.ca_certs)
+                    self.disable_ssl_certificate_validation, self.ca_certs,
+                    host=self.host)
                 if self.debuglevel > 0:
                     print "connect: (%s, %s)" % (self.host, self.port)
                     if use_proxy:

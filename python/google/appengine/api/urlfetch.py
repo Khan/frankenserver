@@ -18,12 +18,7 @@
 
 
 
-"""URL downloading API.
-
-Methods defined in this module:
-   Fetch(): fetchs a given URL using an HTTP request using on of the methods
-            GET, POST, HEAD, PUT, DELETE or PATCH request
-"""
+"""URL downloading API."""
 
 
 
@@ -84,11 +79,11 @@ class _CaselessDict(UserDict.IterableUserDict):
     UserDict.IterableUserDict.__init__(self, dict, **kwargs)
 
   def __setitem__(self, key, item):
-    """Set dictionary item.
+    """Sets dictionary item.
 
     Args:
-      key: Key of new item.  Key is case insensitive, so "d['Key'] = value "
-        will replace previous values set by "d['key'] = old_value".
+      key: Key of new item. Key is case insensitive, so `d['Key'] = value`
+          will replace previous values set by `d['key'] = old_value`.
       item: Item to store.
     """
     caseless_key = key.lower()
@@ -99,51 +94,57 @@ class _CaselessDict(UserDict.IterableUserDict):
     self.data[key] = item
 
   def __getitem__(self, key):
-    """Get dictionary item.
+    """Gets dictionary item.
 
     Args:
-      key: Key of item to get.  Key is case insensitive, so "d['Key']" is the
-        same as "d['key']".
+      key: Key of item to get. Key is case insensitive, so `d['Key']` is the
+          same as `d['key']`.
 
     Returns:
       Item associated with key.
+
+    Raises:
+      KeyError: If the key is not found.
     """
     return self.data[self.caseless_keys[key.lower()]]
 
   def __delitem__(self, key):
-    """Remove item from dictionary.
+    """Removes item from dictionary.
 
     Args:
-      key: Key of item to remove.  Key is case insensitive, so "del d['Key']" is
-        the same as "del d['key']"
+      key: Key of item to remove.  Key is case insensitive, so `del d['Key']` is
+          the same as `del d['key']`
     """
     caseless_key = key.lower()
     del self.data[self.caseless_keys[caseless_key]]
     del self.caseless_keys[caseless_key]
 
   def has_key(self, key):
-    """Determine if dictionary has item with specific key.
+    """Determines if the dictionary has an item with a specific key.
 
     Args:
-      key: Key to check for presence.  Key is case insensitive, so
-        "d.has_key('Key')" evaluates to the same value as "d.has_key('key')".
+      key: Key to check for presence. Key is case insensitive, so
+          `d.has_key('Key')` evaluates to the same value as `d.has_key('key')`.
 
     Returns:
-      True if dictionary contains key, else False.
+      True if dictionary contains the specified key, else False.
     """
     return key.lower() in self.caseless_keys
 
   def __contains__(self, key):
-    """Same as 'has_key', but used for 'in' operator.'"""
+    """Same as `has_key`, but used for `in` operator."""
     return self.has_key(key)
 
   def get(self, key, failobj=None):
-    """Get dictionary item, defaulting to another value if it does not exist.
+    """Gets dictionary item, defaulting to another value if it does not exist.
 
     Args:
-      key: Key of item to get.  Key is case insensitive, so "d['Key']" is the
-        same as "d['key']".
+      key: Key of item to get. Key is case insensitive, so `d['Key']` is the
+          same as `d['key']`.
       failobj: Value to return if key not in dictionary.
+
+    Returns:
+      A dictionary item.
     """
     try:
       cased_key = self.caseless_keys[key.lower()]
@@ -152,11 +153,11 @@ class _CaselessDict(UserDict.IterableUserDict):
     return self.data[cased_key]
 
   def update(self, dict=None, **kwargs):
-    """Update dictionary using values from another dictionary and keywords.
+    """Updates the dictionary using values from another dictionary and keywords.
 
     Args:
       dict: Dictionary to update from.
-      kwargs: Keyword arguments to update from.
+      **kwargs: Keyword arguments to update from.
     """
     if dict:
       try:
@@ -175,7 +176,11 @@ class _CaselessDict(UserDict.IterableUserDict):
       self.update(kwargs)
 
   def copy(self):
-    """Make a shallow, case sensitive copy of self."""
+    """Makes a shallow, case-sensitive copy of `self`.
+
+    Returns:
+      A dictionary copy of `self`.
+    """
     return dict(self)
 
 
@@ -183,12 +188,12 @@ def _is_fetching_self(url, method):
   """Checks if the fetch is for the same URL from which it originated.
 
   Args:
-    url: str, The URL being fetched.
-    method: value from _VALID_METHODS.
+    url: str; the URL being fetched.
+    method: Value from `_VALID_METHODS`.
 
   Returns:
-    boolean indicating whether or not it seems that the app is trying to fetch
-      itself.
+    Boolean indicating whether or not it seems that the app is trying to fetch
+        itself.
   """
   if (method != GET or
       "HTTP_HOST" not in os.environ or
@@ -213,11 +218,11 @@ def create_rpc(deadline=None, callback=None):
 
   Args:
     deadline: Optional deadline in seconds for the operation; the default
-      is a system-specific deadline (typically 5 seconds).
+        is a system-specific deadline (typically 5 seconds).
     callback: Optional callable to invoke on completion.
 
   Returns:
-    An apiproxy_stub_map.UserRPC object specialized for this service.
+    An `apiproxy_stub_map.UserRPC` object specialized for this service.
   """
   if deadline is None:
     deadline = get_default_fetch_deadline()
@@ -229,40 +234,57 @@ def fetch(url, payload=None, method=GET, headers={},
           deadline=None, validate_certificate=None):
   """Fetches the given HTTP URL, blocking until the result is returned.
 
-  Other optional parameters are:
-     method: The constants GET, POST, HEAD, PUT, DELETE, or PATCH or the
-       same HTTP methods as strings.
-     payload: POST, PUT, or PATCH payload (implies method is not GET, HEAD,
-       or DELETE). this is ignored if the method is not POST, PUT, or PATCH.
-     headers: dictionary of HTTP headers to send with the request
-     allow_truncated: if true, truncate large responses and return them without
-       error. Otherwise, ResponseTooLargeError is raised when a response is
-       truncated.
-     follow_redirects: if true (the default), redirects are
-       transparently followed and the response (if less than 5
-       redirects) contains the final destination's payload and the
-       response status is 200.  You lose, however, the redirect chain
-       information.  If false, you see the HTTP response yourself,
-       including the 'Location' header, and redirects are not
-       followed.
-     deadline: deadline in seconds for the operation.
-     validate_certificate: if true, do not send request to server unless the
-       certificate is valid, signed by a trusted CA and the hostname matches
-       the certificate. A value of None indicates that the behaviour will be
-       chosen by the underlying urlfetch implementation.
+  URLs are fetched using one of the following HTTP methods:
+      - GET
+      - POST
+      - HEAD
+      - PUT
+      - DELETE
+      - PATCH
 
-  We use a HTTP/1.1 compliant proxy to fetch the result.
+  To fetch the result, a HTTP/1.1-compliant proxy is used.
 
-  The returned data structure has the following fields:
-     content: string containing the response from the server
-     status_code: HTTP status code returned by the server
-     headers: dictionary of headers returned by the server
+  Args:
+    method: The constants `GET`, `POST`, `HEAD`, `PUT`, `DELETE`, or `PATCH` or
+        the same HTTP methods as strings.
+    payload: `POST`, `PUT`, or `PATCH` payload (implies method is not `GET`,
+        `HEAD`, or `DELETE`). This argument is ignored if the method is not
+        `POST`, `PUT`, or `PATCH`.
+    headers: Dictionary of HTTP headers to send with the request.
+    allow_truncated: If set to `True`, truncates large responses and returns
+        them without raising an error. Otherwise, a `ResponseTooLargeError` is
+        raised when a response is truncated.
+    follow_redirects: If set to `True` (the default), redirects are
+        transparently followed, and the response (if less than 5 redirects)
+        contains the final destination's payload; the response status is 200.
+        You lose, however, the redirect chain information. If set to `False`,
+        you see the HTTP response yourself, including the 'Location' header, and
+        redirects are not followed.
+    deadline: Deadline in seconds for the operation.
+    validate_certificate: If set to `True`, requests are not sent to the server
+        unless the certificate is valid, signed by a trusted CA, and the host
+        name matches the certificate. A value of `None` indicates that the
+        behavior will be chosen by the underlying `urlfetch` implementation.
 
-  If the URL is an empty string or obviously invalid, we throw an
-  urlfetch.InvalidURLError. If the server cannot be contacted, we throw a
-  urlfetch.DownloadError.  Note that HTTP errors are returned as a part
-  of the returned structure, so HTTP errors like 404 do not result in an
-  exception.
+  Returns:
+    tuple: A tuple containing:
+
+        - content: A string that contains the response from the server.
+        - status_code: The HTTP status code that was returned by the server.
+        - headers: The dictionary of headers that was returned by the server.
+
+  Raises:
+    urlfetch_errors.Error: If an error occurs. See the `urlfetch_errors`_ module
+        for more information.
+
+
+  Note:
+      HTTP errors are returned as a part of the return structure. HTTP errors
+      like 404 do not result in an exception.
+
+  .. _urlfetch_errors:
+     http://cloud.google.com/appengine/docs/python/refdocs/google.appengine.api.urlfetch_errors
+
   """
 
   rpc = create_rpc(deadline=deadline)
@@ -276,17 +298,17 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
                     validate_certificate=None):
   """Executes the RPC call to fetch a given HTTP URL.
 
-  The first argument is a UserRPC instance.  See urlfetch.fetch for a
-  thorough description of remaining arguments.
+  The first argument is a UserRPC instance.  See `urlfetch.fetch` for a
+  thorough description of the remaining arguments.
 
   Raises:
-    InvalidMethodError: if requested method is not in _VALID_METHODS
-    ResponseTooLargeError: if the response payload is too large
-    InvalidURLError: if there are issues with the content/size of the
-      requested URL
+    InvalidMethodError: If the requested method is not in `_VALID_METHODS`.
+    ResponseTooLargeError: If the response payload is too large.
+    InvalidURLError: If there are issues with the content or size of the
+        requested URL
 
   Returns:
-    The rpc object passed into the function.
+    The RPC object that was passed into the function.
 
   """
 
@@ -349,25 +371,38 @@ def make_fetch_call(rpc, url, payload=None, method=GET, headers={},
 
 
 def _get_fetch_result(rpc):
-  """Check success, handle exceptions, and return converted RPC result.
+  """Checks for success, handles exceptions, and returns a converted RPC result.
 
-  This method waits for the RPC if it has not yet finished, and calls the
+  This method waits for the RPC if it has not yet finished and calls the
   post-call hooks on the first invocation.
 
   Args:
     rpc: A UserRPC object.
 
   Raises:
-    InvalidURLError: if the url was invalid.
-    DownloadError: if there was a problem fetching the url.
-    PayloadTooLargeError: if the request and its payload was larger than the
-      allowed limit.
-    ResponseTooLargeError: if the response was either truncated (and
-      allow_truncated=False was passed to make_fetch_call()), or if it
-      was too big for us to download.
+    InvalidURLError: If the URL was invalid.
+    DownloadError: If there was a problem fetching the URL.
+    PayloadTooLargeError: If the request and its payload was larger than the
+        allowed limit.
+    ResponseTooLargeError: If the response was either truncated (and
+        `allow_truncated=False` was passed to `make_fetch_call()`), or if it
+        was too big for us to download.
+    MalformedReplyError: If an invalid HTTP response was returned.
+    TooManyRedirectsError: If the redirect limit was hit while `follow_rediects`
+        was set to `True`.
+    InternalTransientError: An internal error occurred. Wait a few minutes, then
+        try again.
+    ConnectionClosedError: If the target server prematurely closed the
+        connection.
+    DNSLookupFailedError: If the DNS lookup for the URL failed.
+    DeadlineExceededError: If the deadline was exceeded; occurs when the
+        client-supplied `deadline` is invalid or if the client did not specify a
+        `deadline` and the system default value is invalid.
+    SSLCertificateError: If an invalid server certificate was presented.
+    AssertionError: If the `assert` statement fails.
 
   Returns:
-    A _URLFetchResult object.
+    A `_URLFetchResult` object.
   """
   assert rpc.service == 'urlfetch', repr(rpc.service)
   assert rpc.method == 'Fetch', repr(rpc.method)
@@ -446,14 +481,13 @@ def _get_fetch_result(rpc):
 Fetch = fetch
 
 class _URLFetchResult(object):
-  """A Pythonic representation of our fetch response protocol buffer.
-  """
+  """A Pythonic representation of our fetch response protocol buffer."""
 
   def __init__(self, response_proto):
     """Constructor.
 
     Args:
-      response_proto: the URLFetchResponse proto buffer to wrap.
+      response_proto: The `URLFetchResponse` protocol buffer to wrap.
     """
     self.__pb = response_proto
     self.content = response_proto.content()
@@ -466,18 +500,22 @@ class _URLFetchResult(object):
     self.headers = _CaselessDict(self.header_msg.items())
 
 def get_default_fetch_deadline():
-  """Get the default value for create_rpc()'s deadline parameter."""
+  """Gets the default value for `create_rpc()`'s deadline parameter."""
   return getattr(_thread_local_settings, "default_fetch_deadline", None)
 
 
 def set_default_fetch_deadline(value):
-  """Set the default value for create_rpc()'s deadline parameter.
+  """Sets the default value for `create_rpc()`'s `deadline` parameter.
 
-  This setting is thread-specific (i.e. it's stored in a thread local).
-  This function doesn't do any range or type checking of the value.  The
-  default is None.
+  This setting is thread-specific, meaning it that is stored in a thread local.
+  This function doesn't check the type or range of the value.  The default
+  value is `None`.
 
-  See also: create_rpc(), fetch()
+  See also: `create_rpc()`, `fetch()`
+
+  Args:
+    value: The default value that you want to use for the `deadline` parameter
+        of `create_rpc()`.
 
   """
   _thread_local_settings.default_fetch_deadline = value

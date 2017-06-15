@@ -34,7 +34,19 @@ application's datastore by offline processes run by the Google App Engine team.
 
 
 
-from google.appengine.ext import db
+import os
+
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  try:
+    from google.appengine.ext import db
+  except ImportError:
+
+
+    from google.appengine.ext import db
+else:
+  from google.appengine.ext import db
+
 
 
 class BaseStatistic(db.Model):

@@ -26,6 +26,7 @@ import mox
 import webapp2
 
 from google.appengine.tools.devappserver2 import dispatcher
+from google.appengine.tools.devappserver2.admin import admin_request_handler
 from google.appengine.tools.devappserver2.admin import xmpp_request_handler
 
 
@@ -69,6 +70,7 @@ class TestXmppRequestHandler(unittest.TestCase):
 
   def setUp(self):
     self.mox = mox.Mox()
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -102,6 +104,7 @@ class TestXmppRequestHandler(unittest.TestCase):
                                                    'chat': 'Chat content'})
     response = webapp2.Response()
     handler = xmpp_request_handler.XmppRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     data = xmpp_request_handler._FormData()
     data.add_text('from', 'baz@example.com', 'plain')
     data.add_text('to', 'foo@example.com', 'plain')
@@ -131,6 +134,7 @@ class TestXmppRequestHandler(unittest.TestCase):
                                                    'presence': 'available'})
     response = webapp2.Response()
     handler = xmpp_request_handler.XmppRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     data = xmpp_request_handler._FormData()
     data.add_text('from', 'baz@example.com', 'plain')
     data.add_text('to', 'foo@example.com', 'plain')
@@ -157,6 +161,7 @@ class TestXmppRequestHandler(unittest.TestCase):
                                                    'presence': 'unavailable'})
     response = webapp2.Response()
     handler = xmpp_request_handler.XmppRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     data = xmpp_request_handler._FormData()
     data.add_text('from', 'baz@example.com', 'plain')
     data.add_text('to', 'foo@example.com', 'plain')
@@ -184,6 +189,7 @@ class TestXmppRequestHandler(unittest.TestCase):
                                           'subscription_type': 'subscribe'})
     response = webapp2.Response()
     handler = xmpp_request_handler.XmppRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     data = xmpp_request_handler._FormData()
     data.add_text('from', 'baz@example.com', 'plain')
     data.add_text('to', 'foo@example.com', 'plain')

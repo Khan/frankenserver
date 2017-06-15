@@ -19,6 +19,8 @@
 
 
 
+import BaseHTTPServer
+import socket
 import wsgiref.headers
 
 
@@ -60,3 +62,15 @@ def put_headers_in_environ(headers, environ):
   """
   for key, value in headers:
     environ['HTTP_%s' % key.upper().replace('-', '_')] = value
+
+
+def is_env_flex(env):
+  return env in ['2', 'flex', 'flexible']
+
+
+class HTTPServerIPv6(BaseHTTPServer.HTTPServer):
+  """An HTTPServer that supports IPv6 connections.
+
+  The standard HTTPServer has address_family hardcoded to socket.AF_INET.
+  """
+  address_family = socket.AF_INET6

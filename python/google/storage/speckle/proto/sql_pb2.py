@@ -720,8 +720,9 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
       '_protorpc_CloseConnection', '_full_name_CloseConnection',
   )
 
-  def __init__(self, rpc_stub):
-    self._stub = rpc_stub
+  def __init__(self, rpc_stub, rpc_factory=None):
+    super(_SqlService_ClientBaseStub, self).__init__(
+        None, inject_stub=rpc_stub, rpc_factory=rpc_factory)
 
     self._protorpc_Exec = pywraprpc.RPC()
     self._protorpc_Exec.set_fail_fast(True)
@@ -881,26 +882,27 @@ class _SqlService_ClientBaseStub(_client_stub_base_class):
 
 class _SqlService_ClientStub(_SqlService_ClientBaseStub):
   __slots__ = ('_params',)
-  def __init__(self, rpc_stub_parameters, service_name):
+  def __init__(self, rpc_stub_parameters, service_name, rpc_factory=None):
     if service_name is None:
       service_name = 'SqlService'
-    _SqlService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, rpc_stub_parameters))
+    stub = pywraprpc.RPC_GenericStub(service_name, rpc_stub_parameters)
+    super(_SqlService_ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
     self._params = rpc_stub_parameters
 
 
 class _SqlService_RPC2ClientStub(_SqlService_ClientBaseStub):
   __slots__ = ()
-  def __init__(self, server, channel, service_name):
+  def __init__(self, server, channel, service_name, rpc_factory=None):
     if service_name is None:
       service_name = 'SqlService'
-    if channel is not None:
-      if channel.version() == 1:
-        raise RuntimeError('Expecting an RPC2 channel to create the stub')
-      _SqlService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, channel))
-    elif server is not None:
-      _SqlService_ClientBaseStub.__init__(self, pywraprpc.RPC_GenericStub(service_name, pywraprpc.NewClientChannel(server)))
-    else:
-      raise RuntimeError('Invalid argument combination to create a stub')
+    if channel is None:
+      if server is None:
+        raise RuntimeError('Invalid argument combination to create a stub')
+      channel = pywraprpc.NewClientChannel(server)
+    elif channel.version() == 1:
+      raise RuntimeError('Expecting an RPC2 channel to create the stub')
+    stub = pywraprpc.RPC_GenericStub(service_name, channel)
+    super(_SqlService_RPC2ClientStub, self).__init__(stub, rpc_factory=rpc_factory)
 
 
 class SqlService(_server_stub_base_class):
@@ -939,20 +941,23 @@ class SqlService(_server_stub_base_class):
     _server_stub_base_class.__init__(self, 'speckle.sql.SqlService', *args, **kwargs)
 
   @staticmethod
-  def NewStub(rpc_stub_parameters, service_name=None):
+  def NewStub(rpc_stub_parameters, service_name=None, rpc_factory=None):
     """Creates a new SqlService Stubby client stub.
 
     Args:
       rpc_stub_parameters: an RPC_StubParameters instance.
       service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
     """
 
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
-    return _SqlService_ClientStub(rpc_stub_parameters, service_name)
+    return _SqlService_ClientStub(
+        rpc_stub_parameters, service_name, rpc_factory=rpc_factory)
 
   @staticmethod
-  def NewRPC2Stub(server=None, channel=None, service_name=None):
+  def NewRPC2Stub(
+      server=None, channel=None, service_name=None, rpc_factory=None):
     """Creates a new SqlService Stubby2 client stub.
 
     Args:
@@ -960,11 +965,13 @@ class SqlService(_server_stub_base_class):
       channel: directly use a channel to create a stub. Will ignore server
           argument if this is specified.
       service_name: the service name used by the Stubby server.
+      rpc_factory: the rpc factory to use if no rpc argument is specified.
     """
 
     if _client_stub_base_class is object:
       raise RuntimeError('Add //net/rpc/python as a dependency to use Stubby')
-    return _SqlService_RPC2ClientStub(server, channel, service_name)
+    return _SqlService_RPC2ClientStub(
+        server, channel, service_name, rpc_factory=rpc_factory)
 
   def Exec(self, rpc, request, response):
     """Handles a Exec RPC call. You should override this.

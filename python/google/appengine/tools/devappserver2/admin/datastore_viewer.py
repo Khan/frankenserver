@@ -650,6 +650,7 @@ class DatastoreRequestHandler(admin_request_handler.AdminRequestHandler):
     return headers, template_entities, total_entities
 
   def get(self):
+    super(DatastoreRequestHandler, self).get()
     # Force all transactions to complete to show the user consistent results.
     datastore_stub = apiproxy_stub_map.apiproxy.GetStub('datastore_v3')
     datastore_stub.Flush()
@@ -710,7 +711,7 @@ class DatastoreRequestHandler(admin_request_handler.AdminRequestHandler):
 
   def post(self):
     """Handle modifying actions and redirect to a GET page."""
-
+    super(DatastoreRequestHandler, self).post()
     if self.request.get('action:flush_memcache'):
       if memcache.flush_all():
         message = 'Cache flushed, all keys dropped.'
@@ -732,6 +733,7 @@ class DatastoreEditRequestHandler(admin_request_handler.AdminRequestHandler):
   """A handler that allows datastore entities to be created and edited."""
 
   def get(self, entity_key_string=None):
+    super(DatastoreEditRequestHandler, self).get(entity_key_string)
     if entity_key_string:
       entity_key = datastore.Key(entity_key_string)
       entity_key_name = entity_key.name()
@@ -792,6 +794,7 @@ class DatastoreEditRequestHandler(admin_request_handler.AdminRequestHandler):
          'parent_key_string': parent_key_string}))
 
   def post(self, entity_key_string=None):
+    super(DatastoreEditRequestHandler, self).post(entity_key_string)
     if self.request.get('action:delete'):
       if entity_key_string:
         datastore.Delete(datastore.Key(entity_key_string))

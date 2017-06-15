@@ -27,6 +27,7 @@ import webapp2
 
 from google.appengine.tools.devappserver2 import dispatcher
 from google.appengine.tools.devappserver2 import module
+from google.appengine.tools.devappserver2.admin import admin_request_handler
 from google.appengine.tools.devappserver2.admin import console
 
 
@@ -36,6 +37,7 @@ class ConsoleRequestHandlerTest(unittest.TestCase):
   def setUp(self):
     self.mox = mox.Mox()
     self.mox.StubOutWithMock(console.ConsoleRequestHandler, 'dispatcher')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
     console.ConsoleRequestHandler._modulename_to_shell_module = {}
     self.dispatcher = self.mox.CreateMock(dispatcher.Dispatcher)
     self.module = self.mox.CreateMock(module.Module)
@@ -51,6 +53,7 @@ class ConsoleRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
 
     handler = console.ConsoleRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     handler.dispatcher = self.dispatcher
     handler.dispatcher.get_module_by_name('default').AndReturn(self.module)
     self.module.create_interactive_command_module().AndReturn(
@@ -73,6 +76,7 @@ class ConsoleRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
 
     handler = console.ConsoleRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     handler.dispatcher = self.dispatcher
     self.interactive_command_module.send_interactive_command(
         'print 5+5').AndReturn('10\n')
@@ -92,6 +96,7 @@ class ConsoleRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
 
     handler = console.ConsoleRequestHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).post()
     handler.dispatcher = self.dispatcher
     self.interactive_command_module.send_interactive_command(
         'print 5+5').AndRaise(module.InteractiveCommandError('restart'))

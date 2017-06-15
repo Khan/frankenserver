@@ -21,7 +21,7 @@ import re
 
 # These ports are reserved for future usage.
 # Port 10400 reserved for gitkit container.
-RESERVED_INTERNAL_PORTS = range(10400, 10499)
+RESERVED_INTERNAL_PORTS = range(10400, 10500)
 
 # These ports are used by our code or critical system daemons.
 RESERVED_HOST_PORTS = [22,  # SSH
@@ -58,7 +58,8 @@ class PortManager(object):
                            'udp': {}}
     self._port_names = {}
 
-  def Add(self, ports, kind, allow_privileged=False, prohibited_host_ports=()):
+  def Add(self, ports, kind, allow_privileged=False, prohibited_host_ports=(),
+          default_protocols=('tcp',)):
     """Load port configurations and adds them to an internal dict.
 
     Args:
@@ -68,6 +69,8 @@ class PortManager(object):
       allow_privileged: Allow to bind to ports under 1024.
       prohibited_host_ports: A list of ports that are used outside of
         the container and may not be mapped to this port manager.
+      default_protocols: A list of protocols that will be used if the protocol
+        isn't specified with the port.
 
     Raises:
       InconsistentPortConfigurationError: If a port is configured to do
@@ -96,16 +99,18 @@ class PortManager(object):
             raise IllegalPortConfigurationError(
                 '%r was not recognized as a valid port configuration.' % port)
           port = tmp[0]
-          protocol = tmp[1].lower()
+          protocols = (tmp[1].lower(),)
         else:
-          protocol = 'tcp'  # This is the default.
+          protocols = default_protocols
         if ':' in port:
           host_port, docker_port = (int(p.strip()) for p in port.split(':'))
-          port_translations[protocol][host_port] = docker_port
+          for p in protocols:
+            port_translations[p][host_port] = docker_port
         else:
           host_port = int(port)
           docker_port = host_port
-          port_translations[protocol][host_port] = host_port
+          for p in protocols:
+            port_translations[p][host_port] = host_port
         if host_port in prohibited_host_ports:
           raise InconsistentPortConfigurationError(
               'Configuration conflict, port %d cannot be used by the '

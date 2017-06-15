@@ -19,12 +19,18 @@
 
 
 import cStringIO
+import getpass
+import itertools
+import os
 import pickle
-import re
+import sys
 import tempfile
 import unittest
 import urllib
 import wsgiref.util
+
+import google
+import mox
 
 from google.net.rpc.python.testing import rpc_test_harness
 
@@ -54,7 +60,6 @@ MAIL_SMTP_USER = 'user'
 MAIL_SMTP_PASSWORD = 'abc123'
 MAIL_ENABLE_SENDMAIL = False
 MAIL_SHOW_MAIL_BODY = True
-_, MATCHER_PROSPECTIVE_SEARCH_PATH = tempfile.mkstemp(prefix='ae-ps')
 TASKQUEUE_AUTO_RUN_TASKS = False
 TASKQUEUE_DEFAULT_HTTP_SERVER = 'localhost:8080'
 USER_LOGIN_URL = 'https://localhost/Login?continue=%s'
@@ -101,7 +106,6 @@ def setup_stubs():
       mail_smtp_password=MAIL_SMTP_PASSWORD,
       mail_enable_sendmail=MAIL_ENABLE_SENDMAIL,
       mail_show_mail_body=MAIL_SHOW_MAIL_BODY,
-      matcher_prospective_search_path=MATCHER_PROSPECTIVE_SEARCH_PATH,
       taskqueue_auto_run_tasks=TASKQUEUE_AUTO_RUN_TASKS,
       taskqueue_default_http_server=TASKQUEUE_DEFAULT_HTTP_SERVER,
       user_login_url=USER_LOGIN_URL,
@@ -237,6 +241,116 @@ class TestAPIServer(wsgi_test_utils.WSGITestCase):
 
     self._assert_remote_call(
         expected_remote_response, urlfetch_request, 'urlfetch', 'Fetch')
+
+
+class GetStoragePathTest(unittest.TestCase):
+  """Tests for api_server.get_storage_path."""
+
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(api_server, '_generate_storage_paths')
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  def test_no_path_given_directory_does_not_exist(self):
+    path = tempfile.mkdtemp()
+    os.rmdir(path)
+    api_server._generate_storage_paths('example.com_myapp').AndReturn([path])
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        path, api_server.get_storage_path(None, 'dev~example.com:myapp'))
+    self.mox.VerifyAll()
+    self.assertTrue(os.path.isdir(path))
+
+  def test_no_path_given_directory_exists(self):
+    path1 = tempfile.mkdtemp()
+    os.chmod(path1, 0777)
+    path2 = tempfile.mkdtemp()  # Made with mode 0700.
+
+    api_server._generate_storage_paths('example.com_myapp').AndReturn(
+        [path1, path2])
+
+    self.mox.ReplayAll()
+    if sys.platform == 'win32':
+      expected_path = path1
+    else:
+      expected_path = path2
+    self.assertEqual(
+        expected_path,
+        api_server.get_storage_path(None, 'dev~example.com:myapp'))
+    self.mox.VerifyAll()
+
+  def test_path_given_does_not_exist(self):
+    path = tempfile.mkdtemp()
+    os.rmdir(path)
+
+    self.assertEqual(
+        path, api_server.get_storage_path(path, 'dev~example.com:myapp'))
+    self.assertTrue(os.path.isdir(path))
+
+  def test_path_given_not_directory(self):
+    _, path = tempfile.mkstemp()
+
+    self.assertRaises(
+        IOError, api_server.get_storage_path, path, 'dev~example.com:myapp')
+
+  def test_path_given_exists(self):
+    path = tempfile.mkdtemp()
+
+    self.assertEqual(
+        path, api_server.get_storage_path(path, 'dev~example.com:myapp'))
+
+
+class GenerateStoragePathsTest(unittest.TestCase):
+  """Tests for api_server._generate_storage_paths."""
+
+  def setUp(self):
+    self.mox = mox.Mox()
+    self.mox.StubOutWithMock(getpass, 'getuser')
+    self.mox.StubOutWithMock(tempfile, 'gettempdir')
+
+  def tearDown(self):
+    self.mox.UnsetStubs()
+
+  @unittest.skipUnless(sys.platform.startswith('win'), 'Windows only')
+  def test_windows(self):
+    tempfile.gettempdir().AndReturn('/tmp')
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        [os.path.join('/tmp', 'appengine.myapp'),
+         os.path.join('/tmp', 'appengine.myapp.1'),
+         os.path.join('/tmp', 'appengine.myapp.2')],
+        list(itertools.islice(api_server._generate_storage_paths('myapp'), 3)))
+    self.mox.VerifyAll()
+
+  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
+  def test_working_getuser(self):
+    getpass.getuser().AndReturn('johndoe')
+    tempfile.gettempdir().AndReturn('/tmp')
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        [os.path.join('/tmp', 'appengine.myapp.johndoe'),
+         os.path.join('/tmp', 'appengine.myapp.johndoe.1'),
+         os.path.join('/tmp', 'appengine.myapp.johndoe.2')],
+        list(itertools.islice(api_server._generate_storage_paths('myapp'), 3)))
+    self.mox.VerifyAll()
+
+  @unittest.skipIf(sys.platform.startswith('win'), 'not on Windows')
+  def test_broken_getuser(self):
+    getpass.getuser().AndRaise(Exception())
+    tempfile.gettempdir().AndReturn('/tmp')
+
+    self.mox.ReplayAll()
+    self.assertEqual(
+        [os.path.join('/tmp', 'appengine.myapp'),
+         os.path.join('/tmp', 'appengine.myapp.1'),
+         os.path.join('/tmp', 'appengine.myapp.2')],
+        list(itertools.islice(api_server._generate_storage_paths('myapp'), 3)))
+    self.mox.VerifyAll()
 
 
 if __name__ == '__main__':

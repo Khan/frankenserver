@@ -28,6 +28,7 @@ import jinja2
 import webapp2
 
 from google.appengine.tools import sdk_update_checker
+from google.appengine.tools.devappserver2 import metrics
 
 
 def _urlencode_filter(value):
@@ -150,3 +151,11 @@ class AdminRequestHandler(webapp2.RequestHandler):
   @property
   def configuration(self):
     return self.request.app.configuration
+
+  @metrics.LogHandlerRequest('admin-console')
+  def get(self, *args, **kwargs):
+    """Base method for all get requests."""
+
+  @metrics.LogHandlerRequest('admin-console')
+  def post(self, *args, **kwargs):
+    """Base method for all post requests."""

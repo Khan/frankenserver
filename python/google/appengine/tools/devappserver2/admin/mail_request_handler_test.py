@@ -25,6 +25,7 @@ import mox
 import webapp2
 
 from google.appengine.tools.devappserver2 import dispatcher
+from google.appengine.tools.devappserver2.admin import admin_request_handler
 from google.appengine.tools.devappserver2.admin import mail_request_handler
 
 
@@ -90,6 +91,19 @@ class MailRequestHandlerTest(unittest.TestCase):
     handler._send('URL', message)
     self.mox.VerifyAll()
 
+  def test_get(self):
+    request = webapp2.Request.blank('/mail')
+    response = webapp2.Response()
+    handler = mail_request_handler.MailRequestHandler(request, response)
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'get')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler,
+                             'render')
+    admin_request_handler.AdminRequestHandler(handler).get()
+    handler.render('mail.html', {})
+    self.mox.ReplayAll()
+    handler.get()
+    self.mox.VerifyAll()
+
   def test_post(self):
     request = webapp2.Request.blank('/mail', POST={
         'to': 'to', 'from': 'from', 'cc': 'cc', 'subject': 'subject',
@@ -97,6 +111,8 @@ class MailRequestHandlerTest(unittest.TestCase):
     response = webapp2.Response()
     handler = mail_request_handler.MailRequestHandler(request, response)
     self.mox.StubOutWithMock(handler, '_send_email')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'post')
+    admin_request_handler.AdminRequestHandler(handler).post()
     handler._send_email('to', 'from', 'cc', 'subject', 'body')
     self.mox.ReplayAll()
     handler.post()

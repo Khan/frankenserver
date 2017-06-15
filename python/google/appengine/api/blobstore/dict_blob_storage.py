@@ -18,10 +18,9 @@
 
 
 
-"""Implementation of Blobstore stub storage based on a dict.
+"""In-memory implementation of Blobstore stub storage.
 
-Contains implementation of blobstore_stub.BlobStorage that writes
-blobs directly to a directory stored in memory.
+This module contains an implementation of `blobstore_stub.BlobStorage`.
 """
 
 
@@ -41,14 +40,14 @@ from google.appengine.api.blobstore import blobstore_stub
 
 
 class DictBlobStorage(blobstore_stub.BlobStorage):
-  """Simply stores blobs in a dict."""
+  """Stores blobs in a dictionary."""
 
   def __init__(self):
     """Constructor."""
     self._blobs = {}
 
   def StoreBlob(self, blob_key, blob_stream):
-    """Store blob stream."""
+    """Stores a blob stream."""
     content = StringIO.StringIO()
     try:
       while True:
@@ -61,16 +60,16 @@ class DictBlobStorage(blobstore_stub.BlobStorage):
       content.close()
 
   def CreateBlob(self, blob_key, blob):
-    """Store blob in map."""
+    """Stores a blob in a map."""
     self._blobs[blobstore.BlobKey(unicode(blob_key))] = blob
 
   def OpenBlob(self, blob_key):
-    """Get blob contents as stream."""
+    """Gets the blob contents as a stream."""
     return StringIO.StringIO(
         self._blobs[blobstore.BlobKey(unicode(blob_key))])
 
   def DeleteBlob(self, blob_key):
-    """Delete blob content."""
+    """Deletes blob content."""
     try:
       del self._blobs[blobstore.BlobKey(unicode(blob_key))]
     except KeyError:

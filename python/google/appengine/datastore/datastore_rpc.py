@@ -67,7 +67,6 @@ from google.appengine.api import datastore_types
 from google.appengine.api.app_identity import app_identity
 from google.appengine.datastore import datastore_pb
 from google.appengine.datastore import datastore_pbs
-from google.appengine.datastore import datastore_v4_pb
 from google.appengine.runtime import apiproxy_errors
 
 _CLOUD_DATASTORE_ENABLED = datastore_pbs._CLOUD_DATASTORE_ENABLED
@@ -82,8 +81,7 @@ _MAX_ID_BATCH_SIZE = 1000 * 1000 * 1000
 
 
 _DATASTORE_V3 = 'datastore_v3'
-_DATASTORE_V4 = 'datastore_v4'
-_CLOUD_DATASTORE_V1 = 'cloud_datastore_v1beta3'
+_CLOUD_DATASTORE_V1 = 'cloud_datastore_v1'
 
 
 
@@ -1991,7 +1989,7 @@ class BaseConnection(object):
 
 
 
-  def begin_transaction(self, app):
+  def begin_transaction(self, app, previous_transaction=None):
     """Syncnronous BeginTransaction operation.
 
     NOTE: In most cases the new_transaction() method is preferred,
@@ -2000,19 +1998,22 @@ class BaseConnection(object):
 
     Args:
       app: Application ID.
+      previous_transaction: The transaction to reset.
 
     Returns:
       An object representing a transaction or None.
     """
-    return self.async_begin_transaction(None, app).get_result()
+    return (self.async_begin_transaction(None, app, previous_transaction)
+            .get_result())
 
-  def async_begin_transaction(self, config, app):
+  def async_begin_transaction(self, config, app, previous_transaction=None):
     """Asynchronous BeginTransaction operation.
 
     Args:
       config: A configuration object or None.  Defaults are taken from
         the connection's default configuration.
       app: Application ID.
+      previous_transaction: The transaction to reset.
 
     Returns:
       A MultiRpc object.
@@ -2029,6 +2030,8 @@ class BaseConnection(object):
       req.set_app(app)
       if (TransactionOptions.xg(config, self.__config)):
         req.set_allow_multiple_eg(True)
+      if previous_transaction is not None:
+        req.mutable_previous_transaction().CopyFrom(previous_transaction)
       resp = datastore_pb.Transaction()
 
     return self._make_rpc_call(config, 'BeginTransaction', req, resp,
@@ -2069,7 +2072,7 @@ class Connection(BaseConnection):
 
 
 
-  def new_transaction(self, config=None):
+  def new_transaction(self, config=None, previous_transaction=None):
     """Create a new transactional connection based on this one.
 
     This is different from, and usually preferred over, the
@@ -2079,10 +2082,12 @@ class Connection(BaseConnection):
     Args:
       config: A configuration object for the new connection, merged
         with this connection's config.
+      previous_transaction: The transaction being reset.
     """
     config = self.__config.merge(config)
     return TransactionalConnection(adapter=self.__adapter, config=config,
-                                   _api_version=self._api_version)
+                                   _api_version=self._api_version,
+                                   previous_transaction=previous_transaction)
 
 
 
@@ -2163,7 +2168,7 @@ class Connection(BaseConnection):
   def _reserve_keys(self, keys):
     """Synchronous AllocateIds operation to reserve the given keys.
 
-    Sends one or more v4 AllocateIds rpcs with keys to reserve.
+    Sends one or more v3 AllocateIds rpcs with keys to reserve.
     Reserved keys must be complete and must have valid ids.
 
     Args:
@@ -2174,7 +2179,7 @@ class Connection(BaseConnection):
   def _async_reserve_keys(self, config, keys, extra_hook=None):
     """Asynchronous AllocateIds operation to reserve the given keys.
 
-    Sends one or more v4 AllocateIds rpcs with keys to reserve.
+    Sends one or more v3 AllocateIds rpcs with keys to reserve.
     Reserved keys must be complete and must have valid ids.
 
     Args:
@@ -2199,15 +2204,13 @@ class Connection(BaseConnection):
     rpcs = []
     pbsgen = self._generate_pb_lists(keys_by_idkey, 0, max_count, None, config)
     for pbs, _ in pbsgen:
-      req = datastore_v4_pb.AllocateIdsRequest()
-      for key in pbs:
-        datastore_pbs.get_entity_converter().v3_to_v4_key(key,
-                                                          req.add_reserve())
-      resp = datastore_v4_pb.AllocateIdsResponse()
+      req = datastore_pb.AllocateIdsRequest()
+      req.reserve_list().extend(pbs)
+      resp = datastore_pb.AllocateIdsResponse()
       rpcs.append(self._make_rpc_call(config, 'AllocateIds', req, resp,
                                       get_result_hook=self.__reserve_keys_hook,
                                       user_data=extra_hook,
-                                      service_name=_DATASTORE_V4))
+                                      service_name=_DATASTORE_V3))
     return MultiRpc(rpcs)
 
   def __reserve_keys_hook(self, rpc):
@@ -2304,10 +2307,16 @@ class TransactionalConnection(BaseConnection):
   _get_transaction() when the first operation is started.
   """
 
+
+  OPEN = 0
+  COMMIT_IN_FLIGHT = 1
+  FAILED = 2
+  CLOSED = 3
+
   @_positional(1)
   def __init__(self,
                adapter=None, config=None, transaction=None, entity_group=None,
-               _api_version=_DATASTORE_V3):
+               _api_version=_DATASTORE_V3, previous_transaction=None):
     """Constructor.
 
     All arguments should be specified as keyword arguments.
@@ -2318,16 +2327,30 @@ class TransactionalConnection(BaseConnection):
       config: Optional Configuration object.
       transaction: Optional datastore_db.Transaction object.
       entity_group: Deprecated, do not use.
+      previous_transaction: Optional datastore_db.Transaction object
+        representing the transaction being reset.
+
+    Raises:
+      datastore_errors.BadArgumentError: If previous_transaction and transaction
+        are both set.
     """
     super(TransactionalConnection, self).__init__(adapter=adapter,
                                                   config=config,
                                                   _api_version=_api_version)
+
+    self._state = TransactionalConnection.OPEN
+
+    if previous_transaction is not None and transaction is not None:
+      raise datastore_errors.BadArgumentError(
+          'Only one of transaction and previous_transaction should be set')
+
     self.__adapter = self.adapter
     self.__config = self.config
     if transaction is None:
       app = TransactionOptions.app(self.config)
       app = datastore_types.ResolveAppId(TransactionOptions.app(self.config))
-      self.__transaction_rpc = self.async_begin_transaction(None, app)
+      self.__transaction_rpc = self.async_begin_transaction(
+          None, app, previous_transaction)
     else:
       if self._api_version == _CLOUD_DATASTORE_V1:
         txn_class = str
@@ -2338,7 +2361,6 @@ class TransactionalConnection(BaseConnection):
             'Invalid transaction (%r)' % transaction)
       self.__transaction = transaction
       self.__transaction_rpc = None
-    self.__finished = False
 
 
     self.__pending_v1_upserts = {}
@@ -2346,10 +2368,11 @@ class TransactionalConnection(BaseConnection):
 
   @property
   def finished(self):
-    return self.__finished
+    return self._state != TransactionalConnection.OPEN
 
   @property
   def transaction(self):
+    """The current transaction. None when state == FINISHED."""
     if self.__transaction_rpc is not None:
       self.__transaction = self.__transaction_rpc.get_result()
       self.__transaction_rpc = None
@@ -2358,7 +2381,7 @@ class TransactionalConnection(BaseConnection):
   def _set_request_transaction(self, request):
     """Set the current transaction on a request.
 
-    This calls _get_transaction() (see below).  The transaction object
+    This accesses the transaction property.  The transaction object
     returned is both set as the transaction field on the request
     object and returned.
 
@@ -2372,7 +2395,7 @@ class TransactionalConnection(BaseConnection):
       ValueError: if called with a non-Cloud Datastore request when using
           Cloud Datastore.
     """
-    if self.__finished:
+    if self.finished:
       raise datastore_errors.BadRequestError(
           'Cannot start a new operation in a finished transaction.')
     transaction = self.transaction
@@ -2393,32 +2416,6 @@ class TransactionalConnection(BaseConnection):
       request.read_options.transaction = transaction
     else:
       request.mutable_transaction().CopyFrom(transaction)
-    return transaction
-
-  def _end_transaction(self):
-    """Finish the current transaction.
-
-    This blocks waiting for all pending RPCs to complete, and then
-    marks the connection as finished.  After that no more operations
-    can be started using this connection.
-
-    Returns:
-      An object representing a transaction or None.
-
-    Raises:
-      datastore_errors.BadRequestError if the transaction is already
-      finished.
-    """
-    if self.__finished:
-      raise datastore_errors.BadRequestError(
-          'The transaction is already finished.')
-
-
-    self.wait_for_all_pending_rpcs()
-    assert not self.get_pending_rpcs()
-    transaction = self.transaction
-    self.__finished = True
-    self.__transaction = None
     return transaction
 
 
@@ -2578,11 +2575,18 @@ class TransactionalConnection(BaseConnection):
       config: A Configuration object or None.  Defaults are taken from
         the connection's default configuration.
 
-     Returns:
+    Returns:
       A MultiRpc object.
     """
-    transaction = self._end_transaction()
+    self.wait_for_all_pending_rpcs()
+
+    if self._state != TransactionalConnection.OPEN:
+      raise datastore_errors.BadRequestError('Transaction is already finished.')
+    self._state = TransactionalConnection.COMMIT_IN_FLIGHT
+
+    transaction = self.transaction
     if transaction is None:
+      self._state = TransactionalConnection.CLOSED
       return None
 
     if self._api_version == _CLOUD_DATASTORE_V1:
@@ -2616,7 +2620,10 @@ class TransactionalConnection(BaseConnection):
     """Internal method used as get_result_hook for Commit."""
     try:
       rpc.check_success()
+      self._state = TransactionalConnection.CLOSED
+      self.__transaction = None
     except apiproxy_errors.ApplicationError, err:
+      self._state = TransactionalConnection.FAILED
       if err.application_error == datastore_pb.Error.CONCURRENT_TRANSACTION:
         return False
       else:
@@ -2643,9 +2650,19 @@ class TransactionalConnection(BaseConnection):
      Returns:
       A MultiRpc object.
     """
-    transaction = self._end_transaction()
+    self.wait_for_all_pending_rpcs()
+
+    if not (self._state == TransactionalConnection.OPEN
+            or self._state == TransactionalConnection.FAILED):
+      raise datastore_errors.BadRequestError(
+          'Cannot rollback transaction that is neither OPEN or FAILED state.')
+
+    transaction = self.transaction
     if transaction is None:
       return None
+
+    self._state = TransactionalConnection.CLOSED
+    self.__transaction = None
 
     if self._api_version == _CLOUD_DATASTORE_V1:
       req = googledatastore.RollbackRequest()
@@ -2662,6 +2679,168 @@ class TransactionalConnection(BaseConnection):
   def __rollback_hook(self, rpc):
     """Internal method used as get_result_hook for Rollback."""
     self.check_rpc_success(rpc)
+
+
+_DATASTORE_APP_ID_ENV = 'DATASTORE_APP_ID'
+_DATASTORE_PROJECT_ID_ENV = 'DATASTORE_PROJECT_ID'
+_DATASTORE_ADDITIONAL_APP_IDS_ENV = 'DATASTORE_ADDITIONAL_APP_IDS'
+_DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV = 'DATASTORE_USE_PROJECT_ID_AS_APP_ID'
+
+
+
+def _CreateDefaultConnection(connection_fn, **kwargs):
+  """Creates a new connection to Datastore.
+
+  Uses environment variables to determine if the connection should be made
+  to Cloud Datastore v1 or to Datastore's private App Engine API.
+  If DATASTORE_PROJECT_ID exists, connect to Cloud Datastore v1. In this case,
+  either DATASTORE_APP_ID or DATASTORE_USE_PROJECT_ID_AS_APP_ID must be set to
+  indicate what the environment's application should be.
+
+  Args:
+    connection_fn: The function to use to create the connection.
+    **kwargs: Addition arguments to pass to the connection_fn.
+
+  Raises:
+    ValueError: If DATASTORE_PROJECT_ID is set but DATASTORE_APP_ID or
+       DATASTORE_USE_PROJECT_ID_AS_APP_ID is not. If DATASTORE_APP_ID doesn't
+       resolve to DATASTORE_PROJECT_ID. If DATASTORE_APP_ID doesn't match
+       an existing APPLICATION_ID.
+
+  Returns:
+    the connection object returned from connection_fn.
+  """
+  datastore_app_id = os.environ.get(_DATASTORE_APP_ID_ENV, None)
+  datastore_project_id = os.environ.get(_DATASTORE_PROJECT_ID_ENV, None)
+  if datastore_app_id or datastore_project_id:
+
+    app_id_override = bool(os.environ.get(
+        _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV, False))
+    if not datastore_app_id and not app_id_override:
+      raise ValueError('Could not determine app id. To use project id (%s) '
+                       'instead, set %s=true. This will affect the '
+                       'serialized form of entities and should not be used '
+                       'if serialized entities will be shared between '
+                       'code running on App Engine and code running off '
+                       'App Engine. Alternatively, set %s=<app id>.'
+                       % (datastore_project_id,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV,
+                          _DATASTORE_APP_ID_ENV))
+    elif datastore_app_id:
+      if app_id_override:
+        raise ValueError('App id was provided (%s) but %s was set to true. '
+                         'Please unset either %s or %s.' %
+                         (datastore_app_id,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV,
+                          _DATASTORE_APP_ID_ENV,
+                          _DATASTORE_USE_PROJECT_ID_AS_APP_ID_ENV))
+      elif datastore_project_id:
+
+        id_resolver = datastore_pbs.IdResolver([datastore_app_id])
+        if (datastore_project_id !=
+            id_resolver.resolve_project_id(datastore_app_id)):
+          raise ValueError('App id "%s" does not match project id "%s".'
+                           % (datastore_app_id, datastore_project_id))
+
+    datastore_app_id = datastore_app_id or datastore_project_id
+    additional_app_str = os.environ.get(_DATASTORE_ADDITIONAL_APP_IDS_ENV, '')
+    additional_apps = (app.strip() for app in additional_app_str.split(','))
+    return _CreateCloudDatastoreConnection(connection_fn,
+                                           datastore_app_id,
+                                           additional_apps,
+                                           kwargs)
+  return connection_fn(**kwargs)
+
+
+
+def _CreateCloudDatastoreConnection(connection_fn,
+                                    app_id,
+                                    external_app_ids,
+                                    kwargs):
+  """Creates a new context to connect to a remote Cloud Datastore instance.
+
+  This should only be used outside of Google App Engine.
+
+  Args:
+    connection_fn: A connection function which accepts both an _api_version
+      and an _id_resolver argument.
+    app_id: The application id to connect to. This differs from the project
+      id as it may have an additional prefix, e.g. "s~" or "e~".
+    external_app_ids: A list of apps that may be referenced by data in your
+      application. For example, if you are connected to s~my-app and store keys
+      for s~my-other-app, you should include s~my-other-app in the external_apps
+      list.
+    kwargs: The additional kwargs to pass to the connection_fn.
+
+  Raises:
+    ValueError: if the app_id provided doesn't match the current environment's
+        APPLICATION_ID.
+
+  Returns:
+    An ndb.Context that can connect to a Remote Cloud Datastore. You can use
+    this context by passing it to ndb.set_context.
+  """
+
+
+  from google.appengine.datastore import cloud_datastore_v1_remote_stub
+
+  if not datastore_pbs._CLOUD_DATASTORE_ENABLED:
+    raise datastore_errors.BadArgumentError(
+        datastore_pbs.MISSING_CLOUD_DATASTORE_MESSAGE)
+
+  current_app_id = os.environ.get('APPLICATION_ID', None)
+  if current_app_id and current_app_id != app_id:
+
+
+    raise ValueError('Cannot create a Cloud Datastore context that connects '
+                     'to an application (%s) that differs from the application '
+                     'already connected to (%s).' % (app_id, current_app_id))
+  os.environ['APPLICATION_ID'] = app_id
+
+  id_resolver = datastore_pbs.IdResolver((app_id,) + tuple(external_app_ids))
+  project_id = id_resolver.resolve_project_id(app_id)
+  endpoint = googledatastore.helper.get_project_endpoint_from_env(project_id)
+  datastore = googledatastore.Datastore(
+      project_endpoint=endpoint,
+      credentials=googledatastore.helper.get_credentials_from_env())
+  kwargs['_api_version'] = _CLOUD_DATASTORE_V1
+  kwargs['_id_resolver'] = id_resolver
+  conn = connection_fn(**kwargs)
+
+
+
+  try:
+    stub = cloud_datastore_v1_remote_stub.CloudDatastoreV1RemoteStub(datastore)
+    apiproxy_stub_map.apiproxy.RegisterStub(_CLOUD_DATASTORE_V1,
+                                            stub)
+  except:
+    pass
+
+
+
+  try:
+    apiproxy_stub_map.apiproxy.RegisterStub('memcache', _ThrowingStub())
+  except:
+    pass
+  try:
+    apiproxy_stub_map.apiproxy.RegisterStub('taskqueue', _ThrowingStub())
+  except:
+    pass
+
+  return conn
+
+
+class _ThrowingStub(object):
+  """A Stub implementation which always throws a NotImplementedError."""
+
+
+  def MakeSyncCall(self, service, call, request, response):
+    raise NotImplementedError('In order to use %s.%s you must '
+                              'install the Remote API.' % (service, call))
+
+
+  def CreateRPC(self):
+    return apiproxy_rpc.RPC(stub=self)
 
 
 

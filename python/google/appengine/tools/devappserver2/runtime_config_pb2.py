@@ -36,7 +36,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='apphosting/tools/devappserver2/runtime_config.proto',
   package='apphosting.tools.devappserver2',
   syntax='proto2',
-  serialized_pb=_b('\n3apphosting/tools/devappserver2/runtime_config.proto\x12\x1e\x61pphosting.tools.devappserver2\"\xdd\x06\n\x06\x43onfig\x12\x0e\n\x06\x61pp_id\x18\x01 \x02(\x0c\x12\x12\n\nversion_id\x18\x02 \x02(\x0c\x12\x18\n\x10\x61pplication_root\x18\x03 \x02(\x0c\x12\x19\n\nthreadsafe\x18\x04 \x01(\x08:\x05\x66\x61lse\x12\x1b\n\x08\x61pi_host\x18\x11 \x01(\t:\tlocalhost\x12\x10\n\x08\x61pi_port\x18\x05 \x02(\x05\x12:\n\tlibraries\x18\x06 \x03(\x0b\x32\'.apphosting.tools.devappserver2.Library\x12\x16\n\nskip_files\x18\x07 \x01(\t:\x02^$\x12\x18\n\x0cstatic_files\x18\x08 \x01(\t:\x02^$\x12\x43\n\rpython_config\x18\x0e \x01(\x0b\x32,.apphosting.tools.devappserver2.PythonConfig\x12=\n\nphp_config\x18\t \x01(\x0b\x32).apphosting.tools.devappserver2.PhpConfig\x12?\n\x0bjava_config\x18\x15 \x01(\x0b\x32*.apphosting.tools.devappserver2.JavaConfig\x12\x43\n\rcustom_config\x18\x17 \x01(\x0b\x32,.apphosting.tools.devappserver2.CustomConfig\x12\x38\n\x07\x65nviron\x18\n \x03(\x0b\x32\'.apphosting.tools.devappserver2.Environ\x12\x42\n\x10\x63loud_sql_config\x18\x0b \x01(\x0b\x32(.apphosting.tools.devappserver2.CloudSQL\x12\x12\n\ndatacenter\x18\x0c \x02(\t\x12\x13\n\x0binstance_id\x18\r \x02(\t\x12\x1b\n\x10stderr_log_level\x18\x0f \x01(\x03:\x01\x31\x12\x13\n\x0b\x61uth_domain\x18\x10 \x02(\t\x12\x15\n\rmax_instances\x18\x12 \x01(\x05\x12;\n\tvm_config\x18\x13 \x01(\x0b\x32(.apphosting.tools.devappserver2.VMConfig\x12\x13\n\x0bserver_port\x18\x14 \x01(\x05\x12\x11\n\x02vm\x18\x16 \x01(\x08:\x05\x66\x61lse\"|\n\tPhpConfig\x12\x1b\n\x13php_executable_path\x18\x01 \x01(\x0c\x12\x17\n\x0f\x65nable_debugger\x18\x03 \x02(\x08\x12\x1a\n\x12gae_extension_path\x18\x04 \x01(\x0c\x12\x1d\n\x15xdebug_extension_path\x18\x05 \x01(\x0c\"<\n\x0cPythonConfig\x12\x16\n\x0estartup_script\x18\x01 \x01(\t\x12\x14\n\x0cstartup_args\x18\x02 \x01(\t\"\x1e\n\nJavaConfig\x12\x10\n\x08jvm_args\x18\x01 \x03(\t\":\n\x0c\x43ustomConfig\x12\x19\n\x11\x63ustom_entrypoint\x18\x01 \x01(\t\x12\x0f\n\x07runtime\x18\x02 \x01(\t\"t\n\x08\x43loudSQL\x12\x12\n\nmysql_host\x18\x01 \x02(\t\x12\x12\n\nmysql_port\x18\x02 \x02(\x05\x12\x12\n\nmysql_user\x18\x03 \x02(\t\x12\x16\n\x0emysql_password\x18\x04 \x02(\t\x12\x14\n\x0cmysql_socket\x18\x05 \x01(\t\"(\n\x07Library\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0f\n\x07version\x18\x02 \x02(\t\"%\n\x07\x45nviron\x12\x0b\n\x03key\x18\x01 \x02(\x0c\x12\r\n\x05value\x18\x02 \x02(\x0c\":\n\x08VMConfig\x12\x19\n\x11\x64ocker_daemon_url\x18\x01 \x01(\t\x12\x13\n\x0b\x65nable_logs\x18\x03 \x01(\x08\x42\x32\n,com.google.appengine.tools.development.proto \x02P\x01')
+  serialized_pb=_b('\n3apphosting/tools/devappserver2/runtime_config.proto\x12\x1e\x61pphosting.tools.devappserver2\"\xad\x07\n\x06\x43onfig\x12\x0e\n\x06\x61pp_id\x18\x01 \x02(\x0c\x12\x12\n\nversion_id\x18\x02 \x02(\x0c\x12\x18\n\x10\x61pplication_root\x18\x03 \x02(\x0c\x12\x19\n\nthreadsafe\x18\x04 \x01(\x08:\x05\x66\x61lse\x12\x1b\n\x08\x61pi_host\x18\x11 \x01(\t:\tlocalhost\x12\x10\n\x08\x61pi_port\x18\x05 \x02(\x05\x12:\n\tlibraries\x18\x06 \x03(\x0b\x32\'.apphosting.tools.devappserver2.Library\x12\x16\n\nskip_files\x18\x07 \x01(\t:\x02^$\x12\x18\n\x0cstatic_files\x18\x08 \x01(\t:\x02^$\x12\x43\n\rpython_config\x18\x0e \x01(\x0b\x32,.apphosting.tools.devappserver2.PythonConfig\x12=\n\nphp_config\x18\t \x01(\x0b\x32).apphosting.tools.devappserver2.PhpConfig\x12?\n\x0bjava_config\x18\x15 \x01(\x0b\x32*.apphosting.tools.devappserver2.JavaConfig\x12\x43\n\rcustom_config\x18\x17 \x01(\x0b\x32,.apphosting.tools.devappserver2.CustomConfig\x12;\n\tgo_config\x18\x19 \x01(\x0b\x32(.apphosting.tools.devappserver2.GoConfig\x12\x38\n\x07\x65nviron\x18\n \x03(\x0b\x32\'.apphosting.tools.devappserver2.Environ\x12\x42\n\x10\x63loud_sql_config\x18\x0b \x01(\x0b\x32(.apphosting.tools.devappserver2.CloudSQL\x12\x12\n\ndatacenter\x18\x0c \x02(\t\x12\x13\n\x0binstance_id\x18\r \x02(\t\x12\x1b\n\x10stderr_log_level\x18\x0f \x01(\x03:\x01\x31\x12\x13\n\x0b\x61uth_domain\x18\x10 \x02(\t\x12\x15\n\rmax_instances\x18\x12 \x01(\x05\x12;\n\tvm_config\x18\x13 \x01(\x0b\x32(.apphosting.tools.devappserver2.VMConfig\x12\x13\n\x0bserver_port\x18\x14 \x01(\x05\x12\x11\n\x02vm\x18\x16 \x01(\x08:\x05\x66\x61lse\x12\x11\n\tgrpc_apis\x18\x18 \x03(\t\"|\n\tPhpConfig\x12\x1b\n\x13php_executable_path\x18\x01 \x01(\x0c\x12\x17\n\x0f\x65nable_debugger\x18\x03 \x02(\x08\x12\x1a\n\x12gae_extension_path\x18\x04 \x01(\x0c\x12\x1d\n\x15xdebug_extension_path\x18\x05 \x01(\x0c\"<\n\x0cPythonConfig\x12\x16\n\x0estartup_script\x18\x01 \x01(\t\x12\x14\n\x0cstartup_args\x18\x02 \x01(\t\"\x1e\n\nJavaConfig\x12\x10\n\x08jvm_args\x18\x01 \x03(\t\"=\n\x08GoConfig\x12\x10\n\x08work_dir\x18\x01 \x01(\t\x12\x1f\n\x17\x65nable_watching_go_path\x18\x02 \x01(\x08\":\n\x0c\x43ustomConfig\x12\x19\n\x11\x63ustom_entrypoint\x18\x01 \x01(\t\x12\x0f\n\x07runtime\x18\x02 \x01(\t\"t\n\x08\x43loudSQL\x12\x12\n\nmysql_host\x18\x01 \x02(\t\x12\x12\n\nmysql_port\x18\x02 \x02(\x05\x12\x12\n\nmysql_user\x18\x03 \x02(\t\x12\x16\n\x0emysql_password\x18\x04 \x02(\t\x12\x14\n\x0cmysql_socket\x18\x05 \x01(\t\"(\n\x07Library\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0f\n\x07version\x18\x02 \x02(\t\"%\n\x07\x45nviron\x12\x0b\n\x03key\x18\x01 \x02(\x0c\x12\r\n\x05value\x18\x02 \x02(\x0c\":\n\x08VMConfig\x12\x19\n\x11\x64ocker_daemon_url\x18\x01 \x01(\t\x12\x13\n\x0b\x65nable_logs\x18\x03 \x01(\x08\x42\x32\n,com.google.appengine.tools.development.proto \x02P\x01')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -142,72 +142,86 @@ _CONFIG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='environ', full_name='apphosting.tools.devappserver2.Config.environ', index=13,
+      name='go_config', full_name='apphosting.tools.devappserver2.Config.go_config', index=13,
+      number=25, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='environ', full_name='apphosting.tools.devappserver2.Config.environ', index=14,
       number=10, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cloud_sql_config', full_name='apphosting.tools.devappserver2.Config.cloud_sql_config', index=14,
+      name='cloud_sql_config', full_name='apphosting.tools.devappserver2.Config.cloud_sql_config', index=15,
       number=11, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='datacenter', full_name='apphosting.tools.devappserver2.Config.datacenter', index=15,
+      name='datacenter', full_name='apphosting.tools.devappserver2.Config.datacenter', index=16,
       number=12, type=9, cpp_type=9, label=2,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='instance_id', full_name='apphosting.tools.devappserver2.Config.instance_id', index=16,
+      name='instance_id', full_name='apphosting.tools.devappserver2.Config.instance_id', index=17,
       number=13, type=9, cpp_type=9, label=2,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stderr_log_level', full_name='apphosting.tools.devappserver2.Config.stderr_log_level', index=17,
+      name='stderr_log_level', full_name='apphosting.tools.devappserver2.Config.stderr_log_level', index=18,
       number=15, type=3, cpp_type=2, label=1,
       has_default_value=True, default_value=1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='auth_domain', full_name='apphosting.tools.devappserver2.Config.auth_domain', index=18,
+      name='auth_domain', full_name='apphosting.tools.devappserver2.Config.auth_domain', index=19,
       number=16, type=9, cpp_type=9, label=2,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='max_instances', full_name='apphosting.tools.devappserver2.Config.max_instances', index=19,
+      name='max_instances', full_name='apphosting.tools.devappserver2.Config.max_instances', index=20,
       number=18, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='vm_config', full_name='apphosting.tools.devappserver2.Config.vm_config', index=20,
+      name='vm_config', full_name='apphosting.tools.devappserver2.Config.vm_config', index=21,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='server_port', full_name='apphosting.tools.devappserver2.Config.server_port', index=21,
+      name='server_port', full_name='apphosting.tools.devappserver2.Config.server_port', index=22,
       number=20, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='vm', full_name='apphosting.tools.devappserver2.Config.vm', index=22,
+      name='vm', full_name='apphosting.tools.devappserver2.Config.vm', index=23,
       number=22, type=8, cpp_type=7, label=1,
       has_default_value=True, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='grpc_apis', full_name='apphosting.tools.devappserver2.Config.grpc_apis', index=24,
+      number=24, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -224,7 +238,7 @@ _CONFIG = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=88,
-  serialized_end=949,
+  serialized_end=1029,
 )
 
 
@@ -275,8 +289,8 @@ _PHPCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=951,
-  serialized_end=1075,
+  serialized_start=1031,
+  serialized_end=1155,
 )
 
 
@@ -313,8 +327,8 @@ _PYTHONCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1077,
-  serialized_end=1137,
+  serialized_start=1157,
+  serialized_end=1217,
 )
 
 
@@ -344,8 +358,46 @@ _JAVACONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1139,
-  serialized_end=1169,
+  serialized_start=1219,
+  serialized_end=1249,
+)
+
+
+_GOCONFIG = _descriptor.Descriptor(
+  name='GoConfig',
+  full_name='apphosting.tools.devappserver2.GoConfig',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='work_dir', full_name='apphosting.tools.devappserver2.GoConfig.work_dir', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='enable_watching_go_path', full_name='apphosting.tools.devappserver2.GoConfig.enable_watching_go_path', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto2',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1251,
+  serialized_end=1312,
 )
 
 
@@ -382,8 +434,8 @@ _CUSTOMCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1171,
-  serialized_end=1229,
+  serialized_start=1314,
+  serialized_end=1372,
 )
 
 
@@ -441,8 +493,8 @@ _CLOUDSQL = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1231,
-  serialized_end=1347,
+  serialized_start=1374,
+  serialized_end=1490,
 )
 
 
@@ -479,8 +531,8 @@ _LIBRARY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1349,
-  serialized_end=1389,
+  serialized_start=1492,
+  serialized_end=1532,
 )
 
 
@@ -517,8 +569,8 @@ _ENVIRON = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1391,
-  serialized_end=1428,
+  serialized_start=1534,
+  serialized_end=1571,
 )
 
 
@@ -555,8 +607,8 @@ _VMCONFIG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1430,
-  serialized_end=1488,
+  serialized_start=1573,
+  serialized_end=1631,
 )
 
 _CONFIG.fields_by_name['libraries'].message_type = _LIBRARY
@@ -564,6 +616,7 @@ _CONFIG.fields_by_name['python_config'].message_type = _PYTHONCONFIG
 _CONFIG.fields_by_name['php_config'].message_type = _PHPCONFIG
 _CONFIG.fields_by_name['java_config'].message_type = _JAVACONFIG
 _CONFIG.fields_by_name['custom_config'].message_type = _CUSTOMCONFIG
+_CONFIG.fields_by_name['go_config'].message_type = _GOCONFIG
 _CONFIG.fields_by_name['environ'].message_type = _ENVIRON
 _CONFIG.fields_by_name['cloud_sql_config'].message_type = _CLOUDSQL
 _CONFIG.fields_by_name['vm_config'].message_type = _VMCONFIG
@@ -571,6 +624,7 @@ DESCRIPTOR.message_types_by_name['Config'] = _CONFIG
 DESCRIPTOR.message_types_by_name['PhpConfig'] = _PHPCONFIG
 DESCRIPTOR.message_types_by_name['PythonConfig'] = _PYTHONCONFIG
 DESCRIPTOR.message_types_by_name['JavaConfig'] = _JAVACONFIG
+DESCRIPTOR.message_types_by_name['GoConfig'] = _GOCONFIG
 DESCRIPTOR.message_types_by_name['CustomConfig'] = _CUSTOMCONFIG
 DESCRIPTOR.message_types_by_name['CloudSQL'] = _CLOUDSQL
 DESCRIPTOR.message_types_by_name['Library'] = _LIBRARY
@@ -604,6 +658,13 @@ JavaConfig = _reflection.GeneratedProtocolMessageType('JavaConfig', (_message.Me
   # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.JavaConfig)
   ))
 _sym_db.RegisterMessage(JavaConfig)
+
+GoConfig = _reflection.GeneratedProtocolMessageType('GoConfig', (_message.Message,), dict(
+  DESCRIPTOR = _GOCONFIG,
+  __module__ = 'google.appengine.tools.devappserver2.runtime_config_pb2'
+  # @@protoc_insertion_point(class_scope:apphosting.tools.devappserver2.GoConfig)
+  ))
+_sym_db.RegisterMessage(GoConfig)
 
 CustomConfig = _reflection.GeneratedProtocolMessageType('CustomConfig', (_message.Message,), dict(
   DESCRIPTOR = _CUSTOMCONFIG,

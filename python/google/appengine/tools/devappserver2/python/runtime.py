@@ -59,7 +59,8 @@ def setup_stubs(config):
   remote_api_stub.ConfigureRemoteApi(
       config.app_id, '/', lambda: ('', ''),
       '%s:%d' % (str(config.api_host), config.api_port),
-      use_remote_datastore=False)
+      use_remote_datastore=False,
+      grpc_apis=config.grpc_apis)
 
   if config.HasField('cloud_sql_config'):
     # Connect the RDBMS API to MySQL.
@@ -127,6 +128,11 @@ class AutoFlush(object):
     return getattr(self.stream, attr)
 
 
+def expand_user(path):
+  """Fake implementation of os.path.expanduser(path)."""
+  return path
+
+
 def main():
   # Required so PDB prompts work properly. Originally tried to disable buffering
   # (both by adding the -u flag when starting this process and by adding
@@ -157,10 +163,10 @@ def main():
   else:
     setup_stubs(config)
     sandbox.enable_sandbox(config)
+    os.path.expanduser = expand_user
     # This import needs to be after enabling the sandbox so the runtime
     # implementation imports the sandboxed version of the logging module.
     from google.appengine.tools.devappserver2.python import request_handler
-
     server = wsgi_server.WsgiServer(
         ('localhost', port),
         request_rewriter.runtime_rewriter_middleware(

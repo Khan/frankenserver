@@ -74,7 +74,7 @@ def GetVersionObject():
   """Gets the version of the SDK by parsing the VERSION file.
 
   Returns:
-    A Yaml object or None if the VERSION file does not exist.
+    A dict with version information or None if the VERSION file does not exist.
   """
   version_filename = os.path.join(os.path.dirname(google.appengine.__file__),
                                   VERSION_FILE)
@@ -192,17 +192,19 @@ class SDKUpdateChecker(object):
       if unsupported_api_versions:
         unsupported_api_versions_found = True
         if len(unsupported_api_versions) == 1:
-          logging.critical('The requested api_version (%s) is not supported by '
-                           'the %s runtime in this release of the SDK. The '
-                           'supported api_versions are %s.',
-                           unsupported_api_versions[0], runtime,
-                           supported_api_versions)
+
+
+          logging.error('The requested api_version (%s) is not supported by '
+                        'the %s runtime in this release of the SDK. The '
+                        'supported api_versions are %s.',
+                        unsupported_api_versions[0], runtime,
+                        supported_api_versions)
         else:
-          logging.critical('The requested api_versions (%s) are not supported '
-                           'by the %s runtime in this release of the SDK. The '
-                           'supported api_versions are %s.',
-                           unsupported_api_versions, runtime,
-                           supported_api_versions)
+          logging.error('The requested api_versions (%s) are not supported '
+                        'by the %s runtime in this release of the SDK. The '
+                        'supported api_versions are %s.',
+                        unsupported_api_versions, runtime,
+                        supported_api_versions)
     if unsupported_api_versions_found:
       sys.exit(1)
 

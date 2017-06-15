@@ -20,6 +20,7 @@
 
 """Channel API.
 
+..Deprecated.
 This module allows App Engine apps to push messages to a client.
 
 Functions defined in this module:

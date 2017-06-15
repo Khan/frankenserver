@@ -33,7 +33,7 @@ class CloudDatastoreV1RemoteStub(object):
     self._datastore = datastore
 
   def MakeSyncCall(self, service, call, request, response):
-    assert service == 'cloud_datastore_v1beta3'
+    assert service == 'cloud_datastore_v1'
 
 
     call = call[0:1].lower() + call[1:]

@@ -18,45 +18,58 @@
 
 
 
-"""Exceptions raised my mail API."""
+"""Exceptions raised by the Mail API."""
+
 
 
 
 class Error(Exception):
   """Base Mail error type."""
 
+
 class BadRequestError(Error):
-  """Email is not valid."""
+  """The email is not valid."""
+
 
 class InvalidSenderError(Error):
-  """Sender is not a permitted to send mail for this application."""
+  """The sender is not permitted to send mail for this application."""
+
 
 class InvalidEmailError(Error):
-  """Bad email set on an email field."""
+  """The specified email is invalid."""
+
 
 class InvalidAttachmentTypeError(Error):
-  """Invalid file type for attachments.  We don't send viruses!"""
+  """The file type of the attachment is invalid."""
+
 
 class InvalidHeaderNameError(Error):
-  """Invalid name for mail header."""
+  """The header name is invalid."""
+
 
 class MissingRecipientsError(Error):
-  """No recipients specified in message."""
+  """A recipient was not specified in the message."""
+
 
 class MissingSenderError(Error):
-  """No sender specified in message."""
+  """A sender was not specified in the message."""
+
 
 class MissingSubjectError(Error):
-  """Subject not specified in message."""
+  """The subject was not specified in the message."""
+
 
 class MissingBodyError(Error):
-  """No body specified in message."""
+  """A body was not specified in the message."""
+
 
 class PayloadEncodingError(Error):
-  """Unknown payload encoding."""
+  """The payload encoding is unknown."""
+
 
 class UnknownEncodingError(PayloadEncodingError):
-  """Raised when encoding is not known."""
+  """The encoding is unknown."""
+
 
 class UnknownCharsetError(PayloadEncodingError):
-  """Raised when charset is not known."""
+  """The character set is unknown."""

@@ -60,7 +60,7 @@ def dispatch(method, headers, url, payload):
   exepected format for the request.
 
   Args:
-    method: A string represneting the HTTP request method.
+    method: A string representing the HTTP request method.
     headers: A dict mapping HTTP header names to values.
     url: A string representing the request URL in the form of
         http://<host>/_ah/gcs/<bucket>/<object>.
@@ -252,7 +252,29 @@ def _handle_get(gcs_stub, filename, param_dict, headers):
   mo = re.match(BUCKET_ONLY_PATH, filename)
   if mo is not None:
 
-    return _handle_get_bucket(gcs_stub, mo.group(1), param_dict)
+    if 'location' in param_dict:
+      builder = ET.TreeBuilder()
+      builder.start('LocationConstraint', {})
+      builder.data('US')
+      builder.end('LocationConstraint')
+      root = builder.close()
+      body = ET.tostring(root)
+      response_headers = {'content-length': len(body),
+                          'content-type': 'application/xml'}
+      return _FakeUrlFetchResult(httplib.OK, response_headers, body)
+    elif 'storageClass' in param_dict:
+      builder = ET.TreeBuilder()
+      builder.start('StorageClass', {})
+      builder.data('STANDARD')
+      builder.end('StorageClass')
+      root = builder.close()
+      body = ET.tostring(root)
+      response_headers = {'content-length': len(body),
+                          'content-type': 'application/xml'}
+      return _FakeUrlFetchResult(httplib.OK, response_headers, body)
+    else:
+
+      return _handle_get_bucket(gcs_stub, mo.group(1), param_dict)
   else:
 
     result = _handle_head(gcs_stub, filename)
@@ -440,7 +462,9 @@ class _ContentRange(_Header):
 class _Range(_Header):
   """_Range header.
 
-  Used by read. Format: Range: bytes=1-3.
+  Used by read. Formats:
+  Range: bytes=1-3
+  Range: bytes=1-
   """
 
   HEADER = 'Range'
@@ -449,7 +473,7 @@ class _Range(_Header):
     super(_Range, self).__init__(headers)
     if self.value:
       start, end = self.value.rsplit('=', 1)[-1].split('-')
-      start, end = long(start), long(end)
+      start, end = long(start), long(end) if end else None
     else:
       start, end = 0, None
     self.value = start, end

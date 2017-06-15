@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -120,14 +117,6 @@ class MemcacheServiceError(ProtocolBuffer.ProtocolMessage):
 class AppOverride(ProtocolBuffer.ProtocolMessage):
   has_app_id_ = 0
   app_id_ = ""
-  has_num_memcacheg_backends_ = 0
-  num_memcacheg_backends_ = 0
-  has_ignore_shardlock_ = 0
-  ignore_shardlock_ = 0
-  has_memcache_pool_hint_ = 0
-  memcache_pool_hint_ = ""
-  has_memcache_sharding_strategy_ = 0
-  memcache_sharding_strategy_ = ""
 
   def __init__(self, contents=None):
     if contents is not None: self.MergeFromString(contents)
@@ -145,79 +134,15 @@ class AppOverride(ProtocolBuffer.ProtocolMessage):
 
   def has_app_id(self): return self.has_app_id_
 
-  def num_memcacheg_backends(self): return self.num_memcacheg_backends_
-
-  def set_num_memcacheg_backends(self, x):
-    self.has_num_memcacheg_backends_ = 1
-    self.num_memcacheg_backends_ = x
-
-  def clear_num_memcacheg_backends(self):
-    if self.has_num_memcacheg_backends_:
-      self.has_num_memcacheg_backends_ = 0
-      self.num_memcacheg_backends_ = 0
-
-  def has_num_memcacheg_backends(self): return self.has_num_memcacheg_backends_
-
-  def ignore_shardlock(self): return self.ignore_shardlock_
-
-  def set_ignore_shardlock(self, x):
-    self.has_ignore_shardlock_ = 1
-    self.ignore_shardlock_ = x
-
-  def clear_ignore_shardlock(self):
-    if self.has_ignore_shardlock_:
-      self.has_ignore_shardlock_ = 0
-      self.ignore_shardlock_ = 0
-
-  def has_ignore_shardlock(self): return self.has_ignore_shardlock_
-
-  def memcache_pool_hint(self): return self.memcache_pool_hint_
-
-  def set_memcache_pool_hint(self, x):
-    self.has_memcache_pool_hint_ = 1
-    self.memcache_pool_hint_ = x
-
-  def clear_memcache_pool_hint(self):
-    if self.has_memcache_pool_hint_:
-      self.has_memcache_pool_hint_ = 0
-      self.memcache_pool_hint_ = ""
-
-  def has_memcache_pool_hint(self): return self.has_memcache_pool_hint_
-
-  def memcache_sharding_strategy(self): return self.memcache_sharding_strategy_
-
-  def set_memcache_sharding_strategy(self, x):
-    self.has_memcache_sharding_strategy_ = 1
-    self.memcache_sharding_strategy_ = x
-
-  def clear_memcache_sharding_strategy(self):
-    if self.has_memcache_sharding_strategy_:
-      self.has_memcache_sharding_strategy_ = 0
-      self.memcache_sharding_strategy_ = ""
-
-  def has_memcache_sharding_strategy(self): return self.has_memcache_sharding_strategy_
-
 
   def MergeFrom(self, x):
     assert x is not self
     if (x.has_app_id()): self.set_app_id(x.app_id())
-    if (x.has_num_memcacheg_backends()): self.set_num_memcacheg_backends(x.num_memcacheg_backends())
-    if (x.has_ignore_shardlock()): self.set_ignore_shardlock(x.ignore_shardlock())
-    if (x.has_memcache_pool_hint()): self.set_memcache_pool_hint(x.memcache_pool_hint())
-    if (x.has_memcache_sharding_strategy()): self.set_memcache_sharding_strategy(x.memcache_sharding_strategy())
 
   def Equals(self, x):
     if x is self: return 1
     if self.has_app_id_ != x.has_app_id_: return 0
     if self.has_app_id_ and self.app_id_ != x.app_id_: return 0
-    if self.has_num_memcacheg_backends_ != x.has_num_memcacheg_backends_: return 0
-    if self.has_num_memcacheg_backends_ and self.num_memcacheg_backends_ != x.num_memcacheg_backends_: return 0
-    if self.has_ignore_shardlock_ != x.has_ignore_shardlock_: return 0
-    if self.has_ignore_shardlock_ and self.ignore_shardlock_ != x.ignore_shardlock_: return 0
-    if self.has_memcache_pool_hint_ != x.has_memcache_pool_hint_: return 0
-    if self.has_memcache_pool_hint_ and self.memcache_pool_hint_ != x.memcache_pool_hint_: return 0
-    if self.has_memcache_sharding_strategy_ != x.has_memcache_sharding_strategy_: return 0
-    if self.has_memcache_sharding_strategy_ and self.memcache_sharding_strategy_ != x.memcache_sharding_strategy_: return 0
     return 1
 
   def IsInitialized(self, debug_strs=None):
@@ -231,10 +156,6 @@ class AppOverride(ProtocolBuffer.ProtocolMessage):
   def ByteSize(self):
     n = 0
     n += self.lengthString(len(self.app_id_))
-    if (self.has_num_memcacheg_backends_): n += 1 + self.lengthVarInt64(self.num_memcacheg_backends_)
-    if (self.has_ignore_shardlock_): n += 2
-    if (self.has_memcache_pool_hint_): n += 1 + self.lengthString(len(self.memcache_pool_hint_))
-    if (self.has_memcache_sharding_strategy_): n += 1 + self.lengthString(len(self.memcache_sharding_strategy_))
     return n + 1
 
   def ByteSizePartial(self):
@@ -242,69 +163,25 @@ class AppOverride(ProtocolBuffer.ProtocolMessage):
     if (self.has_app_id_):
       n += 1
       n += self.lengthString(len(self.app_id_))
-    if (self.has_num_memcacheg_backends_): n += 1 + self.lengthVarInt64(self.num_memcacheg_backends_)
-    if (self.has_ignore_shardlock_): n += 2
-    if (self.has_memcache_pool_hint_): n += 1 + self.lengthString(len(self.memcache_pool_hint_))
-    if (self.has_memcache_sharding_strategy_): n += 1 + self.lengthString(len(self.memcache_sharding_strategy_))
     return n
 
   def Clear(self):
     self.clear_app_id()
-    self.clear_num_memcacheg_backends()
-    self.clear_ignore_shardlock()
-    self.clear_memcache_pool_hint()
-    self.clear_memcache_sharding_strategy()
 
   def OutputUnchecked(self, out):
     out.putVarInt32(10)
     out.putPrefixedString(self.app_id_)
-    if (self.has_num_memcacheg_backends_):
-      out.putVarInt32(16)
-      out.putVarInt32(self.num_memcacheg_backends_)
-    if (self.has_ignore_shardlock_):
-      out.putVarInt32(24)
-      out.putBoolean(self.ignore_shardlock_)
-    if (self.has_memcache_pool_hint_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.memcache_pool_hint_)
-    if (self.has_memcache_sharding_strategy_):
-      out.putVarInt32(42)
-      out.putPrefixedString(self.memcache_sharding_strategy_)
 
   def OutputPartial(self, out):
     if (self.has_app_id_):
       out.putVarInt32(10)
       out.putPrefixedString(self.app_id_)
-    if (self.has_num_memcacheg_backends_):
-      out.putVarInt32(16)
-      out.putVarInt32(self.num_memcacheg_backends_)
-    if (self.has_ignore_shardlock_):
-      out.putVarInt32(24)
-      out.putBoolean(self.ignore_shardlock_)
-    if (self.has_memcache_pool_hint_):
-      out.putVarInt32(34)
-      out.putPrefixedString(self.memcache_pool_hint_)
-    if (self.has_memcache_sharding_strategy_):
-      out.putVarInt32(42)
-      out.putPrefixedString(self.memcache_sharding_strategy_)
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 10:
         self.set_app_id(d.getPrefixedString())
-        continue
-      if tt == 16:
-        self.set_num_memcacheg_backends(d.getVarInt32())
-        continue
-      if tt == 24:
-        self.set_ignore_shardlock(d.getBoolean())
-        continue
-      if tt == 34:
-        self.set_memcache_pool_hint(d.getPrefixedString())
-        continue
-      if tt == 42:
-        self.set_memcache_sharding_strategy(d.getPrefixedString())
         continue
 
 
@@ -315,10 +192,6 @@ class AppOverride(ProtocolBuffer.ProtocolMessage):
   def __str__(self, prefix="", printElemNumber=0):
     res=""
     if self.has_app_id_: res+=prefix+("app_id: %s\n" % self.DebugFormatString(self.app_id_))
-    if self.has_num_memcacheg_backends_: res+=prefix+("num_memcacheg_backends: %s\n" % self.DebugFormatInt32(self.num_memcacheg_backends_))
-    if self.has_ignore_shardlock_: res+=prefix+("ignore_shardlock: %s\n" % self.DebugFormatBool(self.ignore_shardlock_))
-    if self.has_memcache_pool_hint_: res+=prefix+("memcache_pool_hint: %s\n" % self.DebugFormatString(self.memcache_pool_hint_))
-    if self.has_memcache_sharding_strategy_: res+=prefix+("memcache_sharding_strategy: %s\n" % self.DebugFormatString(self.memcache_sharding_strategy_))
     return res
 
 
@@ -326,28 +199,16 @@ class AppOverride(ProtocolBuffer.ProtocolMessage):
     return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
 
   kapp_id = 1
-  knum_memcacheg_backends = 2
-  kignore_shardlock = 3
-  kmemcache_pool_hint = 4
-  kmemcache_sharding_strategy = 5
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
     1: "app_id",
-    2: "num_memcacheg_backends",
-    3: "ignore_shardlock",
-    4: "memcache_pool_hint",
-    5: "memcache_sharding_strategy",
-  }, 5)
+  }, 1)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
     1: ProtocolBuffer.Encoder.STRING,
-    2: ProtocolBuffer.Encoder.NUMERIC,
-    3: ProtocolBuffer.Encoder.NUMERIC,
-    4: ProtocolBuffer.Encoder.STRING,
-    5: ProtocolBuffer.Encoder.STRING,
-  }, 5, ProtocolBuffer.Encoder.MAX_TYPE)
+  }, 1, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -787,8 +648,30 @@ class MemcacheGetResponse_Item(ProtocolBuffer.ProtocolMessage):
 
 class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
 
+
+  HIT          =    1
+  MISS         =    2
+  TRUNCATED    =    3
+  DEADLINE_EXCEEDED =    4
+  UNREACHABLE  =    5
+  OTHER_ERROR  =    6
+
+  _GetStatusCode_NAMES = {
+    1: "HIT",
+    2: "MISS",
+    3: "TRUNCATED",
+    4: "DEADLINE_EXCEEDED",
+    5: "UNREACHABLE",
+    6: "OTHER_ERROR",
+  }
+
+  def GetStatusCode_Name(cls, x): return cls._GetStatusCode_NAMES.get(x, "")
+  GetStatusCode_Name = classmethod(GetStatusCode_Name)
+
+
   def __init__(self, contents=None):
     self.item_ = []
+    self.get_status_ = []
     if contents is not None: self.MergeFromString(contents)
 
   def item_size(self): return len(self.item_)
@@ -807,15 +690,34 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
 
   def clear_item(self):
     self.item_ = []
+  def get_status_size(self): return len(self.get_status_)
+  def get_status_list(self): return self.get_status_
+
+  def get_status(self, i):
+    return self.get_status_[i]
+
+  def set_get_status(self, i, x):
+    self.get_status_[i] = x
+
+  def add_get_status(self, x):
+    self.get_status_.append(x)
+
+  def clear_get_status(self):
+    self.get_status_ = []
+
 
   def MergeFrom(self, x):
     assert x is not self
     for i in xrange(x.item_size()): self.add_item().CopyFrom(x.item(i))
+    for i in xrange(x.get_status_size()): self.add_get_status(x.get_status(i))
 
   def Equals(self, x):
     if x is self: return 1
     if len(self.item_) != len(x.item_): return 0
     for e1, e2 in zip(self.item_, x.item_):
+      if e1 != e2: return 0
+    if len(self.get_status_) != len(x.get_status_): return 0
+    for e1, e2 in zip(self.get_status_, x.get_status_):
       if e1 != e2: return 0
     return 1
 
@@ -829,34 +731,48 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
     n = 0
     n += 2 * len(self.item_)
     for i in xrange(len(self.item_)): n += self.item_[i].ByteSize()
+    n += 1 * len(self.get_status_)
+    for i in xrange(len(self.get_status_)): n += self.lengthVarInt64(self.get_status_[i])
     return n
 
   def ByteSizePartial(self):
     n = 0
     n += 2 * len(self.item_)
     for i in xrange(len(self.item_)): n += self.item_[i].ByteSizePartial()
+    n += 1 * len(self.get_status_)
+    for i in xrange(len(self.get_status_)): n += self.lengthVarInt64(self.get_status_[i])
     return n
 
   def Clear(self):
     self.clear_item()
+    self.clear_get_status()
 
   def OutputUnchecked(self, out):
     for i in xrange(len(self.item_)):
       out.putVarInt32(11)
       self.item_[i].OutputUnchecked(out)
       out.putVarInt32(12)
+    for i in xrange(len(self.get_status_)):
+      out.putVarInt32(56)
+      out.putVarInt32(self.get_status_[i])
 
   def OutputPartial(self, out):
     for i in xrange(len(self.item_)):
       out.putVarInt32(11)
       self.item_[i].OutputPartial(out)
       out.putVarInt32(12)
+    for i in xrange(len(self.get_status_)):
+      out.putVarInt32(56)
+      out.putVarInt32(self.get_status_[i])
 
   def TryMerge(self, d):
     while d.avail() > 0:
       tt = d.getVarInt32()
       if tt == 11:
         self.add_item().TryMerge(d)
+        continue
+      if tt == 56:
+        self.add_get_status(d.getVarInt32())
         continue
 
 
@@ -874,6 +790,12 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
       res+=e.__str__(prefix + "  ", printElemNumber)
       res+=prefix+"}\n"
       cnt+=1
+    cnt=0
+    for e in self.get_status_:
+      elm=""
+      if printElemNumber: elm="(%d)" % cnt
+      res+=prefix+("get_status%s: %s\n" % (elm, self.DebugFormatInt32(e)))
+      cnt+=1
     return res
 
 
@@ -886,6 +808,7 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
   kItemflags = 4
   kItemcas_id = 5
   kItemexpires_in_seconds = 6
+  kget_status = 7
 
   _TEXT = _BuildTagLookupTable({
     0: "ErrorCode",
@@ -895,7 +818,8 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
     4: "flags",
     5: "cas_id",
     6: "expires_in_seconds",
-  }, 6)
+    7: "get_status",
+  }, 7)
 
   _TYPES = _BuildTagLookupTable({
     0: ProtocolBuffer.Encoder.NUMERIC,
@@ -905,7 +829,8 @@ class MemcacheGetResponse(ProtocolBuffer.ProtocolMessage):
     4: ProtocolBuffer.Encoder.FLOAT,
     5: ProtocolBuffer.Encoder.DOUBLE,
     6: ProtocolBuffer.Encoder.NUMERIC,
-  }, 6, ProtocolBuffer.Encoder.MAX_TYPE)
+    7: ProtocolBuffer.Encoder.NUMERIC,
+  }, 7, ProtocolBuffer.Encoder.MAX_TYPE)
 
 
   _STYLE = """"""
@@ -1423,12 +1348,18 @@ class MemcacheSetResponse(ProtocolBuffer.ProtocolMessage):
   NOT_STORED   =    2
   ERROR        =    3
   EXISTS       =    4
+  DEADLINE_EXCEEDED =    5
+  UNREACHABLE  =    6
+  OTHER_ERROR  =    7
 
   _SetStatusCode_NAMES = {
     1: "STORED",
     2: "NOT_STORED",
     3: "ERROR",
     4: "EXISTS",
+    5: "DEADLINE_EXCEEDED",
+    6: "UNREACHABLE",
+    7: "OTHER_ERROR",
   }
 
   def SetStatusCode_Name(cls, x): return cls._SetStatusCode_NAMES.get(x, "")
@@ -1855,10 +1786,18 @@ class MemcacheDeleteResponse(ProtocolBuffer.ProtocolMessage):
 
   DELETED      =    1
   NOT_FOUND    =    2
+  DEADLINE_EXCEEDED =    3
+  UNREACHABLE  =    4
+  OTHER_ERROR  =    5
+  CAS_MISMATCH =    6
 
   _DeleteStatusCode_NAMES = {
     1: "DELETED",
     2: "NOT_FOUND",
+    3: "DEADLINE_EXCEEDED",
+    4: "UNREACHABLE",
+    5: "OTHER_ERROR",
+    6: "CAS_MISMATCH",
   }
 
   def DeleteStatusCode_Name(cls, x): return cls._DeleteStatusCode_NAMES.get(x, "")
@@ -2306,11 +2245,17 @@ class MemcacheIncrementResponse(ProtocolBuffer.ProtocolMessage):
   OK           =    1
   NOT_CHANGED  =    2
   ERROR        =    3
+  DEADLINE_EXCEEDED =    4
+  UNREACHABLE  =    5
+  OTHER_ERROR  =    6
 
   _IncrementStatusCode_NAMES = {
     1: "OK",
     2: "NOT_CHANGED",
     3: "ERROR",
+    4: "DEADLINE_EXCEEDED",
+    5: "UNREACHABLE",
+    6: "OTHER_ERROR",
   }
 
   def IncrementStatusCode_Name(cls, x): return cls._IncrementStatusCode_NAMES.get(x, "")
@@ -3705,420 +3650,7 @@ class MemcacheStatsResponse(ProtocolBuffer.ProtocolMessage):
   _STYLE = """"""
   _STYLE_CONTENT_TYPE = """"""
   _PROTO_DESCRIPTOR_NAME = 'apphosting.MemcacheStatsResponse'
-class MemcacheGrabTailRequest(ProtocolBuffer.ProtocolMessage):
-  has_item_count_ = 0
-  item_count_ = 0
-  has_name_space_ = 0
-  name_space_ = ""
-  has_override_ = 0
-  override_ = None
-
-  def __init__(self, contents=None):
-    self.lazy_init_lock_ = thread.allocate_lock()
-    if contents is not None: self.MergeFromString(contents)
-
-  def item_count(self): return self.item_count_
-
-  def set_item_count(self, x):
-    self.has_item_count_ = 1
-    self.item_count_ = x
-
-  def clear_item_count(self):
-    if self.has_item_count_:
-      self.has_item_count_ = 0
-      self.item_count_ = 0
-
-  def has_item_count(self): return self.has_item_count_
-
-  def name_space(self): return self.name_space_
-
-  def set_name_space(self, x):
-    self.has_name_space_ = 1
-    self.name_space_ = x
-
-  def clear_name_space(self):
-    if self.has_name_space_:
-      self.has_name_space_ = 0
-      self.name_space_ = ""
-
-  def has_name_space(self): return self.has_name_space_
-
-  def override(self):
-    if self.override_ is None:
-      self.lazy_init_lock_.acquire()
-      try:
-        if self.override_ is None: self.override_ = AppOverride()
-      finally:
-        self.lazy_init_lock_.release()
-    return self.override_
-
-  def mutable_override(self): self.has_override_ = 1; return self.override()
-
-  def clear_override(self):
-
-    if self.has_override_:
-      self.has_override_ = 0;
-      if self.override_ is not None: self.override_.Clear()
-
-  def has_override(self): return self.has_override_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_item_count()): self.set_item_count(x.item_count())
-    if (x.has_name_space()): self.set_name_space(x.name_space())
-    if (x.has_override()): self.mutable_override().MergeFrom(x.override())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_item_count_ != x.has_item_count_: return 0
-    if self.has_item_count_ and self.item_count_ != x.item_count_: return 0
-    if self.has_name_space_ != x.has_name_space_: return 0
-    if self.has_name_space_ and self.name_space_ != x.name_space_: return 0
-    if self.has_override_ != x.has_override_: return 0
-    if self.has_override_ and self.override_ != x.override_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_item_count_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: item_count not set.')
-    if (self.has_override_ and not self.override_.IsInitialized(debug_strs)): initialized = 0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthVarInt64(self.item_count_)
-    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
-    if (self.has_override_): n += 1 + self.lengthString(self.override_.ByteSize())
-    return n + 1
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_item_count_):
-      n += 1
-      n += self.lengthVarInt64(self.item_count_)
-    if (self.has_name_space_): n += 1 + self.lengthString(len(self.name_space_))
-    if (self.has_override_): n += 1 + self.lengthString(self.override_.ByteSizePartial())
-    return n
-
-  def Clear(self):
-    self.clear_item_count()
-    self.clear_name_space()
-    self.clear_override()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(8)
-    out.putVarInt32(self.item_count_)
-    if (self.has_name_space_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.name_space_)
-    if (self.has_override_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.override_.ByteSize())
-      self.override_.OutputUnchecked(out)
-
-  def OutputPartial(self, out):
-    if (self.has_item_count_):
-      out.putVarInt32(8)
-      out.putVarInt32(self.item_count_)
-    if (self.has_name_space_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.name_space_)
-    if (self.has_override_):
-      out.putVarInt32(26)
-      out.putVarInt32(self.override_.ByteSizePartial())
-      self.override_.OutputPartial(out)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 8:
-        self.set_item_count(d.getVarInt32())
-        continue
-      if tt == 18:
-        self.set_name_space(d.getPrefixedString())
-        continue
-      if tt == 26:
-        length = d.getVarInt32()
-        tmp = ProtocolBuffer.Decoder(d.buffer(), d.pos(), d.pos() + length)
-        d.skip(length)
-        self.mutable_override().TryMerge(tmp)
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_item_count_: res+=prefix+("item_count: %s\n" % self.DebugFormatInt32(self.item_count_))
-    if self.has_name_space_: res+=prefix+("name_space: %s\n" % self.DebugFormatString(self.name_space_))
-    if self.has_override_:
-      res+=prefix+"override <\n"
-      res+=self.override_.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+">\n"
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kitem_count = 1
-  kname_space = 2
-  koverride = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "item_count",
-    2: "name_space",
-    3: "override",
-  }, 3)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.NUMERIC,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.STRING,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting.MemcacheGrabTailRequest'
-class MemcacheGrabTailResponse_Item(ProtocolBuffer.ProtocolMessage):
-  has_value_ = 0
-  value_ = ""
-  has_flags_ = 0
-  flags_ = 0
-
-  def __init__(self, contents=None):
-    if contents is not None: self.MergeFromString(contents)
-
-  def value(self): return self.value_
-
-  def set_value(self, x):
-    self.has_value_ = 1
-    self.value_ = x
-
-  def clear_value(self):
-    if self.has_value_:
-      self.has_value_ = 0
-      self.value_ = ""
-
-  def has_value(self): return self.has_value_
-
-  def flags(self): return self.flags_
-
-  def set_flags(self, x):
-    self.has_flags_ = 1
-    self.flags_ = x
-
-  def clear_flags(self):
-    if self.has_flags_:
-      self.has_flags_ = 0
-      self.flags_ = 0
-
-  def has_flags(self): return self.has_flags_
-
-
-  def MergeFrom(self, x):
-    assert x is not self
-    if (x.has_value()): self.set_value(x.value())
-    if (x.has_flags()): self.set_flags(x.flags())
-
-  def Equals(self, x):
-    if x is self: return 1
-    if self.has_value_ != x.has_value_: return 0
-    if self.has_value_ and self.value_ != x.value_: return 0
-    if self.has_flags_ != x.has_flags_: return 0
-    if self.has_flags_ and self.flags_ != x.flags_: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    if (not self.has_value_):
-      initialized = 0
-      if debug_strs is not None:
-        debug_strs.append('Required field: value not set.')
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += self.lengthString(len(self.value_))
-    if (self.has_flags_): n += 5
-    return n + 1
-
-  def ByteSizePartial(self):
-    n = 0
-    if (self.has_value_):
-      n += 1
-      n += self.lengthString(len(self.value_))
-    if (self.has_flags_): n += 5
-    return n
-
-  def Clear(self):
-    self.clear_value()
-    self.clear_flags()
-
-  def OutputUnchecked(self, out):
-    out.putVarInt32(18)
-    out.putPrefixedString(self.value_)
-    if (self.has_flags_):
-      out.putVarInt32(29)
-      out.put32(self.flags_)
-
-  def OutputPartial(self, out):
-    if (self.has_value_):
-      out.putVarInt32(18)
-      out.putPrefixedString(self.value_)
-    if (self.has_flags_):
-      out.putVarInt32(29)
-      out.put32(self.flags_)
-
-  def TryMerge(self, d):
-    while 1:
-      tt = d.getVarInt32()
-      if tt == 12: break
-      if tt == 18:
-        self.set_value(d.getPrefixedString())
-        continue
-      if tt == 29:
-        self.set_flags(d.get32())
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    if self.has_value_: res+=prefix+("value: %s\n" % self.DebugFormatString(self.value_))
-    if self.has_flags_: res+=prefix+("flags: %s\n" % self.DebugFormatFixed32(self.flags_))
-    return res
-
-class MemcacheGrabTailResponse(ProtocolBuffer.ProtocolMessage):
-
-  def __init__(self, contents=None):
-    self.item_ = []
-    if contents is not None: self.MergeFromString(contents)
-
-  def item_size(self): return len(self.item_)
-  def item_list(self): return self.item_
-
-  def item(self, i):
-    return self.item_[i]
-
-  def mutable_item(self, i):
-    return self.item_[i]
-
-  def add_item(self):
-    x = MemcacheGrabTailResponse_Item()
-    self.item_.append(x)
-    return x
-
-  def clear_item(self):
-    self.item_ = []
-
-  def MergeFrom(self, x):
-    assert x is not self
-    for i in xrange(x.item_size()): self.add_item().CopyFrom(x.item(i))
-
-  def Equals(self, x):
-    if x is self: return 1
-    if len(self.item_) != len(x.item_): return 0
-    for e1, e2 in zip(self.item_, x.item_):
-      if e1 != e2: return 0
-    return 1
-
-  def IsInitialized(self, debug_strs=None):
-    initialized = 1
-    for p in self.item_:
-      if not p.IsInitialized(debug_strs): initialized=0
-    return initialized
-
-  def ByteSize(self):
-    n = 0
-    n += 2 * len(self.item_)
-    for i in xrange(len(self.item_)): n += self.item_[i].ByteSize()
-    return n
-
-  def ByteSizePartial(self):
-    n = 0
-    n += 2 * len(self.item_)
-    for i in xrange(len(self.item_)): n += self.item_[i].ByteSizePartial()
-    return n
-
-  def Clear(self):
-    self.clear_item()
-
-  def OutputUnchecked(self, out):
-    for i in xrange(len(self.item_)):
-      out.putVarInt32(11)
-      self.item_[i].OutputUnchecked(out)
-      out.putVarInt32(12)
-
-  def OutputPartial(self, out):
-    for i in xrange(len(self.item_)):
-      out.putVarInt32(11)
-      self.item_[i].OutputPartial(out)
-      out.putVarInt32(12)
-
-  def TryMerge(self, d):
-    while d.avail() > 0:
-      tt = d.getVarInt32()
-      if tt == 11:
-        self.add_item().TryMerge(d)
-        continue
-
-
-      if (tt == 0): raise ProtocolBuffer.ProtocolBufferDecodeError
-      d.skipData(tt)
-
-
-  def __str__(self, prefix="", printElemNumber=0):
-    res=""
-    cnt=0
-    for e in self.item_:
-      elm=""
-      if printElemNumber: elm="(%d)" % cnt
-      res+=prefix+("Item%s {\n" % elm)
-      res+=e.__str__(prefix + "  ", printElemNumber)
-      res+=prefix+"}\n"
-      cnt+=1
-    return res
-
-
-  def _BuildTagLookupTable(sparse, maxtag, default=None):
-    return tuple([sparse.get(i, default) for i in xrange(0, 1+maxtag)])
-
-  kItemGroup = 1
-  kItemvalue = 2
-  kItemflags = 3
-
-  _TEXT = _BuildTagLookupTable({
-    0: "ErrorCode",
-    1: "Item",
-    2: "value",
-    3: "flags",
-  }, 3)
-
-  _TYPES = _BuildTagLookupTable({
-    0: ProtocolBuffer.Encoder.NUMERIC,
-    1: ProtocolBuffer.Encoder.STARTGROUP,
-    2: ProtocolBuffer.Encoder.STRING,
-    3: ProtocolBuffer.Encoder.FLOAT,
-  }, 3, ProtocolBuffer.Encoder.MAX_TYPE)
-
-
-  _STYLE = """"""
-  _STYLE_CONTENT_TYPE = """"""
-  _PROTO_DESCRIPTOR_NAME = 'apphosting.MemcacheGrabTailResponse'
 if _extension_runtime:
   pass
 
-__all__ = ['MemcacheServiceError','AppOverride','MemcacheGetRequest','MemcacheGetResponse','MemcacheGetResponse_Item','MemcacheSetRequest','MemcacheSetRequest_Item','MemcacheSetResponse','MemcacheDeleteRequest','MemcacheDeleteRequest_Item','MemcacheDeleteResponse','MemcacheIncrementRequest','MemcacheIncrementResponse','MemcacheBatchIncrementRequest','MemcacheBatchIncrementResponse','MemcacheFlushRequest','MemcacheFlushResponse','MemcacheStatsRequest','MergedNamespaceStats','MemcacheHotKey','MemcacheStatsResponse','MemcacheGrabTailRequest','MemcacheGrabTailResponse','MemcacheGrabTailResponse_Item']
+__all__ = ['MemcacheServiceError','AppOverride','MemcacheGetRequest','MemcacheGetResponse','MemcacheGetResponse_Item','MemcacheSetRequest','MemcacheSetRequest_Item','MemcacheSetResponse','MemcacheDeleteRequest','MemcacheDeleteRequest_Item','MemcacheDeleteResponse','MemcacheIncrementRequest','MemcacheIncrementResponse','MemcacheBatchIncrementRequest','MemcacheBatchIncrementResponse','MemcacheFlushRequest','MemcacheFlushResponse','MemcacheStatsRequest','MergedNamespaceStats','MemcacheHotKey','MemcacheStatsResponse']

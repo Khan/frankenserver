@@ -31,6 +31,7 @@ from google.appengine.tools.devappserver2 import go_errors
 from google.appengine.tools.devappserver2 import go_managedvm
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
+from google.appengine.tools.devappserver2 import util
 
 _REBUILD_CONFIG_CHANGES = frozenset(
     [application_configuration.SKIP_FILES_CHANGED,
@@ -99,18 +100,20 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
           instance respresenting the configuration of the module that owns the
           runtime.
     """
-    super(GoRuntimeInstanceFactory, self).__init__(request_data, 1)
+    super(GoRuntimeInstanceFactory, self).__init__(request_data, 8, 10)
     self._runtime_config_getter = runtime_config_getter
     self._module_configuration = module_configuration
     self._application_lock = threading.Lock()
-    if module_configuration.runtime == 'vm' or module_configuration.env == '2':
+    if (module_configuration.runtime == 'vm' or
+        util.is_env_flex(module_configuration.env)):
       self._start_process_flavor = http_runtime.START_PROCESS_REVERSE
       self._go_application = go_managedvm.GoManagedVMApp(
           self._module_configuration)
     else:
       self._start_process_flavor = http_runtime.START_PROCESS
       self._go_application = go_application.GoApplication(
-          self._module_configuration)
+          self._module_configuration,
+          runtime_config_getter().go_config.work_dir)
     self._modified_since_last_build = False
     self._last_build_error = None
 
@@ -122,6 +125,8 @@ class GoRuntimeInstanceFactory(instance.InstanceFactory):
       deleted or modified) in these directories will trigger a restart of all
       instances created with this factory.
     """
+    if not self._runtime_config_getter().go_config.enable_watching_go_path:
+      return []
     try:
       go_path = os.environ['GOPATH']
     except KeyError:

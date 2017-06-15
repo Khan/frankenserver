@@ -40,6 +40,7 @@ class TestTaskQueueQueuesHandler(unittest.TestCase):
     self.mox.StubOutWithMock(taskqueue_utils.QueueInfo, 'get')
     self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler,
                              'render')
+    self.mox.StubOutWithMock(admin_request_handler.AdminRequestHandler, 'get')
 
   def tearDown(self):
     self.mox.UnsetStubs()
@@ -72,6 +73,7 @@ class TestTaskQueueQueuesHandler(unittest.TestCase):
     response = webapp2.Response()
 
     handler = taskqueue_queues_handler.TaskQueueQueuesHandler(request, response)
+    admin_request_handler.AdminRequestHandler(handler).get()
     handler.render('taskqueue_queues.html',
                    {'push_queues': [queue1, queue2],
                     'pull_queues': [queue3]})

@@ -22,9 +22,9 @@ import logging
 import sys
 import types
 
-from google.appengine.tools.devappserver2 import fsevents_file_watcher
 from google.appengine.tools.devappserver2 import inotify_file_watcher
 from google.appengine.tools.devappserver2 import mtime_file_watcher
+from google.appengine.tools.devappserver2 import win32_file_watcher
 
 
 class _MultipleFileWatcher(object):
@@ -43,14 +43,33 @@ class _MultipleFileWatcher(object):
     """
     self._file_watchers = watchers
 
+  def set_watcher_ignore_re(self, watcher_ignore_re):
+    """Allows the file watcher to ignore a custom pattern set by the user.
+
+    Args:
+      watcher_ignore_re: A RegexObject that optionally defines a pattern for the
+          file watcher to ignore.
+    """
+    for watcher in self._file_watchers:
+      # TODO: b/33178251 - Add watcher_ignore_re  support for windows.
+      if hasattr(watcher, 'set_watcher_ignore_re'):
+        watcher.set_watcher_ignore_re(watcher_ignore_re)
+
+  def set_skip_files_re(self, skip_files_re):
+    """Allows the file watcher to respect skip_files in app.yaml.
+
+    Args:
+      skip_files_re: The skip_files field of current ModuleConfiguration,
+          defined in app.yaml.
+    """
+    for watcher in self._file_watchers:
+      # TODO: b/33178251 - Add skip_files_re support for windows.
+      if hasattr(watcher, 'set_skip_files_re'):
+        watcher.set_skip_files_re(skip_files_re)
+
   def start(self):
     for watcher in self._file_watchers:
       watcher.start()
-
-  def set_skip_files_re(self, skip_files_re, skip_files_base_dir):
-    """All re's in skip_files_re are taken to be relative to its base-dir."""
-    for watcher in self._file_watchers:
-      watcher.set_skip_files_re(skip_files_re, skip_files_base_dir)
 
   def quit(self):
     for watcher in self._file_watchers:
@@ -62,8 +81,8 @@ class _MultipleFileWatcher(object):
     start() must be called before this method.
 
     Args:
-      timeout_ms: the maximum number of mulliseconds you allow this function to
-                  wait for a filesystem change.
+      timeout_ms: The maximum number of mulliseconds you allow this function to
+          wait for a filesystem change.
 
     Returns:
        An iterable of changed directories/files.
@@ -85,8 +104,8 @@ def _create_watcher(directories, watcher_class):
   there are multiple directories to watch.
 
   Args:
-    directories: an iterable of all the directories to watch.
-    watcher_class: a callable that creates the per-directory FileWatcher
+    directories: An iterable of all the directories to watch.
+    watcher_class: A callable that creates the per-directory FileWatcher
       instance. Must be callable with a single item of the type held by
       directories.
 
@@ -129,32 +148,6 @@ def _create_linux_watcher(directories):
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
 
 
-def _create_mac_watcher(directories):
-  """Create a watcher for Mac OS X.
-
-  While we prefer FSEventsFileWatcher for Mac OS X, the user may not have the
-  Python wrapper for the FSEvents framework installed. Try to create a
-  FSEventsFileWatcher but fall back on MTimeFileWatcher if the required Python
-  package is not available.
-
-  Args:
-    directories: A list representing the paths of the directories to monitor.
-
-  Returns:
-    A FSEventsFileWatcher if the required Python package is available and an
-    MTimeFileWatcher if not.
-  """
-  if fsevents_file_watcher.FSEventsFileWatcher.is_available():
-    return _create_watcher(directories,
-                           fsevents_file_watcher.FSEventsFileWatcher)
-  else:
-    logging.warning('Could not create FSEventsFileWatcher; falling back to '
-                    'the slower MTimeFileWatcher. To fix this, run '
-                    '"pip install -r requirements.txt" from your '
-                    'frankenserver directory.')
-    return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
-
-
 def get_file_watcher(directories, use_mtime_file_watcher):
   """Returns an instance that monitors a hierarchy of directories.
 
@@ -174,7 +167,18 @@ def get_file_watcher(directories, use_mtime_file_watcher):
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
   elif sys.platform.startswith('linux'):
     return _create_linux_watcher(directories)
-  elif sys.platform.startswith('darwin'):
-    return _create_mac_watcher(directories)
+  elif sys.platform.startswith('win'):
+    return _create_watcher(directories, win32_file_watcher.Win32FileWatcher)
   else:
     return _create_watcher(directories, mtime_file_watcher.MtimeFileWatcher)
+
+  # NOTE: The Darwin-specific watcher implementation (found in the deleted file
+  # fsevents_file_watcher.py) was incorrect - the Mac OS X FSEvents
+  # implementation does not detect changes in symlinked files or directories. It
+  # also does not provide file-level change precision before Mac OS 10.7.
+  #
+  # It is still possible to provide an efficient implementation by watching all
+  # symlinked directories and using mtime checking for symlinked files. On any
+  # change in a directory, it would have to be rescanned to see if a new
+  # symlinked file or directory was added. It also might be possible to use
+  # kevents instead of the Carbon API to detect files changes.

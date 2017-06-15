@@ -48,6 +48,7 @@ from google.appengine.tools.devappserver2 import module
 from google.appengine.tools.devappserver2 import python_runtime
 from google.appengine.tools.devappserver2 import runtime_config_pb2
 from google.appengine.tools.devappserver2 import start_response_utils
+from google.appengine.tools.devappserver2 import util
 from google.appengine.tools.devappserver2 import wsgi_server
 
 
@@ -108,6 +109,7 @@ class ModuleFacade(module.Module):
                php_config=None,
                python_config=None,
                java_config=None,
+               go_config=None,
                vm_config=None):
     super(ModuleFacade, self).__init__(
         module_configuration,
@@ -120,6 +122,7 @@ class ModuleFacade(module.Module):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=custom_config,
         cloud_sql_config=None,
         vm_config=vm_config,
@@ -129,6 +132,7 @@ class ModuleFacade(module.Module):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         automatic_restarts=True,
         allow_skipped_files=allow_skipped_files,
         threadsafe_override=threadsafe_override)
@@ -164,6 +168,7 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=None,
         cloud_sql_config=None,
         vm_config=None,
@@ -173,6 +178,7 @@ class AutoScalingModuleFacade(module.AutoScalingModule):
         dispatcher=None,
         max_instances=max_instances,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         automatic_restarts=True,
         allow_skipped_files=False,
         threadsafe_override=None)
@@ -210,6 +216,7 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=None,
         cloud_sql_config=None,
         vm_config=vm_config,
@@ -219,6 +226,7 @@ class ManualScalingModuleFacade(module.ManualScalingModule):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         automatic_restarts=True,
         allow_skipped_files=False,
         threadsafe_override=None)
@@ -254,6 +262,7 @@ class BasicScalingModuleFacade(module.BasicScalingModule):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=None,
         cloud_sql_config=None,
         vm_config=None,
@@ -263,6 +272,7 @@ class BasicScalingModuleFacade(module.BasicScalingModule):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         automatic_restarts=True,
         allow_skipped_files=False,
         threadsafe_override=None)
@@ -298,6 +308,7 @@ class ExternalModuleFacade(module.ExternalModule):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=None,
         cloud_sql_config=None,
         vm_config=None,
@@ -307,6 +318,7 @@ class ExternalModuleFacade(module.ExternalModule):
         dispatcher=None,
         max_instances=None,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         automatic_restarts=True,
         allow_skipped_files=False,
         threadsafe_override=None)
@@ -423,7 +435,7 @@ class TestModuleCreateUrlHandlers(googletest.TestCase):
         script='warmup_handler',
         login='admin')
     # Built-in: login, blob_upload, blob_image, channel, gcs, endpoints
-    self.num_builtin_handlers = 6
+    self.num_builtin_handlers = 5
 
   def test_match_all(self):
     self.module_configuration.handlers = [appinfo.URLMap(url=r'.*',
@@ -2521,6 +2533,7 @@ class TestInteractiveCommandModule(googletest.TestCase):
         php_config=None,
         python_config=None,
         java_config=None,
+        go_config=None,
         custom_config=None,
         cloud_sql_config=None,
         vm_config=None,
@@ -2529,6 +2542,7 @@ class TestInteractiveCommandModule(googletest.TestCase):
         request_data=None,
         dispatcher=None,
         use_mtime_file_watcher=False,
+        watcher_ignore_re=None,
         allow_skipped_files=False,
         threadsafe_override=None)
     self.mox.StubOutWithMock(self.servr._instance_factory, 'new_instance')
@@ -2728,7 +2742,7 @@ class InstanceFactoryTest(googletest.TestCase):
     self.mox.VerifyAll()
 
   def _run_test(self, runtime, expected_factory_class, vm=False, env='1'):
-    if vm or env == '2':
+    if vm or util.is_env_flex(env):
       module_stub = ModuleFacade(vm_config=runtime_config_pb2.VMConfig())
       module_configuration = ModuleConfigurationStub(runtime='vm')
       module_configuration.env = env
@@ -2747,7 +2761,7 @@ class InstanceFactoryTest(googletest.TestCase):
 
   def test_non_vm_go(self):
     self.mox.StubOutWithMock(go_application, 'GoApplication')
-    go_application.GoApplication(mox.IgnoreArg())
+    go_application.GoApplication(mox.IgnoreArg(), mox.IgnoreArg())
     self._run_test('go', go_runtime.GoRuntimeInstanceFactory)
 
   def test_non_vm_java(self):
@@ -2768,13 +2782,31 @@ class InstanceFactoryTest(googletest.TestCase):
     self._run_test(
         'custom', custom_runtime.CustomRuntimeInstanceFactory, vm=True)
 
-  def test_env_python_compat(self):
+  def test_env_2_python_compat(self):
     self._run_test(
         'python-compat', python_runtime.PythonRuntimeInstanceFactory, env='2')
 
-  def test_env_go(self):
+  def test_env_2_go(self):
     self._run_test(
         'go', go_runtime.GoRuntimeInstanceFactory, env='2')
+
+  def test_env_flex_python_compat(self):
+    self._run_test(
+        'python-compat', python_runtime.PythonRuntimeInstanceFactory,
+        env='flex')
+
+  def test_env_flex_go(self):
+    self._run_test(
+        'go', go_runtime.GoRuntimeInstanceFactory, env='flex')
+
+  def test_env_flexible_python_compat(self):
+    self._run_test(
+        'python-compat', python_runtime.PythonRuntimeInstanceFactory,
+        env='flexible')
+
+  def test_env_flexible_go(self):
+    self._run_test(
+        'go', go_runtime.GoRuntimeInstanceFactory, env='flexible')
 
 
 class TestRuntimeConfigsInModuleCreation(googletest.TestCase):
@@ -2786,7 +2818,7 @@ class TestRuntimeConfigsInModuleCreation(googletest.TestCase):
         runtime='custom',
         effective_runtime='custom')
 
-  def testCustomRuntimeNoConfigs(self):
+  def test_custom_runtime_no_configs(self):
     """If using runtime: custom, must set --runtime or --custom_entrypoint"""
 
     with self.assertRaises(errors.InvalidAppConfigError):
@@ -2794,7 +2826,7 @@ class TestRuntimeConfigsInModuleCreation(googletest.TestCase):
           module_configuration=self.module_config,
           custom_config=self.custom_config)
 
-  def testCustomRuntimeWithRuntimeFlag(self):
+  def test_custom_runtime_with_runtime_flag(self):
     """The runtime flag should override the the original 'custom' runtime"""
 
     self.custom_config.runtime = 'python27'
@@ -2803,7 +2835,7 @@ class TestRuntimeConfigsInModuleCreation(googletest.TestCase):
         custom_config=self.custom_config)
     self.assertEquals(module.effective_runtime, self.custom_config.runtime)
 
-  def testCustomRuntimeWithTooManyFlags(self):
+  def test_custom_runtime_with_too_many_flags(self):
     """custom_entrypoint and runtime flag cannot both be set"""
 
     self.custom_config.runtime = 'python27'

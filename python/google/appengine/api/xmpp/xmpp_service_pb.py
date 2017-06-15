@@ -21,9 +21,6 @@ from google.net.proto import ProtocolBuffer
 import array
 import dummy_thread as thread
 
-__pychecker__ = """maxreturns=0 maxbranches=0 no-callinit
-                   unusednames=printElemNumber,debug_strs no-special"""
-
 if hasattr(ProtocolBuffer, 'ExtendableProtocolMessage'):
   _extension_runtime = True
   _ExtendableProtocolMessage = ProtocolBuffer.ExtendableProtocolMessage
@@ -949,11 +946,15 @@ class XmppMessageResponse(ProtocolBuffer.ProtocolMessage):
   NO_ERROR     =    0
   INVALID_JID  =    1
   OTHER_ERROR  =    2
+  INVALID_XML  =    3
+  INVALID_TYPE =    4
 
   _XmppMessageStatus_NAMES = {
     0: "NO_ERROR",
     1: "INVALID_JID",
     2: "OTHER_ERROR",
+    3: "INVALID_XML",
+    4: "INVALID_TYPE",
   }
 
   def XmppMessageStatus_Name(cls, x): return cls._XmppMessageStatus_NAMES.get(x, "")

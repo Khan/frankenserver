@@ -18,6 +18,7 @@
 
 
 
+import socket
 import unittest
 import wsgiref
 
@@ -51,6 +52,13 @@ class UtilTest(unittest.TestCase):
                       'HTTP_CONTENT_LENGTH': '2',
                       'HTTP_X_USER_IP': '127.0.0.1',
                       'HTTP_ACCESS_CONTROL_ALLOW_ORIGIN': 'google.com'})
+
+
+class HTTPServerIPv6Test(unittest.TestCase):
+
+  def testHasIPv6AddressFamily(self):
+    server = util.HTTPServerIPv6(None, None, None)
+    self.assertEqual(server.address_family, socket.AF_INET6)
 
 if __name__ == '__main__':
   unittest.main()

@@ -1,7 +1,7 @@
 Index: requests/LICENSE
 ===================================================================
---- requests.orig/LICENSE	2015-03-16 14:12:35.000000000 -0700
-+++ requests/LICENSE	2015-03-17 09:44:53.000000000 -0700
+--- requests.orig/LICENSE
++++ requests/LICENSE
 @@ -11,3 +11,806 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and

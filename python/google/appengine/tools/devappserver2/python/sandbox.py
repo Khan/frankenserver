@@ -21,7 +21,6 @@
 import __builtin__
 import imp
 import os
-import platform
 import re
 import sys
 import traceback
@@ -43,23 +42,6 @@ from google.appengine.tools.devappserver2.python import stubs
 CODING_MAGIC_COMMENT_RE = re.compile('coding[:=]\s*([-\w.]+)')
 DEFAULT_ENCODING = 'ascii'
 
-_C_MODULES = frozenset(['cv', 'Crypto', 'lxml', 'numpy', 'PIL'])
-
-NAME_TO_CMODULE_WHITELIST_REGEX = {
-    'cv': re.compile(r'cv(\..*)?$'),
-    'lxml': re.compile(r'lxml(\..*)?$'),
-    'numpy': re.compile(r'numpy(\..*)?$'),
-    'pycrypto': re.compile(r'Crypto(\..*)?$'),
-    'PIL': re.compile(r'(PIL(\..*)?|_imaging|_imagingft|_imagingmath)$'),
-    'ssl': re.compile(r'_ssl$'),
-}
-
-# Maps App Engine third-party library names to the Python package name for
-# libraries whose names differ from the package names.
-_THIRD_PARTY_LIBRARY_NAME_OVERRIDES = {
-    'pycrypto': 'Crypto',
-}
-
 # The location of third-party libraries will be different for the packaged SDK.
 _THIRD_PARTY_LIBRARY_FORMAT_STRING = (
     'lib/%(name)s-%(version)s')
@@ -67,7 +49,154 @@ _THIRD_PARTY_LIBRARY_FORMAT_STRING = (
 # Store all the modules removed from sys.modules so they don't get cleaned up.
 _removed_modules = []
 
+# Stores open hooks that will be installed when the sandbox is enabled. See
+# add_open_hook for more documentation.
 _open_hooks = []
+
+# Whitelisted standard Python modules that are based on C-extensions.
+_WHITE_LIST_C_MODULES = [
+    'array',
+    '_ast',
+    'binascii',
+    '_bisect',
+    '_bytesio',
+    'bz2',
+    'cmath',
+    '_codecs',
+    '_codecs_cn',
+    '_codecs_hk',
+    '_codecs_iso2022',
+    '_codecs_jp',
+    '_codecs_kr',
+    '_codecs_tw',
+    '_collections',  # Python 2.6 compatibility
+    'crypt',
+    'cPickle',
+    'cStringIO',
+    '_csv',
+    'datetime',
+    '_elementtree',
+    'errno',
+    'exceptions',
+    '_fileio',
+    '_functools',
+    'future_builtins',
+    'gc',
+    '_hashlib',
+    '_heapq',
+    'imp',
+    '_io',
+    'itertools',
+    '_json',
+    '_locale',
+    '_lsprof',
+    '__main__',
+    'marshal',
+    'math',
+    '_md5',  # Python2.5 compatibility
+    '_multibytecodec',
+    'nt',  # Only indirectly through the os module.
+    'operator',
+    'parser',
+    'posix',  # Only indirectly through the os module.
+    'pyexpat',
+    '_random',
+    '_scproxy',  # Mac OS X compatibility
+    '_sha256',  # Python2.5 compatibility
+    '_sha512',  # Python2.5 compatibility
+    '_sha',  # Python2.5 compatibility
+    '_sre',
+    'strop',
+    '_struct',
+    '_symtable',
+    'sys',
+    'thread',
+    'time',
+    'timing',
+    'unicodedata',
+    '_warnings',
+    '_weakref',
+    'zipimport',
+    'zlib',
+]
+
+
+class _ThirdPartyCModule(object):
+  """Represents a whitelisted third party module containing C-extensions."""
+
+  def __init__(self, name, whitelist_regex, import_name=None):
+    """Initializes a _ThirdPartyCModule instance.
+
+    Args:
+      name: The string name of the library, eg as defined by PyPi.
+      whitelist_regex: A regex string representing additional sub modules to
+        whitelist.
+      import_name: The string identifier of the imported package. Eg, for the
+        library named 'pycrypto', the imported package is named 'Crypto'.
+    """
+    self.name = name
+    self.whitelist_regex = re.compile(whitelist_regex)
+    self.import_name = import_name or name
+
+
+class _ThirdPartyCModules(object):
+  """Manages whitelisted third-party modules containing C-extensions.
+
+  Pure python built-in App Engine third-party libraries are shipped with the
+  SDKs. Libraries requiring C-extensions are not. For these, we whitelist
+  the imports so that the devappserver can import from the user's local
+  installations.
+  """
+
+  def __init__(self, modules):
+    """Initializes a _ThirdPartyCModules instance."""
+    self._name_to_module = {module.name: module for module in modules}
+
+  def get_importable_module_names(self, config):
+    """Returns the third-party C-extension module names defined in config.
+
+    Args:
+      config: The runtime_config_pb2.Config to use to configure the sandbox.
+
+    Returns:
+      A set of string third-party module import names using C-extensions that
+      are specified in the provided config.
+    """
+    return set(
+        self._name_to_module[lib.name].import_name
+        for lib in config.libraries
+        if lib.name in self._name_to_module
+    )
+
+  def get_enabled_regexes(self, config):
+    """Returns a set of enabled regex strings for libraries in config.
+
+    Args:
+      config: The runtime_config_pb2.Config to use to configure the sandbox.
+
+    Returns:
+      A list of enabled regex strings for libraries in config.
+    """
+    return [
+        self._name_to_module[lib.name].whitelist_regex
+        for lib in config.libraries
+        if lib.name in self._name_to_module
+    ]
+
+
+THIRD_PARTY_C_MODULES = _ThirdPartyCModules([
+    _ThirdPartyCModule('grpcio', r'grpc(\..*)?$', import_name='grpc'),
+    _ThirdPartyCModule('pycrypto', r'Crypto(\..*)?$', import_name='Crypto'),
+    _ThirdPartyCModule('lxml', r'lxml(\..*)?$'),
+    _ThirdPartyCModule('numpy', r'numpy(\..*)?$'),
+    _ThirdPartyCModule(
+        'PIL', r'(PIL(\..*)?|_imaging|_imagingft|_imagingmath)$'),
+    _ThirdPartyCModule('pytz', r'pytz(\..*)?$'),
+    # Note, SSL is traditionally a standard Python library, but App Engine
+    # treats it like a third-party library, requiring it to be configured in
+    # app.yaml.
+    _ThirdPartyCModule('ssl', r'_ssl$'),
+])
 
 
 def add_open_hook(install_open_hook):
@@ -162,14 +291,9 @@ def enable_sandbox(config):
   # Note that the above code (see _find_shared_object_c_module) imports modules
   # that must be pruned so please use care if you move the call to
   # _prune_sys_modules.
-  #
-  # Also note that _prune_sys_modules may not make sense for non-CPython
-  # environments, so in that situation, don't.
-  if platform.python_implementation() == 'CPython':
-    _prune_sys_modules()
+  _prune_sys_modules()
   path_override_hook = PathOverrideImportHook(
-      set(_THIRD_PARTY_LIBRARY_NAME_OVERRIDES.get(lib.name, lib.name)
-          for lib in config.libraries).intersection(_C_MODULES))
+      THIRD_PARTY_C_MODULES.get_importable_module_names(config))
   python_lib_paths.extend(path_override_hook.extra_sys_paths)
   if not config.vm:
     _install_fake_file(config, python_lib_paths, path_override_hook)
@@ -241,16 +365,14 @@ def _install_import_hooks(config, path_override_hook):
         section of the current module's app.yaml file.
   """
   if not config.vm:
-    enabled_library_regexes = [
-        NAME_TO_CMODULE_WHITELIST_REGEX[lib.name] for lib in config.libraries
-        if lib.name in NAME_TO_CMODULE_WHITELIST_REGEX]
+    enabled_regexes = THIRD_PARTY_C_MODULES.get_enabled_regexes(config)
     sys.meta_path = [
         StubModuleImportHook(),
         ModuleOverrideImportHook(_MODULE_OVERRIDE_POLICIES),
-        CModuleImportHook(enabled_library_regexes),
+        CModuleImportHook(enabled_regexes),
         path_override_hook,
         PyCryptoRandomImportHook,
-        PathRestrictingImportHook(enabled_library_regexes)]
+        PathRestrictingImportHook(enabled_regexes)]
   else:
     sys.meta_path = [
         # Picks up custom versions of certain libraries in the libraries section
@@ -302,8 +424,8 @@ def _find_shared_object_c_module():
 
 def _should_keep_module(name):
   """Returns True if the module should be retained after sandboxing."""
-  return (name in ('__builtin__', 'sys', 'codecs', 'encodings', 'site',
-                   'google') or
+  return (name in ('__builtin__', '__main__', 'sys', 'codecs', 'encodings',
+                   'site', 'google') or
           name.startswith('google.') or name.startswith('encodings.') or
 
 
@@ -865,72 +987,6 @@ class StubModuleImportHook(BaseImportHook):
     sys.modules[name] = module
     return module
 
-_WHITE_LIST_C_MODULES = [
-    'array',
-    '_ast',
-    'binascii',
-    '_bisect',
-    '_bytesio',
-    'bz2',
-    'cmath',
-    '_codecs',
-    '_codecs_cn',
-    '_codecs_hk',
-    '_codecs_iso2022',
-    '_codecs_jp',
-    '_codecs_kr',
-    '_codecs_tw',
-    '_collections',  # Python 2.6 compatibility
-    'crypt',
-    'cPickle',
-    'cStringIO',
-    '_csv',
-    'datetime',
-    '_elementtree',
-    'errno',
-    'exceptions',
-    '_fileio',
-    '_functools',
-    'future_builtins',
-    'gc',
-    '_hashlib',
-    '_heapq',
-    'imp',
-    '_io',
-    'itertools',
-    '_json',
-    '_locale',
-    '_lsprof',
-    '__main__',
-    'marshal',
-    'math',
-    '_md5',  # Python2.5 compatibility
-    '_multibytecodec',
-    'nt',  # Only indirectly through the os module.
-    'operator',
-    'parser',
-    'posix',  # Only indirectly through the os module.
-    'pyexpat',
-    '_random',
-    '_scproxy',  # Mac OS X compatibility
-    '_sha256',  # Python2.5 compatibility
-    '_sha512',  # Python2.5 compatibility
-    '_sha',  # Python2.5 compatibility
-    '_sre',
-    'strop',
-    '_struct',
-    '_symtable',
-    'sys',
-    'thread',
-    'time',
-    'timing',
-    'unicodedata',
-    '_warnings',
-    '_weakref',
-    'zipimport',
-    'zlib',
-]
-
 
 class CModuleImportHook(object):
   """An import hook implementing a C module (builtin or extensions) whitelist.
@@ -998,6 +1054,7 @@ class PathRestrictingImportHook(object):
         (filename.endswith('.pyc') and
          os.path.exists(filename.replace('.pyc', '.py')))):
       return None
+
     return self
 
   def load_module(self, fullname):

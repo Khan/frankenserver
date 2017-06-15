@@ -89,3 +89,6 @@ from search import TIMESTAMP_FIELD_NAME
 from search import TokenizedPrefixField
 from search import TransientError
 from search import UntokenizedPrefixField
+from search import VECTOR_FIELD_MAX_SIZE
+from search import VectorField
+

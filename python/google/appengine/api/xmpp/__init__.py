@@ -20,18 +20,18 @@
 
 """XMPP API.
 
-This module allows AppEngine apps to interact with a bot representing that app
-on the Google Talk network.
+...Deprecated.
 
-Functions defined in this module:
-  send_message: Sends a chat message to any number of JIDs.
-  send_invite: Sends an invitation to chat to a JID.
-  send_presence: Sends a presence to a JID.
+An App Engine application can send and receive chat messages to and from any
+XMPP-compatible chat messaging service. An app can send and receive chat
+messages, send chat invites, request a user's chat presence and status, and
+provide a chat status. Incoming XMPP messages are handled by request handlers,
+similar to web requests.
 
-  get_presence: Method to get the presence for a JID.
-
-Classes defined in this module:
-  Message: A class to encapsulate received messages.
+Some possible uses of chat messages include automated chat participants ("chat
+bots"), chat notifications, and chat interfaces to services. A rich client with
+a connection to an XMPP server can use XMPP to interact with an App Engine
+application in real time, including receiving messages initiated by the app.
 """
 
 
@@ -105,35 +105,35 @@ class Error(Exception):
 
 
 class InvalidJidError(Error):
-  """Error that indicates a request for an invalid JID."""
+  """The JID that was requested is invalid."""
 
 
 class InvalidTypeError(Error):
-  """Error that indicates a request has an invalid type."""
+  """The request type is invalid."""
 
 
 class InvalidXmlError(Error):
-  """Error that indicates a send message request has invalid XML."""
+  """The send message request contains invalid XML."""
 
 
 class NoBodyError(Error):
-  """Error that indicates a send message request has no body."""
+  """The send message request has no body."""
 
 
 class InvalidMessageError(Error):
-  """Error that indicates a received message was invalid or incomplete."""
+  """The received message was invalid or incomplete."""
 
 
 class InvalidShowError(Error):
-  """Error that indicates a send presence request has an invalid show."""
+  """The send presence request contains an invalid show element."""
 
 
 class InvalidStatusError(Error):
-  """Error that indicates a send presence request has an invalid status."""
+  """The send presence request contains an invalid status element."""
 
 
 class NondefaultModuleError(Error):
-  """Error that indicates the XMPP API was used from a non-default module."""
+  """The XMPP API was used from a non-default module."""
 
   def __init__(self):
     super(NondefaultModuleError, self).__init__(
@@ -141,30 +141,30 @@ class NondefaultModuleError(Error):
 
 
 def get_presence(jid, from_jid=None, get_show=False):
-  """Gets the presence for a JID.
+  """Gets the presence for a Jabber identifier (JID).
 
   Args:
-    jid: The JID of the contact whose presence is requested. This may also be a
-      list of JIDs, which also implies get_show (below).
-    from_jid: The optional custom JID to use for sending. Currently, the default
-      is <appid>@appspot.com. This is supported as a value. Custom JIDs can be
-      of the form <anything>@<appid>.appspotchat.com.
-    get_show: if True, return a tuple of (is_available, show). If a list of jids
-      is given, this will always be True.
+    jid: The JID of the contact whose presence is requested. This can also be a
+        list of JIDs, which also implies the `get_show` argument.
+    from_jid: The optional custom JID to use. Currently, the default JID is
+        `<appid>@appspot.com`. This JID is supported as a value. Custom JIDs can
+        be of the form `<anything>@<appid>.appspotchat.com`.
+    get_show: If True, this argument returns a tuple of `(is_available, show)`.
+        If a list of JIDs is given, this argument will always be True.
 
   Returns:
-    At minimum, a boolean is_available representing whether the requested JID
-    is available.
+    At minimum, a boolean `is_available` representing whether the requested JID
+    is available is returned.
 
-    If get_show is specified, a tuple (is_available, show) will be given.
+    If `get_show` is specified, a tuple `(is_available, show)` will be given.
 
     If a list of JIDs is given, a list of tuples will be returned, including
-    is_available, show, and an additional boolean indicating if that JID was
+    `is_available`, `show`, and an additional boolean indicating if that JID was
     valid.
 
   Raises:
-    InvalidJidError: Raised if no JID passed in is valid.
-    Error: if an unspecified error happens processing the request.
+    InvalidJidError: If the specified `jid` is invalid.
+    Error: If an unspecified error happens while processing the request.
   """
   if not jid:
     raise InvalidJidError()
@@ -238,13 +238,13 @@ def send_invite(jid, from_jid=None):
 
   Args:
     jid: The JID of the contact to invite.
-    from_jid: The optional custom JID to use for sending. Currently, the default
-      is <appid>@appspot.com. This is supported as a value. Custom JIDs can be
-      of the form <anything>@<appid>.appspotchat.com.
+    from_jid: The optional custom JID to use. Currently, the default value is
+        `<appid>@appspot.com`. This JID is supported as a value. Custom JIDs can
+        be of the form `<anything>@<appid>.appspotchat.com`.
 
   Raises:
-    InvalidJidError if the JID passed is invalid.
-    Error if an unspecified error happens processing the request.
+    InvalidJidError: If the specified `jid` is invalid.
+    Error: If an unspecified error happens while processing the request.
   """
   if not jid:
     raise InvalidJidError()
@@ -279,33 +279,35 @@ def send_message(jids, body, from_jid=None, message_type=MESSAGE_TYPE_CHAT,
   """Sends a chat message to a list of JIDs.
 
   Args:
-    jids: A list of JIDs to send the message to, or a single JID to send the
-      message to.
-    from_jid: The optional custom JID to use for sending. Currently, the default
-      is <appid>@appspot.com. This is supported as a value. Custom JIDs can be
-      of the form <anything>@<appid>.appspotchat.com.
+    jids: At least one JID to send the message to.
+    from_jid: The optional custom JID to use. Currently, the default value is
+        `<appid>@appspot.com`. This JID is supported as a value. Custom JIDs can
+        be of the form `<anything>@<appid>.appspotchat.com`.
     body: The body of the message.
     message_type: Optional type of the message. Should be one of the types
-      specified in RFC 3921, section 2.1.1. An empty string will result in a
-      message stanza without a type attribute. For convenience, all of the
-      valid types are in the MESSAGE_TYPE_* constants in this file. The
-      default is MESSAGE_TYPE_CHAT. Anything else will throw an exception.
+        specified in `RFC 3921, section 2.1.1`_. An empty string will result in
+        a message stanza without a `type` attribute. For convenience, all of the
+        valid types are in the `MESSAGE_TYPE_*` constants in this file. The
+        default is `MESSAGE_TYPE_CHAT`. Anything else will throw an exception.
     raw_xml: Optionally specifies that the body should be interpreted as XML. If
-      this is false, the contents of the body will be escaped and placed inside
-      of a body element inside of the message. If this is true, the contents
-      will be made children of the message.
+        set to False, the contents of the body will be escaped and placed inside
+        of a body element inside of the message. If set to True, the contents
+        will be made children of the message.
 
   Returns:
-    list, A list of statuses, one for each JID, corresponding to the result of
-      sending the message to that JID. Or, if a single JID was passed in,
-      returns the status directly.
+    A list of statuses, one for each JID, corresponding to the result of sending
+    the message to that JID. Or, if a single JID was passed in, returns the
+    status directly.
 
   Raises:
-    InvalidJidError if there is no valid JID in the list.
-    InvalidTypeError if the type argument is invalid.
-    InvalidXmlError if the body is malformed XML and raw_xml is True.
-    NoBodyError if there is no body.
-    Error if another error occurs processing the request.
+    InvalidJidError: If there is no valid JID in the list.
+    InvalidTypeError: If the `message_type` argument is invalid.
+    InvalidXmlError: If the body is malformed XML and `raw_xml` is set to True.
+    NoBodyError: If the message has no body.
+    Error: If another error occurs while processing the request.
+
+  .. _RFC 3921, section 2.1.1:
+     https://xmpp.org/rfcs/rfc3921.html#stanzas
   """
   request = xmpp_service_pb.XmppMessageRequest()
   response = xmpp_service_pb.XmppMessageResponse()
@@ -371,26 +373,31 @@ def send_presence(jid, status=None, from_jid=None,
   Args:
     jid: A JID to send the presence to.
     status: The optional status message. Size is limited to 1KB.
-    from_jid: The optional custom JID to use for sending. Currently, the default
-      is <appid>@appspot.com. This is supported as a value. Custom JIDs can be
-      of the form <anything>@<appid>.appspotchat.com.
+    from_jid: The optional custom JID to use. Currently, the default value is
+        `<appid>@appspot.com`. This JID is supported as a value. Custom JIDs can
+        be of the form `<anything>@<appid>.appspotchat.com`.
     presence_type: Optional type of the presence. This accepts a subset of the
-      types specified in RFC 3921, section 2.2.1. An empty string will result
-      in a presence stanza without a type attribute. For convenience, all of the
-      valid types are in the PRESENCE_TYPE_* constants in this file. The default
-      is PRESENCE_TYPE_AVAILABLE. Anything else will throw an exception.
-    presence_show: Optional show value for the presence. Should be one of the
-      values specified in RFC 3921, section 2.2.2.1. An empty string will result
-      in a presence stanza without a show element. For convenience, all of the
-      valid types are in the PRESENCE_SHOW_* constants in this file. The
-      default is PRESENCE_SHOW_NONE. Anything else will throw an exception.
+        types specified in `RFC 3921, section 2.1.1`_. An empty string will
+        result in a presence stanza without a type attribute. For convenience,
+        all of the valid types are in the `PRESENCE_TYPE_*` constants in this
+        file. The default type is `PRESENCE_TYPE_AVAILABLE`. Anything else will
+        throw an exception.
+    presence_show: Optional `show` value for the presence. Should be one of the
+        values specified in RFC 3921, section 2.2.2.1. An empty string will
+        result in a presence stanza without a `show` element. For convenience,
+        all of the valid types are in the `PRESENCE_SHOW_*` constants in this
+        file. The default type is `PRESENCE_SHOW_NONE`. Anything else will throw
+        an exception.
 
   Raises:
-    InvalidJidError if there is no valid JID in the list.
-    InvalidTypeError if the type argument is invalid.
-    InvalidShowError if the show argument is invalid.
-    InvalidStatusError if the status argument is too large.
-    Error if another error occurs processing the request.
+    InvalidJidError: If the list does not contain a valid JID.
+    InvalidTypeError: If the `presence_type` argument is invalid.
+    InvalidShowError: If the `presence_show` argument is invalid.
+    InvalidStatusError: If the status argument is too large.
+    Error: If another error occurs while processing the request.
+
+  .. _RFC 3921, section 2.1.1:
+     https://xmpp.org/rfcs/rfc3921.html#stanzas
   """
   request = xmpp_service_pb.XmppSendPresenceRequest()
   response = xmpp_service_pb.XmppSendPresenceResponse()
@@ -439,7 +446,7 @@ def send_presence(jid, status=None, from_jid=None,
 
 
 class Message(object):
-  """Encapsulates an XMPP message received by the application."""
+  """Encapsulates an XMPP message that is received by the application."""
 
   def __init__(self, vars):
     """Constructs a new XMPP Message from an HTTP request.
@@ -458,14 +465,17 @@ class Message(object):
 
   @property
   def sender(self):
+    """The sender of a message."""
     return self.__sender
 
   @property
   def to(self):
+    """The recipient of a message."""
     return self.__to
 
   @property
   def body(self):
+    """The body of a message."""
     return self.__body
 
   def __parse_command(self):
@@ -488,41 +498,44 @@ class Message(object):
 
   @property
   def command(self):
+    """If your app accepts commands, the command sent in a message."""
     self.__parse_command()
     return self.__command
 
   @property
   def arg(self):
+    """If your app accepts commands, the arguments specified in the command."""
     self.__parse_command()
     return self.__arg
 
   def reply(self, body, message_type=MESSAGE_TYPE_CHAT, raw_xml=False,
             send_message=send_message):
-    """Convenience function to reply to a message.
+    """Replies to a message; convenience function.
 
     Args:
-      body: str: The body of the message
-      message_type, raw_xml: As per send_message.
+      body: String; the body of the message.
+      message_type: As per `send_message`.
+      raw_xml: As per `send_message`.
       send_message: Used for testing.
 
     Returns:
-      A status code as per send_message.
+      A status code as per `send_message`.
 
     Raises:
-      See send_message.
+      See `send_message`.
     """
     return send_message([self.sender], body, from_jid=self.to,
                         message_type=message_type, raw_xml=raw_xml)
 
 
 def _to_str(value):
-  """Helper function to make sure unicode values converted to utf-8
+  """Helper function to make sure unicode values are converted to UTF-8.
 
   Args:
-    value: str or unicode to convert to utf-8.
+    value: String or Unicode text to convert to UTF-8.
 
   Returns:
-    UTF-8 encoded str of value, otherwise value unchanged.
+    UTF-8 encoded string of `value`; otherwise `value` remains unchanged.
   """
   if isinstance(value, unicode):
     return value.encode('utf-8')

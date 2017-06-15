@@ -32,6 +32,7 @@ application. Supports loading the records from yaml.
 
 
 import logging
+import os
 import sys
 import traceback
 
@@ -42,11 +43,21 @@ except ImportError:
 
 from google.appengine.cron import groc
 from google.appengine.cron import groctimespecification
-from google.appengine.api import appinfo
-from google.appengine.api import validation
-from google.appengine.api import yaml_builder
-from google.appengine.api import yaml_listener
-from google.appengine.api import yaml_object
+
+
+if os.environ.get('APPENGINE_RUNTIME') == 'python27':
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+else:
+  from google.appengine.api import appinfo
+  from google.appengine.api import validation
+  from google.appengine.api import yaml_builder
+  from google.appengine.api import yaml_listener
+  from google.appengine.api import yaml_object
+
 
 _URL_REGEX = r'^/.*$'
 _TIMEZONE_REGEX = r'^.{0,100}$'
@@ -57,6 +68,8 @@ SERVER_ID_RE_STRING = r'(?!-)[a-z\d\-]{1,63}'
 
 
 SERVER_VERSION_RE_STRING = r'(?!-)[a-z\d\-]{1,100}'
+
+
 _VERSION_REGEX = r'^(?:(?:(%s):)?)(%s)$' % (SERVER_ID_RE_STRING,
                                             SERVER_VERSION_RE_STRING)
 

@@ -244,6 +244,7 @@ class ModuleOverrideImportHookTest(unittest.TestCase):
     self.assertEqual(stubs.return_minus_one, hooked_os.getpid)
     self.assertNotIn('execv', hooked_os.__dict__)
     self.assertEqual(stubs.os_error_not_implemented, hooked_os.unlink)
+    self.assertEqual(stubs.os_error_not_implemented, hooked_os.readlink)
     self.assertEqual(os.walk, hooked_os.walk)
 
 

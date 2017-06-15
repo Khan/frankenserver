@@ -58,19 +58,11 @@ class UserServiceTest extends ApiProxyTestBase {
     $this->apiProxyMock->verify();
   }
 
-  public function testCreateLoginURLAllArgs() {
-    $req = new \google\appengine\CreateLoginURLRequest();
-    $req->setDestinationUrl('http://abc');
-    $req->setFederatedIdentity('xyz');
+  public function testFederatedLoginNotAllowed() {
+    $this->setExpectedException('\google\appengine\api\users\UsersException',
+      'Action not allowed: OpenID 2.0 is disabled');
 
-    $resp = new \google\appengine\CreateLoginURLResponse();
-    $resp->setLoginUrl('http://www');
-
-    $this->apiProxyMock->expectCall(
-        'user', 'CreateLoginURL', $req, $resp);
-    $loginUrl = UserService::createLoginURL('http://abc', 'xyz');
-    $this->assertEquals('http://www', $loginUrl);
-    $this->apiProxyMock->verify();
+    UserService::createLoginURL('http://abc', 'xyz');
   }
 
   public function testCreateLoginURLArgumentError() {

@@ -29,6 +29,7 @@ class TaskQueueQueuesHandler(admin_request_handler.AdminRequestHandler):
   """A handler that displays queue information for the application."""
 
   def get(self):
+    super(TaskQueueQueuesHandler, self).get()
     push_queues = []
     pull_queues = []
     for queue_info in taskqueue_utils.QueueInfo.get():
@@ -54,6 +55,7 @@ class TaskQueueQueuesHandler(admin_request_handler.AdminRequestHandler):
 
   def post(self):
     """Handle modifying actions and redirect to a GET page."""
+    super(TaskQueueQueuesHandler, self).post()
     queue_name = self.request.get('queue')
 
     if self.request.get('action:purgequeue'):

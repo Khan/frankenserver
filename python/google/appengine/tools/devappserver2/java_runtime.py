@@ -31,6 +31,7 @@ from google.appengine.api import appinfo
 from google.appengine.tools.devappserver2 import http_runtime
 from google.appengine.tools.devappserver2 import instance
 from google.appengine.tools.devappserver2 import java_application
+from google.appengine.tools.devappserver2 import util
 
 # TODO: figure out what's needed to react to file changes
 
@@ -68,7 +69,7 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
     self._java_application = java_application.JavaApplication(
         self._module_configuration)
     self._for_jetty9 = (module_configuration.runtime == 'vm' or
-                        module_configuration.env == '2')
+                        util.is_env_flex(module_configuration.env))
     self._java_command = self._make_java_command()
 
   def _make_java_command(self):
@@ -121,8 +122,11 @@ class JavaRuntimeInstanceFactory(instance.InstanceFactory):
           java_bin,
           '-cp', class_path,
           '-Dappengine.sdk.root=' + java_dir,
+          '-Dappengine.runtime=' + self._module_configuration.runtime,
           '-Xbootclasspath/p:' + jdk_overrides_jar,
       ]
+      if self._module_configuration.runtime.startswith('java8'):
+        args.append('-Duse_jetty9_runtime=true')
       if sys.platform == 'darwin':
         args.append('-XstartOnFirstThread')
       args.extend(self._runtime_config_getter().java_config.jvm_args)

@@ -66,9 +66,11 @@ class XmppRequestHandler(admin_request_handler.AdminRequestHandler):
   def get(self):
     # TODO: Generate a warning if XMPP is not configured when the
     # configuration is sorted in the new servers world.
+    super(XmppRequestHandler, self).get()
     self.response.write(self.render('xmpp.html', {}))
 
   def post(self):
+    super(XmppRequestHandler, self).post()
     message_type = self.request.get('message_type')
     to = self.request.get('to')
     from_ = self.request.get('from')

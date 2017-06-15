@@ -42,6 +42,7 @@ class BlobstoreRequestHandler(admin_request_handler.AdminRequestHandler):
   BLOBS_PER_PAGE = 20
 
   def get(self):
+    super(BlobstoreRequestHandler, self).get()
     offset = int(self.request.get('offset', 0))
     # Fetch an extra item to check if the next button should be enabled.
     blob_infos = _get_blobs(offset, self.BLOBS_PER_PAGE+1)
@@ -67,6 +68,7 @@ class BlobstoreRequestHandler(admin_request_handler.AdminRequestHandler):
     Redirects the client back to the value specified in the 'return_to' form
     variable.
     """
+    super(BlobstoreRequestHandler, self).post()
     redirect_url = str(self.request.get('return_to', '/blobstore'))
     keys = self.request.get_all('blob_key')
     blobstore.delete(keys)
@@ -82,6 +84,7 @@ class BlobRequestHandler(admin_request_handler.AdminRequestHandler):
   INLINEABLE_TYPES = ('image/', 'text/plain')
 
   def get(self, key):
+    super(BlobRequestHandler, self).get(key)
     blob_info = blobstore.BlobInfo.get(key)
     if blob_info is None:
       # TODO: Display a message saying that this blob no longer
